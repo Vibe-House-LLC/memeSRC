@@ -1,14 +1,17 @@
 import { Helmet } from 'react-helmet-async';
 // @mui
 import { styled } from '@mui/material/styles';
+
 import { Link, Container, Typography, Divider, Stack, Button } from '@mui/material';
+
 // hooks
 import useResponsive from '../hooks/useResponsive';
+
 // components
 import Logo from '../components/logo';
 import Iconify from '../components/iconify';
 // sections
-import { LoginForm } from '../sections/auth/login';
+import SignupForm from '../sections/auth/login/SignupForm';
 
 // ----------------------------------------------------------------------
 
@@ -40,13 +43,13 @@ const StyledContent = styled('div')(({ theme }) => ({
 
 // ----------------------------------------------------------------------
 
-export default function LoginPage() {
+export default function SignupPage() {
   const mdUp = useResponsive('up', 'md');
 
   return (
     <>
       <Helmet>
-        <title> Login | Minimal UI </title>
+        <title> Signup | Minimal UI </title>
       </Helmet>
 
       <StyledRoot>
@@ -70,12 +73,12 @@ export default function LoginPage() {
         <Container maxWidth="sm">
           <StyledContent>
             <Typography variant="h4" gutterBottom>
-              Sign in to Minimal
+              Sign up to Minimal
             </Typography>
 
             <Typography variant="body2" sx={{ mb: 5 }}>
-              Don’t have an account? {''}
-              <Link variant="subtitle2" href='/signup'>Get started</Link>
+              Already have an account? {''}
+              <Link variant="subtitle2" href="/login">Sign in</Link>
             </Typography>
 
             <Stack direction="row" spacing={2}>
@@ -98,7 +101,7 @@ export default function LoginPage() {
               </Typography>
             </Divider>
 
-            <LoginForm />
+            <SignupForm />
           </StyledContent>
         </Container>
       </StyledRoot>
