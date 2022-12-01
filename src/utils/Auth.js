@@ -1,9 +1,6 @@
 import { Auth } from 'aws-amplify';
 
 export default async function signUp(username, password, email, autoSignInEnabled) {
-    // return new Promise((resolve, reject) => {
-    // try {
-        // const { user } = 
         return Auth.signUp({
             username,
             password,
@@ -15,12 +12,6 @@ export default async function signUp(username, password, email, autoSignInEnable
                 enabled: autoSignInEnabled,
             }
         }).then((x) =>  x).catch((error) => { throw error});
-    //     console.log(user);
-    //     resolve(user);
-    // } catch (error) {
-    //     reject(error);
-    // }
-// });
 }
 
 // export async function signIn(username, password) {
