@@ -13,6 +13,12 @@ import Iconify from '../../../components/iconify';
 export default function SignupForm() {
   // const navigate = useNavigate();
 
+  const [signupStatus, setSignupStatus] = useState({
+    'loading': false,
+    'disabled': false,
+    'text': 'Sign Up'
+  });
+
   const [showPassword, setShowPassword] = useState(false);
 
   const [username, setUsername] = useState('');
@@ -22,11 +28,27 @@ export default function SignupForm() {
   const [password, setPassword] = useState('');
 
   const trySignUp = async () => {
-    await signUp(username, password, email, false).then(data =>
-      alert(data)
-    ).catch((data) =>
-      alert(data)
-    )
+    
+    setSignupStatus({
+      'loading': true,
+      'disabled': true,
+      'text': 'Creating Account'
+    });
+    await signUp(username, password, email, false).then(data =>{
+      console.log(data);
+      setSignupStatus({
+        'loading': false,
+        'disabled': true,
+        'text': 'Account Created!'
+      });
+    }).catch((data) => {
+      console.log(data)
+      setSignupStatus({
+        'loading': false,
+        'disabled': false,
+        'text': 'Error. Try again.'
+      });
+    })
   }
 
   return (
@@ -60,8 +82,8 @@ export default function SignupForm() {
         </Link>
       </Stack>
 
-      <LoadingButton fullWidth size="large" type="submit" variant="contained" onClick={trySignUp}>
-        Login
+      <LoadingButton fullWidth size="large" type="submit" variant="contained" loading={signupStatus.loading} onClick={trySignUp} id="signup-btn" disabled={signupStatus.disabled}>
+        {signupStatus.text}
       </LoadingButton>
     </>
   );
