@@ -1,16 +1,19 @@
 import { Helmet } from 'react-helmet-async';
+
+import { useState } from 'react';
 // @mui
 import { styled } from '@mui/material/styles';
 
-import { Link, Container, Typography, Divider, Stack, Button } from '@mui/material';
+import { Container, Typography } from '@mui/material';
+import { LoginForm } from '../sections/auth/login';
 
 // hooks
 import useResponsive from '../hooks/useResponsive';
 
 // components
 import Logo from '../components/logo';
-import Iconify from '../components/iconify';
 // sections
+import VerifyForm from '../sections/auth/login/VerifyForm';
 import SignupForm from '../sections/auth/login/SignupForm';
 
 // ----------------------------------------------------------------------
@@ -43,13 +46,27 @@ const StyledContent = styled('div')(({ theme }) => ({
 
 // ----------------------------------------------------------------------
 
-export default function SignupPage() {
+export default function AuthPage(props) {
   const mdUp = useResponsive('up', 'md');
+
+  const [userState, setUserState] = useState("");
+
+  const AuthForm = () => {
+    let formType = <LoginForm />
+    if (props.method === "signup") {
+      if (userState.username) {
+          formType = <VerifyForm username={userState.username} />
+      } else {
+          formType = <SignupForm setUserState={setUserState}/>
+      }
+    }
+    return formType
+  }
 
   return (
     <>
       <Helmet>
-        <title> Signup | Minimal UI </title>
+        <title> Verify Email | Minimal UI </title>
       </Helmet>
 
       <StyledRoot>
@@ -72,36 +89,10 @@ export default function SignupPage() {
 
         <Container maxWidth="sm">
           <StyledContent>
-            <Typography variant="h4" gutterBottom>
-              Sign up to Minimal
+            <Typography variant="h4" gutterBottom marginBottom={8}>
+              Verify your account
             </Typography>
-
-            <Typography variant="body2" sx={{ mb: 5 }}>
-              Already have an account? {''}
-              <Link variant="subtitle2" href="/login">Sign in</Link>
-            </Typography>
-
-            <Stack direction="row" spacing={2}>
-              <Button fullWidth size="large" color="inherit" variant="outlined">
-                <Iconify icon="eva:google-fill" color="#DF3E30" width={22} height={22} />
-              </Button>
-
-              <Button fullWidth size="large" color="inherit" variant="outlined">
-                <Iconify icon="eva:facebook-fill" color="#1877F2" width={22} height={22} />
-              </Button>
-
-              <Button fullWidth size="large" color="inherit" variant="outlined">
-                <Iconify icon="eva:twitter-fill" color="#1C9CEA" width={22} height={22} />
-              </Button>
-            </Stack>
-
-            <Divider sx={{ my: 3 }}>
-              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                OR
-              </Typography>
-            </Divider>
-
-            <SignupForm />
+            <AuthForm />
           </StyledContent>
         </Container>
       </StyledRoot>

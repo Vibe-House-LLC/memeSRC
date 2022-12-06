@@ -3,14 +3,15 @@ import { useState } from 'react';
 // @mui
 import { Link, Stack, IconButton, InputAdornment, TextField, Checkbox } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
+import { Auth } from 'aws-amplify';
 // utils
-import signUp from '../../../utils/Auth';
+
 // components
 import Iconify from '../../../components/iconify';
 
 // ----------------------------------------------------------------------
 
-export default function SignupForm() {
+export default function SignupForm(props) {
   // const navigate = useNavigate();
 
   const [signupStatus, setSignupStatus] = useState({
@@ -27,36 +28,50 @@ export default function SignupForm() {
 
   const [password, setPassword] = useState('');
 
-  const trySignUp = async () => {
-    
+  const createUser = async () => {
     setSignupStatus({
       'loading': true,
       'disabled': true,
-      'text': 'Creating Account'
-    });
-    await signUp(username, password, email, false).then(data =>{
-      console.log(data);
+      'text': 'Signing Up...'
+    })
+
+    Auth.signUp({
+      username,
+      password,
+      attributes: {
+        email,          // optional
+        // other custom attributes
+      },
+      autoSignIn: { // optional - enables auto sign in after user is confirmed
+        enabled: true,
+      }
+    }).then((result) => {
       setSignupStatus({
         'loading': false,
         'disabled': true,
-        'text': 'Account Created!'
+        'text': 'Sign Up Complete'
       });
-    }).catch((data) => {
-      console.log(data)
+      props.setUserState({
+        username: result.user.username
+      })
+      console.log(result);
+    }).catch((err) => {
       setSignupStatus({
         'loading': false,
         'disabled': false,
-        'text': 'Error. Try again.'
+        'error': err,
+        'text': 'Sign Up'
       });
-    })
+      alert(err);
+    });
   }
 
   return (
     <>
       <Stack spacing={3}>
-        <TextField name="username" label="Username" onInput={(x) => setUsername(x.target.value)}/>
+        <TextField name="username" label="Username" onInput={(x) => setUsername(x.target.value)} />
 
-        <TextField name="email" label="Email address" onInput={(x) => setEmail(x.target.value)}/>
+        <TextField name="email" label="Email address" onInput={(x) => setEmail(x.target.value)} />
 
         <TextField
           name="password"
@@ -82,7 +97,7 @@ export default function SignupForm() {
         </Link>
       </Stack>
 
-      <LoadingButton fullWidth size="large" type="submit" variant="contained" loading={signupStatus.loading} onClick={trySignUp} id="signup-btn" disabled={signupStatus.disabled}>
+      <LoadingButton fullWidth size="large" type="submit" variant="contained" loading={signupStatus.loading} onClick={createUser} id="signup-btn" disabled={signupStatus.disabled}>
         {signupStatus.text}
       </LoadingButton>
     </>

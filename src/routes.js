@@ -1,15 +1,17 @@
 import { Navigate, useRoutes } from 'react-router-dom';
+
+import { Auth } from 'aws-amplify';
 // layouts
 import DashboardLayout from './layouts/dashboard';
 import SimpleLayout from './layouts/simple';
 //
 import BlogPage from './pages/BlogPage';
 import UserPage from './pages/UserPage';
-import LoginPage from './pages/LoginPage';
-import SignupPage from './pages/SignupPage';
 import Page404 from './pages/Page404';
 import ProductsPage from './pages/ProductsPage';
 import DashboardAppPage from './pages/DashboardAppPage';
+import AuthPage from './pages/AuthPage';
+
 
 // ----------------------------------------------------------------------
 
@@ -17,7 +19,7 @@ export default function Router() {
   const routes = useRoutes([
     {
       path: '/dashboard',
-      element: <DashboardLayout />,
+      element: Auth.currentAuthenticatedUser().then(() => <DashboardLayout />).catch(() => <Navigate to="/login" />),
       children: [
         { element: <Navigate to="/dashboard/app" />, index: true },
         { path: 'app', element: <DashboardAppPage /> },
@@ -28,11 +30,11 @@ export default function Router() {
     },
     {
       path: 'login',
-      element: <LoginPage />,
+      element: <AuthPage method="signin" />,
     },
     {
       path: 'signup',
-      element: <SignupPage />,
+      element: <AuthPage method="signup" />,
     },
     {
       element: <SimpleLayout />,
