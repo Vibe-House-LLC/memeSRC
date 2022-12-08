@@ -11,15 +11,17 @@ import Page404 from './pages/Page404';
 import ProductsPage from './pages/ProductsPage';
 import DashboardAppPage from './pages/DashboardAppPage';
 import AuthPage from './pages/AuthPage';
+import CheckAuth from './sections/auth/login/CheckAuth';
 
 
 // ----------------------------------------------------------------------
 
 export default function Router() {
+
   const routes = useRoutes([
     {
       path: '/dashboard',
-      element: Auth.currentAuthenticatedUser().then(() => <DashboardLayout />).catch(() => <Navigate to="/login" />),
+      element: <CheckAuth><DashboardLayout /></CheckAuth>,
       children: [
         { element: <Navigate to="/dashboard/app" />, index: true },
         { path: 'app', element: <DashboardAppPage /> },
