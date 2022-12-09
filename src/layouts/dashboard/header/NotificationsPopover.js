@@ -21,10 +21,13 @@ import {
   ListItemButton,
 } from '@mui/material';
 // utils
+import { API, graphqlOperation } from 'aws-amplify';
 import { fToNow } from '../../../utils/formatTime';
 // components
 import Iconify from '../../../components/iconify';
 import Scrollbar from '../../../components/scrollbar';
+
+import { listGlobalMessages } from '../../../graphql/queries'
 
 // ----------------------------------------------------------------------
 
@@ -82,6 +85,25 @@ export default function NotificationsPopover() {
   const totalUnRead = notifications.filter((item) => item.isUnRead === true).length;
 
   const [open, setOpen] = useState(null);
+
+  async function pullNotifications() {  
+    const response = await API.graphql(graphqlOperation(listGlobalMessages));
+    const result = response.data.listGlobalMessages.items
+    const notifications = result.map(item => (
+      {
+        id: item.id,
+        title: item.title,
+        description: item.message,
+        avatar: null,
+        type: 'example',
+        createdAt: item.createdAt,
+        isUnRead: true,
+      }
+    ))
+    setNotifications(notifications);
+  }
+
+  pullNotifications();
 
   const handleOpen = (event) => {
     setOpen(event.currentTarget);

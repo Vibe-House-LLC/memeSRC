@@ -4,7 +4,7 @@ import { faker } from '@faker-js/faker';
 import { useTheme } from '@mui/material/styles';
 import { Grid, Container, Typography } from '@mui/material';
 // components
-import CheckAuth from '../sections/auth/login/CheckAuth';
+import { API, graphqlOperation } from 'aws-amplify';
 import Iconify from '../components/iconify';
 // sections
 import {
@@ -19,10 +19,32 @@ import {
   AppConversionRates,
 } from '../sections/@dashboard/app';
 
+import { createGlobalMessage } from '../graphql/mutations';
+
 // ----------------------------------------------------------------------
 
 export default function DashboardAppPage() {
   const theme = useTheme();
+
+  async function createNewGlobalMessage(title, message, timestamp) {
+    const newGlobalMessage = {
+      input: {
+        title,
+        message,
+        timestamp,
+      },
+    };
+  
+    const result = await API.graphql(graphqlOperation(createGlobalMessage, newGlobalMessage));
+  
+    return result.data.createGlobalMessage;
+  }
+  
+  createNewGlobalMessage("Example 1", "This is the first example message.", Date.now()).then( x => {
+    console.log(x)
+  }).catch( x => {
+    console.log(x)
+  })
 
   return (
     <>

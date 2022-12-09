@@ -17,6 +17,9 @@
       },
       "hosting": {
         "S3AndCloudFront": {}
+      },
+      "api": {
+        "memesrc": {}
       }
     }
   }
