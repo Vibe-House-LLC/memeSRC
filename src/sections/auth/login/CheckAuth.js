@@ -17,19 +17,6 @@ export default function CheckAuth(props) {
         });
     });
 
-    // I'm not really sure if we want to use this. It pops up just long enough to be annoying. 
-    // That being said, it's nice to know that this is also a built in component in MUI.
-    if (isSignedIn === null) {
-        return (
-            <Backdrop
-                sx={{ color: '#fff', zIndex: "3000" }}
-                open={backdrop}
-            >
-                <CircularProgress color="inherit" />
-            </Backdrop>
-        )
-    }
-
     if (isSignedIn === true) {
         return props.children;
     } 
