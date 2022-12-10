@@ -53,20 +53,42 @@ export default function AuthPage(props) {
 
   const AuthForm = () => {
     let formType = <LoginForm />
+    let formHeader = "Welcome back!"
     if (props.method === "signup") {
       if (userState.username) {
           formType = <VerifyForm username={userState.username} />
+          formHeader = "Verify your account"
       } else {
           formType = <SignupForm setUserState={setUserState}/>
+          formHeader = "Create your account"
       }
     }
     return formType
   }
 
+  // Default to login form
+  let formType = <LoginForm />
+  let formTitle = "Sign in"
+  let formHeader = "Welcome back!"
+  if (props.method === "signup") {
+    // If the user is not verified
+    // TODO: add explicit check for verified boolean and forward to dashboard if they are already verified
+    if (userState.username) {
+        formType = <VerifyForm username={userState.username} />
+        formTitle = "Verify account"
+        formHeader = "Verify your account"
+    } else {
+      // Regular signup flow
+        formType = <SignupForm setUserState={setUserState}/>
+        formTitle = "Create account"
+        formHeader = "Create your account"
+    }
+  }
+
   return (
     <>
       <Helmet>
-        <title> Verify Email | Minimal UI </title>
+        <title> {formTitle} • memeSRC </title>
       </Helmet>
 
       <StyledRoot>
@@ -78,19 +100,10 @@ export default function AuthPage(props) {
           }}
         />
 
-        {mdUp && (
-          <StyledSection>
-            <Typography variant="h3" sx={{ px: 5, mt: 10, mb: 5 }}>
-              Hi, Welcome Back
-            </Typography>
-            <img src="/assets/illustrations/illustration_login.png" alt="login" />
-          </StyledSection>
-        )}
-
         <Container maxWidth="sm">
           <StyledContent>
             <Typography variant="h4" gutterBottom marginBottom={8}>
-              Verify your account
+              {formHeader}
             </Typography>
             <AuthForm />
           </StyledContent>
