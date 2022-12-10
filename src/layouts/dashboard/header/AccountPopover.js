@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useContext } from 'react';
 // @mui
 import { alpha } from '@mui/material/styles';
 import { Box, Divider, Typography, Stack, MenuItem, Avatar, IconButton, Popover } from '@mui/material';
 // mocks_
 import { useNavigate } from 'react-router-dom';
 import { Auth } from 'aws-amplify';
+import { UserContext } from '../../../UserContext';
 import account from '../../../_mock/account';
 
 // ----------------------------------------------------------------------
@@ -27,6 +28,10 @@ const MENU_OPTIONS = [
 // ----------------------------------------------------------------------
 
 export default function AccountPopover() {
+  const {user, setUser} = useContext(UserContext)
+
+  console.log(user)
+
   const [open, setOpen] = useState(null);
 
   const navigate = useNavigate();
