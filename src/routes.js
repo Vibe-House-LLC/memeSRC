@@ -5,21 +5,26 @@ import SimpleLayout from './layouts/simple';
 //
 import BlogPage from './pages/BlogPage';
 import UserPage from './pages/UserPage';
-import LoginPage from './pages/LoginPage';
 import Page404 from './pages/Page404';
 import ProductsPage from './pages/ProductsPage';
 import DashboardAppPage from './pages/DashboardAppPage';
+import AuthPage from './pages/AuthPage';
+import CheckAuth from './sections/auth/login/CheckAuth';
+import ImageUploadPage from './pages/ImageUploadPage';
+
 
 // ----------------------------------------------------------------------
 
 export default function Router() {
+
   const routes = useRoutes([
     {
       path: '/dashboard',
-      element: <DashboardLayout />,
+      element: <CheckAuth><DashboardLayout /></CheckAuth>,
       children: [
         { element: <Navigate to="/dashboard/app" />, index: true },
         { path: 'app', element: <DashboardAppPage /> },
+        { path: 'imageupload', element: <ImageUploadPage /> },
         { path: 'user', element: <UserPage /> },
         { path: 'products', element: <ProductsPage /> },
         { path: 'blog', element: <BlogPage /> },
@@ -27,7 +32,11 @@ export default function Router() {
     },
     {
       path: 'login',
-      element: <LoginPage />,
+      element: <AuthPage method="signin" />,
+    },
+    {
+      path: 'signup',
+      element: <AuthPage method="signup" />,
     },
     {
       element: <SimpleLayout />,

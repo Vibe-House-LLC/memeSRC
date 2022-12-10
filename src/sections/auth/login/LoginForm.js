@@ -4,7 +4,9 @@ import { useNavigate } from 'react-router-dom';
 import { Link, Stack, IconButton, InputAdornment, TextField, Checkbox } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
 // components
+import { Auth } from 'aws-amplify';
 import Iconify from '../../../components/iconify';
+
 
 // ----------------------------------------------------------------------
 
@@ -13,14 +15,29 @@ export default function LoginForm() {
 
   const [showPassword, setShowPassword] = useState(false);
 
+  const [staySignedIn, setStaySignedIn] = useState(false);
+  
+  const [username, setUsername] = useState(null);
+
+  const [password, setPassword] = useState(null);
+
   const handleClick = () => {
-    navigate('/dashboard', { replace: true });
+    if (!staySignedIn) {
+      Auth.configure({ storage: window.sessionStorage })
+    } else {
+      Auth.configure({ storage: window.localStorage })
+    }
+    Auth.signIn(username, password).then(() => {
+      navigate('/dashboard/app', { replace: true })
+    }).catch((err) => {
+      alert(err);
+    })
   };
 
   return (
     <>
       <Stack spacing={3}>
-        <TextField name="email" label="Email address" />
+        <TextField name="text" label="Username" onInput={(x) => setUsername(x.target.value)} />
 
         <TextField
           name="password"
@@ -35,11 +52,12 @@ export default function LoginForm() {
               </InputAdornment>
             ),
           }}
+          onInput={(x) => setPassword(x.target.value)}
         />
       </Stack>
 
       <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ my: 2 }}>
-        <Checkbox name="remember" label="Remember me" />
+        <Checkbox name="remember" label="Remember me" onChange={(x) => setStaySignedIn(x.target.checked)}/>
         <Link variant="subtitle2" underline="hover">
           Forgot password?
         </Link>
