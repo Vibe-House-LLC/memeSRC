@@ -96,7 +96,7 @@ export default function NotificationsPopover() {
         description: item.message,
         avatar: null,
         type: 'example',
-        createdAt: item.createdAt,
+        createdAt: new Date(item.createdAt),
         isUnRead: true,
       }
     ))
