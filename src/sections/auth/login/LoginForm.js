@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 // @mui
-import { Link, Stack, IconButton, InputAdornment, TextField, Checkbox } from '@mui/material';
+import { Link, Stack, IconButton, InputAdornment, TextField, Checkbox, FormControlLabel } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
 // components
 import { Auth } from 'aws-amplify';
@@ -16,7 +16,7 @@ export default function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
 
   const [staySignedIn, setStaySignedIn] = useState(false);
-  
+
   const [username, setUsername] = useState(null);
 
   const [password, setPassword] = useState(null);
@@ -57,9 +57,17 @@ export default function LoginForm() {
       </Stack>
 
       <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ my: 2 }}>
-        <Checkbox name="remember" label="Remember me" onChange={(x) => setStaySignedIn(x.target.checked)}/>
+        <FormControlLabel
+          control={
+            <Checkbox
+              name="remember"
+              onChange={(event) => setStaySignedIn(event.target.checked)}
+            />
+          }
+          label="Remember me"
+        />
         <Link variant="subtitle2" underline="hover">
-          Forgot password?
+          Forgot your password?
         </Link>
       </Stack>
 
