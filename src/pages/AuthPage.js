@@ -1,6 +1,6 @@
 import { Helmet } from 'react-helmet-async';
 
-import { useState } from 'react';
+import { useContext, useState } from 'react';
 // @mui
 import { styled } from '@mui/material/styles';
 
@@ -15,6 +15,7 @@ import Logo from '../components/logo';
 // sections
 import VerifyForm from '../sections/auth/login/VerifyForm';
 import SignupForm from '../sections/auth/login/SignupForm';
+import { UserContext } from '../UserContext';
 
 // ----------------------------------------------------------------------
 
@@ -51,15 +52,17 @@ export default function AuthPage(props) {
 
   const [userState, setUserState] = useState("");
 
+  const {user, setUser} = useContext(UserContext)
+
   const AuthForm = () => {
     let formType = <LoginForm />
     let formHeader = "Welcome back!"
     if (props.method === "signup") {
-      if (userState.username) {
-          formType = <VerifyForm username={userState.username} />
+      if (user.username) {
+          formType = <VerifyForm username={user.username} />
           formHeader = "Verify your account"
       } else {
-          formType = <SignupForm setUserState={setUserState}/>
+          formType = <SignupForm setUserState={setUser}/>
           formHeader = "Create your account"
       }
     }
@@ -73,13 +76,13 @@ export default function AuthPage(props) {
   if (props.method === "signup") {
     // If the user is not verified
     // TODO: add explicit check for verified boolean and forward to dashboard if they are already verified
-    if (userState.username) {
-        formType = <VerifyForm username={userState.username} />
+    if (user.username) {
+        formType = <VerifyForm username={user.username} />
         formTitle = "Verify account"
         formHeader = "Verify your account"
     } else {
       // Regular signup flow
-        formType = <SignupForm setUserState={setUserState}/>
+        formType = <SignupForm setUserState={setUser}/>
         formTitle = "Create account"
         formHeader = "Create your account"
     }

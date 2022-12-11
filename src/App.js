@@ -13,14 +13,13 @@ import { UserContext } from './UserContext';
 
 export default function App() {
   // Set up the user context
-  const [user, setUser] = useState(null)
-  console.log("checking user auth (App.js)")
+  const [user, setUser] = useState(null);
   if (!user) {
     Auth.currentAuthenticatedUser().then((x) => {
         setUser(x)  // if an authenticated user is found, set it into the context
         console.log(x)
     }).catch(() => {
-        setUser(null)  // if there's an issue, clear the user context
+        setUser({username: null})  // if there's an issue, clear the user context
         console.log("There wasn't an authenticated user found")
     });
   }

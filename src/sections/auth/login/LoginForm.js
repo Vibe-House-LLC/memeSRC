@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useContext, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 // @mui
 import { Link, Stack, IconButton, InputAdornment, TextField, Checkbox, FormControlLabel } from '@mui/material';
@@ -6,6 +6,7 @@ import { LoadingButton } from '@mui/lab';
 // components
 import { Auth } from 'aws-amplify';
 import Iconify from '../../../components/iconify';
+import { UserContext } from '../../../UserContext';
 
 
 // ----------------------------------------------------------------------
@@ -21,13 +22,17 @@ export default function LoginForm() {
 
   const [password, setPassword] = useState(null);
 
+  const {user, setUser} = useContext(UserContext)
+
+
   const handleClick = () => {
     if (!staySignedIn) {
       Auth.configure({ storage: window.sessionStorage })
     } else {
       Auth.configure({ storage: window.localStorage })
     }
-    Auth.signIn(username, password).then(() => {
+    Auth.signIn(username, password).then((x) => {
+      setUser(x)
       navigate('/dashboard/app', { replace: true })
     }).catch((err) => {
       alert(err);
