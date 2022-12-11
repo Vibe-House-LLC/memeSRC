@@ -9,7 +9,7 @@ export default function CheckAuth(props) {
     const {user, setUser} = useContext(UserContext);
     
     useEffect(() => {
-        if (user) {
+        if (user) {  // we only want this logic to occur after user context is prepped
             if (user.username) {
                 setContent(props.children);
             } else {

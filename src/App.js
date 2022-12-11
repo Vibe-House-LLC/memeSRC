@@ -19,7 +19,7 @@ export default function App() {
         setUser(x)  // if an authenticated user is found, set it into the context
         console.log(x)
     }).catch(() => {
-        setUser({username: null})  // if there's an issue, clear the user context
+        setUser({username: false})  // indicate the context is ready but user is not auth'd
         console.log("There wasn't an authenticated user found")
     });
   }

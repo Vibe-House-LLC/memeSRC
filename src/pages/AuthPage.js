@@ -1,18 +1,9 @@
 import { Helmet } from 'react-helmet-async';
-
-import { useContext, useState } from 'react';
-// @mui
+import { useContext } from 'react';
 import { styled } from '@mui/material/styles';
-
 import { Container, Typography } from '@mui/material';
 import { LoginForm } from '../sections/auth/login';
-
-// hooks
-import useResponsive from '../hooks/useResponsive';
-
-// components
 import Logo from '../components/logo';
-// sections
 import VerifyForm from '../sections/auth/login/VerifyForm';
 import SignupForm from '../sections/auth/login/SignupForm';
 import { UserContext } from '../UserContext';
@@ -48,46 +39,20 @@ const StyledContent = styled('div')(({ theme }) => ({
 // ----------------------------------------------------------------------
 
 export default function AuthPage(props) {
-  const mdUp = useResponsive('up', 'md');
-
-  const [userState, setUserState] = useState("");
-
+  // Set up the user context
   const {user, setUser} = useContext(UserContext)
 
-  const AuthForm = () => {
-    let formType = <LoginForm />
-    let formHeader = "Welcome back!"
-    if (props.method === "signup") {
-      if (user.username) {
-          formType = <VerifyForm username={user.username} />
-          formHeader = "Verify your account"
-      } else {
-          formType = <SignupForm setUserState={setUser}/>
-          formHeader = "Create your account"
-      }
-    }
-    return formType
+  // Prep the auth page content depending on the situation
+  // TODO: fix issue where you can get "stuck" verifying 
+  // TODO: add auto-login functionality after confirmation
+  let formType = props.method === "signin" ? <LoginForm /> : <SignupForm setUser={setUser}/>
+  let formTitle = props.method === "signup" ? "Create Account" : "Sign in"
+  if (user && !user.userConfirmed) {
+    formType = <VerifyForm username={user.username} />
+    formTitle = "Verify Account"
   }
 
-  // Default to login form
-  let formType = <LoginForm />
-  let formTitle = "Sign in"
-  let formHeader = "Welcome back!"
-  if (props.method === "signup") {
-    // If the user is not verified
-    // TODO: add explicit check for verified boolean and forward to dashboard if they are already verified
-    if (user.username) {
-        formType = <VerifyForm username={user.username} />
-        formTitle = "Verify account"
-        formHeader = "Verify your account"
-    } else {
-      // Regular signup flow
-        formType = <SignupForm setUserState={setUser}/>
-        formTitle = "Create account"
-        formHeader = "Create your account"
-    }
-  }
-
+  // Return the page
   return (
     <>
       <Helmet>
@@ -106,9 +71,9 @@ export default function AuthPage(props) {
         <Container maxWidth="sm">
           <StyledContent>
             <Typography variant="h4" gutterBottom marginBottom={8}>
-              {formHeader}
+              {formTitle}
             </Typography>
-            <AuthForm />
+            {formType}
           </StyledContent>
         </Container>
       </StyledRoot>

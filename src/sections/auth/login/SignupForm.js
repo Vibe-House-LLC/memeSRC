@@ -51,9 +51,8 @@ export default function SignupForm(props) {
         'disabled': true,
         'text': 'Sign Up Complete'
       });
-      props.setUserState({
-        username: result.user.username
-      })
+      console.log(result)
+      props.setUser(result.user)
       console.log(result);
     }).catch((err) => {
       setSignupStatus({
