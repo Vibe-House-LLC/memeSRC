@@ -47,7 +47,7 @@ export default function AuthPage(props) {
   // TODO: add auto-login functionality after confirmation
   let formType = props.method === "signin" ? <LoginForm /> : <SignupForm setUser={setUser}/>
   let formTitle = props.method === "signup" ? "Create Account" : "Sign in"
-  if (user && !user.userConfirmed) {
+  if (user && user.userConfirmed === false) {
     formType = <VerifyForm username={user.username} />
     formTitle = "Verify Account"
   }
