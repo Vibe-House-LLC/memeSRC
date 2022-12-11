@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useContext } from 'react';
 // @mui
 import { alpha } from '@mui/material/styles';
 import { Box, Divider, Typography, Stack, MenuItem, Avatar, IconButton, Popover } from '@mui/material';
 // mocks_
 import { useNavigate } from 'react-router-dom';
 import { Auth } from 'aws-amplify';
+import { UserContext } from '../../../UserContext';
 import account from '../../../_mock/account';
 
 // ----------------------------------------------------------------------
@@ -27,6 +28,8 @@ const MENU_OPTIONS = [
 // ----------------------------------------------------------------------
 
 export default function AccountPopover() {
+  const {user, setUser} = useContext(UserContext)
+
   const [open, setOpen] = useState(null);
 
   const navigate = useNavigate();
@@ -40,9 +43,12 @@ export default function AccountPopover() {
   };
 
   const logout = () => {
-    Auth.signOut().then(
-      () => navigate('/login', { replace: true })
-    ).catch((err) => alert(err))
+    Auth.signOut().then(() => {
+      setUser(null);
+      navigate('/login', { replace: true })
+    }).catch((err) => {
+      alert(err)
+    })
   }
 
   return (
@@ -88,10 +94,10 @@ export default function AccountPopover() {
       >
         <Box sx={{ my: 1.5, px: 2.5 }}>
           <Typography variant="subtitle2" noWrap>
-            {account.displayName}
+            {user.username}
           </Typography>
           <Typography variant="body2" sx={{ color: 'text.secondary' }} noWrap>
-            {account.email}
+            {user.attributes.email}
           </Typography>
         </Box>
 

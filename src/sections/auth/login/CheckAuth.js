@@ -1,25 +1,22 @@
 import { Auth } from "aws-amplify";
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { UserContext } from "../../../UserContext";
 
 export default function CheckAuth(props) {
     const navigate = useNavigate();
-    const [isSignedIn, setSignedIn] = useState(null);
+    const [content, setContent] = useState(null);
+    const {user, setUser} = useContext(UserContext);
     
     useEffect(() => {
-        Auth.currentAuthenticatedUser().then(() =>
-        {
-            setSignedIn(true)
-        }).catch(() => {
-            setSignedIn(false)
-        });
-    });
+        if (user) {  // we only want this logic to occur after user context is prepped
+            if (user.username) {
+                setContent(props.children);
+            } else {
+                navigate('/login', { replace: true });
+            }
+        }
+    })
 
-    if (isSignedIn === true) {
-        return props.children;
-    } 
-
-    if (isSignedIn === false) {
-        navigate('/login', { replace: true });
-    }
+    return content
 }

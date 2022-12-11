@@ -1,20 +1,12 @@
 import { Helmet } from 'react-helmet-async';
-
-import { useState } from 'react';
-// @mui
+import { useContext } from 'react';
 import { styled } from '@mui/material/styles';
-
 import { Container, Typography } from '@mui/material';
 import { LoginForm } from '../sections/auth/login';
-
-// hooks
-import useResponsive from '../hooks/useResponsive';
-
-// components
 import Logo from '../components/logo';
-// sections
 import VerifyForm from '../sections/auth/login/VerifyForm';
 import SignupForm from '../sections/auth/login/SignupForm';
+import { UserContext } from '../UserContext';
 
 // ----------------------------------------------------------------------
 
@@ -47,26 +39,24 @@ const StyledContent = styled('div')(({ theme }) => ({
 // ----------------------------------------------------------------------
 
 export default function AuthPage(props) {
-  const mdUp = useResponsive('up', 'md');
+  // Set up the user context
+  const {user, setUser} = useContext(UserContext)
 
-  const [userState, setUserState] = useState("");
-
-  const AuthForm = () => {
-    let formType = <LoginForm />
-    if (props.method === "signup") {
-      if (userState.username) {
-          formType = <VerifyForm username={userState.username} />
-      } else {
-          formType = <SignupForm setUserState={setUserState}/>
-      }
-    }
-    return formType
+  // Prep the auth page content depending on the situation
+  // TODO: fix issue where you can get "stuck" verifying 
+  // TODO: add auto-login functionality after confirmation
+  let formType = props.method === "signin" ? <LoginForm /> : <SignupForm setUser={setUser}/>
+  let formTitle = props.method === "signup" ? "Create Account" : "Sign in"
+  if (user && user.userConfirmed === false) {
+    formType = <VerifyForm username={user.username} />
+    formTitle = "Verify Account"
   }
 
+  // Return the page
   return (
     <>
       <Helmet>
-        <title> Verify Email | Minimal UI </title>
+        <title> {formTitle} • memeSRC </title>
       </Helmet>
 
       <StyledRoot>
@@ -78,21 +68,12 @@ export default function AuthPage(props) {
           }}
         />
 
-        {mdUp && (
-          <StyledSection>
-            <Typography variant="h3" sx={{ px: 5, mt: 10, mb: 5 }}>
-              Hi, Welcome Back
-            </Typography>
-            <img src="/assets/illustrations/illustration_login.png" alt="login" />
-          </StyledSection>
-        )}
-
         <Container maxWidth="sm">
           <StyledContent>
             <Typography variant="h4" gutterBottom marginBottom={8}>
-              Verify your account
+              {formTitle}
             </Typography>
-            <AuthForm />
+            {formType}
           </StyledContent>
         </Container>
       </StyledRoot>
