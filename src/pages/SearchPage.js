@@ -46,7 +46,6 @@ function SearchPage() {
   const [seriesTitle, setSeriesTitle] = useState('');
   const [results, setResults] = useState(null);
   const [sessionID, setSessionID] = useState(null);
-
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
