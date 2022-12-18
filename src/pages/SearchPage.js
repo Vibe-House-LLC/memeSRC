@@ -104,6 +104,7 @@ function SearchBox() {
                   title={result.subtitle}
                 />
                 <Typography className={classes.info} variant="body2">
+                  Subtitle: {result.subtitle}<br />
                   Series Name: {result.series_name}<br />
                   Season: {result.season_number}<br />
                   Episode: {result.episode_number}
