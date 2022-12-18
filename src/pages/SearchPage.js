@@ -2,6 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Grid, CircularProgress } from '@mui/material';
 import styled from '@emotion/styled';
 
+const StyledCircularProgress = styled(CircularProgress)`
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+`;
+
 const StyledForm = styled.form`
   display: 'flex',
   flexDirection: 'column',
@@ -71,7 +78,7 @@ export default function SearchPage() {
   const [seriesTitle, setSeriesTitle] = useState('');
   const [results, setResults] = useState(null);
   const [sessionID, setSessionID] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     getSessionID().then(id => setSessionID(id));
@@ -126,7 +133,7 @@ export default function SearchPage() {
       <br /><br />
       <Grid container spacing={2}>
         {loading ? (
-          <CircularProgress />
+          <StyledCircularProgress />
         ) : results && results.map(result => (
           <Grid item xs={12} sm={6} md={4} key={result.fid}>
             <StyledCard>
