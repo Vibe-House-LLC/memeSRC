@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Grid, CircularProgress } from '@mui/material';
+import { Grid, CircularProgress, Card } from '@mui/material';
 import styled from '@emotion/styled';
 
 const StyledCircularProgress = styled(CircularProgress)`
@@ -43,23 +43,20 @@ const StyledButton = styled.button(({ theme }) => ({
   },
 }));
 
-const StyledCard = styled.div`
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-`;
-
 const StyledCardMedia = styled.img`
-  width: '300px',
-  height: 'auto',
+  width: 100%;
+  height: 300px;
+  aspect-ratio: '16/9';
+  object-fit: contain;
+  object-position: center;
+  background-color: black;
 `;
 
 const StyledTypography = styled.p(({ theme }) => ({
   fontSize: '14px',
   color: theme.palette.text.secondary,
+  padding: '10px 10px 10px 25px'
 }));
-
-
 
 function getSessionID() {
   if ("sessionID" in sessionStorage) {
@@ -136,7 +133,7 @@ export default function SearchPage() {
           <StyledCircularProgress />
         ) : results && results.map(result => (
           <Grid item xs={12} sm={6} md={4} key={result.fid}>
-            <StyledCard>
+            <Card>
               <StyledCardMedia
                 component="img"
                 src={`https://memesrc.com${result.frame_image}`}
@@ -145,11 +142,11 @@ export default function SearchPage() {
               />
               <StyledTypography variant="body2">
                 Subtitle: {result.subtitle}<br />
-                Series Name: {result.series_name}<br />
+                Series: {result.series_name}<br />
                 Season: {result.season_number}<br />
                 Episode: {result.episode_number}
               </StyledTypography>
-            </StyledCard>
+            </Card>
           </Grid>
         ))}
       </Grid>
