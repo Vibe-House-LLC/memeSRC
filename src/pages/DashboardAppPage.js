@@ -4,7 +4,7 @@ import { faker } from '@faker-js/faker';
 import { useTheme } from '@mui/material/styles';
 import { Grid, Container, Typography } from '@mui/material';
 // components
-import { API, graphqlOperation } from 'aws-amplify';
+// import { API, graphqlOperation } from 'aws-amplify';
 import Iconify from '../components/iconify';
 // sections
 import {
@@ -19,7 +19,7 @@ import {
   AppConversionRates,
 } from '../sections/@dashboard/app';
 
-import { createGlobalMessage } from '../graphql/mutations';
+// import { createGlobalMessage } from '../graphql/mutations';
 
 // ----------------------------------------------------------------------
 
