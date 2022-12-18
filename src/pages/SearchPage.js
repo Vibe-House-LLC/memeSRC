@@ -1,33 +1,55 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardMedia, Grid, Typography, CircularProgress } from '@mui/material';
+import { Grid, CircularProgress } from '@mui/material';
 import styled from '@emotion/styled';
 
-const useStyles = styled((theme) => ({
-  root: {
-    flexGrow: 1,
-    margin: theme.spacing(2),
-  },
-  searchForm: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    marginBottom: theme.spacing(2),
-  },
-  input: {
-    margin: theme.spacing(1),
-  },
-  thumbnailContainer: {
-    width: 200,
-    height: 300,
-  },
-  thumbnailImage: {
-    width: '100%',
-    height: 200,
-  },
-  info: {
-    padding: theme.spacing(1),
-  },
-}));
+const StyledForm = styled.form`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+`;
+
+const StyledLabel = styled.label`
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 8px;
+`;
+
+const StyledInput = styled.input`
+  font-size: 16px;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+`;
+
+const StyledButton = styled.button`
+  font-size: 16px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  background-color: blue;
+  color: white;
+  cursor: pointer;
+
+  &:hover {
+    background-color: darkblue;
+  }
+`;
+
+const StyledCard = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+`;
+
+const StyledCardMedia = styled.img`
+  width: 300px;
+  height: auto;
+`;
+
+const StyledTypography = styled.p`
+  font-size: 14px;
+`;
+
 
 function getSessionID() {
   if ("sessionID" in sessionStorage) {
@@ -41,7 +63,7 @@ function getSessionID() {
     });
 }
 
-function SearchPage() {
+export default function SearchPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [seriesTitle, setSeriesTitle] = useState('');
   const [results, setResults] = useState(null);
@@ -74,58 +96,54 @@ function SearchPage() {
       });
   }
 
-  const classes = useStyles();
+  // const classes = useStyles();
 
   return (
-    <div>
-      <form onSubmit={handleSearch}>
-        <label htmlFor="search-term">Search Term:
-          <input
-            type="text"
-            id="search-term"
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-          />
-        </label>
-        <label htmlFor="series-title">
-          Series Title:
-          <input
-            type="text"
-            id="series-title"
-            value={seriesTitle}
-            onChange={e => setSeriesTitle(e.target.value)}
-          />
-        </label>
-        <button type="submit">Search</button>
-      </form>
+    <StyledForm onSubmit={e => handleSearch(e)}>
+      <StyledLabel htmlFor="search-term">
+        Search:
+        <StyledInput
+          type="text"
+          id="search-term"
+          value={searchTerm}
+          placeholder="What's the quote?"
+          onChange={e => setSearchTerm(e.target.value)}
+        />
+      </StyledLabel>
+      <StyledLabel htmlFor="series-title">
+        <StyledInput
+          type="text"
+          id="series-title"
+          value={seriesTitle}
+          placeholder="Series ID (optional)"
+          onChange={e => setSeriesTitle(e.target.value)}
+        />
+      </StyledLabel>
+      <StyledButton type="submit">Search</StyledButton>
       <br /><br />
-      <Grid container spacing={2} className={classes.root}>
+      <Grid container spacing={2}>
         {loading ? (
           <CircularProgress />
         ) : results && results.map(result => (
           <Grid item xs={12} sm={6} md={4} key={result.fid}>
-            <div className={classes.thumbnailContainer}>
-              <Card>
-                <CardMedia
-                  className={classes.thumbnailImage}
-                  component="img"
-                  src={`https://memesrc.com${result.frame_image}`}
-                  alt={result.subtitle}
-                  title={result.subtitle}
-                />
-                <Typography className={classes.info} variant="body2">
-                  Subtitle: {result.subtitle}<br />
-                  Series Name: {result.series_name}<br />
-                  Season: {result.season_number}<br />
-                  Episode: {result.episode_number}
-                </Typography>
-              </Card>
-            </div>
+            <StyledCard>
+              <StyledCardMedia
+                component="img"
+                src={`https://memesrc.com${result.frame_image}`}
+                alt={result.subtitle}
+                title={result.subtitle}
+              />
+              <StyledTypography variant="body2">
+                Subtitle: {result.subtitle}<br />
+                Series Name: {result.series_name}<br />
+                Season: {result.season_number}<br />
+                Episode: {result.episode_number}
+              </StyledTypography>
+            </StyledCard>
           </Grid>
         ))}
       </Grid>
-    </div>
+    </StyledForm>
+
   );
 }
-
-export default SearchPage;
