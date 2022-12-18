@@ -78,7 +78,7 @@ export default function SearchPage() {
   const [seriesTitle, setSeriesTitle] = useState('');
   const [results, setResults] = useState(null);
   const [sessionID, setSessionID] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     getSessionID().then(id => setSessionID(id));
