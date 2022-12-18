@@ -3,52 +3,55 @@ import { Grid, CircularProgress } from '@mui/material';
 import styled from '@emotion/styled';
 
 const StyledForm = styled.form`
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'flex-start',
 `;
 
-const StyledLabel = styled.label`
-  display: flex;
-  flex-direction: column;
-  margin-bottom: 8px;
-`;
+const StyledLabel = styled.label(({ theme }) => ({
+  display: 'flex',
+  flexDirection: 'column',
+  marginBottom: '8px',
+  color: theme.palette.text.secondary,
+}));
 
-const StyledInput = styled.input`
-  font-size: 16px;
-  padding: 8px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-`;
+const StyledInput = styled.input(({ theme }) => ({
+  fontSize: '16px',
+  padding: '8px',
+  border: `1px solid ${theme.palette.divider}`,
+  borderRadius: '4px',
+}));
 
-const StyledButton = styled.button`
-  font-size: 16px;
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
-  background-color: blue;
-  color: white;
-  cursor: pointer;
+const StyledButton = styled.button(({ theme }) => ({
+  fontSize: '16px',
+  padding: '8px 16px',
+  border: 'none',
+  borderRadius: '4px',
+  backgroundColor: theme.palette.primary.main,
+  color: theme.palette.common.white,
+  cursor: 'pointer',
 
-  &:hover {
-    background-color: darkblue;
-  }
-`;
+  '&:hover': {
+    backgroundColor: theme.palette.primary.dark,
+  },
+}));
 
 const StyledCard = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
 `;
 
 const StyledCardMedia = styled.img`
-  width: 300px;
-  height: auto;
+  width: '300px',
+  height: 'auto',
 `;
 
-const StyledTypography = styled.p`
-  font-size: 14px;
-`;
+const StyledTypography = styled.p(({ theme }) => ({
+  fontSize: '14px',
+  color: theme.palette.text.secondary,
+}));
+
 
 
 function getSessionID() {
