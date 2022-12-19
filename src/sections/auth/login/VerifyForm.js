@@ -4,8 +4,13 @@ import { Stack, TextField } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
 import { Auth } from 'aws-amplify';
 import { useState } from 'react';
+import PropTypes from 'prop-types';
 
 // ----------------------------------------------------------------------
+
+VerifyForm.propTypes = {
+  username: PropTypes.string.isRequired
+};
 
 export default function VerifyForm(props) {
   const navigate = useNavigate();
