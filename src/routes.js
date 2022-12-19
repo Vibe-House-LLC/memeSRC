@@ -31,7 +31,8 @@ export default function Router() {
         { path: 'products', element: <ProductsPage /> },
         { path: 'blog', element: <BlogPage /> },
         { path: 'search', element: <SearchPage /> },
-        { path: 'editor', element: <EditorPage /> }
+        { path: 'editor', element: <EditorPage /> },
+        { path: 'editor/:fid', element: <EditorPage /> }
       ],
     },
     {
