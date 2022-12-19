@@ -43,6 +43,16 @@ const StyledButton = styled.button(({ theme }) => ({
   },
 }));
 
+const StyledCard = styled(Card)`
+  
+  border: 3px solid transparent;
+  box-sizing: border-box;
+
+  &:hover {
+    border: 3px solid orange;
+  }
+`;
+
 const StyledCardMedia = styled.img`
   width: 100%;
   height: 300px;
@@ -133,20 +143,22 @@ export default function SearchPage() {
           <StyledCircularProgress />
         ) : results && results.map(result => (
           <Grid item xs={12} sm={6} md={4} key={result.fid}>
-            <Card>
-              <StyledCardMedia
-                component="img"
-                src={`https://memesrc.com${result.frame_image}`}
-                alt={result.subtitle}
-                title={result.subtitle}
-              />
-              <StyledTypography variant="body2">
-                Subtitle: {result.subtitle}<br />
-                Series: {result.series_name}<br />
-                Season: {result.season_number}<br />
-                Episode: {result.episode_number}
-              </StyledTypography>
-            </Card>
+            <a href={`/dashboard/editor/${result.fid}`}>
+            <StyledCard>
+                <StyledCardMedia
+                  component="img"
+                  src={`https://memesrc.com${result.frame_image}`}
+                  alt={result.subtitle}
+                  title={result.subtitle}
+                />
+                <StyledTypography variant="body2">
+                  Subtitle: {result.subtitle}<br />
+                  Series: {result.series_name}<br />
+                  Season: {result.season_number}<br />
+                  Episode: {result.episode_number}
+                </StyledTypography>
+            </StyledCard>
+            </a>
           </Grid>
         ))}
       </Grid>
