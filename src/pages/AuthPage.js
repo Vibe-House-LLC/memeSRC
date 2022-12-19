@@ -2,6 +2,7 @@ import { Helmet } from 'react-helmet-async';
 import { useContext } from 'react';
 import { styled } from '@mui/material/styles';
 import { Container, Typography } from '@mui/material';
+import PropTypes from 'prop-types';
 import { LoginForm } from '../sections/auth/login';
 import Logo from '../components/logo';
 import VerifyForm from '../sections/auth/login/VerifyForm';
@@ -14,16 +15,6 @@ const StyledRoot = styled('div')(({ theme }) => ({
   [theme.breakpoints.up('md')]: {
     display: 'flex',
   },
-}));
-
-const StyledSection = styled('div')(({ theme }) => ({
-  width: '100%',
-  maxWidth: 480,
-  display: 'flex',
-  flexDirection: 'column',
-  justifyContent: 'center',
-  boxShadow: theme.customShadows.card,
-  backgroundColor: theme.palette.background.default,
 }));
 
 const StyledContent = styled('div')(({ theme }) => ({
@@ -79,4 +70,8 @@ export default function AuthPage(props) {
       </StyledRoot>
     </>
   );
-}
+};
+
+AuthPage.propTypes = {
+  method: PropTypes.string.isRequired,
+};

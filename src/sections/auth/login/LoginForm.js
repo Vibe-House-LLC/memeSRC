@@ -22,8 +22,7 @@ export default function LoginForm() {
 
   const [password, setPassword] = useState(null);
 
-  const {user, setUser} = useContext(UserContext)
-
+  const {setUser} = useContext(UserContext)
 
   const handleClick = () => {
     if (!staySignedIn) {

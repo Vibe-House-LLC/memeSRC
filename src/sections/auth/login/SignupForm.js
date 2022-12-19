@@ -5,9 +5,10 @@ import { Link, Stack, IconButton, InputAdornment, TextField, Checkbox } from '@m
 import { LoadingButton } from '@mui/lab';
 import { Auth } from 'aws-amplify';
 // utils
-
+import PropTypes from 'prop-types';
 // components
 import Iconify from '../../../components/iconify';
+
 
 // ----------------------------------------------------------------------
 
@@ -101,4 +102,8 @@ export default function SignupForm(props) {
       </LoadingButton>
     </>
   );
-}
+};
+
+SignupForm.propTypes = {
+  setUser: PropTypes.func.isRequired,
+};

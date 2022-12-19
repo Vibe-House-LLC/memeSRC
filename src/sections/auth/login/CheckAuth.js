@@ -1,4 +1,3 @@
-import { Auth } from "aws-amplify";
 import { useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { UserContext } from "../../../UserContext";
@@ -6,7 +5,7 @@ import { UserContext } from "../../../UserContext";
 export default function CheckAuth(props) {
     const navigate = useNavigate();
     const [content, setContent] = useState(null);
-    const {user, setUser} = useContext(UserContext);
+    const {user} = useContext(UserContext);
     
     useEffect(() => {
         if (user) {  // we only want this logic to occur after user context is prepped
@@ -16,7 +15,7 @@ export default function CheckAuth(props) {
                 navigate('/login', { replace: true });
             }
         }
-    })
+    }, [user, navigate, props.children])
 
     return content
 }

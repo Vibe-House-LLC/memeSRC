@@ -21,13 +21,13 @@ import {
   ListItemButton,
 } from '@mui/material';
 // utils
-import { API, graphqlOperation } from 'aws-amplify';
+// import { API, graphqlOperation } from 'aws-amplify';
 import { fToNow } from '../../../utils/formatTime';
 // components
 import Iconify from '../../../components/iconify';
 import Scrollbar from '../../../components/scrollbar';
 
-import { listGlobalMessages } from '../../../graphql/queries'
+// import { listGlobalMessages } from '../../../graphql/queries'
 
 // ----------------------------------------------------------------------
 
@@ -86,24 +86,24 @@ export default function NotificationsPopover() {
 
   const [open, setOpen] = useState(null);
 
-  async function pullNotifications() {  
-    const response = await API.graphql(graphqlOperation(listGlobalMessages));
-    const result = response.data.listGlobalMessages.items
-    const notifications = result.map(item => (
-      {
-        id: item.id,
-        title: item.title,
-        description: item.message,
-        avatar: null,
-        type: 'example',
-        createdAt: new Date(item.createdAt),
-        isUnRead: true,
-      }
-    ))
-    setNotifications(notifications);
-  }
+  // async function pullNotifications() {  
+  //   const response = await API.graphql(graphqlOperation(listGlobalMessages));
+  //   const result = response.data.listGlobalMessages.items
+  //   const notifications = result.map(item => (
+  //     {
+  //       id: item.id,
+  //       title: item.title,
+  //       description: item.message,
+  //       avatar: null,
+  //       type: 'example',
+  //       createdAt: new Date(item.createdAt),
+  //       isUnRead: true,
+  //     }
+  //   ))
+  //   setNotifications(notifications);
+  // }
 
-  pullNotifications();
+  // pullNotifications();
 
   const handleOpen = (event) => {
     setOpen(event.currentTarget);

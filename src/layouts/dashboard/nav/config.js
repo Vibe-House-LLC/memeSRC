@@ -12,9 +12,14 @@ const navConfig = [
     icon: icon('ic_analytics'),
   },
   {
-    title: 'image upload',
+    title: 'Search',
+    path: '/dashboard/search',
+    icon: icon('ic_menu_item'),
+  },
+  {
+    title: 'upload',
     path: '/dashboard/imageupload',
-    icon: icon('ic_analytics'),
+    icon: icon('ic_file'),
   },
   {
     title: 'user',
