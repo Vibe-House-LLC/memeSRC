@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { fabric } from 'fabric';
 import { FabricJSCanvas, useFabricJSEditor } from 'fabricjs-react'
 import styled from '@emotion/styled';
@@ -13,12 +13,10 @@ function parseFid(fid) {
     if (parts.length !== 4) {
         throw new Error(`Invalid fid: ${fid}`);
     }
-
     const [seriesId, seasonNum, episodeNum, frameNum] = parts;
     if (Number.isNaN(Number(seasonNum)) || Number.isNaN(Number(episodeNum)) || Number.isNaN(Number(frameNum))) {
         throw new Error(`Invalid fid: ${fid}`);
     }
-
     return {
         seriesId,
         seasonNum: Number(seasonNum),
@@ -30,19 +28,22 @@ function parseFid(fid) {
 const EditorPage = () => {
     // Get everything ready
     const { fid } = useParams();
+    const [loadedFid, setLoadedFid] = useState();
     const { selectedObjects, editor, onReady } = useFabricJSEditor()
     useEffect(() => {
         if (editor) {
             editor.canvas.setWidth(1280);
             editor.canvas.setHeight(720);
             editor.canvas.setBackgroundColor("white");
-        }
-        if (fid) {
-            const parsedFid = parseFid(fid)
-            console.log(parsedFid)
-            fabric.Image.fromURL(`https://memesrc.com/${parsedFid.seriesId}/img/${parsedFid.seasonNum}/${parsedFid.episodeNum}/${fid}.jpg`, (oImg) => {
-                editor?.canvas.add(oImg);
-            })
+            if (fid && !loadedFid) {
+                setLoadedFid(fid)
+                console.log('loaded image')
+                const parsedFid = parseFid(fid)
+                console.log(parsedFid)
+                fabric.Image.fromURL(`https://memesrc.com/${parsedFid.seriesId}/img/${parsedFid.seasonNum}/${parsedFid.episodeNum}/${fid}.jpg`, (oImg) => {
+                    editor?.canvas.add(oImg);
+                })
+            }
         }
     }, [editor])
 
