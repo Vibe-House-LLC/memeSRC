@@ -12,6 +12,7 @@ import AuthPage from './pages/AuthPage';
 import CheckAuth from './sections/auth/login/CheckAuth';
 import ImageUploadPage from './pages/ImageUploadPage';
 import SearchPage from './pages/SearchPage';
+import EditorPage from './pages/EditorPage';
 
 
 // ----------------------------------------------------------------------
@@ -29,7 +30,8 @@ export default function Router() {
         { path: 'user', element: <UserPage /> },
         { path: 'products', element: <ProductsPage /> },
         { path: 'blog', element: <BlogPage /> },
-        { path: 'search', element: <SearchPage /> }
+        { path: 'search', element: <SearchPage /> },
+        { path: 'editor', element: <EditorPage /> }
       ],
     },
     {

@@ -12,9 +12,14 @@ const navConfig = [
     icon: icon('ic_analytics'),
   },
   {
-    title: 'Search',
+    title: 'search',
     path: '/dashboard/search',
     icon: icon('ic_menu_item'),
+  },
+  {
+    title: 'editor',
+    path: '/dashboard/editor',
+    icon: icon('ic_kanban')
   },
   {
     title: 'upload',
