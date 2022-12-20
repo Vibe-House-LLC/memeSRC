@@ -100,7 +100,7 @@ const EditorPage = () => {
 
     // Handle events
     const saveProject = () => {
-        const canvasJson = editor.canvas.toJSON();
+        const canvasJson = editor.canvas.toJSON(['hoverCursor', 'selectable']);
         const key = fid ? `project-${fid}` : 'project-example';
         localStorage.setItem(key, JSON.stringify(canvasJson));
     };
@@ -129,7 +129,7 @@ const EditorPage = () => {
 
     const changeSize = () => {
         // Export the state of the canvas as a JSON object
-        const canvasJson = editor.canvas.toJSON();
+        const canvasJson = editor.canvas.toJSON(['hoverCursor', 'selectable']);
 
         // Scale the objects on the canvas proportionally to fit the new size
         canvasJson.objects.forEach(obj => {
