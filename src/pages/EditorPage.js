@@ -68,17 +68,35 @@ const EditorPage = () => {
                 const parsedFid = parseFid(fid)
                 console.log(parsedFid)
                 fabric.Image.fromURL(`https://memesrc.com/${parsedFid.seriesId}/img/${parsedFid.seasonNum}/${parsedFid.episodeNum}/${fid}.jpg`, (oImg) => {
+                    // Get a reference to the ParentContainer element
+                    const containerElement = document.getElementById('parent-container');
+                    // Get the width of the ParentContainer
+                    const availableWidth = containerElement.offsetWidth;
+                    // Determine the aspect ratio of the image
+                    const imageAspectRatio = oImg.width / oImg.height;
+                    // Calculate the height of the canvas based on the aspect ratio of the image
+                    const calculatedHeight = availableWidth / imageAspectRatio;
                     setCanvasSize({
-                        width: oImg.width,
-                        height: oImg.height
+                        width: availableWidth,
+                        height: calculatedHeight
                     });
                     console.log(oImg);
+                    // Scale the image to fit the canvas
+                    oImg.scale(availableWidth / oImg.width);
+                    // Center the image within the canvas
+                    oImg.set({ left: 0, top: 0 });
+                    // Disable the ability to edit the image
+                    oImg.selectable = false;
+                    oImg.hoverCursor = 'default';
                     editor?.canvas.add(oImg);
                 })
             }
 
         }
     }, [editor, canvasSize, fid, loadedFid])
+
+
+
 
     // Handle events
     const saveProject = () => {
@@ -175,7 +193,7 @@ const EditorPage = () => {
 
     // Outputs
     return (
-        <><ParentContainer>
+        <><ParentContainer id="parent-container">
             <button type='button' onClick={addCircle}>Add circle</button>
             <button type='button' onClick={addRectangle}>Add Rectangle</button>
             <button type='button' onClick={addImage}>Add Image</button>
