@@ -81,21 +81,35 @@ const EditorPage = () => {
     }, [editor, canvasSize, fid, loadedFid])
 
     // Handle events
-    const onAddCircle = () => {
+    const saveProject = () => {
+        const canvasJson = editor.canvas.toJSON();
+        const key = fid ? `project-${fid}` : 'project-example';
+        localStorage.setItem(key, JSON.stringify(canvasJson));
+    };
+
+    const loadProject = () => {
+        const key = fid ? `project-${fid}` : 'project-example';
+        const canvasJson = localStorage.getItem(key);
+        editor.canvas.loadFromJSON(canvasJson, () => {
+            console.log('Canvas loaded from JSON');
+        });
+    };
+
+    const addCircle = () => {
         editor?.addCircle()
     }
-    const onAddRectangle = () => {
+
+    const addRectangle = () => {
         editor?.addRectangle()
     }
-    const onAddImage = () => {
-        // Trigger image loading when the button is clicked
+
+    const addImage = () => {
         fabric.Image.fromURL('/assets/illustrations/illustration_avatar.png', (oImg) => {
             editor?.canvas.add(oImg);
         })
-
     }
 
-    const onAddText = () => {
+    const addText = () => {
         const text = new fabric.Textbox('Text', {
             left: 0,
             top: editor.canvas.getHeight() - 100,
@@ -111,14 +125,13 @@ const EditorPage = () => {
             selectable: true
         });
         editor?.canvas.add(text);
-
     }
 
     const toggleColorPicker = () => {
         setPickingColor(!pickingColor);
     }
-
-    const onChangeColor = (color) => {
+    
+    const changeColor = (color) => {
         selectedObjects.forEach((object) => {
             if (object.type === 'textbox') {
                 object.set('fill', color.hex);
@@ -127,22 +140,25 @@ const EditorPage = () => {
         });
     }
 
+
     // Outputs
     return (
         <><ParentContainer>
-            <button type='button' onClick={onAddCircle}>Add circle</button>
-            <button type='button' onClick={onAddRectangle}>Add Rectangle</button>
-            <button type='button' onClick={onAddImage}>Add Image</button>
-            <button type='button' onClick={onAddText}>Add Text</button>
+            <button type='button' onClick={addCircle}>Add circle</button>
+            <button type='button' onClick={addRectangle}>Add Rectangle</button>
+            <button type='button' onClick={addImage}>Add Image</button>
+            <button type='button' onClick={addText}>Add Text</button>
+            <button type='button' onClick={saveProject}>Save Project</button>
+            <button type='button' onClick={loadProject}>Load Project</button>
             <div style={{ display: 'inline', position: 'relative' }}>
                 <button type='button' onClick={toggleColorPicker}>Change Color</button>
                 {pickingColor &&
                     <ColorPickerPopover>
-                        <TwitterPicker onChangeComplete={onChangeColor} />
+                        <TwitterPicker onChangeComplete={changeColor} />
                     </ColorPickerPopover>
                 }
             </div>
-            <FabricJSCanvas className="sample-canvas" onReady={onReady} height="100%" />
+            <FabricJSCanvas className="sample-canvas" onReady={onReady} style={{ height: 100, width: 100 }} />
         </ParentContainer >
             {pickingColor && <BackgroundCover onClick={toggleColorPicker} />}
         </>
