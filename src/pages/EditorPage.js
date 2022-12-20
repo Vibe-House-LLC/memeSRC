@@ -30,6 +30,7 @@ const EditorPage = () => {
     const { fid } = useParams();
     const [loadedFid, setLoadedFid] = useState();
     const { selectedObjects, editor, onReady } = useFabricJSEditor()
+
     useEffect(() => {
         if (editor) {
             editor.canvas.setWidth(1280);
@@ -44,6 +45,7 @@ const EditorPage = () => {
                     editor?.canvas.add(oImg);
                 })
             }
+
         }
     }, [editor])
 
@@ -59,7 +61,37 @@ const EditorPage = () => {
         fabric.Image.fromURL('/assets/illustrations/illustration_avatar.png', (oImg) => {
             editor?.canvas.add(oImg);
         })
+
     }
+    
+    const onAddText = () => {
+        const text = new fabric.Textbox('Text', {
+            left: 0,
+            top: editor.canvas.getHeight() - 100,
+            width: editor.canvas.getWidth(),
+            fontSize: 50,
+            fontFamily: 'sans-serif',
+            fontWeight: 900,
+            fill: 'white',
+            stroke: 'black',
+            strokeWidth: 2,
+            strokeUniform: false,
+            textAlign: 'center',
+            selectable: true
+        });
+        editor?.canvas.add(text);
+
+    }
+
+
+
+
+
+
+
+
+
+
 
     // Outputs
     return (
@@ -67,7 +99,7 @@ const EditorPage = () => {
             <button onClick={onAddCircle}>Add circle</button>
             <button onClick={onAddRectangle}>Add Rectangle</button>
             <button onClick={onAddImage}>Add Image</button>
-            { }
+            <button onClick={onAddText}>Add Text</button>
             <FabricJSCanvas className="sample-canvas" onReady={onReady} height="100%" />
         </ParentContainer >
     )
