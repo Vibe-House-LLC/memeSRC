@@ -109,6 +109,38 @@ const EditorPage = () => {
         })
     }
 
+    const changeSize = () => {
+        // Export the state of the canvas as a JSON object
+        const canvasJson = editor.canvas.toJSON();
+
+        // Scale the objects on the canvas proportionally to fit the new size
+        canvasJson.objects.forEach(obj => {
+            // Calculate the scale factor based on the ratio of the new canvas size to the original canvas size
+            const scaleFactorX = 1920 / 1280;
+            const scaleFactorY = 1080 / 720;
+
+            // Scale the object
+            obj.scaleX *= scaleFactorX;
+            obj.scaleY *= scaleFactorY;
+
+            // Adjust the position of the object
+            obj.left *= scaleFactorX;
+            obj.top *= scaleFactorY;
+        });
+
+        // Update the canvas size
+        setCanvasSize({
+            width: 1920,
+            height: 1080
+        })
+
+        // Load the state of the canvas from the JSON object
+        editor.canvas.loadFromJSON(canvasJson, () => {
+            // Callback function to execute after the canvas is loaded
+            console.log('Canvas loaded from JSON');
+        });
+    }
+
     const addText = () => {
         const text = new fabric.Textbox('Text', {
             left: 0,
@@ -130,7 +162,7 @@ const EditorPage = () => {
     const toggleColorPicker = () => {
         setPickingColor(!pickingColor);
     }
-    
+
     const changeColor = (color) => {
         selectedObjects.forEach((object) => {
             if (object.type === 'textbox') {
@@ -150,6 +182,7 @@ const EditorPage = () => {
             <button type='button' onClick={addText}>Add Text</button>
             <button type='button' onClick={saveProject}>Save Project</button>
             <button type='button' onClick={loadProject}>Load Project</button>
+            <button type='button' onClick={changeSize}>Change Size</button>
             <div style={{ display: 'inline', position: 'relative' }}>
                 <button type='button' onClick={toggleColorPicker}>Change Color</button>
                 {pickingColor &&
@@ -158,7 +191,7 @@ const EditorPage = () => {
                     </ColorPickerPopover>
                 }
             </div>
-            <FabricJSCanvas className="sample-canvas" onReady={onReady} style={{ height: 100, width: 100 }} />
+            <FabricJSCanvas onReady={onReady} />
         </ParentContainer >
             {pickingColor && <BackgroundCover onClick={toggleColorPicker} />}
         </>
