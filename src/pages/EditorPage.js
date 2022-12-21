@@ -69,29 +69,40 @@ const EditorPage = () => {
                 const parsedFid = parseFid(fid)
                 console.log(parsedFid)
                 fabric.Image.fromURL(`https://memesrc.com/${parsedFid.seriesId}/img/${parsedFid.seasonNum}/${parsedFid.episodeNum}/${fid}.jpg`, (oImg) => {
-                    setBaseImg(oImg)
+                    setBaseImg(oImg);
                     // Get a reference to the ParentContainer element
                     const containerElement = document.getElementById('parent-container');
-                    // Get the width of the ParentContainer
+                    // Get the width and height of the ParentContainer
                     const availableWidth = containerElement.offsetWidth;
+                    const availableHeight = containerElement.offsetHeight;
                     // Determine the aspect ratio of the image
                     const imageAspectRatio = oImg.width / oImg.height;
-                    // Calculate the height of the canvas based on the aspect ratio of the image
-                    const calculatedHeight = availableWidth / imageAspectRatio;
+                    // Calculate the size of the canvas based on the aspect ratio of the image and the available space
+                    let calculatedWidth;
+                    let calculatedHeight;
+                    if (availableWidth / imageAspectRatio <= availableHeight) {
+                        // If the width is the limiting factor, set the canvas width to the available width and the height based on the aspect ratio
+                        calculatedWidth = availableWidth;
+                        calculatedHeight = availableWidth / imageAspectRatio;
+                    } else {
+                        // If the height is the limiting factor, set the canvas height to the available height and the width based on the aspect ratio
+                        calculatedHeight = availableHeight;
+                        calculatedWidth = availableHeight * imageAspectRatio;
+                    }
                     setCanvasSize({
-                        width: availableWidth,
+                        width: calculatedWidth,
                         height: calculatedHeight
                     });
                     console.log(oImg);
                     // Scale the image to fit the canvas
-                    oImg.scale(availableWidth / oImg.width);
+                    oImg.scale(calculatedWidth / oImg.width);
                     // Center the image within the canvas
                     oImg.set({ left: 0, top: 0 });
                     // Disable the ability to edit the image
                     oImg.selectable = false;
                     oImg.hoverCursor = 'default';
                     editor?.canvas.add(oImg);
-                })
+                });
             }
 
         }
