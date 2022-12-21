@@ -95,6 +95,7 @@ const EditorPage = () => {
                         width: calculatedWidth,
                         height: calculatedHeight
                     });
+                    console.log('image')
                     console.log(oImg);
                     // Scale the image to fit the canvas
                     oImg.scale(calculatedWidth / oImg.width);
@@ -108,7 +109,7 @@ const EditorPage = () => {
                     const minRes = 1280;
                     const x = (oImg.width > minRes) ? oImg.width : minRes;
                     setImageScale(x / calculatedWidth);
-                });
+                }, {crossOrigin: "anonymous"});
             }
 
         }
