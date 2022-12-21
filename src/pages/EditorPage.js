@@ -57,11 +57,13 @@ const EditorPage = () => {
         width: 500,
         height: 500
     });
+
     const { selectedObjects, editor, onReady } = useFabricJSEditor()
 
     useEffect(() => {
         if (editor && editor.canvas.width !== canvasSize.width && editor.canvas.height !== canvasSize.height) {
             console.log('Resized the canvas');
+            editor.canvas.preserveObjectStacking = true;
             editor.canvas.setWidth(canvasSize.width);
             editor.canvas.setHeight(canvasSize.height);
             editor.canvas.setBackgroundColor("white");
@@ -242,6 +244,7 @@ const EditorPage = () => {
                     </ColorPickerPopover>
                 }
             </div>
+            <canvas id='c' />
             <FabricJSCanvas onReady={onReady} />
             <img src={generatedImage} alt="generated meme" />
         </ParentContainer >
