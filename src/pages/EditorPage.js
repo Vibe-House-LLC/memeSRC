@@ -134,8 +134,8 @@ const EditorPage = () => {
         // Scale the objects on the canvas proportionally to fit the new size
         canvasJson.objects.forEach(obj => {
             // Calculate the scale factor based on the ratio of the new canvas size to the original canvas size
-            const scaleFactorX = 1920 / 1280;
-            const scaleFactorY = 1080 / 720;
+            const scaleFactorX = 1920 / editor.canvas.width;
+            const scaleFactorY = 1080 / editor.canvas.height;
 
             // Scale the object
             obj.scaleX *= scaleFactorX;
