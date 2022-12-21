@@ -51,6 +51,8 @@ const EditorPage = () => {
     const [loadedFid, setLoadedFid] = useState();
     const [baseImg, setBaseImg] = useState(null);
     const [pickingColor, setPickingColor] = useState(false);
+    const [imageScale, setImageScale] = useState();
+    const [generatedImage, setGeneratedImage] = useState();
     const [canvasSize, setCanvasSize] = useState({
         width: 500,
         height: 500
@@ -101,7 +103,11 @@ const EditorPage = () => {
                     // Disable the ability to edit the image
                     oImg.selectable = false;
                     oImg.hoverCursor = 'default';
+                    oImg.crossOrigin = 'anonymous';
                     editor?.canvas.add(oImg);
+                    const minRes = 1280;
+                    const x = (oImg.width > minRes) ? oImg.width : minRes;
+                    setImageScale(x / calculatedWidth);
                 });
             }
 
@@ -140,6 +146,14 @@ const EditorPage = () => {
         })
     }
 
+    const saveImage = () => {
+        const resultImage = editor.canvas.toDataURL({
+            multiplier: imageScale
+        });
+
+        setGeneratedImage(resultImage);
+    }
+
     const matchImageSize = () => {
         // Export the state of the canvas as a JSON object
         const canvasJson = editor.canvas.toJSON(['hoverCursor', 'selectable']);
@@ -150,15 +164,17 @@ const EditorPage = () => {
             const scaleFactorX = baseImg.width / editor.canvas.width;
             const scaleFactorY = baseImg.height / editor.canvas.height;
 
-            console.log(`x: ${scaleFactorX}, y: ${scaleFactorY}`)
+            const scaleFactor = Math.min(scaleFactorX, scaleFactorY)
+
+            console.log(`Scale factor (original / display): ${scaleFactor}`)
 
             // Scale the object
-            obj.scaleX *= scaleFactorX;
-            obj.scaleY *= scaleFactorY;
+            obj.scaleX *= scaleFactor;
+            obj.scaleY *= scaleFactor;
 
             // Adjust the position of the object
-            obj.left *= scaleFactorX;
-            obj.top *= scaleFactorY;
+            obj.left *= scaleFactor;
+            obj.top *= scaleFactor;
         });
 
         // Update the canvas size
@@ -216,6 +232,7 @@ const EditorPage = () => {
             <button type='button' onClick={saveProject}>Save Project</button>
             <button type='button' onClick={loadProject}>Load Project</button>
             <button type='button' onClick={matchImageSize}>Original Size</button>
+            <button type='button' onClick={saveImage}>Save Image</button>
             <div style={{ display: 'inline', position: 'relative' }}>
                 <button type='button' onClick={toggleColorPicker}>Change Color</button>
                 {pickingColor &&
@@ -225,6 +242,7 @@ const EditorPage = () => {
                 }
             </div>
             <FabricJSCanvas onReady={onReady} />
+            <img src={generatedImage} alt="generated meme" />
         </ParentContainer >
             {pickingColor && <BackgroundCover onClick={toggleColorPicker} />}
         </>
