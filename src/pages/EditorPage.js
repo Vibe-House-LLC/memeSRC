@@ -49,6 +49,7 @@ const EditorPage = () => {
     // Get everything ready
     const { fid } = useParams();
     const [loadedFid, setLoadedFid] = useState();
+    const [baseImg, setBaseImg] = useState(null);
     const [pickingColor, setPickingColor] = useState(false);
     const [canvasSize, setCanvasSize] = useState({
         width: 500,
@@ -68,6 +69,7 @@ const EditorPage = () => {
                 const parsedFid = parseFid(fid)
                 console.log(parsedFid)
                 fabric.Image.fromURL(`https://memesrc.com/${parsedFid.seriesId}/img/${parsedFid.seasonNum}/${parsedFid.episodeNum}/${fid}.jpg`, (oImg) => {
+                    setBaseImg(oImg)
                     // Get a reference to the ParentContainer element
                     const containerElement = document.getElementById('parent-container');
                     // Get the width of the ParentContainer
@@ -127,15 +129,17 @@ const EditorPage = () => {
         })
     }
 
-    const changeSize = () => {
+    const matchImageSize = () => {
         // Export the state of the canvas as a JSON object
         const canvasJson = editor.canvas.toJSON(['hoverCursor', 'selectable']);
 
         // Scale the objects on the canvas proportionally to fit the new size
         canvasJson.objects.forEach(obj => {
             // Calculate the scale factor based on the ratio of the new canvas size to the original canvas size
-            const scaleFactorX = 1920 / editor.canvas.width;
-            const scaleFactorY = 1080 / editor.canvas.height;
+            const scaleFactorX = baseImg.width / editor.canvas.width;
+            const scaleFactorY = baseImg.height / editor.canvas.height;
+
+            console.log(`x: ${scaleFactorX}, y: ${scaleFactorY}`)
 
             // Scale the object
             obj.scaleX *= scaleFactorX;
@@ -148,8 +152,8 @@ const EditorPage = () => {
 
         // Update the canvas size
         setCanvasSize({
-            width: 1920,
-            height: 1080
+            width: baseImg.width,
+            height: baseImg.height
         })
 
         // Load the state of the canvas from the JSON object
@@ -200,7 +204,7 @@ const EditorPage = () => {
             <button type='button' onClick={addText}>Add Text</button>
             <button type='button' onClick={saveProject}>Save Project</button>
             <button type='button' onClick={loadProject}>Load Project</button>
-            <button type='button' onClick={changeSize}>Change Size</button>
+            <button type='button' onClick={matchImageSize}>Original Size</button>
             <div style={{ display: 'inline', position: 'relative' }}>
                 <button type='button' onClick={toggleColorPicker}>Change Color</button>
                 {pickingColor &&
