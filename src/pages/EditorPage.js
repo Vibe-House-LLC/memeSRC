@@ -6,27 +6,23 @@ import { useParams } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 
 const ParentContainer = styled.div`
-  height: 100%;
+    height: 100%;
 `;
 
-const ColorPickerPopover = styled.div(
-    {
-        position: 'absolute',
-        top: '30px',
-        zIndex: '1201',
-    }
-);
+const ColorPickerPopover = styled.div({
+    position: 'absolute',
+    top: '30px',
+    zIndex: '1201',
+})
 
-const BackgroundCover = styled.div(
-    {
-        zIndex: '1200',
-        height: '100vh',
-        width: '100vw',
-        position: 'fixed',
-        top: '0',
-        left: '0'
-    }
-)
+const BackgroundCover = styled.div({
+    zIndex: '1200',
+    height: '100vh',
+    width: '100vw',
+    position: 'fixed',
+    top: '0',
+    left: '0'
+})
 
 function parseFid(fid) {
     const parts = fid.split('-');
@@ -48,12 +44,12 @@ function parseFid(fid) {
 const EditorPage = () => {
     // Get everything ready
     const { fid } = useParams();
-    const [loadedFid, setLoadedFid] = useState();
-    const [baseImg, setBaseImg] = useState(null);
-    const [pickingColor, setPickingColor] = useState(false);
-    const [imageScale, setImageScale] = useState();
-    const [generatedImage, setGeneratedImage] = useState();
-    const [canvasSize, setCanvasSize] = useState({
+    const [ loadedFid, setLoadedFid ] = useState();
+    const [ baseImg, setBaseImg ] = useState(null);
+    const [ pickingColor, setPickingColor ] = useState(false);
+    const [ imageScale, setImageScale ] = useState();
+    const [ generatedImage, setGeneratedImage ] = useState();
+    const [ canvasSize, setCanvasSize ] = useState({
         width: 500,
         height: 500
     });
@@ -111,14 +107,11 @@ const EditorPage = () => {
                     const minRes = 1280;
                     const x = (oImg.width > minRes) ? oImg.width : minRes;
                     setImageScale(x / calculatedWidth);
-                }, {crossOrigin: "anonymous"});
+                }, { crossOrigin: "anonymous" });
             }
 
         }
     }, [editor, canvasSize, fid, loadedFid])
-
-
-
 
     // Handle events
     const saveProject = () => {
@@ -224,30 +217,29 @@ const EditorPage = () => {
         });
     }
 
-
     // Outputs
     return (
-        <><ParentContainer id="parent-container">
-            <button type='button' onClick={addCircle}>Add circle</button>
-            <button type='button' onClick={addRectangle}>Add Rectangle</button>
-            <button type='button' onClick={addImage}>Add Image</button>
-            <button type='button' onClick={addText}>Add Text</button>
-            <button type='button' onClick={saveProject}>Save Project</button>
-            <button type='button' onClick={loadProject}>Load Project</button>
-            <button type='button' onClick={matchImageSize}>Original Size</button>
-            <button type='button' onClick={saveImage}>Save Image</button>
-            <div style={{ display: 'inline', position: 'relative' }}>
-                <button type='button' onClick={toggleColorPicker}>Change Color</button>
-                {pickingColor &&
-                    <ColorPickerPopover>
-                        <TwitterPicker onChangeComplete={changeColor} />
-                    </ColorPickerPopover>
-                }
-            </div>
-            <canvas id='c' />
-            <FabricJSCanvas onReady={onReady} />
-            <img src={generatedImage} alt="generated meme" />
-        </ParentContainer >
+        <>
+            <ParentContainer id="parent-container">
+                <button type='button' onClick={addCircle}>Add circle</button>
+                <button type='button' onClick={addRectangle}>Add Rectangle</button>
+                <button type='button' onClick={addImage}>Add Image</button>
+                <button type='button' onClick={addText}>Add Text</button>
+                <button type='button' onClick={saveProject}>Save Project</button>
+                <button type='button' onClick={loadProject}>Load Project</button>
+                <button type='button' onClick={matchImageSize}>Original Size</button>
+                <button type='button' onClick={saveImage}>Save Image</button>
+                <div style={{ display: 'inline', position: 'relative' }}>
+                    <button type='button' onClick={toggleColorPicker}>Change Color</button>
+                    {pickingColor &&
+                        <ColorPickerPopover>
+                            <TwitterPicker onChangeComplete={changeColor} />
+                        </ColorPickerPopover>
+                    }
+                </div>
+                <FabricJSCanvas onReady={onReady} />
+                <img src={generatedImage} alt="generated meme" />
+            </ParentContainer >
             {pickingColor && <BackgroundCover onClick={toggleColorPicker} />}
         </>
     )
