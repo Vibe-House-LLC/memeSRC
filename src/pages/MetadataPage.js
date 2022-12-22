@@ -20,16 +20,22 @@ async function fetchMetadata(items = [], nextToken = null) {
     graphqlOperation(listContentMetadata, {
       filter: {},
       limit: 10,
-      nextToken,
+      nextToken
     })
   );
-  const allItems = [...items, ...result.data.listContentMetadata.items];
+  const sortedMetadata = result.data.listContentMetadata.items.sort((a, b) => {
+    if (a.title < b.title) return -1;
+    if (a.title > b.title) return 1;
+    return 0;
+  });
+  const allItems = [...items, ...sortedMetadata];
   const newNextToken = result.data.listContentMetadata.nextToken;
   if (newNextToken) {
     return fetchMetadata(allItems, newNextToken);
   }
   return allItems;
 }
+
 
 export default function MetadataPage() {
   const [metadata, setMetadata] = useState([]);
