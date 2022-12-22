@@ -2,19 +2,22 @@ import PropTypes from 'prop-types';
 import { forwardRef } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 // @mui
-import { useTheme } from '@mui/material/styles';
+// import { useTheme } from '@mui/material/styles';
 import { Box, Link } from '@mui/material';
 
 // ----------------------------------------------------------------------
 
-const Logo = forwardRef(({ disabledLink = false, sx, ...other }, ref) => {
-  const theme = useTheme();
+// Notice: I remove the 'ref' since it was unused and linter was complaining. Originally:
+// const Logo = forwardRef(({ disabledLink = false, sx, ...other }, ref) => {
 
-  const PRIMARY_LIGHT = theme.palette.primary.light;
+const Logo = forwardRef(({ disabledLink = false, sx, ...other }) => {
+  // const theme = useTheme();
 
-  const PRIMARY_MAIN = theme.palette.primary.main;
+  // const PRIMARY_LIGHT = theme.palette.primary.light;
 
-  const PRIMARY_DARK = theme.palette.primary.dark;
+  // const PRIMARY_MAIN = theme.palette.primary.main;
+
+  // const PRIMARY_DARK = theme.palette.primary.dark;
 
   // OR using local (public folder)
   // -------------------------------------------------------
