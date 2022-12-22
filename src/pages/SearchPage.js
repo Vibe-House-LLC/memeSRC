@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Grid, CircularProgress, Card, Typography } from '@mui/material';
 import styled from '@emotion/styled';
+import FullScreenSearch from '../sections/search/FullScreenSearch';
+import TopBannerSearch from '../sections/search/TopBannerSearch';
 
 const StyledCircularProgress = styled(CircularProgress)`
   position: absolute;
@@ -8,50 +10,6 @@ const StyledCircularProgress = styled(CircularProgress)`
   left: 50%;
   transform: translate(-50%, -50%);
 `;
-
-const StyledForm = styled.form`
-  display: 'flex'
-`;
-
-const StyledGridContainer = styled(Grid)`
-  min-height: 100vh;
-  background-image: linear-gradient(45deg,
-    #5461c8 12.5% /* 1*12.5% */,
-    #c724b1 0, #c724b1 25%   /* 2*12.5% */,
-    #e4002b 0, #e4002b 37.5% /* 3*12.5% */,
-    #ff6900 0, #ff6900 50%   /* 4*12.5% */,
-    #f6be00 0, #f6be00 62.5% /* 5*12.5% */,
-    #97d700 0, #97d700 75%   /* 6*12.5% */,
-    #00ab84 0, #00ab84 87.5% /* 7*12.5% */,
-    #00a3e0 0);
-
-`;
-
-const StyledLabel = styled.label(({ theme }) => ({
-  marginBottom: '8px',
-  color: theme.palette.text.secondary,
-}));
-
-const StyledInput = styled.input(({ theme }) => ({
-  fontSize: '16px',
-  padding: '8px',
-  border: `1px solid ${theme.palette.divider}`,
-  borderRadius: '4px',
-}));
-
-const StyledButton = styled.button(({ theme }) => ({
-  fontSize: '16px',
-  padding: '8px 16px',
-  border: 'none',
-  borderRadius: '4px',
-  backgroundColor: theme.palette.primary.main,
-  color: theme.palette.common.white,
-  cursor: 'pointer',
-
-  '&:hover': {
-    backgroundColor: theme.palette.primary.dark,
-  },
-}));
 
 const StyledCard = styled(Card)`
   
@@ -101,7 +59,7 @@ export default function SearchPage() {
     getSessionID().then(id => setSessionID(id));
   }, []);
 
-  function handleSearch(e) {
+  const handleSearch = (e) => {
     e.preventDefault();
     setLoading(true);
     let apiSearchUrl;
@@ -127,44 +85,10 @@ export default function SearchPage() {
 
   return (
 
-    <><StyledGridContainer container>
-      <Grid container marginY='auto' justifyContent='center'>
-        <Grid xs={12} textAlign='center' marginBottom={5}>
-          <Typography component='h1' variant='h1' sx={{color: '#FFFFFF'}}>
-            memeSRC
-          </Typography>
-        </Grid>
-        <StyledForm onSubmit={e => handleSearch(e)}>
-          <Grid container alignItems={'center'}>
-            <Grid item md={5} sm='auto'>
-              <StyledLabel htmlFor="search-term">
-                <StyledInput
-                  type="text"
-                  id="search-term"
-                  value={searchTerm}
-                  placeholder="What's the quote?"
-                  onChange={e => setSearchTerm(e.target.value)} />
-              </StyledLabel>
-            </Grid>
-            <Grid item md={5} sm='auto'>
-              <StyledLabel htmlFor="series-title">
-                <StyledInput
-                  type="text"
-                  id="series-title"
-                  value={seriesTitle}
-                  placeholder="Series ID (optional)"
-                  onChange={e => setSeriesTitle(e.target.value)} />
-              </StyledLabel>
-            </Grid>
-            <Grid item md={2} sm={12}>
-              <StyledButton type="submit">Search</StyledButton>
-            </Grid>
-          </Grid>
-        </StyledForm>
-      </Grid>
-    </StyledGridContainer>
-      <br /><br />
-      <Grid container spacing={2}>
+    <>
+      {!results && !loading && <FullScreenSearch searchFunction={handleSearch} setSearchTerm={setSearchTerm} setSeriesTitle={setSeriesTitle} searchTerm={searchTerm} seriesTitle={seriesTitle} />}
+      {(results || loading) && <TopBannerSearch searchFunction={handleSearch} setSearchTerm={setSearchTerm} setSeriesTitle={setSeriesTitle} searchTerm={searchTerm} seriesTitle={seriesTitle} />}
+      <Grid container spacing={2} marginTop={5}>
         {loading ? (
           <StyledCircularProgress />
         ) : results && results.map(result => (
@@ -186,7 +110,8 @@ export default function SearchPage() {
             </a>
           </Grid>
         ))}
-      </Grid></>
-
+      </Grid>
+    </>
   );
 }
+
