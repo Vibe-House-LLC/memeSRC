@@ -77,7 +77,7 @@ export default function MetadataPage() {
       setLoading(false);
     }
     getData();
-  }, []);
+  }, [metadata]);
 
   const style = {
     position: 'absolute',
