@@ -1,5 +1,9 @@
 import styled from "@emotion/styled";
 import { Grid, Typography } from "@mui/material";
+import { API, graphqlOperation } from 'aws-amplify';
+import { useEffect, useState } from "react";
+import { searchPropTypes } from "./SearchPropTypes";
+import { listContentMetadata } from '../../graphql/queries';
 
 const StyledForm = styled.form`
   display: 'flex'
@@ -28,7 +32,20 @@ const StyledInput = styled.input(({ theme }) => ({
   padding: '8px',
   border: `1px solid ${theme.palette.divider}`,
   borderRadius: '4px',
+  width: '100%'
 }));
+
+const StyledSelect = styled.select(({ theme }) => (`
+  appearance: none;
+  background-color: #FFFFFF;
+  border: 1px solid ${theme.palette.divider};
+  border-radius: 4px;
+  padding: 5px;
+  margin: 0;
+  width: 100%;
+  font-size: 16px;
+  line-height: inherit;
+`));
 
 const StyledButton = styled.button(({ theme }) => ({
   fontSize: '16px',
@@ -44,44 +61,59 @@ const StyledButton = styled.button(({ theme }) => ({
   },
 }));
 
+async function fetchMetadata() {
+  const result = await API.graphql(graphqlOperation(listContentMetadata, { filter: {}, limit: 10 }));
+  return result.data.listContentMetadata.items;
+}
+
+TopBannerSearch.propTypes = searchPropTypes;
 
 export default function TopBannerSearch(props) {
-    return (
-        <StyledGridContainer container>
-        <Grid container marginY='auto' justifyContent='center' paddingBottom={4}>
-          <Grid xs={12} textAlign='center' marginBottom={5}>
-            <Typography component='h1' variant='h1' sx={{ color: '#FFFFFF' }}>
-              memeSRC
-            </Typography>
-          </Grid>
-          <StyledForm onSubmit={e => props.searchFunction(e)}>
-            <Grid container alignItems={'center'}>
-              <Grid item md={5} sm='auto'>
-                <StyledLabel htmlFor="search-term">
-                  <StyledInput
-                    type="text"
-                    id="search-term"
-                    value={props.searchTerm}
-                    placeholder="What's the quote?"
-                    onChange={e => props.setSearchTerm(e.target.value)} />
-                </StyledLabel>
-              </Grid>
-              <Grid item md={5} sm='auto'>
-                <StyledLabel htmlFor="series-title">
-                  <StyledInput
-                    type="text"
-                    id="series-title"
-                    value={props.seriesTitle}
-                    placeholder="Series ID (optional)"
-                    onChange={e => props.setSeriesTitle(e.target.value)} />
-                </StyledLabel>
-              </Grid>
-              <Grid item md={2} sm={12}>
-                <StyledButton type="submit">Search</StyledButton>
-              </Grid>
-            </Grid>
-          </StyledForm>
+  const [metadata, setMetadata] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function getData() {
+      const data = await fetchMetadata();
+      setMetadata(data);
+      setLoading(false);
+    }
+    getData();
+  }, []);
+
+  return (
+    <StyledGridContainer container>
+      <Grid container marginY='auto' justifyContent='center' paddingBottom={2}>
+        <Grid xs={12} textAlign='center' marginBottom={5}>
+          <Typography component='h1' variant='h1' sx={{ color: '#FFFFFF' }}>
+            memeSRC
+          </Typography>
         </Grid>
-      </StyledGridContainer>
-    )
+        <StyledForm onSubmit={e => props.searchFunction(e)}>
+          <Grid container alignItems={'center'}>
+            <Grid item md={5} sm='auto' paddingX={0.25}>
+              <StyledLabel htmlFor="search-term">
+                <StyledInput
+                  type="text"
+                  id="search-term"
+                  value={props.searchTerm}
+                  placeholder="What's the quote?"
+                  onChange={e => props.setSearchTerm(e.target.value)} />
+              </StyledLabel>
+            </Grid>
+            <Grid item md={5} sm='auto' paddingX={0.25}>
+              <StyledSelect onChange={(x) => { props.setSeriesTitle(x.target.value) }} value={props.seriesTitle}>
+                {(loading) ? <option key="loading" value="loading" disabled>Loading...</option> : metadata.map((item) => (
+                  <option key={item.id} value={item.id}>{item.emoji} {item.title}</option>
+                ))}
+              </StyledSelect>
+            </Grid>
+            <Grid item md={2} sm={12} paddingX={0.25}>
+              <StyledButton type="submit">Search</StyledButton>
+            </Grid>
+          </Grid>
+        </StyledForm>
+      </Grid>
+    </StyledGridContainer>
+  )
 }

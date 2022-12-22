@@ -1,0 +1,9 @@
+import PropTypes from 'prop-types';
+
+export const searchPropTypes = {
+  searchFunction: PropTypes.func,
+  searchTerm: PropTypes.string,
+  setSearchTerm: PropTypes.func,
+  setSeriesTitle: PropTypes.func,
+  seriesTitle: PropTypes.string
+};

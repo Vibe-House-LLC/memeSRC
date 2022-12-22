@@ -2,7 +2,10 @@ import styled from "@emotion/styled";
 import { Grid, Typography } from "@mui/material";
 import { API, graphqlOperation } from 'aws-amplify';
 import { useEffect, useState } from "react";
+import { searchPropTypes } from "./SearchPropTypes";
+import Logo from "../../components/logo/Logo";
 import { listContentMetadata } from '../../graphql/queries';
+
 
 const StyledForm = styled.form`
   display: 'flex'
@@ -66,6 +69,7 @@ async function fetchMetadata() {
   return result.data.listContentMetadata.items;
 }
 
+FullScreenSearch.propTypes = searchPropTypes;
 
 export default function FullScreenSearch(props) {
   const [metadata, setMetadata] = useState([]);
@@ -83,10 +87,12 @@ export default function FullScreenSearch(props) {
   return (
     <StyledGridContainer container>
       <Grid container marginY='auto' justifyContent='center'>
-        <Grid xs={12} textAlign='center' marginBottom={5}>
+        <Grid item xs={12} textAlign='center' marginBottom={5}>
+        
           <Typography component='h1' variant='h1' sx={{ color: '#FFFFFF' }}>
-            memeSRC
+          <Logo sx={{display: 'inline', width: '150px', height: 'auto'}}/><br />memeSRC
           </Typography>
+          
         </Grid>
         <StyledForm onSubmit={e => props.searchFunction(e)}>
           <Grid container alignItems={'center'}>
@@ -101,9 +107,9 @@ export default function FullScreenSearch(props) {
               </StyledLabel>
             </Grid>
             <Grid item md={5} sm='auto' paddingX={0.25}>
-              <StyledSelect onChange={(x) => { props.setSeriesTitle(x.target.value) }}>
-                {(loading) ? <option value="loading" disabled>Loading...</option> : metadata.map((item) => (
-                  <option value={item.id}>{item.emoji} {item.title}</option>
+              <StyledSelect onChange={(x) => { props.setSeriesTitle(x.target.value) }} value={props.seriesTitle}>
+                {(loading) ? <option key="loading" value="loading" disabled>Loading...</option> : metadata.map((item) => (
+                  <option key={item.id} value={item.id}>{item.emoji} {item.title}</option>
                 ))}
               </StyledSelect>
             </Grid>
