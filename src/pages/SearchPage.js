@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Grid, CircularProgress, Card } from '@mui/material';
 import styled from '@emotion/styled';
 import FullScreenSearch from '../sections/search/FullScreenSearch';
@@ -61,7 +61,7 @@ export default function SearchPage() {
     getSessionID().then(id => setSessionID(id));
   }, []);
 
-  const handleSearch = (e) => {
+  const handleSearch = useCallback((e) => {
     e.preventDefault();
     setLoading(true);
     let apiSearchUrl;
@@ -81,7 +81,8 @@ export default function SearchPage() {
         console.error(error);
         setLoading(false);
       });
-  }
+  }, [seriesTitle, searchTerm, sessionID]);
+
 
   // const classes = useStyles();
 
