@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Grid, CircularProgress, Card, Typography } from '@mui/material';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Grid, CircularProgress, Card } from '@mui/material';
 import styled from '@emotion/styled';
 import FullScreenSearch from '../sections/search/FullScreenSearch';
 import TopBannerSearch from '../sections/search/TopBannerSearch';
@@ -55,6 +55,8 @@ export default function SearchPage() {
   const [sessionID, setSessionID] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  const memoizedResults = useMemo(() => results, [results]);
+
   useEffect(() => {
     getSessionID().then(id => setSessionID(id));
   }, []);
@@ -86,12 +88,12 @@ export default function SearchPage() {
   return (
 
     <>
-      {!results && !loading && <FullScreenSearch searchFunction={handleSearch} setSearchTerm={setSearchTerm} setSeriesTitle={setSeriesTitle} searchTerm={searchTerm} seriesTitle={seriesTitle} />}
-      {(results || loading) && <TopBannerSearch searchFunction={handleSearch} setSearchTerm={setSearchTerm} setSeriesTitle={setSeriesTitle} searchTerm={searchTerm} seriesTitle={seriesTitle} />}
+      {!memoizedResults && !loading && <FullScreenSearch searchFunction={handleSearch} setSearchTerm={setSearchTerm} setSeriesTitle={setSeriesTitle} searchTerm={searchTerm} seriesTitle={seriesTitle} />}
+      {(memoizedResults || loading) && <TopBannerSearch searchFunction={handleSearch} setSearchTerm={setSearchTerm} setSeriesTitle={setSeriesTitle} searchTerm={searchTerm} seriesTitle={seriesTitle} />}
       <Grid container spacing={2} marginTop={5}>
         {loading ? (
           <StyledCircularProgress />
-        ) : results && results.map(result => (
+        ) : memoizedResults && memoizedResults.map(result => (
           <Grid item xs={12} sm={6} md={4} key={result.fid}>
             <a href={`/dashboard/editor/${result.fid}`} style={{ textDecoration: 'none' }}>
               <StyledCard>
@@ -114,4 +116,3 @@ export default function SearchPage() {
     </>
   );
 }
-
