@@ -1,51 +1,35 @@
 import { Helmet } from 'react-helmet-async';
 // @mui
-import { Button, Container, Grid, Stack, Typography, Modal, Card, CardContent, Box } from '@mui/material';
+import { Button, Container, Grid, Stack, Typography, Modal, Card, CardContent, Box, CircularProgress } from '@mui/material';
 // components
 import { useState, useEffect } from 'react';
 import { API, graphqlOperation } from 'aws-amplify';
 import Iconify from '../components/iconify';
-import { createContentMetadata } from '../graphql/mutations';
+import { createContentMetadata, updateContentMetadata, deleteContentMetadata } from '../graphql/mutations';
 import { listContentMetadata } from '../graphql/queries';
 
 // ----------------------------------------------------------------------
 
-async function fetchMetadata() {
-  const result = await API.graphql(graphqlOperation(listContentMetadata, { filter: {}, limit: 10 }));
-  return result.data.listContentMetadata.items;
+const FormMode = {
+  CREATE: 'create',
+  EDIT: 'edit',
+};
+
+async function fetchMetadata(items = [], nextToken = null) {
+  const result = await API.graphql(
+    graphqlOperation(listContentMetadata, {
+      filter: {},
+      limit: 10,
+      nextToken,
+    })
+  );
+  const allItems = [...items, ...result.data.listContentMetadata.items];
+  const newNextToken = result.data.listContentMetadata.nextToken;
+  if (newNextToken) {
+    return fetchMetadata(allItems, newNextToken);
+  }
+  return allItems;
 }
-
-// ----------------------------------------------------------------------
-
-async function createNewContentMetadata(
-  id,
-  title,
-  description,
-  frameCount,
-  colorMain,
-  colorSecondary,
-  emoji,
-  status
-) {
-  const newGlobalMessage = {
-    input: {
-      id,
-      title,
-      description,
-      frameCount,
-      colorMain,
-      colorSecondary,
-      emoji,
-      status
-    }
-  };
-
-  const result = await API.graphql(graphqlOperation(createContentMetadata, newGlobalMessage));
-
-  return result.data.createGlobalMessage;
-}
-
-// ----------------------------------------------------------------------
 
 export default function MetadataPage() {
   const [metadata, setMetadata] = useState([]);
@@ -59,6 +43,111 @@ export default function MetadataPage() {
   const [colorSecondary, setColorSecondary] = useState('');
   const [emoji, setEmoji] = useState('');
   const [status, setStatus] = useState('');
+  const [mode, setMode] = useState(FormMode.CREATE);
+
+  const clearForm = () => {
+    setId('');
+    setTitle('');
+    setDescription('');
+    setFrameCount('');
+    setColorMain('');
+    setColorSecondary('');
+    setEmoji('');
+    setStatus('');
+  };
+
+  // ----------------------------------------------------------------------
+
+  async function createNewContentMetadata(id, title, description, frameCount, colorMain, colorSecondary, emoji, status) {
+    const newMetadataItem = {
+      input: {
+        id,
+        title,
+        description,
+        frameCount,
+        colorMain,
+        colorSecondary,
+        emoji,
+        status
+      }
+    };
+
+    const result = await API.graphql(graphqlOperation(createContentMetadata, newMetadataItem));
+
+    console.log(result)
+
+    setMetadata([...metadata, result.data.createContentMetadata])
+
+    clearForm();
+
+    return result.data.createContentMetadata;
+  }
+
+  async function updateExistingContentMetadata(
+    id,
+    title,
+    description,
+    frameCount,
+    colorMain,
+    colorSecondary,
+    emoji,
+    status
+  ) {
+    const input = {
+      id,
+      title,
+      description,
+      frameCount,
+      colorMain,
+      colorSecondary,
+      emoji,
+      status
+    };
+  
+    const variables = {
+      input
+    };
+  
+    try {
+      const result = await API.graphql({ query: updateContentMetadata, variables });
+      console.log(result);
+      const updatedMetadata = result.data.updateContentMetadata;
+      setMetadata((prevMetadata) =>
+        prevMetadata.map((item) => (item.id === id ? updatedMetadata : item))
+      );
+      return Promise.resolve(updatedMetadata);
+    } catch (error) {
+      console.error(error);
+      return Promise.reject(error);
+    }
+  }
+  
+  
+  async function deleteExistingContentMetadata(id) {
+    const deletedMetadataItem = {
+      input: {
+        id
+      }
+    };
+
+    try {
+      const result = await API.graphql(graphqlOperation(deleteContentMetadata, deletedMetadataItem));
+      console.log(result);
+
+      // Update the metadata state by filtering out the deleted item
+      setMetadata(metadata.filter((item) => item.id !== id));
+
+      return Promise.resolve(result.data.deleteContentMetadata);
+    } catch (error) {
+      console.error(error);
+      return Promise.reject(error);
+    }
+  }
+
+
+
+
+  // ----------------------------------------------------------------------
 
   const toggleForm = () => {
     setShowForm(!showForm);
@@ -66,8 +155,30 @@ export default function MetadataPage() {
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    createNewContentMetadata(id, title, description, frameCount, colorMain, colorSecondary, emoji, status);
+    if (mode === FormMode.CREATE) {
+      createNewContentMetadata(id, title, description, frameCount, colorMain, colorSecondary, emoji, status);
+    } else {
+      updateExistingContentMetadata(id, title, description, frameCount, colorMain, colorSecondary, emoji, status);
+    }
     setShowForm(false);
+  };
+
+  const handleEdit = (item) => {
+    // Set the form fields to the values of the item being edited
+    setId(item.id);
+    setTitle(item.title);
+    setDescription(item.description);
+    setFrameCount(item.frameCount);
+    setColorMain(item.colorMain);
+    setColorSecondary(item.colorSecondary);
+    setEmoji(item.emoji);
+    setStatus(item.status);
+  
+    // Set the form to edit mode
+    setMode(FormMode.EDIT);
+  
+    // Show the form
+    setShowForm(true);
   };
 
   useEffect(() => {
@@ -99,7 +210,7 @@ export default function MetadataPage() {
       <Container>
         <Stack direction="row" alignItems="center" justifyContent="space-between" mb={5}>
           <Typography variant="h4" gutterBottom>
-            Metadata Settings
+            Metadata Settings {loading ? <CircularProgress size={25} /> : `(${metadata.length})`}
           </Typography>
           <Button variant="contained" startIcon={<Iconify icon="eva:plus-fill" />} onClick={toggleForm}>
             New Content
@@ -119,6 +230,8 @@ export default function MetadataPage() {
                     <Typography>Emoji: {item.emoji}</Typography>
                     <Typography>Status: {item.status}</Typography>
                   </CardContent>
+                  <button type="button" onClick={() => handleEdit(item)}>Edit</button>
+                  <button type="button" onClick={() => deleteExistingContentMetadata(item.id)}>Delete</button>
                 </Card>
               </Grid>
             ))}
