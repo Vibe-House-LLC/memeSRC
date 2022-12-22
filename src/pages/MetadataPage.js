@@ -1,12 +1,19 @@
 import { Helmet } from 'react-helmet-async';
 // @mui
-import { Button, Container, Grid, Stack, Typography, Modal, Box } from '@mui/material';
+import { Button, Container, Grid, Stack, Typography, Modal, Card, CardContent, Box } from '@mui/material';
 // components
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { API, graphqlOperation } from 'aws-amplify';
 import Iconify from '../components/iconify';
-
 import { createContentMetadata } from '../graphql/mutations';
+import { listContentMetadata } from '../graphql/queries';
+
+// ----------------------------------------------------------------------
+
+async function fetchMetadata() {
+  const result = await API.graphql(graphqlOperation(listContentMetadata, { filter: {}, limit: 10 }));
+  return result.data.listContentMetadata.items;
+}
 
 // ----------------------------------------------------------------------
 
@@ -41,6 +48,8 @@ async function createNewContentMetadata(
 // ----------------------------------------------------------------------
 
 export default function MetadataPage() {
+  const [metadata, setMetadata] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [id, setId] = useState('');
   const [title, setTitle] = useState('');
@@ -61,13 +70,22 @@ export default function MetadataPage() {
     setShowForm(false);
   };
 
+  useEffect(() => {
+    async function getData() {
+      const data = await fetchMetadata();
+      setMetadata(data);
+      setLoading(false);
+    }
+    getData();
+  }, []);
+
   const style = {
     position: 'absolute',
     top: '50%',
     left: '50%',
     transform: 'translate(-50%, -50%)',
     width: 400,
-    bgcolor: 'background.paper',
+    backgroundColor: 'white',
     border: '2px solid #000',
     boxShadow: 24,
     p: 4,
@@ -87,9 +105,28 @@ export default function MetadataPage() {
             New Content
           </Button>
         </Stack>
+        <Container>
+          <Grid container spacing={2}>
+            {(loading) ? "Loading" : metadata.map((item) => (
+              <Grid item xs={12} sm={6} md={4} key={item.id}>
+                <Card>
+                  <CardContent>
+                    <Typography variant="h5">{item.title}</Typography>
+                    <Typography>{item.description}</Typography>
+                    <Typography>Frame Count: {item.frameCount}</Typography>
+                    <Typography>Color Main: {item.colorMain}</Typography>
+                    <Typography>Color Secondary: {item.colorSecondary}</Typography>
+                    <Typography>Emoji: {item.emoji}</Typography>
+                    <Typography>Status: {item.status}</Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        </Container>
       </Container>
       <Modal open={showForm}>
-        <Box sx={style}>
+        <Box style={style}>
           <Stack>
             <Typography variant="h5">Create New Content Metadata</Typography>
             <form onSubmit={handleSubmit}>
