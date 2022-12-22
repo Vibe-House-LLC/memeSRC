@@ -7,7 +7,6 @@ export const getGlobalMessage = /* GraphQL */ `
       id
       title
       message
-      timestamp
       createdAt
       updatedAt
     }
@@ -24,7 +23,45 @@ export const listGlobalMessages = /* GraphQL */ `
         id
         title
         message
-        timestamp
+        createdAt
+        updatedAt
+      }
+      nextToken
+    }
+  }
+`;
+export const getContentMetadata = /* GraphQL */ `
+  query GetContentMetadata($id: ID!) {
+    getContentMetadata(id: $id) {
+      id
+      title
+      description
+      frameCount
+      colorMain
+      colorSecondary
+      emoji
+      status
+      createdAt
+      updatedAt
+    }
+  }
+`;
+export const listContentMetadata = /* GraphQL */ `
+  query ListContentMetadata(
+    $filter: ModelContentMetadataFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listContentMetadata(filter: $filter, limit: $limit, nextToken: $nextToken) {
+      items {
+        id
+        title
+        description
+        frameCount
+        colorMain
+        colorSecondary
+        emoji
+        status
         createdAt
         updatedAt
       }

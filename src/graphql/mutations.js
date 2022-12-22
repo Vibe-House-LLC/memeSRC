@@ -10,7 +10,6 @@ export const createGlobalMessage = /* GraphQL */ `
       id
       title
       message
-      timestamp
       createdAt
       updatedAt
     }
@@ -25,7 +24,6 @@ export const updateGlobalMessage = /* GraphQL */ `
       id
       title
       message
-      timestamp
       createdAt
       updatedAt
     }
@@ -40,7 +38,63 @@ export const deleteGlobalMessage = /* GraphQL */ `
       id
       title
       message
-      timestamp
+      createdAt
+      updatedAt
+    }
+  }
+`;
+export const createContentMetadata = /* GraphQL */ `
+  mutation CreateContentMetadata(
+    $input: CreateContentMetadataInput!
+    $condition: ModelContentMetadataConditionInput
+  ) {
+    createContentMetadata(input: $input, condition: $condition) {
+      id
+      title
+      description
+      frameCount
+      colorMain
+      colorSecondary
+      emoji
+      status
+      createdAt
+      updatedAt
+    }
+  }
+`;
+export const updateContentMetadata = /* GraphQL */ `
+  mutation UpdateContentMetadata(
+    $input: UpdateContentMetadataInput!
+    $condition: ModelContentMetadataConditionInput
+  ) {
+    updateContentMetadata(input: $input, condition: $condition) {
+      id
+      title
+      description
+      frameCount
+      colorMain
+      colorSecondary
+      emoji
+      status
+      createdAt
+      updatedAt
+    }
+  }
+`;
+export const deleteContentMetadata = /* GraphQL */ `
+  mutation DeleteContentMetadata(
+    $input: DeleteContentMetadataInput!
+    $condition: ModelContentMetadataConditionInput
+  ) {
+    deleteContentMetadata(input: $input, condition: $condition) {
+      id
+      title
+      description
+      frameCount
+      colorMain
+      colorSecondary
+      emoji
+      status
       createdAt
       updatedAt
     }

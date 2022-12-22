@@ -22,6 +22,11 @@ const navConfig = [
     icon: icon('ic_kanban')
   },
   {
+    title: 'metadata',
+    path: '/dashboard/metadata',
+    icon: icon('ic_booking')
+  },
+  {
     title: 'upload',
     path: '/dashboard/imageupload',
     icon: icon('ic_file'),
