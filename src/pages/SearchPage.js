@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Grid, CircularProgress, Card } from '@mui/material';
+import { Grid, CircularProgress, Card, Typography } from '@mui/material';
 import styled from '@emotion/styled';
 
 const StyledCircularProgress = styled(CircularProgress)`
@@ -10,14 +10,24 @@ const StyledCircularProgress = styled(CircularProgress)`
 `;
 
 const StyledForm = styled.form`
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'flex-start',
+  display: 'flex'
+`;
+
+const StyledGridContainer = styled(Grid)`
+  min-height: 100vh;
+  background-image: linear-gradient(45deg,
+    #5461c8 12.5% /* 1*12.5% */,
+    #c724b1 0, #c724b1 25%   /* 2*12.5% */,
+    #e4002b 0, #e4002b 37.5% /* 3*12.5% */,
+    #ff6900 0, #ff6900 50%   /* 4*12.5% */,
+    #f6be00 0, #f6be00 62.5% /* 5*12.5% */,
+    #97d700 0, #97d700 75%   /* 6*12.5% */,
+    #00ab84 0, #00ab84 87.5% /* 7*12.5% */,
+    #00a3e0 0);
+
 `;
 
 const StyledLabel = styled.label(({ theme }) => ({
-  display: 'flex',
-  flexDirection: 'column',
   marginBottom: '8px',
   color: theme.palette.text.secondary,
 }));
@@ -116,53 +126,67 @@ export default function SearchPage() {
   // const classes = useStyles();
 
   return (
-    <StyledForm onSubmit={e => handleSearch(e)}>
-      <StyledLabel htmlFor="search-term">
-        Search:
-        <StyledInput
-          type="text"
-          id="search-term"
-          value={searchTerm}
-          placeholder="What's the quote?"
-          onChange={e => setSearchTerm(e.target.value)}
-        />
-      </StyledLabel>
-      <StyledLabel htmlFor="series-title">
-        <StyledInput
-          type="text"
-          id="series-title"
-          value={seriesTitle}
-          placeholder="Series ID (optional)"
-          onChange={e => setSeriesTitle(e.target.value)}
-        />
-      </StyledLabel>
-      <StyledButton type="submit">Search</StyledButton>
+
+    <><StyledGridContainer container>
+      <Grid container marginY='auto' justifyContent='center'>
+        <Grid xs={12} textAlign='center' marginBottom={5}>
+          <Typography component='h1' variant='h1' sx={{color: '#FFFFFF'}}>
+            memeSRC
+          </Typography>
+        </Grid>
+        <StyledForm onSubmit={e => handleSearch(e)}>
+          <Grid container alignItems={'center'}>
+            <Grid item md={5} sm='auto'>
+              <StyledLabel htmlFor="search-term">
+                <StyledInput
+                  type="text"
+                  id="search-term"
+                  value={searchTerm}
+                  placeholder="What's the quote?"
+                  onChange={e => setSearchTerm(e.target.value)} />
+              </StyledLabel>
+            </Grid>
+            <Grid item md={5} sm='auto'>
+              <StyledLabel htmlFor="series-title">
+                <StyledInput
+                  type="text"
+                  id="series-title"
+                  value={seriesTitle}
+                  placeholder="Series ID (optional)"
+                  onChange={e => setSeriesTitle(e.target.value)} />
+              </StyledLabel>
+            </Grid>
+            <Grid item md={2} sm={12}>
+              <StyledButton type="submit">Search</StyledButton>
+            </Grid>
+          </Grid>
+        </StyledForm>
+      </Grid>
+    </StyledGridContainer>
       <br /><br />
       <Grid container spacing={2}>
         {loading ? (
           <StyledCircularProgress />
         ) : results && results.map(result => (
           <Grid item xs={12} sm={6} md={4} key={result.fid}>
-            <a href={`/dashboard/editor/${result.fid}`}>
-            <StyledCard>
+            <a href={`/dashboard/editor/${result.fid}`} style={{ textDecoration: 'none' }}>
+              <StyledCard>
                 <StyledCardMedia
                   component="img"
                   src={`https://memesrc.com${result.frame_image}`}
                   alt={result.subtitle}
-                  title={result.subtitle}
-                />
+                  title={result.subtitle} />
                 <StyledTypography variant="body2">
                   Subtitle: {result.subtitle}<br />
                   Series: {result.series_name}<br />
                   Season: {result.season_number}<br />
                   Episode: {result.episode_number}
                 </StyledTypography>
-            </StyledCard>
+              </StyledCard>
             </a>
           </Grid>
         ))}
-      </Grid>
-    </StyledForm>
+      </Grid></>
 
   );
 }
