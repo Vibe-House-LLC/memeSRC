@@ -166,6 +166,7 @@ export default function MetadataPage() {
     } else {
       updateExistingContentMetadata(id, title, description, frameCount, colorMain, colorSecondary, emoji, status);
     }
+    clearForm();
     setShowForm(false);
   };
 
