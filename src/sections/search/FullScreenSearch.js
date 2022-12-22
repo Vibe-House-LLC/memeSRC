@@ -64,7 +64,7 @@ const StyledButton = styled.button(({ theme }) => ({
   },
 }));
 
-async function fetchMetadata() {
+async function fetchShows() {
   const result = await API.graphql(graphqlOperation(listContentMetadata, { filter: {}, limit: 10 }));
   return result.data.listContentMetadata.items;
 }
@@ -72,17 +72,25 @@ async function fetchMetadata() {
 FullScreenSearch.propTypes = searchPropTypes;
 
 export default function FullScreenSearch(props) {
-  const [metadata, setMetadata] = useState([]);
+  const [shows, setShows] = useState([]);
   const [loading, setLoading] = useState(true);
+  const {searchTerms, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction} = props
 
   useEffect(() => {
     async function getData() {
-      const data = await fetchMetadata();
-      setMetadata(data);
+      const data = await fetchShows();
+      setShows(data);
       setLoading(false);
     }
     getData();
   }, []);
+
+  useEffect(() => {
+    if (shows.length > 0) {
+      setSeriesTitle(shows[0].id)
+      console.log(shows)
+    }
+  }, [shows, setSeriesTitle])
 
   return (
     <StyledGridContainer container>
@@ -94,21 +102,21 @@ export default function FullScreenSearch(props) {
           </Typography>
           
         </Grid>
-        <StyledForm onSubmit={e => props.searchFunction(e)}>
+        <StyledForm onSubmit={e => searchFunction(e)}>
           <Grid container alignItems={'center'}>
             <Grid item md={5} sm='auto' paddingX={0.25}>
               <StyledLabel htmlFor="search-term">
                 <StyledInput
                   type="text"
                   id="search-term"
-                  value={props.searchTerm}
+                  value={searchTerms}
                   placeholder="What's the quote?"
-                  onChange={e => props.setSearchTerm(e.target.value)} />
+                  onChange={e => setSearchTerm(e.target.value)} />
               </StyledLabel>
             </Grid>
             <Grid item md={5} sm='auto' paddingX={0.25}>
-              <StyledSelect onChange={(x) => { props.setSeriesTitle(x.target.value) }} value={props.seriesTitle}>
-                {(loading) ? <option key="loading" value="loading" disabled>Loading...</option> : metadata.map((item) => (
+              <StyledSelect onChange={(x) => { setSeriesTitle(x.target.value) }} value={seriesTitle}>
+                {(loading) ? <option key="loading" value="loading" disabled>Loading...</option> : shows.map((item) => (
                   <option key={item.id} value={item.id}>{item.emoji} {item.title}</option>
                 ))}
               </StyledSelect>
