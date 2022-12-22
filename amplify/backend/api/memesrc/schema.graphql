@@ -6,5 +6,15 @@ type GlobalMessage @model {
   id: ID!
   title: String!
   message: String
-  timestamp: String
+}
+
+type ContentMetadata @model {
+  id: ID!,
+  title: String!,
+  description: String,
+  frameCount: Int,
+  colorMain: String,
+  colorSecondary: String,
+  emoji: String,
+  status: Int
 }
