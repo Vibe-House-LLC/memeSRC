@@ -1,5 +1,8 @@
 import styled from "@emotion/styled";
-import { FormControl, Grid, InputLabel, MenuItem, Select, Typography } from "@mui/material";
+import { Grid, Typography } from "@mui/material";
+import { API, graphqlOperation } from 'aws-amplify';
+import { useEffect, useState } from "react";
+import { listContentMetadata } from '../../graphql/queries';
 
 const StyledForm = styled.form`
   display: 'flex'
@@ -58,8 +61,25 @@ const StyledButton = styled.button(({ theme }) => ({
   },
 }));
 
+async function fetchMetadata() {
+  const result = await API.graphql(graphqlOperation(listContentMetadata, { filter: {}, limit: 10 }));
+  return result.data.listContentMetadata.items;
+}
+
 
 export default function FullScreenSearch(props) {
+  const [metadata, setMetadata] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function getData() {
+      const data = await fetchMetadata();
+      setMetadata(data);
+      setLoading(false);
+    }
+    getData();
+  }, []);
+
   return (
     <StyledGridContainer container>
       <Grid container marginY='auto' justifyContent='center'>
@@ -81,15 +101,10 @@ export default function FullScreenSearch(props) {
               </StyledLabel>
             </Grid>
             <Grid item md={5} sm='auto' paddingX={0.25}>
-              <StyledSelect>
-                <option value="Option 1">Option 1</option>
-                <option value="Option 2">Option 2</option>
-                <option value="Option 3">Option 3</option>
-                <option value="Option 4">Option 4</option>
-                <option value="Option 5">Option 5</option>
-                <option value="Option length">
-                  Option that has too long of a value to fit
-                </option>
+              <StyledSelect onChange={(x) => { props.setSeriesTitle(x.target.value) }}>
+                {(loading) ? <option value="loading" disabled>Loading...</option> : metadata.map((item) => (
+                  <option value={item.id}>{item.emoji} {item.title}</option>
+                ))}
               </StyledSelect>
             </Grid>
             <Grid item md={2} sm={12} paddingX={0.25}>
