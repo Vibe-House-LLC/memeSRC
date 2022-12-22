@@ -13,6 +13,7 @@ import CheckAuth from './sections/auth/login/CheckAuth';
 import ImageUploadPage from './pages/ImageUploadPage';
 import SearchPage from './pages/SearchPage';
 import EditorPage from './pages/EditorPage';
+import MetadataPage from './pages/MetadataPage';
 
 
 // ----------------------------------------------------------------------
@@ -32,7 +33,8 @@ export default function Router() {
         { path: 'blog', element: <BlogPage /> },
         { path: 'search', element: <SearchPage /> },
         { path: 'editor', element: <EditorPage /> },
-        { path: 'editor/:fid', element: <EditorPage /> }
+        { path: 'editor/:fid', element: <EditorPage /> },
+        { path: 'metadata', element: <MetadataPage /> }
       ],
     },
     {
