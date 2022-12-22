@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { Grid, Typography } from "@mui/material";
+import { FormControl, Grid, InputLabel, MenuItem, Select, Typography } from "@mui/material";
 
 const StyledForm = styled.form`
   display: 'flex'
@@ -29,7 +29,20 @@ const StyledInput = styled.input(({ theme }) => ({
   padding: '8px',
   border: `1px solid ${theme.palette.divider}`,
   borderRadius: '4px',
+  width: '100%'
 }));
+
+const StyledSelect = styled.select(({ theme }) => (`
+  appearance: none;
+  background-color: #FFFFFF;
+  border: 1px solid ${theme.palette.divider};
+  border-radius: 4px;
+  padding: 5px;
+  margin: 0;
+  width: 100%;
+  font-size: 16px;
+  line-height: inherit;
+`));
 
 const StyledButton = styled.button(({ theme }) => ({
   fontSize: '16px',
@@ -47,42 +60,44 @@ const StyledButton = styled.button(({ theme }) => ({
 
 
 export default function FullScreenSearch(props) {
-    return (
-        <StyledGridContainer container>
-        <Grid container marginY='auto' justifyContent='center'>
-          <Grid xs={12} textAlign='center' marginBottom={5}>
-            <Typography component='h1' variant='h1' sx={{ color: '#FFFFFF' }}>
-              memeSRC
-            </Typography>
-          </Grid>
-          <StyledForm onSubmit={e => props.searchFunction(e)}>
-            <Grid container alignItems={'center'}>
-              <Grid item md={5} sm='auto'>
-                <StyledLabel htmlFor="search-term">
-                  <StyledInput
-                    type="text"
-                    id="search-term"
-                    value={props.searchTerm}
-                    placeholder="What's the quote?"
-                    onChange={e => props.setSearchTerm(e.target.value)} />
-                </StyledLabel>
-              </Grid>
-              <Grid item md={5} sm='auto'>
-                <StyledLabel htmlFor="series-title">
-                  <StyledInput
-                    type="text"
-                    id="series-title"
-                    value={props.seriesTitle}
-                    placeholder="Series ID (optional)"
-                    onChange={e => props.setSeriesTitle(e.target.value)} />
-                </StyledLabel>
-              </Grid>
-              <Grid item md={2} sm={12}>
-                <StyledButton type="submit">Search</StyledButton>
-              </Grid>
-            </Grid>
-          </StyledForm>
+  return (
+    <StyledGridContainer container>
+      <Grid container marginY='auto' justifyContent='center'>
+        <Grid xs={12} textAlign='center' marginBottom={5}>
+          <Typography component='h1' variant='h1' sx={{ color: '#FFFFFF' }}>
+            memeSRC
+          </Typography>
         </Grid>
-      </StyledGridContainer>
-    )
+        <StyledForm onSubmit={e => props.searchFunction(e)}>
+          <Grid container alignItems={'center'}>
+            <Grid item md={5} sm='auto' paddingX={0.25}>
+              <StyledLabel htmlFor="search-term">
+                <StyledInput
+                  type="text"
+                  id="search-term"
+                  value={props.searchTerm}
+                  placeholder="What's the quote?"
+                  onChange={e => props.setSearchTerm(e.target.value)} />
+              </StyledLabel>
+            </Grid>
+            <Grid item md={5} sm='auto' paddingX={0.25}>
+              <StyledSelect>
+                <option value="Option 1">Option 1</option>
+                <option value="Option 2">Option 2</option>
+                <option value="Option 3">Option 3</option>
+                <option value="Option 4">Option 4</option>
+                <option value="Option 5">Option 5</option>
+                <option value="Option length">
+                  Option that has too long of a value to fit
+                </option>
+              </StyledSelect>
+            </Grid>
+            <Grid item md={2} sm={12} paddingX={0.25}>
+              <StyledButton type="submit">Search</StyledButton>
+            </Grid>
+          </Grid>
+        </StyledForm>
+      </Grid>
+    </StyledGridContainer>
+  )
 }
