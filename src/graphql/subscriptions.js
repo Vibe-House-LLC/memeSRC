@@ -9,7 +9,6 @@ export const onCreateGlobalMessage = /* GraphQL */ `
       id
       title
       message
-      timestamp
       createdAt
       updatedAt
     }
@@ -23,7 +22,6 @@ export const onUpdateGlobalMessage = /* GraphQL */ `
       id
       title
       message
-      timestamp
       createdAt
       updatedAt
     }
@@ -37,7 +35,60 @@ export const onDeleteGlobalMessage = /* GraphQL */ `
       id
       title
       message
-      timestamp
+      createdAt
+      updatedAt
+    }
+  }
+`;
+export const onCreateContentMetadata = /* GraphQL */ `
+  subscription OnCreateContentMetadata(
+    $filter: ModelSubscriptionContentMetadataFilterInput
+  ) {
+    onCreateContentMetadata(filter: $filter) {
+      id
+      title
+      description
+      frameCount
+      colorMain
+      colorSecondary
+      emoji
+      status
+      createdAt
+      updatedAt
+    }
+  }
+`;
+export const onUpdateContentMetadata = /* GraphQL */ `
+  subscription OnUpdateContentMetadata(
+    $filter: ModelSubscriptionContentMetadataFilterInput
+  ) {
+    onUpdateContentMetadata(filter: $filter) {
+      id
+      title
+      description
+      frameCount
+      colorMain
+      colorSecondary
+      emoji
+      status
+      createdAt
+      updatedAt
+    }
+  }
+`;
+export const onDeleteContentMetadata = /* GraphQL */ `
+  subscription OnDeleteContentMetadata(
+    $filter: ModelSubscriptionContentMetadataFilterInput
+  ) {
+    onDeleteContentMetadata(filter: $filter) {
+      id
+      title
+      description
+      frameCount
+      colorMain
+      colorSecondary
+      emoji
+      status
       createdAt
       updatedAt
     }
