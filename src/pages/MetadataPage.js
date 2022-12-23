@@ -74,15 +74,19 @@ export default function MetadataPage() {
   const [expanded, setExpanded] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
 
+  const [selectedIndex, setSelectedIndex] = useState(null)
+
   const handleExpandClick = () => {
     setExpanded(!expanded);
   };
 
-  const handleMoreVertClick = (event) => {
+  const handleMoreVertClick = (event, itemIndex) => {
+    setSelectedIndex(itemIndex);
     setAnchorEl(event.currentTarget);
   };
 
   const handleClose = () => {
+    setSelectedIndex(null);
     setAnchorEl(null);
   };
 
@@ -206,12 +210,13 @@ export default function MetadataPage() {
     }
     clearForm();
     setShowForm(false);
+    handleClose();
   };
 
-  const handleEdit = useCallback((index) => {
+  const handleEdit = useCallback(() => {
     // Set the form fields to the values of the item being edited
-    const item = metadata[index];
-    console.log(index)
+    const item = metadata[selectedIndex];
+    console.log(selectedIndex)
     console.log(item)
     setId(item.id);
     setTitle(item.title);
@@ -228,6 +233,12 @@ export default function MetadataPage() {
     // Show the form
     setShowForm(true);
   });
+
+  const handleDelete = useCallback(() => {
+    const item = metadata[selectedIndex];
+    deleteExistingContentMetadata(item.id)
+    handleClose();
+  })
 
   useEffect(() => {
     async function getData() {
@@ -277,10 +288,16 @@ export default function MetadataPage() {
                     }
                     action={
                       <>
-                        <IconButton aria-label="settings" onClick={handleMoreVertClick}>
+                        <IconButton aria-label="settings" onClick={(event) => handleMoreVertClick(event, index)}>
                           <MoreVertIcon />
                         </IconButton>
-                        <Popover
+                      </>
+                    }
+                    style={{ height: "100px", top: "0" }}
+                    title={metadataItem.title}
+                    subheader={`${metadataItem.frameCount.toLocaleString('en-US')} frames`}
+                  />
+                  <Popover
                           id={popoverId}
                           open={open}
                           anchorEl={anchorEl}
@@ -295,20 +312,14 @@ export default function MetadataPage() {
                           }}
                         >
                           <List>
-                            <ListItem button onClick={() => handleEdit(index)}>
+                            <ListItem button onClick={handleEdit}>
                               <ListItemText primary="Edit" />
                             </ListItem>
-                            <ListItem button onClick={() => deleteExistingContentMetadata(metadataItem.id)}>
+                            <ListItem button onClick={handleDelete}>
                               <ListItemText primary="Delete" />
                             </ListItem>
                           </List>
                         </Popover>
-                      </>
-                    }
-                    style={{ height: "100px", top: "0" }}
-                    title={metadataItem.title}
-                    subheader={`${metadataItem.frameCount.toLocaleString('en-US')} frames`}
-                  />
                   {/* <CardMedia
                     component="img"
                     height="194"
