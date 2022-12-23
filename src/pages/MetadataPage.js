@@ -1,6 +1,6 @@
 import { Helmet } from 'react-helmet-async';
 // @mui
-import { List, CardHeader, Avatar, ListItem, ListItemText, Button, Container, Grid, Stack, Typography, Modal, Card, CardContent, Box, CircularProgress, IconButton, Collapse } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, FormControl, InputLabel, Select, MenuItem, DialogActions, TextField, List, CardHeader, Avatar, ListItem, ListItemText, Button, Container, Grid, Stack, Typography, Modal, Card, CardContent, Box, CircularProgress, IconButton, Collapse } from '@mui/material';
 import CardMedia from '@mui/material/CardMedia';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import ShareIcon from '@mui/icons-material/Share';
@@ -9,9 +9,9 @@ import MoreVertIcon from '@mui/icons-material/MoreVert';
 import Popover from '@mui/material/Popover';
 import { grey, red } from '@mui/material/colors';
 import CardActions from '@mui/material/CardActions';
+import { styled } from '@mui/material/styles';
 // components
 import { useState, useEffect, useCallback } from 'react';
-import { styled } from '@mui/material/styles';
 import { API, graphqlOperation } from 'aws-amplify';
 import Iconify from '../components/iconify';
 import { createContentMetadata, updateContentMetadata, deleteContentMetadata } from '../graphql/mutations';
@@ -88,6 +88,10 @@ export default function MetadataPage() {
   const handleClose = () => {
     setSelectedIndex(null);
     setAnchorEl(null);
+  };
+
+  const handleCloseForm = () => {
+    setShowForm(false)
   };
 
   const open = Boolean(anchorEl);
@@ -298,28 +302,28 @@ export default function MetadataPage() {
                     subheader={`${metadataItem.frameCount.toLocaleString('en-US')} frames`}
                   />
                   <Popover
-                          id={popoverId}
-                          open={open}
-                          anchorEl={anchorEl}
-                          onClose={handleClose}
-                          anchorOrigin={{
-                            vertical: 'top',
-                            horizontal: 'right',
-                          }}
-                          transformOrigin={{
-                            vertical: 'top',
-                            horizontal: 'right',
-                          }}
-                        >
-                          <List>
-                            <ListItem button onClick={handleEdit}>
-                              <ListItemText primary="Edit" />
-                            </ListItem>
-                            <ListItem button onClick={handleDelete}>
-                              <ListItemText primary="Delete" />
-                            </ListItem>
-                          </List>
-                        </Popover>
+                    id={popoverId}
+                    open={open}
+                    anchorEl={anchorEl}
+                    onClose={handleClose}
+                    anchorOrigin={{
+                      vertical: 'top',
+                      horizontal: 'right',
+                    }}
+                    transformOrigin={{
+                      vertical: 'top',
+                      horizontal: 'right',
+                    }}
+                  >
+                    <List>
+                      <ListItem button onClick={handleEdit}>
+                        <ListItemText primary="Edit" />
+                      </ListItem>
+                      <ListItem button onClick={handleDelete}>
+                        <ListItemText primary="Delete" />
+                      </ListItem>
+                    </List>
+                  </Popover>
                   {/* <CardMedia
                     component="img"
                     height="194"
@@ -360,83 +364,89 @@ export default function MetadataPage() {
       </Container>
       {/* <button type="button" onClick={() => handleEdit(item)}>Edit</button>
                   <button type="button" onClick={() => deleteExistingContentMetadata(item.id)}>Delete</button> */}
-      <Modal open={showForm}>
-        <Box style={style}>
-          <Stack>
-            <Typography variant="h5">Create New Content Metadata</Typography>
-            <form onSubmit={handleSubmit}>
-              <Grid container spacing={2}>
-                <Grid item xs={12}>
-                  <Typography>ID:</Typography>
-                  <input
-                    type="text"
-                    value={id}
-                    onChange={(event) => setId(event.target.value)}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <Typography>Title:</Typography>
-                  <input
-                    type="text"
-                    value={title}
-                    onChange={(event) => setTitle(event.target.value)}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <Typography>Description:</Typography>
-                  <input
-                    type="text"
-                    value={description}
-                    onChange={(event) => setDescription(event.target.value)}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <Typography>Frame Count:</Typography>
-                  <input
-                    type="number"
-                    value={frameCount}
-                    onChange={(event) => setFrameCount(event.target.value)}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <Typography>Color Main:</Typography>
-                  <input
-                    type="text"
-                    value={colorMain}
-                    onChange={(event) => setColorMain(event.target.value)}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <Typography>Color Secondary:</Typography>
-                  <input
-                    type="text"
-                    value={colorSecondary}
-                    onChange={(event) => setColorSecondary(event.target.value)}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <Typography>Emoji:</Typography>
-                  <input
-                    type="text"
-                    value={emoji} onChange={(event) => setEmoji(event.target.value)}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <Typography>Status:</Typography>
-                  <input
-                    type="number"
+      <Dialog open={showForm} onClose={handleClose}>
+        <DialogTitle>Create New Content Metadata</DialogTitle>
+        <DialogContent>
+          <form onSubmit={handleSubmit}>
+            <Grid container spacing={2}>
+              <Grid item xs={12}>
+                <TextField
+                  label="ID"
+                  fullWidth
+                  value={id}
+                  onChange={(event) => setId(event.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  label="Title"
+                  fullWidth
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  label="Description"
+                  fullWidth
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  label="Frame Count"
+                  type="number"
+                  fullWidth
+                  value={frameCount}
+                  onChange={(event) => setFrameCount(event.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  label="Color Main"
+                  fullWidth
+                  value={colorMain}
+                  onChange={(event) => setColorMain(event.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  label="Color Secondary"
+                  fullWidth
+                  value={colorSecondary}
+                  onChange={(event) => setColorSecondary(event.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  label="Emoji"
+                  fullWidth
+                  value={emoji}
+                  onChange={(event) => setEmoji(event.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <FormControl fullWidth>
+                  <InputLabel id="status-label">Status</InputLabel>
+                  <Select
+                    labelId="status-label"
                     value={status}
                     onChange={(event) => setStatus(event.target.value)}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <Button type="submit">Submit</Button>
-                </Grid>
+                  >
+                    <MenuItem value={0}>Incomplete</MenuItem>
+                    <MenuItem value={1}>Complete</MenuItem>
+                  </Select>
+                </FormControl>
               </Grid>
-            </form>
-          </Stack>
-        </Box>
-      </Modal>
+            </Grid>
+          </form>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseForm}>Cancel</Button>
+          <Button type="submit" onClick={handleSubmit}>Submit</Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 }
