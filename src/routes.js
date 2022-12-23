@@ -14,6 +14,7 @@ import ImageUploadPage from './pages/ImageUploadPage';
 import SearchPage from './pages/SearchPage';
 import EditorPage from './pages/EditorPage';
 import MetadataPage from './pages/MetadataPage';
+import CardExample from './pages/CardExample'
 
 
 // ----------------------------------------------------------------------
@@ -34,7 +35,8 @@ export default function Router() {
         { path: 'search', element: <SearchPage /> },
         { path: 'editor', element: <EditorPage /> },
         { path: 'editor/:fid', element: <EditorPage /> },
-        { path: 'metadata', element: <MetadataPage /> }
+        { path: 'metadata', element: <MetadataPage /> },
+        { path: 'card', element: <CardExample /> }
       ],
     },
     {

@@ -1,8 +1,17 @@
 import { Helmet } from 'react-helmet-async';
 // @mui
-import { Button, Container, Grid, Stack, Typography, Modal, Card, CardContent, Box, CircularProgress } from '@mui/material';
+import { List, CardHeader, Avatar, ListItem, ListItemText, Button, Container, Grid, Stack, Typography, Modal, Card, CardContent, Box, CircularProgress, IconButton, Collapse } from '@mui/material';
+import CardMedia from '@mui/material/CardMedia';
+import FavoriteIcon from '@mui/icons-material/Favorite';
+import ShareIcon from '@mui/icons-material/Share';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import Popover from '@mui/material/Popover';
+import { grey, red } from '@mui/material/colors';
+import CardActions from '@mui/material/CardActions';
 // components
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { styled } from '@mui/material/styles';
 import { API, graphqlOperation } from 'aws-amplify';
 import Iconify from '../components/iconify';
 import { createContentMetadata, updateContentMetadata, deleteContentMetadata } from '../graphql/mutations';
@@ -14,6 +23,17 @@ const FormMode = {
   CREATE: 'create',
   EDIT: 'edit',
 };
+
+const ExpandMore = styled((props) => {
+  const { expand, ...other } = props;
+  return <IconButton {...other} />;
+})(({ theme, expand }) => ({
+  transform: !expand ? 'rotate(0deg)' : 'rotate(180deg)',
+  marginLeft: 'auto',
+  transition: theme.transitions.create('transform', {
+    duration: theme.transitions.duration.shortest,
+  }),
+}));
 
 async function fetchMetadata(items = [], nextToken = null) {
   const result = await API.graphql(
@@ -50,6 +70,24 @@ export default function MetadataPage() {
   const [emoji, setEmoji] = useState('');
   const [status, setStatus] = useState('');
   const [mode, setMode] = useState(FormMode.CREATE);
+
+  const [expanded, setExpanded] = useState(false);
+  const [anchorEl, setAnchorEl] = useState(null);
+
+  const handleExpandClick = () => {
+    setExpanded(!expanded);
+  };
+
+  const handleMoreVertClick = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+
+  const open = Boolean(anchorEl);
+  const popoverId = open ? 'simple-popover' : undefined;
 
   const clearForm = () => {
     setId('');
@@ -109,11 +147,11 @@ export default function MetadataPage() {
       emoji,
       status
     };
-  
+
     const variables = {
       input
     };
-  
+
     try {
       const result = await API.graphql({ query: updateContentMetadata, variables });
       console.log(result);
@@ -127,8 +165,8 @@ export default function MetadataPage() {
       return Promise.reject(error);
     }
   }
-  
-  
+
+
   async function deleteExistingContentMetadata(id) {
     const deletedMetadataItem = {
       input: {
@@ -170,8 +208,11 @@ export default function MetadataPage() {
     setShowForm(false);
   };
 
-  const handleEdit = (item) => {
+  const handleEdit = useCallback((index) => {
     // Set the form fields to the values of the item being edited
+    const item = metadata[index];
+    console.log(index)
+    console.log(item)
     setId(item.id);
     setTitle(item.title);
     setDescription(item.description);
@@ -180,13 +221,13 @@ export default function MetadataPage() {
     setColorSecondary(item.colorSecondary);
     setEmoji(item.emoji);
     setStatus(item.status);
-  
+
     // Set the form to edit mode
     setMode(FormMode.EDIT);
-  
+
     // Show the form
     setShowForm(true);
-  };
+  });
 
   useEffect(() => {
     async function getData() {
@@ -195,7 +236,7 @@ export default function MetadataPage() {
       setLoading(false);
     }
     getData();
-  }, [metadata]);
+  }, []);
 
   const style = {
     position: 'absolute',
@@ -225,26 +266,89 @@ export default function MetadataPage() {
         </Stack>
         <Container>
           <Grid container spacing={2}>
-            {(loading) ? "Loading" : metadata.map((item) => (
-              <Grid item xs={12} sm={6} md={4} key={item.id}>
-                <Card>
-                  <CardContent>
-                    <Typography variant="h5">{item.title}</Typography>
-                    <Typography>{item.description}</Typography>
-                    <Typography>Frame Count: {item.frameCount}</Typography>
-                    <Typography>Color Main: {item.colorMain}</Typography>
-                    <Typography>Color Secondary: {item.colorSecondary}</Typography>
-                    <Typography>Emoji: {item.emoji}</Typography>
-                    <Typography>Status: {item.status}</Typography>
-                  </CardContent>
-                  <button type="button" onClick={() => handleEdit(item)}>Edit</button>
-                  <button type="button" onClick={() => deleteExistingContentMetadata(item.id)}>Delete</button>
+            {(loading) ? "Loading" : metadata.map((metadataItem, index) => (
+              <Grid item xs={12} sm={6} md={4} key={metadataItem.id}>
+                <Card sx={{ maxWidth: 345 }}>
+                  <CardHeader
+                    avatar={
+                      <Avatar sx={{ bgcolor: grey[200] }} aria-label="recipe">
+                        {metadataItem.emoji}
+                      </Avatar>
+                    }
+                    action={
+                      <>
+                        <IconButton aria-label="settings" onClick={handleMoreVertClick}>
+                          <MoreVertIcon />
+                        </IconButton>
+                        <Popover
+                          id={popoverId}
+                          open={open}
+                          anchorEl={anchorEl}
+                          onClose={handleClose}
+                          anchorOrigin={{
+                            vertical: 'top',
+                            horizontal: 'right',
+                          }}
+                          transformOrigin={{
+                            vertical: 'top',
+                            horizontal: 'right',
+                          }}
+                        >
+                          <List>
+                            <ListItem button onClick={() => handleEdit(index)}>
+                              <ListItemText primary="Edit" />
+                            </ListItem>
+                            <ListItem button onClick={() => deleteExistingContentMetadata(metadataItem.id)}>
+                              <ListItemText primary="Delete" />
+                            </ListItem>
+                          </List>
+                        </Popover>
+                      </>
+                    }
+                    style={{ height: "100px", top: "0" }}
+                    title={metadataItem.title}
+                    subheader={`${metadataItem.frameCount.toLocaleString('en-US')} frames`}
+                  />
+                  {/* <CardMedia
+                    component="img"
+                    height="194"
+                    image="/static/images/cards/paella.jpg"
+                    alt="Paella dish"
+                  /> */}
+                  <CardActions disableSpacing>
+                    <IconButton aria-label="add to favorites">
+                      <FavoriteIcon />
+                    </IconButton>
+                    <IconButton aria-label="share">
+                      <ShareIcon />
+                    </IconButton>
+                    <ExpandMore
+                      expand={expanded}
+                      onClick={handleExpandClick}
+                      aria-expanded={expanded}
+                      aria-label="show more"
+                    >
+                      <ExpandMoreIcon />
+                    </ExpandMore>
+                  </CardActions>
+                  <Collapse in={expanded} timeout="auto" unmountOnExit>
+                    <CardContent>
+                      <Typography>{metadataItem.description}</Typography>
+                      <Typography>Frame Count: {metadataItem.frameCount}</Typography>
+                      <Typography>Color Main: {metadataItem.colorMain}</Typography>
+                      <Typography>Color Secondary: {metadataItem.colorSecondary}</Typography>
+                      <Typography>Emoji: {metadataItem.emoji}</Typography>
+                      <Typography>Status: {metadataItem.status}</Typography>
+                    </CardContent>
+                  </Collapse>
                 </Card>
               </Grid>
             ))}
           </Grid>
         </Container>
       </Container>
+      {/* <button type="button" onClick={() => handleEdit(item)}>Edit</button>
+                  <button type="button" onClick={() => deleteExistingContentMetadata(item.id)}>Delete</button> */}
       <Modal open={showForm}>
         <Box style={style}>
           <Stack>
