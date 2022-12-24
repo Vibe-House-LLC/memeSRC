@@ -1,5 +1,6 @@
 import styled from "@emotion/styled";
-import { Grid, Typography } from "@mui/material";
+import { Button, Fab, Grid, Typography } from "@mui/material";
+import { Favorite, MessageTwoTone, Shuffle } from "@mui/icons-material";
 import { API, graphqlOperation } from 'aws-amplify';
 import { useEffect, useState } from "react";
 import { searchPropTypes } from "./SearchPropTypes";
@@ -22,7 +23,6 @@ const StyledGridContainer = styled(Grid)`
     #97d700 0, #97d700 75%   /* 6*12.5% */,
     #00ab84 0, #00ab84 87.5% /* 7*12.5% */,
     #00a3e0 0);
-
 `;
 
 const StyledLabel = styled.label(({ theme }) => ({
@@ -64,6 +64,19 @@ const StyledButton = styled.button(({ theme }) => ({
   },
 }));
 
+const StyledFooter = styled('header')(({ theme }) => ({
+  bottom: 10,
+  left: 0,
+  lineHeight: 0,
+  width: '100%',
+  position: 'fixed',
+  padding: theme.spacing(0, 3, 3, 3),
+  display: 'flex',
+  [theme.breakpoints.up('sm')]: {
+    padding: theme.spacing(0, 5, 3, 3),
+  },
+}));
+
 async function fetchShows() {
   const result = await API.graphql(graphqlOperation(listContentMetadata, { filter: {}, limit: 10 }));
   return result.data.listContentMetadata.items;
@@ -74,7 +87,7 @@ FullScreenSearch.propTypes = searchPropTypes;
 export default function FullScreenSearch(props) {
   const [shows, setShows] = useState([]);
   const [loading, setLoading] = useState(true);
-  const {searchTerms, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction} = props
+  const { searchTerms, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction } = props
 
   useEffect(() => {
     async function getData() {
@@ -96,11 +109,11 @@ export default function FullScreenSearch(props) {
     <StyledGridContainer container>
       <Grid container marginY='auto' justifyContent='center'>
         <Grid item xs={12} textAlign='center' marginBottom={5}>
-        
+
           <Typography component='h1' variant='h1' sx={{ color: '#FFFFFF' }}>
-          <Logo sx={{display: 'inline', width: '150px', height: 'auto'}} color="white"/><br />memeSRC
+            <Logo sx={{ display: 'inline', width: '150px', height: 'auto' }} color="white" /><br />memeSRC
           </Typography>
-          
+
         </Grid>
         <StyledForm onSubmit={e => searchFunction(e)}>
           <Grid container alignItems={'center'}>
@@ -122,11 +135,22 @@ export default function FullScreenSearch(props) {
               </StyledSelect>
             </Grid>
             <Grid item md={2} sm={12} paddingX={0.25}>
-              <StyledButton type="submit">Search</StyledButton>
+              <StyledButton type="submit" style={{backgroundColor: "black"}}>Search</StyledButton>
             </Grid>
           </Grid>
         </StyledForm>
       </Grid>
+      <StyledFooter >
+        <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black" }}>
+          <MessageTwoTone color="white"/>
+        </Fab>
+        <Fab color="primary" aria-label="donate" style={{ backgroundColor: "black" }}>
+          <Favorite />
+        </Fab>
+        <a href={`https://api.memesrc.com/random/generate${seriesTitle ? `?series=${seriesTitle}` : ''}`} style={{ marginLeft: 'auto', textDecoration: 'none' }}>
+          <Button startIcon={<Shuffle />} variant="contained" style={{backgroundColor: "black"}}>Random</Button>
+        </a>
+      </StyledFooter>
     </StyledGridContainer>
   )
 }

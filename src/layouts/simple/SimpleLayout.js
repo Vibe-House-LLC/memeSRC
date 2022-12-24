@@ -1,7 +1,8 @@
 import { Outlet, Link } from 'react-router-dom';
 // @mui
 import { styled } from '@mui/material/styles';
-import { Button } from '@mui/material';
+import { Button, IconButton } from '@mui/material';
+import { Dashboard, SettingsSuggest } from '@mui/icons-material';
 // components
 import Logo from '../../components/logo';
 
@@ -27,8 +28,8 @@ export default function SimpleLayout() {
     <>
       <StyledHeader>
         <Logo color="white"/>
-        <Link to="/dashboard" style={{ marginLeft: 'auto', textDecoration: 'none' }}>
-          <Button variant="contained" color="primary">Dashboard</Button>
+        <Link to="/dashboard" style={{ marginLeft: 'auto', textDecoration: 'none'}}>
+          <IconButton variant="contained" style={{color: "white"}}><SettingsSuggest /></IconButton>
         </Link>
       </StyledHeader>
 
