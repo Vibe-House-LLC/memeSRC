@@ -7,11 +7,58 @@ import { searchPropTypes } from "./SearchPropTypes";
 import Logo from "../../components/logo/Logo";
 import { listContentMetadata } from '../../graphql/queries';
 
+// Define constants for colors and fonts
+const PRIMARY_COLOR = '#4285F4';
+const SECONDARY_COLOR = '#0F9D58';
+const FONT_FAMILY = 'Roboto, sans-serif';
 
-const StyledForm = styled.form`
-  display: 'flex'
+// Create a search form component
+const StyledSearchForm = styled.form`
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin-left: 20px;
+  width: 800px;
+
+  @media (max-width: 600px) {
+    margin-left: 0;
+    margin-top: 20px;
+  }
 `;
 
+const StyledSearchSelector = styled.select`
+  font-family: ${FONT_FAMILY};
+  font-size: 14px;
+  color: #333;
+  background-color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 12px;
+  height: 40px;
+  width: 100%;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  transition: box-shadow 0.3s;
+  appearance: none;
+  cursor: pointer;
+
+  &:focus {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    outline: none;
+  }
+`;
+
+
+// Create a search button component
+const StyledSearchButton = styled(Button)`
+  font-family: ${FONT_FAMILY};
+  font-size: 14px;
+  color: #fff;
+  background-color: ${SECONDARY_COLOR};
+  border-radius: 4px;
+  padding: 8px 12px;
+`;
+
+// Create a grid container component
 const StyledGridContainer = styled(Grid)`
   min-height: 100vh;
   background-image: linear-gradient(45deg,
@@ -25,57 +72,73 @@ const StyledGridContainer = styled(Grid)`
     #00a3e0 0);
 `;
 
-const StyledLabel = styled.label(({ theme }) => ({
-  marginBottom: '8px',
-  color: theme.palette.text.secondary,
-}));
+// Create a label component
+const StyledLabel = styled.label`
+    margin-bottom: 8px;
+    color: ${SECONDARY_COLOR};
+    font-family: ${FONT_FAMILY};
+    font-size: 14px;
+  `;
 
-const StyledInput = styled.input(({ theme }) => ({
-  fontSize: '16px',
-  padding: '8px',
-  border: `1px solid ${theme.palette.divider}`,
-  borderRadius: '4px',
-  width: '100%'
-}));
+// Create a button component
+const StyledButton = styled(Button)`
+    font-family: ${FONT_FAMILY};
+    font-size: 14px;
+    color: #fff;
+    background-color: ${SECONDARY_COLOR};
+    border-radius: 4px;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: background-color 0.3s;
 
-const StyledSelect = styled.select(({ theme }) => (`
-  appearance: none;
-  background-color: #FFFFFF;
-  border: 1px solid ${theme.palette.divider};
+    &:hover {
+      background-color: ${PRIMARY_COLOR};
+    }
+`;
+
+const StyledSearchInput = styled.input`
+  font-family: ${FONT_FAMILY};
+  font-size: 14px;
+  color: #333;
+  background-color: #fff;
+  border: none;
   border-radius: 4px;
-  padding: 5px;
-  margin: 0;
+  padding: 8px 12px;
   width: 100%;
-  font-size: 16px;
-  line-height: inherit;
-`));
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  transition: box-shadow 0.3s;
+  height: 40px;
 
-const StyledButton = styled.button(({ theme }) => ({
-  fontSize: '16px',
-  padding: '8px 16px',
-  border: 'none',
-  borderRadius: '4px',
-  backgroundColor: theme.palette.primary.main,
-  color: theme.palette.common.white,
-  cursor: 'pointer',
+  &:focus {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    outline: none;
+  }
 
-  '&:hover': {
-    backgroundColor: theme.palette.primary.dark,
-  },
-}));
+  @media (max-width: 600px) {
+    width: 300px;
+  }
+`;
 
-const StyledFooter = styled('header')(({ theme }) => ({
-  bottom: 10,
-  left: 0,
-  lineHeight: 0,
-  width: '100%',
-  position: 'fixed',
-  padding: theme.spacing(0, 3, 3, 3),
-  display: 'flex',
-  [theme.breakpoints.up('sm')]: {
-    padding: theme.spacing(0, 5, 3, 3),
-  },
-}));
+
+// Create a footer component
+const StyledFooter = styled('footer')`
+    bottom: 10px;
+    left: 0;
+    line-height: 0;
+    width: 100%;
+    position: fixed;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: transparent;
+
+    @media (max-width: 600px) {
+      flex-direction: column;
+      align-items: flex-start;
+      padding: 20px;
+    }
+`;
 
 async function fetchShows() {
   const result = await API.graphql(graphqlOperation(listContentMetadata, { filter: {}, limit: 10 }));
@@ -115,11 +178,11 @@ export default function FullScreenSearch(props) {
           </Typography>
 
         </Grid>
-        <StyledForm onSubmit={e => searchFunction(e)}>
+        <StyledSearchForm onSubmit={e => searchFunction(e)}>
           <Grid container alignItems={'center'}>
             <Grid item md={5} sm='auto' paddingX={0.25}>
               <StyledLabel htmlFor="search-term">
-                <StyledInput
+                <StyledSearchInput
                   type="text"
                   id="search-term"
                   value={searchTerms}
@@ -128,27 +191,27 @@ export default function FullScreenSearch(props) {
               </StyledLabel>
             </Grid>
             <Grid item md={5} sm='auto' paddingX={0.25}>
-              <StyledSelect onChange={(x) => { setSeriesTitle(x.target.value) }} value={seriesTitle}>
+              <StyledSearchSelector onChange={(x) => { setSeriesTitle(x.target.value) }} value={seriesTitle}>
                 {(loading) ? <option key="loading" value="loading" disabled>Loading...</option> : shows.map((item) => (
                   <option key={item.id} value={item.id}>{item.emoji} {item.title}</option>
                 ))}
-              </StyledSelect>
+              </StyledSearchSelector>
             </Grid>
             <Grid item md={2} sm={12} paddingX={0.25}>
-              <StyledButton type="submit" style={{backgroundColor: "black"}}>Search</StyledButton>
+              <StyledSearchButton type="submit" style={{ backgroundColor: "black" }}>Search</StyledSearchButton>
             </Grid>
           </Grid>
-        </StyledForm>
+        </StyledSearchForm>
       </Grid>
       <StyledFooter >
         <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black" }}>
-          <MessageTwoTone color="white"/>
+          <MessageTwoTone color="white" />
         </Fab>
         <Fab color="primary" aria-label="donate" style={{ backgroundColor: "black" }}>
           <Favorite />
         </Fab>
         <a href={`https://api.memesrc.com/random/generate${seriesTitle ? `?series=${seriesTitle}` : ''}`} style={{ marginLeft: 'auto', textDecoration: 'none' }}>
-          <Button startIcon={<Shuffle />} variant="contained" style={{backgroundColor: "black"}}>Random</Button>
+          <StyledButton startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black" }}>Random</StyledButton>
         </a>
       </StyledFooter>
     </StyledGridContainer>
