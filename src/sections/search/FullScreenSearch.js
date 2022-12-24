@@ -19,11 +19,6 @@ const StyledSearchForm = styled.form`
   align-items: center;
   margin-left: 20px;
   width: 800px;
-
-  @media (max-width: 600px) {
-    margin-left: 0;
-    margin-top: 20px;
-  }
 `;
 
 const StyledSearchSelector = styled.select`
@@ -113,10 +108,6 @@ const StyledSearchInput = styled.input`
     box-shadow: 0 2px 4px rgba(0,0,0,0.3);
     outline: none;
   }
-
-  @media (max-width: 600px) {
-    width: 300px;
-  }
 `;
 
 
@@ -132,12 +123,6 @@ const StyledFooter = styled('footer')`
     justify-content: center;
     align-items: center;
     background-color: transparent;
-
-    @media (max-width: 600px) {
-      flex-direction: column;
-      align-items: flex-start;
-      padding: 20px;
-    }
 `;
 
 async function fetchShows() {

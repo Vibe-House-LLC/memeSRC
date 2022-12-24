@@ -1,17 +1,16 @@
 import { Helmet } from 'react-helmet-async';
 // @mui
-import { Dialog, DialogTitle, DialogContent, FormControl, InputLabel, Select, MenuItem, DialogActions, TextField, List, CardHeader, Avatar, ListItem, ListItemText, Button, Container, Grid, Stack, Typography, Modal, Card, CardContent, Box, CircularProgress, IconButton, Collapse } from '@mui/material';
-import CardMedia from '@mui/material/CardMedia';
+import { Dialog, DialogTitle, DialogContent, FormControl, InputLabel, Select, MenuItem, DialogActions, TextField, List, CardHeader, Avatar, ListItem, ListItemText, Button, Container, Grid, Stack, Typography, Card, CardContent, CircularProgress, IconButton, Collapse } from '@mui/material';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import ShareIcon from '@mui/icons-material/Share';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import Popover from '@mui/material/Popover';
-import { grey, red } from '@mui/material/colors';
+import { grey } from '@mui/material/colors';
 import CardActions from '@mui/material/CardActions';
 import { styled } from '@mui/material/styles';
 // components
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { API, graphqlOperation } from 'aws-amplify';
 import Iconify from '../components/iconify';
 import { createContentMetadata, updateContentMetadata, deleteContentMetadata } from '../graphql/mutations';
@@ -25,7 +24,7 @@ const FormMode = {
 };
 
 const ExpandMore = styled((props) => {
-  const { expand, ...other } = props;
+  const { ...other } = props;
   return <IconButton {...other} />;
 })(({ theme, expand }) => ({
   transform: !expand ? 'rotate(0deg)' : 'rotate(180deg)',
@@ -217,7 +216,7 @@ export default function MetadataPage() {
     handleClose();
   };
 
-  const handleEdit = useCallback(() => {
+  const handleEdit = () => {
     // Set the form fields to the values of the item being edited
     const item = metadata[selectedIndex];
     console.log(selectedIndex)
@@ -236,13 +235,13 @@ export default function MetadataPage() {
 
     // Show the form
     setShowForm(true);
-  });
+  };
 
-  const handleDelete = useCallback(() => {
+  const handleDelete = () => {
     const item = metadata[selectedIndex];
     deleteExistingContentMetadata(item.id)
     handleClose();
-  })
+  }
 
   useEffect(() => {
     async function getData() {
@@ -252,18 +251,6 @@ export default function MetadataPage() {
     }
     getData();
   }, []);
-
-  const style = {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    transform: 'translate(-50%, -50%)',
-    width: 400,
-    backgroundColor: 'white',
-    border: '2px solid #000',
-    boxShadow: 24,
-    p: 4,
-  };
 
   return (
     <>
