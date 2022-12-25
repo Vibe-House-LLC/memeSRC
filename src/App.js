@@ -31,7 +31,7 @@ export default function App() {
       {/* <StyledChart /> */}
       <UserContext.Provider value={{ user, setUser }}>
         <Suspense fallback={
-          <Backdrop open>
+          <Backdrop open sx={{ backgroundColor: "white" }}>
             <CircularProgress />
           </Backdrop>
         }>
