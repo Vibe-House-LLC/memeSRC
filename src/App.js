@@ -1,12 +1,13 @@
 import { useState, Suspense } from 'react';
 import { Auth } from 'aws-amplify';
+import { Backdrop, CircularProgress } from '@mui/material';
 // routes
 import Router from './routes';
 // theme
 import ThemeProvider from './theme';
 // components
 import ScrollToTop from './components/scroll-to-top';
-import { StyledChart } from './components/chart';
+// import { StyledChart } from './components/chart';
 import { UserContext } from './UserContext';
 
 // ----------------------------------------------------------------------
@@ -27,9 +28,13 @@ export default function App() {
   return (
     <ThemeProvider>
       <ScrollToTop />
-      <StyledChart />
+      {/* <StyledChart /> */}
       <UserContext.Provider value={{ user, setUser }}>
-        <Suspense fallback={<div>Loading...</div>}>
+        <Suspense fallback={
+          <Backdrop open>
+            <CircularProgress />
+          </Backdrop>
+        }>
           <Router />
         </Suspense>
       </UserContext.Provider>
