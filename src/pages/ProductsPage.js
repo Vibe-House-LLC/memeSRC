@@ -23,7 +23,7 @@ export default function ProductsPage() {
   return (
     <>
       <Helmet>
-        <title> Dashboard: Products | Minimal UI </title>
+        <title> Products - memeSRC 2.0 </title>
       </Helmet>
 
       <Container>

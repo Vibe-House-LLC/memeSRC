@@ -159,7 +159,7 @@ export default function FullScreenSearch(props) {
         <Grid item xs={12} textAlign='center' marginBottom={5}>
 
           <Typography component='h1' variant='h1' sx={{ color: '#FFFFFF' }}>
-            <Logo sx={{ display: 'inline', width: '150px', height: 'auto' }} color="white" /><br />memeSRC
+            <Logo sx={{ display: 'inline', width: '300px', height: 'auto' }} color="white" /><br />memeSRC
           </Typography>
 
         </Grid>
