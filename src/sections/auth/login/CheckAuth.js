@@ -20,7 +20,7 @@ export default function CheckAuth(props) {
             if (user.username || location.pathname === '/login') {
                 setContent(props.children);
             } else {
-                navigate('/login', { replace: true });
+                navigate(`/login?dest=${encodeURIComponent(location.pathname)}`, { replace: true });
             }
         } else {
             // Set up the user context

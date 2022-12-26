@@ -1,5 +1,5 @@
 import { useContext, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 // @mui
 import { Link, Stack, IconButton, InputAdornment, TextField, Checkbox, FormControlLabel } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
@@ -24,7 +24,20 @@ export default function LoginForm() {
 
   const {setUser} = useContext(UserContext)
 
+  // Use the useLocation hook to get the location object
+  const location = useLocation();
+
   const handleClick = () => {
+    // Get the query string from the location object
+    const queryString = location.search;
+
+    // Parse the query string into an object
+    const queryParams = new URLSearchParams(queryString);
+
+    // Get the 'dest' parameter from the query string
+    const dest = queryParams.get('dest');
+
+    // Handle sign in
     if (!staySignedIn) {
       Auth.configure({ storage: window.sessionStorage })
     } else {
@@ -32,7 +45,7 @@ export default function LoginForm() {
     }
     Auth.signIn(username, password).then((x) => {
       setUser(x)
-      navigate('/dashboard/app', { replace: true })
+      navigate(dest || '/dashboard/app', { replace: true })
     }).catch((err) => {
       alert(err);
     })
