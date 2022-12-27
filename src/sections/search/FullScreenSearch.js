@@ -206,7 +206,7 @@ export default function FullScreenSearch(props) {
             <MapsUgc color="white" />
           </Fab>
           <Fab color="primary" aria-label="donate" style={{ backgroundColor: "black" }} size='small'>
-            <Favorite fontSize="10px" />
+            <Favorite />
           </Fab>
           <a href={`https://api.memesrc.com/random/generate${seriesTitle ? `?series=${seriesTitle}` : ''}`} style={{ marginLeft: 'auto', textDecoration: 'none' }}>
             <StyledButton startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black" }}>Random</StyledButton>
