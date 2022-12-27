@@ -16,7 +16,7 @@ export default function ImageUploadPage() {
   return (
     <>
       <Helmet>
-        <title> Dashboard: Image Upload | Minimal UI </title>
+        <title> Image Upload - memeSRC 2.0 </title>
       </Helmet>
 
       <Container>

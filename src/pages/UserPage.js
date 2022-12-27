@@ -149,7 +149,7 @@ export default function UserPage() {
   return (
     <>
       <Helmet>
-        <title> User | Minimal UI </title>
+        <title> Users - memeSRC 2.0 </title>
       </Helmet>
 
       <Container>

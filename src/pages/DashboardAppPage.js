@@ -50,7 +50,7 @@ export default function DashboardAppPage() {
     <>
       
         <Helmet>
-          <title> Dashboard | Minimal UI </title>
+          <title> Dashboard - memeSRC 2.0 </title>
         </Helmet>
 
         <Container maxWidth="xl">

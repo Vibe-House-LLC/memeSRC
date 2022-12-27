@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Grid, CircularProgress, Card } from '@mui/material';
 import styled from '@emotion/styled';
+import FullScreenSearch from '../sections/search/FullScreenSearch';
+import TopBannerSearch from '../sections/search/TopBannerSearch';
 
 const StyledCircularProgress = styled(CircularProgress)`
   position: absolute;
@@ -8,40 +10,6 @@ const StyledCircularProgress = styled(CircularProgress)`
   left: 50%;
   transform: translate(-50%, -50%);
 `;
-
-const StyledForm = styled.form`
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'flex-start',
-`;
-
-const StyledLabel = styled.label(({ theme }) => ({
-  display: 'flex',
-  flexDirection: 'column',
-  marginBottom: '8px',
-  color: theme.palette.text.secondary,
-}));
-
-const StyledInput = styled.input(({ theme }) => ({
-  fontSize: '16px',
-  padding: '8px',
-  border: `1px solid ${theme.palette.divider}`,
-  borderRadius: '4px',
-}));
-
-const StyledButton = styled.button(({ theme }) => ({
-  fontSize: '16px',
-  padding: '8px 16px',
-  border: 'none',
-  borderRadius: '4px',
-  backgroundColor: theme.palette.primary.main,
-  color: theme.palette.common.white,
-  cursor: 'pointer',
-
-  '&:hover': {
-    backgroundColor: theme.palette.primary.dark,
-  },
-}));
 
 const StyledCard = styled(Card)`
   
@@ -87,11 +55,13 @@ export default function SearchPage() {
   const [sessionID, setSessionID] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  const memoizedResults = useMemo(() => results, [results]);
+
   useEffect(() => {
     getSessionID().then(id => setSessionID(id));
   }, []);
 
-  function handleSearch(e) {
+  const handleSearch = useCallback((e) => {
     e.preventDefault();
     setLoading(true);
     let apiSearchUrl;
@@ -111,58 +81,39 @@ export default function SearchPage() {
         console.error(error);
         setLoading(false);
       });
-  }
+  }, [seriesTitle, searchTerm, sessionID]);
+
 
   // const classes = useStyles();
 
   return (
-    <StyledForm onSubmit={e => handleSearch(e)}>
-      <StyledLabel htmlFor="search-term">
-        Search:
-        <StyledInput
-          type="text"
-          id="search-term"
-          value={searchTerm}
-          placeholder="What's the quote?"
-          onChange={e => setSearchTerm(e.target.value)}
-        />
-      </StyledLabel>
-      <StyledLabel htmlFor="series-title">
-        <StyledInput
-          type="text"
-          id="series-title"
-          value={seriesTitle}
-          placeholder="Series ID (optional)"
-          onChange={e => setSeriesTitle(e.target.value)}
-        />
-      </StyledLabel>
-      <StyledButton type="submit">Search</StyledButton>
-      <br /><br />
-      <Grid container spacing={2}>
+
+    <>
+      {!memoizedResults && !loading && <FullScreenSearch searchFunction={handleSearch} setSearchTerm={setSearchTerm} setSeriesTitle={setSeriesTitle} searchTerm={searchTerm} seriesTitle={seriesTitle} />}
+      {(memoizedResults || loading) && <TopBannerSearch searchFunction={handleSearch} setSearchTerm={setSearchTerm} setSeriesTitle={setSeriesTitle} searchTerm={searchTerm} seriesTitle={seriesTitle} />}
+      <Grid container spacing={2} marginTop={5}>
         {loading ? (
           <StyledCircularProgress />
-        ) : results && results.map(result => (
+        ) : memoizedResults && memoizedResults.map(result => (
           <Grid item xs={12} sm={6} md={4} key={result.fid}>
-            <a href={`/dashboard/editor/${result.fid}`}>
-            <StyledCard>
+            <a href={`/dashboard/editor/${result.fid}`} style={{ textDecoration: 'none' }}>
+              <StyledCard>
                 <StyledCardMedia
                   component="img"
                   src={`https://memesrc.com${result.frame_image}`}
                   alt={result.subtitle}
-                  title={result.subtitle}
-                />
+                  title={result.subtitle} />
                 <StyledTypography variant="body2">
                   Subtitle: {result.subtitle}<br />
                   Series: {result.series_name}<br />
                   Season: {result.season_number}<br />
                   Episode: {result.episode_number}
                 </StyledTypography>
-            </StyledCard>
+              </StyledCard>
             </a>
           </Grid>
         ))}
       </Grid>
-    </StyledForm>
-
+    </>
   );
 }

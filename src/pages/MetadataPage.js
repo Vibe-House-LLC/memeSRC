@@ -1,6 +1,14 @@
 import { Helmet } from 'react-helmet-async';
 // @mui
-import { Button, Container, Grid, Stack, Typography, Modal, Card, CardContent, Box, CircularProgress } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, FormControl, InputLabel, Select, MenuItem, DialogActions, TextField, List, CardHeader, Avatar, ListItem, ListItemText, Button, Container, Grid, Stack, Typography, Card, CardContent, CircularProgress, IconButton, Collapse } from '@mui/material';
+import FavoriteIcon from '@mui/icons-material/Favorite';
+import ShareIcon from '@mui/icons-material/Share';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import Popover from '@mui/material/Popover';
+import { grey } from '@mui/material/colors';
+import CardActions from '@mui/material/CardActions';
+import { styled } from '@mui/material/styles';
 // components
 import { useState, useEffect } from 'react';
 import { API, graphqlOperation } from 'aws-amplify';
@@ -14,6 +22,17 @@ const FormMode = {
   CREATE: 'create',
   EDIT: 'edit',
 };
+
+const ExpandMore = styled((props) => {
+  const { ...other } = props;
+  return <IconButton {...other} />;
+})(({ theme, expand }) => ({
+  transform: !expand ? 'rotate(0deg)' : 'rotate(180deg)',
+  marginLeft: 'auto',
+  transition: theme.transitions.create('transform', {
+    duration: theme.transitions.duration.shortest,
+  }),
+}));
 
 async function fetchMetadata(items = [], nextToken = null) {
   const result = await API.graphql(
@@ -50,6 +69,32 @@ export default function MetadataPage() {
   const [emoji, setEmoji] = useState('');
   const [status, setStatus] = useState('');
   const [mode, setMode] = useState(FormMode.CREATE);
+
+  const [expanded, setExpanded] = useState(false);
+  const [anchorEl, setAnchorEl] = useState(null);
+
+  const [selectedIndex, setSelectedIndex] = useState(null)
+
+  const handleExpandClick = () => {
+    setExpanded(!expanded);
+  };
+
+  const handleMoreVertClick = (event, itemIndex) => {
+    setSelectedIndex(itemIndex);
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = () => {
+    setSelectedIndex(null);
+    setAnchorEl(null);
+  };
+
+  const handleCloseForm = () => {
+    setShowForm(false)
+  };
+
+  const open = Boolean(anchorEl);
+  const popoverId = open ? 'simple-popover' : undefined;
 
   const clearForm = () => {
     setId('');
@@ -109,11 +154,11 @@ export default function MetadataPage() {
       emoji,
       status
     };
-  
+
     const variables = {
       input
     };
-  
+
     try {
       const result = await API.graphql({ query: updateContentMetadata, variables });
       console.log(result);
@@ -127,8 +172,8 @@ export default function MetadataPage() {
       return Promise.reject(error);
     }
   }
-  
-  
+
+
   async function deleteExistingContentMetadata(id) {
     const deletedMetadataItem = {
       input: {
@@ -168,10 +213,14 @@ export default function MetadataPage() {
     }
     clearForm();
     setShowForm(false);
+    handleClose();
   };
 
-  const handleEdit = (item) => {
+  const handleEdit = () => {
     // Set the form fields to the values of the item being edited
+    const item = metadata[selectedIndex];
+    console.log(selectedIndex)
+    console.log(item)
     setId(item.id);
     setTitle(item.title);
     setDescription(item.description);
@@ -180,13 +229,19 @@ export default function MetadataPage() {
     setColorSecondary(item.colorSecondary);
     setEmoji(item.emoji);
     setStatus(item.status);
-  
+
     // Set the form to edit mode
     setMode(FormMode.EDIT);
-  
+
     // Show the form
     setShowForm(true);
   };
+
+  const handleDelete = () => {
+    const item = metadata[selectedIndex];
+    deleteExistingContentMetadata(item.id)
+    handleClose();
+  }
 
   useEffect(() => {
     async function getData() {
@@ -196,18 +251,6 @@ export default function MetadataPage() {
     }
     getData();
   }, []);
-
-  const style = {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    transform: 'translate(-50%, -50%)',
-    width: 400,
-    backgroundColor: 'white',
-    border: '2px solid #000',
-    boxShadow: 24,
-    p: 4,
-  };
 
   return (
     <>
@@ -225,103 +268,172 @@ export default function MetadataPage() {
         </Stack>
         <Container>
           <Grid container spacing={2}>
-            {(loading) ? "Loading" : metadata.map((item) => (
-              <Grid item xs={12} sm={6} md={4} key={item.id}>
-                <Card>
-                  <CardContent>
-                    <Typography variant="h5">{item.title}</Typography>
-                    <Typography>{item.description}</Typography>
-                    <Typography>Frame Count: {item.frameCount}</Typography>
-                    <Typography>Color Main: {item.colorMain}</Typography>
-                    <Typography>Color Secondary: {item.colorSecondary}</Typography>
-                    <Typography>Emoji: {item.emoji}</Typography>
-                    <Typography>Status: {item.status}</Typography>
-                  </CardContent>
-                  <button type="button" onClick={() => handleEdit(item)}>Edit</button>
-                  <button type="button" onClick={() => deleteExistingContentMetadata(item.id)}>Delete</button>
+            {(loading) ? "Loading" : metadata.map((metadataItem, index) => (
+              <Grid item xs={12} sm={6} md={4} key={metadataItem.id}>
+                <Card sx={{ maxWidth: 345 }}>
+                  <CardHeader
+                    avatar={
+                      <Avatar sx={{ bgcolor: grey[200] }} aria-label="recipe">
+                        {metadataItem.emoji}
+                      </Avatar>
+                    }
+                    action={
+                      <>
+                        <IconButton aria-label="settings" onClick={(event) => handleMoreVertClick(event, index)}>
+                          <MoreVertIcon />
+                        </IconButton>
+                      </>
+                    }
+                    style={{ height: "100px", top: "0" }}
+                    title={metadataItem.title}
+                    subheader={`${metadataItem.frameCount.toLocaleString('en-US')} frames`}
+                  />
+                  <Popover
+                    id={popoverId}
+                    open={open}
+                    anchorEl={anchorEl}
+                    onClose={handleClose}
+                    anchorOrigin={{
+                      vertical: 'top',
+                      horizontal: 'right',
+                    }}
+                    transformOrigin={{
+                      vertical: 'top',
+                      horizontal: 'right',
+                    }}
+                  >
+                    <List>
+                      <ListItem button onClick={handleEdit}>
+                        <ListItemText primary="Edit" />
+                      </ListItem>
+                      <ListItem button onClick={handleDelete}>
+                        <ListItemText primary="Delete" />
+                      </ListItem>
+                    </List>
+                  </Popover>
+                  {/* <CardMedia
+                    component="img"
+                    height="194"
+                    image="/static/images/cards/paella.jpg"
+                    alt="Paella dish"
+                  /> */}
+                  <CardActions disableSpacing>
+                    <IconButton aria-label="add to favorites">
+                      <FavoriteIcon />
+                    </IconButton>
+                    <IconButton aria-label="share">
+                      <ShareIcon />
+                    </IconButton>
+                    <ExpandMore
+                      expand={expanded}
+                      onClick={handleExpandClick}
+                      aria-expanded={expanded}
+                      aria-label="show more"
+                    >
+                      <ExpandMoreIcon />
+                    </ExpandMore>
+                  </CardActions>
+                  <Collapse in={expanded} timeout="auto" unmountOnExit>
+                    <CardContent>
+                      <Typography>{metadataItem.description}</Typography>
+                      <Typography>Frame Count: {metadataItem.frameCount}</Typography>
+                      <Typography>Color Main: {metadataItem.colorMain}</Typography>
+                      <Typography>Color Secondary: {metadataItem.colorSecondary}</Typography>
+                      <Typography>Emoji: {metadataItem.emoji}</Typography>
+                      <Typography>Status: {metadataItem.status}</Typography>
+                    </CardContent>
+                  </Collapse>
                 </Card>
               </Grid>
             ))}
           </Grid>
         </Container>
       </Container>
-      <Modal open={showForm}>
-        <Box style={style}>
-          <Stack>
-            <Typography variant="h5">Create New Content Metadata</Typography>
-            <form onSubmit={handleSubmit}>
-              <Grid container spacing={2}>
-                <Grid item xs={12}>
-                  <Typography>ID:</Typography>
-                  <input
-                    type="text"
-                    value={id}
-                    onChange={(event) => setId(event.target.value)}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <Typography>Title:</Typography>
-                  <input
-                    type="text"
-                    value={title}
-                    onChange={(event) => setTitle(event.target.value)}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <Typography>Description:</Typography>
-                  <input
-                    type="text"
-                    value={description}
-                    onChange={(event) => setDescription(event.target.value)}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <Typography>Frame Count:</Typography>
-                  <input
-                    type="number"
-                    value={frameCount}
-                    onChange={(event) => setFrameCount(event.target.value)}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <Typography>Color Main:</Typography>
-                  <input
-                    type="text"
-                    value={colorMain}
-                    onChange={(event) => setColorMain(event.target.value)}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <Typography>Color Secondary:</Typography>
-                  <input
-                    type="text"
-                    value={colorSecondary}
-                    onChange={(event) => setColorSecondary(event.target.value)}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <Typography>Emoji:</Typography>
-                  <input
-                    type="text"
-                    value={emoji} onChange={(event) => setEmoji(event.target.value)}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <Typography>Status:</Typography>
-                  <input
-                    type="number"
+      {/* <button type="button" onClick={() => handleEdit(item)}>Edit</button>
+                  <button type="button" onClick={() => deleteExistingContentMetadata(item.id)}>Delete</button> */}
+      <Dialog open={showForm} onClose={handleClose}>
+        <DialogTitle>Create New Content Metadata</DialogTitle>
+        <DialogContent>
+          <form onSubmit={handleSubmit}>
+            <Grid container spacing={2}>
+              <Grid item xs={12}>
+                <TextField
+                  label="ID"
+                  fullWidth
+                  value={id}
+                  onChange={(event) => setId(event.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  label="Title"
+                  fullWidth
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  label="Description"
+                  fullWidth
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  label="Frame Count"
+                  type="number"
+                  fullWidth
+                  value={frameCount}
+                  onChange={(event) => setFrameCount(event.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  label="Color Main"
+                  fullWidth
+                  value={colorMain}
+                  onChange={(event) => setColorMain(event.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  label="Color Secondary"
+                  fullWidth
+                  value={colorSecondary}
+                  onChange={(event) => setColorSecondary(event.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  label="Emoji"
+                  fullWidth
+                  value={emoji}
+                  onChange={(event) => setEmoji(event.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <FormControl fullWidth>
+                  <InputLabel id="status-label">Status</InputLabel>
+                  <Select
+                    labelId="status-label"
                     value={status}
                     onChange={(event) => setStatus(event.target.value)}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <Button type="submit">Submit</Button>
-                </Grid>
+                  >
+                    <MenuItem value={0}>Incomplete</MenuItem>
+                    <MenuItem value={1}>Complete</MenuItem>
+                  </Select>
+                </FormControl>
               </Grid>
-            </form>
-          </Stack>
-        </Box>
-      </Modal>
+            </Grid>
+          </form>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseForm}>Cancel</Button>
+          <Button type="submit" onClick={handleSubmit}>Submit</Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 }
