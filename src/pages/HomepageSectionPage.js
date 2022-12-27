@@ -1,30 +1,66 @@
+// React
 import { Helmet } from 'react-helmet-async';
-// @mui
-import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, List, CardHeader, Avatar, ListItem, ListItemText, Button, Container, Grid, Stack, Typography, Card, CardContent, CircularProgress, IconButton, Collapse } from '@mui/material';
+import { useState, useEffect } from 'react';
+
+// Amplify
+import { API, graphqlOperation } from 'aws-amplify';
+
+// MUI Components
+import { 
+  Dialog, 
+  DialogTitle, 
+  DialogContent, 
+  DialogActions, 
+  TextField, 
+  List, 
+  CardHeader, 
+  Avatar, 
+  ListItem, 
+  ListItemText, 
+  Button, 
+  Container, 
+  Grid, 
+  Stack, 
+  Typography, 
+  Card, 
+  CardContent, 
+  CircularProgress, 
+  IconButton, 
+  Collapse,
+  Popover,
+  CardActions
+} from '@mui/material';
+
+// MUI Styles
+import { styled } from '@mui/material/styles';
+
+// MUI Icons
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import ShareIcon from '@mui/icons-material/Share';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
-import Popover from '@mui/material/Popover';
-import CardActions from '@mui/material/CardActions';
-import { styled } from '@mui/material/styles';
-// components
-import { useState, useEffect } from 'react';
-import { API, graphqlOperation } from 'aws-amplify';
+
+// Iconify Icons
 import Iconify from '../components/iconify';
+
+// GraphQL
 import { createHomepageSection, updateHomepageSection, deleteHomepageSection } from '../graphql/mutations';
 import { listHomepageSections } from '../graphql/queries';
+
+// Homepage Section Form Components
 import ButtonsForm from '../components/homepage-section-forms/ButtonsForm';
 import BottomImageForm from '../components/homepage-section-forms/BottomImageForm';
 import ButtonSubtextForm from '../components/homepage-section-forms/ButtonSubtextForm';
 
 // ----------------------------------------------------------------------
 
+// Enum for form mode state
 const FormMode = {
   CREATE: 'create',
   EDIT: 'edit',
 };
 
+// Style for item detail expansion
 const ExpandMore = styled((props) => {
   const { ...other } = props;
   return <IconButton {...other} />;
@@ -36,6 +72,7 @@ const ExpandMore = styled((props) => {
   }),
 }));
 
+// Function to pull the homepage sections from graphql
 async function fetchHomepageSections(items = [], nextToken = null) {
   const result = await API.graphql(
     graphqlOperation(listHomepageSections, {
@@ -57,11 +94,18 @@ async function fetchHomepageSections(items = [], nextToken = null) {
   return allItems;
 }
 
-
+// The HomepageSectionPage component
 export default function HomepageSectionPage() {
-  const [sections, setSections] = useState([]);
+  // Loading state
   const [loading, setLoading] = useState(true);
+
+  // Form states
   const [showForm, setShowForm] = useState(false);
+  const [mode, setMode] = useState(FormMode.CREATE);
+  const [selectedIndex, setSelectedIndex] = useState(null)
+
+  // Data states
+  const [sections, setSections] = useState([]);
   const [id, setId] = useState('');
   const [index, setIndex] = useState('');
   const [title, setTitle] = useState('');
@@ -71,35 +115,46 @@ export default function HomepageSectionPage() {
   const [buttonSubtext, setButtonSubtext] = useState({});
   const [backgroundColor, setBackgroundColor] = useState({});
   const [textColor, setTextColor] = useState('');
-  const [mode, setMode] = useState(FormMode.CREATE);
 
+  // Expand details state
   const [expanded, setExpanded] = useState(false);
+
+  // Popover state (for edit and delete)
   const [anchorEl, setAnchorEl] = useState(null);
 
-  const [selectedIndex, setSelectedIndex] = useState(null)
-
+  // Handle detail expansion
   const handleExpandClick = () => {
     setExpanded(!expanded);
   };
 
+  // Handle show options (edit or delete)
   const handleMoreVertClick = (event, itemIndex) => {
     setSelectedIndex(itemIndex);
     setAnchorEl(event.currentTarget);
   };
 
+  // Handle hide options (edit or delete)
   const handleClose = () => {
     setSelectedIndex(null);
     setAnchorEl(null);
   };
 
+  // Helpers for options display (edit or delete)
+  const open = Boolean(anchorEl);
+  const popoverId = open ? 'simple-popover' : undefined;
+
+  // Handle showing the main form
+  const handleShowForm = () => {
+    setShowForm(true);
+  };
+
+  // Handle closing the main form
   const handleCloseForm = () => {
     clearForm();
     setShowForm(false);
   };
 
-  const open = Boolean(anchorEl);
-  const popoverId = open ? 'simple-popover' : undefined;
-
+  // Function to clear the form inputs
   const clearForm = () => {
     setId('');
     setIndex('');
@@ -114,6 +169,7 @@ export default function HomepageSectionPage() {
 
   // ----------------------------------------------------------------------
 
+  // Function to create new homepage sections
   async function createNewHomepageSection(id, index, title, subtitle, buttons, bottomImage, buttonSubtext, backgroundColor, textColor) {
     const newHomepageSection = {
       input: {
@@ -129,32 +185,13 @@ export default function HomepageSectionPage() {
       }
     };
 
-    console.log(newHomepageSection)
-
-    try {
-      const result = await API.graphql(graphqlOperation(createHomepageSection, newHomepageSection));
-      console.log(result)
-
-      setSections([...sections, result.data.createHomepageSection])
-
-      clearForm();
-
-      return result.data.createHomepageSection;
-    } catch (error) {
-      console.log(error)
-    }
-    return false
-    // const result = await API.graphql(graphqlOperation(createHomepageSection, newHomepageSection));
-
-    // console.log(result)
-
-    // setSections([...sections, result.data.createHomepageSection])
-
-    // clearForm();
-
-    // return result.data.createHomepageSection;
+    const result = await API.graphql(graphqlOperation(createHomepageSection, newHomepageSection));
+    setSections([...sections, result.data.createHomepageSection])
+    clearForm();
+    return result.data.createHomepageSection;
   }
 
+  // Function to update existing homepage sections
   async function updateExistingHomepageSection(
     id,
     index,
@@ -196,14 +233,13 @@ export default function HomepageSectionPage() {
     }
   }
 
-
+  // Function to delete existing homepage sections
   async function deleteExistingHomepageSection(id) {
     const deletedHomepageSection = {
       input: {
         id
       }
     };
-
     try {
       const result = await API.graphql(graphqlOperation(deleteHomepageSection, deletedHomepageSection));
       console.log(result);
@@ -218,15 +254,7 @@ export default function HomepageSectionPage() {
     }
   }
 
-
-
-
-  // ----------------------------------------------------------------------
-
-  const toggleForm = () => {
-    setShowForm(!showForm);
-  };
-
+  // Function to handle submissions of the form
   const handleSubmit = (event) => {
     event.preventDefault();
     if (mode === FormMode.CREATE) {
@@ -239,6 +267,7 @@ export default function HomepageSectionPage() {
     handleClose();
   };
 
+  // Prepare the editing flow
   const handleEdit = () => {
     // Set the form fields to the values of the item being edited
     const item = sections[selectedIndex];
@@ -261,12 +290,14 @@ export default function HomepageSectionPage() {
     setShowForm(true);
   };
 
+  // Handle deletions of homepage sections
   const handleDelete = () => {
     const item = sections[selectedIndex];
     deleteExistingHomepageSection(item.id)
     handleClose();
   }
 
+  // Pull the homepage sections from GraphQL when the component loads
   useEffect(() => {
     async function getData() {
       const data = await fetchHomepageSections();
@@ -276,6 +307,7 @@ export default function HomepageSectionPage() {
     getData();
   }, []);
 
+  // Return the contents for the page
   return (
     <>
       <Helmet>
@@ -286,7 +318,7 @@ export default function HomepageSectionPage() {
           <Typography variant="h4" gutterBottom>
             Homepage Sections {loading ? <CircularProgress size={25} /> : `(${sections.length})`}
           </Typography>
-          <Button variant="contained" startIcon={<Iconify icon="eva:plus-fill" />} onClick={toggleForm}>
+          <Button variant="contained" startIcon={<Iconify icon="eva:plus-fill" />} onClick={handleShowForm}>
             New Section
           </Button>
         </Stack>
@@ -335,12 +367,6 @@ export default function HomepageSectionPage() {
                       </ListItem>
                     </List>
                   </Popover>
-                  {/* <CardMedia
-                    component="img"
-                    height="194"
-                    image="/static/images/cards/paella.jpg"
-                    alt="Paella dish"
-                  /> */}
                   <CardActions disableSpacing>
                     <IconButton aria-label="add to favorites">
                       <FavoriteIcon />
@@ -372,8 +398,6 @@ export default function HomepageSectionPage() {
           </Grid>
         </Container>
       </Container>
-      {/* <button type="button" onClick={() => handleEdit(item)}>Edit</button>
-                  <button type="button" onClick={() => deleteExistingHomepageSection(item.id)}>Delete</button> */}
       <Dialog open={showForm} onClose={handleClose}>
         <DialogTitle>Create Homepage Section</DialogTitle>
         <DialogContent>
