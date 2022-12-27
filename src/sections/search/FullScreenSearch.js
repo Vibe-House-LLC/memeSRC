@@ -1,11 +1,11 @@
 import styled from "@emotion/styled";
 import { Button, Fab, Grid, Typography } from "@mui/material";
-import { Favorite, MapsUgc, MapsUgcRounded, MessageTwoTone, Shuffle } from "@mui/icons-material";
+import { Favorite, MapsUgc, Shuffle } from "@mui/icons-material";
 import { API, graphqlOperation } from 'aws-amplify';
 import { useEffect, useState } from "react";
 import { searchPropTypes } from "./SearchPropTypes";
 import Logo from "../../components/logo/Logo";
-import { listContentMetadata } from '../../graphql/queries';
+import { listContentMetadata, listHomepageSections } from '../../graphql/queries';
 import HomePageSection from "./HomePageSection";
 
 // Define constants for colors and fonts
@@ -130,18 +130,28 @@ async function fetchShows() {
   return result.data.listContentMetadata.items;
 }
 
+async function fetchSections() {
+  const result = await API.graphql(graphqlOperation(listHomepageSections, { filter: {}, limit: 10 }));
+  return result.data.listHomepageSections.items;
+}
+
 FullScreenSearch.propTypes = searchPropTypes;
 
 export default function FullScreenSearch(props) {
   const [shows, setShows] = useState([]);
+  const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
   const { searchTerms, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction } = props
 
   useEffect(() => {
     async function getData() {
-      const data = await fetchShows();
-      setShows(data);
+      // Get shows
+      const shows = await fetchShows();
+      setShows(shows);
       setLoading(false);
+      // Get homepage sections
+      const sections = await fetchSections();
+      setSections(sections)
     }
     getData();
   }, []);
@@ -194,8 +204,8 @@ export default function FullScreenSearch(props) {
             <Typography component='h4' variant='h4'>
               Search over 36 million screencaps from your favorite shows.
             </Typography>
-            <Button href='http://example.com' startIcon='🚀' sx={{marginTop: '12px'}}>
-              <Typography sx={{textDecoration: 'underline', fontSize: '1em', fontWeight: '800', color: "#FFFFFF"}}>
+            <Button href='http://example.com' startIcon='🚀' sx={{ marginTop: '12px' }}>
+              <Typography sx={{ textDecoration: 'underline', fontSize: '1em', fontWeight: '800', color: "#FFFFFF" }}>
                 New Feature: Universal Search
               </Typography>
             </Button>
@@ -213,7 +223,22 @@ export default function FullScreenSearch(props) {
           </a>
         </StyledFooter>
       </StyledGridContainer>
-      <HomePageSection 
+      {sections.map((section) => {
+        console.log(section)
+        return (
+          <HomePageSection
+            key={section.id}
+            backgroundColor={section.backgroundColor}
+            textColor={section.textColor}
+            title={section.title}
+            subtitle={section.subtitle}
+            buttons={JSON.parse(section.buttons)}
+            bottomImage={JSON.parse(section.bottomImage)}
+            buttonSubtext={JSON.parse(section.buttonSubtext)}
+          />
+        )
+      })}
+      {/* <HomePageSection 
         backgroundColor="#ff6900" 
         textColor="#FFFFFF"
         title="This is a title"
@@ -239,7 +264,7 @@ export default function FullScreenSearch(props) {
           text: 'Click me to go',
           href: 'http://www.example.com'
         }}
-      />
+      /> */}
     </>
   )
 }

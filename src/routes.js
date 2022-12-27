@@ -14,6 +14,7 @@ const ImageUploadPage = lazy(() => import('./pages/ImageUploadPage'));
 const SearchPage = lazy(() => import('./pages/SearchPage'));
 const EditorPage = lazy(() => import('./pages/EditorPage'));
 const MetadataPage = lazy(() => import('./pages/MetadataPage'));
+const HomepageSectionPage = lazy(() => import('./pages/HomepageSectionPage'));
 
 
 // ----------------------------------------------------------------------
@@ -35,6 +36,7 @@ export default function Router() {
         { path: 'editor', element: <EditorPage /> },
         { path: 'editor/:fid', element: <EditorPage /> },
         { path: 'metadata', element: <MetadataPage /> },
+        { path: 'homepagesections', element: <HomepageSectionPage /> }
       ],
     },
     {
