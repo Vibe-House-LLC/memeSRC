@@ -18,3 +18,13 @@ type ContentMetadata @model {
   emoji: String,
   status: Int
 }
+
+type HomepageSection @model {
+  id: ID!,
+  index: Int,
+  title: String!,
+  subtitle: String,
+  buttons: AWSJSON,
+  bottomImage: AWSJSON,
+  buttonSubtext: AWSJSON,
+}

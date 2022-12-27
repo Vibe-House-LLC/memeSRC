@@ -94,3 +94,54 @@ export const onDeleteContentMetadata = /* GraphQL */ `
     }
   }
 `;
+export const onCreateHomepageSection = /* GraphQL */ `
+  subscription OnCreateHomepageSection(
+    $filter: ModelSubscriptionHomepageSectionFilterInput
+  ) {
+    onCreateHomepageSection(filter: $filter) {
+      id
+      index
+      title
+      subtitle
+      buttons
+      bottomImage
+      buttonSubtext
+      createdAt
+      updatedAt
+    }
+  }
+`;
+export const onUpdateHomepageSection = /* GraphQL */ `
+  subscription OnUpdateHomepageSection(
+    $filter: ModelSubscriptionHomepageSectionFilterInput
+  ) {
+    onUpdateHomepageSection(filter: $filter) {
+      id
+      index
+      title
+      subtitle
+      buttons
+      bottomImage
+      buttonSubtext
+      createdAt
+      updatedAt
+    }
+  }
+`;
+export const onDeleteHomepageSection = /* GraphQL */ `
+  subscription OnDeleteHomepageSection(
+    $filter: ModelSubscriptionHomepageSectionFilterInput
+  ) {
+    onDeleteHomepageSection(filter: $filter) {
+      id
+      index
+      title
+      subtitle
+      buttons
+      bottomImage
+      buttonSubtext
+      createdAt
+      updatedAt
+    }
+  }
+`;

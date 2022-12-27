@@ -100,3 +100,57 @@ export const deleteContentMetadata = /* GraphQL */ `
     }
   }
 `;
+export const createHomepageSection = /* GraphQL */ `
+  mutation CreateHomepageSection(
+    $input: CreateHomepageSectionInput!
+    $condition: ModelHomepageSectionConditionInput
+  ) {
+    createHomepageSection(input: $input, condition: $condition) {
+      id
+      index
+      title
+      subtitle
+      buttons
+      bottomImage
+      buttonSubtext
+      createdAt
+      updatedAt
+    }
+  }
+`;
+export const updateHomepageSection = /* GraphQL */ `
+  mutation UpdateHomepageSection(
+    $input: UpdateHomepageSectionInput!
+    $condition: ModelHomepageSectionConditionInput
+  ) {
+    updateHomepageSection(input: $input, condition: $condition) {
+      id
+      index
+      title
+      subtitle
+      buttons
+      bottomImage
+      buttonSubtext
+      createdAt
+      updatedAt
+    }
+  }
+`;
+export const deleteHomepageSection = /* GraphQL */ `
+  mutation DeleteHomepageSection(
+    $input: DeleteHomepageSectionInput!
+    $condition: ModelHomepageSectionConditionInput
+  ) {
+    deleteHomepageSection(input: $input, condition: $condition) {
+      id
+      index
+      title
+      subtitle
+      buttons
+      bottomImage
+      buttonSubtext
+      createdAt
+      updatedAt
+    }
+  }
+`;
