@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { Button, Fab, Grid, Typography } from "@mui/material";
-import { Favorite, MapsUgc, MapsUgcRounded, MessageTwoTone, Shuffle } from "@mui/icons-material";
+import { Favorite, MapsUgc, Shuffle } from "@mui/icons-material";
 import { API, graphqlOperation } from 'aws-amplify';
 import { useEffect, useState } from "react";
 import { searchPropTypes } from "./SearchPropTypes";
@@ -227,6 +227,7 @@ export default function FullScreenSearch(props) {
         console.log(section)
         return (
           <HomePageSection
+            key={section.id}
             backgroundColor={section.backgroundColor}
             textColor={section.textColor}
             title={section.title}

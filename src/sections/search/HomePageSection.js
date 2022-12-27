@@ -1,13 +1,7 @@
 import styled from "@emotion/styled";
 import { Favorite } from "@mui/icons-material";
 import { Button, Grid, Typography } from "@mui/material";
-import { secondsToMinutes } from "date-fns";
 import PropTypes from 'prop-types';
-
-// Define constants for colors and fonts
-const PRIMARY_COLOR = '#4285F4';
-const SECONDARY_COLOR = '#0F9D58';
-const FONT_FAMILY = 'Roboto, sans-serif';
 
 // Create a grid container component
 const StyledGridContainer = styled(Grid)`
@@ -46,8 +40,8 @@ export default function HomePageSection({backgroundColor, textColor, title, subt
         <Typography component='h4' variant='h4' sx={{color: textColor}} marginBottom={4}>
           {subtitle}
         </Typography>
-        {buttons.map((button) => (
-            <Button startIcon={<Favorite />} href={button.destination} variant="contained" sx={{margin: '10px'}}>
+        {buttons.map((button, index) => (
+            <Button key={index} startIcon={<Favorite />} href={button.destination} variant="contained" sx={{margin: '10px'}}>
               {button.title}
             </Button>
           )

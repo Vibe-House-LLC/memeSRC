@@ -1,18 +1,16 @@
 import { Helmet } from 'react-helmet-async';
 // @mui
-import { Dialog, DialogTitle, DialogContent, FormControl, InputLabel, Select, MenuItem, DialogActions, TextField, List, CardHeader, Avatar, ListItem, ListItemText, Button, Container, Grid, Stack, Typography, Card, CardContent, CircularProgress, IconButton, Collapse } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, List, CardHeader, Avatar, ListItem, ListItemText, Button, Container, Grid, Stack, Typography, Card, CardContent, CircularProgress, IconButton, Collapse } from '@mui/material';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import ShareIcon from '@mui/icons-material/Share';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import Popover from '@mui/material/Popover';
-import { grey } from '@mui/material/colors';
 import CardActions from '@mui/material/CardActions';
 import { styled } from '@mui/material/styles';
 // components
 import { useState, useEffect } from 'react';
 import { API, graphqlOperation } from 'aws-amplify';
-import { Favorite } from '@mui/icons-material';
 import Iconify from '../components/iconify';
 import { createHomepageSection, updateHomepageSection, deleteHomepageSection } from '../graphql/mutations';
 import { listHomepageSections } from '../graphql/queries';
@@ -47,8 +45,8 @@ async function fetchHomepageSections(items = [], nextToken = null) {
     })
   );
   const sortedSections = result.data.listHomepageSections.items.sort((a, b) => {
-    if (a.title < b.title) return -1;
-    if (a.title > b.title) return 1;
+    if (a.index < b.index) return -1;
+    if (a.index > b.index) return 1;
     return 0;
   });
   const allItems = [...items, ...sortedSections];
