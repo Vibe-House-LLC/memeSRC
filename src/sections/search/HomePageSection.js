@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import { Favorite } from "@mui/icons-material";
 import { Button, Grid, Typography } from "@mui/material";
 import PropTypes from 'prop-types';
 
@@ -45,7 +46,7 @@ export default function HomePageSection({backgroundColor, textColor, title, subt
           {subtitle}
         </Typography>
         {buttons.map((button) => (
-            <Button startIcon={button.icon} href={button.destination} variant="contained" sx={{margin: '10px'}}>
+            <Button startIcon={<Favorite />} href={button.destination} variant="contained" sx={{margin: '10px'}}>
               {button.title}
             </Button>
           )
