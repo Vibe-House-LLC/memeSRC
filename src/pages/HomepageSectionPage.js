@@ -16,6 +16,9 @@ import { Favorite } from '@mui/icons-material';
 import Iconify from '../components/iconify';
 import { createHomepageSection, updateHomepageSection, deleteHomepageSection } from '../graphql/mutations';
 import { listHomepageSections } from '../graphql/queries';
+import ButtonsForm from '../components/ButtonsForm';
+import BottomImageForm from '../components/BottomImageForm';
+import ButtonSubtextForm from '../components/ButtonSubtextForm';
 
 // ----------------------------------------------------------------------
 
@@ -65,9 +68,9 @@ export default function HomepageSectionPage() {
   const [index, setIndex] = useState('');
   const [title, setTitle] = useState('');
   const [subtitle, setSubtitle] = useState('');
-  const [buttons, setButtons] = useState('');
-  const [bottomImage, setBottomImage] = useState('');
-  const [buttonSubtext, setbuttonSubtext] = useState('');
+  const [buttons, setButtons] = useState([]);
+  const [bottomImage, setBottomImage] = useState({});
+  const [buttonSubtext, setButtonSubtext] = useState({});
   const [mode, setMode] = useState(FormMode.CREATE);
 
   const [expanded, setExpanded] = useState(false);
@@ -90,7 +93,8 @@ export default function HomepageSectionPage() {
   };
 
   const handleCloseForm = () => {
-    setShowForm(false)
+    clearForm();
+    setShowForm(false);
   };
 
   const open = Boolean(anchorEl);
@@ -103,7 +107,7 @@ export default function HomepageSectionPage() {
     setSubtitle('');
     setButtons('');
     setBottomImage('');
-    setbuttonSubtext('');
+    setButtonSubtext('');
   };
 
   // ----------------------------------------------------------------------
@@ -115,27 +119,9 @@ export default function HomepageSectionPage() {
         index,
         title,
         subtitle,
-        buttons: JSON.stringify([
-          {
-            title: "Title One",
-            icon: <Favorite />,
-            destination: "http://www.example.com"
-          },
-          {
-            title: "Title Two",
-            icon: <Favorite />,
-            destination: "http://www.example.com"
-          }
-        ]),
-        bottomImage: JSON.stringify({
-          alt: "testing",
-          src: '/assets/illustrations/girl-looking-at-stars-and-moon-with-telescope.svg',
-          bottomMargin: 8
-        }),
-        buttonSubtext: JSON.stringify({
-          text: 'Click me to go',
-          href: 'http://www.example.com'
-        })
+        buttons: JSON.stringify(buttons),
+        bottomImage: JSON.stringify(bottomImage),
+        buttonSubtext: JSON.stringify(buttonSubtext)
       }
     };
 
@@ -254,9 +240,9 @@ export default function HomepageSectionPage() {
     setIndex(item.index);
     setTitle(item.title);
     setSubtitle(item.subtitle);
-    setButtons(item.buttons);
-    setBottomImage(item.bottomImage);
-    setbuttonSubtext(item.buttonSubtext);
+    setButtons(JSON.parse(item.buttons));
+    setBottomImage(JSON.parse(item.bottomImage));
+    setButtonSubtext(JSON.parse(item.buttonSubtext));
 
     // Set the form to edit mode
     setMode(FormMode.EDIT);
@@ -314,7 +300,7 @@ export default function HomepageSectionPage() {
                     }
                     style={{ height: "100px", top: "0" }}
                     title={sectionItem.title}
-                    subheader={sectionItem.buttons}
+                    subheader={sectionItem.subtitle}
                   />
                   <Popover
                     id={popoverId}
@@ -416,27 +402,24 @@ export default function HomepageSectionPage() {
                 />
               </Grid>
               <Grid item xs={12}>
-                <TextField
-                  label="Buttons"
-                  fullWidth
-                  value={buttons}
-                  onChange={(event) => setButtons(event.target.value)}
+                <Typography>Buttons:</Typography>
+                <ButtonsForm
+                  buttons={buttons}
+                  setButtons={setButtons}
                 />
               </Grid>
               <Grid item xs={12}>
-                <TextField
-                  label="Bottom Image"
-                  fullWidth
-                  value={bottomImage}
-                  onChange={(event) => setBottomImage(event.target.value)}
+                <Typography>Bottom Image:</Typography>
+                <BottomImageForm
+                  bottomImage={bottomImage}
+                  setBottomImage={setBottomImage}
                 />
               </Grid>
               <Grid item xs={12}>
-                <TextField
-                  label="Buttons Subtext"
-                  fullWidth
-                  value={buttonSubtext}
-                  onChange={(event) => setbuttonSubtext(event.target.value)}
+                <Typography>Buttons Subtext:</Typography>
+                <ButtonSubtextForm
+                  buttonSubtext={buttonSubtext}
+                  setButtonSubtext={setButtonSubtext}
                 />
               </Grid>
             </Grid>
