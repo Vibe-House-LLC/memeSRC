@@ -106,6 +106,8 @@ export const onCreateHomepageSection = /* GraphQL */ `
       buttons
       bottomImage
       buttonSubtext
+      backgroundColor
+      textColor
       createdAt
       updatedAt
     }
@@ -123,6 +125,8 @@ export const onUpdateHomepageSection = /* GraphQL */ `
       buttons
       bottomImage
       buttonSubtext
+      backgroundColor
+      textColor
       createdAt
       updatedAt
     }
@@ -140,6 +144,8 @@ export const onDeleteHomepageSection = /* GraphQL */ `
       buttons
       bottomImage
       buttonSubtext
+      backgroundColor
+      textColor
       createdAt
       updatedAt
     }

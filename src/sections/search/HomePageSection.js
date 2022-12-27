@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
 import { Favorite } from "@mui/icons-material";
 import { Button, Grid, Typography } from "@mui/material";
+import { secondsToMinutes } from "date-fns";
 import PropTypes from 'prop-types';
 
 // Define constants for colors and fonts
@@ -53,7 +54,7 @@ export default function HomePageSection({backgroundColor, textColor, title, subt
         )}
         <br />
         <Button href={buttonSubtext.href} startIcon='🧸' sx={{marginTop: '12px'}}>
-          <Typography sx={{textDecoration: 'underline', fontSize: '.95em', fontWeight: '800', color: "#FFFFFF"}}>
+          <Typography sx={{textDecoration: 'underline', fontSize: '.95em', fontWeight: '800', color: textColor}}>
             {buttonSubtext.text}
           </Typography>
         </Button>

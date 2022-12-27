@@ -79,6 +79,8 @@ export const getHomepageSection = /* GraphQL */ `
       buttons
       bottomImage
       buttonSubtext
+      backgroundColor
+      textColor
       createdAt
       updatedAt
     }
@@ -103,6 +105,8 @@ export const listHomepageSections = /* GraphQL */ `
         buttons
         bottomImage
         buttonSubtext
+        backgroundColor
+        textColor
         createdAt
         updatedAt
       }

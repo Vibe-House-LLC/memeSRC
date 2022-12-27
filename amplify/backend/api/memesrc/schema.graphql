@@ -27,4 +27,6 @@ type HomepageSection @model {
   buttons: AWSJSON,
   bottomImage: AWSJSON,
   buttonSubtext: AWSJSON,
+  backgroundColor: String,
+  textColor: String
 }

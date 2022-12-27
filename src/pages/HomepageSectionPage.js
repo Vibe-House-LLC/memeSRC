@@ -71,6 +71,8 @@ export default function HomepageSectionPage() {
   const [buttons, setButtons] = useState([]);
   const [bottomImage, setBottomImage] = useState({});
   const [buttonSubtext, setButtonSubtext] = useState({});
+  const [backgroundColor, setBackgroundColor] = useState('');
+  const [textColor, setTextColor] = useState('');
   const [mode, setMode] = useState(FormMode.CREATE);
 
   const [expanded, setExpanded] = useState(false);
@@ -108,11 +110,13 @@ export default function HomepageSectionPage() {
     setButtons('');
     setBottomImage('');
     setButtonSubtext('');
+    setBackgroundColor('');
+    setTextColor('');
   };
 
   // ----------------------------------------------------------------------
 
-  async function createNewHomepageSection(id, index, title, subtitle, buttons, bottomImage, buttonSubtext) {
+  async function createNewHomepageSection(id, index, title, subtitle, buttons, bottomImage, buttonSubtext, backgroundColor, textColor) {
     const newHomepageSection = {
       input: {
         id,
@@ -121,7 +125,9 @@ export default function HomepageSectionPage() {
         subtitle,
         buttons: JSON.stringify(buttons),
         bottomImage: JSON.stringify(bottomImage),
-        buttonSubtext: JSON.stringify(buttonSubtext)
+        buttonSubtext: JSON.stringify(buttonSubtext),
+        backgroundColor,
+        textColor
       }
     };
 
@@ -158,16 +164,20 @@ export default function HomepageSectionPage() {
     subtitle,
     buttons,
     bottomImage,
-    buttonSubtext
+    buttonSubtext,
+    backgroundColor,
+    textColor
   ) {
     const input = {
       id,
       index,
       title,
       subtitle,
-      buttons,
-      bottomImage,
-      buttonSubtext
+      buttons: JSON.stringify(buttons),
+      bottomImage: JSON.stringify(bottomImage),
+      buttonSubtext: JSON.stringify(buttonSubtext),
+      backgroundColor,
+      textColor
     };
 
     const variables = {
@@ -222,9 +232,9 @@ export default function HomepageSectionPage() {
   const handleSubmit = (event) => {
     event.preventDefault();
     if (mode === FormMode.CREATE) {
-      createNewHomepageSection(id, index, title, subtitle, buttons, bottomImage, buttonSubtext);
+      createNewHomepageSection(id, index, title, subtitle, buttons, bottomImage, buttonSubtext, backgroundColor, textColor);
     } else {
-      updateExistingHomepageSection(id, index, title, subtitle, buttons, bottomImage, buttonSubtext);
+      updateExistingHomepageSection(id, index, title, subtitle, buttons, bottomImage, buttonSubtext, backgroundColor, textColor);
     }
     clearForm();
     setShowForm(false);
@@ -243,6 +253,8 @@ export default function HomepageSectionPage() {
     setButtons(JSON.parse(item.buttons));
     setBottomImage(JSON.parse(item.bottomImage));
     setButtonSubtext(JSON.parse(item.buttonSubtext));
+    setBackgroundColor(item.backgroundColor);
+    setTextColor(item.textColor);
 
     // Set the form to edit mode
     setMode(FormMode.EDIT);
@@ -287,8 +299,8 @@ export default function HomepageSectionPage() {
                 <Card sx={{ maxWidth: 345 }}>
                   <CardHeader
                     avatar={
-                      <Avatar sx={{ bgcolor: grey[200] }} aria-label="recipe">
-                        A
+                      <Avatar sx={{ bgcolor: sectionItem.backgroundColor }} aria-label="recipe">
+                        <img alt="bottom" src={JSON.parse(sectionItem.bottomImage).src} />
                       </Avatar>
                     }
                     action={
@@ -409,6 +421,13 @@ export default function HomepageSectionPage() {
                 />
               </Grid>
               <Grid item xs={12}>
+                <Typography>Buttons Subtext:</Typography>
+                <ButtonSubtextForm
+                  buttonSubtext={buttonSubtext}
+                  setButtonSubtext={setButtonSubtext}
+                />
+              </Grid>
+              <Grid item xs={12}>
                 <Typography>Bottom Image:</Typography>
                 <BottomImageForm
                   bottomImage={bottomImage}
@@ -416,10 +435,19 @@ export default function HomepageSectionPage() {
                 />
               </Grid>
               <Grid item xs={12}>
-                <Typography>Buttons Subtext:</Typography>
-                <ButtonSubtextForm
-                  buttonSubtext={buttonSubtext}
-                  setButtonSubtext={setButtonSubtext}
+                <TextField
+                  label="Background Color"
+                  fullWidth
+                  value={backgroundColor}
+                  onChange={(event) => setBackgroundColor(event.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  label="Text Color"
+                  fullWidth
+                  value={textColor}
+                  onChange={(event) => setTextColor(event.target.value)}
                 />
               </Grid>
             </Grid>

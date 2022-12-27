@@ -227,8 +227,8 @@ export default function FullScreenSearch(props) {
         console.log(section)
         return (
           <HomePageSection
-            backgroundColor="#ff6900"
-            textColor="#FFFFFF"
+            backgroundColor={section.backgroundColor}
+            textColor={section.textColor}
             title={section.title}
             subtitle={section.subtitle}
             buttons={JSON.parse(section.buttons)}
