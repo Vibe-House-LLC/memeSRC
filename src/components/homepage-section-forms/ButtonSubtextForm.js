@@ -1,7 +1,14 @@
 import { TextField } from "@mui/material";
 import React from "react";
+import PropTypes from 'prop-types'
 
-const ButtonSubtextForm = ({ buttonSubtext, setButtonSubtext }) => {
+ButtonSubtextForm.propTypes = {
+  buttonSubtext: PropTypes.object,
+  setButtonSubtext: PropTypes.func
+}
+
+export default function ButtonSubtextForm({ buttonSubtext, setButtonSubtext }) {
+  console.log(buttonSubtext)
   const handleChange = (event) => {
     setButtonSubtext({
       ...buttonSubtext,
@@ -28,5 +35,3 @@ const ButtonSubtextForm = ({ buttonSubtext, setButtonSubtext }) => {
     </>
   );
 };
-
-export default ButtonSubtextForm;

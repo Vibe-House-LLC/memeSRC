@@ -14,9 +14,9 @@ import { API, graphqlOperation } from 'aws-amplify';
 import Iconify from '../components/iconify';
 import { createHomepageSection, updateHomepageSection, deleteHomepageSection } from '../graphql/mutations';
 import { listHomepageSections } from '../graphql/queries';
-import ButtonsForm from '../components/ButtonsForm';
-import BottomImageForm from '../components/BottomImageForm';
-import ButtonSubtextForm from '../components/ButtonSubtextForm';
+import ButtonsForm from '../components/homepage-section-forms/ButtonsForm';
+import BottomImageForm from '../components/homepage-section-forms/BottomImageForm';
+import ButtonSubtextForm from '../components/homepage-section-forms/ButtonSubtextForm';
 
 // ----------------------------------------------------------------------
 
@@ -69,7 +69,7 @@ export default function HomepageSectionPage() {
   const [buttons, setButtons] = useState([]);
   const [bottomImage, setBottomImage] = useState({});
   const [buttonSubtext, setButtonSubtext] = useState({});
-  const [backgroundColor, setBackgroundColor] = useState('');
+  const [backgroundColor, setBackgroundColor] = useState({});
   const [textColor, setTextColor] = useState('');
   const [mode, setMode] = useState(FormMode.CREATE);
 
@@ -105,9 +105,9 @@ export default function HomepageSectionPage() {
     setIndex('');
     setTitle('');
     setSubtitle('');
-    setButtons('');
-    setBottomImage('');
-    setButtonSubtext('');
+    setButtons([]);
+    setBottomImage({});
+    setButtonSubtext({});
     setBackgroundColor('');
     setTextColor('');
   };

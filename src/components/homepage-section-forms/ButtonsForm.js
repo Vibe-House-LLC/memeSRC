@@ -1,7 +1,13 @@
-import { Button, Grid, IconButton, TextField } from "@mui/material";
+import { Grid, IconButton, TextField } from "@mui/material";
 // import AddCircleOutlineIcon from "@material-ui/icons/AddCircleOutline";
 import { AddCircleOutline, RemoveCircleOutline } from "@mui/icons-material";
 import React, { useState } from "react";
+import PropTypes from 'prop-types'
+
+ButtonsForm.propTypes = {
+    buttons: PropTypes.array,
+    setButtons: PropTypes.func
+}
 
 export default function ButtonsForm({ buttons, setButtons }) {
     const [newButton, setNewButton] = useState({
