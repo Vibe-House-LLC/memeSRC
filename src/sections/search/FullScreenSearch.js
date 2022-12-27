@@ -185,11 +185,21 @@ export default function FullScreenSearch(props) {
                     onChange={e => setSearchTerm(e.target.value)} />
                 </StyledLabel>
               </Grid>
-              <Grid item sm={2} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }} display={{ xs: 'flex', sm: 'none' }}>
+              <Grid item sm={2} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
                 <StyledSearchButton type="submit" style={{ backgroundColor: "black" }} fullWidth={{ xs: true, sm: false }}>Search</StyledSearchButton>
               </Grid>
             </Grid>
           </StyledSearchForm>
+          <Grid item xs={12} textAlign='center' color='#FFFFFF' marginTop={4}>
+            <Typography component='h4' variant='h4'>
+              Search over 36 million screencaps from your favorite shows.
+            </Typography>
+            <Button href='http://example.com' startIcon='🚀' sx={{marginTop: '12px'}}>
+              <Typography sx={{textDecoration: 'underline', fontSize: '1em', fontWeight: '800', color: "#FFFFFF"}}>
+                New Feature: Universal Search
+              </Typography>
+            </Button>
+          </Grid>
         </Grid>
         <StyledFooter>
           <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black" }} size='small'>
