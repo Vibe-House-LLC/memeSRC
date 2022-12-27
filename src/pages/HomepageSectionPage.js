@@ -113,7 +113,7 @@ export default function HomepageSectionPage() {
   const [buttons, setButtons] = useState([]);
   const [bottomImage, setBottomImage] = useState({});
   const [buttonSubtext, setButtonSubtext] = useState({});
-  const [backgroundColor, setBackgroundColor] = useState({});
+  const [backgroundColor, setBackgroundColor] = useState('');
   const [textColor, setTextColor] = useState('');
 
   // Expand details state
