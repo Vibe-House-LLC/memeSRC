@@ -19,6 +19,13 @@ export default function ButtonSubtextForm({ buttonSubtext, setButtonSubtext }) {
   return (
     <>
       <TextField
+        label="Emoji"
+        fullWidth
+        name="emoji"
+        value={buttonSubtext.emoji}
+        onChange={handleChange}
+      />
+      <TextField
         label="Text"
         fullWidth
         name="text"

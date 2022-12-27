@@ -22,6 +22,7 @@ HomePageSection.propTypes = {
   title: PropTypes.string,
   subtitle: PropTypes.string,
   buttonSubtext: PropTypes.shape({
+    emoji: PropTypes.string,
     href: PropTypes.string,
     text: PropTypes.string
   })
@@ -47,7 +48,7 @@ export default function HomePageSection({backgroundColor, textColor, title, subt
           )
         )}
         <br />
-        <Button href={buttonSubtext.href} startIcon='🧸' sx={{marginTop: '12px'}}>
+        <Button href={buttonSubtext.href} startIcon={buttonSubtext.emoji} sx={{marginTop: '12px'}}>
           <Typography sx={{textDecoration: 'underline', fontSize: '.95em', fontWeight: '800', color: textColor}}>
             {buttonSubtext.text}
           </Typography>
