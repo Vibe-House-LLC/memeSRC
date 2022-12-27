@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { Button, Fab, Grid, Typography } from "@mui/material";
-import { Favorite, MessageTwoTone, Shuffle } from "@mui/icons-material";
+import { Favorite, MapsUgc, MapsUgcRounded, MessageTwoTone, Shuffle } from "@mui/icons-material";
 import { API, graphqlOperation } from 'aws-amplify';
 import { useEffect, useState } from "react";
 import { searchPropTypes } from "./SearchPropTypes";
@@ -17,7 +17,6 @@ const StyledSearchForm = styled.form`
   display: flex;
   flex-direction: row;
   align-items: center;
-  margin-left: 20px;
   width: 800px;
 `;
 
@@ -154,18 +153,27 @@ export default function FullScreenSearch(props) {
   }, [shows, setSeriesTitle])
 
   return (
-    <StyledGridContainer container>
+    <StyledGridContainer container paddingX={3}>
       <Grid container marginY='auto' justifyContent='center'>
-        <Grid item xs={12} textAlign='center' marginBottom={5}>
-
+        <Grid container justifyContent='center'>
+          <Grid item textAlign='center' marginBottom={5}>
           <Typography component='h1' variant='h1' sx={{ color: '#FFFFFF' }}>
-            <Logo sx={{ display: 'inline', width: '300px', height: 'auto' }} color="white" /><br />memeSRC
+            <Logo sx={{ display: 'inline', width: '300px', height: 'auto' }} color="white" />
+            <br />
+            memeSRC
           </Typography>
-
+          </Grid>
         </Grid>
         <StyledSearchForm onSubmit={e => searchFunction(e)}>
-          <Grid container alignItems={'center'}>
-            <Grid item md={5} sm='auto' paddingX={0.25}>
+          <Grid container justifyContent='center'>
+            <Grid item sm={3} xs={12} paddingX={0.25} paddingBottom={{xs: 1, sm: 0}}>
+              <StyledSearchSelector onChange={(x) => { setSeriesTitle(x.target.value) }} value={seriesTitle}>
+                {(loading) ? <option key="loading" value="loading" disabled>Loading...</option> : shows.map((item) => (
+                  <option key={item.id} value={item.id}>{item.emoji} {item.title}</option>
+                ))}
+              </StyledSearchSelector>
+            </Grid>
+            <Grid item sm={5} xs={12} paddingX={0.25} paddingBottom={{xs: 1, sm: 0}}>
               <StyledLabel htmlFor="search-term">
                 <StyledSearchInput
                   type="text"
@@ -175,25 +183,18 @@ export default function FullScreenSearch(props) {
                   onChange={e => setSearchTerm(e.target.value)} />
               </StyledLabel>
             </Grid>
-            <Grid item md={5} sm='auto' paddingX={0.25}>
-              <StyledSearchSelector onChange={(x) => { setSeriesTitle(x.target.value) }} value={seriesTitle}>
-                {(loading) ? <option key="loading" value="loading" disabled>Loading...</option> : shows.map((item) => (
-                  <option key={item.id} value={item.id}>{item.emoji} {item.title}</option>
-                ))}
-              </StyledSearchSelector>
-            </Grid>
-            <Grid item md={2} sm={12} paddingX={0.25}>
-              <StyledSearchButton type="submit" style={{ backgroundColor: "black" }}>Search</StyledSearchButton>
+            <Grid item sm={2} xs={12} paddingX={0.25} paddingBottom={{xs: 1, sm: 0}} display={{xs: 'flex', sm: 'none'}}>
+              <StyledSearchButton type="submit" style={{ backgroundColor: "black" }} fullWidth={{xs: true, sm: false}}>Search</StyledSearchButton>
             </Grid>
           </Grid>
         </StyledSearchForm>
       </Grid>
       <StyledFooter >
-        <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black" }}>
-          <MessageTwoTone color="white" />
+        <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black" }} size='small'>
+          <MapsUgc color="white" />
         </Fab>
-        <Fab color="primary" aria-label="donate" style={{ backgroundColor: "black" }}>
-          <Favorite />
+        <Fab color="primary" aria-label="donate" style={{ backgroundColor: "black" }} size='small'>
+          <Favorite fontSize="10px" />
         </Fab>
         <a href={`https://api.memesrc.com/random/generate${seriesTitle ? `?series=${seriesTitle}` : ''}`} style={{ marginLeft: 'auto', textDecoration: 'none' }}>
           <StyledButton startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black" }}>Random</StyledButton>
