@@ -1,5 +1,4 @@
 import { Grid, IconButton, TextField } from "@mui/material";
-// import AddCircleOutlineIcon from "@material-ui/icons/AddCircleOutline";
 import { AddCircleOutline, RemoveCircleOutline } from "@mui/icons-material";
 import React, { useState } from "react";
 import PropTypes from 'prop-types'
@@ -19,12 +18,12 @@ export default function ButtonsForm({ buttons, setButtons }) {
     const handleChange = (event, index) => {
         const updatedButtons = [...buttons];
         updatedButtons[index] = {
-          ...updatedButtons[index],
-          [event.target.name]: event.target.value,
+            ...updatedButtons[index],
+            [event.target.name]: event.target.value,
         };
         setButtons(updatedButtons);
-      };
-      
+    };
+
 
     const handleAddButton = () => {
         setButtons([...buttons, newButton]);

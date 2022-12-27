@@ -3,8 +3,8 @@ import React from "react";
 import PropTypes from 'prop-types'
 
 BottomImageForm.propTypes = {
-    bottomImage: PropTypes.object,
-    setBottomImage: PropTypes.func
+  bottomImage: PropTypes.object,
+  setBottomImage: PropTypes.func
 }
 
 export default function BottomImageForm({ bottomImage, setBottomImage }) {
