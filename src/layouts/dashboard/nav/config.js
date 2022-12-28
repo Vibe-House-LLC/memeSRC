@@ -27,10 +27,15 @@ const navConfig = [
     icon: icon('ic_booking')
   },
   {
-    title: 'upload',
-    path: '/dashboard/imageupload',
-    icon: icon('ic_file'),
+    title: 'homepage sections',
+    path: '/dashboard/homepagesections',
+    icon: icon('ic_file')
   },
+  // {
+  //   title: 'upload',
+  //   path: '/dashboard/imageupload',
+  //   icon: icon('ic_file'),
+  // },
   {
     title: 'user',
     path: '/dashboard/user',

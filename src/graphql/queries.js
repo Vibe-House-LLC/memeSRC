@@ -69,3 +69,48 @@ export const listContentMetadata = /* GraphQL */ `
     }
   }
 `;
+export const getHomepageSection = /* GraphQL */ `
+  query GetHomepageSection($id: ID!) {
+    getHomepageSection(id: $id) {
+      id
+      index
+      title
+      subtitle
+      buttons
+      bottomImage
+      buttonSubtext
+      backgroundColor
+      textColor
+      createdAt
+      updatedAt
+    }
+  }
+`;
+export const listHomepageSections = /* GraphQL */ `
+  query ListHomepageSections(
+    $filter: ModelHomepageSectionFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listHomepageSections(
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        index
+        title
+        subtitle
+        buttons
+        bottomImage
+        buttonSubtext
+        backgroundColor
+        textColor
+        createdAt
+        updatedAt
+      }
+      nextToken
+    }
+  }
+`;

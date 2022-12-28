@@ -1,11 +1,12 @@
 import styled from "@emotion/styled";
 import { Button, Fab, Grid, Typography } from "@mui/material";
-import { Favorite, MessageTwoTone, Shuffle } from "@mui/icons-material";
+import { Favorite, MapsUgc, Shuffle } from "@mui/icons-material";
 import { API, graphqlOperation } from 'aws-amplify';
 import { useEffect, useState } from "react";
 import { searchPropTypes } from "./SearchPropTypes";
 import Logo from "../../components/logo/Logo";
-import { listContentMetadata } from '../../graphql/queries';
+import { listContentMetadata, listHomepageSections } from '../../graphql/queries';
+import HomePageSection from "./HomePageSection";
 
 // Define constants for colors and fonts
 const PRIMARY_COLOR = '#4285F4';
@@ -17,7 +18,6 @@ const StyledSearchForm = styled.form`
   display: flex;
   flex-direction: row;
   align-items: center;
-  margin-left: 20px;
   width: 800px;
 `;
 
@@ -130,18 +130,28 @@ async function fetchShows() {
   return result.data.listContentMetadata.items;
 }
 
+async function fetchSections() {
+  const result = await API.graphql(graphqlOperation(listHomepageSections, { filter: {}, limit: 10 }));
+  return result.data.listHomepageSections.items;
+}
+
 FullScreenSearch.propTypes = searchPropTypes;
 
 export default function FullScreenSearch(props) {
   const [shows, setShows] = useState([]);
+  const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
   const { searchTerms, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction } = props
 
   useEffect(() => {
     async function getData() {
-      const data = await fetchShows();
-      setShows(data);
+      // Get shows
+      const shows = await fetchShows();
+      setShows(shows);
       setLoading(false);
+      // Get homepage sections
+      const sections = await fetchSections();
+      setSections(sections)
     }
     getData();
   }, []);
@@ -154,51 +164,107 @@ export default function FullScreenSearch(props) {
   }, [shows, setSeriesTitle])
 
   return (
-    <StyledGridContainer container>
-      <Grid container marginY='auto' justifyContent='center'>
-        <Grid item xs={12} textAlign='center' marginBottom={5}>
-
-          <Typography component='h1' variant='h1' sx={{ color: '#FFFFFF' }}>
-            <Logo sx={{ display: 'inline', width: '300px', height: 'auto' }} color="white" /><br />memeSRC
-          </Typography>
-
-        </Grid>
-        <StyledSearchForm onSubmit={e => searchFunction(e)}>
-          <Grid container alignItems={'center'}>
-            <Grid item md={5} sm='auto' paddingX={0.25}>
-              <StyledLabel htmlFor="search-term">
-                <StyledSearchInput
-                  type="text"
-                  id="search-term"
-                  value={searchTerms}
-                  placeholder="What's the quote?"
-                  onChange={e => setSearchTerm(e.target.value)} />
-              </StyledLabel>
-            </Grid>
-            <Grid item md={5} sm='auto' paddingX={0.25}>
-              <StyledSearchSelector onChange={(x) => { setSeriesTitle(x.target.value) }} value={seriesTitle}>
-                {(loading) ? <option key="loading" value="loading" disabled>Loading...</option> : shows.map((item) => (
-                  <option key={item.id} value={item.id}>{item.emoji} {item.title}</option>
-                ))}
-              </StyledSearchSelector>
-            </Grid>
-            <Grid item md={2} sm={12} paddingX={0.25}>
-              <StyledSearchButton type="submit" style={{ backgroundColor: "black" }}>Search</StyledSearchButton>
+    <>
+      <StyledGridContainer container paddingX={3}>
+        <Grid container marginY='auto' justifyContent='center'>
+          <Grid container justifyContent='center'>
+            <Grid item textAlign='center' marginBottom={5}>
+              <Typography component='h1' variant='h1' sx={{ color: '#FFFFFF' }}>
+                <Logo sx={{ display: 'inline', width: '300px', height: 'auto' }} color="white" />
+                <br />
+                memeSRC
+              </Typography>
             </Grid>
           </Grid>
-        </StyledSearchForm>
-      </Grid>
-      <StyledFooter >
-        <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black" }}>
-          <MessageTwoTone color="white" />
-        </Fab>
-        <Fab color="primary" aria-label="donate" style={{ backgroundColor: "black" }}>
-          <Favorite />
-        </Fab>
-        <a href={`https://api.memesrc.com/random/generate${seriesTitle ? `?series=${seriesTitle}` : ''}`} style={{ marginLeft: 'auto', textDecoration: 'none' }}>
-          <StyledButton startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black" }}>Random</StyledButton>
-        </a>
-      </StyledFooter>
-    </StyledGridContainer>
+          <StyledSearchForm onSubmit={e => searchFunction(e)}>
+            <Grid container justifyContent='center'>
+              <Grid item sm={3} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
+                <StyledSearchSelector onChange={(x) => { setSeriesTitle(x.target.value); }} value={seriesTitle}>
+                  {(loading) ? <option key="loading" value="loading" disabled>Loading...</option> : shows.map((item) => (
+                    <option key={item.id} value={item.id}>{item.emoji} {item.title}</option>
+                  ))}
+                </StyledSearchSelector>
+              </Grid>
+              <Grid item sm={5} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
+                <StyledLabel htmlFor="search-term">
+                  <StyledSearchInput
+                    type="text"
+                    id="search-term"
+                    value={searchTerms}
+                    placeholder="What's the quote?"
+                    onChange={e => setSearchTerm(e.target.value)} />
+                </StyledLabel>
+              </Grid>
+              <Grid item sm={2} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
+                <StyledSearchButton type="submit" style={{ backgroundColor: "black" }} fullWidth={{ xs: true, sm: false }}>Search</StyledSearchButton>
+              </Grid>
+            </Grid>
+          </StyledSearchForm>
+          <Grid item xs={12} textAlign='center' color='#FFFFFF' marginTop={4}>
+            <Typography component='h4' variant='h4'>
+              Search over 36 million screencaps from your favorite shows.
+            </Typography>
+            <Button href='http://example.com' startIcon='🚀' sx={{ marginTop: '12px' }}>
+              <Typography sx={{ textDecoration: 'underline', fontSize: '1em', fontWeight: '800', color: "#FFFFFF" }}>
+                New Feature: Universal Search
+              </Typography>
+            </Button>
+          </Grid>
+        </Grid>
+        <StyledFooter>
+          <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black" }} size='small'>
+            <MapsUgc color="white" />
+          </Fab>
+          <Fab color="primary" aria-label="donate" style={{ backgroundColor: "black" }} size='small'>
+            <Favorite />
+          </Fab>
+          <a href={`https://api.memesrc.com/random/generate${seriesTitle ? `?series=${seriesTitle}` : ''}`} style={{ marginLeft: 'auto', textDecoration: 'none' }}>
+            <StyledButton startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black" }}>Random</StyledButton>
+          </a>
+        </StyledFooter>
+      </StyledGridContainer>
+      {sections.map((section) => {
+        console.log(section)
+        return (
+          <HomePageSection
+            key={section.id}
+            backgroundColor={section.backgroundColor}
+            textColor={section.textColor}
+            title={section.title}
+            subtitle={section.subtitle}
+            buttons={JSON.parse(section.buttons)}
+            bottomImage={JSON.parse(section.bottomImage)}
+            buttonSubtext={JSON.parse(section.buttonSubtext)}
+          />
+        )
+      })}
+      {/* <HomePageSection 
+        backgroundColor="#ff6900" 
+        textColor="#FFFFFF"
+        title="This is a title"
+        subtitle="This is a subtitle to tell you more about the title"
+        buttons={[
+          {
+            title: "Title One",
+            icon: <Favorite />,
+            destination: "http://www.example.com"
+          },
+          {
+            title: "Title Two",
+            icon: <Favorite />,
+            destination: "http://www.example.com"
+          }
+        ]}
+        bottomImage={{
+          alt: "testing",
+          src: '/assets/illustrations/girl-looking-at-stars-and-moon-with-telescope.svg',
+          bottomMargin: 8
+        }}
+        buttonSubtext={{
+          text: 'Click me to go',
+          href: 'http://www.example.com'
+        }}
+      /> */}
+    </>
   )
 }
