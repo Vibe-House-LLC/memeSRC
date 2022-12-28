@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { fabric } from 'fabric';
 import { FabricJSCanvas, useFabricJSEditor } from 'fabricjs-react'
 import styled from '@emotion/styled';
@@ -44,70 +44,98 @@ function parseFid(fid) {
 const EditorPage = () => {
     // Get everything ready
     const { fid } = useParams();
-    const [ loadedFid, setLoadedFid ] = useState();
-    const [ baseImg, setBaseImg ] = useState(null);
-    const [ pickingColor, setPickingColor ] = useState(false);
-    const [ imageScale, setImageScale ] = useState();
-    const [ generatedImage, setGeneratedImage ] = useState();
-    const [ canvasSize, setCanvasSize ] = useState({
+    const [loadedFid, setLoadedFid] = useState();
+    const [baseImg, setBaseImg] = useState(null);
+    const [pickingColor, setPickingColor] = useState(false);
+    const [imageScale, setImageScale] = useState();
+    const [generatedImage, setGeneratedImage] = useState();
+    const [canvasSize, setCanvasSize] = useState({
         width: 500,
         height: 500
     });
+    const [defaultSubtitle, setDefaultSubtitle] = useState(false);
 
     const { selectedObjects, editor, onReady } = useFabricJSEditor()
 
     useEffect(() => {
+        function getSessionID() {
+            if ("sessionID" in sessionStorage) {
+                return Promise.resolve(sessionStorage.getItem("sessionID"));
+            }
+            return fetch(`https://api.memesrc.com/?uuidGen`)
+                .then(response => response.text())
+                .then(sessionID => {
+                    sessionStorage.setItem("sessionID", sessionID);
+                    return sessionID;
+                });
+        }
+
         if (editor && editor.canvas.width !== canvasSize.width && editor.canvas.height !== canvasSize.height) {
             console.log('Resized the canvas');
             editor.canvas.preserveObjectStacking = true;
             editor.canvas.setWidth(canvasSize.width);
             editor.canvas.setHeight(canvasSize.height);
             editor.canvas.setBackgroundColor("white");
+            if (defaultSubtitle) {
+                addText(defaultSubtitle);
+            }
+
             if (fid && !loadedFid) {
-                setLoadedFid(fid)
-                console.log('loaded image')
-                const parsedFid = parseFid(fid)
-                console.log(parsedFid)
-                fabric.Image.fromURL(`https://memesrc.com/${parsedFid.seriesId}/img/${parsedFid.seasonNum}/${parsedFid.episodeNum}/${fid}.jpg`, (oImg) => {
-                    setBaseImg(oImg);
-                    // Get a reference to the ParentContainer element
-                    const containerElement = document.getElementById('parent-container');
-                    // Get the width and height of the ParentContainer
-                    const availableWidth = containerElement.offsetWidth;
-                    const availableHeight = containerElement.offsetHeight;
-                    // Determine the aspect ratio of the image
-                    const imageAspectRatio = oImg.width / oImg.height;
-                    // Calculate the size of the canvas based on the aspect ratio of the image and the available space
-                    let calculatedWidth;
-                    let calculatedHeight;
-                    if (availableWidth / imageAspectRatio <= availableHeight) {
-                        // If the width is the limiting factor, set the canvas width to the available width and the height based on the aspect ratio
-                        calculatedWidth = availableWidth;
-                        calculatedHeight = availableWidth / imageAspectRatio;
-                    } else {
-                        // If the height is the limiting factor, set the canvas height to the available height and the width based on the aspect ratio
-                        calculatedHeight = availableHeight;
-                        calculatedWidth = availableHeight * imageAspectRatio;
-                    }
-                    setCanvasSize({
-                        width: calculatedWidth,
-                        height: calculatedHeight
+                const apiSearchUrl = `https://api.memesrc.com/?fid=${fid}&sessionID=${getSessionID}`;
+                fetch(apiSearchUrl)
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('addText');
+                        setLoadedFid(fid)
+                        console.log('loaded image')
+                        const parsedFid = parseFid(fid)
+                        console.log(parsedFid)
+                        fabric.Image.fromURL(`https://memesrc.com${data.frame_image}`, (oImg) => {
+                            setBaseImg(oImg);
+                            // Get a reference to the ParentContainer element
+                            const containerElement = document.getElementById('parent-container');
+                            // Get the width and height of the ParentContainer
+                            const availableWidth = containerElement.offsetWidth;
+                            const availableHeight = containerElement.offsetHeight;
+                            // Determine the aspect ratio of the image
+                            const imageAspectRatio = oImg.width / oImg.height;
+                            // Calculate the size of the canvas based on the aspect ratio of the image and the available space
+                            let calculatedWidth;
+                            let calculatedHeight;
+                            if (availableWidth / imageAspectRatio <= availableHeight) {
+                                // If the width is the limiting factor, set the canvas width to the available width and the height based on the aspect ratio
+                                calculatedWidth = availableWidth;
+                                calculatedHeight = availableWidth / imageAspectRatio;
+                            } else {
+                                // If the height is the limiting factor, set the canvas height to the available height and the width based on the aspect ratio
+                                calculatedHeight = availableHeight;
+                                calculatedWidth = availableHeight * imageAspectRatio;
+                            }
+                            setCanvasSize({
+                                width: calculatedWidth,
+                                height: calculatedHeight
+                            });
+                            console.log('image')
+                            console.log(oImg);
+                            // Scale the image to fit the canvas
+                            oImg.scale(calculatedWidth / oImg.width);
+                            // Center the image within the canvas
+                            oImg.set({ left: 0, top: 0 });
+                            // Disable the ability to edit the image
+                            oImg.selectable = false;
+                            oImg.hoverCursor = 'default';
+                            oImg.crossOrigin = 'anonymous';
+                            editor?.canvas.add(oImg);
+                            const minRes = 1280;
+                            const x = (oImg.width > minRes) ? oImg.width : minRes;
+                            setImageScale(x / calculatedWidth);
+                            setDefaultSubtitle(data.subtitle);
+                        }, { crossOrigin: "anonymous" });
+                        
+                    })
+                    .catch(error => {
+                        console.error(error);
                     });
-                    console.log('image')
-                    console.log(oImg);
-                    // Scale the image to fit the canvas
-                    oImg.scale(calculatedWidth / oImg.width);
-                    // Center the image within the canvas
-                    oImg.set({ left: 0, top: 0 });
-                    // Disable the ability to edit the image
-                    oImg.selectable = false;
-                    oImg.hoverCursor = 'default';
-                    oImg.crossOrigin = 'anonymous';
-                    editor?.canvas.add(oImg);
-                    const minRes = 1280;
-                    const x = (oImg.width > minRes) ? oImg.width : minRes;
-                    setImageScale(x / calculatedWidth);
-                }, { crossOrigin: "anonymous" });
             }
 
         }
@@ -186,10 +214,11 @@ const EditorPage = () => {
         });
     }
 
-    const addText = () => {
-        const text = new fabric.Textbox('Text', {
+    const addText = (updatedText) => {
+        const text = new fabric.Textbox(updatedText, {
             left: 0,
-            top: editor.canvas.getHeight() - 100,
+            top: editor.canvas.getHeight() - 35,
+            originY: 'bottom',
             width: editor.canvas.getWidth(),
             fontSize: 50,
             fontFamily: 'sans-serif',
@@ -224,7 +253,7 @@ const EditorPage = () => {
                 <button type='button' onClick={addCircle}>Add circle</button>
                 <button type='button' onClick={addRectangle}>Add Rectangle</button>
                 <button type='button' onClick={addImage}>Add Image</button>
-                <button type='button' onClick={addText}>Add Text</button>
+                <button type='button' onClick={() => addText('text')}>Add Text</button>
                 <button type='button' onClick={saveProject}>Save Project</button>
                 <button type='button' onClick={loadProject}>Load Project</button>
                 <button type='button' onClick={matchImageSize}>Original Size</button>
