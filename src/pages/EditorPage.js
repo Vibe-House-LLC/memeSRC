@@ -4,6 +4,7 @@ import { FabricJSCanvas, useFabricJSEditor } from 'fabricjs-react'
 import styled from '@emotion/styled';
 import { useParams } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
+import { Card, Input, Slider, TextField } from '@mui/material';
 
 const ParentContainer = styled.div`
     height: 100%;
@@ -54,8 +55,13 @@ const EditorPage = () => {
         height: 500
     });
     const [defaultSubtitle, setDefaultSubtitle] = useState(false);
+    const [layers, setLayers] = useState();
 
     const { selectedObjects, editor, onReady } = useFabricJSEditor()
+
+    useEffect(() => {
+        setLayers(editor?.canvas.getObjects())
+    }, [editor?.canvas])
 
     useEffect(() => {
         function getSessionID() {
@@ -131,7 +137,7 @@ const EditorPage = () => {
                             setImageScale(x / calculatedWidth);
                             setDefaultSubtitle(data.subtitle);
                         }, { crossOrigin: "anonymous" });
-                        
+
                     })
                     .catch(error => {
                         console.error(error);
@@ -231,6 +237,7 @@ const EditorPage = () => {
             selectable: true
         });
         editor?.canvas.add(text);
+
     }
 
     const toggleColorPicker = () => {
@@ -244,6 +251,19 @@ const EditorPage = () => {
                 editor?.canvas.renderAll();
             }
         });
+    }
+
+    const handleEdit = (event, index) => {
+        if (layers[index].text) {
+            console.log(event)
+            console.log(index)
+            const updatedObjects = [...layers];
+            updatedObjects[index].text = event.target.value
+            setLayers(updatedObjects)
+            editor.canvas.setActiveObject(editor.canvas.item(index));
+            selectedObjects[0].set('text', layers[index].text);
+            editor?.canvas.renderAll();
+        }
     }
 
     // Outputs
@@ -267,6 +287,22 @@ const EditorPage = () => {
                     }
                 </div>
                 <FabricJSCanvas onReady={onReady} />
+                {editor?.canvas?.getObjects().map((object, index) => (
+                        object.text && <Card sx={{ width: canvasSize.width, marginTop: '10px', paddingY: '10px' }}>
+                            <TextField multiline type='text' value={layers[index]?.text} sx={{ marginLeft: '5px', marginRight: '5px' }} fullWidth onChange={(event) => handleEdit(event, index)}/>
+                            <Slider
+                                size="small"
+                                defaultValue={70}
+                                aria-label="Small"
+                                valueLabelDisplay="auto"
+                            />
+                        </Card>
+                    )
+                )} 
+                
+                
+
+
                 <img src={generatedImage} alt="generated meme" />
             </ParentContainer >
             {pickingColor && <BackgroundCover onClick={toggleColorPicker} />}
