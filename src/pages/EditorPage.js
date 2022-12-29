@@ -55,13 +55,9 @@ const EditorPage = () => {
         height: 500
     });
     const [defaultSubtitle, setDefaultSubtitle] = useState(false);
-    const [layers, setLayers] = useState();
+    const [canvasObjects, setCanvasObjects] = useState();
 
     const { selectedObjects, editor, onReady } = useFabricJSEditor()
-
-    useEffect(() => {
-        setLayers(editor?.canvas.getObjects())
-    }, [editor?.canvas])
 
     useEffect(() => {
         function getSessionID() {
@@ -237,6 +233,7 @@ const EditorPage = () => {
             selectable: true
         });
         editor?.canvas.add(text);
+        setCanvasObjects(editor.canvas._objects);
 
     }
 
@@ -254,17 +251,21 @@ const EditorPage = () => {
     }
 
     const handleEdit = (event, index) => {
-        if (layers[index].text) {
-            console.log(event)
-            console.log(index)
-            const updatedObjects = [...layers];
-            updatedObjects[index].text = event.target.value
-            setLayers(updatedObjects)
-            editor.canvas.setActiveObject(editor.canvas.item(index));
-            selectedObjects[0].set('text', layers[index].text);
-            editor?.canvas.renderAll();
-        }
+        console.log(event)
+        console.log(index)
+        editor.canvas.item(index).set('text', event.target.value);
+        console.log(`Length of object:  + ${selectedObjects.length}`)
+        setCanvasObjects([...editor.canvas._objects])
+        console.log(editor.canvas.item(index).text);
+        editor?.canvas.renderAll();
     }
+
+    const handleFocus = (index) => {
+        editor.canvas.setActiveObject(editor.canvas.item(index));
+        editor?.canvas.renderAll();
+    }
+
+    const getObjectText = (index) => editor.canvas.item(index).text
 
     // Outputs
     return (
@@ -288,8 +289,8 @@ const EditorPage = () => {
                 </div>
                 <FabricJSCanvas onReady={onReady} />
                 {editor?.canvas?.getObjects().map((object, index) => (
-                        object.text && <Card sx={{ width: canvasSize.width, marginTop: '10px', paddingY: '10px' }}>
-                            <TextField multiline type='text' value={layers[index]?.text} sx={{ marginLeft: '5px', marginRight: '5px' }} fullWidth onChange={(event) => handleEdit(event, index)}/>
+                        ('text' in object) && <Card sx={{ width: canvasSize.width, marginTop: '10px', paddingY: '10px' }}>
+                            <TextField multiline type='text' value={canvasObjects[index].text} sx={{ marginLeft: '5px', marginRight: '5px' }} fullWidth onFocus={() => handleFocus(index)} onChange={(event) => handleEdit(event, index)}/>
                             <Slider
                                 size="small"
                                 defaultValue={70}
