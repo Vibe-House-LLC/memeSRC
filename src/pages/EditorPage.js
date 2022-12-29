@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { fabric } from 'fabric';
 import { FabricJSCanvas, useFabricJSEditor } from 'fabricjs-react'
 import styled from '@emotion/styled';
@@ -43,6 +43,8 @@ function parseFid(fid) {
 }
 
 const EditorPage = () => {
+    const TwitterPickerWrapper = memo(TwitterPicker);
+
     // Get everything ready
     const { fid } = useParams();
     const [loadedFid, setLoadedFid] = useState();
@@ -241,13 +243,12 @@ const EditorPage = () => {
         setPickingColor(!pickingColor);
     }
 
-    const changeColor = (color) => {
-        selectedObjects.forEach((object) => {
-            if (object.type === 'textbox') {
-                object.set('fill', color.hex);
-                editor?.canvas.renderAll();
-            }
-        });
+    const changeColor = (color, index) => {
+        editor.canvas.item(index).set('fill', color.hex);
+        console.log(`Length of object:  + ${selectedObjects.length}`)
+        setCanvasObjects([...editor.canvas._objects])
+        console.log(editor.canvas.item(index));
+        editor?.canvas.renderAll();
     }
 
     const handleEdit = (event, index) => {
@@ -256,7 +257,7 @@ const EditorPage = () => {
         editor.canvas.item(index).set('text', event.target.value);
         console.log(`Length of object:  + ${selectedObjects.length}`)
         setCanvasObjects([...editor.canvas._objects])
-        console.log(editor.canvas.item(index).text);
+        console.log(editor.canvas.item(index));
         editor?.canvas.renderAll();
     }
 
@@ -265,7 +266,13 @@ const EditorPage = () => {
         editor?.canvas.renderAll();
     }
 
-    const getObjectText = (index) => editor.canvas.item(index).text
+    const handleFontSize = (event, index) => {
+        const defaultFontSize = editor.canvas.getWidth() * 0.03;
+        editor.canvas.item(index).fontSize = defaultFontSize * (event.target.value / 100);
+        setCanvasObjects([...editor.canvas._objects])
+        console.log(editor.canvas.item(index));
+        editor?.canvas.renderAll();
+    }
 
     // Outputs
     return (
@@ -279,34 +286,50 @@ const EditorPage = () => {
                 <button type='button' onClick={loadProject}>Load Project</button>
                 <button type='button' onClick={matchImageSize}>Original Size</button>
                 <button type='button' onClick={saveImage}>Save Image</button>
-                <div style={{ display: 'inline', position: 'relative' }}>
+                {/* <div style={{ display: 'inline', position: 'relative' }}>
                     <button type='button' onClick={toggleColorPicker}>Change Color</button>
                     {pickingColor &&
                         <ColorPickerPopover>
                             <TwitterPicker onChangeComplete={changeColor} />
                         </ColorPickerPopover>
                     }
-                </div>
+                </div> */}
                 <FabricJSCanvas onReady={onReady} />
                 {editor?.canvas?.getObjects().map((object, index) => (
-                        ('text' in object) && <Card sx={{ width: canvasSize.width, marginTop: '10px', paddingY: '10px' }}>
-                            <TextField multiline type='text' value={canvasObjects[index].text} sx={{ marginLeft: '5px', marginRight: '5px' }} fullWidth onFocus={() => handleFocus(index)} onChange={(event) => handleEdit(event, index)}/>
-                            <Slider
-                                size="small"
-                                defaultValue={70}
-                                aria-label="Small"
-                                valueLabelDisplay="auto"
-                            />
-                        </Card>
-                    )
-                )} 
-                
-                
+                    
+                    ('text' in object) && 
+                    
+                    <Card sx={{ width: canvasSize.width, marginTop: '10px', paddingY: '10px' }} key={`card${index}`}>
+                        <div style={{ display: 'inline', position: 'relative' }} key={`div${index}`}>
+                            <button type='button' key={`button${index}`} onClick={toggleColorPicker}>Change Color</button>
+                            {pickingColor &&
+                                <ColorPickerPopover key={`colorpicker${index}`}>
+                                    <TwitterPickerWrapper key={`twitterpicker${index}`} onChange={(color) => changeColor(color, index)} />
+                                </ColorPickerPopover>
+                            }
+                        </div>
+                        <TextField key={`textfield${index}`} multiline type='text' value={canvasObjects[index].text} sx={{ marginLeft: '5px', marginRight: '5px' }} fullWidth onFocus={() => handleFocus(index)} onChange={(event) => handleEdit(event, index)} />
+                        <Slider
+                            size="small"
+                            defaultValue={100}
+                            min={1}
+                            max={200}
+                            aria-label="Small"
+                            valueLabelDisplay="auto"
+                            onChange={(event) => handleFontSize(event, index)}
+                            onFocus={() => handleFocus(index)}
+                            key={`slider${index}`}
+                        />
+                    </Card>
+                )
+                )}
+
+
 
 
                 <img src={generatedImage} alt="generated meme" />
             </ParentContainer >
-            {pickingColor && <BackgroundCover onClick={toggleColorPicker} />}
+            {/* {pickingColor && <BackgroundCover onClick={toggleColorPicker} />} */}
         </>
     )
 }
