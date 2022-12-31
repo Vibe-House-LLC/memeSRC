@@ -9,6 +9,11 @@ import reportWebVitals from './reportWebVitals';
 
 Amplify.configure(awsExports);
 
+// // Use the API Key by default
+// Amplify.configure({
+//   "aws_appsync_authenticationType": "API_KEY", 
+// });
+
 // ----------------------------------------------------------------------
 
 const root = ReactDOM.createRoot(document.getElementById('root'));

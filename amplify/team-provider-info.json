@@ -13,7 +13,8 @@
     },
     "categories": {
       "auth": {
-        "memesrcc3c71449": {}
+        "memesrcc3c71449": {},
+        "userPoolGroups": {}
       },
       "hosting": {
         "S3AndCloudFront": {}
