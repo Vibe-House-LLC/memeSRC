@@ -45,7 +45,7 @@ export default function Router() {
     },
     {
       path: 'signup',
-      element: <AuthPage method="signup" />,
+      element: <CheckAuth><AuthPage method="signup" /></CheckAuth>,
     },
     {
       element: <SimpleLayout />,

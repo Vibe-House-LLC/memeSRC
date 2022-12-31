@@ -17,7 +17,7 @@ export default function CheckAuth(props) {
     useEffect(() => {
         console.log(location.pathname)
         if (user) {  // we only want this logic to occur after user context is prepped
-            if (user.username || location.pathname === '/login') {
+            if (user.username || location.pathname === '/login' || location.pathname === '/signup') {
                 setContent(props.children);
             } else {
                 navigate(`/login?dest=${encodeURIComponent(location.pathname)}`, { replace: true });
