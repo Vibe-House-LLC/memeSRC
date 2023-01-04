@@ -40,6 +40,7 @@ const TABLE_HEAD = [
   { id: 'id', label: 'id', alignRight: false },
   { id: 'isVerified', label: 'Verified', alignRight: false },
   { id: 'status', label: 'Status', alignRight: false },
+  { id: 'enabled', label: 'Enabled', alignRight: false },
   { id: '' },
 ];
 
@@ -62,8 +63,6 @@ function getComparator(order, orderBy) {
 }
 
 function applySortFilter(array, comparator, query) {
-  console.log('applySortFilter just got called')
-  console.log(array)
   const stabilizedThis = array.map((el, index) => [el, index]);
   stabilizedThis.sort((a, b) => {
     const order = comparator(a[0], b[0]);
@@ -76,8 +75,25 @@ function applySortFilter(array, comparator, query) {
   return stabilizedThis.map((el) => el[0]);
 }
 
+async function disableUser(username) { 
+  const apiName = 'AdminQueries';
+  const path = '/disableUser';
+  const myInit = {
+      body: {
+        "username" : username
+      }, 
+      headers: {
+        'Content-Type' : 'application/json',
+        Authorization: `${(await Auth.currentSession()).getAccessToken().getJwtToken()}`
+      } 
+  }
+  return API.post(apiName, path, myInit);
+}
+
 export default function UserPage() {
   const [open, setOpen] = useState(null);
+
+  const [selectedIndex, setSelectedIndex] = useState(null);
 
   const [page, setPage] = useState(0);
 
@@ -119,7 +135,8 @@ export default function UserPage() {
         email: user.Attributes.find(attr => attr.Name === 'email').Value,
         id: user.Attributes.find(attr => attr.Name === 'sub').Value,
         isVerified: user.Attributes.find(attr => attr.Name === 'email_verified').Value,
-        status: user.UserStatus
+        status: user.UserStatus,
+        enabled: user.Enabled
       })))
     }).catch((err) => {
       console.log(err)
@@ -130,9 +147,14 @@ export default function UserPage() {
 
   }, [])
 
-  const handleOpenMenu = (event) => {
+  const handleOpenMenu = (event, index) => {
+    setSelectedIndex(index);
     setOpen(event.currentTarget);
   };
+
+  useEffect(() => {
+    console.log(selectedIndex)
+  },[selectedIndex])
 
   const handleCloseMenu = () => {
     setOpen(null);
@@ -221,8 +243,8 @@ export default function UserPage() {
                   onSelectAllClick={handleSelectAllClick}
                 />
                 <TableBody>
-                  {filteredUsers.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row) => {
-                    const { username, email, id, isVerified, status } = row;
+                  {filteredUsers.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row, index) => {
+                    const { username, email, id, isVerified, status, enabled } = row;
                     const selectedUser = selected.indexOf(username) !== -1;
 
                     return (
@@ -250,8 +272,12 @@ export default function UserPage() {
                           <Label color={(status === "UNCONFIRMED") ? 'error' : 'success'}>{sentenceCase(status)}</Label>
                         </TableCell>
 
+                        <TableCell align="left">
+                          <Label color={enabled ? 'success' : 'error'}>{sentenceCase(enabled ? 'Enabled' : 'Disabled')}</Label>
+                        </TableCell>
+
                         <TableCell align="right">
-                          <IconButton size="large" color="inherit" onClick={handleOpenMenu}>
+                          <IconButton size="large" color="inherit" onClick={(event) => handleOpenMenu(event, index)}>
                             <Iconify icon={'eva:more-vertical-fill'} />
                           </IconButton>
                         </TableCell>
@@ -327,9 +353,10 @@ export default function UserPage() {
           Edit
         </MenuItem>
 
-        <MenuItem sx={{ color: 'error.main' }}>
-          <Iconify icon={'eva:trash-2-outline'} sx={{ mr: 2 }} />
-          Delete
+        {/* TODO: Make user list adapt to changes */}
+        <MenuItem sx={{ color: 'error.main' }} onClick={() => disableUser(filteredUsers[selectedIndex].username)}>
+          <Iconify icon={'eva:trash-2-outline'} sx={{ mr: 2 }}/>
+          Disable
         </MenuItem>
       </Popover>
     </>
