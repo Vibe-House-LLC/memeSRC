@@ -62,6 +62,8 @@ function getComparator(order, orderBy) {
 }
 
 function applySortFilter(array, comparator, query) {
+  console.log('applySortFilter just got called')
+  console.log(array)
   const stabilizedThis = array.map((el, index) => [el, index]);
   stabilizedThis.sort((a, b) => {
     const order = comparator(a[0], b[0]);
@@ -111,7 +113,14 @@ export default function UserPage() {
       return rest;
     }
 
-    setUserList(listUsers(20));
+    listUsers(20).then((users) => {
+      setUserList(users.Users)
+    }).catch((err) => {
+      console.log(err)
+      setUserList([])
+    })
+
+    // setUserList(listUsers(20));
 
   }, [userList])
 
