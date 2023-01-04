@@ -146,7 +146,7 @@ export default function UserPage() {
 
   const handleSelectAllClick = (event) => {
     if (event.target.checked) {
-      const newSelecteds = userList.map((n) => n.name);
+      const newSelecteds = userList.map((n) => n.username);
       setSelected(newSelecteds);
       return;
     }
