@@ -126,12 +126,18 @@ const StyledFooter = styled('footer')`
 `;
 
 async function fetchShows() {
-  const result = await API.graphql(graphqlOperation(listContentMetadata, { filter: {}, limit: 10 }));
+  const result = await API.graphql({
+    ...graphqlOperation(listContentMetadata, { filter: {}, limit: 10 }),
+    authMode: "API_KEY"
+  });
   return result.data.listContentMetadata.items;
 }
 
 async function fetchSections() {
-  const result = await API.graphql(graphqlOperation(listHomepageSections, { filter: {}, limit: 10 }));
+  const result = await API.graphql({
+    ...graphqlOperation(listHomepageSections, { filter: {}, limit: 10 }),
+    authMode: "API_KEY"
+  });
   return result.data.listHomepageSections.items;
 }
 
