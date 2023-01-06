@@ -4,10 +4,11 @@ import { FabricJSCanvas, useFabricJSEditor } from 'fabricjs-react'
 import styled from '@emotion/styled';
 import { useParams } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
-import { Card, Input, Slider, TextField } from '@mui/material';
+import { Button, Card, Grid, Input, Slider, TextField } from '@mui/material';
 
 const ParentContainer = styled.div`
     height: 100%;
+    padding: 20px;
 `;
 
 const ColorPickerPopover = styled.div({
@@ -97,7 +98,7 @@ const EditorPage = () => {
                         fabric.Image.fromURL(`https://memesrc.com${data.frame_image}`, (oImg) => {
                             setBaseImg(oImg);
                             // Get a reference to the ParentContainer element
-                            const containerElement = document.getElementById('parent-container');
+                            const containerElement = document.getElementById('canvas-container');
                             // Get the width and height of the ParentContainer
                             const availableWidth = containerElement.offsetWidth;
                             const availableHeight = containerElement.offsetHeight;
@@ -129,7 +130,7 @@ const EditorPage = () => {
                             oImg.selectable = false;
                             oImg.hoverCursor = 'default';
                             oImg.crossOrigin = 'anonymous';
-                            editor?.canvas.add(oImg);
+                            editor?.canvas.setBackgroundImage(oImg);
                             const minRes = 1280;
                             const x = (oImg.width > minRes) ? oImg.width : minRes;
                             setImageScale(x / calculatedWidth);
@@ -278,15 +279,17 @@ const EditorPage = () => {
     return (
         <>
             <ParentContainer id="parent-container">
-                <button type='button' onClick={addCircle}>Add circle</button>
-                <button type='button' onClick={addRectangle}>Add Rectangle</button>
-                <button type='button' onClick={addImage}>Add Image</button>
-                <button type='button' onClick={() => addText('text')}>Add Text</button>
-                <button type='button' onClick={saveProject}>Save Project</button>
-                <button type='button' onClick={loadProject}>Load Project</button>
-                <button type='button' onClick={matchImageSize}>Original Size</button>
-                <button type='button' onClick={saveImage}>Save Image</button>
-                {/* <div style={{ display: 'inline', position: 'relative' }}>
+
+                <Grid container spacing={2}>
+                    <Grid item xs={12} md={8} height='100vh'>
+                        <button type='button' onClick={addCircle}>Add circle</button>
+                        <button type='button' onClick={addRectangle}>Add Rectangle</button>
+                        <button type='button' onClick={addImage}>Add Image</button>
+                        <button type='button' onClick={saveProject}>Save Project</button>
+                        <button type='button' onClick={loadProject}>Load Project</button>
+                        <button type='button' onClick={matchImageSize}>Original Size</button>
+                        <button type='button' onClick={saveImage}>Save Image</button>
+                        {/* <div style={{ display: 'inline', position: 'relative' }}>
                     <button type='button' onClick={toggleColorPicker}>Change Color</button>
                     {pickingColor &&
                         <ColorPickerPopover>
@@ -294,35 +297,46 @@ const EditorPage = () => {
                         </ColorPickerPopover>
                     }
                 </div> */}
-                <FabricJSCanvas onReady={onReady} />
-                {editor?.canvas?.getObjects().map((object, index) => (
-                    
-                    ('text' in object) && 
-                    
-                    <Card sx={{ width: canvasSize.width, marginTop: '10px', paddingY: '10px' }} key={`card${index}`}>
-                        <div style={{ display: 'inline', position: 'relative' }} key={`div${index}`}>
-                            <button type='button' key={`button${index}`} onClick={toggleColorPicker}>Change Color</button>
-                            {pickingColor &&
-                                <ColorPickerPopover key={`colorpicker${index}`}>
-                                    <TwitterPickerWrapper key={`twitterpicker${index}`} onChange={(color) => changeColor(color, index)} />
-                                </ColorPickerPopover>
-                            }
+                        <div style={{ width: '100%', height: '100%' }} id='canvas-container'>
+                            <FabricJSCanvas onReady={onReady} />
                         </div>
-                        <TextField key={`textfield${index}`} multiline type='text' value={canvasObjects[index].text} sx={{ marginLeft: '5px', marginRight: '5px' }} fullWidth onFocus={() => handleFocus(index)} onChange={(event) => handleEdit(event, index)} />
-                        <Slider
-                            size="small"
-                            defaultValue={100}
-                            min={1}
-                            max={200}
-                            aria-label="Small"
-                            valueLabelDisplay="auto"
-                            onChange={(event) => handleFontSize(event, index)}
-                            onFocus={() => handleFocus(index)}
-                            key={`slider${index}`}
-                        />
-                    </Card>
-                )
-                )}
+                    </Grid>
+                    <Grid item xs={12} md={4}>
+                        {editor?.canvas?.getObjects().map((object, index) => (
+
+                            ('text' in object) &&
+
+                            <Card sx={{ marginTop: '10px', marginBottom: '10px', paddingY: '10px' }} key={`card${index}`}>
+                                <div style={{ display: 'inline', position: 'relative' }} key={`div${index}`}>
+                                    <button type='button' key={`button${index}`} onClick={toggleColorPicker}>Change Color</button>
+                                    {pickingColor &&
+                                        <ColorPickerPopover key={`colorpicker${index}`}>
+                                            <TwitterPickerWrapper key={`twitterpicker${index}`} onChange={(color) => changeColor(color, index)} />
+                                        </ColorPickerPopover>
+                                    }
+                                </div>
+                                <TextField key={`textfield${index}`} multiline type='text' value={canvasObjects[index].text} sx={{ marginLeft: '5px', marginRight: '5px' }} fullWidth onFocus={() => handleFocus(index)} onChange={(event) => handleEdit(event, index)} />
+                                <Slider
+                                    size="small"
+                                    defaultValue={100}
+                                    min={1}
+                                    max={200}
+                                    aria-label="Small"
+                                    valueLabelDisplay="auto"
+                                    onChange={(event) => handleFontSize(event, index)}
+                                    onFocus={() => handleFocus(index)}
+                                    key={`slider${index}`}
+                                />
+                            </Card>
+                        )
+                        )}
+                        <Button variant='contained' onClick={() => addText('text')} fullWidth>Add Layer</Button>
+                    </Grid>
+                </Grid>
+
+
+
+
 
 
 

@@ -52,10 +52,13 @@ export default function Router() {
       children: [
         // { element: <Navigate to="/dashboard/app" />, index: true },
         { element: <SearchPage />, index: true },
-        { path: 'editor/:fid', element: <EditorPage /> },
         { path: '404', element: <Page404 /> },
         { path: '*', element: <Navigate to="/404" /> },
       ],
+    },
+    {
+      path: 'editor/:fid',
+      element: <EditorPage />,
     },
     {
       path: '*',
