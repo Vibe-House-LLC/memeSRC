@@ -281,7 +281,7 @@ const EditorPage = () => {
             <ParentContainer id="parent-container">
 
                 <Grid container spacing={2}>
-                    <Grid item xs={12} md={8} height='100vh'>
+                    <Grid item xs={12} md={8} height={{md: '100vh'}}>
                         <button type='button' onClick={addCircle}>Add circle</button>
                         <button type='button' onClick={addRectangle}>Add Rectangle</button>
                         <button type='button' onClick={addImage}>Add Image</button>
