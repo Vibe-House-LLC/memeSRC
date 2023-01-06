@@ -96,7 +96,7 @@ export default function SearchPage() {
           <StyledCircularProgress />
         ) : memoizedResults && memoizedResults.map(result => (
           <Grid item xs={12} sm={6} md={4} key={result.fid}>
-            <a href={`/dashboard/editor/${result.fid}`} style={{ textDecoration: 'none' }}>
+            <a href={`/editor/${result.fid}`} style={{ textDecoration: 'none' }}>
               <StyledCard>
                 <StyledCardMedia
                   component="img"
