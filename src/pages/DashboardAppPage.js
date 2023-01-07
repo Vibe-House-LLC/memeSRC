@@ -117,7 +117,7 @@ export default function DashboardAppPage() {
             <Grid item xs={12} md={6} lg={8}>
               <AppHomepageSectionsListPreview
                 title="Homepage Sections"
-                list={sections.map((section, index) => ({
+                list={sections.map((section) => ({
                   id: section.id,
                   title: section.title,
                   description: section.subtitle,

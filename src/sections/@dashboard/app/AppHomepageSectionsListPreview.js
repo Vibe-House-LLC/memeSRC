@@ -47,6 +47,7 @@ NewsItem.propTypes = {
     image: PropTypes.string,
     postedAt: PropTypes.instanceOf(Date),
     title: PropTypes.string,
+    backgroundColor: PropTypes.string
   }),
 };
 
