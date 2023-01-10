@@ -36,18 +36,6 @@ const StyledTypography = styled.p(({ theme }) => ({
   padding: '10px 10px 10px 25px'
 }));
 
-function getSessionID() {
-  if ("sessionID" in sessionStorage) {
-    return Promise.resolve(sessionStorage.getItem("sessionID"));
-  }
-  return fetch(`https://api.memesrc.com/?uuidGen`)
-    .then(response => response.text())
-    .then(sessionID => {
-      sessionStorage.setItem("sessionID", sessionID);
-      return sessionID;
-    });
-}
-
 export default function SearchPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [seriesTitle, setSeriesTitle] = useState('');
@@ -58,29 +46,45 @@ export default function SearchPage() {
   const memoizedResults = useMemo(() => results, [results]);
 
   useEffect(() => {
-    getSessionID().then(id => setSessionID(id));
-  }, []);
+    if ("sessionID" in sessionStorage) {
+      setSessionID(sessionStorage.getItem("sessionID"));
+    } else {
+      fetch(`https://api.memesrc.com/?uuidGen`)
+        .then(response => {
+          response.text()
+            .then(responseText => {
+              const generatedSessionID = JSON.parse(responseText);
+              setSessionID(generatedSessionID);
+              sessionStorage.setItem("sessionID", generatedSessionID);
+            }).catch(err => console.log(`JSON Parse Error:  ${err}`));
+        }).catch(err => console.log(`UUID Gen Fetch Error:  ${err}`));
+    }
+  }, [])
 
   const handleSearch = useCallback((e) => {
-    e.preventDefault();
-    setLoading(true);
-    let apiSearchUrl;
-    if (seriesTitle) {
-      apiSearchUrl = `https://api.memesrc.com/?series=${seriesTitle}&search=${searchTerm}&sessionID=${sessionID}`;
-    } else {
-      apiSearchUrl = `https://api.memesrc.com/?search=${searchTerm}&sessionID=${sessionID}`;
-    }
+    if (sessionID) {
+      e.preventDefault();
+      setLoading(true);
+      let apiSearchUrl;
+      if (seriesTitle) {
+        apiSearchUrl = `https://api.memesrc.com/?series=${seriesTitle}&search=${searchTerm}&sessionID=${sessionID}`;
+      } else {
+        apiSearchUrl = `https://api.memesrc.com/?search=${searchTerm}&sessionID=${sessionID}`;
+      }
 
-    fetch(apiSearchUrl)
-      .then(response => response.json())
-      .then(data => {
-        setResults(data);
-        setLoading(false);
-      })
-      .catch(error => {
-        console.error(error);
-        setLoading(false);
-      });
+      fetch(apiSearchUrl)
+        .then(response => response.json())
+        .then(data => {
+          setResults(data);
+          setLoading(false);
+        })
+        .catch(error => {
+          console.error(error);
+          setLoading(false);
+        });
+    } else {
+      alert('No Session ID set. Try again.');
+    }
   }, [seriesTitle, searchTerm, sessionID]);
 
 
