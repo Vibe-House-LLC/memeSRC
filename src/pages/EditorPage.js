@@ -43,6 +43,17 @@ function parseFid(fid) {
     };
 }
 
+const checkImage = path =>
+    new Promise(resolve => {
+        fabric.Image.fromURL(`https://memesrc.com${path}`, (oImg) => {
+            // oImg._element.onload = () => resolve(oImg);
+            // oImg._element.onerror = () => resolve({ path, status: 'error' });
+            resolve(oImg);
+        });
+    });
+
+const loadImg = (paths) => Promise.all(paths.map(checkImage));
+
 const EditorPage = () => {
     const TwitterPickerWrapper = memo(TwitterPicker);
 
@@ -58,24 +69,30 @@ const EditorPage = () => {
         height: 500
     });
     const [defaultSubtitle, setDefaultSubtitle] = useState(false);
+    const [fineTuningFrames, setFineTuningFrames] = useState([]);
     const [canvasObjects, setCanvasObjects] = useState();
+    const [sessionID, setSessionID] = useState();
 
     const { selectedObjects, editor, onReady } = useFabricJSEditor()
 
     useEffect(() => {
-        function getSessionID() {
-            if ("sessionID" in sessionStorage) {
-                return Promise.resolve(sessionStorage.getItem("sessionID"));
-            }
-            return fetch(`https://api.memesrc.com/?uuidGen`)
-                .then(response => response.text())
-                .then(sessionID => {
-                    sessionStorage.setItem("sessionID", sessionID);
-                    return sessionID;
-                });
+        if ("sessionID" in sessionStorage) {
+            setSessionID(sessionStorage.getItem("sessionID"));
+        } else {
+            fetch(`https://api.memesrc.com/?uuidGen`)
+                .then(response => {
+                    response.text()
+                        .then(responseText => {
+                            const generatedSessionID = JSON.parse(responseText);
+                            setSessionID(generatedSessionID);
+                            sessionStorage.setItem("sessionID", generatedSessionID);
+                        }).catch(err => console.log(`JSON Parse Error:  ${err}`));
+                }).catch(err => console.log(`UUID Gen Fetch Error:  ${err}`));
         }
+    }, [])
 
-        if (editor && editor.canvas.width !== canvasSize.width && editor.canvas.height !== canvasSize.height) {
+    useEffect(() => {
+        if (sessionID && editor && editor.canvas.width !== canvasSize.width && editor.canvas.height !== canvasSize.height) {
             console.log('Resized the canvas');
             editor.canvas.preserveObjectStacking = true;
             editor.canvas.setWidth(canvasSize.width);
@@ -86,10 +103,15 @@ const EditorPage = () => {
             }
 
             if (fid && !loadedFid) {
-                const apiSearchUrl = `https://api.memesrc.com/?fid=${fid}&sessionID=${getSessionID}`;
+                const apiSearchUrl = `https://api.memesrc.com/?fid=${fid}&sessionID=${sessionID}`;
                 fetch(apiSearchUrl)
                     .then(response => response.json())
                     .then(data => {
+                        loadImg(data.frames_fine_tuning).then((images) => {
+                            setFineTuningFrames(images)
+                            console.log(images);
+                        });
+
                         console.log('addText');
                         setLoadedFid(fid)
                         console.log('loaded image')
@@ -130,6 +152,7 @@ const EditorPage = () => {
                             oImg.selectable = false;
                             oImg.hoverCursor = 'default';
                             oImg.crossOrigin = 'anonymous';
+                            console.log(oImg);
                             editor?.canvas.setBackgroundImage(oImg);
                             const minRes = 1280;
                             const x = (oImg.width > minRes) ? oImg.width : minRes;
@@ -144,7 +167,7 @@ const EditorPage = () => {
             }
 
         }
-    }, [editor, canvasSize, fid, loadedFid])
+    }, [editor, canvasSize, fid, loadedFid, sessionID])
 
     // Handle events
     const saveProject = () => {
@@ -275,13 +298,22 @@ const EditorPage = () => {
         editor?.canvas.renderAll();
     }
 
+    const handleFineTuning = (event) => {
+        console.log(fineTuningFrames[event.target.value]);
+        const oImg = fineTuningFrames[event.target.value];
+        oImg.scaleToHeight(canvasSize.height);
+        oImg.scaleToWidth(canvasSize.width);
+        editor?.canvas?.setBackgroundImage(oImg);
+        editor?.canvas.renderAll();
+    }
+
     // Outputs
     return (
         <>
             <ParentContainer id="parent-container">
 
                 <Grid container spacing={2}>
-                    <Grid item xs={12} md={8} height={{md: '100vh'}}>
+                    <Grid item xs={12} md={8} height={{ md: '100vh' }}>
                         <button type='button' onClick={addCircle}>Add circle</button>
                         <button type='button' onClick={addRectangle}>Add Rectangle</button>
                         <button type='button' onClick={addImage}>Add Image</button>
@@ -289,14 +321,14 @@ const EditorPage = () => {
                         <button type='button' onClick={loadProject}>Load Project</button>
                         <button type='button' onClick={matchImageSize}>Original Size</button>
                         <button type='button' onClick={saveImage}>Save Image</button>
-                        {/* <div style={{ display: 'inline', position: 'relative' }}>
+                        <div style={{ display: 'inline', position: 'relative' }}>
                     <button type='button' onClick={toggleColorPicker}>Change Color</button>
                     {pickingColor &&
                         <ColorPickerPopover>
                             <TwitterPicker onChangeComplete={changeColor} />
                         </ColorPickerPopover>
                     }
-                </div> */}
+                </div>
                         <div style={{ width: '100%', height: '100%' }} id='canvas-container'>
                             <FabricJSCanvas onReady={onReady} />
                         </div>
@@ -331,6 +363,17 @@ const EditorPage = () => {
                         )
                         )}
                         <Button variant='contained' onClick={() => addText('text')} fullWidth>Add Layer</Button>
+                    </Grid>
+                    <Grid item xs={12}>
+                        <Slider
+                            size="small"
+                            defaultValue={4}
+                            min={0}
+                            max={8}
+                            aria-label="Small"
+                            valueLabelDisplay="auto"
+                            onChange={(event) => handleFineTuning(event)}
+                        />
                     </Grid>
                 </Grid>
 
