@@ -360,7 +360,7 @@ const EditorPage = () => {
                                     <Grid item xs={12} marginBottom={2}>
                                         <Button variant='contained' onClick={() => addText('text')} fullWidth sx={{zIndex: '50'}}>Add Layer</Button>
                                     </Grid>
-                                    <Grid container item xs={12} maxHeight={{ xs: {}, md: `${canvasSize.height - 36}px` }} paddingX={{xs: 0, md: 2}} sx={{ overflowY: 'scroll', overflow: 'auto'}} flexDirection='col-reverse'>
+                                    <Grid container item xs={12} maxHeight={{ xs: {}, md: `${canvasSize.height - 52}px` }} paddingX={{xs: 0, md: 2}} sx={{ overflowY: 'scroll', overflow: 'auto'}} flexDirection='col-reverse'>
                                         {canvasObjects && canvasObjects.map((object, index) => (
 
                                             ('text' in object) &&
