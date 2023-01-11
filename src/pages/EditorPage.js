@@ -123,6 +123,7 @@ const EditorPage = () => {
         }
     }, [])
 
+    // TODO: Refactor this
     useEffect(() => {
         if (sessionID && editor && editor.canvas.width !== canvasSize.width && editor.canvas.height !== canvasSize.height) {
             console.log('Resized the canvas');
@@ -133,7 +134,6 @@ const EditorPage = () => {
             if (defaultSubtitle) {
                 addText(defaultSubtitle);
             }
-
             if (fid && !loadedFid) {
                 const apiSearchUrl = `https://api.memesrc.com/?fid=${fid}&sessionID=${sessionID}`;
                 fetch(apiSearchUrl)
@@ -240,6 +240,7 @@ const EditorPage = () => {
         setGeneratedImage(resultImage);
     }
 
+    // TODO: Repurpose this for canvas scaling
     const matchImageSize = () => {
         // Export the state of the canvas as a JSON object
         const canvasJson = editor.canvas.toJSON(['hoverCursor', 'selectable']);
