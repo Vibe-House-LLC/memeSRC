@@ -43,7 +43,7 @@ function parseFid(fid) {
     };
 }
 
-const checkImage = path =>
+const oImgBuild = path =>
     new Promise(resolve => {
         fabric.Image.fromURL(`https://memesrc.com${path}`, (oImg) => {
             // oImg._element.onload = () => resolve(oImg);
@@ -52,7 +52,41 @@ const checkImage = path =>
         });
     });
 
-const loadImg = (paths) => Promise.all(paths.map(checkImage));
+const imgBuild = path =>
+    new Promise(resolve => {
+        const img = new Image();
+            img.onload = () => resolve(img);
+            img.onerror = () => resolve({ path, status: 'error' });
+            
+            img.src = `https://memesrc.com${path}`;
+    });
+
+const loadImg = (paths, func) => Promise.all(paths.map(func));
+
+const StyledCard = styled(Card)`
+  
+  border: 3px solid transparent;
+  box-sizing: border-box;
+
+  &:hover {
+    border: 3px solid orange;
+  }
+`;
+
+const StyledCardMedia = styled.img`
+  width: 100%;
+  height: 300px;
+  aspect-ratio: '16/9';
+  object-fit: contain;
+  object-position: center;
+  background-color: black;
+`;
+
+const StyledTypography = styled.p(({ theme }) => ({
+    fontSize: '14px',
+    color: theme.palette.text.secondary,
+    padding: '10px 10px 10px 25px'
+}));
 
 const EditorPage = () => {
     const TwitterPickerWrapper = memo(TwitterPicker);
@@ -72,6 +106,7 @@ const EditorPage = () => {
     const [fineTuningFrames, setFineTuningFrames] = useState([]);
     const [canvasObjects, setCanvasObjects] = useState();
     const [sessionID, setSessionID] = useState();
+    const [surroundingFrames, setSurroundingFrames] = useState();
 
     const { selectedObjects, editor, onReady } = useFabricJSEditor()
 
@@ -107,10 +142,12 @@ const EditorPage = () => {
                 fetch(apiSearchUrl)
                     .then(response => response.json())
                     .then(data => {
-                        loadImg(data.frames_fine_tuning).then((images) => {
+                        loadImg(data.frames_fine_tuning, oImgBuild).then((images) => {
                             setFineTuningFrames(images)
                             console.log(images);
                         });
+
+                        setSurroundingFrames(data.frames_surrounding);
 
                         console.log('addText');
                         setLoadedFid(fid)
@@ -322,13 +359,13 @@ const EditorPage = () => {
                         <button type='button' onClick={matchImageSize}>Original Size</button>
                         <button type='button' onClick={saveImage}>Save Image</button>
                         <div style={{ display: 'inline', position: 'relative' }}>
-                    <button type='button' onClick={toggleColorPicker}>Change Color</button>
-                    {pickingColor &&
-                        <ColorPickerPopover>
-                            <TwitterPicker onChangeComplete={changeColor} />
-                        </ColorPickerPopover>
-                    }
-                </div>
+                            <button type='button' onClick={toggleColorPicker}>Change Color</button>
+                            {pickingColor &&
+                                <ColorPickerPopover>
+                                    <TwitterPicker onChangeComplete={changeColor} />
+                                </ColorPickerPopover>
+                            }
+                        </div>
                         <div style={{ width: '100%', height: '100%' }} id='canvas-container'>
                             <FabricJSCanvas onReady={onReady} />
                         </div>
@@ -374,6 +411,21 @@ const EditorPage = () => {
                             valueLabelDisplay="auto"
                             onChange={(event) => handleFineTuning(event)}
                         />
+                    </Grid>
+                    <Grid container spacing={4}>
+                        {surroundingFrames && surroundingFrames.map(result => (
+                            <Grid item xs={12} sm={4} md={4} key={result.fid}>
+                                <a href={`/editor/${result.fid}`} style={{ textDecoration: 'none' }}>
+                                    <StyledCard>
+                                        <StyledCardMedia
+                                            component="img"
+                                            src={`https://memesrc.com${result.frame_image}`}
+                                            alt={result.subtitle}
+                                            title={result.subtitle} />
+                                    </StyledCard>
+                                </a>
+                            </Grid>
+                        ))}
                     </Grid>
                 </Grid>
 
