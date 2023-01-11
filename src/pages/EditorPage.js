@@ -55,10 +55,10 @@ const oImgBuild = path =>
 const imgBuild = path =>
     new Promise(resolve => {
         const img = new Image();
-            img.onload = () => resolve(img);
-            img.onerror = () => resolve({ path, status: 'error' });
-            
-            img.src = `https://memesrc.com${path}`;
+        img.onload = () => resolve(img);
+        img.onerror = () => resolve({ path, status: 'error' });
+
+        img.src = `https://memesrc.com${path}`;
     });
 
 const loadImg = (paths, func) => Promise.all(paths.map(func));
@@ -75,10 +75,7 @@ const StyledCard = styled(Card)`
 
 const StyledCardMedia = styled.img`
   width: 100%;
-  height: 300px;
-  aspect-ratio: '16/9';
-  object-fit: contain;
-  object-position: center;
+  height: auto;
   background-color: black;
 `;
 
@@ -164,17 +161,17 @@ const EditorPage = () => {
                             // Determine the aspect ratio of the image
                             const imageAspectRatio = oImg.width / oImg.height;
                             // Calculate the size of the canvas based on the aspect ratio of the image and the available space
-                            let calculatedWidth;
-                            let calculatedHeight;
-                            if (availableWidth / imageAspectRatio <= availableHeight) {
-                                // If the width is the limiting factor, set the canvas width to the available width and the height based on the aspect ratio
-                                calculatedWidth = availableWidth;
-                                calculatedHeight = availableWidth / imageAspectRatio;
-                            } else {
-                                // If the height is the limiting factor, set the canvas height to the available height and the width based on the aspect ratio
-                                calculatedHeight = availableHeight;
-                                calculatedWidth = availableHeight * imageAspectRatio;
-                            }
+                            // let calculatedWidth;
+                            // let calculatedHeight;
+                            // if (availableWidth / imageAspectRatio <= availableHeight) {
+                            // If the width is the limiting factor, set the canvas width to the available width and the height based on the aspect ratio
+                            const calculatedWidth = availableWidth;
+                            const calculatedHeight = availableWidth / imageAspectRatio;
+                            // } else {
+                            //     // If the height is the limiting factor, set the canvas height to the available height and the width based on the aspect ratio
+                            //     calculatedHeight = availableHeight;
+                            //     calculatedWidth = availableHeight * imageAspectRatio;
+                            // }
                             setCanvasSize({
                                 width: calculatedWidth,
                                 height: calculatedHeight
@@ -296,7 +293,7 @@ const EditorPage = () => {
             selectable: true
         });
         editor?.canvas.add(text);
-        setCanvasObjects(editor.canvas._objects);
+        setCanvasObjects([...editor.canvas._objects]);
 
     }
 
@@ -348,86 +345,101 @@ const EditorPage = () => {
     return (
         <>
             <ParentContainer id="parent-container">
+                <Grid container justifyContent='center'>
+                    <Grid container item xs={12} md={8} justifyContent='center'>
+                        <Card sx={{ padding: '20px' }}>
+                            <Grid container item spacing={2} justifyContent='center'>
+                                <Grid item xs={12} md={8}>
 
-                <Grid container spacing={2}>
-                    <Grid item xs={12} md={8} height={{ md: '100vh' }}>
-                        <button type='button' onClick={addCircle}>Add circle</button>
-                        <button type='button' onClick={addRectangle}>Add Rectangle</button>
-                        <button type='button' onClick={addImage}>Add Image</button>
-                        <button type='button' onClick={saveProject}>Save Project</button>
-                        <button type='button' onClick={loadProject}>Load Project</button>
-                        <button type='button' onClick={matchImageSize}>Original Size</button>
-                        <button type='button' onClick={saveImage}>Save Image</button>
-                        <div style={{ display: 'inline', position: 'relative' }}>
-                            <button type='button' onClick={toggleColorPicker}>Change Color</button>
-                            {pickingColor &&
-                                <ColorPickerPopover>
-                                    <TwitterPicker onChangeComplete={changeColor} />
-                                </ColorPickerPopover>
-                            }
-                        </div>
-                        <div style={{ width: '100%', height: '100%' }} id='canvas-container'>
-                            <FabricJSCanvas onReady={onReady} />
-                        </div>
-                    </Grid>
-                    <Grid item xs={12} md={4}>
-                        {editor?.canvas?.getObjects().map((object, index) => (
+                                    <div style={{ width: '100%', height: '100%' }} id='canvas-container'>
+                                        <FabricJSCanvas onReady={onReady} />
+                                    </div>
+                                </Grid>
+                                <Grid item xs={12} md={4}>
+                                    <Grid item xs={12} marginBottom={2}>
+                                        <Button variant='contained' onClick={() => addText('text')} fullWidth sx={{zIndex: '50'}}>Add Layer</Button>
+                                    </Grid>
+                                    <Grid item xs={12} maxHeight={{ xs: {}, md: `${canvasSize.height - 36}px` }} paddingX={{xs: 0, md: 2}} sx={{ overflowY: 'scroll', overflow: 'auto'}}>
+                                        {canvasObjects && canvasObjects.reverse().map((object, index) => (
 
-                            ('text' in object) &&
+                                            ('text' in object) &&
 
-                            <Card sx={{ marginTop: '10px', marginBottom: '10px', paddingY: '10px' }} key={`card${index}`}>
-                                <div style={{ display: 'inline', position: 'relative' }} key={`div${index}`}>
-                                    <button type='button' key={`button${index}`} onClick={toggleColorPicker}>Change Color</button>
-                                    {pickingColor &&
-                                        <ColorPickerPopover key={`colorpicker${index}`}>
-                                            <TwitterPickerWrapper key={`twitterpicker${index}`} onChange={(color) => changeColor(color, index)} />
-                                        </ColorPickerPopover>
-                                    }
-                                </div>
-                                <TextField key={`textfield${index}`} multiline type='text' value={canvasObjects[index].text} sx={{ marginLeft: '5px', marginRight: '5px' }} fullWidth onFocus={() => handleFocus(index)} onChange={(event) => handleEdit(event, index)} />
-                                <Slider
-                                    size="small"
-                                    defaultValue={100}
-                                    min={1}
-                                    max={200}
-                                    aria-label="Small"
-                                    valueLabelDisplay="auto"
-                                    onChange={(event) => handleFontSize(event, index)}
-                                    onFocus={() => handleFocus(index)}
-                                    key={`slider${index}`}
-                                />
-                            </Card>
-                        )
-                        )}
-                        <Button variant='contained' onClick={() => addText('text')} fullWidth>Add Layer</Button>
-                    </Grid>
-                    <Grid item xs={12}>
-                        <Slider
-                            size="small"
-                            defaultValue={4}
-                            min={0}
-                            max={8}
-                            aria-label="Small"
-                            valueLabelDisplay="auto"
-                            onChange={(event) => handleFineTuning(event)}
-                        />
-                    </Grid>
-                    <Grid container spacing={4}>
-                        {surroundingFrames && surroundingFrames.map(result => (
-                            <Grid item xs={12} sm={4} md={4} key={result.fid}>
-                                <a href={`/editor/${result.fid}`} style={{ textDecoration: 'none' }}>
-                                    <StyledCard>
-                                        <StyledCardMedia
-                                            component="img"
-                                            src={`https://memesrc.com${result.frame_image}`}
-                                            alt={result.subtitle}
-                                            title={result.subtitle} />
-                                    </StyledCard>
-                                </a>
+                                            <Card sx={{ marginBottom: '20px', padding: '10px' }} key={`card${index}`}>
+                                                <div style={{ display: 'inline', position: 'relative' }} key={`div${index}`}>
+                                                    <button type='button' key={`button${index}`} onClick={toggleColorPicker}>Change Color</button>
+                                                    {pickingColor &&
+                                                        <ColorPickerPopover key={`colorpicker${index}`}>
+                                                            <TwitterPickerWrapper key={`twitterpicker${index}`} onChange={(color) => changeColor(color, index)} />
+                                                        </ColorPickerPopover>
+                                                    }
+                                                </div>
+                                                <TextField key={`textfield${index}`} multiline type='text' value={canvasObjects[index].text} fullWidth onFocus={() => handleFocus(index)} onChange={(event) => handleEdit(event, index)} />
+                                                <Slider
+                                                    size="small"
+                                                    defaultValue={100}
+                                                    min={1}
+                                                    max={200}
+                                                    aria-label="Small"
+                                                    valueLabelDisplay="auto"
+                                                    onChange={(event) => handleFontSize(event, index)}
+                                                    onFocus={() => handleFocus(index)}
+                                                    key={`slider${index}`}
+                                                />
+                                            </Card>
+                                        )
+                                        )}
+                                    </Grid>
+                                </Grid>
+                                <Grid item xs={8} marginRight={{ xs: '', md: 'auto' }}>
+                                    <button type='button' onClick={addCircle}>Add circle</button>
+                                    <button type='button' onClick={addRectangle}>Add Rectangle</button>
+                                    <button type='button' onClick={addImage}>Add Image</button>
+                                    <button type='button' onClick={saveProject}>Save Project</button>
+                                    <button type='button' onClick={loadProject}>Load Project</button>
+                                    <button type='button' onClick={matchImageSize}>Original Size</button>
+                                    <button type='button' onClick={saveImage}>Save Image</button>
+                                    <div style={{ display: 'inline', position: 'relative' }}>
+                                        <button type='button' onClick={toggleColorPicker}>Change Color</button>
+                                        {pickingColor &&
+                                            <ColorPickerPopover>
+                                                <TwitterPicker onChangeComplete={changeColor} />
+                                            </ColorPickerPopover>
+                                        }
+                                    </div>
+                                    <Slider
+                                        size="small"
+                                        defaultValue={4}
+                                        min={0}
+                                        max={8}
+                                        aria-label="Small"
+                                        valueLabelDisplay="auto"
+                                        onChange={(event) => handleFineTuning(event)}
+                                    />
+
+                                </Grid>
+                                <Grid container item spacing={4}>
+                                    {surroundingFrames && surroundingFrames.map(result => (
+                                        <Grid item xs={12} sm={4} md={4} key={result.fid}>
+                                            <a href={`/editor/${result.fid}`} style={{ textDecoration: 'none' }}>
+                                                <StyledCard>
+                                                    <StyledCardMedia
+                                                        component="img"
+                                                        src={`https://memesrc.com${result.frame_image}`}
+                                                        alt={result.subtitle}
+                                                        title={result.subtitle} />
+                                                </StyledCard>
+                                            </a>
+                                        </Grid>
+                                    ))}
+                                </Grid>
                             </Grid>
-                        ))}
+                        </Card>
+
+
                     </Grid>
                 </Grid>
+
+
 
 
 
