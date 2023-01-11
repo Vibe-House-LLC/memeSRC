@@ -278,10 +278,10 @@ const EditorPage = () => {
 
     const addText = (updatedText) => {
         const text = new fabric.Textbox(updatedText, {
-            left: 0,
-            top: editor.canvas.getHeight() - 35,
+            left: editor.canvas.getWidth() * 0.05,
+            top: editor.canvas.getHeight() * 0.95,
             originY: 'bottom',
-            width: editor.canvas.getWidth(),
+            width: editor.canvas.getWidth() * 0.9,
             fontSize: editor.canvas.getWidth() * 0.03,
             fontFamily: 'sans-serif',
             fontWeight: 900,
