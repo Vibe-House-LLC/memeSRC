@@ -360,11 +360,11 @@ const EditorPage = () => {
                                     <Grid item xs={12} marginBottom={2}>
                                         <Button variant='contained' onClick={() => addText('text')} fullWidth sx={{zIndex: '50'}}>Add Layer</Button>
                                     </Grid>
-                                    <Grid item xs={12} maxHeight={{ xs: {}, md: `${canvasSize.height - 36}px` }} paddingX={{xs: 0, md: 2}} sx={{ overflowY: 'scroll', overflow: 'auto'}}>
-                                        {canvasObjects && canvasObjects.reverse().map((object, index) => (
+                                    <Grid container item xs={12} maxHeight={{ xs: {}, md: `${canvasSize.height - 36}px` }} paddingX={{xs: 0, md: 2}} sx={{ overflowY: 'scroll', overflow: 'auto'}} flexDirection='col-reverse'>
+                                        {canvasObjects && canvasObjects.map((object, index) => (
 
                                             ('text' in object) &&
-
+                                            <Grid item xs={12} order={`-${index}`}>
                                             <Card sx={{ marginBottom: '20px', padding: '10px' }} key={`card${index}`}>
                                                 <div style={{ display: 'inline', position: 'relative' }} key={`div${index}`}>
                                                     <button type='button' key={`button${index}`} onClick={toggleColorPicker}>Change Color</button>
@@ -387,6 +387,7 @@ const EditorPage = () => {
                                                     key={`slider${index}`}
                                                 />
                                             </Card>
+                                            </Grid>
                                         )
                                         )}
                                     </Grid>
