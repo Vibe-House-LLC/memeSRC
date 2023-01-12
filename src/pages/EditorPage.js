@@ -271,8 +271,12 @@ const EditorPage = () => {
 
     }
 
-    const toggleColorPicker = () => {
-        setPickingColor(!pickingColor);
+    const toggleColorPicker = (index) => {
+        if (pickingColor === false || pickingColor !== index) {
+            setPickingColor(index);
+        } else {
+            setPickingColor(false);
+        }
     }
 
     const changeColor = (color, index) => {
@@ -338,28 +342,28 @@ const EditorPage = () => {
 
                                             ('text' in object) &&
                                             <Grid item xs={12} order={`-${index}`}>
-                                                <Card sx={{ marginBottom: '20px', padding: '10px' }} key={`card${index}`}>
-                                                    <div style={{ display: 'inline', position: 'relative' }} key={`div${index}`}>
-                                                        <button type='button' key={`button${index}`} onClick={toggleColorPicker}>Change Color</button>
-                                                        {pickingColor &&
-                                                            <ColorPickerPopover key={`colorpicker${index}`}>
-                                                                <TwitterPickerWrapper key={`twitterpicker${index}`} onChange={(color) => changeColor(color, index)} />
-                                                            </ColorPickerPopover>
-                                                        }
-                                                    </div>
-                                                    <TextField key={`textfield${index}`} multiline type='text' value={canvasObjects[index].text} fullWidth onFocus={() => handleFocus(index)} onChange={(event) => handleEdit(event, index)} />
-                                                    <Slider
-                                                        size="small"
-                                                        defaultValue={100}
-                                                        min={1}
-                                                        max={200}
-                                                        aria-label="Small"
-                                                        valueLabelDisplay="auto"
-                                                        onChange={(event) => handleFontSize(event, index)}
-                                                        onFocus={() => handleFocus(index)}
-                                                        key={`slider${index}`}
-                                                    />
-                                                </Card>
+                                            <Card sx={{ marginBottom: '20px', padding: '10px' }} key={`card${index}`}>
+                                                <div style={{ display: 'inline', position: 'relative' }} key={`div${index}`}>
+                                                    <button type='button' key={`button${index}`} onClick={() => toggleColorPicker(index)}>Change Color</button>
+                                                    {pickingColor === index &&
+                                                        <ColorPickerPopover key={`colorpicker${index}`}>
+                                                            <TwitterPickerWrapper key={`twitterpicker${index}`} onChange={(color) => changeColor(color, index)} />
+                                                        </ColorPickerPopover>
+                                                    }
+                                                </div>
+                                                <TextField key={`textfield${index}`} multiline type='text' value={canvasObjects[index].text} fullWidth onFocus={() => handleFocus(index)} onChange={(event) => handleEdit(event, index)} />
+                                                <Slider
+                                                    size="small"
+                                                    defaultValue={100}
+                                                    min={1}
+                                                    max={200}
+                                                    aria-label="Small"
+                                                    valueLabelDisplay="auto"
+                                                    onChange={(event) => handleFontSize(event, index)}
+                                                    onFocus={() => handleFocus(index)}
+                                                    key={`slider${index}`}
+                                                />
+                                            </Card>
                                             </Grid>
                                         )
                                         )}
@@ -373,14 +377,14 @@ const EditorPage = () => {
                                     <button type='button' onClick={loadProject}>Load Project</button>
                                     <button type='button' onClick={matchImageSize}>Original Size</button>
                                     <button type='button' onClick={saveImage}>Save Image</button>
-                                    <div style={{ display: 'inline', position: 'relative' }}>
+                                    {/* <div style={{ display: 'inline', position: 'relative' }}>
                                         <button type='button' onClick={toggleColorPicker}>Change Color</button>
                                         {pickingColor &&
                                             <ColorPickerPopover>
                                                 <TwitterPicker onChangeComplete={changeColor} />
                                             </ColorPickerPopover>
                                         }
-                                    </div>
+                                    </div> */}
                                     <Slider
                                         size="small"
                                         defaultValue={4}
