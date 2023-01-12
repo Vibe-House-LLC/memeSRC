@@ -4,7 +4,8 @@ import { FabricJSCanvas, useFabricJSEditor } from 'fabricjs-react'
 import styled from '@emotion/styled';
 import { useParams } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
-import { Button, Card, Grid, Input, Slider, TextField } from '@mui/material';
+import { Button, Card, Grid, Input, Popover, Slider, TextField } from '@mui/material';
+import TextEditorControls from '../components/TextEditorControls';
 
 const ParentContainer = styled.div`
     height: 100%;
@@ -12,9 +13,6 @@ const ParentContainer = styled.div`
 `;
 
 const ColorPickerPopover = styled.div({
-    position: 'absolute',
-    top: '30px',
-    zIndex: '1201',
 })
 
 const BackgroundCover = styled.div({
@@ -104,6 +102,8 @@ const EditorPage = () => {
     const [sessionID, setSessionID] = useState();
     const [surroundingFrames, setSurroundingFrames] = useState();
     const [selectedFid, setSelectedFid] = useState(fid);
+    const [colorPickerShowing, setColorPickerShowing] = useState(false);
+    const [colorPickerAnchor, setColorPickerAnchor] = useState(null);
 
     const { selectedObjects, editor, onReady } = useFabricJSEditor()
 
@@ -136,7 +136,7 @@ const EditorPage = () => {
                 fabric.Image.fromURL(`https://memesrc.com${data.frame_image}`, (oImg) => {
                     const imageAspectRatio = oImg.width / oImg.height;
                     const [desiredHeight, desiredWidth] = calculateEditorSize(imageAspectRatio);
-                    setCanvasSize({height: desiredHeight, width: desiredWidth})  // TODO: rename this to something like "desiredSize"
+                    setCanvasSize({ height: desiredHeight, width: desiredWidth })  // TODO: rename this to something like "desiredSize"
                     // Scale the image to fit the canvas
                     oImg.scale(desiredWidth / oImg.width);
                     // Center the image within the canvas
@@ -273,12 +273,10 @@ const EditorPage = () => {
 
     }
 
-    const toggleColorPicker = (index) => {
-        if (pickingColor === false || pickingColor !== index) {
-            setPickingColor(index);
-        } else {
-            setPickingColor(false);
-        }
+    const showColorPicker = (event, index) => {
+        setPickingColor(index);
+        setColorPickerShowing(true);
+        setColorPickerAnchor(event.target);
     }
 
     const changeColor = (color, index) => {
@@ -344,28 +342,25 @@ const EditorPage = () => {
 
                                             ('text' in object) &&
                                             <Grid item xs={12} order={`-${index}`}>
-                                            <Card sx={{ marginBottom: '20px', padding: '10px' }} key={`card${index}`}>
-                                                <div style={{ display: 'inline', position: 'relative' }} key={`div${index}`}>
-                                                    <button type='button' key={`button${index}`} onClick={() => toggleColorPicker(index)}>Change Color</button>
-                                                    {pickingColor === index &&
-                                                        <ColorPickerPopover key={`colorpicker${index}`}>
-                                                            <TwitterPickerWrapper key={`twitterpicker${index}`} onChange={(color) => changeColor(color, index)} />
-                                                        </ColorPickerPopover>
-                                                    }
-                                                </div>
-                                                <TextField key={`textfield${index}`} multiline type='text' value={canvasObjects[index].text} fullWidth onFocus={() => handleFocus(index)} onChange={(event) => handleEdit(event, index)} />
-                                                <Slider
-                                                    size="small"
-                                                    defaultValue={100}
-                                                    min={1}
-                                                    max={200}
-                                                    aria-label="Small"
-                                                    valueLabelDisplay="auto"
-                                                    onChange={(event) => handleFontSize(event, index)}
-                                                    onFocus={() => handleFocus(index)}
-                                                    key={`slider${index}`}
-                                                />
-                                            </Card>
+                                                <Card sx={{ marginBottom: '20px', padding: '10px' }} key={`card${index}`}>
+                                                    <div style={{ display: 'inline', position: 'relative' }} key={`div${index}`}>
+                                                        <button type='button' key={`button${index}`} onClick={(event) => showColorPicker(event, index)}>Change Color</button>
+                                                        <TextEditorControls showColorPicker={(event) => showColorPicker(event, index)} colorPickerShowing={colorPickerShowing}/>
+
+                                                    </div>
+                                                    <TextField key={`textfield${index}`} multiline type='text' value={canvasObjects[index].text} fullWidth onFocus={() => handleFocus(index)} onChange={(event) => handleEdit(event, index)} />
+                                                    <Slider
+                                                        size="small"
+                                                        defaultValue={100}
+                                                        min={1}
+                                                        max={200}
+                                                        aria-label="Small"
+                                                        valueLabelDisplay="auto"
+                                                        onChange={(event) => handleFontSize(event, index)}
+                                                        onFocus={() => handleFocus(index)}
+                                                        key={`slider${index}`}
+                                                    />
+                                                </Card>
                                             </Grid>
                                         )
                                         )}
@@ -435,8 +430,29 @@ const EditorPage = () => {
 
 
                 <img src={generatedImage} alt="generated meme" />
-            </ParentContainer >
-            {pickingColor !== false && <BackgroundCover onClick={() => toggleColorPicker(false)} />}
+                <Popover
+                    open={colorPickerShowing}
+                    anchorEl={colorPickerAnchor}
+                    onClose={() => setColorPickerShowing(false)}
+                    id="colorPicker"
+                    anchorOrigin={{
+                        vertical: 'top',
+                        horizontal: 'left',
+                    }}
+                    transformOrigin={{
+                        vertical: 'top',
+                        horizontal: 'left',
+                    }}
+                >
+                    <ColorPickerPopover>
+                        <TwitterPickerWrapper onChange={(color) => changeColor(color, pickingColor)} />
+                    </ColorPickerPopover>
+                </Popover>
+            </ParentContainer>
+
+
+
+
         </>
     )
 }
