@@ -90,7 +90,6 @@ const EditorPage = () => {
 
     // Get everything ready
     const { fid } = useParams();
-    const [loadedFid, setLoadedFid] = useState();
     const [defaultFrame, setDefaultFrame] = useState(null);
     const [pickingColor, setPickingColor] = useState(false);
     const [imageScale, setImageScale] = useState();
@@ -104,6 +103,7 @@ const EditorPage = () => {
     const [canvasObjects, setCanvasObjects] = useState();
     const [sessionID, setSessionID] = useState();
     const [surroundingFrames, setSurroundingFrames] = useState();
+    const [selectedFid, setSelectedFid] = useState(fid);
 
     const { selectedObjects, editor, onReady } = useFabricJSEditor()
 
@@ -123,7 +123,7 @@ const EditorPage = () => {
 
     // Look up data for the fid and set defaults
     useEffect(() => {
-        const apiSearchUrl = `https://api.memesrc.com/?fid=${fid}&sessionID=${sessionID}`;
+        const apiSearchUrl = `https://api.memesrc.com/?fid=${selectedFid}&sessionID=${sessionID}`;
         fetch(apiSearchUrl).then(response => {
             response.json().then(data => {
                 setDefaultSubtitle(data.subtitle);
@@ -150,7 +150,7 @@ const EditorPage = () => {
                 }, { crossOrigin: "anonymous" });
             }).catch(err => console.log(err))
         }).catch(err => console.log(err))
-    }, [sessionID])
+    }, [sessionID, selectedFid])
 
     // Calculate the desired editor size
     const calculateEditorSize = (aspectRatio) => {
@@ -179,15 +179,17 @@ const EditorPage = () => {
     // Handle events
     const saveProject = () => {
         const canvasJson = editor.canvas.toJSON(['hoverCursor', 'selectable']);
-        const key = fid ? `project-${fid}` : 'project-example';
+        const key = selectedFid ? `project-${selectedFid}` : 'project-example';
         localStorage.setItem(key, JSON.stringify(canvasJson));
     };
 
     const loadProject = () => {
-        const key = fid ? `project-${fid}` : 'project-example';
+        const key = selectedFid ? `project-${selectedFid}` : 'project-example';
         const canvasJson = localStorage.getItem(key);
         editor.canvas.loadFromJSON(canvasJson, () => {
-            console.log('Canvas loaded from JSON');
+            editor.canvas.backgroundImage.scaleToHeight(canvasSize.height);
+            editor.canvas.backgroundImage.scaleToWidth(canvasSize.width);
+            editor.canvas.renderAll();
         });
     };
 
@@ -399,13 +401,18 @@ const EditorPage = () => {
                                 <Grid container item spacing={4}>
                                     {surroundingFrames && surroundingFrames.map(result => (
                                         <Grid item xs={12} sm={4} md={4} key={result.fid}>
-                                            <a href={`/editor/${result.fid}`} style={{ textDecoration: 'none' }}>
+                                            <a style={{ textDecoration: 'none' }}>
                                                 <StyledCard>
                                                     <StyledCardMedia
                                                         component="img"
                                                         src={`https://memesrc.com${result.frame_image}`}
                                                         alt={result.subtitle}
-                                                        title={result.subtitle} />
+                                                        title={result.subtitle}
+                                                        onClick={() => {
+                                                            editor.canvas._objects = [];
+                                                            setSelectedFid(result.fid)
+                                                        }}
+                                                    />
                                                 </StyledCard>
                                             </a>
                                         </Grid>
@@ -429,7 +436,7 @@ const EditorPage = () => {
 
                 <img src={generatedImage} alt="generated meme" />
             </ParentContainer >
-            {/* {pickingColor && <BackgroundCover onClick={toggleColorPicker} />} */}
+            {pickingColor !== false && <BackgroundCover onClick={() => toggleColorPicker(false)} />}
         </>
     )
 }
