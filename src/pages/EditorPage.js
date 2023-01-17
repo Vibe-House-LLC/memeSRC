@@ -263,10 +263,12 @@ const EditorPage = () => {
             fontWeight: 900,
             fill: 'white',
             stroke: 'black',
-            strokeWidth: editor.canvas.getWidth() * 0.00125,
+            strokeLineJoin: 'round',
+            strokeWidth: editor.canvas.getWidth() * 0.0040,
             strokeUniform: false,
             textAlign: 'center',
-            selectable: true
+            selectable: true,
+            paintFirst: 'stroke'
         });
         editor?.canvas.add(text);
         setCanvasObjects([...editor.canvas._objects]);
@@ -275,7 +277,7 @@ const EditorPage = () => {
 
     const showColorPicker = (event, index) => {
         setPickingColor(index);
-        setColorPickerShowing(true);
+        setColorPickerShowing(index);
         setColorPickerAnchor(event.target);
     }
 
@@ -319,6 +321,20 @@ const EditorPage = () => {
         editor?.canvas.renderAll();
     }
 
+    const handleStyle = (index, customStyles) => {
+        // Select the item
+        const item = editor.canvas.item(index);
+        // Update the style
+        item.fontWeight = customStyles.includes('bold') ? 900 : 400
+        item.fontStyle = customStyles.includes('italic') ? 'italic' : 'normal'
+        item.underline = customStyles.includes('underlined')
+        // Update the canvas
+        editor.canvas.item(index).dirty = true;
+        setCanvasObjects([...editor.canvas._objects])
+        console.log(editor.canvas.item(index));
+        editor?.canvas.renderAll();
+    }
+
     // Outputs
     return (
         <>
@@ -341,11 +357,11 @@ const EditorPage = () => {
                                         {canvasObjects && canvasObjects.map((object, index) => (
 
                                             ('text' in object) &&
-                                            <Grid item xs={12} order={`-${index}`}>
+                                            <Grid item xs={12} order={`-${index}`} key={`grid${index}`}>
                                                 <Card sx={{ marginBottom: '20px', padding: '10px' }} key={`card${index}`}>
                                                     <div style={{ display: 'inline', position: 'relative' }} key={`div${index}`}>
-                                                        <button type='button' key={`button${index}`} onClick={(event) => showColorPicker(event, index)}>Change Color</button>
-                                                        <TextEditorControls showColorPicker={(event) => showColorPicker(event, index)} colorPickerShowing={colorPickerShowing}/>
+                                                        {/* <button type='button' key={`button${index}`} onClick={(event) => showColorPicker(event, index)}>Change Color</button> */}
+                                                        <TextEditorControls showColorPicker={(event) => showColorPicker(event, index)} colorPickerShowing={colorPickerShowing} index={index} key={`togglebuttons${index}`} handleStyle={handleStyle} />
 
                                                     </div>
                                                     <TextField key={`textfield${index}`} multiline type='text' value={canvasObjects[index].text} fullWidth onFocus={() => handleFocus(index)} onChange={(event) => handleEdit(event, index)} />
@@ -431,7 +447,9 @@ const EditorPage = () => {
 
                 <img src={generatedImage} alt="generated meme" />
                 <Popover
-                    open={colorPickerShowing}
+                    open={
+                        (colorPickerShowing !== false)
+                    }
                     anchorEl={colorPickerAnchor}
                     onClose={() => setColorPickerShowing(false)}
                     id="colorPicker"
