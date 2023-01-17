@@ -3,8 +3,9 @@ import { fabric } from 'fabric';
 import { FabricJSCanvas, useFabricJSEditor } from 'fabricjs-react'
 import styled from '@emotion/styled';
 import { useParams } from 'react-router-dom';
-import { TwitterPicker } from 'react-color';
-import { Button, Card, Grid, Input, Popover, Slider, TextField } from '@mui/material';
+import { SketchPicker, TwitterPicker } from 'react-color';
+import { Button, Card, Fab, Grid, Input, Popover, Slider, TextField, Typography } from '@mui/material';
+import { FormatSizeRounded, HighlightOffRounded } from '@mui/icons-material';
 import TextEditorControls from '../components/TextEditorControls';
 
 const ParentContainer = styled.div`
@@ -71,6 +72,13 @@ const StyledCard = styled(Card)`
   }
 `;
 
+const StyledLayerControlCard = styled(Card)`
+  width: 280px;
+  border: 3px solid transparent;
+  box-sizing: border-box;
+  padding: 10px 15px;
+`;
+
 const StyledCardMedia = styled.img`
   width: 100%;
   height: auto;
@@ -83,8 +91,14 @@ const StyledTypography = styled.p(({ theme }) => ({
     padding: '10px 10px 10px 25px'
 }));
 
+const StyledTwitterPicker = styled(TwitterPicker)`
+    span div {
+        border: 1px solid rgb(240, 240, 240);
+    }
+`;
+
 const EditorPage = () => {
-    const TwitterPickerWrapper = memo(TwitterPicker);
+    const TwitterPickerWrapper = memo(StyledTwitterPicker);
 
     // Get everything ready
     const { fid } = useParams();
@@ -104,6 +118,15 @@ const EditorPage = () => {
     const [selectedFid, setSelectedFid] = useState(fid);
     const [colorPickerShowing, setColorPickerShowing] = useState(false);
     const [colorPickerAnchor, setColorPickerAnchor] = useState(null);
+    const [colorPickerColor, setColorPickerColor] = useState({
+        r: '0',
+        g: '0',
+        b: '0',
+        a: '100'
+    });
+    const [fontSizePickerShowing, setFontSizePickerShowing] = useState(false);
+    const [fontSizePickerAnchor, setFontSizePickerAnchor] = useState(null);
+    const [selectedFontSize, setSelectedFontSize] = useState(100);
 
     const { selectedObjects, editor, onReady } = useFabricJSEditor()
 
@@ -258,7 +281,7 @@ const EditorPage = () => {
             top: editor.canvas.getHeight() * 0.95,
             originY: 'bottom',
             width: editor.canvas.getWidth() * 0.9,
-            fontSize: editor.canvas.getWidth() * 0.03,
+            fontSize: editor.canvas.getWidth() * 0.04,
             fontFamily: 'sans-serif',
             fontWeight: 900,
             fill: 'white',
@@ -281,12 +304,24 @@ const EditorPage = () => {
         setColorPickerAnchor(event.target);
     }
 
+    const showFontSizePicker = (event, index) => {
+        // setPickingColor(index);
+        const defaultFontSize = editor.canvas.getWidth() * 0.04;
+        const currentFontSize = Math.round(100 * editor.canvas.item(index).fontSize / defaultFontSize);
+        // defaultFontSize * (event.target.value / 100);
+        setSelectedFontSize(currentFontSize);
+        setFontSizePickerShowing(index);
+        setFontSizePickerAnchor(event.target);
+    }
+
     const changeColor = (color, index) => {
+        setColorPickerColor(color);
         editor.canvas.item(index).set('fill', color.hex);
         console.log(`Length of object:  + ${selectedObjects.length}`)
         setCanvasObjects([...editor.canvas._objects])
         console.log(editor.canvas.item(index));
         editor?.canvas.renderAll();
+        setColorPickerShowing(false);
     }
 
     const handleEdit = (event, index) => {
@@ -305,7 +340,7 @@ const EditorPage = () => {
     }
 
     const handleFontSize = (event, index) => {
-        const defaultFontSize = editor.canvas.getWidth() * 0.03;
+        const defaultFontSize = editor.canvas.getWidth() * 0.04;
         editor.canvas.item(index).fontSize = defaultFontSize * (event.target.value / 100);
         setCanvasObjects([...editor.canvas._objects])
         console.log(editor.canvas.item(index));
@@ -330,8 +365,15 @@ const EditorPage = () => {
         item.underline = customStyles.includes('underlined')
         // Update the canvas
         editor.canvas.item(index).dirty = true;
-        setCanvasObjects([...editor.canvas._objects])
+        setCanvasObjects([...editor.canvas._objects]);
         console.log(editor.canvas.item(index));
+        editor?.canvas.renderAll();
+    }
+
+
+    const deleteLayer = (index) => {
+        editor.canvas.remove(editor.canvas.item(index));
+        setCanvasObjects([...editor.canvas._objects]);
         editor?.canvas.renderAll();
     }
 
@@ -361,10 +403,15 @@ const EditorPage = () => {
                                                 <Card sx={{ marginBottom: '20px', padding: '10px' }} key={`card${index}`}>
                                                     <div style={{ display: 'inline', position: 'relative' }} key={`div${index}`}>
                                                         {/* <button type='button' key={`button${index}`} onClick={(event) => showColorPicker(event, index)}>Change Color</button> */}
-                                                        <TextEditorControls showColorPicker={(event) => showColorPicker(event, index)} colorPickerShowing={colorPickerShowing} index={index} key={`togglebuttons${index}`} handleStyle={handleStyle} />
-
+                                                        <TextEditorControls showColorPicker={(event) => showColorPicker(event, index)} colorPickerShowing={colorPickerShowing} index={index} showFontSizePicker={(event) => showFontSizePicker(event, index)} fontSizePickerShowing={fontSizePickerShowing} key={`togglebuttons${index}`} handleStyle={handleStyle} />
                                                     </div>
-                                                    <TextField key={`textfield${index}`} multiline type='text' value={canvasObjects[index].text} fullWidth onFocus={() => handleFocus(index)} onChange={(event) => handleEdit(event, index)} />
+                                                    <Fab size="small" aria-label="add" sx={{position: 'absolute', backgroundColor: '#FFFFFF', boxShadow: 'none', top: '11px', right: '9px'}} onClick={() => deleteLayer(index)} key={`fab${index}`}>
+                                                        <HighlightOffRounded color="error"/>
+                                                    </Fab>
+                                                    <TextField size='small' key={`textfield${index}`} multiline type='text' value={canvasObjects[index].text} fullWidth onFocus={() => handleFocus(index)} onChange={(event) => handleEdit(event, index)} />
+                                                    {/* <Typography gutterBottom >
+                                                        Font Size
+                                                    </Typography>
                                                     <Slider
                                                         size="small"
                                                         defaultValue={100}
@@ -375,7 +422,7 @@ const EditorPage = () => {
                                                         onChange={(event) => handleFontSize(event, index)}
                                                         onFocus={() => handleFocus(index)}
                                                         key={`slider${index}`}
-                                                    />
+                                                    /> */}
                                                 </Card>
                                             </Grid>
                                         )
@@ -455,17 +502,57 @@ const EditorPage = () => {
                     id="colorPicker"
                     anchorOrigin={{
                         vertical: 'top',
-                        horizontal: 'left',
+                        horizontal: 'center',
                     }}
                     transformOrigin={{
                         vertical: 'top',
-                        horizontal: 'left',
+                        horizontal: 'center',
                     }}
                 >
                     <ColorPickerPopover>
-                        <TwitterPickerWrapper onChange={(color) => changeColor(color, pickingColor)} />
+                        <TwitterPickerWrapper
+                            onChangeComplete={(color) => changeColor(color, pickingColor)}
+                            color={colorPickerColor}
+                            colors={['#FFFFFF', 'yellow', 'black', 'orange', '#8ED1FC', '#0693E3', '#ABB8C3', '#EB144C', '#F78DA7', '#9900EF']}
+                            width='280px'
+                        />
                     </ColorPickerPopover>
                 </Popover>
+
+                <Popover
+                    open={
+                        (fontSizePickerShowing !== false)
+                    }
+                    anchorEl={fontSizePickerAnchor}
+                    onClose={() => setFontSizePickerShowing(false)}
+                    id="colorPicker"
+                    anchorOrigin={{
+                        vertical: 'top',
+                        horizontal: 'center',
+                    }}
+                    transformOrigin={{
+                        vertical: 'top',
+                        horizontal: 'center',
+                    }}
+                >
+                    <StyledLayerControlCard>
+                        <Typography variant='body1'>
+                            Font Size
+                        </Typography>
+                        <Slider
+                            size="small"
+                            defaultValue={selectedFontSize}
+                            min={1}
+                            max={400}
+                            aria-label="Small"
+                            valueLabelDisplay="auto"
+                            onChange={(event) => handleFontSize(event, fontSizePickerShowing)}
+                            onFocus={() => handleFocus(fontSizePickerShowing)}
+                        />
+                    </StyledLayerControlCard>
+                </Popover>
+
+
             </ParentContainer>
 
 

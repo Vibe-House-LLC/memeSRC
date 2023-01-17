@@ -6,6 +6,7 @@ import FormatColorFillIcon from '@mui/icons-material/FormatColorFill';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+import { FormatSize, FormatSizeRounded } from '@mui/icons-material';
 
 export default function TextEditorControls(props) {
     const [formats, setFormats] = React.useState(() => ['bold']);
@@ -21,6 +22,7 @@ export default function TextEditorControls(props) {
             onChange={handleFormat}
             aria-label="text formatting"
             size='small'
+            sx={{marginBottom: '12px'}}
         >
             <ToggleButton value="bold" aria-label="bold">
                 <FormatBoldIcon />
@@ -30,6 +32,9 @@ export default function TextEditorControls(props) {
             </ToggleButton>
             <ToggleButton value="underlined" aria-label="underlined">
                 <FormatUnderlinedIcon />
+            </ToggleButton>
+            <ToggleButton value="fontsize" aria-label="fontsize" selected={(props.fontSizePickerShowing === props.index)} onClick={props.showFontSizePicker}>
+                <FormatSizeRounded />
             </ToggleButton>
             <ToggleButton value="color" aria-label="color" selected={(props.colorPickerShowing === props.index)} onClick={props.showColorPicker}>
                 <FormatColorFillIcon />
