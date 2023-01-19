@@ -382,16 +382,16 @@ const EditorPage = () => {
         <>
             <ParentContainer id="parent-container">
                 <Grid container justifyContent='center'>
-                    <Grid container item xs={12} md={8} minWidth={{ xs: {}, md: '900px', lg: '1200px'}} width={{ xs: {}, md: '100vw'}} justifyContent='center'>
+                    <Grid container item xs={12} md={8} minWidth={{ xs: {}, md: '95vw', lg: '1200px'}} justifyContent='center'>
                         <Card sx={{ padding: '20px' }}>
                             <Grid container item spacing={2} justifyContent='center'>
-                                <Grid item xs={12} md={6} lg={8}>
+                                <Grid item xs={12} md={7} lg={8}>
 
                                     <div style={{ width: '100%', height: '100%' }} id='canvas-container'>
                                         <FabricJSCanvas onReady={onReady} />
                                     </div>
                                 </Grid>
-                                <Grid item xs={12} md={5} lg={4} minWidth={{xs: {}, md: '300px'}}>
+                                <Grid item xs={12} md={5} lg={4} minWidth={{xs: {}, md: '350px'}}>
                                     <Grid item xs={12} marginBottom={2}>
                                         <Button variant='contained' onClick={() => addText('text')} fullWidth sx={{ zIndex: '50' }}>Add Layer</Button>
                                     </Grid>
