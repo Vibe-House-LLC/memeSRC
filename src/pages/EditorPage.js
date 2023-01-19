@@ -128,7 +128,33 @@ const EditorPage = () => {
     const [fontSizePickerAnchor, setFontSizePickerAnchor] = useState(null);
     const [selectedFontSize, setSelectedFontSize] = useState(100);
 
+    const [editorAspectRatio, setEditorAspectRatio] = useState(1);
+
     const { selectedObjects, editor, onReady } = useFabricJSEditor()
+
+    // Update the editor size
+    const updateEditorSize = () => {
+        const [desiredHeight, desiredWidth] = calculateEditorSize(editorAspectRatio);
+        editor.canvas.backgroundImage.scaleToHeight(desiredHeight)
+        editor.canvas.backgroundImage.scaleToWidth(desiredWidth)
+        // Scale the objects
+        editor.canvas.getObjects().forEach(obj => {
+            // Calculate scale factor
+            const scaleFactorX = desiredWidth / canvasSize.width;
+            const scaleFactorY = desiredHeight / canvasSize.height;
+            const scaleFactor = Math.min(scaleFactorX, scaleFactorY)
+            // Scale the object size
+            obj.scaleX *= scaleFactor;
+            obj.scaleY *= scaleFactor;
+            // Adjust the position of the object
+            obj.left *= scaleFactor;
+            obj.top *= scaleFactor;
+        })
+        setCanvasSize({width: desiredWidth, height: desiredHeight})
+        resizeCanvas(desiredWidth, desiredHeight);
+        setCanvasObjects([...editor.canvas._objects])
+        editor.canvas.renderAll();
+    }
 
     // Prepare sessionID
     useEffect(() => {
@@ -157,7 +183,9 @@ const EditorPage = () => {
                 });
                 // Background image from the 
                 fabric.Image.fromURL(`https://memesrc.com${data.frame_image}`, (oImg) => {
+                    setDefaultFrame(oImg);
                     const imageAspectRatio = oImg.width / oImg.height;
+                    setEditorAspectRatio(imageAspectRatio);
                     const [desiredHeight, desiredWidth] = calculateEditorSize(imageAspectRatio);
                     setCanvasSize({ height: desiredHeight, width: desiredWidth })  // TODO: rename this to something like "desiredSize"
                     // Scale the image to fit the canvas
@@ -430,6 +458,7 @@ const EditorPage = () => {
                                     </Grid>
                                 </Grid>
                                 <Grid item xs={8} marginRight={{ xs: '', md: 'auto' }}>
+                                    <button type='button' onClick={updateEditorSize}>Update Canvas Size</button>
                                     <button type='button' onClick={addCircle}>Add circle</button>
                                     <button type='button' onClick={addRectangle}>Add Rectangle</button>
                                     <button type='button' onClick={addImage}>Add Image</button>
