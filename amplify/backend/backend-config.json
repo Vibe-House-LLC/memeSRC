@@ -119,5 +119,23 @@
       "providerPlugin": "awscloudformation",
       "service": "S3AndCloudFront"
     }
+  },
+  "parameters": {
+    "AMPLIFY_function_AdminQueries9e1cafc6_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "AdminQueries9e1cafc6"
+        }
+      ]
+    },
+    "AMPLIFY_function_AdminQueries9e1cafc6_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "AdminQueries9e1cafc6"
+        }
+      ]
+    }
   }
 }
