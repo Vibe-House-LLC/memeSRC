@@ -160,6 +160,14 @@ const EditorPage = () => {
         editor.canvas.renderAll();
     }
 
+    useEffect(() => {
+        window.addEventListener('resize', updateEditorSize)
+
+        return () => {
+            window.removeEventListener('resize', updateEditorSize)
+        }
+    }, [defaultFrame])
+
     // Prepare sessionID
     useEffect(() => {
         if ("sessionID" in sessionStorage) {
