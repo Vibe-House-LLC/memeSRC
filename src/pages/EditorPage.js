@@ -89,6 +89,7 @@ const EditorPage = () => {
     const [editorAspectRatio, setEditorAspectRatio] = useState(1);
 
     const [fineTuningValue, setFineTuningValue] = useState(4);
+    const [episodeDetails, setEpisodeDetails] = useState();
 
     const { selectedObjects, editor, onReady } = useFabricJSEditor()
 
@@ -169,6 +170,8 @@ const EditorPage = () => {
         fetch(apiSearchUrl).then(response => {
             response.json().then(data => {
                 setSurroundingFrames(data.frames_surrounding);
+                const episodeDetails = selectedFid.split('-');
+                setEpisodeDetails(episodeDetails);
                 // Pre load fine tuning frames
                 loadImg(data.frames_fine_tuning, oImgBuild).then((images) => {
                     setFineTuningFrames(images)
@@ -461,9 +464,9 @@ const EditorPage = () => {
 
 
                                 </Grid>
-                                <Grid container item spacing={4} order='4'>
+                                <Grid container item spacing={1} order='4'>
                                     {surroundingFrames && surroundingFrames.map(result => (
-                                        <Grid item xs={12} sm={4} md={4} key={result.fid}>
+                                        <Grid item xs={12} sm={4} md={12/9} key={result.fid}>
                                             <a style={{ textDecoration: 'none' }}>
                                                 <StyledCard>
                                                     <StyledCardMedia
@@ -481,6 +484,9 @@ const EditorPage = () => {
                                             </a>
                                         </Grid>
                                     ))}
+                                    <Grid item xs={12}>
+                                        { episodeDetails && <Button variant='contained' fullWidth href={`/episode/${episodeDetails[0]}/${episodeDetails[1]}/${episodeDetails[2]}`}>View Episode</Button> }
+                                    </Grid>
                                 </Grid>
                             </Grid>
                         </Card>
