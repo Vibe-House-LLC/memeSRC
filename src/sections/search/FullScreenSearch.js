@@ -162,12 +162,12 @@ export default function FullScreenSearch(props) {
     getData();
   }, []);
 
-  useEffect(() => {
-    if (shows.length > 0) {
-      setSeriesTitle(shows[0].id)
-      console.log(shows)
-    }
-  }, [shows, setSeriesTitle])
+  // useEffect(() => {
+  //   if (shows.length > 0) {
+  //     setSeriesTitle(shows[0].id)
+  //     console.log(shows)
+  //   }
+  // }, [setSeriesTitle])
 
   return (
     <>
@@ -186,6 +186,7 @@ export default function FullScreenSearch(props) {
             <Grid container justifyContent='center'>
               <Grid item sm={3} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
                 <StyledSearchSelector onChange={(x) => { setSeriesTitle(x.target.value); }} value={seriesTitle}>
+                  <option key='_universal' value='_universal' selected>🌈 All Shows</option>
                   {(loading) ? <option key="loading" value="loading" disabled>Loading...</option> : shows.map((item) => (
                     <option key={item.id} value={item.id}>{item.emoji} {item.title}</option>
                   ))}
