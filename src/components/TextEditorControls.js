@@ -14,9 +14,9 @@ TextEditorControls.propTypes = {
     handleStyle: PropTypes.func,
     index: PropTypes.number,
     fontSizePickerShowing: PropTypes.bool,
-    showFontSizePicker: PropTypes.bool,
+    showFontSizePicker: PropTypes.func,
     colorPickerShowing: PropTypes.bool,
-    showColorPicker: PropTypes.bool,
+    showColorPicker: PropTypes.func,
 };
 
 export default function TextEditorControls(props) {

@@ -1,11 +1,11 @@
-import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useState } from 'react'
 import { fabric } from 'fabric';
 import { FabricJSCanvas, useFabricJSEditor } from 'fabricjs-react'
 import styled from '@emotion/styled';
 import { useParams } from 'react-router-dom';
-import { SketchPicker, TwitterPicker } from 'react-color';
-import { Button, Card, Fab, Grid, Input, Popover, Slider, TextField, Typography } from '@mui/material';
-import { FormatSizeRounded, HighlightOffRounded } from '@mui/icons-material';
+import { TwitterPicker } from 'react-color';
+import { Button, Card, Fab, Grid, Popover, Slider, TextField, Typography } from '@mui/material';
+import { HighlightOffRounded } from '@mui/icons-material';
 import TextEditorControls from '../components/TextEditorControls';
 
 const ParentContainer = styled.div`
@@ -16,32 +16,6 @@ const ParentContainer = styled.div`
 const ColorPickerPopover = styled.div({
 })
 
-const BackgroundCover = styled.div({
-    zIndex: '1200',
-    height: '100vh',
-    width: '100vw',
-    position: 'fixed',
-    top: '0',
-    left: '0'
-})
-
-function parseFid(fid) {
-    const parts = fid.split('-');
-    if (parts.length !== 4) {
-        throw new Error(`Invalid fid: ${fid}`);
-    }
-    const [seriesId, seasonNum, episodeNum, frameNum] = parts;
-    if (Number.isNaN(Number(seasonNum)) || Number.isNaN(Number(episodeNum)) || Number.isNaN(Number(frameNum))) {
-        throw new Error(`Invalid fid: ${fid}`);
-    }
-    return {
-        seriesId,
-        seasonNum: Number(seasonNum),
-        episodeNum: Number(episodeNum),
-        frameNum: Number(frameNum)
-    };
-}
-
 const oImgBuild = path =>
     new Promise(resolve => {
         fabric.Image.fromURL(`https://memesrc.com${path}`, (oImg) => {
@@ -49,15 +23,6 @@ const oImgBuild = path =>
             // oImg._element.onerror = () => resolve({ path, status: 'error' });
             resolve(oImg);
         });
-    });
-
-const imgBuild = path =>
-    new Promise(resolve => {
-        const img = new Image();
-        img.onload = () => resolve(img);
-        img.onerror = () => resolve({ path, status: 'error' });
-
-        img.src = `https://memesrc.com${path}`;
     });
 
 const loadImg = (paths, func) => Promise.all(paths.map(func));
@@ -85,12 +50,6 @@ const StyledCardMedia = styled.img`
   background-color: black;
 `;
 
-const StyledTypography = styled.p(({ theme }) => ({
-    fontSize: '14px',
-    color: theme.palette.text.secondary,
-    padding: '10px 10px 10px 25px'
-}));
-
 const StyledTwitterPicker = styled(TwitterPicker)`
     span div {
         border: 1px solid rgb(240, 240, 240);
@@ -110,7 +69,6 @@ const EditorPage = () => {
         width: 500,
         height: 500
     });
-    const [defaultSubtitle, setDefaultSubtitle] = useState(false);
     const [fineTuningFrames, setFineTuningFrames] = useState([]);
     const [canvasObjects, setCanvasObjects] = useState();
     const [sessionID, setSessionID] = useState();
@@ -132,33 +90,31 @@ const EditorPage = () => {
 
     const { selectedObjects, editor, onReady } = useFabricJSEditor()
 
+    // Canvas resizing
+    const resizeCanvas = useCallback((width, height) => {
+        if (editor) {
+            console.log('Resized the canvas');
+            editor.canvas.preserveObjectStacking = true;
+            editor?.canvas.setWidth(width);
+            editor?.canvas.setHeight(height);
+            editor?.canvas.setBackgroundColor("white");
+        }
+    }, [editor])
+
     // Update the editor size
-    const updateEditorSize = () => {
+    const updateEditorSize = useCallback(() => {
         const [desiredHeight, desiredWidth] = calculateEditorSize(editorAspectRatio);
         // Calculate scale factor
         const scaleFactorX = desiredWidth / canvasSize.width;
         const scaleFactorY = desiredHeight / canvasSize.height;
         const scaleFactor = Math.min(scaleFactorX, scaleFactorY)
-        // editor.canvas.backgroundImage.scaleToHeight(desiredHeight)
-        // editor.canvas.backgroundImage.scaleToWidth(desiredWidth)
-        // // Scale the objects
-        // editor.canvas.getObjects().forEach(obj => {
-            
-        //     // Scale the object size
-        //     obj.scaleX *= scaleFactor;
-        //     obj.scaleY *= scaleFactor;
-        //     // Adjust the position of the object
-        //     obj.left *= scaleFactor;
-        //     obj.top *= scaleFactor;
-        // })
-        // setCanvasSize({width: desiredWidth, height: desiredHeight})
-        // resizeCanvas(desiredWidth, desiredHeight);
-        editor.canvas.setZoom(scaleFactor);
-        // setCanvasSize({width: desiredWidth, height: desiredHeight})
+        // Scale the canvas
+        editor?.canvas.setZoom(scaleFactor);
+        // Resize the canvas
         resizeCanvas(desiredWidth, desiredHeight);
-        setCanvasObjects([...editor.canvas._objects])
-        editor.canvas.renderAll();
-    }
+        setCanvasObjects([...editor?.canvas._objects])
+        editor?.canvas.renderAll();
+    }, [editor, canvasSize, editorAspectRatio, resizeCanvas]);
 
     useEffect(() => {
         window.addEventListener('resize', updateEditorSize)
@@ -166,7 +122,7 @@ const EditorPage = () => {
         return () => {
             window.removeEventListener('resize', updateEditorSize)
         }
-    }, [defaultFrame])
+    }, [defaultFrame, updateEditorSize])
 
     // Prepare sessionID
     useEffect(() => {
@@ -180,14 +136,36 @@ const EditorPage = () => {
                 }).catch(err => console.log(`JSON Parse Error:  ${err}`));
             }).catch(err => console.log(`UUID Gen Fetch Error:  ${err}`));
         }
-    }, [])
+    }, []);
 
-    // Look up data for the fid and set defaults
-    useEffect(() => {
+    const addText = useCallback((updatedText) => {
+        const text = new fabric.Textbox(updatedText, {
+            left: editor?.canvas.getWidth() * 0.05,
+            top: editor?.canvas.getHeight() * 0.95,
+            originY: 'bottom',
+            width: editor?.canvas.getWidth() * 0.9,
+            fontSize: editor?.canvas.getWidth() * 0.04,
+            fontFamily: 'sans-serif',
+            fontWeight: 900,
+            fill: 'white',
+            stroke: 'black',
+            strokeLineJoin: 'round',
+            strokeWidth: editor?.canvas.getWidth() * 0.0040,
+            strokeUniform: false,
+            textAlign: 'center',
+            selectable: true,
+            paintFirst: 'stroke'
+        });
+        editor?.canvas.add(text);
+        if (editor) {
+            setCanvasObjects([...editor.canvas._objects]);
+        }
+    }, [editor]);
+
+    const setupEditor = useCallback(() => {
         const apiSearchUrl = `https://api.memesrc.com/?fid=${selectedFid}&sessionID=${sessionID}`;
         fetch(apiSearchUrl).then(response => {
             response.json().then(data => {
-                setDefaultSubtitle(data.subtitle);
                 setSurroundingFrames(data.frames_surrounding);
                 // Pre load fine tuning frames
                 loadImg(data.frames_fine_tuning, oImgBuild).then((images) => {
@@ -208,12 +186,17 @@ const EditorPage = () => {
                     const x = (oImg.width > minRes) ? oImg.width : minRes;
                     setImageScale(x / desiredHeight);
                     resizeCanvas(desiredWidth, desiredHeight)
-                    prepEditorDefaults(data.subtitle, oImg)
-                    // setDefaultSubtitle(data.subtitle);
+                    editor?.canvas.setBackgroundImage(oImg);
+                    addText(data.subtitle);
                 }, { crossOrigin: "anonymous" });
             }).catch(err => console.log(err))
         }).catch(err => console.log(err))
-    }, [sessionID, selectedFid])
+    }, [resizeCanvas, selectedFid, sessionID, editor, addText])
+
+    // Look up data for the fid and set defaults
+    useEffect(() => {
+        setupEditor();
+    }, [sessionID, selectedFid]) // eslint-disable-line react-hooks/exhaustive-deps
 
     // Calculate the desired editor size
     const calculateEditorSize = (aspectRatio) => {
@@ -222,21 +205,6 @@ const EditorPage = () => {
         const calculatedWidth = availableWidth;
         const calculatedHeight = availableWidth / aspectRatio;
         return [calculatedHeight, calculatedWidth]
-    }
-
-    // Canvas resizing
-    const resizeCanvas = (width, height) => {
-        console.log('Resized the canvas');
-        editor.canvas.preserveObjectStacking = true;
-        editor.canvas.setWidth(width);
-        editor.canvas.setHeight(height);
-        editor.canvas.setBackgroundColor("white");
-    }
-
-    // Prep default editor contents
-    const prepEditorDefaults = (subtitle, image) => {
-        editor?.canvas.setBackgroundImage(image);
-        addText(subtitle);
     }
 
     // Handle events
@@ -314,29 +282,6 @@ const EditorPage = () => {
             // Callback function to execute after the canvas is loaded
             console.log('Canvas loaded from JSON');
         });
-    }
-
-    const addText = (updatedText) => {
-        const text = new fabric.Textbox(updatedText, {
-            left: editor.canvas.getWidth() * 0.05,
-            top: editor.canvas.getHeight() * 0.95,
-            originY: 'bottom',
-            width: editor.canvas.getWidth() * 0.9,
-            fontSize: editor.canvas.getWidth() * 0.04,
-            fontFamily: 'sans-serif',
-            fontWeight: 900,
-            fill: 'white',
-            stroke: 'black',
-            strokeLineJoin: 'round',
-            strokeWidth: editor.canvas.getWidth() * 0.0040,
-            strokeUniform: false,
-            textAlign: 'center',
-            selectable: true,
-            paintFirst: 'stroke'
-        });
-        editor?.canvas.add(text);
-        setCanvasObjects([...editor.canvas._objects]);
-
     }
 
     const showColorPicker = (event, index) => {
@@ -423,7 +368,7 @@ const EditorPage = () => {
         <>
             <ParentContainer id="parent-container">
                 <Grid container justifyContent='center'>
-                    <Grid container item xs={12} md={8} minWidth={{ xs: {}, md: '98vw', lg: '1200px'}} justifyContent='center'>
+                    <Grid container item xs={12} md={8} minWidth={{ xs: {}, md: '98vw', lg: '1200px' }} justifyContent='center'>
                         <Card sx={{ padding: '20px' }}>
                             <Grid container item spacing={2} justifyContent='center'>
                                 <Grid item xs={12} md={7} lg={7}>
@@ -432,7 +377,7 @@ const EditorPage = () => {
                                         <FabricJSCanvas onReady={onReady} />
                                     </div>
                                 </Grid>
-                                <Grid item xs={12} md={5} lg={5} minWidth={{xs: {}, md: '350px'}}>
+                                <Grid item xs={12} md={5} lg={5} minWidth={{ xs: {}, md: '350px' }}>
                                     <Grid item xs={12} marginBottom={2}>
                                         <Button variant='contained' onClick={() => addText('text')} fullWidth sx={{ zIndex: '50' }}>Add Layer</Button>
                                     </Grid>
@@ -446,8 +391,8 @@ const EditorPage = () => {
                                                         {/* <button type='button' key={`button${index}`} onClick={(event) => showColorPicker(event, index)}>Change Color</button> */}
                                                         <TextEditorControls showColorPicker={(event) => showColorPicker(event, index)} colorPickerShowing={colorPickerShowing} index={index} showFontSizePicker={(event) => showFontSizePicker(event, index)} fontSizePickerShowing={fontSizePickerShowing} key={`togglebuttons${index}`} handleStyle={handleStyle} />
                                                     </div>
-                                                    <Fab size="small" aria-label="add" sx={{position: 'absolute', backgroundColor: '#FFFFFF', boxShadow: 'none', top: '11px', right: '9px'}} onClick={() => deleteLayer(index)} key={`fab${index}`}>
-                                                        <HighlightOffRounded color="error"/>
+                                                    <Fab size="small" aria-label="add" sx={{ position: 'absolute', backgroundColor: '#FFFFFF', boxShadow: 'none', top: '11px', right: '9px' }} onClick={() => deleteLayer(index)} key={`fab${index}`}>
+                                                        <HighlightOffRounded color="error" />
                                                     </Fab>
                                                     <TextField size='small' key={`textfield${index}`} multiline type='text' value={canvasObjects[index].text} fullWidth onFocus={() => handleFocus(index)} onChange={(event) => handleEdit(event, index)} />
                                                     {/* <Typography gutterBottom >
