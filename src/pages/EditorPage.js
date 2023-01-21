@@ -128,7 +128,7 @@ const EditorPage = () => {
 
     useEffect(() => {
         setSelectedFid(fid)
-    }, [location, fid])
+    }, [location, fid, editor])
 
     useEffect(() => {
         window.addEventListener('resize', updateEditorSize)
@@ -179,6 +179,7 @@ const EditorPage = () => {
     const setupEditor = useCallback(() => {
         const apiSearchUrl = `https://api.memesrc.com/?fid=${selectedFid}&sessionID=${sessionID}`;
         fetch(apiSearchUrl).then(response => {
+            console.log('test')
             response.json().then(data => {
                 setSurroundingFrames(data.frames_surrounding);
                 const episodeDetails = selectedFid.split('-');
@@ -211,6 +212,7 @@ const EditorPage = () => {
 
     // Look up data for the fid and set defaults
     useEffect(() => {
+        if (editor) { editor.canvas._objects = [] }
         setupEditor();
     }, [sessionID, selectedFid]) // eslint-disable-line react-hooks/exhaustive-deps
 
