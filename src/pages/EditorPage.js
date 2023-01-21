@@ -4,8 +4,8 @@ import { FabricJSCanvas, useFabricJSEditor } from 'fabricjs-react'
 import styled from '@emotion/styled';
 import { useParams } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
-import { Button, Card, Fab, Grid, Popover, Slider, TextField, Typography } from '@mui/material';
-import { HighlightOffRounded } from '@mui/icons-material';
+import { Button, Card, Fab, Grid, IconButton, Popover, Slider, Stack, TextField, Tooltip, Typography } from '@mui/material';
+import { HighlightOffRounded, HistoryToggleOffRounded } from '@mui/icons-material';
 import TextEditorControls from '../components/TextEditorControls';
 
 const ParentContainer = styled.div`
@@ -87,6 +87,8 @@ const EditorPage = () => {
     const [selectedFontSize, setSelectedFontSize] = useState(100);
 
     const [editorAspectRatio, setEditorAspectRatio] = useState(1);
+
+    const [fineTuningValue, setFineTuningValue] = useState(4);
 
     const { selectedObjects, editor, onReady } = useFabricJSEditor()
 
@@ -336,8 +338,8 @@ const EditorPage = () => {
     const handleFineTuning = (event) => {
         console.log(fineTuningFrames[event.target.value]);
         const oImg = fineTuningFrames[event.target.value];
-        oImg.scaleToHeight(canvasSize.height);
-        oImg.scaleToWidth(canvasSize.width);
+        oImg.scaleToHeight(editor.canvas.getHeight());
+        oImg.scaleToWidth(editor.canvas.getWidth());
         editor?.canvas?.setBackgroundImage(oImg);
         editor?.canvas.renderAll();
     }
@@ -371,13 +373,13 @@ const EditorPage = () => {
                     <Grid container item xs={12} md={8} minWidth={{ xs: {}, md: '98vw', lg: '1200px' }} justifyContent='center'>
                         <Card sx={{ padding: '20px' }}>
                             <Grid container item spacing={2} justifyContent='center'>
-                                <Grid item xs={12} md={7} lg={7}>
+                                <Grid item xs={12} md={7} lg={7} order='1'>
 
                                     <div style={{ width: '100%', height: '100%' }} id='canvas-container'>
                                         <FabricJSCanvas onReady={onReady} />
                                     </div>
                                 </Grid>
-                                <Grid item xs={12} md={5} lg={5} minWidth={{ xs: {}, md: '350px' }}>
+                                <Grid item xs={12} md={5} lg={5} minWidth={{ xs: {}, md: '350px' }} order={{ xs: 3, md: 2 }}>
                                     <Grid item xs={12} marginBottom={2}>
                                         <Button variant='contained' onClick={() => addText('text')} fullWidth sx={{ zIndex: '50' }}>Add Layer</Button>
                                     </Grid>
@@ -415,7 +417,7 @@ const EditorPage = () => {
                                         )}
                                     </Grid>
                                 </Grid>
-                                <Grid item xs={8} marginRight={{ xs: '', md: 'auto' }}>
+                                <Grid item xs={12} md={7} lg={7} marginRight={{ xs: '', md: 'auto' }} order={{ xs: 2, md: 3 }}>
                                     <button type='button' onClick={updateEditorSize}>Update Canvas Size</button>
                                     <button type='button' onClick={addCircle}>Add circle</button>
                                     <button type='button' onClick={addRectangle}>Add Rectangle</button>
@@ -432,18 +434,34 @@ const EditorPage = () => {
                                             </ColorPickerPopover>
                                         }
                                     </div> */}
-                                    <Slider
-                                        size="small"
-                                        defaultValue={4}
-                                        min={0}
-                                        max={8}
-                                        aria-label="Small"
-                                        valueLabelDisplay="auto"
-                                        onChange={(event) => handleFineTuning(event)}
-                                    />
+
+                                    <Stack spacing={2} direction='row' alignItems={'center'}>
+                                        <Tooltip title="Fine Tuning" right>
+                                            <IconButton>
+                                                <HistoryToggleOffRounded alt='Fine Tuning' />
+                                            </IconButton>
+                                        </Tooltip>
+                                        <Slider
+                                            size="small"
+                                            defaultValue={4}
+                                            min={0}
+                                            max={8}
+                                            value={fineTuningValue}
+                                            aria-label="Small"
+                                            valueLabelDisplay="auto"
+                                            onChange={(event) => {
+                                                handleFineTuning(event);
+                                                setFineTuningValue(event.target.value);
+                                            }}
+                                            valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
+                                            marks
+                                            track={false}
+                                        />
+                                    </Stack>
+
 
                                 </Grid>
-                                <Grid container item spacing={4}>
+                                <Grid container item spacing={4} order='4'>
                                     {surroundingFrames && surroundingFrames.map(result => (
                                         <Grid item xs={12} sm={4} md={4} key={result.fid}>
                                             <a style={{ textDecoration: 'none' }}>
@@ -455,7 +473,8 @@ const EditorPage = () => {
                                                         title={result.subtitle}
                                                         onClick={() => {
                                                             editor.canvas._objects = [];
-                                                            setSelectedFid(result.fid)
+                                                            setSelectedFid(result.fid);
+                                                            setFineTuningValue(4)
                                                         }}
                                                     />
                                                 </StyledCard>
