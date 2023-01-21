@@ -4,7 +4,7 @@ import { FabricJSCanvas, useFabricJSEditor } from 'fabricjs-react'
 import styled from '@emotion/styled';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
-import { Button, Card, Fab, Grid, IconButton, Popover, Slider, Stack, TextField, Tooltip, Typography } from '@mui/material';
+import { Button, Card, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, Popover, Slider, Stack, TextField, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { HighlightOffRounded, HistoryToggleOffRounded } from '@mui/icons-material';
 import TextEditorControls from '../components/TextEditorControls';
 
@@ -22,7 +22,7 @@ const oImgBuild = path =>
             // oImg._element.onload = () => resolve(oImg);
             // oImg._element.onerror = () => resolve({ path, status: 'error' });
             resolve(oImg);
-        });
+        }, { crossOrigin: "anonymous" });
     });
 
 const loadImg = (paths, func) => Promise.all(paths.map(func));
@@ -90,11 +90,23 @@ const EditorPage = () => {
 
     const [fineTuningValue, setFineTuningValue] = useState(4);
     const [episodeDetails, setEpisodeDetails] = useState();
+    const [open, setOpen] = useState(false);
+    const theme = useTheme();
+    const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
 
     const { selectedObjects, editor, onReady } = useFabricJSEditor()
 
     const navigate = useNavigate();
     const location = useLocation();
+
+    const handleClickDialogOpen = () => {
+        setOpen(true);
+        saveImage();
+    };
+
+    const handleDialogClose = () => {
+        setOpen(false);
+    };
 
     // Canvas resizing
     const resizeCanvas = useCallback((width, height) => {
@@ -173,7 +185,7 @@ const EditorPage = () => {
         if (editor) {
             if (append) {
                 editor?.canvas.add(text);
-                    setCanvasObjects([...editor.canvas._objects]);
+                setCanvasObjects([...editor.canvas._objects]);
             } else {
                 editor.canvas._objects = [];
                 editor?.canvas.add(text);
@@ -447,7 +459,7 @@ const EditorPage = () => {
                                     <button type='button' onClick={saveProject}>Save Project</button>
                                     <button type='button' onClick={loadProject}>Load Project</button>
                                     <button type='button' onClick={matchImageSize}>Original Size</button>
-                                    <button type='button' onClick={saveImage}>Save Image</button>
+                                    <button type='button' onClick={handleClickDialogOpen}>Save Image</button>
                                     {/* <div style={{ display: 'inline', position: 'relative' }}>
                                         <button type='button' onClick={toggleColorPicker}>Change Color</button>
                                         {pickingColor &&
@@ -485,7 +497,7 @@ const EditorPage = () => {
                                 </Grid>
                                 <Grid container item spacing={1} order='4'>
                                     {surroundingFrames && surroundingFrames.map(result => (
-                                        <Grid item xs={12} sm={4} md={12/9} key={result.fid}>
+                                        <Grid item xs={12} sm={4} md={12 / 9} key={result.fid}>
                                             <a style={{ textDecoration: 'none' }}>
                                                 <StyledCard>
                                                     <StyledCardMedia
@@ -505,7 +517,7 @@ const EditorPage = () => {
                                         </Grid>
                                     ))}
                                     <Grid item xs={12}>
-                                        { episodeDetails && <Button variant='contained' fullWidth href={`/episode/${episodeDetails[0]}/${episodeDetails[1]}/${episodeDetails[2]}`}>View Episode</Button> }
+                                        {episodeDetails && <Button variant='contained' fullWidth href={`/episode/${episodeDetails[0]}/${episodeDetails[1]}/${episodeDetails[2]}`}>View Episode</Button>}
                                     </Grid>
                                 </Grid>
                             </Grid>
@@ -514,17 +526,7 @@ const EditorPage = () => {
 
                     </Grid>
                 </Grid>
-
-
-
-
-
-
-
-
-
-
-                <img src={generatedImage} alt="generated meme" />
+                
                 <Popover
                     open={
                         (colorPickerShowing !== false)
@@ -583,6 +585,33 @@ const EditorPage = () => {
                         />
                     </StyledLayerControlCard>
                 </Popover>
+
+                <Dialog
+                    fullScreen={fullScreen}
+                    open={open}
+                    onClose={handleDialogClose}
+                    aria-labelledby="responsive-dialog-title"
+                >
+                    <DialogTitle id="responsive-dialog-title">
+                        Save Image
+                    </DialogTitle>
+                    <DialogContent>
+                        <DialogContentText>
+                            <img src={generatedImage} alt="generated meme" />
+                        </DialogContentText>
+                    </DialogContent>
+                    <DialogActions>
+                        <Button autoFocus onClick={handleDialogClose}>
+                            Close
+                        </Button>
+                        <Button autoFocus>
+                            Copy
+                        </Button>
+                        <Button onClick={handleDialogClose} autoFocus>
+                            Save
+                        </Button>
+                    </DialogActions>
+                </Dialog>
 
 
             </ParentContainer>
