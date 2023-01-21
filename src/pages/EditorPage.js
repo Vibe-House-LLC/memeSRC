@@ -152,10 +152,10 @@ const EditorPage = () => {
         }
     }, []);
 
-    const addText = useCallback((updatedText) => {
+    const addText = useCallback((updatedText, append) => {
         const text = new fabric.Textbox(updatedText, {
             left: editor?.canvas.getWidth() * 0.05,
-            top: editor?.canvas.getHeight() * 0.95,
+            top: editor?.canvas.getHeight() * (append ? 0.5 : 0.95),
             originY: 'bottom',
             width: editor?.canvas.getWidth() * 0.9,
             fontSize: editor?.canvas.getWidth() * 0.04,
@@ -170,10 +170,19 @@ const EditorPage = () => {
             selectable: true,
             paintFirst: 'stroke'
         });
-        editor?.canvas.add(text);
-        if (editor) {
-            setCanvasObjects([...editor.canvas._objects]);
+        if (append) {
+            editor?.canvas.add(text);
+            if (editor) {
+                setCanvasObjects([...editor.canvas._objects]);
+            }
+        } else {
+            editor.canvas._objects = [];
+            editor?.canvas.add(text);
+            if (editor) {
+                setCanvasObjects([...editor.canvas._objects]);
+            }
         }
+        
     }, [editor]);
 
     const setupEditor = useCallback(() => {
@@ -204,7 +213,7 @@ const EditorPage = () => {
                     setImageScale(x / desiredHeight);
                     resizeCanvas(desiredWidth, desiredHeight)
                     editor?.canvas.setBackgroundImage(oImg);
-                    addText(data.subtitle);
+                    addText(data.subtitle, false);
                 }, { crossOrigin: "anonymous" });
             }).catch(err => console.log(err))
         }).catch(err => console.log(err))
@@ -212,7 +221,7 @@ const EditorPage = () => {
 
     // Look up data for the fid and set defaults
     useEffect(() => {
-        if (editor) { editor.canvas._objects = [] }
+        // if (editor) { editor.canvas._objects = [] }
         setupEditor();
     }, [sessionID, selectedFid]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -397,7 +406,7 @@ const EditorPage = () => {
                                 </Grid>
                                 <Grid item xs={12} md={5} lg={5} minWidth={{ xs: {}, md: '350px' }} order={{ xs: 3, md: 2 }}>
                                     <Grid item xs={12} marginBottom={2}>
-                                        <Button variant='contained' onClick={() => addText('text')} fullWidth sx={{ zIndex: '50' }}>Add Layer</Button>
+                                        <Button variant='contained' onClick={() => addText('text', true)} fullWidth sx={{ zIndex: '50' }}>Add Layer</Button>
                                     </Grid>
                                     <Grid container item xs={12} maxHeight={{ xs: {}, md: `${canvasSize.height - 52}px` }} paddingX={{ xs: 0, md: 2 }} sx={{ overflowY: 'scroll', overflow: 'auto' }} flexDirection='col-reverse'>
                                         {canvasObjects && canvasObjects.map((object, index) => (
