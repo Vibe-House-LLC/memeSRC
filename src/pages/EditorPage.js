@@ -88,6 +88,8 @@ const EditorPage = () => {
 
     const [editorAspectRatio, setEditorAspectRatio] = useState(1);
 
+    const [fineTuningValue, setFineTuningValue] = useState(4);
+
     const { selectedObjects, editor, onReady } = useFabricJSEditor()
 
     // Canvas resizing
@@ -444,9 +446,16 @@ const EditorPage = () => {
                                             defaultValue={4}
                                             min={0}
                                             max={8}
+                                            value={fineTuningValue}
                                             aria-label="Small"
                                             valueLabelDisplay="auto"
-                                            onChange={(event) => handleFineTuning(event)}
+                                            onChange={(event) => {
+                                                handleFineTuning(event);
+                                                setFineTuningValue(event.target.value);
+                                            }}
+                                            valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
+                                            marks
+                                            track={false}
                                         />
                                     </Stack>
 
@@ -464,7 +473,8 @@ const EditorPage = () => {
                                                         title={result.subtitle}
                                                         onClick={() => {
                                                             editor.canvas._objects = [];
-                                                            setSelectedFid(result.fid)
+                                                            setSelectedFid(result.fid);
+                                                            setFineTuningValue(4)
                                                         }}
                                                     />
                                                 </StyledCard>
