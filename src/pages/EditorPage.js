@@ -2,7 +2,7 @@ import { memo, useCallback, useEffect, useState } from 'react'
 import { fabric } from 'fabric';
 import { FabricJSCanvas, useFabricJSEditor } from 'fabricjs-react'
 import styled from '@emotion/styled';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 import { Button, Card, Fab, Grid, IconButton, Popover, Slider, Stack, TextField, Tooltip, Typography } from '@mui/material';
 import { HighlightOffRounded, HistoryToggleOffRounded } from '@mui/icons-material';
@@ -93,6 +93,9 @@ const EditorPage = () => {
 
     const { selectedObjects, editor, onReady } = useFabricJSEditor()
 
+    const navigate = useNavigate();
+    const location = useLocation();
+
     // Canvas resizing
     const resizeCanvas = useCallback((width, height) => {
         if (editor) {
@@ -118,6 +121,14 @@ const EditorPage = () => {
         setCanvasObjects([...editor?.canvas._objects])
         editor?.canvas.renderAll();
     }, [editor, canvasSize, editorAspectRatio, resizeCanvas]);
+
+    // useEffect(() => {
+    //     navigate(`/editor/${selectedFid}`)
+    // }, [selectedFid, navigate])
+
+    useEffect(() => {
+        setSelectedFid(fid)
+    }, [location, fid])
 
     useEffect(() => {
         window.addEventListener('resize', updateEditorSize)
@@ -477,6 +488,7 @@ const EditorPage = () => {
                                                         onClick={() => {
                                                             editor.canvas._objects = [];
                                                             setSelectedFid(result.fid);
+                                                            navigate(`/editor/${result.fid}`)
                                                             setFineTuningValue(4)
                                                         }}
                                                     />
