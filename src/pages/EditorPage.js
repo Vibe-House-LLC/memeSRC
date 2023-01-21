@@ -336,8 +336,8 @@ const EditorPage = () => {
     const handleFineTuning = (event) => {
         console.log(fineTuningFrames[event.target.value]);
         const oImg = fineTuningFrames[event.target.value];
-        oImg.scaleToHeight(canvasSize.height);
-        oImg.scaleToWidth(canvasSize.width);
+        oImg.scaleToHeight(editor.canvas.getHeight());
+        oImg.scaleToWidth(editor.canvas.getWidth());
         editor?.canvas?.setBackgroundImage(oImg);
         editor?.canvas.renderAll();
     }
