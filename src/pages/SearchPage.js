@@ -65,7 +65,7 @@ export default function SearchPage() {
     e.preventDefault();
     setLoading(true);
     let apiSearchUrl;
-    if (seriesTitle) {
+    if (seriesTitle && seriesTitle !== '_universal') {
       apiSearchUrl = `https://api.memesrc.com/?series=${seriesTitle}&search=${searchTerm}&sessionID=${sessionID}`;
     } else {
       apiSearchUrl = `https://api.memesrc.com/?search=${searchTerm}&sessionID=${sessionID}`;
