@@ -6,6 +6,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 import { Button, Card, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, Popover, Slider, Stack, TextField, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { HighlightOffRounded, HistoryToggleOffRounded } from '@mui/icons-material';
+import { Storage } from 'aws-amplify';
 import TextEditorControls from '../components/TextEditorControls';
 
 const ParentContainer = styled.div`
@@ -91,6 +92,9 @@ const EditorPage = () => {
     const [fineTuningValue, setFineTuningValue] = useState(4);
     const [episodeDetails, setEpisodeDetails] = useState();
     const [open, setOpen] = useState(false);
+    const [imageUploading, setImageUploading] = useState();
+    const [imageBlob, setImageBlob] = useState();
+    const [shareImageFile, setShareImageFile] = useState();
     const theme = useTheme();
     const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -280,7 +284,28 @@ const EditorPage = () => {
             multiplier: imageScale
         });
 
-        setGeneratedImage(resultImage);
+        fetch(resultImage)
+            .then(res => res.blob())
+            .then(blob => {
+                setImageBlob(blob);
+                Storage.put('test.png', blob, {
+                    resumable: true,
+                    contentType: "image/png",
+                    completeCallback: (event) => {
+                        Storage.get(event.key).then((image) => {
+                            setGeneratedImage(image);
+                            const file = new File([blob], 'test.png', { type: blob.type });
+                            setShareImageFile(file);
+                        })
+                    },
+                    progressCallback: (progress) => {
+                        console.log(`Uploaded: ${progress.loaded}/${progress.total}`);
+                    },
+                    errorCallback: (err) => {
+                        console.error('Unexpected error while uploading', err);
+                    }
+                })
+            })
     }
 
     // TODO: Repurpose this for canvas scaling
@@ -526,7 +551,7 @@ const EditorPage = () => {
 
                     </Grid>
                 </Grid>
-                
+
                 <Popover
                     open={
                         (colorPickerShowing !== false)
@@ -604,12 +629,21 @@ const EditorPage = () => {
                         <Button autoFocus onClick={handleDialogClose}>
                             Close
                         </Button>
-                        <Button autoFocus>
+                        <Button autoFocus onClick={() => {
+                            const { ClipboardItem } = window;
+                            navigator.clipboard.write([new ClipboardItem({ 'image/png' : imageBlob })]) 
+                        }}>
                             Copy
                         </Button>
-                        <Button onClick={handleDialogClose} autoFocus>
-                            Save
-                        </Button>
+                        {navigator.canShare && <Button onClick={() => {
+                            navigator.share({
+                              title: 'memeSRC.com',
+                              text: 'Check out this meme I made on memeSRC.com',
+                              files: [shareImageFile],
+                            })
+                        }}>
+                            Share
+                        </Button>}
                     </DialogActions>
                 </Dialog>
 
