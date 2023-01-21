@@ -4,8 +4,8 @@ import { FabricJSCanvas, useFabricJSEditor } from 'fabricjs-react'
 import styled from '@emotion/styled';
 import { useParams } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
-import { Button, Card, Fab, Grid, Popover, Slider, TextField, Typography } from '@mui/material';
-import { HighlightOffRounded } from '@mui/icons-material';
+import { Button, Card, Fab, Grid, IconButton, Popover, Slider, Stack, TextField, Tooltip, Typography } from '@mui/material';
+import { HighlightOffRounded, HistoryToggleOffRounded } from '@mui/icons-material';
 import TextEditorControls from '../components/TextEditorControls';
 
 const ParentContainer = styled.div`
@@ -432,18 +432,24 @@ const EditorPage = () => {
                                             </ColorPickerPopover>
                                         }
                                     </div> */}
-                                    <Typography variant='body1'>
-                                        Frame Fine Tuning
-                                    </Typography>
-                                    <Slider
-                                        size="small"
-                                        defaultValue={4}
-                                        min={0}
-                                        max={8}
-                                        aria-label="Small"
-                                        valueLabelDisplay="auto"
-                                        onChange={(event) => handleFineTuning(event)}
-                                    />
+
+                                    <Stack spacing={2} direction='row' alignItems={'center'}>
+                                        <Tooltip title="Fine Tuning" right>
+                                            <IconButton>
+                                                <HistoryToggleOffRounded alt='Fine Tuning' />
+                                            </IconButton>
+                                        </Tooltip>
+                                        <Slider
+                                            size="small"
+                                            defaultValue={4}
+                                            min={0}
+                                            max={8}
+                                            aria-label="Small"
+                                            valueLabelDisplay="auto"
+                                            onChange={(event) => handleFineTuning(event)}
+                                        />
+                                    </Stack>
+
 
                                 </Grid>
                                 <Grid container item spacing={4} order='4'>
