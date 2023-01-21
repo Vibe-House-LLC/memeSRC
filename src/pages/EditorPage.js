@@ -2,7 +2,7 @@ import { memo, useCallback, useEffect, useState } from 'react'
 import { fabric } from 'fabric';
 import { FabricJSCanvas, useFabricJSEditor } from 'fabricjs-react'
 import styled from '@emotion/styled';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 import { Button, Card, Fab, Grid, IconButton, Popover, Slider, Stack, TextField, Tooltip, Typography } from '@mui/material';
 import { HighlightOffRounded, HistoryToggleOffRounded } from '@mui/icons-material';
@@ -89,8 +89,12 @@ const EditorPage = () => {
     const [editorAspectRatio, setEditorAspectRatio] = useState(1);
 
     const [fineTuningValue, setFineTuningValue] = useState(4);
+    const [episodeDetails, setEpisodeDetails] = useState();
 
     const { selectedObjects, editor, onReady } = useFabricJSEditor()
+
+    const navigate = useNavigate();
+    const location = useLocation();
 
     // Canvas resizing
     const resizeCanvas = useCallback((width, height) => {
@@ -118,6 +122,14 @@ const EditorPage = () => {
         editor?.canvas.renderAll();
     }, [editor, canvasSize, editorAspectRatio, resizeCanvas]);
 
+    // useEffect(() => {
+    //     navigate(`/editor/${selectedFid}`)
+    // }, [selectedFid, navigate])
+
+    useEffect(() => {
+        setSelectedFid(fid)
+    }, [location, fid, editor])
+
     useEffect(() => {
         window.addEventListener('resize', updateEditorSize)
 
@@ -140,10 +152,10 @@ const EditorPage = () => {
         }
     }, []);
 
-    const addText = useCallback((updatedText) => {
+    const addText = useCallback((updatedText, append) => {
         const text = new fabric.Textbox(updatedText, {
             left: editor?.canvas.getWidth() * 0.05,
-            top: editor?.canvas.getHeight() * 0.95,
+            top: editor?.canvas.getHeight() * (append ? 0.5 : 0.95),
             originY: 'bottom',
             width: editor?.canvas.getWidth() * 0.9,
             fontSize: editor?.canvas.getWidth() * 0.04,
@@ -158,17 +170,26 @@ const EditorPage = () => {
             selectable: true,
             paintFirst: 'stroke'
         });
-        editor?.canvas.add(text);
         if (editor) {
-            setCanvasObjects([...editor.canvas._objects]);
+            if (append) {
+                editor?.canvas.add(text);
+                    setCanvasObjects([...editor.canvas._objects]);
+            } else {
+                editor.canvas._objects = [];
+                editor?.canvas.add(text);
+                setCanvasObjects([...editor.canvas._objects]);
+            }
         }
     }, [editor]);
 
     const setupEditor = useCallback(() => {
         const apiSearchUrl = `https://api.memesrc.com/?fid=${selectedFid}&sessionID=${sessionID}`;
         fetch(apiSearchUrl).then(response => {
+            console.log('test')
             response.json().then(data => {
                 setSurroundingFrames(data.frames_surrounding);
+                const episodeDetails = selectedFid.split('-');
+                setEpisodeDetails(episodeDetails);
                 // Pre load fine tuning frames
                 loadImg(data.frames_fine_tuning, oImgBuild).then((images) => {
                     setFineTuningFrames(images)
@@ -189,7 +210,7 @@ const EditorPage = () => {
                     setImageScale(x / desiredHeight);
                     resizeCanvas(desiredWidth, desiredHeight)
                     editor?.canvas.setBackgroundImage(oImg);
-                    addText(data.subtitle);
+                    addText(data.subtitle, false);
                 }, { crossOrigin: "anonymous" });
             }).catch(err => console.log(err))
         }).catch(err => console.log(err))
@@ -197,6 +218,7 @@ const EditorPage = () => {
 
     // Look up data for the fid and set defaults
     useEffect(() => {
+        // if (editor) { editor.canvas._objects = [] }
         setupEditor();
     }, [sessionID, selectedFid]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -381,7 +403,7 @@ const EditorPage = () => {
                                 </Grid>
                                 <Grid item xs={12} md={5} lg={5} minWidth={{ xs: {}, md: '350px' }} order={{ xs: 3, md: 2 }}>
                                     <Grid item xs={12} marginBottom={2}>
-                                        <Button variant='contained' onClick={() => addText('text')} fullWidth sx={{ zIndex: '50' }}>Add Layer</Button>
+                                        <Button variant='contained' onClick={() => addText('text', true)} fullWidth sx={{ zIndex: '50' }}>Add Layer</Button>
                                     </Grid>
                                     <Grid container item xs={12} maxHeight={{ xs: {}, md: `${canvasSize.height - 52}px` }} paddingX={{ xs: 0, md: 2 }} sx={{ overflowY: 'scroll', overflow: 'auto' }} flexDirection='col-reverse'>
                                         {canvasObjects && canvasObjects.map((object, index) => (
@@ -436,7 +458,7 @@ const EditorPage = () => {
                                     </div> */}
 
                                     <Stack spacing={2} direction='row' alignItems={'center'}>
-                                        <Tooltip title="Fine Tuning" right>
+                                        <Tooltip title="Fine Tuning">
                                             <IconButton>
                                                 <HistoryToggleOffRounded alt='Fine Tuning' />
                                             </IconButton>
@@ -461,9 +483,9 @@ const EditorPage = () => {
 
 
                                 </Grid>
-                                <Grid container item spacing={4} order='4'>
+                                <Grid container item spacing={1} order='4'>
                                     {surroundingFrames && surroundingFrames.map(result => (
-                                        <Grid item xs={12} sm={4} md={4} key={result.fid}>
+                                        <Grid item xs={12} sm={4} md={12/9} key={result.fid}>
                                             <a style={{ textDecoration: 'none' }}>
                                                 <StyledCard>
                                                     <StyledCardMedia
@@ -474,6 +496,7 @@ const EditorPage = () => {
                                                         onClick={() => {
                                                             editor.canvas._objects = [];
                                                             setSelectedFid(result.fid);
+                                                            navigate(`/editor/${result.fid}`)
                                                             setFineTuningValue(4)
                                                         }}
                                                     />
@@ -481,6 +504,9 @@ const EditorPage = () => {
                                             </a>
                                         </Grid>
                                     ))}
+                                    <Grid item xs={12}>
+                                        { episodeDetails && <Button variant='contained' fullWidth href={`/episode/${episodeDetails[0]}/${episodeDetails[1]}/${episodeDetails[2]}`}>View Episode</Button> }
+                                    </Grid>
                                 </Grid>
                             </Grid>
                         </Card>
