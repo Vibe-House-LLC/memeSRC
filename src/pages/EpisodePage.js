@@ -98,7 +98,7 @@ export default function EpisodePage() {
       {/* {!memoizedResults && !loading && <FullScreenSearch searchFunction={handleSearch} setSearchTerm={setSearchTerm} setSeriesTitle={setSeriesTitle} searchTerm={searchTerm} seriesTitle={seriesTitle} />}
       {(memoizedResults || loading) && <TopBannerSearch searchFunction={handleSearch} setSearchTerm={setSearchTerm} setSeriesTitle={setSeriesTitle} searchTerm={searchTerm} seriesTitle={seriesTitle} />} */}
       <Stack spacing={2} direction='column' padding={3}>
-        <Grid container spacing={2} marginTop={5}>
+        <Grid container spacing={2}>
           {loading ? (
             <StyledCircularProgress />
           ) : memoizedResults && memoizedResults.map(result => (
