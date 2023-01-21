@@ -135,26 +135,38 @@ const EditorPage = () => {
     // Update the editor size
     const updateEditorSize = () => {
         const [desiredHeight, desiredWidth] = calculateEditorSize(editorAspectRatio);
-        editor.canvas.backgroundImage.scaleToHeight(desiredHeight)
-        editor.canvas.backgroundImage.scaleToWidth(desiredWidth)
-        // Scale the objects
-        editor.canvas.getObjects().forEach(obj => {
-            // Calculate scale factor
-            const scaleFactorX = desiredWidth / canvasSize.width;
-            const scaleFactorY = desiredHeight / canvasSize.height;
-            const scaleFactor = Math.min(scaleFactorX, scaleFactorY)
-            // Scale the object size
-            obj.scaleX *= scaleFactor;
-            obj.scaleY *= scaleFactor;
-            // Adjust the position of the object
-            obj.left *= scaleFactor;
-            obj.top *= scaleFactor;
-        })
-        setCanvasSize({width: desiredWidth, height: desiredHeight})
+        // Calculate scale factor
+        const scaleFactorX = desiredWidth / canvasSize.width;
+        const scaleFactorY = desiredHeight / canvasSize.height;
+        const scaleFactor = Math.min(scaleFactorX, scaleFactorY)
+        // editor.canvas.backgroundImage.scaleToHeight(desiredHeight)
+        // editor.canvas.backgroundImage.scaleToWidth(desiredWidth)
+        // // Scale the objects
+        // editor.canvas.getObjects().forEach(obj => {
+            
+        //     // Scale the object size
+        //     obj.scaleX *= scaleFactor;
+        //     obj.scaleY *= scaleFactor;
+        //     // Adjust the position of the object
+        //     obj.left *= scaleFactor;
+        //     obj.top *= scaleFactor;
+        // })
+        // setCanvasSize({width: desiredWidth, height: desiredHeight})
+        // resizeCanvas(desiredWidth, desiredHeight);
+        editor.canvas.setZoom(scaleFactor);
+        // setCanvasSize({width: desiredWidth, height: desiredHeight})
         resizeCanvas(desiredWidth, desiredHeight);
         setCanvasObjects([...editor.canvas._objects])
         editor.canvas.renderAll();
     }
+
+    useEffect(() => {
+        window.addEventListener('resize', updateEditorSize)
+
+        return () => {
+            window.removeEventListener('resize', updateEditorSize)
+        }
+    }, [defaultFrame])
 
     // Prepare sessionID
     useEffect(() => {
@@ -242,6 +254,7 @@ const EditorPage = () => {
             editor.canvas.backgroundImage.scaleToWidth(canvasSize.width);
             editor.canvas.renderAll();
         });
+        updateEditorSize();
     };
 
     const addCircle = () => {
