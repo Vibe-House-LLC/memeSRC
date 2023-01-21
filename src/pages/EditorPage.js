@@ -170,19 +170,16 @@ const EditorPage = () => {
             selectable: true,
             paintFirst: 'stroke'
         });
-        if (append) {
-            editor?.canvas.add(text);
-            if (editor) {
-                setCanvasObjects([...editor.canvas._objects]);
-            }
-        } else {
-            editor.canvas._objects = [];
-            editor?.canvas.add(text);
-            if (editor) {
+        if (editor) {
+            if (append) {
+                editor?.canvas.add(text);
+                    setCanvasObjects([...editor.canvas._objects]);
+            } else {
+                editor.canvas._objects = [];
+                editor?.canvas.add(text);
                 setCanvasObjects([...editor.canvas._objects]);
             }
         }
-        
     }, [editor]);
 
     const setupEditor = useCallback(() => {
@@ -461,7 +458,7 @@ const EditorPage = () => {
                                     </div> */}
 
                                     <Stack spacing={2} direction='row' alignItems={'center'}>
-                                        <Tooltip title="Fine Tuning" right>
+                                        <Tooltip title="Fine Tuning">
                                             <IconButton>
                                                 <HistoryToggleOffRounded alt='Fine Tuning' />
                                             </IconButton>
