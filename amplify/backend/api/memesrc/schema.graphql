@@ -1,14 +1,14 @@
 # This "input" configures a global authorization rule to enable public access to
 # all models in this schema. Learn more about authorization rules here: https://docs.amplify.aws/cli/graphql/authorization-rules
-input AMPLIFY { globalAuthRule: AuthRule = { allow: public } } # FOR TESTING ONLY!
+# input AMPLIFY { globalAuthRule: AuthRule = { allow: public } } # FOR TESTING ONLY!
 
-type GlobalMessage @model {
-  id: ID!
-  title: String!
-  message: String
-}
-
-type ContentMetadata @model {
+type ContentMetadata @model @auth(
+  rules: [
+    { allow: groups, groups: ["admins", "mods"] },
+    { allow: private, operations: [read] },
+    { allow: public, operations: [read]}
+  ]
+) {
   id: ID!,
   title: String!,
   description: String,
@@ -19,7 +19,13 @@ type ContentMetadata @model {
   status: Int
 }
 
-type HomepageSection @model {
+type HomepageSection @model @auth(
+  rules: [
+    { allow: groups, groups: ["admins", "mods"] },
+    { allow: private, operations: [read] },
+    { allow: public, operations: [read]}
+  ]
+) {
   id: ID!,
   index: Int,
   title: String!,

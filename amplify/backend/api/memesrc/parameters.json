@@ -1,5 +1,13 @@
 {
   "AppSyncApiName": "memesrc",
   "DynamoDBBillingMode": "PAY_PER_REQUEST",
-  "DynamoDBEnableServerSideEncryption": false
+  "DynamoDBEnableServerSideEncryption": false,
+  "AuthCognitoUserPoolId": {
+    "Fn::GetAtt": [
+      "authmemesrcc3c71449",
+      "Outputs.UserPoolId"
+    ]
+  },
+  "AuthModeLastUpdated": "2023-01-07T18:42:36.447Z",
+  "CreateAPIKey": 1
 }

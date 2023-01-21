@@ -1,15 +1,19 @@
+import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { faker } from '@faker-js/faker';
 // @mui
 import { useTheme } from '@mui/material/styles';
 import { Grid, Container, Typography } from '@mui/material';
+// Amplify
+import { API, graphqlOperation } from 'aws-amplify';
+import { listHomepageSections } from '../graphql/queries';
 // components
 // import { API, graphqlOperation } from 'aws-amplify';
 import Iconify from '../components/iconify';
 // sections
 import {
   AppTasks,
-  AppNewsUpdate,
+  AppHomepageSectionsListPreview,
   AppOrderTimeline,
   AppCurrentVisits,
   AppWebsiteVisits,
@@ -23,7 +27,42 @@ import {
 
 // ----------------------------------------------------------------------
 
+
+// Function to pull the homepage sections from graphql
+async function fetchHomepageSections(items = [], nextToken = null) {
+  const result = await API.graphql(
+    graphqlOperation(listHomepageSections, {
+      filter: {},
+      limit: 10,
+      nextToken
+    })
+  );
+  const sortedSections = result.data.listHomepageSections.items.sort((a, b) => {
+    if (a.index < b.index) return -1;
+    if (a.index > b.index) return 1;
+    return 0;
+  });
+  const allItems = [...items, ...sortedSections];
+  const newNextToken = result.data.listHomepageSections.nextToken;
+  if (newNextToken) {
+    return fetchHomepageSections(allItems, newNextToken);
+  }
+  return allItems;
+}
+
 export default function DashboardAppPage() {
+  const [sections, setSections] = useState([]);
+
+  // Pull the homepage sections from GraphQL when the component loads
+  useEffect(() => {
+    async function getData() {
+      const data = await fetchHomepageSections();
+      setSections(data);
+      console.log(data)
+    }
+    getData();
+  }, []);
+
   const theme = useTheme();
 
   // async function createNewGlobalMessage(title, message, timestamp) {
@@ -73,6 +112,48 @@ export default function DashboardAppPage() {
 
             <Grid item xs={12} sm={6} md={3}>
               <AppWidgetSummary title="Bug Reports" total={234} color="error" icon={'ant-design:bug-filled'} />
+            </Grid>
+
+            <Grid item xs={12} md={6} lg={8}>
+              <AppHomepageSectionsListPreview
+                title="Homepage Sections"
+                list={sections.map((section) => ({
+                  id: section.id,
+                  title: section.title,
+                  description: section.subtitle,
+                  image: JSON.parse(section.bottomImage).src,
+                  postedAt: faker.date.recent(),
+                  backgroundColor: section.backgroundColor
+                }))}
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6} lg={4}>
+              <AppTrafficBySite
+                title="Traffic by Site"
+                list={[
+                  {
+                    name: 'FaceBook',
+                    value: 323234,
+                    icon: <Iconify icon={'eva:facebook-fill'} color="#1877F2" width={32} />,
+                  },
+                  {
+                    name: 'Google',
+                    value: 341212,
+                    icon: <Iconify icon={'eva:google-fill'} color="#DF3E30" width={32} />,
+                  },
+                  {
+                    name: 'Linkedin',
+                    value: 411213,
+                    icon: <Iconify icon={'eva:linkedin-fill'} color="#006097" width={32} />,
+                  },
+                  {
+                    name: 'Twitter',
+                    value: 443232,
+                    icon: <Iconify icon={'eva:twitter-fill'} color="#1C9CEA" width={32} />,
+                  },
+                ]}
+              />
             </Grid>
 
             <Grid item xs={12} md={6} lg={8}>
@@ -165,19 +246,6 @@ export default function DashboardAppPage() {
               />
             </Grid>
 
-            <Grid item xs={12} md={6} lg={8}>
-              <AppNewsUpdate
-                title="News Update"
-                list={[...Array(5)].map((_, index) => ({
-                  id: faker.datatype.uuid(),
-                  title: faker.name.jobTitle(),
-                  description: faker.name.jobTitle(),
-                  image: `/assets/images/covers/cover_${index + 1}.jpg`,
-                  postedAt: faker.date.recent(),
-                }))}
-              />
-            </Grid>
-
             <Grid item xs={12} md={6} lg={4}>
               <AppOrderTimeline
                 title="Order Timeline"
@@ -193,34 +261,6 @@ export default function DashboardAppPage() {
                   type: `order${index + 1}`,
                   time: faker.date.past(),
                 }))}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={6} lg={4}>
-              <AppTrafficBySite
-                title="Traffic by Site"
-                list={[
-                  {
-                    name: 'FaceBook',
-                    value: 323234,
-                    icon: <Iconify icon={'eva:facebook-fill'} color="#1877F2" width={32} />,
-                  },
-                  {
-                    name: 'Google',
-                    value: 341212,
-                    icon: <Iconify icon={'eva:google-fill'} color="#DF3E30" width={32} />,
-                  },
-                  {
-                    name: 'Linkedin',
-                    value: 411213,
-                    icon: <Iconify icon={'eva:linkedin-fill'} color="#006097" width={32} />,
-                  },
-                  {
-                    name: 'Twitter',
-                    value: 443232,
-                    icon: <Iconify icon={'eva:twitter-fill'} color="#1C9CEA" width={32} />,
-                  },
-                ]}
               />
             </Grid>
 

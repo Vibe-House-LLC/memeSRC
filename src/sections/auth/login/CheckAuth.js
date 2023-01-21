@@ -17,7 +17,7 @@ export default function CheckAuth(props) {
     useEffect(() => {
         console.log(location.pathname)
         if (user) {  // we only want this logic to occur after user context is prepped
-            if (user.username || location.pathname === '/login') {
+            if (user.username || location.pathname === '/login' || location.pathname === '/signup') {
                 setContent(props.children);
             } else {
                 navigate(`/login?dest=${encodeURIComponent(location.pathname)}`, { replace: true });
@@ -27,9 +27,17 @@ export default function CheckAuth(props) {
             Auth.currentAuthenticatedUser().then((x) => {
                 setUser(x)  // if an authenticated user is found, set it into the context
                 console.log(x)
+                console.log("Updating Amplify config to use AMAZON_COGNITO_USER_POOLS")
+                // Amplify.configure({
+                //     "aws_appsync_authenticationType": "AMAZON_COGNITO_USER_POOLS",
+                // });
             }).catch(() => {
                 setUser({ username: false })  // indicate the context is ready but user is not auth'd
                 console.log("There wasn't an authenticated user found")
+                console.log("Updating Amplify config to use API_KEY")
+                // Amplify.configure({
+                //     "aws_appsync_authenticationType": "API_KEY",
+                // });
             });
         }
     }, [user, navigate, props.children, location.pathname])

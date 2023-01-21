@@ -24,7 +24,7 @@ const Logo = forwardRef(({ disabledLink = false, sx, ...other }) => {
   const logo = (
     <Box
       component="img"
-      src={`/assets/memeSRC${other.color === 'white' ? '-white' : ''}-revised.svg`}
+      src={`/assets/memeSRC${other.color === 'white' ? '-white' : '-color'}.svg`}
       sx={{ width: 40, objectFit: 'contain', height: 'auto', cursor: 'pointer', ...sx }}
     />
   );

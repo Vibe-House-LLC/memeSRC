@@ -62,7 +62,10 @@ const StyledButton = styled.button(({ theme }) => ({
 }));
 
 async function fetchShows() {
-  const result = await API.graphql(graphqlOperation(listContentMetadata, { filter: {}, limit: 10 }));
+  const result = await API.graphql({
+    ...graphqlOperation(listContentMetadata),
+    authMode: "API_KEY"
+  });
   return result.data.listContentMetadata.items;
 }
 

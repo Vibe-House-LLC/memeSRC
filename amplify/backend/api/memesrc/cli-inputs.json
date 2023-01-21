@@ -4,8 +4,17 @@
     "apiName": "memesrc",
     "serviceName": "AppSync",
     "defaultAuthType": {
-      "mode": "API_KEY",
-      "expirationTime": 7
-    }
+      "mode": "AMAZON_COGNITO_USER_POOLS",
+      "cognitoUserPoolId": "authmemesrcc3c71449"
+    },
+    "conflictResolution": {},
+    "additionalAuthTypes": [
+      {
+        "mode": "API_KEY",
+        "expirationTime": 14,
+        "apiKeyExpirationDate": "2023-01-21T18:42:35.860Z",
+        "keyDescription": "Public API Key for unauthenticated users"
+      }
+    ]
   }
 }

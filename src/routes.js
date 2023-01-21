@@ -45,7 +45,7 @@ export default function Router() {
     },
     {
       path: 'signup',
-      element: <AuthPage method="signup" />,
+      element: <CheckAuth><AuthPage method="signup" /></CheckAuth>,
     },
     {
       element: <SimpleLayout />,
@@ -55,6 +55,10 @@ export default function Router() {
         { path: '404', element: <Page404 /> },
         { path: '*', element: <Navigate to="/404" /> },
       ],
+    },
+    {
+      path: 'editor/:fid',
+      element: <EditorPage />,
     },
     {
       path: '*',

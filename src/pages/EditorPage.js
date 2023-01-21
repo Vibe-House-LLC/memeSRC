@@ -1,131 +1,228 @@
-import { useEffect, useState } from 'react'
+import { memo, useCallback, useEffect, useState } from 'react'
 import { fabric } from 'fabric';
 import { FabricJSCanvas, useFabricJSEditor } from 'fabricjs-react'
 import styled from '@emotion/styled';
 import { useParams } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
+import { Button, Card, Fab, Grid, Popover, Slider, TextField, Typography } from '@mui/material';
+import { HighlightOffRounded } from '@mui/icons-material';
+import TextEditorControls from '../components/TextEditorControls';
 
 const ParentContainer = styled.div`
     height: 100%;
+    padding: 20px;
 `;
 
 const ColorPickerPopover = styled.div({
-    position: 'absolute',
-    top: '30px',
-    zIndex: '1201',
 })
 
-const BackgroundCover = styled.div({
-    zIndex: '1200',
-    height: '100vh',
-    width: '100vw',
-    position: 'fixed',
-    top: '0',
-    left: '0'
-})
+const oImgBuild = path =>
+    new Promise(resolve => {
+        fabric.Image.fromURL(`https://memesrc.com${path}`, (oImg) => {
+            // oImg._element.onload = () => resolve(oImg);
+            // oImg._element.onerror = () => resolve({ path, status: 'error' });
+            resolve(oImg);
+        });
+    });
 
-function parseFid(fid) {
-    const parts = fid.split('-');
-    if (parts.length !== 4) {
-        throw new Error(`Invalid fid: ${fid}`);
+const loadImg = (paths, func) => Promise.all(paths.map(func));
+
+const StyledCard = styled(Card)`
+  
+  border: 3px solid transparent;
+  box-sizing: border-box;
+
+  &:hover {
+    border: 3px solid orange;
+  }
+`;
+
+const StyledLayerControlCard = styled(Card)`
+  width: 280px;
+  border: 3px solid transparent;
+  box-sizing: border-box;
+  padding: 10px 15px;
+`;
+
+const StyledCardMedia = styled.img`
+  width: 100%;
+  height: auto;
+  background-color: black;
+`;
+
+const StyledTwitterPicker = styled(TwitterPicker)`
+    span div {
+        border: 1px solid rgb(240, 240, 240);
     }
-    const [seriesId, seasonNum, episodeNum, frameNum] = parts;
-    if (Number.isNaN(Number(seasonNum)) || Number.isNaN(Number(episodeNum)) || Number.isNaN(Number(frameNum))) {
-        throw new Error(`Invalid fid: ${fid}`);
-    }
-    return {
-        seriesId,
-        seasonNum: Number(seasonNum),
-        episodeNum: Number(episodeNum),
-        frameNum: Number(frameNum)
-    };
-}
+`;
 
 const EditorPage = () => {
+    const TwitterPickerWrapper = memo(StyledTwitterPicker);
+
     // Get everything ready
     const { fid } = useParams();
-    const [ loadedFid, setLoadedFid ] = useState();
-    const [ baseImg, setBaseImg ] = useState(null);
-    const [ pickingColor, setPickingColor ] = useState(false);
-    const [ imageScale, setImageScale ] = useState();
-    const [ generatedImage, setGeneratedImage ] = useState();
-    const [ canvasSize, setCanvasSize ] = useState({
+    const [defaultFrame, setDefaultFrame] = useState(null);
+    const [pickingColor, setPickingColor] = useState(false);
+    const [imageScale, setImageScale] = useState();
+    const [generatedImage, setGeneratedImage] = useState();
+    const [canvasSize, setCanvasSize] = useState({
         width: 500,
         height: 500
     });
+    const [fineTuningFrames, setFineTuningFrames] = useState([]);
+    const [canvasObjects, setCanvasObjects] = useState();
+    const [sessionID, setSessionID] = useState();
+    const [surroundingFrames, setSurroundingFrames] = useState();
+    const [selectedFid, setSelectedFid] = useState(fid);
+    const [colorPickerShowing, setColorPickerShowing] = useState(false);
+    const [colorPickerAnchor, setColorPickerAnchor] = useState(null);
+    const [colorPickerColor, setColorPickerColor] = useState({
+        r: '0',
+        g: '0',
+        b: '0',
+        a: '100'
+    });
+    const [fontSizePickerShowing, setFontSizePickerShowing] = useState(false);
+    const [fontSizePickerAnchor, setFontSizePickerAnchor] = useState(null);
+    const [selectedFontSize, setSelectedFontSize] = useState(100);
+
+    const [editorAspectRatio, setEditorAspectRatio] = useState(1);
 
     const { selectedObjects, editor, onReady } = useFabricJSEditor()
 
-    useEffect(() => {
-        if (editor && editor.canvas.width !== canvasSize.width && editor.canvas.height !== canvasSize.height) {
+    // Canvas resizing
+    const resizeCanvas = useCallback((width, height) => {
+        if (editor) {
             console.log('Resized the canvas');
             editor.canvas.preserveObjectStacking = true;
-            editor.canvas.setWidth(canvasSize.width);
-            editor.canvas.setHeight(canvasSize.height);
-            editor.canvas.setBackgroundColor("white");
-            if (fid && !loadedFid) {
-                setLoadedFid(fid)
-                console.log('loaded image')
-                const parsedFid = parseFid(fid)
-                console.log(parsedFid)
-                fabric.Image.fromURL(`https://memesrc.com/${parsedFid.seriesId}/img/${parsedFid.seasonNum}/${parsedFid.episodeNum}/${fid}.jpg`, (oImg) => {
-                    setBaseImg(oImg);
-                    // Get a reference to the ParentContainer element
-                    const containerElement = document.getElementById('parent-container');
-                    // Get the width and height of the ParentContainer
-                    const availableWidth = containerElement.offsetWidth;
-                    const availableHeight = containerElement.offsetHeight;
-                    // Determine the aspect ratio of the image
+            editor?.canvas.setWidth(width);
+            editor?.canvas.setHeight(height);
+            editor?.canvas.setBackgroundColor("white");
+        }
+    }, [editor])
+
+    // Update the editor size
+    const updateEditorSize = useCallback(() => {
+        const [desiredHeight, desiredWidth] = calculateEditorSize(editorAspectRatio);
+        // Calculate scale factor
+        const scaleFactorX = desiredWidth / canvasSize.width;
+        const scaleFactorY = desiredHeight / canvasSize.height;
+        const scaleFactor = Math.min(scaleFactorX, scaleFactorY)
+        // Scale the canvas
+        editor?.canvas.setZoom(scaleFactor);
+        // Resize the canvas
+        resizeCanvas(desiredWidth, desiredHeight);
+        setCanvasObjects([...editor?.canvas._objects])
+        editor?.canvas.renderAll();
+    }, [editor, canvasSize, editorAspectRatio, resizeCanvas]);
+
+    useEffect(() => {
+        window.addEventListener('resize', updateEditorSize)
+
+        return () => {
+            window.removeEventListener('resize', updateEditorSize)
+        }
+    }, [defaultFrame, updateEditorSize])
+
+    // Prepare sessionID
+    useEffect(() => {
+        if ("sessionID" in sessionStorage) {
+            setSessionID(sessionStorage.getItem("sessionID"));
+        } else {
+            fetch(`https://api.memesrc.com/?uuidGen`).then(response => {
+                response.json().then(generatedSessionID => {
+                    setSessionID(generatedSessionID);
+                    sessionStorage.setItem("sessionID", generatedSessionID);
+                }).catch(err => console.log(`JSON Parse Error:  ${err}`));
+            }).catch(err => console.log(`UUID Gen Fetch Error:  ${err}`));
+        }
+    }, []);
+
+    const addText = useCallback((updatedText) => {
+        const text = new fabric.Textbox(updatedText, {
+            left: editor?.canvas.getWidth() * 0.05,
+            top: editor?.canvas.getHeight() * 0.95,
+            originY: 'bottom',
+            width: editor?.canvas.getWidth() * 0.9,
+            fontSize: editor?.canvas.getWidth() * 0.04,
+            fontFamily: 'sans-serif',
+            fontWeight: 900,
+            fill: 'white',
+            stroke: 'black',
+            strokeLineJoin: 'round',
+            strokeWidth: editor?.canvas.getWidth() * 0.0040,
+            strokeUniform: false,
+            textAlign: 'center',
+            selectable: true,
+            paintFirst: 'stroke'
+        });
+        editor?.canvas.add(text);
+        if (editor) {
+            setCanvasObjects([...editor.canvas._objects]);
+        }
+    }, [editor]);
+
+    const setupEditor = useCallback(() => {
+        const apiSearchUrl = `https://api.memesrc.com/?fid=${selectedFid}&sessionID=${sessionID}`;
+        fetch(apiSearchUrl).then(response => {
+            response.json().then(data => {
+                setSurroundingFrames(data.frames_surrounding);
+                // Pre load fine tuning frames
+                loadImg(data.frames_fine_tuning, oImgBuild).then((images) => {
+                    setFineTuningFrames(images)
+                });
+                // Background image from the 
+                fabric.Image.fromURL(`https://memesrc.com${data.frame_image}`, (oImg) => {
+                    setDefaultFrame(oImg);
                     const imageAspectRatio = oImg.width / oImg.height;
-                    // Calculate the size of the canvas based on the aspect ratio of the image and the available space
-                    let calculatedWidth;
-                    let calculatedHeight;
-                    if (availableWidth / imageAspectRatio <= availableHeight) {
-                        // If the width is the limiting factor, set the canvas width to the available width and the height based on the aspect ratio
-                        calculatedWidth = availableWidth;
-                        calculatedHeight = availableWidth / imageAspectRatio;
-                    } else {
-                        // If the height is the limiting factor, set the canvas height to the available height and the width based on the aspect ratio
-                        calculatedHeight = availableHeight;
-                        calculatedWidth = availableHeight * imageAspectRatio;
-                    }
-                    setCanvasSize({
-                        width: calculatedWidth,
-                        height: calculatedHeight
-                    });
-                    console.log('image')
-                    console.log(oImg);
+                    setEditorAspectRatio(imageAspectRatio);
+                    const [desiredHeight, desiredWidth] = calculateEditorSize(imageAspectRatio);
+                    setCanvasSize({ height: desiredHeight, width: desiredWidth })  // TODO: rename this to something like "desiredSize"
                     // Scale the image to fit the canvas
-                    oImg.scale(calculatedWidth / oImg.width);
+                    oImg.scale(desiredWidth / oImg.width);
                     // Center the image within the canvas
                     oImg.set({ left: 0, top: 0 });
-                    // Disable the ability to edit the image
-                    oImg.selectable = false;
-                    oImg.hoverCursor = 'default';
-                    oImg.crossOrigin = 'anonymous';
-                    editor?.canvas.add(oImg);
                     const minRes = 1280;
                     const x = (oImg.width > minRes) ? oImg.width : minRes;
-                    setImageScale(x / calculatedWidth);
+                    setImageScale(x / desiredHeight);
+                    resizeCanvas(desiredWidth, desiredHeight)
+                    editor?.canvas.setBackgroundImage(oImg);
+                    addText(data.subtitle);
                 }, { crossOrigin: "anonymous" });
-            }
+            }).catch(err => console.log(err))
+        }).catch(err => console.log(err))
+    }, [resizeCanvas, selectedFid, sessionID, editor, addText])
 
-        }
-    }, [editor, canvasSize, fid, loadedFid])
+    // Look up data for the fid and set defaults
+    useEffect(() => {
+        setupEditor();
+    }, [sessionID, selectedFid]) // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Calculate the desired editor size
+    const calculateEditorSize = (aspectRatio) => {
+        const containerElement = document.getElementById('canvas-container');
+        const availableWidth = containerElement.offsetWidth;
+        const calculatedWidth = availableWidth;
+        const calculatedHeight = availableWidth / aspectRatio;
+        return [calculatedHeight, calculatedWidth]
+    }
 
     // Handle events
     const saveProject = () => {
         const canvasJson = editor.canvas.toJSON(['hoverCursor', 'selectable']);
-        const key = fid ? `project-${fid}` : 'project-example';
+        const key = selectedFid ? `project-${selectedFid}` : 'project-example';
         localStorage.setItem(key, JSON.stringify(canvasJson));
     };
 
     const loadProject = () => {
-        const key = fid ? `project-${fid}` : 'project-example';
+        const key = selectedFid ? `project-${selectedFid}` : 'project-example';
         const canvasJson = localStorage.getItem(key);
         editor.canvas.loadFromJSON(canvasJson, () => {
-            console.log('Canvas loaded from JSON');
+            editor.canvas.backgroundImage.scaleToHeight(canvasSize.height);
+            editor.canvas.backgroundImage.scaleToWidth(canvasSize.width);
+            editor.canvas.renderAll();
         });
+        updateEditorSize();
     };
 
     const addCircle = () => {
@@ -150,6 +247,7 @@ const EditorPage = () => {
         setGeneratedImage(resultImage);
     }
 
+    // TODO: Repurpose this for canvas scaling
     const matchImageSize = () => {
         // Export the state of the canvas as a JSON object
         const canvasJson = editor.canvas.toJSON(['hoverCursor', 'selectable']);
@@ -157,8 +255,8 @@ const EditorPage = () => {
         // Scale the objects on the canvas proportionally to fit the new size
         canvasJson.objects.forEach(obj => {
             // Calculate the scale factor based on the ratio of the new canvas size to the original canvas size
-            const scaleFactorX = baseImg.width / editor.canvas.width;
-            const scaleFactorY = baseImg.height / editor.canvas.height;
+            const scaleFactorX = defaultFrame.width / editor.canvas.width;
+            const scaleFactorY = defaultFrame.height / editor.canvas.height;
 
             const scaleFactor = Math.min(scaleFactorX, scaleFactorY)
 
@@ -175,8 +273,8 @@ const EditorPage = () => {
 
         // Update the canvas size
         setCanvasSize({
-            width: baseImg.width,
-            height: baseImg.height
+            width: defaultFrame.width,
+            height: defaultFrame.height
         })
 
         // Load the state of the canvas from the JSON object
@@ -186,61 +284,267 @@ const EditorPage = () => {
         });
     }
 
-    const addText = () => {
-        const text = new fabric.Textbox('Text', {
-            left: 0,
-            top: editor.canvas.getHeight() - 100,
-            width: editor.canvas.getWidth(),
-            fontSize: 50,
-            fontFamily: 'sans-serif',
-            fontWeight: 900,
-            fill: 'white',
-            stroke: 'black',
-            strokeWidth: 2,
-            strokeUniform: false,
-            textAlign: 'center',
-            selectable: true
-        });
-        editor?.canvas.add(text);
+    const showColorPicker = (event, index) => {
+        setPickingColor(index);
+        setColorPickerShowing(index);
+        setColorPickerAnchor(event.target);
     }
 
-    const toggleColorPicker = () => {
-        setPickingColor(!pickingColor);
+    const showFontSizePicker = (event, index) => {
+        // setPickingColor(index);
+        const defaultFontSize = editor.canvas.getWidth() * 0.04;
+        const currentFontSize = Math.round(100 * editor.canvas.item(index).fontSize / defaultFontSize);
+        // defaultFontSize * (event.target.value / 100);
+        setSelectedFontSize(currentFontSize);
+        setFontSizePickerShowing(index);
+        setFontSizePickerAnchor(event.target);
     }
 
-    const changeColor = (color) => {
-        selectedObjects.forEach((object) => {
-            if (object.type === 'textbox') {
-                object.set('fill', color.hex);
-                editor?.canvas.renderAll();
-            }
-        });
+    const changeColor = (color, index) => {
+        setColorPickerColor(color);
+        editor.canvas.item(index).set('fill', color.hex);
+        console.log(`Length of object:  + ${selectedObjects.length}`)
+        setCanvasObjects([...editor.canvas._objects])
+        console.log(editor.canvas.item(index));
+        editor?.canvas.renderAll();
+        setColorPickerShowing(false);
+    }
+
+    const handleEdit = (event, index) => {
+        console.log(event)
+        console.log(index)
+        editor.canvas.item(index).set('text', event.target.value);
+        console.log(`Length of object:  + ${selectedObjects.length}`)
+        setCanvasObjects([...editor.canvas._objects])
+        console.log(editor.canvas.item(index));
+        editor?.canvas.renderAll();
+    }
+
+    const handleFocus = (index) => {
+        editor.canvas.setActiveObject(editor.canvas.item(index));
+        editor?.canvas.renderAll();
+    }
+
+    const handleFontSize = (event, index) => {
+        const defaultFontSize = editor.canvas.getWidth() * 0.04;
+        editor.canvas.item(index).fontSize = defaultFontSize * (event.target.value / 100);
+        setCanvasObjects([...editor.canvas._objects])
+        console.log(editor.canvas.item(index));
+        editor?.canvas.renderAll();
+    }
+
+    const handleFineTuning = (event) => {
+        console.log(fineTuningFrames[event.target.value]);
+        const oImg = fineTuningFrames[event.target.value];
+        oImg.scaleToHeight(canvasSize.height);
+        oImg.scaleToWidth(canvasSize.width);
+        editor?.canvas?.setBackgroundImage(oImg);
+        editor?.canvas.renderAll();
+    }
+
+    const handleStyle = (index, customStyles) => {
+        // Select the item
+        const item = editor.canvas.item(index);
+        // Update the style
+        item.fontWeight = customStyles.includes('bold') ? 900 : 400
+        item.fontStyle = customStyles.includes('italic') ? 'italic' : 'normal'
+        item.underline = customStyles.includes('underlined')
+        // Update the canvas
+        editor.canvas.item(index).dirty = true;
+        setCanvasObjects([...editor.canvas._objects]);
+        console.log(editor.canvas.item(index));
+        editor?.canvas.renderAll();
+    }
+
+
+    const deleteLayer = (index) => {
+        editor.canvas.remove(editor.canvas.item(index));
+        setCanvasObjects([...editor.canvas._objects]);
+        editor?.canvas.renderAll();
     }
 
     // Outputs
     return (
         <>
             <ParentContainer id="parent-container">
-                <button type='button' onClick={addCircle}>Add circle</button>
-                <button type='button' onClick={addRectangle}>Add Rectangle</button>
-                <button type='button' onClick={addImage}>Add Image</button>
-                <button type='button' onClick={addText}>Add Text</button>
-                <button type='button' onClick={saveProject}>Save Project</button>
-                <button type='button' onClick={loadProject}>Load Project</button>
-                <button type='button' onClick={matchImageSize}>Original Size</button>
-                <button type='button' onClick={saveImage}>Save Image</button>
-                <div style={{ display: 'inline', position: 'relative' }}>
-                    <button type='button' onClick={toggleColorPicker}>Change Color</button>
-                    {pickingColor &&
-                        <ColorPickerPopover>
-                            <TwitterPicker onChangeComplete={changeColor} />
-                        </ColorPickerPopover>
-                    }
-                </div>
-                <FabricJSCanvas onReady={onReady} />
+                <Grid container justifyContent='center'>
+                    <Grid container item xs={12} md={8} minWidth={{ xs: {}, md: '98vw', lg: '1200px' }} justifyContent='center'>
+                        <Card sx={{ padding: '20px' }}>
+                            <Grid container item spacing={2} justifyContent='center'>
+                                <Grid item xs={12} md={7} lg={7}>
+
+                                    <div style={{ width: '100%', height: '100%' }} id='canvas-container'>
+                                        <FabricJSCanvas onReady={onReady} />
+                                    </div>
+                                </Grid>
+                                <Grid item xs={12} md={5} lg={5} minWidth={{ xs: {}, md: '350px' }}>
+                                    <Grid item xs={12} marginBottom={2}>
+                                        <Button variant='contained' onClick={() => addText('text')} fullWidth sx={{ zIndex: '50' }}>Add Layer</Button>
+                                    </Grid>
+                                    <Grid container item xs={12} maxHeight={{ xs: {}, md: `${canvasSize.height - 52}px` }} paddingX={{ xs: 0, md: 2 }} sx={{ overflowY: 'scroll', overflow: 'auto' }} flexDirection='col-reverse'>
+                                        {canvasObjects && canvasObjects.map((object, index) => (
+
+                                            ('text' in object) &&
+                                            <Grid item xs={12} order={`-${index}`} key={`grid${index}`}>
+                                                <Card sx={{ marginBottom: '20px', padding: '10px' }} key={`card${index}`}>
+                                                    <div style={{ display: 'inline', position: 'relative' }} key={`div${index}`}>
+                                                        {/* <button type='button' key={`button${index}`} onClick={(event) => showColorPicker(event, index)}>Change Color</button> */}
+                                                        <TextEditorControls showColorPicker={(event) => showColorPicker(event, index)} colorPickerShowing={colorPickerShowing} index={index} showFontSizePicker={(event) => showFontSizePicker(event, index)} fontSizePickerShowing={fontSizePickerShowing} key={`togglebuttons${index}`} handleStyle={handleStyle} />
+                                                    </div>
+                                                    <Fab size="small" aria-label="add" sx={{ position: 'absolute', backgroundColor: '#FFFFFF', boxShadow: 'none', top: '11px', right: '9px' }} onClick={() => deleteLayer(index)} key={`fab${index}`}>
+                                                        <HighlightOffRounded color="error" />
+                                                    </Fab>
+                                                    <TextField size='small' key={`textfield${index}`} multiline type='text' value={canvasObjects[index].text} fullWidth onFocus={() => handleFocus(index)} onChange={(event) => handleEdit(event, index)} />
+                                                    {/* <Typography gutterBottom >
+                                                        Font Size
+                                                    </Typography>
+                                                    <Slider
+                                                        size="small"
+                                                        defaultValue={100}
+                                                        min={1}
+                                                        max={200}
+                                                        aria-label="Small"
+                                                        valueLabelDisplay="auto"
+                                                        onChange={(event) => handleFontSize(event, index)}
+                                                        onFocus={() => handleFocus(index)}
+                                                        key={`slider${index}`}
+                                                    /> */}
+                                                </Card>
+                                            </Grid>
+                                        )
+                                        )}
+                                    </Grid>
+                                </Grid>
+                                <Grid item xs={8} marginRight={{ xs: '', md: 'auto' }}>
+                                    <button type='button' onClick={updateEditorSize}>Update Canvas Size</button>
+                                    <button type='button' onClick={addCircle}>Add circle</button>
+                                    <button type='button' onClick={addRectangle}>Add Rectangle</button>
+                                    <button type='button' onClick={addImage}>Add Image</button>
+                                    <button type='button' onClick={saveProject}>Save Project</button>
+                                    <button type='button' onClick={loadProject}>Load Project</button>
+                                    <button type='button' onClick={matchImageSize}>Original Size</button>
+                                    <button type='button' onClick={saveImage}>Save Image</button>
+                                    {/* <div style={{ display: 'inline', position: 'relative' }}>
+                                        <button type='button' onClick={toggleColorPicker}>Change Color</button>
+                                        {pickingColor &&
+                                            <ColorPickerPopover>
+                                                <TwitterPicker onChangeComplete={changeColor} />
+                                            </ColorPickerPopover>
+                                        }
+                                    </div> */}
+                                    <Slider
+                                        size="small"
+                                        defaultValue={4}
+                                        min={0}
+                                        max={8}
+                                        aria-label="Small"
+                                        valueLabelDisplay="auto"
+                                        onChange={(event) => handleFineTuning(event)}
+                                    />
+
+                                </Grid>
+                                <Grid container item spacing={4}>
+                                    {surroundingFrames && surroundingFrames.map(result => (
+                                        <Grid item xs={12} sm={4} md={4} key={result.fid}>
+                                            <a style={{ textDecoration: 'none' }}>
+                                                <StyledCard>
+                                                    <StyledCardMedia
+                                                        component="img"
+                                                        src={`https://memesrc.com${result.frame_image}`}
+                                                        alt={result.subtitle}
+                                                        title={result.subtitle}
+                                                        onClick={() => {
+                                                            editor.canvas._objects = [];
+                                                            setSelectedFid(result.fid)
+                                                        }}
+                                                    />
+                                                </StyledCard>
+                                            </a>
+                                        </Grid>
+                                    ))}
+                                </Grid>
+                            </Grid>
+                        </Card>
+
+
+                    </Grid>
+                </Grid>
+
+
+
+
+
+
+
+
+
+
                 <img src={generatedImage} alt="generated meme" />
-            </ParentContainer >
-            {pickingColor && <BackgroundCover onClick={toggleColorPicker} />}
+                <Popover
+                    open={
+                        (colorPickerShowing !== false)
+                    }
+                    anchorEl={colorPickerAnchor}
+                    onClose={() => setColorPickerShowing(false)}
+                    id="colorPicker"
+                    anchorOrigin={{
+                        vertical: 'top',
+                        horizontal: 'center',
+                    }}
+                    transformOrigin={{
+                        vertical: 'top',
+                        horizontal: 'center',
+                    }}
+                >
+                    <ColorPickerPopover>
+                        <TwitterPickerWrapper
+                            onChangeComplete={(color) => changeColor(color, pickingColor)}
+                            color={colorPickerColor}
+                            colors={['#FFFFFF', 'yellow', 'black', 'orange', '#8ED1FC', '#0693E3', '#ABB8C3', '#EB144C', '#F78DA7', '#9900EF']}
+                            width='280px'
+                        />
+                    </ColorPickerPopover>
+                </Popover>
+
+                <Popover
+                    open={
+                        (fontSizePickerShowing !== false)
+                    }
+                    anchorEl={fontSizePickerAnchor}
+                    onClose={() => setFontSizePickerShowing(false)}
+                    id="colorPicker"
+                    anchorOrigin={{
+                        vertical: 'top',
+                        horizontal: 'center',
+                    }}
+                    transformOrigin={{
+                        vertical: 'top',
+                        horizontal: 'center',
+                    }}
+                >
+                    <StyledLayerControlCard>
+                        <Typography variant='body1'>
+                            Font Size
+                        </Typography>
+                        <Slider
+                            size="small"
+                            defaultValue={selectedFontSize}
+                            min={1}
+                            max={400}
+                            aria-label="Small"
+                            valueLabelDisplay="auto"
+                            onChange={(event) => handleFontSize(event, fontSizePickerShowing)}
+                            onFocus={() => handleFocus(fontSizePickerShowing)}
+                        />
+                    </StyledLayerControlCard>
+                </Popover>
+
+
+            </ParentContainer>
+
+
+
+
         </>
     )
 }
