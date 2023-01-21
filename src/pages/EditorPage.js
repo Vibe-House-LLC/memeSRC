@@ -371,13 +371,13 @@ const EditorPage = () => {
                     <Grid container item xs={12} md={8} minWidth={{ xs: {}, md: '98vw', lg: '1200px' }} justifyContent='center'>
                         <Card sx={{ padding: '20px' }}>
                             <Grid container item spacing={2} justifyContent='center'>
-                                <Grid item xs={12} md={7} lg={7}>
+                                <Grid item xs={12} md={7} lg={7} order='1'>
 
                                     <div style={{ width: '100%', height: '100%' }} id='canvas-container'>
                                         <FabricJSCanvas onReady={onReady} />
                                     </div>
                                 </Grid>
-                                <Grid item xs={12} md={5} lg={5} minWidth={{ xs: {}, md: '350px' }}>
+                                <Grid item xs={12} md={5} lg={5} minWidth={{ xs: {}, md: '350px' }} order={{ xs: 3, md: 2 }}>
                                     <Grid item xs={12} marginBottom={2}>
                                         <Button variant='contained' onClick={() => addText('text')} fullWidth sx={{ zIndex: '50' }}>Add Layer</Button>
                                     </Grid>
@@ -415,7 +415,7 @@ const EditorPage = () => {
                                         )}
                                     </Grid>
                                 </Grid>
-                                <Grid item xs={8} marginRight={{ xs: '', md: 'auto' }}>
+                                <Grid item xs={12} md={7} lg={7} marginRight={{ xs: '', md: 'auto' }} order={{ xs: 2, md: 3 }}>
                                     <button type='button' onClick={updateEditorSize}>Update Canvas Size</button>
                                     <button type='button' onClick={addCircle}>Add circle</button>
                                     <button type='button' onClick={addRectangle}>Add Rectangle</button>
@@ -432,6 +432,9 @@ const EditorPage = () => {
                                             </ColorPickerPopover>
                                         }
                                     </div> */}
+                                    <Typography variant='body1'>
+                                        Frame Fine Tuning
+                                    </Typography>
                                     <Slider
                                         size="small"
                                         defaultValue={4}
@@ -443,7 +446,7 @@ const EditorPage = () => {
                                     />
 
                                 </Grid>
-                                <Grid container item spacing={4}>
+                                <Grid container item spacing={4} order='4'>
                                     {surroundingFrames && surroundingFrames.map(result => (
                                         <Grid item xs={12} sm={4} md={4} key={result.fid}>
                                             <a style={{ textDecoration: 'none' }}>
