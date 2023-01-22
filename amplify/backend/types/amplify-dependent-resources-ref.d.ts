@@ -30,6 +30,7 @@ export type AmplifyDependentResourcesAttributes = {
     "AdminQueries9e1cafc6": {
       "Arn": "string",
       "LambdaExecutionRole": "string",
+      "LambdaExecutionRoleArn": "string",
       "Name": "string",
       "Region": "string"
     }
@@ -40,6 +41,12 @@ export type AmplifyDependentResourcesAttributes = {
       "Region": "string",
       "S3BucketSecureURL": "string",
       "WebsiteURL": "string"
+    }
+  },
+  "storage": {
+    "memesrcGeneratedImages": {
+      "BucketName": "string",
+      "Region": "string"
     }
   }
 }

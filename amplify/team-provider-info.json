@@ -28,6 +28,9 @@
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
           "s3Key": "amplify-builds/AdminQueries9e1cafc6-56573733493368737339-build.zip"
         }
+      },
+      "storage": {
+        "memesrcGeneratedImages": {}
       }
     }
   }

@@ -2,7 +2,7 @@
   "version": "1",
   "cognitoConfig": {
     "identityPoolName": "memesrcc3c71449_identitypool_c3c71449",
-    "allowUnauthenticatedIdentities": false,
+    "allowUnauthenticatedIdentities": true,
     "resourceNameTruncated": "memesrc3c71449",
     "userPoolName": "memesrcc3c71449_userpool_c3c71449",
     "autoVerifiedAttributes": [
