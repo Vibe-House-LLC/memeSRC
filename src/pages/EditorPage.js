@@ -248,28 +248,28 @@ const EditorPage = () => {
     }
 
     // Handle events
-    const saveProject = () => {
-        const canvasJson = editor.canvas.toJSON(['hoverCursor', 'selectable']);
-        const key = selectedFid ? `project-${selectedFid}` : 'project-example';
-        localStorage.setItem(key, JSON.stringify(canvasJson));
-    };
+    // const saveProject = () => {
+    //     const canvasJson = editor.canvas.toJSON(['hoverCursor', 'selectable']);
+    //     const key = selectedFid ? `project-${selectedFid}` : 'project-example';
+    //     localStorage.setItem(key, JSON.stringify(canvasJson));
+    // };
 
-    const loadProject = () => {
-        const key = selectedFid ? `project-${selectedFid}` : 'project-example';
-        const canvasJson = localStorage.getItem(key);
-        editor.canvas.loadFromJSON(canvasJson, () => {
-            editor.canvas.backgroundImage.scaleToHeight(canvasSize.height);
-            editor.canvas.backgroundImage.scaleToWidth(canvasSize.width);
-            editor.canvas.renderAll();
-        });
-        updateEditorSize();
-    };
+    // const loadProject = () => {
+    //     const key = selectedFid ? `project-${selectedFid}` : 'project-example';
+    //     const canvasJson = localStorage.getItem(key);
+    //     editor.canvas.loadFromJSON(canvasJson, () => {
+    //         editor.canvas.backgroundImage.scaleToHeight(canvasSize.height);
+    //         editor.canvas.backgroundImage.scaleToWidth(canvasSize.width);
+    //         editor.canvas.renderAll();
+    //     });
+    //     updateEditorSize();
+    // };
 
-    const addImage = () => {
-        fabric.Image.fromURL('/assets/illustrations/illustration_avatar.png', (oImg) => {
-            editor?.canvas.add(oImg);
-        })
-    }
+    // const addImage = () => {
+    //     fabric.Image.fromURL('/assets/illustrations/illustration_avatar.png', (oImg) => {
+    //         editor?.canvas.add(oImg);
+    //     })
+    // }
 
     const saveImage = () => {
         setImageUploading(true);
@@ -438,6 +438,9 @@ const EditorPage = () => {
                                 </Grid>
                                 <Grid item xs={12} md={5} lg={5} minWidth={{ xs: {}, md: '350px' }} order={{ xs: 3, md: 2 }}>
                                     <Grid item xs={12} marginBottom={2}>
+                                        <Button variant='contained' onClick={handleClickDialogOpen} fullWidth sx={{ zIndex: '50' }}>Save/Copy/Share</Button>
+                                    </Grid>
+                                    <Grid item xs={12} marginBottom={2}>
                                         <Button variant='contained' onClick={() => addText('text', true)} fullWidth sx={{ zIndex: '50' }}>Add Layer</Button>
                                     </Grid>
                                     <Grid container item xs={12} maxHeight={{ xs: {}, md: `${canvasSize.height - 52}px` }} paddingX={{ xs: 0, md: 2 }} sx={{ overflowY: 'scroll', overflow: 'auto' }} flexDirection='col-reverse'>
@@ -498,14 +501,12 @@ const EditorPage = () => {
                                             track={false}
                                         />
                                     </Stack>
-                                    <button type='button' onClick={addImage}>Add Image</button>
+                                    {/* <button type='button' onClick={addImage}>Add Image</button>
                                     <button type='button' onClick={saveProject}>Save Project</button>
                                     <button type='button' onClick={loadProject}>Load Project</button>
-                                    <button type='button' onClick={handleClickDialogOpen}>Save Image</button>
-
-
+                                    <button type='button' onClick={handleClickDialogOpen}>Save Image</button> */}
                                 </Grid>
-                                <Grid container item spacing={1} order='4'>
+                                <Grid container item spacing={1} order='5'>
                                     {surroundingFrames && surroundingFrames.map(result => (
                                         <Grid item xs={4} sm={4} md={12 / 9} key={result.fid}>
                                             <a style={{ textDecoration: 'none' }}>
