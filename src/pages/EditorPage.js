@@ -4,7 +4,7 @@ import { FabricJSCanvas, useFabricJSEditor } from 'fabricjs-react'
 import styled from '@emotion/styled';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
-import { Box, Button, Card, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, Popover, Skeleton, Slider, Stack, TextField, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
+import { Button, Card, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, Popover, Slider, Stack, TextField, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { HighlightOffRounded, HistoryToggleOffRounded } from '@mui/icons-material';
 import { Storage } from 'aws-amplify';
 import TextEditorControls from '../components/TextEditorControls';
@@ -265,14 +265,6 @@ const EditorPage = () => {
         updateEditorSize();
     };
 
-    const addCircle = () => {
-        editor?.addCircle()
-    }
-
-    const addRectangle = () => {
-        editor?.addRectangle()
-    }
-
     const addImage = () => {
         fabric.Image.fromURL('/assets/illustrations/illustration_avatar.png', (oImg) => {
             editor?.canvas.add(oImg);
@@ -289,63 +281,67 @@ const EditorPage = () => {
             .then(res => res.blob())
             .then(blob => {
                 setImageBlob(blob);
-                Storage.put('test.png', blob, {
-                    resumable: true,
-                    contentType: "image/png",
-                    completeCallback: (event) => {
-                        Storage.get(event.key).then((image) => {
-                            setGeneratedImage(image);
-                            const file = new File([blob], 'test.png', { type: blob.type });
-                            setShareImageFile(file);
-                            setImageUploading(false);
+                fetch(`https://api.memesrc.com/?uuidGen`).then(response => {
+                    response.json().then(uuid => {
+                        Storage.put(`${uuid}.png`, blob, {
+                            resumable: true,
+                            contentType: "image/png",
+                            completeCallback: (event) => {
+                                Storage.get(event.key).then((image) => {
+                                    setGeneratedImage(image);
+                                    const file = new File([blob], 'test.png', { type: blob.type });
+                                    setShareImageFile(file);
+                                    setImageUploading(false);
+                                })
+                            },
+                            progressCallback: (progress) => {
+                                console.log(`Uploaded: ${progress.loaded}/${progress.total}`);
+                            },
+                            errorCallback: (err) => {
+                                console.error('Unexpected error while uploading', err);
+                            }
                         })
-                    },
-                    progressCallback: (progress) => {
-                        console.log(`Uploaded: ${progress.loaded}/${progress.total}`);
-                    },
-                    errorCallback: (err) => {
-                        console.error('Unexpected error while uploading', err);
-                    }
-                })
+                    }).catch(err => console.log(`JSON Parse Error:  ${err}`));
+                }).catch(err => console.log(`UUID Gen Fetch Error:  ${err}`));
             })
     }
 
-    // TODO: Repurpose this for canvas scaling
-    const matchImageSize = () => {
-        // Export the state of the canvas as a JSON object
-        const canvasJson = editor.canvas.toJSON(['hoverCursor', 'selectable']);
+    // // TODO: Repurpose this for canvas scaling
+    // const matchImageSize = () => {
+    //     // Export the state of the canvas as a JSON object
+    //     const canvasJson = editor.canvas.toJSON(['hoverCursor', 'selectable']);
 
-        // Scale the objects on the canvas proportionally to fit the new size
-        canvasJson.objects.forEach(obj => {
-            // Calculate the scale factor based on the ratio of the new canvas size to the original canvas size
-            const scaleFactorX = defaultFrame.width / editor.canvas.width;
-            const scaleFactorY = defaultFrame.height / editor.canvas.height;
+    //     // Scale the objects on the canvas proportionally to fit the new size
+    //     canvasJson.objects.forEach(obj => {
+    //         // Calculate the scale factor based on the ratio of the new canvas size to the original canvas size
+    //         const scaleFactorX = defaultFrame.width / editor.canvas.width;
+    //         const scaleFactorY = defaultFrame.height / editor.canvas.height;
 
-            const scaleFactor = Math.min(scaleFactorX, scaleFactorY)
+    //         const scaleFactor = Math.min(scaleFactorX, scaleFactorY)
 
-            console.log(`Scale factor (original / display): ${scaleFactor}`)
+    //         console.log(`Scale factor (original / display): ${scaleFactor}`)
 
-            // Scale the object
-            obj.scaleX *= scaleFactor;
-            obj.scaleY *= scaleFactor;
+    //         // Scale the object
+    //         obj.scaleX *= scaleFactor;
+    //         obj.scaleY *= scaleFactor;
 
-            // Adjust the position of the object
-            obj.left *= scaleFactor;
-            obj.top *= scaleFactor;
-        });
+    //         // Adjust the position of the object
+    //         obj.left *= scaleFactor;
+    //         obj.top *= scaleFactor;
+    //     });
 
-        // Update the canvas size
-        setCanvasSize({
-            width: defaultFrame.width,
-            height: defaultFrame.height
-        })
+    //     // Update the canvas size
+    //     setCanvasSize({
+    //         width: defaultFrame.width,
+    //         height: defaultFrame.height
+    //     })
 
-        // Load the state of the canvas from the JSON object
-        editor.canvas.loadFromJSON(canvasJson, () => {
-            // Callback function to execute after the canvas is loaded
-            console.log('Canvas loaded from JSON');
-        });
-    }
+    //     // Load the state of the canvas from the JSON object
+    //     editor.canvas.loadFromJSON(canvasJson, () => {
+    //         // Callback function to execute after the canvas is loaded
+    //         console.log('Canvas loaded from JSON');
+    //     });
+    // }
 
     const showColorPicker = (event, index) => {
         setPickingColor(index);
@@ -479,23 +475,6 @@ const EditorPage = () => {
                                     </Grid>
                                 </Grid>
                                 <Grid item xs={12} md={7} lg={7} marginRight={{ xs: '', md: 'auto' }} order={{ xs: 2, md: 3 }}>
-                                    <button type='button' onClick={updateEditorSize}>Update Canvas Size</button>
-                                    <button type='button' onClick={addCircle}>Add circle</button>
-                                    <button type='button' onClick={addRectangle}>Add Rectangle</button>
-                                    <button type='button' onClick={addImage}>Add Image</button>
-                                    <button type='button' onClick={saveProject}>Save Project</button>
-                                    <button type='button' onClick={loadProject}>Load Project</button>
-                                    <button type='button' onClick={matchImageSize}>Original Size</button>
-                                    <button type='button' onClick={handleClickDialogOpen}>Save Image</button>
-                                    {/* <div style={{ display: 'inline', position: 'relative' }}>
-                                        <button type='button' onClick={toggleColorPicker}>Change Color</button>
-                                        {pickingColor &&
-                                            <ColorPickerPopover>
-                                                <TwitterPicker onChangeComplete={changeColor} />
-                                            </ColorPickerPopover>
-                                        }
-                                    </div> */}
-
                                     <Stack spacing={2} direction='row' alignItems={'center'}>
                                         <Tooltip title="Fine Tuning">
                                             <IconButton>
@@ -519,12 +498,16 @@ const EditorPage = () => {
                                             track={false}
                                         />
                                     </Stack>
+                                    <button type='button' onClick={addImage}>Add Image</button>
+                                    <button type='button' onClick={saveProject}>Save Project</button>
+                                    <button type='button' onClick={loadProject}>Load Project</button>
+                                    <button type='button' onClick={handleClickDialogOpen}>Save Image</button>
 
 
                                 </Grid>
                                 <Grid container item spacing={1} order='4'>
                                     {surroundingFrames && surroundingFrames.map(result => (
-                                        <Grid item xs={12} sm={4} md={12 / 9} key={result.fid}>
+                                        <Grid item xs={4} sm={4} md={12 / 9} key={result.fid}>
                                             <a style={{ textDecoration: 'none' }}>
                                                 <StyledCard>
                                                     <StyledCardMedia
@@ -625,19 +608,10 @@ const EditorPage = () => {
                     <DialogContent>
                         <DialogContentText>
                             {!imageUploading && <img src={generatedImage} alt="generated meme" />}
-                            {imageUploading && <center><CircularProgress/></center>}
+                            {imageUploading && <center><CircularProgress /></center>}
                         </DialogContentText>
                     </DialogContent>
                     <DialogActions>
-                        <Button autoFocus onClick={handleDialogClose}>
-                            Close
-                        </Button>
-                        <Button disabled={imageUploading} autoFocus onClick={() => {
-                            const { ClipboardItem } = window;
-                            navigator.clipboard.write([new ClipboardItem({ 'image/png': imageBlob })])
-                        }}>
-                            Copy
-                        </Button>
                         {navigator.canShare && <Button disabled={imageUploading} onClick={() => {
                             navigator.share({
                                 title: 'memeSRC.com',
@@ -647,6 +621,15 @@ const EditorPage = () => {
                         }}>
                             Share
                         </Button>}
+                        <Button disabled={imageUploading} autoFocus onClick={() => {
+                            const { ClipboardItem } = window;
+                            navigator.clipboard.write([new ClipboardItem({ 'image/png': imageBlob })])
+                        }}>
+                            Copy
+                        </Button>
+                        <Button autoFocus onClick={handleDialogClose}>
+                            Close
+                        </Button>
                     </DialogActions>
                 </Dialog>
 
