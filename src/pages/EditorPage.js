@@ -65,7 +65,8 @@ const EditorPage = () => {
     const [defaultFrame, setDefaultFrame] = useState(null);
     const [pickingColor, setPickingColor] = useState(false);
     const [imageScale, setImageScale] = useState();
-    const [generatedImage, setGeneratedImage] = useState();
+    // const [generatedImage, setGeneratedImage] = useState();
+    const [generatedImageFilename, setGeneratedImageFilename] = useState();
     const [canvasSize, setCanvasSize] = useState({
         width: 500,
         height: 500
@@ -283,13 +284,15 @@ const EditorPage = () => {
                 setImageBlob(blob);
                 fetch(`https://api.memesrc.com/?uuidGen`).then(response => {
                     response.json().then(uuid => {
+                        const filename = `${uuid}.png`
+                        setGeneratedImageFilename(filename)
                         Storage.put(`${uuid}.png`, blob, {
                             resumable: true,
                             contentType: "image/png",
                             completeCallback: (event) => {
-                                Storage.get(event.key).then((image) => {
-                                    setGeneratedImage(image);
-                                    const file = new File([blob], 'test.png', { type: blob.type });
+                                Storage.get(event.key).then(() => {
+                                    // setGeneratedImage(image);
+                                    const file = new File([blob], filename, { type: blob.type });
                                     setShareImageFile(file);
                                     setImageUploading(false);
                                 })
@@ -608,7 +611,7 @@ const EditorPage = () => {
                     </DialogTitle>
                     <DialogContent>
                         <DialogContentText>
-                            {!imageUploading && <img src={generatedImage} alt="generated meme" />}
+                            {!imageUploading && <img src={`https://i-dev.memesrc.com/${generatedImageFilename}`} alt="generated meme" />}
                             {imageUploading && <center><CircularProgress /></center>}
                         </DialogContentText>
                     </DialogContent>
