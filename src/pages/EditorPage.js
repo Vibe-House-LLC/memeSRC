@@ -51,15 +51,9 @@ const StyledCardMedia = styled.img`
   background-color: black;
 `;
 
-const StyledTwitterPicker = styled(TwitterPicker)`
-    span div {
-        border: 1px solid rgb(240, 240, 240);
-    }
-`;
+
 
 const EditorPage = () => {
-    const TwitterPickerWrapper = memo(StyledTwitterPicker);
-
     // Get everything ready
     const { fid } = useParams();
     const [defaultFrame, setDefaultFrame] = useState(null);
@@ -100,6 +94,13 @@ const EditorPage = () => {
     const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
 
     const { selectedObjects, editor, onReady } = useFabricJSEditor()
+
+    const StyledTwitterPicker = styled(TwitterPicker)`
+    span div {
+        border: 1px solid rgb(240, 240, 240);
+    }`;
+
+    const TwitterPickerWrapper = memo(StyledTwitterPicker);
 
     const navigate = useNavigate();
     const location = useLocation();
@@ -563,6 +564,7 @@ const EditorPage = () => {
                             color={colorPickerColor}
                             colors={['#FFFFFF', 'yellow', 'black', 'orange', '#8ED1FC', '#0693E3', '#ABB8C3', '#EB144C', '#F78DA7', '#9900EF']}
                             width='280px'
+                            // TODO: Fix background color to match other cards
                         />
                     </ColorPickerPopover>
                 </Popover>

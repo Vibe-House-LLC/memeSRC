@@ -8,6 +8,7 @@ import Tooltip from './Tooltip';
 import Backdrop from './Backdrop';
 import Typography from './Typography';
 import Autocomplete from './Autocomplete';
+import Slider from './Slider';
 
 // ----------------------------------------------------------------------
 
@@ -21,6 +22,7 @@ export default function ComponentsOverrides(theme) {
     Tooltip(theme),
     Backdrop(theme),
     Typography(theme),
-    Autocomplete(theme)
+    Autocomplete(theme),
+    Slider(theme)
   );
 }
