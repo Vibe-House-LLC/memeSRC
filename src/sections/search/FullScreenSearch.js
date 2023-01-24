@@ -23,13 +23,13 @@ const StyledSearchForm = styled.form`
 
 const StyledSearchSelector = styled.select`
   font-family: ${FONT_FAMILY};
-  font-size: 14px;
+  font-size: 18px;
   color: #333;
   background-color: #fff;
   border: none;
-  border-radius: 4px;
+  border-radius: 8px;
   padding: 8px 12px;
-  height: 40px;
+  height: 50px;
   width: 100%;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   transition: box-shadow 0.3s;
@@ -46,11 +46,11 @@ const StyledSearchSelector = styled.select`
 // Create a search button component
 const StyledSearchButton = styled(Button)`
   font-family: ${FONT_FAMILY};
-  font-size: 14px;
+  font-size: 18px;
   color: #fff;
   background-color: ${SECONDARY_COLOR};
-  border-radius: 4px;
-  padding: 8px 12px;
+  border-radius: 8px;
+  padding: 10px 12px;
 `;
 
 // Create a grid container component
@@ -78,10 +78,10 @@ const StyledLabel = styled.label`
 // Create a button component
 const StyledButton = styled(Button)`
     font-family: ${FONT_FAMILY};
-    font-size: 14px;
+    font-size: 18px;
     color: #fff;
     background-color: ${SECONDARY_COLOR};
-    border-radius: 4px;
+    border-radius: 8px;
     padding: 8px 16px;
     cursor: pointer;
     transition: background-color 0.3s;
@@ -93,16 +93,16 @@ const StyledButton = styled(Button)`
 
 const StyledSearchInput = styled.input`
   font-family: ${FONT_FAMILY};
-  font-size: 14px;
+  font-size: 18px;
   color: #333;
   background-color: #fff;
   border: none;
-  border-radius: 4px;
+  border-radius: 8px;
   padding: 8px 12px;
   width: 100%;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   transition: box-shadow 0.3s;
-  height: 40px;
+  height: 50px;
 
   &:focus {
     box-shadow: 0 2px 4px rgba(0,0,0,0.3);
@@ -175,8 +175,8 @@ export default function FullScreenSearch(props) {
         <Grid container marginY='auto' justifyContent='center'>
           <Grid container justifyContent='center'>
             <Grid item textAlign='center' marginBottom={5}>
-              <Typography component='h1' variant='h1' sx={{ color: '#FFFFFF' }}>
-                <Logo sx={{ display: 'inline', width: '300px', height: 'auto' }} color="white" />
+              <Typography component='h1' variant='h1' sx={{ color: '#FFFFFF', textShadow: '1px 1px 3px rgba(0, 0, 0, 0.30);' }}>
+                <Logo sx={{ display: 'inline', width: '150px', height: 'auto', margin: '-20px' }} color="white" />
                 <br />
                 memeSRC
               </Typography>

@@ -38,13 +38,13 @@ export default function HomePageSection({ backgroundColor, textColor, title, sub
         <Typography component='h2' variant='h2' sx={{ color: textColor }} marginBottom={4}>
           {title}
         </Typography>
-        <Typography component='h4' variant='h4' sx={{ color: textColor }} marginBottom={4}>
+        <Typography component='h4' variant='h4' sx={{ color: textColor }} marginBottom={4} fontWeight='500'>
           {subtitle}
         </Typography>
         <Grid container justifyContent='center' spacing={2}>
           {buttons.map((button, index) => (
             <Grid item xs={12} sm='auto'>
-              <Button key={index} startIcon={<Favorite />} href={button.destination} variant="contained" size="large" fullWidth={{xs: true, sm: false}}>
+              <Button key={index} startIcon={<Favorite />} href={button.destination} variant="contained" size="large" fullWidth={{xs: true, sm: false}} sx={{fontSize: '18px', borderRadius: '8px'}}>
                 {button.title}
               </Button>
             </Grid>
