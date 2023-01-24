@@ -456,7 +456,7 @@ const EditorPage = () => {
                                                         {/* <button type='button' key={`button${index}`} onClick={(event) => showColorPicker(event, index)}>Change Color</button> */}
                                                         <TextEditorControls showColorPicker={(event) => showColorPicker(event, index)} colorPickerShowing={colorPickerShowing} index={index} showFontSizePicker={(event) => showFontSizePicker(event, index)} fontSizePickerShowing={fontSizePickerShowing} key={`togglebuttons${index}`} handleStyle={handleStyle} />
                                                     </div>
-                                                    <Fab size="small" aria-label="add" sx={{ position: 'absolute', backgroundColor: '#FFFFFF', boxShadow: 'none', top: '11px', right: '9px' }} onClick={() => deleteLayer(index)} key={`fab${index}`}>
+                                                    <Fab size="small" aria-label="add" sx={{ position: 'absolute', backgroundColor: theme.palette.background.paper, boxShadow: 'none', top: '11px', right: '9px' }} onClick={() => deleteLayer(index)} key={`fab${index}`}>
                                                         <HighlightOffRounded color="error" />
                                                     </Fab>
                                                     <TextField size='small' key={`textfield${index}`} multiline type='text' value={canvasObjects[index].text} fullWidth onFocus={() => handleFocus(index)} onChange={(event) => handleEdit(event, index)} />
