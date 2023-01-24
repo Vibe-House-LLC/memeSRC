@@ -5,15 +5,15 @@ import { alpha } from '@mui/material/styles';
 // SETUP COLORS
 const GREY = {
   0: '#FFFFFF',
-  100: '#F9FAFB',
-  200: '#F4F6F8',
-  300: '#DFE3E8',
-  400: '#C4CDD5',
-  500: '#919EAB',
-  600: '#637381',
-  700: '#454F5B',
-  800: '#212B36',
-  900: '#161C24',
+  100: '#F9F9F9',
+  200: '#F4F4F4',
+  300: '#DFDFDF',
+  400: '#C4C4C4',
+  500: '#919191',
+  600: '#636363',
+  700: '#454545',
+  800: '#212121',
+  900: '#161616',
 };
 
 const PRIMARY = {
@@ -49,7 +49,7 @@ const SUCCESS = {
   main: '#54D62C',
   dark: '#229A16',
   darker: '#08660D',
-  contrastText: GREY[800],
+  contrastText: GREY[200],
 };
 
 const WARNING = {
@@ -58,7 +58,7 @@ const WARNING = {
   main: '#FFC107',
   dark: '#B78103',
   darker: '#7A4F01',
-  contrastText: GREY[800],
+  contrastText: GREY[200],
 };
 
 const ERROR = {
@@ -81,17 +81,17 @@ const palette = {
   grey: GREY,
   divider: alpha(GREY[500], 0.24),
   text: {
-    primary: GREY[800],
-    secondary: GREY[600],
+    primary: GREY[200],
+    secondary: GREY[400],
     disabled: GREY[500],
   },
   background: {
-    paper: '#fff',
-    default: GREY[100],
-    neutral: GREY[200],
+    paper: GREY[800],
+    default: GREY[900],
+    neutral: GREY[800],
   },
   action: {
-    active: GREY[600],
+    active: GREY[400],
     hover: alpha(GREY[500], 0.08),
     selected: alpha(GREY[500], 0.16),
     disabled: alpha(GREY[500], 0.8),

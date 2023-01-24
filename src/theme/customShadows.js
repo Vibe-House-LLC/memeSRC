@@ -5,10 +5,10 @@ import palette from './palette';
 
 // ----------------------------------------------------------------------
 
-const color = palette.grey[500];
+const color = palette.common.black;
 
 export default function customShadows() {
-  const transparent = alpha(color, 0.16);
+  const transparent = alpha(color, 0.75);
   return {
     z1: `0 1px 2px 0 ${transparent}`,
     z4: `0 4px 8px 0 ${transparent}`,

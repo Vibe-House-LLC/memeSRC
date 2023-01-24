@@ -51,15 +51,9 @@ const StyledCardMedia = styled.img`
   background-color: black;
 `;
 
-const StyledTwitterPicker = styled(TwitterPicker)`
-    span div {
-        border: 1px solid rgb(240, 240, 240);
-    }
-`;
+
 
 const EditorPage = () => {
-    const TwitterPickerWrapper = memo(StyledTwitterPicker);
-
     // Get everything ready
     const { fid } = useParams();
     const [defaultFrame, setDefaultFrame] = useState(null);
@@ -100,6 +94,13 @@ const EditorPage = () => {
     const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
 
     const { selectedObjects, editor, onReady } = useFabricJSEditor()
+
+    const StyledTwitterPicker = styled(TwitterPicker)`
+    span div {
+        border: 1px solid rgb(240, 240, 240);
+    }`;
+
+    const TwitterPickerWrapper = memo(StyledTwitterPicker);
 
     const navigate = useNavigate();
     const location = useLocation();
@@ -456,7 +457,7 @@ const EditorPage = () => {
                                                         {/* <button type='button' key={`button${index}`} onClick={(event) => showColorPicker(event, index)}>Change Color</button> */}
                                                         <TextEditorControls showColorPicker={(event) => showColorPicker(event, index)} colorPickerShowing={colorPickerShowing} index={index} showFontSizePicker={(event) => showFontSizePicker(event, index)} fontSizePickerShowing={fontSizePickerShowing} key={`togglebuttons${index}`} handleStyle={handleStyle} />
                                                     </div>
-                                                    <Fab size="small" aria-label="add" sx={{ position: 'absolute', backgroundColor: '#FFFFFF', boxShadow: 'none', top: '11px', right: '9px' }} onClick={() => deleteLayer(index)} key={`fab${index}`}>
+                                                    <Fab size="small" aria-label="add" sx={{ position: 'absolute', backgroundColor: theme.palette.background.paper, boxShadow: 'none', top: '11px', right: '9px' }} onClick={() => deleteLayer(index)} key={`fab${index}`}>
                                                         <HighlightOffRounded color="error" />
                                                     </Fab>
                                                     <TextField size='small' key={`textfield${index}`} multiline type='text' value={canvasObjects[index].text} fullWidth onFocus={() => handleFocus(index)} onChange={(event) => handleEdit(event, index)} />
@@ -563,6 +564,7 @@ const EditorPage = () => {
                             color={colorPickerColor}
                             colors={['#FFFFFF', 'yellow', 'black', 'orange', '#8ED1FC', '#0693E3', '#ABB8C3', '#EB144C', '#F78DA7', '#9900EF']}
                             width='280px'
+                            // TODO: Fix background color to match other cards
                         />
                     </ColorPickerPopover>
                 </Popover>
