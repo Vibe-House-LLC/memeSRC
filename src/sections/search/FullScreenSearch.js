@@ -184,7 +184,7 @@ export default function FullScreenSearch(props) {
           </Grid>
           <StyledSearchForm onSubmit={e => searchFunction(e)}>
             <Grid container justifyContent='center'>
-              <Grid item sm={4} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
+              <Grid item sm={3.5} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
                 <StyledSearchSelector onChange={(x) => { setSeriesTitle(x.target.value); }} value={seriesTitle}>
                   <option key='_universal' value='_universal' selected>🌈 All Shows</option>
                   {(loading) ? <option key="loading" value="loading" disabled>Loading...</option> : shows.map((item) => (
@@ -192,7 +192,7 @@ export default function FullScreenSearch(props) {
                   ))}
                 </StyledSearchSelector>
               </Grid>
-              <Grid item sm={6} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
+              <Grid item sm={7} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
                 <StyledLabel htmlFor="search-term">
                   <StyledSearchInput
                     type="text"
@@ -202,7 +202,7 @@ export default function FullScreenSearch(props) {
                     onChange={e => setSearchTerm(e.target.value)} />
                 </StyledLabel>
               </Grid>
-              <Grid item sm={2} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
+              <Grid item sm={1.5} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
                 <StyledSearchButton type="submit" style={{ backgroundColor: "black" }} fullWidth={{ xs: true, sm: false }}>Search</StyledSearchButton>
               </Grid>
             </Grid>
