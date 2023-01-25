@@ -123,6 +123,7 @@ const StyledFooter = styled('footer')`
     justify-content: center;
     align-items: center;
     background-color: transparent;
+    z-index: 1200;
 `;
 
 async function fetchShows() {
@@ -168,6 +169,20 @@ export default function FullScreenSearch(props) {
   //     console.log(shows)
   //   }
   // }, [setSeriesTitle])
+  document.addEventListener('scroll', (event) => {
+  const windowHeight = window.innerHeight / 2;
+  const scrollAmount = 1 - window.scrollY / windowHeight;
+  console.log(`Window Height: ${windowHeight} Scroll Amount: ${scrollAmount}`)
+  const bottomButtons = document.querySelectorAll('.bottomBtn');
+    bottomButtons.forEach((elm) => {
+      if (scrollAmount < 0) {
+        elm.hidden = true;
+      } else {
+        elm.hidden = false;
+        elm.style.opacity = scrollAmount;
+      }
+    });
+  });
 
   return (
     <>
@@ -219,13 +234,13 @@ export default function FullScreenSearch(props) {
           </Grid>
         </Grid>
         <StyledFooter>
-          <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black" }} size='small'>
+          <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black" }} size='small' className="bottomBtn">
             <MapsUgc color="white" />
           </Fab>
-          <Fab color="primary" aria-label="donate" style={{ backgroundColor: "black" }} size='small'>
+          <Fab color="primary" aria-label="donate" style={{ backgroundColor: "black" }} size='small' className="bottomBtn">
             <Favorite />
           </Fab>
-          <a href={`https://api.memesrc.com/random/generate${seriesTitle ? `?series=${seriesTitle}` : ''}`} style={{ marginLeft: 'auto', textDecoration: 'none' }}>
+          <a href={`https://api.memesrc.com/random/generate${seriesTitle ? `?series=${seriesTitle}` : ''}`} style={{ marginLeft: 'auto', textDecoration: 'none' }} className="bottomBtn">
             <StyledButton startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black" }}>Random</StyledButton>
           </a>
         </StyledFooter>
