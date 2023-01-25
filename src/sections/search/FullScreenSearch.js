@@ -113,12 +113,12 @@ const StyledSearchInput = styled.input`
 
 // Create a footer component
 const StyledFooter = styled('footer')`
-    bottom: 10px;
+    bottom: 0;
     left: 0;
     line-height: 0;
     width: 100%;
     position: fixed;
-    padding: 20px;
+    padding: 10px;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -239,10 +239,10 @@ export default function FullScreenSearch(props) {
           </Grid>
         </Grid>
         <StyledFooter className="bottomBtn">
-          <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black" }} size='small'>
+          <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black" }} size='medium'>
             <MapsUgc color="white" />
           </Fab>
-          <Fab color="primary" aria-label="donate" style={{ backgroundColor: "black" }} size='small'>
+          <Fab color="primary" aria-label="donate" style={{ backgroundColor: "black" }} size='medium'>
             <Favorite />
           </Fab>
           <a href={`https://api.memesrc.com/random/generate${seriesTitle ? `?series=${seriesTitle}` : ''}`} style={{ marginLeft: 'auto', textDecoration: 'none' }}>
