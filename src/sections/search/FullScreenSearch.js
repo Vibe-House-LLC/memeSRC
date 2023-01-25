@@ -171,20 +171,22 @@ export default function FullScreenSearch(props) {
   // }, [setSeriesTitle])
   useEffect(() => {
     document.addEventListener('scroll', (event) => {
-      const windowHeight = window.innerHeight / 2;
-      const scrollAmount = 1 - window.scrollY / windowHeight;
-      const bottomButtons = document.querySelectorAll('.bottomBtn');
+      window.requestAnimationFrame(() => {
+        const windowHeight = window.innerHeight / 2;
+        const scrollAmount = 1 - window.scrollY / windowHeight;
+        const bottomButtons = document.querySelectorAll('.bottomBtn');
         bottomButtons.forEach((elm) => {
           if (scrollAmount < 0) {
             elm.style.display = 'none';
           } else {
-            if (elm.style.display !== 'flex'){
+            if (elm.style.display !== 'flex') {
               elm.style.display = 'flex';
             }
             elm.style.opacity = scrollAmount;
           }
         });
       });
+    });
   }, []);
 
   return (
@@ -229,7 +231,7 @@ export default function FullScreenSearch(props) {
             <Typography component='h4' variant='h4'>
               Search over 36 million screencaps from your favorite shows.
             </Typography>
-            <Button href='http://example.com' startIcon='🚀' sx={[{ marginTop: '12px', backgroundColor: 'unset', '&:hover': {backgroundColor: 'unset'} }]}>
+            <Button href='http://example.com' startIcon='🚀' sx={[{ marginTop: '12px', backgroundColor: 'unset', '&:hover': { backgroundColor: 'unset' } }]}>
               <Typography sx={{ textDecoration: 'underline', fontSize: '1em', fontWeight: '800', color: "#FFFFFF" }}>
                 New Feature: Universal Search
               </Typography>
