@@ -2,7 +2,9 @@ import styled from "@emotion/styled";
 import { Button, Fab, Grid, Typography } from "@mui/material";
 import { Favorite, MapsUgc, Shuffle } from "@mui/icons-material";
 import { API, graphqlOperation } from 'aws-amplify';
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { LoadingButton } from "@mui/lab";
+import { useNavigate } from "react-router-dom";
 import { searchPropTypes } from "./SearchPropTypes";
 import Logo from "../../components/logo/Logo";
 import { listContentMetadata, listHomepageSections } from '../../graphql/queries';
@@ -76,7 +78,7 @@ const StyledLabel = styled.label`
   `;
 
 // Create a button component
-const StyledButton = styled(Button)`
+const StyledButton = styled(LoadingButton)`
     font-family: ${FONT_FAMILY};
     font-size: 18px;
     color: #fff;
@@ -144,11 +146,15 @@ async function fetchSections() {
 
 FullScreenSearch.propTypes = searchPropTypes;
 
+
 export default function FullScreenSearch(props) {
   const [shows, setShows] = useState([]);
   const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingRandom, setLoadingRandom] = useState(false);
   const { searchTerms, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction } = props
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     async function getData() {
@@ -187,6 +193,22 @@ export default function FullScreenSearch(props) {
         });
       });
     });
+  }, []);
+
+  const loadRandomFrame = useCallback(() => {
+    const apiEpisodeLookupUrl = `https://api.memesrc.com/random/generate${seriesTitle ? `?series=${seriesTitle}` : ''}`
+    setLoadingRandom(true);
+    fetch(apiEpisodeLookupUrl)
+      .then(response => {
+        const fid = response.url.split('=')[1];
+        console.log(fid)
+        navigate(`/editor/${fid}`);
+        setLoadingRandom(false);
+      })
+      .catch(error => {
+        console.error(error);
+        setLoadingRandom(false);
+      });
   }, []);
 
   return (
@@ -245,9 +267,7 @@ export default function FullScreenSearch(props) {
           <Fab color="primary" aria-label="donate" style={{ backgroundColor: "black" }} size='medium'>
             <Favorite />
           </Fab>
-          <a href={`https://api.memesrc.com/random/generate${seriesTitle ? `?series=${seriesTitle}` : ''}`} style={{ marginLeft: 'auto', textDecoration: 'none' }}>
-            <StyledButton startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black" }}>Random</StyledButton>
-          </a>
+            <StyledButton onClick={loadRandomFrame} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto' }} >Random</StyledButton>
         </StyledFooter>
       </StyledGridContainer>
       {sections.map((section) => {
