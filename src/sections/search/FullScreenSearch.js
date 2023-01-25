@@ -236,14 +236,14 @@ export default function FullScreenSearch(props) {
             </Button>
           </Grid>
         </Grid>
-        <StyledFooter>
-          <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black" }} size='small' className="bottomBtn">
+        <StyledFooter className="bottomBtn">
+          <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black" }} size='small'>
             <MapsUgc color="white" />
           </Fab>
-          <Fab color="primary" aria-label="donate" style={{ backgroundColor: "black" }} size='small' className="bottomBtn">
+          <Fab color="primary" aria-label="donate" style={{ backgroundColor: "black" }} size='small'>
             <Favorite />
           </Fab>
-          <a href={`https://api.memesrc.com/random/generate${seriesTitle ? `?series=${seriesTitle}` : ''}`} style={{ marginLeft: 'auto', textDecoration: 'none' }} className="bottomBtn">
+          <a href={`https://api.memesrc.com/random/generate${seriesTitle ? `?series=${seriesTitle}` : ''}`} style={{ marginLeft: 'auto', textDecoration: 'none' }}>
             <StyledButton startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black" }}>Random</StyledButton>
           </a>
         </StyledFooter>
