@@ -32,9 +32,9 @@ HomePageSection.propTypes = {
 
 export default function HomePageSection({ backgroundColor, textColor, title, subtitle, buttons, bottomImage, buttonSubtext }) {
 
-  
+
   return (
-    <StyledGridContainer container justifyItems='center' paddingX={3} backgroundColor={backgroundColor}>
+    <StyledGridContainer container justifyItems='center' paddingX={3} backgroundColor={backgroundColor} data-scroll-to>
       <Grid item xs={12} textAlign='center' marginY='auto' paddingTop={8}>
         <Typography component='h2' sx={{ color: textColor,}} fontSize='2.5em' fontWeight='800' marginBottom={4}>
           {title}

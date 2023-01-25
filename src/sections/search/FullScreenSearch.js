@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { Button, Fab, Grid, Typography } from "@mui/material";
-import { Favorite, MapsUgc, Shuffle } from "@mui/icons-material";
+import { ArrowDownwardRounded, Favorite, MapsUgc, Shuffle } from "@mui/icons-material";
 import { API, graphqlOperation } from 'aws-amplify';
 import { useCallback, useEffect, useState } from "react";
 import { LoadingButton } from "@mui/lab";
@@ -152,6 +152,7 @@ export default function FullScreenSearch(props) {
   const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingRandom, setLoadingRandom] = useState(false);
+  const [scrollToSections, setScrollToSections] = useState();
   const { searchTerms, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction } = props
 
   const navigate = useNavigate();
@@ -177,9 +178,39 @@ export default function FullScreenSearch(props) {
   // }, [setSeriesTitle])
   useEffect(() => {
     document.addEventListener('scroll', (event) => {
+      
+
       window.requestAnimationFrame(() => {
-        const windowHeight = window.innerHeight / 2;
-        const scrollAmount = 1 - window.scrollY / windowHeight;
+        const scrollBottom = document.height - window.height - window.scrollY - 300;
+
+      const scrollDownBtn = document.getElementById('scroll-down-btn');
+      if (scrollBottom <= 0) {
+        scrollDownBtn.parentElement.hidden = true;
+      } else {
+        scrollDownBtn.parentElement.hidden = false;
+      }
+
+      if (scrollBottom < 100 && scrollBottom >= 0) {
+        const op = scrollBottom.toString()
+        if (scrollBottom < 10) {
+          scrollDownBtn.parentElement.style.opacity = `.0${op}`;
+        } else {
+          scrollDownBtn.parentElement.style.opacity = `.${op}`;
+        }
+
+      } else {
+        scrollDownBtn.parentElement.style.opacity = "1";
+      }
+
+
+
+      const windowHeight = window.innerHeight / 2;
+      const scrollAmount = 1 - window.scrollY / windowHeight;
+      const scrollRGB = Math.round(scrollAmount * 255);
+
+      if (scrollRGB >= 0 && scrollRGB <= 255) {
+        scrollDownBtn.style.color = `rgb(${scrollRGB}, ${scrollRGB}, ${scrollRGB})`
+      }
         const bottomButtons = document.querySelectorAll('.bottomBtn');
         bottomButtons.forEach((elm) => {
           if (scrollAmount < 0) {
@@ -192,8 +223,38 @@ export default function FullScreenSearch(props) {
           }
         });
       });
-    });
+    }); 
   }, []);
+
+  useEffect(() => {
+    setScrollToSections(document.querySelectorAll('[data-scroll-to]'));
+  }, [sections])
+
+  
+  const scrollToSection = (element) => {
+    if (!element) {
+      const nextScroll = {
+        'scrollPos': window.innerHeight,
+        'element': null
+      }
+
+      let sectionChosen = false;
+      scrollToSections.forEach((section) => {
+        if (section.getBoundingClientRect().top > 0 && sectionChosen === false) {
+          nextScroll.scrollPos = section.getBoundingClientRect().top;
+          nextScroll.element = section;
+          sectionChosen = true;
+        }
+      });
+
+      if (nextScroll.element != null) {
+        nextScroll.element.scrollIntoView({ behavior: "smooth" });
+      }
+    } else {
+      const scrolltoelm = document.getElementById(element);
+      scrolltoelm.scrollIntoView({ behavior: "smooth" });
+    }
+  }
 
   const loadRandomFrame = useCallback(() => {
     const apiEpisodeLookupUrl = `https://api.memesrc.com/random/generate${seriesTitle ? `?series=${seriesTitle}` : ''}`
@@ -267,7 +328,13 @@ export default function FullScreenSearch(props) {
           <Fab color="primary" aria-label="donate" style={{ backgroundColor: "black" }} size='medium'>
             <Favorite />
           </Fab>
-            <StyledButton onClick={loadRandomFrame} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto' }} >Random</StyledButton>
+
+          <StyledButton onClick={loadRandomFrame} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto' }} >Random</StyledButton>
+        </StyledFooter>
+        <StyledFooter>
+          <Fab color="primary" onClick={() => scrollToSection()} aria-label="donate" style={{ backgroundColor: "black", marginLeft: 'auto', marginRight: 'auto' }} size='medium' id='scroll-down-btn'>
+            <ArrowDownwardRounded />
+          </Fab>
         </StyledFooter>
       </StyledGridContainer>
       {sections.map((section) => {
