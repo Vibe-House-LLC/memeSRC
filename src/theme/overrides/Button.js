@@ -14,7 +14,13 @@ export default function Button(theme) {
           },
         },
         sizeLarge: {
-          height: 48,
+          height: 55,
+          paddingLeft: 25,
+          paddingRight: 25,
+          fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"',
+          fontSize: '1.3em',
+          borderRadius: '8px', 
+          fontWeight: '900',
         },
         containedInherit: {
           color: theme.palette.grey[800],

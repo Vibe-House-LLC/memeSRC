@@ -184,7 +184,7 @@ export default function FullScreenSearch(props) {
           </Grid>
           <StyledSearchForm onSubmit={e => searchFunction(e)}>
             <Grid container justifyContent='center'>
-              <Grid item sm={3} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
+              <Grid item sm={4} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
                 <StyledSearchSelector onChange={(x) => { setSeriesTitle(x.target.value); }} value={seriesTitle}>
                   <option key='_universal' value='_universal' selected>🌈 All Shows</option>
                   {(loading) ? <option key="loading" value="loading" disabled>Loading...</option> : shows.map((item) => (
@@ -192,7 +192,7 @@ export default function FullScreenSearch(props) {
                   ))}
                 </StyledSearchSelector>
               </Grid>
-              <Grid item sm={5} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
+              <Grid item sm={6} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
                 <StyledLabel htmlFor="search-term">
                   <StyledSearchInput
                     type="text"
@@ -211,7 +211,7 @@ export default function FullScreenSearch(props) {
             <Typography component='h4' variant='h4'>
               Search over 36 million screencaps from your favorite shows.
             </Typography>
-            <Button href='http://example.com' startIcon='🚀' sx={{ marginTop: '12px' }}>
+            <Button href='http://example.com' startIcon='🚀' sx={[{ marginTop: '12px', backgroundColor: 'unset', '&:hover': {backgroundColor: 'unset'} }]}>
               <Typography sx={{ textDecoration: 'underline', fontSize: '1em', fontWeight: '800', color: "#FFFFFF" }}>
                 New Feature: Universal Search
               </Typography>
