@@ -128,6 +128,32 @@ const StyledFooter = styled('footer')`
     z-index: 1200;
 `;
 
+const StyledLeftFooter = styled('footer')`
+    bottom: 0;
+    left: 0;
+    line-height: 0;
+    position: fixed;
+    padding: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: transparent;
+    z-index: 1300;
+`;
+
+const StyledRightFooter = styled('footer')`
+    bottom: 0;
+    right: 0;
+    line-height: 0;
+    position: fixed;
+    padding: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: transparent;
+    z-index: 1300;
+`;
+
 async function fetchShows() {
   const result = await API.graphql({
     ...graphqlOperation(listContentMetadata, { filter: {}, limit: 10 }),
@@ -177,40 +203,40 @@ export default function FullScreenSearch(props) {
   //   }
   // }, [setSeriesTitle])
   useEffect(() => {
-    document.addEventListener('scroll', (event) => {
-      
+    document.addEventListener('scroll', () => {
+
+      // Find the height of the entire document
+      const body = document.body;
+      const html = document.documentElement;
+      const height = Math.max(body.scrollHeight, body.offsetHeight, html.clientHeight, html.scrollHeight, html.offsetHeight);
+
+      // Calculate how far from bottom the scroll down button should start fading out
+      const scrollBottom = height - window.innerHeight - window.scrollY - 300
 
       window.requestAnimationFrame(() => {
-        const scrollBottom = document.height - window.height - window.scrollY - 300;
 
-      const scrollDownBtn = document.getElementById('scroll-down-btn');
-      if (scrollBottom <= 0) {
-        scrollDownBtn.parentElement.hidden = true;
-      } else {
-        scrollDownBtn.parentElement.hidden = false;
-      }
+        const scrollDownBtn = document.getElementById('scroll-down-btn');
 
-      if (scrollBottom < 100 && scrollBottom >= 0) {
-        const op = scrollBottom.toString()
-        if (scrollBottom < 10) {
-          scrollDownBtn.parentElement.style.opacity = `.0${op}`;
+        // Fade out scroll down button towards bottom of the screen
+        const op = scrollBottom / 100
+        scrollDownBtn.style.opacity = `${Math.min(Math.max(op, 0.0000), 1)}`;
+
+        // Hide scroll down button container once it's reached the bottom of the screen
+        if (scrollBottom <= 0) {
+          scrollDownBtn.parentElement.style.display = 'none';
         } else {
-          scrollDownBtn.parentElement.style.opacity = `.${op}`;
+          scrollDownBtn.parentElement.style.display = 'flex';
         }
 
-      } else {
-        scrollDownBtn.parentElement.style.opacity = "1";
-      }
+        // Change the background color of the scroll down button
+        const windowHeight = window.innerHeight / 2;
+        const scrollAmount = 1 - window.scrollY / windowHeight;
+        const scrollRGB = Math.round(scrollAmount * 255);
+        if (scrollRGB >= 0 && scrollRGB <= 255) {
+          scrollDownBtn.style.backgroundColor = `rgb(${scrollRGB}, ${scrollRGB}, ${scrollRGB}, 0.50)`
+        }
 
-
-
-      const windowHeight = window.innerHeight / 2;
-      const scrollAmount = 1 - window.scrollY / windowHeight;
-      const scrollRGB = Math.round(scrollAmount * 255);
-
-      if (scrollRGB >= 0 && scrollRGB <= 255) {
-        scrollDownBtn.style.color = `rgb(${scrollRGB}, ${scrollRGB}, ${scrollRGB})`
-      }
+        // Handle the fade in and out of the bottom buttons
         const bottomButtons = document.querySelectorAll('.bottomBtn');
         bottomButtons.forEach((elm) => {
           if (scrollAmount < 0) {
@@ -223,14 +249,16 @@ export default function FullScreenSearch(props) {
           }
         });
       });
-    }); 
+    });
   }, []);
 
   useEffect(() => {
+    // Set the scrollSections state to contain all elements we want the scroll down button
+    // to scroll to once they have all loaded
     setScrollToSections(document.querySelectorAll('[data-scroll-to]'));
   }, [sections])
 
-  
+
   const scrollToSection = (element) => {
     if (!element) {
       const nextScroll = {
@@ -270,7 +298,7 @@ export default function FullScreenSearch(props) {
         console.error(error);
         setLoadingRandom(false);
       });
-  }, []);
+  }, [navigate, seriesTitle]);
 
   return (
     <>
@@ -321,18 +349,19 @@ export default function FullScreenSearch(props) {
             </Button>
           </Grid>
         </Grid>
-        <StyledFooter className="bottomBtn">
-          <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black" }} size='medium'>
+        <StyledLeftFooter className="bottomBtn">
+          <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black", zIndex: '1300' }} size='medium'>
             <MapsUgc color="white" />
           </Fab>
-          <Fab color="primary" aria-label="donate" style={{ backgroundColor: "black" }} size='medium'>
+          <Fab color="primary" aria-label="donate" style={{ backgroundColor: "black", zIndex: '1300' }} size='medium'>
             <Favorite />
           </Fab>
-
-          <StyledButton onClick={loadRandomFrame} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto' }} >Random</StyledButton>
-        </StyledFooter>
+        </StyledLeftFooter>
+        <StyledRightFooter className="bottomBtn">
+          <StyledButton onClick={loadRandomFrame} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
+        </StyledRightFooter>
         <StyledFooter>
-          <Fab color="primary" onClick={() => scrollToSection()} aria-label="donate" style={{ backgroundColor: "black", marginLeft: 'auto', marginRight: 'auto' }} size='medium' id='scroll-down-btn'>
+          <Fab color="primary" onClick={() => scrollToSection()} aria-label="donate" style={{ backgroundColor: 'rgb(255, 255, 255, 0.50)', marginLeft: 'auto', marginRight: 'auto', marginBottom: '4px' }} size='small' id='scroll-down-btn'>
             <ArrowDownwardRounded />
           </Fab>
         </StyledFooter>
