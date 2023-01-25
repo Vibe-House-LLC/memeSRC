@@ -33,7 +33,11 @@ export default function Button(theme) {
           boxShadow: theme.customShadows.card,
         },
         containedSecondary: {
+          backgroundColor: theme.palette.primary.main,
           boxShadow: theme.customShadows.secondary,
+          '&:hover': {
+            backgroundColor: theme.palette.primary.dark,
+          },
         },
         outlinedInherit: {
           border: `1px solid ${alpha(theme.palette.grey[500], 0.32)}`,

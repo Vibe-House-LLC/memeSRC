@@ -32,7 +32,7 @@ HomePageSection.propTypes = {
 
 export default function HomePageSection({ backgroundColor, textColor, title, subtitle, buttons, bottomImage, buttonSubtext }) {
 
-
+  
   return (
     <StyledGridContainer container justifyItems='center' paddingX={3} backgroundColor={backgroundColor}>
       <Grid item xs={12} textAlign='center' marginY='auto' paddingTop={8}>
@@ -47,7 +47,7 @@ export default function HomePageSection({ backgroundColor, textColor, title, sub
         <Grid container justifyContent='center' spacing={2}>
           {buttons.map((button, index) => (
             <Grid item xs={12} sm='auto' key={index}>
-              <Button key={index} startIcon={<Favorite />} href={button.destination} variant="contained" size="large" fullWidth={{xs: true, sm: false}}>
+              <Button key={index} color={"secondary"} startIcon={<Favorite />} href={button.destination} variant="contained" size="large" fullWidth={{xs: true, sm: false}}>
                 {button.title}
               </Button>
             </Grid>
