@@ -169,20 +169,23 @@ export default function FullScreenSearch(props) {
   //     console.log(shows)
   //   }
   // }, [setSeriesTitle])
-  document.addEventListener('scroll', (event) => {
-  const windowHeight = window.innerHeight / 2;
-  const scrollAmount = 1 - window.scrollY / windowHeight;
-  console.log(`Window Height: ${windowHeight} Scroll Amount: ${scrollAmount}`)
-  const bottomButtons = document.querySelectorAll('.bottomBtn');
-    bottomButtons.forEach((elm) => {
-      if (scrollAmount < 0) {
-        elm.hidden = true;
-      } else {
-        elm.hidden = false;
-        elm.style.opacity = scrollAmount;
-      }
-    });
-  });
+  useEffect(() => {
+    document.addEventListener('scroll', (event) => {
+      const windowHeight = window.innerHeight / 2;
+      const scrollAmount = 1 - window.scrollY / windowHeight;
+      const bottomButtons = document.querySelectorAll('.bottomBtn');
+        bottomButtons.forEach((elm) => {
+          if (scrollAmount < 0) {
+            elm.style.display = 'none';
+          } else {
+            if (elm.style.display !== 'flex'){
+              elm.style.display = 'flex';
+            }
+            elm.style.opacity = scrollAmount;
+          }
+        });
+      });
+  }, []);
 
   return (
     <>
