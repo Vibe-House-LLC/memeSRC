@@ -46,7 +46,7 @@ const StyledSearchSelector = styled.select`
 
 
 // Create a search button component
-const StyledSearchButton = styled(Button)`
+const StyledSearchButton = styled(LoadingButton)`
   font-family: ${FONT_FAMILY};
   font-size: 18px;
   color: #fff;
@@ -186,6 +186,12 @@ export default function TopBannerSearch(props) {
     setDrawerOpen((!drawerOpen))
   }
 
+  useEffect(() => {
+    if (props.loading === false) {
+      setDrawerOpen(false);
+    }
+  }, [props.loading])
+
   // useEffect(() => {
   //   if (shows.length > 0) {
   //     setSeriesTitle(shows[0].id)
@@ -257,7 +263,7 @@ export default function TopBannerSearch(props) {
                   </StyledLabel>
                 </Grid>
                 <Grid item sm={1.5} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
-                  <StyledSearchButton type="submit" style={{ backgroundColor: "black" }} fullWidth={{ xs: true, sm: false }}>Search</StyledSearchButton>
+                  <StyledSearchButton type="submit" loading={props.loading} style={{ backgroundColor: "black" }} fullWidth={{ xs: true, sm: false }}>Search</StyledSearchButton>
                 </Grid>
               </Grid>
             </StyledSearchForm>
