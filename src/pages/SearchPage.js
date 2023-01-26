@@ -38,7 +38,7 @@ const StyledTypography = styled.p(({ theme }) => ({
 
 export default function SearchPage() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [seriesTitle, setSeriesTitle] = useState('');
+  const [seriesTitle, setSeriesTitle] = useState('_universal');
   const [results, setResults] = useState(null);
   const [sessionID, setSessionID] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -95,7 +95,7 @@ export default function SearchPage() {
     <>
       {!memoizedResults && !loading && <FullScreenSearch searchFunction={handleSearch} setSearchTerm={setSearchTerm} setSeriesTitle={setSeriesTitle} searchTerm={searchTerm} seriesTitle={seriesTitle} />}
       {(memoizedResults || loading) && <TopBannerSearch searchFunction={handleSearch} setSearchTerm={setSearchTerm} setSeriesTitle={setSeriesTitle} searchTerm={searchTerm} seriesTitle={seriesTitle} loading={loading} />}
-      <Grid container spacing={2} marginTop={9} alignItems='stretch'>
+      <Grid container spacing={2} alignItems='stretch' paddingX={{md: 6}}>
         {loading ? (
           <StyledCircularProgress />
         ) : memoizedResults && memoizedResults.map(result => (

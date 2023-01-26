@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { Button, Fab, Grid, IconButton, SwipeableDrawer, Typography, useTheme } from "@mui/material";
+import { Box, Button, Fab, FormControl, Grid, IconButton, Input, InputAdornment, InputBase, InputLabel, MenuItem, Select, SwipeableDrawer, TextField, Typography, useTheme } from "@mui/material";
 import { Favorite, MapsUgc, Search, SettingsSuggest, Shuffle } from "@mui/icons-material";
 import { API, graphqlOperation } from 'aws-amplify';
 import { useCallback, useEffect, useState } from "react";
@@ -92,23 +92,16 @@ const StyledButton = styled(LoadingButton)`
     }
 `;
 
-const StyledSearchInput = styled.input`
+const StyledSearchInput = styled(InputBase)`
   font-family: ${FONT_FAMILY};
-  font-size: 18px;
-  color: #333;
-  background-color: #fff;
-  border: none;
-  border-radius: 8px;
+  font-size: 16px;
+  color: #FFFFFF;
+  background-color: #2b2b2b;
+  border-radius: 12px;
   padding: 8px 12px;
-  width: 100%;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  transition: box-shadow 0.3s;
-  height: 40px;
-
-  &:focus {
-    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    outline: none;
-  }
+  height: 50px;
+  margin-top: auto;
+  margin-bottom: auto;
 `;
 
 const StyledLeftFooter = styled('footer')`
@@ -138,17 +131,10 @@ const StyledRightFooter = styled('footer')`
 `;
 
 const StyledHeader = styled('header')(({ theme }) => ({
-  top: 0,
-  left: 0,
   lineHeight: 0,
   width: '100%',
-  position: 'absolute',
-  padding: theme.spacing(3, 3, 0),
-  display: 'flex',
-  [theme.breakpoints.up('sm')]: {
-    padding: theme.spacing(2, 2, 0),
-  },
-  zIndex: '1000'
+  zIndex: '1000',
+  paddingBottom: '20px'
 }));
 
 async function fetchShows() {
@@ -218,16 +204,58 @@ export default function TopBannerSearch(props) {
 
   return (
     <>
-      {(!drawerOpen) && <StyledHeader>
-        <Logo />
-        <Typography component='h6' variant='h6' marginY='auto' sx={{ color: '#FFFFFF', textShadow: '1px 1px 3px rgba(0, 0, 0, 0.30);', marginRight: 'auto', marginLeft: '6px' }}>
-          memeSRC
-        </Typography>
-        <Fab onClick={toggleDrawer} variant="text" style={{ color: "white", textDecoration: 'none', backgroundColor: 'rgb(0,0,0,0)', boxShadow: 'none' }}>
+      <StyledHeader>
+        <Grid container marginY={3} >
+          <Grid item marginX={{ xs: 'auto', md: 0 }} marginY='auto'>
+            <Grid display='flex' xs={12} marginBottom={{ xs: 3, md: 0 }}>
+              <Logo style={{ float: 'left' }} />
+              <Typography component='h6' variant='h6' marginY='auto' sx={{ color: '#FFFFFF', textShadow: '1px 1px 3px rgba(0, 0, 0, 0.30);', marginLeft: '6px', display: 'inline' }}>
+                memeSRC
+              </Typography>
+            </Grid>
+            {/* <Fab onClick={toggleDrawer} variant="text" style={{ color: "white", textDecoration: 'none', backgroundColor: 'rgb(0,0,0,0)', boxShadow: 'none' }}>
           <Search />
-        </Fab>
-      </StyledHeader>}
-      <SwipeableDrawer
+        </Fab> */}
+
+
+          </Grid>
+          <Grid item xs={12} md={6} paddingLeft={{ xs: 0, md: 2 }}>
+            <StyledSearchInput
+              label="With normal TextField"
+              id="outlined-start-adornment"
+              // InputProps={{
+              //   endAdornment: <InputAdornment position="end"><Typography variant="caption"><Search /></Typography></InputAdornment>,
+              // }}
+              endAdornment={<Search />}
+              sx={{ width: '100%' }}
+            />
+          </Grid>
+        </Grid>
+        <Grid container>
+          <Grid item marginLeft={{ md: 6 }}>
+
+            <FormControl variant="standard" sx={{ minWidth: 120 }}>
+              <Select
+                labelId="demo-simple-select-standard-label"
+                id="demo-simple-select-standard"
+                value={seriesTitle}
+                onChange={(x) => { setSeriesTitle(x.target.value); }}
+                label="Age"
+                size="small"
+                autoWidth
+              >
+
+                <MenuItem key='_universal' value='_universal' selected>🌈 All Shows</MenuItem>
+                {(loading) ? <MenuItem key="loading" value="loading" disabled>Loading...</MenuItem> : shows.map((item) => (
+                  <MenuItem key={item.id} value={item.id}>{item.emoji} {item.title}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+        </Grid>
+
+      </StyledHeader>
+      {/* <SwipeableDrawer
         anchor="top"
         open={drawerOpen}
         onClose={toggleDrawer}
@@ -269,7 +297,7 @@ export default function TopBannerSearch(props) {
             </StyledSearchForm>
           </Grid>
         </StyledGridContainer>
-      </SwipeableDrawer>
+      </SwipeableDrawer> */}
 
 
       <StyledLeftFooter className="bottomBtn">
