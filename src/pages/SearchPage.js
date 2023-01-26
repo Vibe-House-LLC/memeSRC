@@ -63,7 +63,9 @@ export default function SearchPage() {
 
   const handleSearch = useCallback((e) => {
     if (sessionID) {
-      e.preventDefault();
+      if(e) {
+        e.preventDefault();
+      }
       setLoading(true);
       let apiSearchUrl;
       if (seriesTitle && seriesTitle !== '_universal') {

@@ -153,7 +153,8 @@ export default function TopBannerSearch(props) {
   const [loading, setLoading] = useState(true);
   const [loadingRandom, setLoadingRandom] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const { searchTerms, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction } = props
+  const { searchTerm, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction } = props
+  const [searchField, setSearchField] = useState(searchTerm);
 
   const navigate = useNavigate();
   const theme = useTheme();
@@ -177,6 +178,10 @@ export default function TopBannerSearch(props) {
       setDrawerOpen(false);
     }
   }, [props.loading])
+
+  useEffect(() => {
+    searchFunction()
+  }, [props.seriesTitle])
 
   // useEffect(() => {
   //   if (shows.length > 0) {
@@ -220,6 +225,7 @@ export default function TopBannerSearch(props) {
 
           </Grid>
           <Grid item xs={12} md={6} paddingLeft={{ xs: 0, md: 2 }}>
+            <form onSubmit={e => searchFunction(e)}>
             <StyledSearchInput
               label="With normal TextField"
               id="outlined-start-adornment"
@@ -228,7 +234,10 @@ export default function TopBannerSearch(props) {
               // }}
               endAdornment={<Search />}
               sx={{ width: '100%' }}
+              value={searchField}
+              onChange={(event) => {setSearchField(event.target.value); setSearchTerm(event.target.value);}}
             />
+            </form>
           </Grid>
         </Grid>
         <Grid container>
@@ -243,6 +252,7 @@ export default function TopBannerSearch(props) {
                 label="Age"
                 size="small"
                 autoWidth
+                disableUnderline
               >
 
                 <MenuItem key='_universal' value='_universal' selected>🌈 All Shows</MenuItem>
@@ -251,6 +261,15 @@ export default function TopBannerSearch(props) {
                 ))}
               </Select>
             </FormControl>
+          </Grid>
+          <Grid item marginLeft={{ xs: 3 }} marginY='auto' display='flex'>
+            <Typography fontSize={13}>Request a show</Typography>
+          </Grid>
+          <Grid item marginLeft={{ xs: 3 }} marginY='auto' display='flex'>
+            <Typography fontSize={13}>Report issues</Typography>
+          </Grid>
+          <Grid item marginLeft={{ xs: 3 }} marginY='auto' display='flex'>
+            <Typography fontSize={13}>Support the team</Typography>
           </Grid>
         </Grid>
 
