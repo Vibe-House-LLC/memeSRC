@@ -1,10 +1,10 @@
 import styled from "@emotion/styled";
-import { Button, Fab, Grid, SwipeableDrawer, Typography } from "@mui/material";
-import { Favorite, MapsUgc, Shuffle } from "@mui/icons-material";
+import { Button, Fab, Grid, IconButton, SwipeableDrawer, Typography, useTheme } from "@mui/material";
+import { Favorite, MapsUgc, Search, SettingsSuggest, Shuffle } from "@mui/icons-material";
 import { API, graphqlOperation } from 'aws-amplify';
 import { useCallback, useEffect, useState } from "react";
 import { LoadingButton } from "@mui/lab";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { searchPropTypes } from "./SearchPropTypes";
 import Logo from "../../components/logo/Logo";
 import { listContentMetadata } from '../../graphql/queries';
@@ -137,6 +137,20 @@ const StyledRightFooter = styled('footer')`
     z-index: 1300;
 `;
 
+const StyledHeader = styled('header')(({ theme }) => ({
+  top: 0,
+  left: 0,
+  lineHeight: 0,
+  width: '100%',
+  position: 'absolute',
+  padding: theme.spacing(3, 3, 0),
+  display: 'flex',
+  [theme.breakpoints.up('sm')]: {
+    padding: theme.spacing(2, 2, 0),
+  },
+  zIndex: '1000'
+}));
+
 async function fetchShows() {
   const result = await API.graphql({
     ...graphqlOperation(listContentMetadata, { filter: {}, limit: 10 }),
@@ -156,6 +170,7 @@ export default function TopBannerSearch(props) {
   const { searchTerms, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction } = props
 
   const navigate = useNavigate();
+  const theme = useTheme();
 
   useEffect(() => {
     async function getData() {
@@ -197,17 +212,26 @@ export default function TopBannerSearch(props) {
 
   return (
     <>
+      {(!drawerOpen) && <StyledHeader>
+        <Logo />
+        <Typography component='h6' variant='h6' marginY='auto' sx={{ color: '#FFFFFF', textShadow: '1px 1px 3px rgba(0, 0, 0, 0.30);', marginRight: 'auto', marginLeft: '6px' }}>
+          memeSRC
+        </Typography>
+        <Fab onClick={toggleDrawer} variant="text" style={{ color: "white", textDecoration: 'none', backgroundColor: 'rgb(0,0,0,0)', boxShadow: 'none' }}>
+          <Search />
+        </Fab>
+      </StyledHeader>}
       <SwipeableDrawer
         anchor="top"
         open={drawerOpen}
         onClose={toggleDrawer}
         onOpen={toggleDrawer}
       >
-        <StyledGridContainer container paddingX={3}>
+        <StyledGridContainer container paddingX={3} paddingY={1}>
           <Grid container marginY='auto' justifyContent='center'>
             <Grid container justifyContent='center'>
               <Grid item textAlign='center'>
-                <Typography component='h3' variant='h3' sx={{ color: '#FFFFFF', textShadow: '1px 1px 3px rgba(0, 0, 0, 0.30);' }}>
+                <Typography component='h2' variant='h2' sx={{ color: '#FFFFFF', textShadow: '1px 1px 3px rgba(0, 0, 0, 0.30);' }}>
                   memeSRC
                 </Typography>
               </Grid>

@@ -46,8 +46,9 @@ export default function Button(theme) {
           },
         },
         textInherit: {
+          backgroundColor: 'rgb(0, 0, 0, 0)',
           '&:hover': {
-            backgroundColor: theme.palette.action.hover,
+            backgroundColor: 'none',
           },
         },
       },

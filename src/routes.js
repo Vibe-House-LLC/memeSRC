@@ -49,13 +49,8 @@ export default function Router() {
       element: <CheckAuth><AuthPage method="signup" /></CheckAuth>,
     },
     {
-      element: <SimpleLayout />,
-      children: [
-        // { element: <Navigate to="/dashboard/app" />, index: true },
-        { element: <SearchPage />, index: true },
-        { path: '404', element: <Page404 /> },
-        { path: '*', element: <Navigate to="/404" /> },
-      ],
+      path: '/',
+      element: <SearchPage />
     },
     {
       path: 'editor/:fid',
