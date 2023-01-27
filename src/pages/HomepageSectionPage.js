@@ -40,6 +40,9 @@ import ShareIcon from '@mui/icons-material/Share';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 
+// DOMPurify
+import DOMPurify from 'dompurify';
+
 // Iconify Icons
 import Iconify from '../components/iconify';
 
@@ -326,7 +329,7 @@ export default function HomepageSectionPage() {
           <Grid container spacing={2}>
             {(loading) ? "Loading" : sections.map((sectionItem, index) => (
               <Grid item xs={12} sm={6} md={4} key={sectionItem.id}>
-                <Card sx={{ maxWidth: 345 }}>
+                <Card sx={{ maxWidth: 345, '& a': { color: 'white' } }}>
                   <CardHeader
                     avatar={
                       <Avatar sx={{ bgcolor: sectionItem.backgroundColor }} aria-label="recipe">
@@ -342,7 +345,9 @@ export default function HomepageSectionPage() {
                     }
                     style={{ height: "100px", top: "0" }}
                     title={sectionItem.title}
-                    subheader={sectionItem.subtitle}
+                    subheader={
+                      <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(sectionItem.subtitle ) }} /> // eslint-disable-line react/no-danger
+                    }
                   />
                   <Popover
                     id={popoverId}

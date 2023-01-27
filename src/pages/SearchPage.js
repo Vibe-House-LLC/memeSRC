@@ -38,7 +38,7 @@ const StyledTypography = styled.p(({ theme }) => ({
 
 export default function SearchPage() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [seriesTitle, setSeriesTitle] = useState('');
+  const [seriesTitle, setSeriesTitle] = useState('_universal');
   const [results, setResults] = useState(null);
   const [sessionID, setSessionID] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -63,7 +63,9 @@ export default function SearchPage() {
 
   const handleSearch = useCallback((e) => {
     if (sessionID) {
-      e.preventDefault();
+      if(e) {
+        e.preventDefault();
+      }
       setLoading(true);
       let apiSearchUrl;
       if (seriesTitle && seriesTitle !== '_universal') {
@@ -94,12 +96,12 @@ export default function SearchPage() {
 
     <>
       {!memoizedResults && !loading && <FullScreenSearch searchFunction={handleSearch} setSearchTerm={setSearchTerm} setSeriesTitle={setSeriesTitle} searchTerm={searchTerm} seriesTitle={seriesTitle} />}
-      {(memoizedResults || loading) && <TopBannerSearch searchFunction={handleSearch} setSearchTerm={setSearchTerm} setSeriesTitle={setSeriesTitle} searchTerm={searchTerm} seriesTitle={seriesTitle} />}
-      <Grid container spacing={2} marginTop={5}>
+      {(memoizedResults || loading) && <TopBannerSearch searchFunction={handleSearch} setSearchTerm={setSearchTerm} setSeriesTitle={setSeriesTitle} searchTerm={searchTerm} seriesTitle={seriesTitle} loading={loading} />}
+      <Grid container spacing={2} alignItems='stretch' paddingX={{xs: 2, md: 6}}>
         {loading ? (
           <StyledCircularProgress />
         ) : memoizedResults && memoizedResults.map(result => (
-          <Grid item xs={12} sm={6} md={4} key={result.fid}>
+          <Grid item xs={12} sm={6} md={3} key={result.fid}>
             <a href={`/editor/${result.fid}`} style={{ textDecoration: 'none' }}>
               <StyledCard>
                 <StyledCardMedia

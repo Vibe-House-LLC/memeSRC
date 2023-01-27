@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
 import { Favorite } from "@mui/icons-material";
 import { Button, Grid, Typography } from "@mui/material";
+import DOMPurify from "dompurify";
 import PropTypes from 'prop-types';
 
 // Create a grid container component
@@ -29,27 +30,32 @@ HomePageSection.propTypes = {
 
 };
 
-export default function HomePageSection({backgroundColor, textColor, title, subtitle, buttons, bottomImage, buttonSubtext}) {
+export default function HomePageSection({ backgroundColor, textColor, title, subtitle, buttons, bottomImage, buttonSubtext }) {
 
 
   return (
-    <StyledGridContainer container justifyItems='center' paddingX={3} backgroundColor={backgroundColor}>
-      <Grid item xs={12} textAlign='center' marginY='auto'>
-        <Typography component='h2' variant='h2' sx={{color: textColor}} marginBottom={4}>
+    <StyledGridContainer container justifyItems='center' paddingX={3} backgroundColor={backgroundColor} data-scroll-to>
+      <Grid item xs={12} textAlign='center' marginY='auto' paddingTop={8}>
+        <Typography component='h2' sx={{ color: textColor,}} fontSize='2.5em' fontWeight='800' marginBottom={4}>
           {title}
         </Typography>
-        <Typography component='h4' variant='h4' sx={{color: textColor}} marginBottom={4}>
-          {subtitle}
+        <Typography component='h4' sx={[{ color: textColor, '& a': { color: textColor } }]} fontSize='1.3em' fontWeight='600' marginBottom={4}>
+          {
+            <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(subtitle) }} /> // eslint-disable-line react/no-danger
+          }
         </Typography>
-        {buttons.map((button, index) => (
-            <Button key={index} startIcon={<Favorite />} href={button.destination} variant="contained" sx={{margin: '10px'}}>
-              {button.title}
-            </Button>
+        <Grid container justifyContent='center' spacing={2}>
+          {buttons.map((button, index) => (
+            <Grid item xs={12} sm='auto' key={index}>
+              <Button key={index} color={"secondary"} startIcon={<Favorite />} href={button.destination} variant="contained" size="large" fullWidth={{xs: true, sm: false}}>
+                {button.title}
+              </Button>
+            </Grid>
           )
-        )}
-        <br />
-        <Button href={buttonSubtext.href} startIcon={buttonSubtext.emoji} sx={{marginTop: '12px'}}>
-          <Typography sx={{textDecoration: 'underline', fontSize: '.95em', fontWeight: '800', color: textColor}}>
+          )}
+        </Grid>
+        <Button href={buttonSubtext.href} startIcon={buttonSubtext.emoji} sx={[{marginTop: '12px', backgroundColor: 'unset', '&:hover': {backgroundColor: 'unset'}}]}>
+          <Typography sx={{ textDecoration: 'underline', fontSize: '.95em', fontWeight: '800', color: textColor }}>
             {buttonSubtext.text}
           </Typography>
         </Button>
@@ -59,7 +65,7 @@ export default function HomePageSection({backgroundColor, textColor, title, subt
           maxHeight: bottomImage.maxHeight || '400px',
           height: 'auto',
           width: '100%'
-        }}/>
+        }} />
       </Grid>
     </StyledGridContainer>
   )
