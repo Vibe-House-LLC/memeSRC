@@ -97,7 +97,7 @@ export default function SearchPage() {
     <>
       {!memoizedResults && !loading && <FullScreenSearch searchFunction={handleSearch} setSearchTerm={setSearchTerm} setSeriesTitle={setSeriesTitle} searchTerm={searchTerm} seriesTitle={seriesTitle} />}
       {(memoizedResults || loading) && <TopBannerSearch searchFunction={handleSearch} setSearchTerm={setSearchTerm} setSeriesTitle={setSeriesTitle} searchTerm={searchTerm} seriesTitle={seriesTitle} loading={loading} />}
-      <Grid container spacing={2} alignItems='stretch' paddingX={{md: 6}}>
+      <Grid container spacing={2} alignItems='stretch' paddingX={{xs: 2, md: 6}}>
         {loading ? (
           <StyledCircularProgress />
         ) : memoizedResults && memoizedResults.map(result => (
