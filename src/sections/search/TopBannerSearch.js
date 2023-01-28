@@ -106,7 +106,8 @@ export default function TopBannerSearch(props) {
 
   useEffect(() => {
     searchFunction()
-  }, [props.seriesTitle, searchFunction])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.seriesTitle])
 
   const loadRandomFrame = useCallback(() => {
     const apiEpisodeLookupUrl = `https://api.memesrc.com/random/generate${seriesTitle ? `?series=${seriesTitle}` : ''}`
