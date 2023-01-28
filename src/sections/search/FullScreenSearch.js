@@ -196,12 +196,6 @@ export default function FullScreenSearch(props) {
     getData();
   }, []);
 
-  // useEffect(() => {
-  //   if (shows.length > 0) {
-  //     setSeriesTitle(shows[0].id)
-  //     console.log(shows)
-  //   }
-  // }, [setSeriesTitle])
   useEffect(() => {
     document.addEventListener('scroll', () => {
 
@@ -367,7 +361,6 @@ export default function FullScreenSearch(props) {
         </StyledFooter>
       </StyledGridContainer>
       {sections.map((section) => {
-        console.log(section)
         return (
           <HomePageSection
             key={section.id}
@@ -381,33 +374,6 @@ export default function FullScreenSearch(props) {
           />
         )
       })}
-      {/* <HomePageSection 
-        backgroundColor="#ff6900" 
-        textColor="#FFFFFF"
-        title="This is a title"
-        subtitle="This is a subtitle to tell you more about the title"
-        buttons={[
-          {
-            title: "Title One",
-            icon: <Favorite />,
-            destination: "http://www.example.com"
-          },
-          {
-            title: "Title Two",
-            icon: <Favorite />,
-            destination: "http://www.example.com"
-          }
-        ]}
-        bottomImage={{
-          alt: "testing",
-          src: '/assets/illustrations/girl-looking-at-stars-and-moon-with-telescope.svg',
-          bottomMargin: 8
-        }}
-        buttonSubtext={{
-          text: 'Click me to go',
-          href: 'http://www.example.com'
-        }}
-      /> */}
     </>
   )
 }

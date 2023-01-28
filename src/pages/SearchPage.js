@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Grid, CircularProgress, Card } from '@mui/material';
 import styled from '@emotion/styled';
-import FullScreenSearch from '../sections/search/FullScreenSearch';
+import { useNavigate, useParams } from 'react-router-dom';
 import TopBannerSearch from '../sections/search/TopBannerSearch';
 
 const StyledCircularProgress = styled(CircularProgress)`
@@ -37,65 +37,82 @@ const StyledTypography = styled.p(({ theme }) => ({
 }));
 
 export default function SearchPage() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [seriesTitle, setSeriesTitle] = useState('_universal');
+  const params = useParams();
+
+  const [searchTerm, setSearchTerm] = useState(params.searchTerms);
+  const [seriesTitle, setSeriesTitle] = useState(params.seriesId);
+  const [loadedSearchTerm, setLoadedSearchTerm] = useState(null);
+  const [loadedSeriesTitle, setLoadedSeriesTitle] = useState(null);
   const [results, setResults] = useState(null);
-  const [sessionID, setSessionID] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const memoizedResults = useMemo(() => results, [results]);
 
-  useEffect(() => {
+  const navigate = useNavigate();
+
+  const getSessionID = async () => {
+    let sessionID;
     if ("sessionID" in sessionStorage) {
-      setSessionID(sessionStorage.getItem("sessionID"));
+      sessionID = sessionStorage.getItem("sessionID");
     } else {
       fetch(`https://api.memesrc.com/?uuidGen`)
         .then(response => {
           response.text()
             .then(responseText => {
               const generatedSessionID = JSON.parse(responseText);
-              setSessionID(generatedSessionID);
               sessionStorage.setItem("sessionID", generatedSessionID);
+              sessionID = generatedSessionID
             }).catch(err => console.log(`JSON Parse Error:  ${err}`));
         }).catch(err => console.log(`UUID Gen Fetch Error:  ${err}`));
     }
-  }, [])
+    return sessionID;
+  }
+
+  useEffect(() => {
+    if (params) {
+      console.log(`'${params.seriesId}' !== '${loadedSeriesTitle}' || '${params.searchTerms}' !== '${loadedSearchTerm}'`)
+      if (params.seriesId !== loadedSeriesTitle || params.searchTerms !== loadedSearchTerm) {
+        setSearchTerm(params.searchTerms)
+        setSeriesTitle(params.seriesId)
+        console.log(params)
+        setLoading(true);
+        let apiSearchUrl;
+        if (seriesTitle && seriesTitle !== '_universal') {
+          apiSearchUrl = `https://api.memesrc.com/?series=${seriesTitle}&search=${searchTerm}`;
+        } else {
+          apiSearchUrl = `https://api.memesrc.com/?search=${searchTerm}`;
+        }
+
+        getSessionID().then(sessionID => {
+          fetch(`${apiSearchUrl}&sessionID=${sessionID}`)
+          .then(response => response.json())
+          .then(data => {
+            setResults(data);
+            setLoading(false);
+            setLoadedSearchTerm(searchTerm);
+            setLoadedSeriesTitle(seriesTitle);
+          })
+          .catch(error => {
+            console.error(error);
+            setLoading(false);
+          });
+        })
+      }
+    }
+  }, [params, searchTerm, seriesTitle, loadedSeriesTitle, loadedSearchTerm])
 
   const handleSearch = useCallback((e) => {
-    if (sessionID) {
-      if(e) {
-        e.preventDefault();
-      }
-      setLoading(true);
-      let apiSearchUrl;
-      if (seriesTitle && seriesTitle !== '_universal') {
-        apiSearchUrl = `https://api.memesrc.com/?series=${seriesTitle}&search=${searchTerm}&sessionID=${sessionID}`;
-      } else {
-        apiSearchUrl = `https://api.memesrc.com/?search=${searchTerm}&sessionID=${sessionID}`;
-      }
-
-      fetch(apiSearchUrl)
-        .then(response => response.json())
-        .then(data => {
-          setResults(data);
-          setLoading(false);
-        })
-        .catch(error => {
-          console.error(error);
-          setLoading(false);
-        });
-    } else {
-      alert('No Session ID set. Try again.');
+    if(e) {
+      e.preventDefault();
     }
-  }, [seriesTitle, searchTerm, sessionID]);
-
-
-  // const classes = useStyles();
+    const encodedSearchTerms = encodeURI(searchTerm)
+    console.log(`Navigating to: '${`/search/${seriesTitle}/${encodedSearchTerms}`}'`)
+    navigate(`/search/${seriesTitle}/${encodedSearchTerms}`)
+  }, [seriesTitle, searchTerm]);
 
   return (
 
     <>
-      {!memoizedResults && !loading && <FullScreenSearch searchFunction={handleSearch} setSearchTerm={setSearchTerm} setSeriesTitle={setSeriesTitle} searchTerm={searchTerm} seriesTitle={seriesTitle} />}
       {(memoizedResults || loading) && <TopBannerSearch searchFunction={handleSearch} setSearchTerm={setSearchTerm} setSeriesTitle={setSeriesTitle} searchTerm={searchTerm} seriesTitle={seriesTitle} loading={loading} />}
       <Grid container spacing={2} alignItems='stretch' paddingX={{xs: 2, md: 6}}>
         {loading ? (
