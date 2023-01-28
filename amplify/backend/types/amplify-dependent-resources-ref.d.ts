@@ -1,52 +1,52 @@
 export type AmplifyDependentResourcesAttributes = {
-  "api": {
-    "AdminQueries": {
-      "ApiId": "string",
-      "ApiName": "string",
-      "RootUrl": "string"
+    "auth": {
+        "memesrcc3c71449": {
+            "IdentityPoolId": "string",
+            "IdentityPoolName": "string",
+            "UserPoolId": "string",
+            "UserPoolArn": "string",
+            "UserPoolName": "string",
+            "AppClientIDWeb": "string",
+            "AppClientID": "string"
+        },
+        "userPoolGroups": {
+            "adminsGroupRole": "string",
+            "modsGroupRole": "string"
+        }
     },
-    "memesrc": {
-      "GraphQLAPIEndpointOutput": "string",
-      "GraphQLAPIIdOutput": "string",
-      "GraphQLAPIKeyOutput": "string"
-    }
-  },
-  "auth": {
-    "memesrcc3c71449": {
-      "AppClientID": "string",
-      "AppClientIDWeb": "string",
-      "IdentityPoolId": "string",
-      "IdentityPoolName": "string",
-      "UserPoolArn": "string",
-      "UserPoolId": "string",
-      "UserPoolName": "string"
+    "hosting": {
+        "S3AndCloudFront": {
+            "Region": "string",
+            "HostingBucketName": "string",
+            "WebsiteURL": "string",
+            "S3BucketSecureURL": "string"
+        }
     },
-    "userPoolGroups": {
-      "adminsGroupRole": "string",
-      "modsGroupRole": "string"
+    "api": {
+        "memesrc": {
+            "GraphQLAPIKeyOutput": "string",
+            "GraphQLAPIIdOutput": "string",
+            "GraphQLAPIEndpointOutput": "string"
+        },
+        "AdminQueries": {
+            "RootUrl": "string",
+            "ApiName": "string",
+            "ApiId": "string"
+        }
+    },
+    "function": {
+        "AdminQueries9e1cafc6": {
+            "Name": "string",
+            "Arn": "string",
+            "Region": "string",
+            "LambdaExecutionRole": "string",
+            "LambdaExecutionRoleArn": "string"
+        }
+    },
+    "storage": {
+        "memesrcGeneratedImages": {
+            "BucketName": "string",
+            "Region": "string"
+        }
     }
-  },
-  "function": {
-    "AdminQueries9e1cafc6": {
-      "Arn": "string",
-      "LambdaExecutionRole": "string",
-      "LambdaExecutionRoleArn": "string",
-      "Name": "string",
-      "Region": "string"
-    }
-  },
-  "hosting": {
-    "S3AndCloudFront": {
-      "HostingBucketName": "string",
-      "Region": "string",
-      "S3BucketSecureURL": "string",
-      "WebsiteURL": "string"
-    }
-  },
-  "storage": {
-    "memesrcGeneratedImages": {
-      "BucketName": "string",
-      "Region": "string"
-    }
-  }
 }
