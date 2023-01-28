@@ -67,9 +67,9 @@ const EditorPage = () => {
     });
     const [fineTuningFrames, setFineTuningFrames] = useState([]);
     const [canvasObjects, setCanvasObjects] = useState();
-    const [sessionID, setSessionID] = useState();
     const [surroundingFrames, setSurroundingFrames] = useState();
     const [selectedFid, setSelectedFid] = useState(fid);
+    const [loadedFid, setLoadedFid] = useState(null);
     const [colorPickerShowing, setColorPickerShowing] = useState(false);
     const [colorPickerAnchor, setColorPickerAnchor] = useState(null);
     const [colorPickerColor, setColorPickerColor] = useState({
@@ -156,19 +156,22 @@ const EditorPage = () => {
         }
     }, [defaultFrame, updateEditorSize])
 
-    // Prepare sessionID
-    useEffect(() => {
+    const getSessionID = async () => {
+        let sessionID;
         if ("sessionID" in sessionStorage) {
-            setSessionID(sessionStorage.getItem("sessionID"));
+            sessionID = sessionStorage.getItem("sessionID");
         } else {
-            fetch(`https://api.memesrc.com/?uuidGen`).then(response => {
-                response.json().then(generatedSessionID => {
-                    setSessionID(generatedSessionID);
-                    sessionStorage.setItem("sessionID", generatedSessionID);
-                }).catch(err => console.log(`JSON Parse Error:  ${err}`));
-            }).catch(err => console.log(`UUID Gen Fetch Error:  ${err}`));
+            await fetch(`https://api.memesrc.com/?uuidGen`)
+                .then(response => {
+                    response.json()
+                        .then(generatedSessionID => {
+                            sessionStorage.setItem("sessionID", generatedSessionID);
+                            sessionID = generatedSessionID
+                        }).catch(err => console.log(`JSON Parse Error:  ${err}`));
+                }).catch(err => console.log(`UUID Gen Fetch Error:  ${err}`));
         }
-    }, []);
+        return sessionID;
+    }
 
     const addText = useCallback((updatedText, append) => {
         const text = new fabric.Textbox(updatedText, {
@@ -201,44 +204,50 @@ const EditorPage = () => {
     }, [editor]);
 
     const setupEditor = useCallback(() => {
-        const apiSearchUrl = `https://api.memesrc.com/?fid=${selectedFid}&sessionID=${sessionID}`;
-        fetch(apiSearchUrl).then(response => {
-            console.log('test')
-            response.json().then(data => {
-                setSurroundingFrames(data.frames_surrounding);
-                const episodeDetails = selectedFid.split('-');
-                setEpisodeDetails(episodeDetails);
-                // Pre load fine tuning frames
-                loadImg(data.frames_fine_tuning, oImgBuild).then((images) => {
-                    setFineTuningFrames(images)
-                });
-                // Background image from the 
-                fabric.Image.fromURL(`https://memesrc.com${data.frame_image}`, (oImg) => {
-                    setDefaultFrame(oImg);
-                    const imageAspectRatio = oImg.width / oImg.height;
-                    setEditorAspectRatio(imageAspectRatio);
-                    const [desiredHeight, desiredWidth] = calculateEditorSize(imageAspectRatio);
-                    setCanvasSize({ height: desiredHeight, width: desiredWidth })  // TODO: rename this to something like "desiredSize"
-                    // Scale the image to fit the canvas
-                    oImg.scale(desiredWidth / oImg.width);
-                    // Center the image within the canvas
-                    oImg.set({ left: 0, top: 0 });
-                    const minRes = 1280;
-                    const x = (oImg.width > minRes) ? oImg.width : minRes;
-                    setImageScale(x / desiredHeight);
-                    resizeCanvas(desiredWidth, desiredHeight)
-                    editor?.canvas.setBackgroundImage(oImg);
-                    addText(data.subtitle, false);
-                }, { crossOrigin: "anonymous" });
+        const apiSearchUrl = `https://api.memesrc.com/?fid=${selectedFid}`;
+        getSessionID().then(sessionID => {
+            fetch(`${apiSearchUrl}&sessionID=${sessionID}`).then(response => {
+                console.log('test')
+                response.json().then(data => {
+                    console.log(data)
+                    setSurroundingFrames(data.frames_surrounding);
+                    const episodeDetails = selectedFid.split('-');
+                    setEpisodeDetails(episodeDetails);
+                    // Pre load fine tuning frames
+                    loadImg(data.frames_fine_tuning, oImgBuild).then((images) => {
+                        setFineTuningFrames(images)
+                    });
+                    // Background image from the 
+                    fabric.Image.fromURL(`https://memesrc.com${data.frame_image}`, (oImg) => {
+                        console.log(oImg)
+                        setDefaultFrame(oImg);
+                        const imageAspectRatio = oImg.width / oImg.height;
+                        setEditorAspectRatio(imageAspectRatio);
+                        const [desiredHeight, desiredWidth] = calculateEditorSize(imageAspectRatio);
+                        setCanvasSize({ height: desiredHeight, width: desiredWidth })  // TODO: rename this to something like "desiredSize"
+                        // Scale the image to fit the canvas
+                        oImg.scale(desiredWidth / oImg.width);
+                        // Center the image within the canvas
+                        oImg.set({ left: 0, top: 0 });
+                        const minRes = 1280;
+                        const x = (oImg.width > minRes) ? oImg.width : minRes;
+                        setImageScale(x / desiredHeight);
+                        resizeCanvas(desiredWidth, desiredHeight)
+                        editor?.canvas.setBackgroundImage(oImg);
+                        addText(data.subtitle, false);
+                        setLoadedFid(data.fid)
+                    }, { crossOrigin: "anonymous" });
+                }).catch(err => console.log(err))
             }).catch(err => console.log(err))
-        }).catch(err => console.log(err))
-    }, [resizeCanvas, selectedFid, sessionID, editor, addText])
+        }).catch(err => console.log(`Error with sessionID: ${err}`))
+    }, [resizeCanvas, selectedFid, editor, addText])
 
     // Look up data for the fid and set defaults
     useEffect(() => {
         // if (editor) { editor.canvas._objects = [] }
         setupEditor();
-    }, [sessionID, selectedFid]) // eslint-disable-line react-hooks/exhaustive-deps
+        // TODO: BUG - it appears our setup for loading the editor requires it to run twice. Look into fixing this.
+    }, [selectedFid, loadedFid]) // eslint-disable-line react-hooks/exhaustive-deps
 
     // Calculate the desired editor size
     const calculateEditorSize = (aspectRatio) => {
@@ -564,7 +573,7 @@ const EditorPage = () => {
                             color={colorPickerColor}
                             colors={['#FFFFFF', 'yellow', 'black', 'orange', '#8ED1FC', '#0693E3', '#ABB8C3', '#EB144C', '#F78DA7', '#9900EF']}
                             width='280px'
-                            // TODO: Fix background color to match other cards
+                        // TODO: Fix background color to match other cards
                         />
                     </ColorPickerPopover>
                 </Popover>

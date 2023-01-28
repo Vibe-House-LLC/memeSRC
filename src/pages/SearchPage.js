@@ -55,11 +55,10 @@ export default function SearchPage() {
     if ("sessionID" in sessionStorage) {
       sessionID = sessionStorage.getItem("sessionID");
     } else {
-      fetch(`https://api.memesrc.com/?uuidGen`)
+      await fetch(`https://api.memesrc.com/?uuidGen`)
         .then(response => {
-          response.text()
-            .then(responseText => {
-              const generatedSessionID = JSON.parse(responseText);
+          response.json()
+            .then(generatedSessionID => {
               sessionStorage.setItem("sessionID", generatedSessionID);
               sessionID = generatedSessionID
             }).catch(err => console.log(`JSON Parse Error:  ${err}`));
@@ -85,24 +84,24 @@ export default function SearchPage() {
 
         getSessionID().then(sessionID => {
           fetch(`${apiSearchUrl}&sessionID=${sessionID}`)
-          .then(response => response.json())
-          .then(data => {
-            setResults(data);
-            setLoading(false);
-            setLoadedSearchTerm(searchTerm);
-            setLoadedSeriesTitle(seriesTitle);
-          })
-          .catch(error => {
-            console.error(error);
-            setLoading(false);
-          });
-        })
+            .then(response => response.json())
+            .then(data => {
+              setResults(data);
+              setLoading(false);
+              setLoadedSearchTerm(searchTerm);
+              setLoadedSeriesTitle(seriesTitle);
+            })
+            .catch(error => {
+              console.error(error);
+              setLoading(false);
+            });
+        }).catch(err => console.log(`Error with sessionID: ${err}`))
       }
     }
   }, [params, searchTerm, seriesTitle, loadedSeriesTitle, loadedSearchTerm])
 
   const handleSearch = useCallback((e) => {
-    if(e) {
+    if (e) {
       e.preventDefault();
     }
     const encodedSearchTerms = encodeURI(searchTerm)
@@ -114,7 +113,7 @@ export default function SearchPage() {
 
     <>
       {(memoizedResults || loading) && <TopBannerSearch searchFunction={handleSearch} setSearchTerm={setSearchTerm} setSeriesTitle={setSeriesTitle} searchTerm={searchTerm} seriesTitle={seriesTitle} loading={loading} />}
-      <Grid container spacing={2} alignItems='stretch' paddingX={{xs: 2, md: 6}}>
+      <Grid container spacing={2} alignItems='stretch' paddingX={{ xs: 2, md: 6 }}>
         {loading ? (
           <StyledCircularProgress />
         ) : memoizedResults && memoizedResults.map(result => (
