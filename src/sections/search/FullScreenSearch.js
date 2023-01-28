@@ -285,7 +285,7 @@ export default function FullScreenSearch(props) {
   }
 
   const loadRandomFrame = useCallback(() => {
-    const apiEpisodeLookupUrl = `https://api.memesrc.com/random/generate${seriesTitle ? `?series=${seriesTitle}` : ''}`
+    const apiEpisodeLookupUrl = `https://api.memesrc.com/random/generate${seriesTitle === '_universal' ? '' : `?series=${seriesTitle}`}`
     setLoadingRandom(true);
     fetch(apiEpisodeLookupUrl)
       .then(response => {
