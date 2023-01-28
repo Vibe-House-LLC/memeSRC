@@ -11,8 +11,8 @@
     "additionalAuthTypes": [
       {
         "mode": "API_KEY",
-        "expirationTime": 14,
-        "apiKeyExpirationDate": "2023-01-21T18:42:35.860Z",
+        "expirationTime": 365,
+        "apiKeyExpirationDate": "2024-01-28T18:42:24.381Z",
         "keyDescription": "Public API Key for unauthenticated users"
       }
     ]
