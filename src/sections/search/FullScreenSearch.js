@@ -4,7 +4,7 @@ import { ArrowDownwardRounded, Favorite, MapsUgc, Shuffle } from "@mui/icons-mat
 import { API, graphqlOperation } from 'aws-amplify';
 import { useCallback, useEffect, useState } from "react";
 import { LoadingButton } from "@mui/lab";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { searchPropTypes } from "./SearchPropTypes";
 import Logo from "../../components/logo/Logo";
 import { listContentMetadata, listHomepageSections } from '../../graphql/queries';
@@ -181,6 +181,8 @@ export default function FullScreenSearch(props) {
   const [scrollToSections, setScrollToSections] = useState();
   const { searchTerms, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction } = props
 
+  const {sectionIndex} = useParams();
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -250,7 +252,11 @@ export default function FullScreenSearch(props) {
     // Set the scrollSections state to contain all elements we want the scroll down button
     // to scroll to once they have all loaded
     setScrollToSections(document.querySelectorAll('[data-scroll-to]'));
-  }, [sections])
+    if (sections.length > 0 && sectionIndex) {
+      const sectionElement = sectionIndex.toString();
+      scrollToSection(sectionElement);
+    }
+  }, [sections, sectionIndex])
 
 
   const scrollToSection = (element) => {
@@ -274,6 +280,7 @@ export default function FullScreenSearch(props) {
       }
     } else {
       const scrolltoelm = document.getElementById(element);
+      console.log(scrolltoelm);
       scrolltoelm.scrollIntoView({ behavior: "smooth" });
     }
   }
@@ -336,7 +343,7 @@ export default function FullScreenSearch(props) {
             <Typography component='h4' variant='h4'>
               Search over 36 million screencaps from your favorite shows.
             </Typography>
-            <Button href='http://example.com' startIcon='🚀' sx={[{ marginTop: '12px', backgroundColor: 'unset', '&:hover': { backgroundColor: 'unset' } }]}>
+            <Button onClick={() => scrollToSection()} startIcon='🚀' sx={[{ marginTop: '12px', backgroundColor: 'unset', '&:hover': { backgroundColor: 'unset' } }]}>
               <Typography sx={{ textDecoration: 'underline', fontSize: '1em', fontWeight: '800', color: "#FFFFFF" }}>
                 New Feature: Universal Search
               </Typography>
@@ -364,6 +371,7 @@ export default function FullScreenSearch(props) {
         return (
           <HomePageSection
             key={section.id}
+            index={section.index}
             backgroundColor={section.backgroundColor}
             textColor={section.textColor}
             title={section.title}
