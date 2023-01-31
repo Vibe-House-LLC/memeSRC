@@ -54,6 +54,10 @@ export default function Router() {
       element: <HomePage />
     },
     {
+      path: '/section/:sectionIndex',
+      element: <HomePage />
+    },
+    {
       path: '/search/:seriesId/:searchTerms',
       element: <SearchPage />
     },
