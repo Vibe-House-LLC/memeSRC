@@ -2,9 +2,9 @@ import styled from "@emotion/styled";
 import { Fab, FormControl, Grid, InputBase, MenuItem, Select, Typography } from "@mui/material";
 import { Favorite, MapsUgc, Search, Shuffle } from "@mui/icons-material";
 import { API, graphqlOperation } from 'aws-amplify';
-import { useCallback, useEffect, useState } from "react";
+import { cloneElement, useCallback, useEffect, useState } from "react";
 import { LoadingButton } from "@mui/lab";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { searchPropTypes } from "./SearchPropTypes";
 import Logo from "../../components/logo/Logo";
 import { listContentMetadata } from '../../graphql/queries';
@@ -83,14 +83,29 @@ async function fetchShows() {
   return result.data.listContentMetadata.items;
 }
 
-TopBannerSearch.propTypes = searchPropTypes;
+TopBannerSearchRevised.propTypes = searchPropTypes;
 
 
-export default function TopBannerSearch(props) {
+export default function TopBannerSearchRevised(props) {
+  const search = useLocation().search;
+  const searchQuery = new URLSearchParams(search).get('search');
+
   const [shows, setShows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingRandom, setLoadingRandom] = useState(false);
-  const { searchTerm, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction } = props
+  const [searchTerm, setSearchTerm] = useState(searchQuery);
+  const [seriesTitle, setSeriesTitle] = useState('_universal');
+
+  
+
+  const searchFunction = useCallback((e) => {
+    if (e) {
+      e.preventDefault();
+    }
+    const encodedSearchTerms = encodeURI(searchTerm)
+    console.log(`Navigating to: '${`/search/${seriesTitle}/${encodedSearchTerms}`}'`)
+    navigate(`/search/${seriesTitle}/${encodedSearchTerms}`)
+  }, [seriesTitle, searchTerm]);
 
   const navigate = useNavigate();
 
@@ -104,10 +119,10 @@ export default function TopBannerSearch(props) {
     getData();
   }, []);
 
-  useEffect(() => {
-    searchFunction()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.seriesTitle])
+  // useEffect(() => {
+  //   searchFunction()
+  //   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, [seriesTitle])
 
   const loadRandomFrame = useCallback(() => {
     const apiEpisodeLookupUrl = `https://api.memesrc.com/random/generate${seriesTitle === '_universal' ? '' : `?series=${seriesTitle}`}`
@@ -191,6 +206,7 @@ export default function TopBannerSearch(props) {
           </Grid>
         </Grid>
       </StyledHeader>
+      {cloneElement(props.children, { setSeriesTitle, shows })}
       <StyledLeftFooter className="bottomBtn">
         <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black", zIndex: '1300' }} size='medium'>
           <MapsUgc color="white" />

@@ -51,7 +51,7 @@ const StyledCardMedia = styled.img`
 
 
 
-const EditorPage = () => {
+const EditorPage = ({ setSeriesTitle, shows }) => {
     // Get everything ready
     const { fid } = useParams();
     const [defaultFrame, setDefaultFrame] = useState(null);
@@ -89,6 +89,14 @@ const EditorPage = () => {
     const [shareImageFile, setShareImageFile] = useState();
     const theme = useTheme();
     const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
+    const [loadedSeriesTitle, setLoadedSeriesTitle] = useState('_universal');
+
+    useEffect(() => {
+        if (shows.length > 1) {
+            console.log(loadedSeriesTitle);
+            setSeriesTitle(loadedSeriesTitle);
+        }
+    }, [shows, loadedSeriesTitle])
 
     const { selectedObjects, editor, onReady } = useFabricJSEditor()
 
@@ -207,6 +215,7 @@ const EditorPage = () => {
                 console.log('test')
                 response.json().then(data => {
                     console.log(data)
+                    setLoadedSeriesTitle(data.series_name);
                     setSurroundingFrames(data.frames_surrounding);
                     const episodeDetails = selectedFid.split('-');
                     setEpisodeDetails(episodeDetails);
