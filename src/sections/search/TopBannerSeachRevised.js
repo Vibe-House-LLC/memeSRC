@@ -173,7 +173,7 @@ export default function TopBannerSearchRevised(props) {
             </form>
           </Grid>
         </Grid>
-        <Grid container wrap="nowrap" style={{ overflowX: "scroll", flexWrap: "nowrap" }} paddingX={2} >
+        <Grid container wrap="nowrap" sx={{ overflowX: "scroll", flexWrap: "nowrap", scrollbarWidth: 'none', '&::-webkit-scrollbar': {height: '0 !important', width: '0 !important', display: 'none'}}} paddingX={2}>
           <Grid item marginLeft={{ md: 6 }}>
 
             <FormControl variant="standard" sx={{ minWidth: 120 }}>
