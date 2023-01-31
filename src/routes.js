@@ -1,5 +1,6 @@
 import { Navigate, useRoutes } from 'react-router-dom';
 import { lazy } from 'react';
+import TopBannerSearchRevised from './sections/search/TopBannerSeachRevised';
 
 const DashboardLayout = lazy(() => import('./layouts/dashboard'));
 const SimpleLayout = lazy(() => import('./layouts/simple'));
@@ -63,7 +64,7 @@ export default function Router() {
     },
     {
       path: '/editor/:fid',
-      element: <EditorPage />,
+      element: <TopBannerSearchRevised><EditorPage /></TopBannerSearchRevised>,
     },
     {
       path: '/episode/:seriesId/:seasonNum/:episodeNum',
