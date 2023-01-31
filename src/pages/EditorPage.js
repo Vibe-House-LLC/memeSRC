@@ -20,8 +20,6 @@ const ColorPickerPopover = styled.div({
 const oImgBuild = path =>
     new Promise(resolve => {
         fabric.Image.fromURL(`https://memesrc.com${path}`, (oImg) => {
-            // oImg._element.onload = () => resolve(oImg);
-            // oImg._element.onerror = () => resolve({ path, status: 'error' });
             resolve(oImg);
         }, { crossOrigin: "anonymous" });
     });
@@ -59,7 +57,6 @@ const EditorPage = () => {
     const [defaultFrame, setDefaultFrame] = useState(null);
     const [pickingColor, setPickingColor] = useState(false);
     const [imageScale, setImageScale] = useState();
-    // const [generatedImage, setGeneratedImage] = useState();
     const [generatedImageFilename, setGeneratedImageFilename] = useState();
     const [canvasSize, setCanvasSize] = useState({
         width: 500,
@@ -69,7 +66,7 @@ const EditorPage = () => {
     const [canvasObjects, setCanvasObjects] = useState();
     const [surroundingFrames, setSurroundingFrames] = useState();
     const [selectedFid, setSelectedFid] = useState(fid);
-    const [loadedFid, setLoadedFid] = useState(null);
+    const [defaultSubtitle, setDefaultSubtitle] = useState(null);
     const [colorPickerShowing, setColorPickerShowing] = useState(false);
     const [colorPickerAnchor, setColorPickerAnchor] = useState(null);
     const [colorPickerColor, setColorPickerColor] = useState({
@@ -154,7 +151,7 @@ const EditorPage = () => {
         return () => {
             window.removeEventListener('resize', updateEditorSize)
         }
-    }, [defaultFrame, updateEditorSize])
+    }, [updateEditorSize])
 
     const getSessionID = async () => {
         let sessionID;
@@ -203,7 +200,7 @@ const EditorPage = () => {
         }
     }, [editor]);
 
-    const setupEditor = useCallback(() => {
+    const loadEditorDefaults = useCallback(() => {
         const apiSearchUrl = `https://api.memesrc.com/?fid=${selectedFid}`;
         getSessionID().then(sessionID => {
             fetch(`${apiSearchUrl}&sessionID=${sessionID}`).then(response => {
@@ -221,21 +218,7 @@ const EditorPage = () => {
                     fabric.Image.fromURL(`https://memesrc.com${data.frame_image}`, (oImg) => {
                         console.log(oImg)
                         setDefaultFrame(oImg);
-                        const imageAspectRatio = oImg.width / oImg.height;
-                        setEditorAspectRatio(imageAspectRatio);
-                        const [desiredHeight, desiredWidth] = calculateEditorSize(imageAspectRatio);
-                        setCanvasSize({ height: desiredHeight, width: desiredWidth })  // TODO: rename this to something like "desiredSize"
-                        // Scale the image to fit the canvas
-                        oImg.scale(desiredWidth / oImg.width);
-                        // Center the image within the canvas
-                        oImg.set({ left: 0, top: 0 });
-                        const minRes = 1280;
-                        const x = (oImg.width > minRes) ? oImg.width : minRes;
-                        setImageScale(x / desiredHeight);
-                        resizeCanvas(desiredWidth, desiredHeight)
-                        editor?.canvas.setBackgroundImage(oImg);
-                        addText(data.subtitle, false);
-                        setLoadedFid(data.fid)
+                        setDefaultSubtitle(data.subtitle);
                     }, { crossOrigin: "anonymous" });
                 }).catch(err => console.log(err))
             }).catch(err => console.log(err))
@@ -245,9 +228,29 @@ const EditorPage = () => {
     // Look up data for the fid and set defaults
     useEffect(() => {
         // if (editor) { editor.canvas._objects = [] }
-        setupEditor();
+        loadEditorDefaults();
         // TODO: BUG - it appears our setup for loading the editor requires it to run twice. Look into fixing this.
-    }, [selectedFid, loadedFid]) // eslint-disable-line react-hooks/exhaustive-deps
+    }, [selectedFid]) // eslint-disable-line react-hooks/exhaustive-deps
+
+    useEffect(() => {
+        if (defaultFrame) {
+            const oImg = defaultFrame
+            const imageAspectRatio = oImg.width / oImg.height;
+            setEditorAspectRatio(imageAspectRatio);
+            const [desiredHeight, desiredWidth] = calculateEditorSize(imageAspectRatio);
+            setCanvasSize({ height: desiredHeight, width: desiredWidth })  // TODO: rename this to something like "desiredSize"
+            // Scale the image to fit the canvas
+            oImg.scale(desiredWidth / oImg.width);
+            // Center the image within the canvas
+            oImg.set({ left: 0, top: 0 });
+            const minRes = 1280;
+            const x = (oImg.width > minRes) ? oImg.width : minRes;
+            setImageScale(x / desiredHeight);
+            resizeCanvas(desiredWidth, desiredHeight)
+            editor?.canvas.setBackgroundImage(oImg);
+            addText(defaultSubtitle, false);
+        }
+    }, [defaultFrame, defaultSubtitle])
 
     // Calculate the desired editor size
     const calculateEditorSize = (aspectRatio) => {
@@ -319,43 +322,6 @@ const EditorPage = () => {
             })
     }
 
-    // // TODO: Repurpose this for canvas scaling
-    // const matchImageSize = () => {
-    //     // Export the state of the canvas as a JSON object
-    //     const canvasJson = editor.canvas.toJSON(['hoverCursor', 'selectable']);
-
-    //     // Scale the objects on the canvas proportionally to fit the new size
-    //     canvasJson.objects.forEach(obj => {
-    //         // Calculate the scale factor based on the ratio of the new canvas size to the original canvas size
-    //         const scaleFactorX = defaultFrame.width / editor.canvas.width;
-    //         const scaleFactorY = defaultFrame.height / editor.canvas.height;
-
-    //         const scaleFactor = Math.min(scaleFactorX, scaleFactorY)
-
-    //         console.log(`Scale factor (original / display): ${scaleFactor}`)
-
-    //         // Scale the object
-    //         obj.scaleX *= scaleFactor;
-    //         obj.scaleY *= scaleFactor;
-
-    //         // Adjust the position of the object
-    //         obj.left *= scaleFactor;
-    //         obj.top *= scaleFactor;
-    //     });
-
-    //     // Update the canvas size
-    //     setCanvasSize({
-    //         width: defaultFrame.width,
-    //         height: defaultFrame.height
-    //     })
-
-    //     // Load the state of the canvas from the JSON object
-    //     editor.canvas.loadFromJSON(canvasJson, () => {
-    //         // Callback function to execute after the canvas is loaded
-    //         console.log('Canvas loaded from JSON');
-    //     });
-    // }
-
     const showColorPicker = (event, index) => {
         setPickingColor(index);
         setColorPickerShowing(index);
@@ -363,10 +329,8 @@ const EditorPage = () => {
     }
 
     const showFontSizePicker = (event, index) => {
-        // setPickingColor(index);
         const defaultFontSize = editor.canvas.getWidth() * 0.04;
         const currentFontSize = Math.round(100 * editor.canvas.item(index).fontSize / defaultFontSize);
-        // defaultFontSize * (event.target.value / 100);
         setSelectedFontSize(currentFontSize);
         setFontSizePickerShowing(index);
         setFontSizePickerAnchor(event.target);
