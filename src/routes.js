@@ -11,6 +11,7 @@ const DashboardAppPage = lazy(() => import('./pages/DashboardAppPage'));
 const AuthPage = lazy(() => import('./pages/AuthPage'));
 const CheckAuth = lazy(() => import('./sections/auth/login/CheckAuth'));
 const ImageUploadPage = lazy(() => import('./pages/ImageUploadPage'));
+const HomePage = lazy(() => import('./pages/HomePage'))
 const SearchPage = lazy(() => import('./pages/SearchPage'));
 const EditorPage = lazy(() => import('./pages/EditorPage'));
 const EpisodePage = lazy(() => import('./pages/EpisodePage'));
@@ -41,24 +42,32 @@ export default function Router() {
       ],
     },
     {
-      path: 'login',
+      path: '/login',
       element: <CheckAuth><AuthPage method="signin" /></CheckAuth>,
     },
     {
-      path: 'signup',
+      path: '/signup',
       element: <CheckAuth><AuthPage method="signup" /></CheckAuth>,
     },
     {
       path: '/',
+      element: <HomePage />
+    },
+    {
+      path: '/search/:seriesId/:searchTerms',
       element: <SearchPage />
     },
     {
-      path: 'editor/:fid',
+      path: '/editor/:fid',
       element: <EditorPage />,
     },
     {
-      path: 'episode/:seriesId/:seasonNum/:episodeNum',
+      path: '/episode/:seriesId/:seasonNum/:episodeNum',
       element: <EpisodePage />
+    },
+    {
+      path: '/404',
+      element: <Page404/>
     },
     {
       path: '*',

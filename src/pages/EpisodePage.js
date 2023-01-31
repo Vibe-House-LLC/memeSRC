@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { Grid, CircularProgress, Card, Button } from '@mui/material';
+import { Grid, CircularProgress, Card } from '@mui/material';
 import styled from '@emotion/styled';
 import { Stack } from '@mui/system';
 import { LoadingButton } from '@mui/lab';
@@ -37,10 +37,7 @@ const StyledTypography = styled.p(({ theme }) => ({
 }));
 
 export default function EpisodePage() {
-  // const [searchTerm, setSearchTerm] = useState('');
-  // const [seriesTitle, setSeriesTitle] = useState('');
   const [results, setResults] = useState([]);
-  const [sessionID, setSessionID] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
 
@@ -48,27 +45,28 @@ export default function EpisodePage() {
 
   const { seriesId, seasonNum, episodeNum } = useParams();
 
-  useEffect(() => {
+  const getSessionID = async () => {
+    let sessionID;
     if ("sessionID" in sessionStorage) {
-      setSessionID(sessionStorage.getItem("sessionID"));
+        sessionID = sessionStorage.getItem("sessionID");
     } else {
-      fetch(`https://api.memesrc.com/?uuidGen`)
-        .then(response => {
-          response.text()
-            .then(responseText => {
-              const generatedSessionID = JSON.parse(responseText);
-              setSessionID(generatedSessionID);
-              sessionStorage.setItem("sessionID", generatedSessionID);
-            }).catch(err => console.log(`JSON Parse Error:  ${err}`));
-        }).catch(err => console.log(`UUID Gen Fetch Error:  ${err}`));
+        await fetch(`https://api.memesrc.com/?uuidGen`)
+            .then(response => {
+                response.json()
+                    .then(generatedSessionID => {
+                        sessionStorage.setItem("sessionID", generatedSessionID);
+                        sessionID = generatedSessionID
+                    }).catch(err => console.log(`JSON Parse Error:  ${err}`));
+            }).catch(err => console.log(`UUID Gen Fetch Error:  ${err}`));
     }
-  }, [])
+    return sessionID;
+}
 
   const loadFrames = useCallback((start) => {
-    if (sessionID) {
-      const apiEpisodeLookupUrl = `https://api.memesrc.com/?series=${seriesId}&season=${seasonNum}&episode=${episodeNum}&start=${start}&sessionID=${sessionID}`
+      const apiEpisodeLookupUrl = `https://api.memesrc.com/?series=${seriesId}&season=${seasonNum}&episode=${episodeNum}&start=${start}`
       setLoadingMore(true);
-      fetch(apiEpisodeLookupUrl)
+      getSessionID().then(sessionID => {
+        fetch(`${apiEpisodeLookupUrl}&sessionID=${sessionID}`)
         .then(response => response.json())
         .then(data => {
           setResults([...results, ...data]);
@@ -80,14 +78,12 @@ export default function EpisodePage() {
           setLoading(false);
           setLoadingMore(false);
         });
-    } else {
-      console.log('Session ID not ready yet.')
-    }
-  }, [sessionID, seriesId, seasonNum, episodeNum, results]);
+      }).catch(err => console.log(`Error with sessionID: ${err}`))
+  }, [seriesId, seasonNum, episodeNum, results]);
 
   useEffect(() => {
     loadFrames('0');
-  }, [sessionID, seriesId, seasonNum, episodeNum]);
+  }, [seriesId, seasonNum, episodeNum]);
 
 
   // const classes = useStyles();
