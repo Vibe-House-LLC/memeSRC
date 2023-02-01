@@ -29,6 +29,13 @@ export default function Button(theme) {
             backgroundColor: theme.palette.grey[400],
           },
         },
+        containedError: {
+          backgroundColor: theme.palette.error.dark,
+          boxShadow: theme.customShadows.card,
+          '&:hover': {
+            backgroundColor: theme.palette.error.main,
+          },
+        },
         containedPrimary: {
           boxShadow: theme.customShadows.card,
         },
