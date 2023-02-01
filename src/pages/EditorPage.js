@@ -7,6 +7,7 @@ import { TwitterPicker } from 'react-color';
 import { Button, Card, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, Popover, Slider, Stack, TextField, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { HighlightOffRounded, HistoryToggleOffRounded } from '@mui/icons-material';
 import { Storage } from 'aws-amplify';
+import { Box } from '@mui/system';
 import TextEditorControls from '../components/TextEditorControls';
 
 const ParentContainer = styled.div`
@@ -593,14 +594,15 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                     <DialogTitle id="responsive-dialog-title">
                         Save Image
                     </DialogTitle>
-                    <DialogContent>
-                        <DialogContentText>
+                    <DialogContent sx={{flex: 'none', marginTop: 'auto', overflow: 'hidden', paddingBottom: '10px'}}>
+                        <DialogContentText sx={{marginTop: 'auto', marginBottom: 'auto'}}>
                             {!imageUploading && <img src={`https://i-dev.memesrc.com/${generatedImageFilename}`} alt="generated meme" />}
                             {imageUploading && <center><CircularProgress /></center>}
                         </DialogContentText>
                     </DialogContent>
-                    <DialogActions>
-                        {navigator.canShare && <Button disabled={imageUploading} onClick={() => {
+                    <DialogActions sx={{marginBottom: 'auto', display: 'inline-flex', padding: '0 23px'}}>
+                        <Box display='grid' width='100%'>
+                        {navigator.canShare && <Button variant='contained' fullWidth sx={{marginBottom: 1.4}} disabled={imageUploading} onClick={() => {
                             navigator.share({
                                 title: 'memeSRC.com',
                                 text: 'Check out this meme I made on memeSRC.com',
@@ -609,15 +611,16 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                         }}>
                             Share
                         </Button>}
-                        <Button disabled={imageUploading} autoFocus onClick={() => {
+                        <Button variant='contained' fullWidth sx={{marginBottom: 1.4}} disabled={imageUploading} autoFocus onClick={() => {
                             const { ClipboardItem } = window;
                             navigator.clipboard.write([new ClipboardItem({ 'image/png': imageBlob })])
                         }}>
                             Copy
                         </Button>
-                        <Button autoFocus onClick={handleDialogClose}>
+                        <Button variant='contained' color='error' fullWidth sx={{marginBottom: 1.4}} autoFocus onClick={handleDialogClose}>
                             Close
                         </Button>
+                        </Box>
                     </DialogActions>
                 </Dialog>
 
