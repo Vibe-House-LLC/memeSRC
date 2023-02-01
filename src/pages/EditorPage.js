@@ -5,7 +5,7 @@ import styled from '@emotion/styled';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 import { Button, Card, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, Popover, Slider, Stack, TextField, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
-import { HighlightOffRounded, HistoryToggleOffRounded } from '@mui/icons-material';
+import { Add, AddCircleOutline, CheckCircleOutline, Close, ContentCopy, HighlightOffRounded, HistoryToggleOffRounded, IosShare, Share } from '@mui/icons-material';
 import { Storage } from 'aws-amplify';
 import { Box } from '@mui/system';
 import TextEditorControls from '../components/TextEditorControls';
@@ -427,10 +427,26 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                 </Grid>
                                 <Grid item xs={12} md={5} lg={5} minWidth={{ xs: {}, md: '350px' }} order={{ xs: 3, md: 2 }}>
                                     <Grid item xs={12} marginBottom={2}>
-                                        <Button variant='contained' onClick={handleClickDialogOpen} fullWidth sx={{ zIndex: '50' }}>Save/Copy/Share</Button>
+                                        <Button 
+                                            variant='contained' 
+                                            onClick={handleClickDialogOpen} 
+                                            fullWidth 
+                                            sx={{ zIndex: '50' }}
+                                            startIcon={<Share />}
+                                        >
+                                            Save/Copy/Share
+                                        </Button>
                                     </Grid>
                                     <Grid item xs={12} marginBottom={2}>
-                                        <Button variant='contained' onClick={() => addText('text', true)} fullWidth sx={{ zIndex: '50' }}>Add Layer</Button>
+                                        <Button
+                                            variant='contained'
+                                            onClick={() => addText('text', true)}
+                                            fullWidth
+                                            sx={{ zIndex: '50' }}
+                                            startIcon={<AddCircleOutline />}
+                                        >
+                                            Add Layer
+                                        </Button>
                                     </Grid>
                                     <Grid container item xs={12} maxHeight={{ xs: {}, md: `${canvasSize.height - 52}px` }} paddingX={{ xs: 0, md: 2 }} sx={{ overflowY: 'scroll', overflow: 'auto' }} flexDirection='col-reverse'>
                                         {canvasObjects && canvasObjects.map((object, index) => (
@@ -605,22 +621,46 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                     </DialogContent>
                     <DialogActions sx={{marginBottom: 'auto', display: 'inline-flex', padding: '0 23px'}}>
                         <Box display='grid' width='100%'>
-                        {navigator.canShare && <Button variant='contained' fullWidth sx={{marginBottom: 1.4}} disabled={imageUploading} onClick={() => {
-                            navigator.share({
-                                title: 'memeSRC.com',
-                                text: 'Check out this meme I made on memeSRC.com',
-                                files: [shareImageFile],
-                            })
-                        }}>
+                        {navigator.canShare && 
+                        <Button 
+                            variant='contained'
+                            fullWidth
+                            sx={{marginBottom: 1.4}}
+                            disabled={imageUploading}
+                            onClick={() => {
+                                navigator.share({
+                                    title: 'memeSRC.com',
+                                    text: 'Check out this meme I made on memeSRC.com',
+                                    files: [shareImageFile],
+                                })
+                            }}
+                            startIcon={<IosShare />}
+                        >
                             Share
                         </Button>}
-                        <Button variant='contained' fullWidth sx={{marginBottom: 1.4}} disabled={imageUploading} autoFocus onClick={() => {
-                            const { ClipboardItem } = window;
-                            navigator.clipboard.write([new ClipboardItem({ 'image/png': imageBlob })])
-                        }}>
+                        <Button
+                            variant='contained'
+                            fullWidth
+                            sx={{marginBottom: 1.4}}
+                            disabled={imageUploading}
+                            autoFocus
+                            onClick={() => {
+                                const { ClipboardItem } = window;
+                                navigator.clipboard.write([new ClipboardItem({ 'image/png': imageBlob })])
+                            }}
+                            startIcon={<ContentCopy />}
+                        >
                             Copy
                         </Button>
-                        <Button variant='contained' color='error' fullWidth sx={{marginBottom: 1.4}} autoFocus onClick={handleDialogClose}>
+                        <Button
+                            variant='contained'
+                            color='error'
+                            fullWidth
+                            sx={{marginBottom: 1.4}}
+                            autoFocus
+                            onClick={handleDialogClose}
+                            startIcon={<Close />}
+                        >
                             Close
                         </Button>
                         </Box>
