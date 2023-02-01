@@ -253,9 +253,9 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
             oImg.scale(desiredWidth / oImg.width);
             // Center the image within the canvas
             oImg.set({ left: 0, top: 0 });
-            const minRes = 1280;
-            const x = (oImg.width > minRes) ? oImg.width : minRes;
-            setImageScale(x / desiredHeight);
+            const minWidth = 750;
+            const x = (oImg.width > minWidth) ? oImg.width : minWidth;
+            setImageScale(x / desiredWidth);
             resizeCanvas(desiredWidth, desiredHeight)
             editor?.canvas.setBackgroundImage(oImg);
             addText(defaultSubtitle, false);
@@ -298,6 +298,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     const saveImage = () => {
         setImageUploading(true);
         const resultImage = editor.canvas.toDataURL({
+            format: 'jpeg',
+            quality: 0.6,
             multiplier: imageScale
         });
 
@@ -307,15 +309,15 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                 setImageBlob(blob);
                 fetch(`https://api.memesrc.com/?uuidGen`).then(response => {
                     response.json().then(uuid => {
-                        const filename = `${uuid}.png`
+                        const filename = `${uuid}.jpg`
                         setGeneratedImageFilename(filename)
-                        Storage.put(`${uuid}.png`, blob, {
+                        Storage.put(`${uuid}.jpg`, blob, {
                             resumable: true,
-                            contentType: "image/png",
+                            contentType: "image/jpeg",
                             completeCallback: (event) => {
                                 Storage.get(event.key).then(() => {
                                     // setGeneratedImage(image);
-                                    const file = new File([blob], filename, { type: blob.type });
+                                    const file = new File([blob], filename, { type: 'image/jpeg' });
                                     setShareImageFile(file);
                                     setImageUploading(false);
                                 })
@@ -614,7 +616,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                         </Button>}
                         <Button variant='contained' fullWidth sx={{marginBottom: 1.4}} disabled={imageUploading} autoFocus onClick={() => {
                             const { ClipboardItem } = window;
-                            navigator.clipboard.write([new ClipboardItem({ 'image/png': imageBlob })])
+                            navigator.clipboard.write([new ClipboardItem({ 'image/jpeg': imageBlob })])
                         }}>
                             Copy
                         </Button>
