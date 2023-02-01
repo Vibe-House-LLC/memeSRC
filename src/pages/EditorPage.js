@@ -416,7 +416,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         <>
             <ParentContainer id="parent-container">
                 <Grid container justifyContent='center'>
-                    <Grid container item xs={12} md={8} minWidth={{ xs: {}, md: '98vw', lg: '1200px' }} justifyContent='center'>
+                    <Grid container item xs={12} md={8} minWidth={{ xs: {}, md: '98vw', lg: '1200px' }} justifyContent='center' marginBottom={8.3}>
                         <Card sx={{ padding: '20px' }}>
                             <Grid container item spacing={2} justifyContent='center'>
                                 <Grid item xs={12} md={7} lg={7} order='1'>
