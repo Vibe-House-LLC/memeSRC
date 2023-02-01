@@ -616,7 +616,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                         </Button>}
                         <Button variant='contained' fullWidth sx={{marginBottom: 1.4}} disabled={imageUploading} autoFocus onClick={() => {
                             const { ClipboardItem } = window;
-                            navigator.clipboard.write([new ClipboardItem({ 'image/jpeg': imageBlob })])
+                            navigator.clipboard.write([new ClipboardItem({ 'image/png': imageBlob })])
                         }}>
                             Copy
                         </Button>
