@@ -64,6 +64,7 @@ export default function HomePageSection({ backgroundColor, textColor, title, sub
             if (buttonSubtext.href[0] === '/') {
               console.log(buttonSubtext.href[0]);
               navigate(buttonSubtext.href)
+              setTimeout(() => navigate('/'), 150)
             } else {
               window.location.href = buttonSubtext.href;
             }
