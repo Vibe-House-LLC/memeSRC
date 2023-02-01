@@ -621,6 +621,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                     aria-labelledby="responsive-dialog-title"
                     fullWidth
                     PaperProps={{ sx: { xs: { minWidth: '85vw' }, sm: { minWidth: '85vw' }, md: { minWidth: '85vw' }, } }}
+                    BackdropProps={{style: {backgroundColor: 'rgb(33, 33, 33, 0.9)'}}}
                 >
                     <DialogTitle id="responsive-dialog-title" >
                         Save Image
