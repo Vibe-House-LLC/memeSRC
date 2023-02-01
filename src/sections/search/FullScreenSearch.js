@@ -181,7 +181,7 @@ export default function FullScreenSearch(props) {
   const [scrollToSections, setScrollToSections] = useState();
   const { searchTerms, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction } = props
 
-  const {sectionIndex} = useParams();
+  const { sectionIndex } = useParams();
 
   const navigate = useNavigate();
 
@@ -351,12 +351,16 @@ export default function FullScreenSearch(props) {
           </Grid>
         </Grid>
         <StyledLeftFooter className="bottomBtn">
-          <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black", zIndex: '1300' }} size='medium'>
-            <MapsUgc color="white" />
-          </Fab>
-          <Fab color="primary" aria-label="donate" style={{ backgroundColor: "black", zIndex: '1300' }} size='medium'>
-            <Favorite />
-          </Fab>
+          <a href="https://forms.gle/8CETtVbwYoUmxqbi7" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
+            <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black", zIndex: '1300' }} size='medium'>
+              <MapsUgc color="white" />
+            </Fab>
+          </a>
+          <a href="https://memesrc.com/donate" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
+            <Fab color="primary" aria-label="donate" style={{ backgroundColor: "black", zIndex: '1300' }} size='medium'>
+              <Favorite />
+            </Fab>
+          </a>
         </StyledLeftFooter>
         <StyledRightFooter className="bottomBtn">
           <StyledButton onClick={loadRandomFrame} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
