@@ -1,10 +1,10 @@
 import styled from "@emotion/styled";
-import { Fab, FormControl, Grid, InputBase, MenuItem, Select, Typography } from "@mui/material";
+import { Fab, FormControl, Grid, InputBase, Link, MenuItem, Select, Typography } from "@mui/material";
 import { Favorite, MapsUgc, Search, Shuffle } from "@mui/icons-material";
 import { API, graphqlOperation } from 'aws-amplify';
 import { cloneElement, useCallback, useEffect, useState } from "react";
 import { LoadingButton } from "@mui/lab";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import { searchPropTypes } from "./SearchPropTypes";
 import Logo from "../../components/logo/Logo";
 import { listContentMetadata } from '../../graphql/queries';
@@ -96,7 +96,7 @@ export default function TopBannerSearchRevised(props) {
   const [searchTerm, setSearchTerm] = useState(searchQuery);
   const [seriesTitle, setSeriesTitle] = useState('_universal');
 
-  
+
 
   const searchFunction = useCallback((e) => {
     if (e) {
@@ -146,10 +146,12 @@ export default function TopBannerSearchRevised(props) {
         <Grid container marginY={3} paddingX={2}>
           <Grid item marginX={{ xs: 'auto', md: 0 }} marginY='auto'>
             <Grid display='flex' xs={12} marginBottom={{ xs: 3, md: 0 }}>
-              <Logo style={{ float: 'left' }} />
-              <Typography component='h6' variant='h6' marginY='auto' sx={{ color: '#FFFFFF', textShadow: '1px 1px 3px rgba(0, 0, 0, 0.30);', marginLeft: '6px', display: 'inline' }}>
-                memeSRC
-              </Typography>
+              <Link to="/" component={RouterLink} sx={{ display: 'contents' }}>
+                <Logo style={{ float: 'left' }} />
+                <Typography component='h6' variant='h6' marginY='auto' sx={{ color: '#FFFFFF', textShadow: '1px 1px 3px rgba(0, 0, 0, 0.30);', marginLeft: '6px', display: 'inline' }}>
+                  memeSRC
+                </Typography>
+              </Link>
             </Grid>
             {/* <Fab onClick={toggleDrawer} variant="text" style={{ color: "white", textDecoration: 'none', backgroundColor: 'rgb(0,0,0,0)', boxShadow: 'none' }}>
           <Search />
@@ -159,21 +161,21 @@ export default function TopBannerSearchRevised(props) {
           </Grid>
           <Grid item xs={12} md={6} paddingLeft={{ xs: 0, md: 2 }}>
             <form onSubmit={e => searchFunction(e)}>
-            <StyledSearchInput
-              label="With normal TextField"
-              id="outlined-start-adornment"
-              // InputProps={{
-              //   endAdornment: <InputAdornment position="end"><Typography variant="caption"><Search /></Typography></InputAdornment>,
-              // }}
-              endAdornment={<Search onClick={() => searchFunction()} style={{cursor: 'pointer'}}/>}
-              sx={{ width: '100%' }}
-              value={searchTerm}
-              onChange={(event) => {setSearchTerm(event.target.value);}}
-            />
+              <StyledSearchInput
+                label="With normal TextField"
+                id="outlined-start-adornment"
+                // InputProps={{
+                //   endAdornment: <InputAdornment position="end"><Typography variant="caption"><Search /></Typography></InputAdornment>,
+                // }}
+                endAdornment={<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} />}
+                sx={{ width: '100%' }}
+                value={searchTerm}
+                onChange={(event) => { setSearchTerm(event.target.value); }}
+              />
             </form>
           </Grid>
         </Grid>
-        <Grid container wrap="nowrap" sx={{ overflowX: "scroll", flexWrap: "nowrap", scrollbarWidth: 'none', '&::-webkit-scrollbar': {height: '0 !important', width: '0 !important', display: 'none'}}} paddingX={2}>
+        <Grid container wrap="nowrap" sx={{ overflowX: "scroll", flexWrap: "nowrap", scrollbarWidth: 'none', '&::-webkit-scrollbar': { height: '0 !important', width: '0 !important', display: 'none' } }} paddingX={2}>
           <Grid item marginLeft={{ md: 6 }}>
 
             <FormControl variant="standard" sx={{ minWidth: 120 }}>
@@ -196,24 +198,28 @@ export default function TopBannerSearchRevised(props) {
             </FormControl>
           </Grid>
           <Grid item marginLeft={{ xs: 3 }} marginY='auto' display='flex' style={{ whiteSpace: 'nowrap' }}>
-            <Typography fontSize={13}>Request a show</Typography>
+            <Typography fontSize={13}><a href="https://forms.gle/8CETtVbwYoUmxqbi7" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>Request a show</a></Typography>
           </Grid>
           <Grid item marginLeft={{ xs: 3 }} marginY='auto' display='flex' style={{ whiteSpace: 'nowrap' }}>
-            <Typography fontSize={13}>Report issues</Typography>
+            <Typography fontSize={13}><a href="https://forms.gle/8CETtVbwYoUmxqbi7" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>Report issues</a></Typography>
           </Grid>
           <Grid item marginLeft={{ xs: 3 }} marginY='auto' display='flex' style={{ whiteSpace: 'nowrap' }}>
-            <Typography fontSize={13}>Support the team</Typography>
+            <Typography fontSize={13}><a href="https://memesrc.com/donate" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>Support the team</a></Typography>
           </Grid>
         </Grid>
       </StyledHeader>
       {cloneElement(props.children, { setSeriesTitle, shows })}
       <StyledLeftFooter className="bottomBtn">
-        <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black", zIndex: '1300' }} size='medium'>
-          <MapsUgc color="white" />
-        </Fab>
-        <Fab color="primary" aria-label="donate" style={{ backgroundColor: "black", zIndex: '1300' }} size='medium'>
-          <Favorite />
-        </Fab>
+        <a href="https://forms.gle/8CETtVbwYoUmxqbi7" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
+          <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black", zIndex: '1300' }} size='medium'>
+            <MapsUgc color="white" />
+          </Fab>
+        </a>
+        <a href="https://memesrc.com/donate" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
+          <Fab color="primary" aria-label="donate" style={{ backgroundColor: "black", zIndex: '1300' }} size='medium'>
+            <Favorite />
+          </Fab>
+        </a>
       </StyledLeftFooter>
       <StyledRightFooter className="bottomBtn">
         <StyledButton onClick={loadRandomFrame} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
