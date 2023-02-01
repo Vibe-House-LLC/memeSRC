@@ -1,14 +1,17 @@
-import { memo, useCallback, useEffect, useState } from 'react'
+import { forwardRef, memo, useCallback, useEffect, useState } from 'react'
 import { fabric } from 'fabric';
 import { FabricJSCanvas, useFabricJSEditor } from 'fabricjs-react'
 import styled from '@emotion/styled';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
-import { Button, Card, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, Popover, Slider, Stack, TextField, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
+import MuiAlert from '@mui/material/Alert';
+import { Button, Card, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, Popover, Slider, Snackbar, Stack, TextField, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { Add, AddCircleOutline, CheckCircleOutline, Close, ContentCopy, HighlightOffRounded, HistoryToggleOffRounded, IosShare, Share } from '@mui/icons-material';
 import { Storage } from 'aws-amplify';
 import { Box } from '@mui/system';
 import TextEditorControls from '../components/TextEditorControls';
+
+const Alert = forwardRef((props, ref) => <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />);
 
 const ParentContainer = styled.div`
     height: 100%;
@@ -88,9 +91,18 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     const [imageUploading, setImageUploading] = useState();
     const [imageBlob, setImageBlob] = useState();
     const [shareImageFile, setShareImageFile] = useState();
+    const [snackbarOpen, setSnackBarOpen] = useState(false);
     const theme = useTheme();
     const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
     const [loadedSeriesTitle, setLoadedSeriesTitle] = useState('_universal');
+
+    const handleSnackbarOpen = () => {
+        setSnackBarOpen(true);
+    }
+
+    const handleSnackbarClose = () => {
+        setSnackBarOpen(false);
+    }
 
     useEffect(() => {
         if (shows.length > 1) {
@@ -427,10 +439,10 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                 </Grid>
                                 <Grid item xs={12} md={5} lg={5} minWidth={{ xs: {}, md: '350px' }} order={{ xs: 3, md: 2 }}>
                                     <Grid item xs={12} marginBottom={2}>
-                                        <Button 
-                                            variant='contained' 
-                                            onClick={handleClickDialogOpen} 
-                                            fullWidth 
+                                        <Button
+                                            variant='contained'
+                                            onClick={handleClickDialogOpen}
+                                            fullWidth
                                             sx={{ zIndex: '50' }}
                                             startIcon={<Share />}
                                         >
@@ -608,61 +620,62 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                     onClose={handleDialogClose}
                     aria-labelledby="responsive-dialog-title"
                     fullWidth
-                    PaperProps={{ sx: {xs: {minWidth: '85vw'}, sm: {minWidth: '85vw'}, md: {minWidth: '85vw'},}}}
+                    PaperProps={{ sx: { xs: { minWidth: '85vw' }, sm: { minWidth: '85vw' }, md: { minWidth: '85vw' }, } }}
                 >
                     <DialogTitle id="responsive-dialog-title" >
                         Save Image
                     </DialogTitle>
-                    <DialogContent sx={{flex: 'none', marginTop: 'auto', overflow: 'hidden', paddingBottom: '10px'}}>
-                        <DialogContentText sx={{marginTop: 'auto', marginBottom: 'auto'}}>
+                    <DialogContent sx={{ flex: 'none', marginTop: 'auto', overflow: 'hidden', paddingBottom: '10px' }}>
+                        <DialogContentText sx={{ marginTop: 'auto', marginBottom: 'auto' }}>
                             {!imageUploading && <img src={`https://i-dev.memesrc.com/${generatedImageFilename}`} alt="generated meme" />}
-                            {imageUploading && <center><CircularProgress sx={{margin: '30%'}}/></center>}
+                            {imageUploading && <center><CircularProgress sx={{ margin: '30%' }} /></center>}
                         </DialogContentText>
                     </DialogContent>
-                    <DialogActions sx={{marginBottom: 'auto', display: 'inline-flex', padding: '0 23px'}}>
+                    <DialogActions sx={{ marginBottom: 'auto', display: 'inline-flex', padding: '0 23px' }}>
                         <Box display='grid' width='100%'>
-                        {navigator.canShare && 
-                        <Button 
-                            variant='contained'
-                            fullWidth
-                            sx={{marginBottom: 1.4}}
-                            disabled={imageUploading}
-                            onClick={() => {
-                                navigator.share({
-                                    title: 'memeSRC.com',
-                                    text: 'Check out this meme I made on memeSRC.com',
-                                    files: [shareImageFile],
-                                })
-                            }}
-                            startIcon={<IosShare />}
-                        >
-                            Share
-                        </Button>}
-                        <Button
-                            variant='contained'
-                            fullWidth
-                            sx={{marginBottom: 1.4}}
-                            disabled={imageUploading}
-                            autoFocus
-                            onClick={() => {
-                                const { ClipboardItem } = window;
-                                navigator.clipboard.write([new ClipboardItem({ 'image/png': imageBlob })])
-                            }}
-                            startIcon={<ContentCopy />}
-                        >
-                            Copy
-                        </Button>
-                        <Button
-                            variant='contained'
-                            color='error'
-                            fullWidth
-                            sx={{marginBottom: 1.4}}
-                            autoFocus
-                            onClick={handleDialogClose}
-                            startIcon={<Close />}
-                        >
-                            Close
-                        </Button>
+                            {navigator.canShare &&
+                                <Button
+                                    variant='contained'
+                                    fullWidth
+                                    sx={{ marginBottom: 1.4 }}
+                                    disabled={imageUploading}
+                                    onClick={() => {
+                                        navigator.share({
+                                            title: 'memeSRC.com',
+                                            text: 'Check out this meme I made on memeSRC.com',
+                                            files: [shareImageFile],
+                                        })
+                                    }}
+                                    startIcon={<IosShare />}
+                                >
+                                    Share
+                                </Button>}
+                            <Button
+                                variant='contained'
+                                fullWidth
+                                sx={{ marginBottom: 1.4 }}
+                                disabled={imageUploading}
+                                autoFocus
+                                onClick={() => {
+                                    const { ClipboardItem } = window;
+                                    navigator.clipboard.write([new ClipboardItem({ 'image/png': imageBlob })]);
+                                    handleSnackbarOpen();
+                                }}
+                                startIcon={<ContentCopy />}
+                            >
+                                Copy
+                            </Button>
+                            <Button
+                                variant='contained'
+                                color='error'
+                                fullWidth
+                                sx={{ marginBottom: 1.4 }}
+                                autoFocus
+                                onClick={handleDialogClose}
+                                startIcon={<Close />}
+                            >
+                                Close
+                            </Button>
                         </Box>
                     </DialogActions>
                 </Dialog>
@@ -670,6 +683,17 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
             </ParentContainer>
 
+            <Snackbar
+                open={snackbarOpen}
+                autoHideDuration={3000}
+                severity="success"
+                onClose={handleSnackbarClose}
+                message="Image Copied!"
+            >
+                <Alert onClose={handleSnackbarClose} severity="success" sx={{ width: '100%' }}>
+                    Image copied!
+                </Alert>
+            </Snackbar>
 
 
 
