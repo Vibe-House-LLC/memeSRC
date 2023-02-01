@@ -586,18 +586,19 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                 </Popover>
 
                 <Dialog
-                    fullScreen={fullScreen}
                     open={open}
                     onClose={handleDialogClose}
                     aria-labelledby="responsive-dialog-title"
+                    fullWidth
+                    PaperProps={{ sx: {xs: {minWidth: '85vw'}, sm: {minWidth: '85vw'}, md: {minWidth: '85vw'},}}}
                 >
-                    <DialogTitle id="responsive-dialog-title">
+                    <DialogTitle id="responsive-dialog-title" >
                         Save Image
                     </DialogTitle>
                     <DialogContent sx={{flex: 'none', marginTop: 'auto', overflow: 'hidden', paddingBottom: '10px'}}>
                         <DialogContentText sx={{marginTop: 'auto', marginBottom: 'auto'}}>
                             {!imageUploading && <img src={`https://i-dev.memesrc.com/${generatedImageFilename}`} alt="generated meme" />}
-                            {imageUploading && <center><CircularProgress /></center>}
+                            {imageUploading && <center><CircularProgress sx={{margin: '30%'}}/></center>}
                         </DialogContentText>
                     </DialogContent>
                     <DialogActions sx={{marginBottom: 'auto', display: 'inline-flex', padding: '0 23px'}}>
