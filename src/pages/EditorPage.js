@@ -626,7 +626,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                     <DialogTitle id="responsive-dialog-title" >
                         Save Image
                     </DialogTitle>
-                    <DialogContent sx={{ flex: 'none', marginTop: 'auto', overflow: 'hidden', paddingBottom: '10px' }}>
+                    <DialogContent sx={{ flex: 'none', marginTop: 'auto', overflow: 'hidden', overflowY: 'hidden', paddingBottom: 2, paddingLeft: '12px', paddingRight: '12px' }}>
                         <DialogContentText sx={{ marginTop: 'auto', marginBottom: 'auto' }}>
                             {!imageUploading && <img src={`https://i-dev.memesrc.com/${generatedImageFilename}`} alt="generated meme" />}
                             {imageUploading && <center><CircularProgress sx={{ margin: '30%' }} /></center>}
@@ -638,7 +638,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                 <Button
                                     variant='contained'
                                     fullWidth
-                                    sx={{ marginBottom: 1.4 }}
+                                    sx={{ marginBottom: 2, padding: '12px 16px' }}
                                     disabled={imageUploading}
                                     onClick={() => {
                                         navigator.share({
@@ -654,7 +654,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                             <Button
                                 variant='contained'
                                 fullWidth
-                                sx={{ marginBottom: 1.4 }}
+                                sx={{ marginBottom: 2, padding: '12px 16px' }}
                                 disabled={imageUploading}
                                 autoFocus
                                 onClick={() => {
@@ -670,7 +670,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                 variant='contained'
                                 color='error'
                                 fullWidth
-                                sx={{ marginBottom: 1.4 }}
+                                sx={{ marginBottom: 2, padding: '12px 16px' }}
                                 autoFocus
                                 onClick={handleDialogClose}
                                 startIcon={<Close />}
