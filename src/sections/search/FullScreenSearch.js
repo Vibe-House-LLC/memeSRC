@@ -181,8 +181,8 @@ export default function FullScreenSearch(props) {
 
   const navigate = useNavigate();
 
-  const changeTheme = (input) => {
-    if(input !== '_universal') {
+  const changeTheme = () => {
+    if(seriesTitle !== '_universal') {
       const selectedSeriesProperties = shows.findIndex(object => object.id === seriesTitle);
       console.log(selectedSeriesProperties)
       setCurrentThemeBackground(`background-color: ${shows[selectedSeriesProperties].colorMain}`)
@@ -200,6 +200,10 @@ export default function FullScreenSearch(props) {
       setCurrentThemeFontColor('#FFFFFF')
     }
   }
+
+useEffect(() => {
+  changeTheme()
+}, [seriesTitle])
 
   // Create a grid container component
 const StyledGridContainer = styled(Grid)`
@@ -340,7 +344,7 @@ color: ${currentThemeFontColor};
           <StyledSearchForm onSubmit={e => searchFunction(e)}>
             <Grid container justifyContent='center'>
               <Grid item sm={3.5} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
-                <StyledSearchSelector onChange={(x) => { setSeriesTitle(x.target.value); changeTheme(x.target.value); }} value={seriesTitle}>
+                <StyledSearchSelector onChange={(x) => { setSeriesTitle(x.target.value);}} value={seriesTitle}>
                   <option key='_universal' value='_universal' selected>🌈 All Shows</option>
                   {(loading) ? <option key="loading" value="loading" disabled>Loading...</option> : shows.map((item) => (
                     <option key={item.id} value={item.id}>{item.emoji} {item.title}</option>
