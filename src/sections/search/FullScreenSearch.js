@@ -55,20 +55,6 @@ const StyledSearchButton = styled(Button)`
   padding: 10px 12px;
 `;
 
-// Create a grid container component
-const StyledGridContainer = styled(Grid)`
-  min-height: 100vh;
-  background-image: linear-gradient(45deg,
-    #5461c8 12.5% /* 1*12.5% */,
-    #c724b1 0, #c724b1 25%   /* 2*12.5% */,
-    #e4002b 0, #e4002b 37.5% /* 3*12.5% */,
-    #ff6900 0, #ff6900 50%   /* 4*12.5% */,
-    #f6be00 0, #f6be00 62.5% /* 5*12.5% */,
-    #97d700 0, #97d700 75%   /* 6*12.5% */,
-    #00ab84 0, #00ab84 87.5% /* 7*12.5% */,
-    #00a3e0 0);
-`;
-
 // Create a label component
 const StyledLabel = styled.label`
     margin-bottom: 8px;
@@ -172,6 +158,11 @@ async function fetchSections() {
 
 FullScreenSearch.propTypes = searchPropTypes;
 
+  // Create a grid container component
+  const StyledGridContainer = styled(Grid)`
+  min-height: 100vh;
+  `;
+
 
 export default function FullScreenSearch(props) {
   const [shows, setShows] = useState([]);
@@ -179,11 +170,47 @@ export default function FullScreenSearch(props) {
   const [loading, setLoading] = useState(true);
   const [loadingRandom, setLoadingRandom] = useState(false);
   const [scrollToSections, setScrollToSections] = useState();
+  const [currentThemeBackground, setCurrentThemeBackground] = useState({backgroundImage: `linear-gradient(45deg,
+                                                    #5461c8 12.5% /* 1*12.5% */,
+                                                    #c724b1 0, #c724b1 25%   /* 2*12.5% */,
+                                                    #e4002b 0, #e4002b 37.5% /* 3*12.5% */,
+                                                    #ff6900 0, #ff6900 50%   /* 4*12.5% */,
+                                                    #f6be00 0, #f6be00 62.5% /* 5*12.5% */,
+                                                    #97d700 0, #97d700 75%   /* 6*12.5% */,
+                                                    #00ab84 0, #00ab84 87.5% /* 7*12.5% */,
+                                                    #00a3e0 0);`});
+  const [currentThemeFontColor, setCurrentThemeFontColor] = useState('#FFFFFF');
   const { searchTerms, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction } = props
 
   const { sectionIndex } = useParams();
 
   const navigate = useNavigate();
+
+  const changeTheme = () => {
+    if(seriesTitle !== '_universal') {
+      const selectedSeriesProperties = shows.findIndex(object => object.id === seriesTitle);
+      console.log(selectedSeriesProperties)
+      setCurrentThemeBackground({backgroundColor: `${shows[selectedSeriesProperties].colorMain}`})
+      setCurrentThemeFontColor(shows[selectedSeriesProperties].colorSecondary);
+    } else {
+      setCurrentThemeBackground({backgroundImage: `linear-gradient(45deg,
+                      #5461c8 12.5% /* 1*12.5% */,
+                      #c724b1 0, #c724b1 25%   /* 2*12.5% */,
+                      #e4002b 0, #e4002b 37.5% /* 3*12.5% */,
+                      #ff6900 0, #ff6900 50%   /* 4*12.5% */,
+                      #f6be00 0, #f6be00 62.5% /* 5*12.5% */,
+                      #97d700 0, #97d700 75%   /* 6*12.5% */,
+                      #00ab84 0, #00ab84 87.5% /* 7*12.5% */,
+                      #00a3e0 0)`})
+      setCurrentThemeFontColor('#FFFFFF')
+    }
+  }
+
+useEffect(() => {
+  changeTheme()
+}, [seriesTitle])
+
+
 
   useEffect(() => {
     async function getData() {
@@ -303,11 +330,11 @@ export default function FullScreenSearch(props) {
 
   return (
     <>
-      <StyledGridContainer container paddingX={3}>
+      <StyledGridContainer container paddingX={3} sx={currentThemeBackground}>
         <Grid container marginY='auto' justifyContent='center'>
           <Grid container justifyContent='center'>
             <Grid item textAlign='center' marginBottom={5}>
-              <Typography component='h1' variant='h1' sx={{ color: '#FFFFFF', textShadow: '1px 1px 3px rgba(0, 0, 0, 0.30);' }}>
+              <Typography component='h1' variant='h1' sx={{ color: currentThemeFontColor, textShadow: '1px 1px 3px rgba(0, 0, 0, 0.30);' }}>
                 <Logo sx={{ display: 'inline', width: '150px', height: 'auto', margin: '-20px' }} color="white" />
                 <br />
                 memeSRC
@@ -317,11 +344,12 @@ export default function FullScreenSearch(props) {
           <StyledSearchForm onSubmit={e => searchFunction(e)}>
             <Grid container justifyContent='center'>
               <Grid item sm={3.5} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
-                <StyledSearchSelector onChange={(x) => { setSeriesTitle(x.target.value); }} value={seriesTitle}>
+                <StyledSearchSelector onChange={(x) => { setSeriesTitle(x.target.value);}} value={seriesTitle}>
                   <option key='_universal' value='_universal' selected>🌈 All Shows</option>
                   {(loading) ? <option key="loading" value="loading" disabled>Loading...</option> : shows.map((item) => (
                     <option key={item.id} value={item.id}>{item.emoji} {item.title}</option>
                   ))}
+                  {console.log(shows)}
                 </StyledSearchSelector>
               </Grid>
               <Grid item sm={7} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
@@ -339,12 +367,12 @@ export default function FullScreenSearch(props) {
               </Grid>
             </Grid>
           </StyledSearchForm>
-          <Grid item xs={12} textAlign='center' color='#FFFFFF' marginTop={4}>
+          <Grid item xs={12} textAlign='center' color={currentThemeFontColor} marginTop={4}>
             <Typography component='h4' variant='h4'>
               Search over 36 million screencaps from your favorite shows.
             </Typography>
             <Button onClick={() => scrollToSection()} startIcon='🚀' sx={[{ marginTop: '12px', backgroundColor: 'unset', '&:hover': { backgroundColor: 'unset' } }]}>
-              <Typography sx={{ textDecoration: 'underline', fontSize: '1em', fontWeight: '800', color: "#FFFFFF" }}>
+              <Typography sx={{ textDecoration: 'underline', fontSize: '1em', fontWeight: '800', color: currentThemeFontColor }}>
                 New Feature: Universal Search
               </Typography>
             </Button>
