@@ -14,6 +14,8 @@ import ThemeProvider from './theme';
 
 export default function App() {
 
+  console.log(`REACT_APP_USER_BRANCH: ${process.env.REACT_APP_USER_BRANCH}`)
+
   // Return the App
   return (
     <ThemeProvider>
