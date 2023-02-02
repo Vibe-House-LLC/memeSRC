@@ -15,6 +15,13 @@ const StyledCard = styled(Card)`
   
   border: 3px solid transparent;
   box-sizing: border-box;
+  position: relative;
+
+  &:hover img, &:active img, &:focus img{
+    animation: bgmve 5s;
+    animation-iteration-count: infinite;
+    animation-timing-function: ease;
+    }
 
   &:hover {
     border: 3px solid orange;
@@ -23,11 +30,53 @@ const StyledCard = styled(Card)`
 
 const StyledCardMedia = styled.img`
   width: 100%;
-  height: 300px;
+  height: 230px;
   aspect-ratio: '16/9';
-  object-fit: contain;
-  object-position: center;
+  object-fit: cover;
+  object-position: 50% 0;
   background-color: black;
+
+  @keyframes bgmve {
+    0% {object-position: 50% 0; animation-timing-function: ease-out;}
+    25% {object-position: 0 0; animation-timing-function: ease-in;}
+    50% {object-position: 50% 0; animation-timing-function: ease-out;}
+    75% {object-position: 100% 0; animation-timing-function: ease-in;}
+    100% {object-position: 50% 0; animation-timing-function: ease-in;}
+  }
+`;
+
+const TopCardInfo = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background-color: rgb(0, 0, 0, 0.6);
+  padding: 3px 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+const BottomCardCaption = styled.div`
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  text-align: center;
+  ${props => props.theme.breakpoints.up("xs")} {
+    font-size: clamp(1em, 1.5vw, 1.5em);
+    }
+  ${props => props.theme.breakpoints.up("md")} {
+  font-size: clamp(1em, 1.5vw, 1.5em);
+  }
+  font-weight: 800;
+  padding: 18px 10px;
+  text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+`;
+
+const SeasonEpisodeText = styled.span`
+  color: #919191;
+  font-size: 0.8em;
 `;
 
 const StyledTypography = styled.p(({ theme }) => ({
@@ -117,7 +166,7 @@ export default function SearchPage() {
         {loading ? (
           <StyledCircularProgress />
         ) : memoizedResults && memoizedResults.map(result => (
-          <Grid item xs={12} sm={6} md={3} key={result.fid}>
+          <Grid item xs={6} sm={6} md={3} key={result.fid}>
             <a href={`/editor/${result.fid}?search=${encodeURI(searchTerm)}`} style={{ textDecoration: 'none' }}>
               <StyledCard>
                 <StyledCardMedia
@@ -125,12 +174,19 @@ export default function SearchPage() {
                   src={`https://memesrc.com${result.frame_image}`}
                   alt={result.subtitle}
                   title={result.subtitle} />
-                <StyledTypography variant="body2">
+                <TopCardInfo>
+                  <SeasonEpisodeText><b>S.</b>{result.season_number} <b>E.</b>{result.episode_number}</SeasonEpisodeText> <b>{result.series_name}</b>
+                </TopCardInfo>
+                <BottomCardCaption>
+                {result.subtitle}
+                </BottomCardCaption>
+                  
+                {/* <StyledTypography variant="body2">
                   Subtitle: {result.subtitle}<br />
                   Series: {result.series_name}<br />
                   Season: {result.season_number}<br />
                   Episode: {result.episode_number}
-                </StyledTypography>
+                </StyledTypography> */}
               </StyledCard>
             </a>
           </Grid>
