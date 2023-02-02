@@ -563,7 +563,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                     onClose={() => setColorPickerShowing(false)}
                     id="colorPicker"
                     anchorOrigin={{
-                        vertical: 'top',
+                        vertical: 'bottom',
                         horizontal: 'center',
                     }}
                     transformOrigin={{
@@ -590,7 +590,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                     onClose={() => setFontSizePickerShowing(false)}
                     id="colorPicker"
                     anchorOrigin={{
-                        vertical: 'top',
+                        vertical: 'bottom',
                         horizontal: 'center',
                     }}
                     transformOrigin={{
