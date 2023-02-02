@@ -20,7 +20,7 @@ const StyledCard = styled(Card)`
   &:hover img, &:active img, &:focus img{
     animation: bgmve 15s;
     animation-iteration-count: infinite;
-    animation-timing-function: linear;
+    animation-timing-function: ease-in-out;
     }
 
   &:hover {
