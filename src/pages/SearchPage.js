@@ -18,9 +18,9 @@ const StyledCard = styled(Card)`
   position: relative;
 
   &:hover img, &:active img, &:focus img{
-    animation: bgmve 15s;
+    animation: bgmve 5s;
     animation-iteration-count: infinite;
-    animation-timing-function: ease-in-out;
+    animation-timing-function: ease;
     }
 
   &:hover {
@@ -33,13 +33,15 @@ const StyledCardMedia = styled.img`
   height: 230px;
   aspect-ratio: '16/9';
   object-fit: cover;
-  object-position: 100% 0;
+  object-position: 50% 0;
   background-color: black;
 
   @keyframes bgmve {
-    0% {object-position: 100% 0;}
-    50% {object-position: 0 0;}
-    100% {object-position: 100% 0;}
+    0% {object-position: 50% 0; animation-timing-function: ease-out;}
+    25% {object-position: 0 0; animation-timing-function: ease-in;}
+    50% {object-position: 50% 0; animation-timing-function: ease-out;}
+    75% {object-position: 100% 0; animation-timing-function: ease-in;}
+    100% {object-position: 50% 0; animation-timing-function: ease-in;}
   }
 `;
 
