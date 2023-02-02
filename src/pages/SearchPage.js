@@ -17,6 +17,12 @@ const StyledCard = styled(Card)`
   box-sizing: border-box;
   position: relative;
 
+  &:hover img, &:active img, &:focus img{
+    animation: bgmve 15s;
+    animation-iteration-count: infinite;
+    animation-timing-function: linear;
+    }
+
   &:hover {
     border: 3px solid orange;
   }
@@ -24,11 +30,17 @@ const StyledCard = styled(Card)`
 
 const StyledCardMedia = styled.img`
   width: 100%;
-  height: 300px;
+  height: 230px;
   aspect-ratio: '16/9';
-  object-fit: contain;
-  object-position: center;
+  object-fit: cover;
+  object-position: 100% 0;
   background-color: black;
+
+  @keyframes bgmve {
+    0% {object-position: 100% 0;}
+    50% {object-position: 0 0;}
+    100% {object-position: 100% 0;}
+  }
 `;
 
 const TopCardInfo = styled.div`
@@ -49,9 +61,14 @@ const BottomCardCaption = styled.div`
   left: 0;
   right: 0;
   text-align: center;
-  font-size: 1.5em;
+  ${props => props.theme.breakpoints.up("xs")} {
+    font-size: clamp(1em, 1.5vw, 1.5em);
+    }
+  ${props => props.theme.breakpoints.up("md")} {
+  font-size: clamp(1em, 1.5vw, 1.5em);
+  }
   font-weight: 800;
-  padding: 25px 10px;
+  padding: 18px 10px;
   text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
 `;
 
@@ -147,7 +164,7 @@ export default function SearchPage() {
         {loading ? (
           <StyledCircularProgress />
         ) : memoizedResults && memoizedResults.map(result => (
-          <Grid item xs={12} sm={6} md={3} key={result.fid}>
+          <Grid item xs={6} sm={6} md={3} key={result.fid}>
             <a href={`/editor/${result.fid}?search=${encodeURI(searchTerm)}`} style={{ textDecoration: 'none' }}>
               <StyledCard>
                 <StyledCardMedia
