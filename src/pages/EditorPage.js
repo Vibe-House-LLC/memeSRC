@@ -105,7 +105,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     }
 
     useEffect(() => {
-        if (shows.length > 1) {
+        if (shows.length > 0) {
             console.log(loadedSeriesTitle);
             setSeriesTitle(loadedSeriesTitle);
         }
