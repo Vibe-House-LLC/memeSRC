@@ -628,7 +628,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                     </DialogTitle>
                     <DialogContent sx={{ flex: 'none', marginTop: 'auto', overflow: 'hidden', overflowY: 'hidden', paddingBottom: 2, paddingLeft: '12px', paddingRight: '12px' }}>
                         <DialogContentText sx={{ marginTop: 'auto', marginBottom: 'auto' }}>
-                            {!imageUploading && <img src={`https://i-dev.memesrc.com/${generatedImageFilename}`} alt="generated meme" />}
+                            {!imageUploading && <img src={`https://i${(process.env.REACT_APP_USER_BRANCH) === 'prod' ? 'prod' : `-${process.env.REACT_APP_USER_BRANCH}`}.memesrc.com/${generatedImageFilename}`} alt="generated meme" />}
                             {imageUploading && <center><CircularProgress sx={{ margin: '30%' }} /></center>}
                         </DialogContentText>
                     </DialogContent>
