@@ -15,6 +15,7 @@ const StyledCard = styled(Card)`
   
   border: 3px solid transparent;
   box-sizing: border-box;
+  position: relative;
 
   &:hover {
     border: 3px solid orange;
@@ -28,6 +29,35 @@ const StyledCardMedia = styled.img`
   object-fit: contain;
   object-position: center;
   background-color: black;
+`;
+
+const TopCardInfo = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background-color: rgb(0, 0, 0, 0.6);
+  padding: 3px 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+const BottomCardCaption = styled.div`
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 1.5em;
+  font-weight: 800;
+  padding: 25px 10px;
+  text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+`;
+
+const SeasonEpisodeText = styled.span`
+  color: #919191;
+  font-size: 0.8em;
 `;
 
 const StyledTypography = styled.p(({ theme }) => ({
@@ -125,12 +155,19 @@ export default function SearchPage() {
                   src={`https://memesrc.com${result.frame_image}`}
                   alt={result.subtitle}
                   title={result.subtitle} />
-                <StyledTypography variant="body2">
+                <TopCardInfo>
+                  <SeasonEpisodeText><b>S.</b>{result.season_number} <b>E.</b>{result.episode_number}</SeasonEpisodeText> <b>{result.series_name}</b>
+                </TopCardInfo>
+                <BottomCardCaption>
+                {result.subtitle}
+                </BottomCardCaption>
+                  
+                {/* <StyledTypography variant="body2">
                   Subtitle: {result.subtitle}<br />
                   Series: {result.series_name}<br />
                   Season: {result.season_number}<br />
                   Episode: {result.episode_number}
-                </StyledTypography>
+                </StyledTypography> */}
               </StyledCard>
             </a>
           </Grid>
