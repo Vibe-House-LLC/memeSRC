@@ -158,6 +158,11 @@ async function fetchSections() {
 
 FullScreenSearch.propTypes = searchPropTypes;
 
+  // Create a grid container component
+  const StyledGridContainer = styled(Grid)`
+  min-height: 100vh;
+  `;
+
 
 export default function FullScreenSearch(props) {
   const [shows, setShows] = useState([]);
@@ -165,7 +170,7 @@ export default function FullScreenSearch(props) {
   const [loading, setLoading] = useState(true);
   const [loadingRandom, setLoadingRandom] = useState(false);
   const [scrollToSections, setScrollToSections] = useState();
-  const [currentThemeBackground, setCurrentThemeBackground] = useState(`background-image: linear-gradient(45deg,
+  const [currentThemeBackground, setCurrentThemeBackground] = useState({backgroundImage: `linear-gradient(45deg,
                                                     #5461c8 12.5% /* 1*12.5% */,
                                                     #c724b1 0, #c724b1 25%   /* 2*12.5% */,
                                                     #e4002b 0, #e4002b 37.5% /* 3*12.5% */,
@@ -173,7 +178,7 @@ export default function FullScreenSearch(props) {
                                                     #f6be00 0, #f6be00 62.5% /* 5*12.5% */,
                                                     #97d700 0, #97d700 75%   /* 6*12.5% */,
                                                     #00ab84 0, #00ab84 87.5% /* 7*12.5% */,
-                                                    #00a3e0 0);`);
+                                                    #00a3e0 0);`});
   const [currentThemeFontColor, setCurrentThemeFontColor] = useState('#FFFFFF');
   const { searchTerms, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction } = props
 
@@ -185,10 +190,10 @@ export default function FullScreenSearch(props) {
     if(seriesTitle !== '_universal') {
       const selectedSeriesProperties = shows.findIndex(object => object.id === seriesTitle);
       console.log(selectedSeriesProperties)
-      setCurrentThemeBackground(`background-color: ${shows[selectedSeriesProperties].colorMain}`)
+      setCurrentThemeBackground({backgroundColor: `${shows[selectedSeriesProperties].colorMain}`})
       setCurrentThemeFontColor(shows[selectedSeriesProperties].colorSecondary);
     } else {
-      setCurrentThemeBackground(`background-image: linear-gradient(45deg,
+      setCurrentThemeBackground({backgroundImage: `linear-gradient(45deg,
                       #5461c8 12.5% /* 1*12.5% */,
                       #c724b1 0, #c724b1 25%   /* 2*12.5% */,
                       #e4002b 0, #e4002b 37.5% /* 3*12.5% */,
@@ -196,7 +201,7 @@ export default function FullScreenSearch(props) {
                       #f6be00 0, #f6be00 62.5% /* 5*12.5% */,
                       #97d700 0, #97d700 75%   /* 6*12.5% */,
                       #00ab84 0, #00ab84 87.5% /* 7*12.5% */,
-                      #00a3e0 0)`)
+                      #00a3e0 0)`})
       setCurrentThemeFontColor('#FFFFFF')
     }
   }
@@ -205,12 +210,7 @@ useEffect(() => {
   changeTheme()
 }, [seriesTitle])
 
-  // Create a grid container component
-const StyledGridContainer = styled(Grid)`
-min-height: 100vh;
-${currentThemeBackground};
-color: ${currentThemeFontColor};
-`;
+
 
   useEffect(() => {
     async function getData() {
@@ -330,7 +330,7 @@ color: ${currentThemeFontColor};
 
   return (
     <>
-      <StyledGridContainer container paddingX={3}>
+      <StyledGridContainer container paddingX={3} sx={currentThemeBackground}>
         <Grid container marginY='auto' justifyContent='center'>
           <Grid container justifyContent='center'>
             <Grid item textAlign='center' marginBottom={5}>
