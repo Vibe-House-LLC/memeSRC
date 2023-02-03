@@ -143,10 +143,15 @@ const StyledRightFooter = styled('footer')`
 
 async function fetchShows() {
   const result = await API.graphql({
-    ...graphqlOperation(listContentMetadata, { filter: {}, limit: 10 }),
+    ...graphqlOperation(listContentMetadata, { filter: {}, limit: 50 }),
     authMode: "API_KEY"
   });
-  return result.data.listContentMetadata.items;
+  const sortedMetadata = result.data.listContentMetadata.items.sort((a, b) => {
+    if (a.title < b.title) return -1;
+    if (a.title > b.title) return 1;
+    return 0;
+  });
+  return sortedMetadata;
 }
 
 async function fetchSections() {
@@ -353,7 +358,7 @@ export default function FullScreenSearch({
             <Grid item textAlign='center' marginBottom={5}>
               <Typography component='h1' variant='h1' sx={{ color: currentThemeFontColor, textShadow: '1px 1px 3px rgba(0, 0, 0, 0.30);' }}>
                 <Box onClick={() => setSeriesTitle('_universal')}>
-                  <Logo sx={{ display: 'inline', width: '150px', height: 'auto', margin: '-25px', color: 'yellow' }} color="white" />
+                  <Logo sx={{ display: 'inline', width: '150px', height: 'auto', margin: '-18px', color: 'yellow' }} color="white" />
                 </Box>
                 {currentThemeTitleText}
               </Typography>
@@ -390,7 +395,7 @@ export default function FullScreenSearch({
             </Typography>
             <Button onClick={() => scrollToSection()} startIcon='🚀' sx={[{ marginTop: '12px', backgroundColor: 'unset', '&:hover': { backgroundColor: 'unset' } }]}>
               <Typography sx={{ textDecoration: 'underline', fontSize: '1em', fontWeight: '800', color: currentThemeFontColor }}>
-                Beta Feature: New layer editor
+                Beta: Layer editor and more!
               </Typography>
             </Button>
           </Grid>
