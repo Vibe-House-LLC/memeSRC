@@ -80,7 +80,12 @@ async function fetchShows() {
     ...graphqlOperation(listContentMetadata, { filter: {}, limit: 50 }),
     authMode: "API_KEY"
   });
-  return result.data.listContentMetadata.items;
+  const sortedMetadata = result.data.listContentMetadata.items.sort((a, b) => {
+    if (a.title < b.title) return -1;
+    if (a.title > b.title) return 1;
+    return 0;
+  });
+  return sortedMetadata;
 }
 
 TopBannerSearchRevised.propTypes = searchPropTypes;
