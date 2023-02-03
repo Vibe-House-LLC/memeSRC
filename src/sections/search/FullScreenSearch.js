@@ -158,29 +158,43 @@ async function fetchSections() {
 
 FullScreenSearch.propTypes = searchPropTypes;
 
-  // Create a grid container component
-  const StyledGridContainer = styled(Grid)`
-  min-height: 100vh;
-  `;
+// Create a grid container component
+const StyledGridContainer = styled(Grid)`
+min-height: 100vh;
+`;
 
+// Theme Defaults
+const defaultTitleText = 'memeSRC'
+const defaultFontColor = '#FFFFFF'
+const defaultBackground = `linear-gradient(45deg,
+  #5461c8 12.5% /* 1*12.5% */,
+  #c724b1 0, #c724b1 25%   /* 2*12.5% */,
+  #e4002b 0, #e4002b 37.5% /* 3*12.5% */,
+  #ff6900 0, #ff6900 50%   /* 4*12.5% */,
+  #f6be00 0, #f6be00 62.5% /* 5*12.5% */,
+  #97d700 0, #97d700 75%   /* 6*12.5% */,
+  #00ab84 0, #00ab84 87.5% /* 7*12.5% */,
+  #00a3e0 0)`
 
-export default function FullScreenSearch(props) {
+export default function FullScreenSearch({ 
+  searchTerms, 
+  setSearchTerm, 
+  seriesTitle, 
+  setSeriesTitle, 
+  searchFunction 
+}) {
   const [shows, setShows] = useState([]);
   const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingRandom, setLoadingRandom] = useState(false);
   const [scrollToSections, setScrollToSections] = useState();
-  const [currentThemeBackground, setCurrentThemeBackground] = useState({backgroundImage: `linear-gradient(45deg,
-                                                    #5461c8 12.5% /* 1*12.5% */,
-                                                    #c724b1 0, #c724b1 25%   /* 2*12.5% */,
-                                                    #e4002b 0, #e4002b 37.5% /* 3*12.5% */,
-                                                    #ff6900 0, #ff6900 50%   /* 4*12.5% */,
-                                                    #f6be00 0, #f6be00 62.5% /* 5*12.5% */,
-                                                    #97d700 0, #97d700 75%   /* 6*12.5% */,
-                                                    #00ab84 0, #00ab84 87.5% /* 7*12.5% */,
-                                                    #00a3e0 0);`});
-  const [currentThemeFontColor, setCurrentThemeFontColor] = useState('#FFFFFF');
-  const { searchTerms, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction } = props
+
+  // Theme States
+  const [currentThemeTitleText, setCurrentThemeTitleText] = useState(defaultTitleText)
+  const [currentThemeFontColor, setCurrentThemeFontColor] = useState(defaultFontColor);
+  const [currentThemeBackground, setCurrentThemeBackground] = useState({
+    backgroundImage: defaultBackground
+  });
 
   const { sectionIndex } = useParams();
 
@@ -192,17 +206,11 @@ export default function FullScreenSearch(props) {
       console.log(selectedSeriesProperties)
       setCurrentThemeBackground({backgroundColor: `${shows[selectedSeriesProperties].colorMain}`})
       setCurrentThemeFontColor(shows[selectedSeriesProperties].colorSecondary);
+      setCurrentThemeTitleText(shows[selectedSeriesProperties].title)
     } else {
-      setCurrentThemeBackground({backgroundImage: `linear-gradient(45deg,
-                      #5461c8 12.5% /* 1*12.5% */,
-                      #c724b1 0, #c724b1 25%   /* 2*12.5% */,
-                      #e4002b 0, #e4002b 37.5% /* 3*12.5% */,
-                      #ff6900 0, #ff6900 50%   /* 4*12.5% */,
-                      #f6be00 0, #f6be00 62.5% /* 5*12.5% */,
-                      #97d700 0, #97d700 75%   /* 6*12.5% */,
-                      #00ab84 0, #00ab84 87.5% /* 7*12.5% */,
-                      #00a3e0 0)`})
-      setCurrentThemeFontColor('#FFFFFF')
+      setCurrentThemeBackground({backgroundImage: defaultBackground})
+      setCurrentThemeFontColor(defaultFontColor)
+      setCurrentThemeTitleText(defaultTitleText)
     }
   }
 
@@ -335,9 +343,9 @@ useEffect(() => {
           <Grid container justifyContent='center'>
             <Grid item textAlign='center' marginBottom={5}>
               <Typography component='h1' variant='h1' sx={{ color: currentThemeFontColor, textShadow: '1px 1px 3px rgba(0, 0, 0, 0.30);' }}>
-                <Logo sx={{ display: 'inline', width: '150px', height: 'auto', margin: '-20px' }} color="white" />
+                <Logo sx={{ display: 'inline', width: '150px', height: 'auto', margin: '-20px', color: 'yellow'}} color="white" />
                 <br />
-                memeSRC
+                { currentThemeTitleText }
               </Typography>
             </Grid>
           </Grid>
