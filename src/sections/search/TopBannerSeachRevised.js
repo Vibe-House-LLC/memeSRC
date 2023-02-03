@@ -77,7 +77,7 @@ const StyledHeader = styled('header')(() => ({
 
 async function fetchShows() {
   const result = await API.graphql({
-    ...graphqlOperation(listContentMetadata, { filter: {}, limit: 10 }),
+    ...graphqlOperation(listContentMetadata, { filter: {}, limit: 50 }),
     authMode: "API_KEY"
   });
   return result.data.listContentMetadata.items;
