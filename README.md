@@ -2,7 +2,7 @@
 
 The web app for memeSRC.com is created with [React](https://reactjs.org/docs/getting-started.html) and [MUI](https://mui.com/material-ui/getting-started/overview/). The editor features are backed by [Fabric.js](http://fabricjs.com/docs/)
 
-![memeSRC screenshot](/screenshot.png?raw=true "memeSRC.com")
+![memeSRC screenshot](/screenshot.jpg?raw=true "memeSRC.com")
 
 ## Getting started
 
