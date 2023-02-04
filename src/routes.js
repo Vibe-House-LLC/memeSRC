@@ -68,7 +68,7 @@ export default function Router() {
     },
     {
       path: '/episode/:seriesId/:seasonNum/:episodeNum',
-      element: <EpisodePage />
+      element: <TopBannerSearchRevised><EpisodePage /></TopBannerSearchRevised>
     },
     {
       path: '/404',
