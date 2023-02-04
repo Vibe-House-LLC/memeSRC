@@ -79,12 +79,6 @@ const SeasonEpisodeText = styled.span`
   font-size: 0.8em;
 `;
 
-const StyledTypography = styled.p(({ theme }) => ({
-  fontSize: '14px',
-  color: theme.palette.text.secondary,
-  padding: '10px 10px 10px 25px'
-}));
-
 export default function SearchPage() {
   const params = useParams();
 
@@ -156,7 +150,7 @@ export default function SearchPage() {
     const encodedSearchTerms = encodeURI(searchTerm)
     console.log(`Navigating to: '${`/search/${seriesTitle}/${encodedSearchTerms}`}'`)
     navigate(`/search/${seriesTitle}/${encodedSearchTerms}`)
-  }, [seriesTitle, searchTerm]);
+  }, [seriesTitle, searchTerm, navigate]);
 
   return (
 
