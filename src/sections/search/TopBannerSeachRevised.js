@@ -92,7 +92,7 @@ TopBannerSearchRevised.propTypes = searchPropTypes;
 
 
 export default function TopBannerSearchRevised(props) {
-  const search = useLocation().search;
+  const { search } = useLocation();
   const searchQuery = new URLSearchParams(search).get('search');
 
   const [shows, setShows] = useState([]);
@@ -101,8 +101,6 @@ export default function TopBannerSearchRevised(props) {
   const [searchTerm, setSearchTerm] = useState(searchQuery);
   const [seriesTitle, setSeriesTitle] = useState('_universal');
 
-
-
   const searchFunction = useCallback((e) => {
     if (e) {
       e.preventDefault();
@@ -110,6 +108,7 @@ export default function TopBannerSearchRevised(props) {
     const encodedSearchTerms = encodeURI(searchTerm)
     console.log(`Navigating to: '${`/search/${seriesTitle}/${encodedSearchTerms}`}'`)
     navigate(`/search/${seriesTitle}/${encodedSearchTerms}`)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seriesTitle, searchTerm]);
 
   const navigate = useNavigate();
