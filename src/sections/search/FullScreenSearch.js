@@ -92,7 +92,6 @@ const StyledSearchInput = styled.input`
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   transition: box-shadow 0.3s;
   height: 50px;
-
   &:focus {
     box-shadow: 0 2px 4px rgba(0,0,0,0.3);
     outline: none;
@@ -215,9 +214,10 @@ export default function FullScreenSearch({
     setCurrentThemeBragText(defaultBragText)
   }
 
-  const changeTheme = () => {
-    if (seriesTitle !== '_universal') {
-      const selectedSeriesProperties = shows.findIndex(object => object.id === seriesTitle);
+  const handleChangeSeries = newSeriesTitle => {
+    setSeriesTitle(newSeriesTitle);
+    if (newSeriesTitle !== '_universal') {
+      const selectedSeriesProperties = shows.findIndex(object => object.id === newSeriesTitle);
       console.log(selectedSeriesProperties)
       setCurrentThemeBackground({ backgroundColor: `${shows[selectedSeriesProperties].colorMain}` })
       setCurrentThemeFontColor(shows[selectedSeriesProperties].colorSecondary);
@@ -228,9 +228,9 @@ export default function FullScreenSearch({
     }
   }
 
-  useEffect(() => {
-    changeTheme()
-  }, [seriesTitle])
+  // useEffect(() => {
+  //   changeTheme()
+  // }, [seriesTitle])
 
 
 
@@ -251,7 +251,7 @@ export default function FullScreenSearch({
     document.addEventListener('scroll', () => {
 
       // Find the height of the entire document
-      const body = document.body;
+      const { body } = document;
       const html = document.documentElement;
       const height = Math.max(body.scrollHeight, body.offsetHeight, html.clientHeight, html.scrollHeight, html.offsetHeight);
 
@@ -305,6 +305,7 @@ export default function FullScreenSearch({
       const sectionElement = sectionIndex.toString();
       scrollToSection(sectionElement);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sections, sectionIndex])
 
 
@@ -357,7 +358,7 @@ export default function FullScreenSearch({
           <Grid container justifyContent='center'>
             <Grid item textAlign='center' marginBottom={5}>
               <Typography component='h1' variant='h1' sx={{ color: currentThemeFontColor, textShadow: '1px 1px 3px rgba(0, 0, 0, 0.30);' }}>
-                <Box onClick={() => setSeriesTitle('_universal')}>
+                <Box onClick={() => handleChangeSeries('_universal')}>
                   <Logo sx={{ display: 'inline', width: '150px', height: 'auto', margin: '-18px', color: 'yellow' }} color="white" />
                 </Box>
                 {currentThemeTitleText}
@@ -367,7 +368,7 @@ export default function FullScreenSearch({
           <StyledSearchForm onSubmit={e => searchFunction(e)}>
             <Grid container justifyContent='center'>
               <Grid item sm={3.5} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
-                <StyledSearchSelector onChange={(x) => { setSeriesTitle(x.target.value); }} value={seriesTitle}>
+                <StyledSearchSelector onChange={(x) => { handleChangeSeries(x.target.value); }} value={seriesTitle}>
                   <option key='_universal' value='_universal' selected>🌈 All Shows</option>
                   {(loading) ? <option key="loading" value="loading" disabled>Loading...</option> : shows.map((item) => (
                     <option key={item.id} value={item.id}>{item.emoji} {item.title}</option>
@@ -421,21 +422,19 @@ export default function FullScreenSearch({
           </Fab>
         </StyledFooter>
       </StyledGridContainer>
-      {sections.map((section) => {
-        return (
-          <HomePageSection
-            key={section.id}
-            index={section.index}
-            backgroundColor={section.backgroundColor}
-            textColor={section.textColor}
-            title={section.title}
-            subtitle={section.subtitle}
-            buttons={JSON.parse(section.buttons)}
-            bottomImage={JSON.parse(section.bottomImage)}
-            buttonSubtext={JSON.parse(section.buttonSubtext)}
-          />
-        )
-      })}
+      {sections.map((section) => 
+        <HomePageSection
+          key={section.id}
+          index={section.index}
+          backgroundColor={section.backgroundColor}
+          textColor={section.textColor}
+          title={section.title}
+          subtitle={section.subtitle}
+          buttons={JSON.parse(section.buttons)}
+          bottomImage={JSON.parse(section.bottomImage)}
+          buttonSubtext={JSON.parse(section.buttonSubtext)}
+        />
+      )}
     </>
   )
 }

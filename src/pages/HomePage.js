@@ -15,7 +15,7 @@ export default function SearchPage() {
     const encodedSearchTerms = encodeURI(searchTerm)
     console.log(`Navigating to: '${`/search/${seriesTitle}/${encodedSearchTerms}`}'`)
     navigate(`/search/${seriesTitle}/${encodedSearchTerms}`)
-  }, [seriesTitle, searchTerm]);
+  }, [seriesTitle, searchTerm, navigate]);
 
   return (
     <FullScreenSearch searchFunction={handleSearch} setSearchTerm={setSearchTerm} setSeriesTitle={setSeriesTitle} searchTerm={searchTerm} seriesTitle={seriesTitle} />  
