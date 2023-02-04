@@ -34,22 +34,22 @@
       ],
       "output": {
         "authConfig": {
+          "additionalAuthenticationProviders": [
+            {
+              "apiKeyConfig": {
+                "apiKeyExpirationDate": "2024-01-28T18:42:24.381Z",
+                "apiKeyExpirationDays": 365,
+                "description": "Public API Key for unauthenticated users"
+              },
+              "authenticationType": "API_KEY"
+            }
+          ],
           "defaultAuthentication": {
             "authenticationType": "AMAZON_COGNITO_USER_POOLS",
             "userPoolConfig": {
               "userPoolId": "authmemesrcc3c71449"
             }
-          },
-          "additionalAuthenticationProviders": [
-            {
-              "authenticationType": "API_KEY",
-              "apiKeyConfig": {
-                "apiKeyExpirationDays": 365,
-                "apiKeyExpirationDate": "2024-01-28T18:42:24.381Z",
-                "description": "Public API Key for unauthenticated users"
-              }
-            }
-          ]
+          }
         }
       },
       "providerPlugin": "awscloudformation",
@@ -84,14 +84,14 @@
     "userPoolGroups": {
       "dependsOn": [
         {
-          "category": "auth",
-          "resourceName": "memesrcc3c71449",
           "attributes": [
             "UserPoolId",
             "AppClientIDWeb",
             "AppClientID",
             "IdentityPoolId"
-          ]
+          ],
+          "category": "auth",
+          "resourceName": "memesrcc3c71449"
         }
       ],
       "providerPlugin": "awscloudformation",
@@ -142,25 +142,25 @@
     "memesrcGeneratedImages": {
       "dependsOn": [
         {
-          "category": "auth",
-          "resourceName": "memesrcc3c71449",
           "attributes": [
             "UserPoolId"
-          ]
+          ],
+          "category": "auth",
+          "resourceName": "memesrcc3c71449"
         },
         {
-          "category": "auth",
-          "resourceName": "userPoolGroups",
           "attributes": [
             "adminsGroupRole"
-          ]
+          ],
+          "category": "auth",
+          "resourceName": "userPoolGroups"
         },
         {
-          "category": "auth",
-          "resourceName": "userPoolGroups",
           "attributes": [
             "modsGroupRole"
-          ]
+          ],
+          "category": "auth",
+          "resourceName": "userPoolGroups"
         }
       ],
       "providerPlugin": "awscloudformation",
