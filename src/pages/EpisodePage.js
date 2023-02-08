@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { Grid, CircularProgress, Card } from '@mui/material';
@@ -82,7 +83,12 @@ const SeasonEpisodeText = styled.span`
   font-size: 0.8em;
 `;
 
-export default function EpisodePage({ setSeriesTitle, shows }) {
+// Prop types
+EpisodePage.propTypes = {
+    setSeriesTitle: PropTypes.func
+};
+
+export default function EpisodePage({ setSeriesTitle }) {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -126,11 +132,12 @@ export default function EpisodePage({ setSeriesTitle, shows }) {
           setLoadingMore(false);
         });
     }).catch(err => console.log(`Error with sessionID: ${err}`))
-  }, [seriesId, seasonNum, episodeNum, results]);
+  }, [seriesId, seasonNum, episodeNum, results, setSeriesTitle]);
 
   useEffect(() => {
     loadFrames('0');
-  }, [seriesId, seasonNum, episodeNum]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
 
   // const classes = useStyles();

@@ -1,40 +1,15 @@
-## Minimal [(Free version)](https://minimal-kit-react.vercel.app/)
+# memeSRC
 
-![license](https://img.shields.io/badge/license-MIT-blue.svg)
+The web app for memeSRC.com is created with [React](https://reactjs.org/docs/getting-started.html) and [MUI](https://mui.com/material-ui/getting-started/overview/). The editor features are backed by [Fabric.js](http://fabricjs.com/docs/)
 
-> Free React Admin Dashboard made with Material-UI components and React.
-
-![preview](public/assets/preview.jpg)
-
-| [Minimal Free](https://minimal-kit-react.vercel.app/) | [Minimal](https://material-ui.com/store/items/minimal-dashboard/) |
-| ----------------------------------------------------- | :---------------------------------------------------------------- |
-| **6** Demo pages                                      | **50+** demo pages                                                |
-| -                                                     | ✓ Multi-language                                                  |
-| -                                                     | ✓ Dark/Light Mode 🌓                                              |
-| -                                                     | ✓ [More components](https://minimals.cc/components)               |
-| -                                                     | ✓ Next.js version                                                 |
-| -                                                     | ✓ TypeScript version                                              |
-| -                                                     | ✓ Design files (Figma & Sketch)                                   |
-
-## Page demo
-
-- [Dashboard](https://minimal-kit-react.vercel.app/dashboard/app)
-- [Users](https://minimal-kit-react.vercel.app/dashboard/user)
-- [Product](https://minimal-kit-react.vercel.app/dashboard/products)
-- [Blog](https://minimal-kit-react.vercel.app/dashboard/blog)
-- [Login](https://minimal-kit-react.vercel.app/login)
-- [Not Found](https://minimal-kit-react.vercel.app/404)
+![memeSRC screenshot](/screenshot.jpg?raw=true "memeSRC.com")
 
 ## Getting started
 
 - Recommended `node js 16.x` and `npm 6+`. (suggestion v16.15.0)
-- Install dependencies: `npm install` / `yarn install`
-- Start the project: `npm run start` / `yarn start`
-
-## License
-
-Distributed under the MIT License. See [LICENSE](https://github.com/minimal-ui-kit/minimal.free/blob/main/LICENSE.md) for more information.
+- Install dependencies: `npm install`
+- Start the project: `npm run start`
 
 ## Contact us
 
-Email Us: support@minimals.cc
+Email Us: contact@vibehouse.net

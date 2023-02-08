@@ -6,7 +6,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
 import { Button, Card, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, Popover, Slider, Snackbar, Stack, TextField, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
-import { Add, AddCircleOutline, CheckCircleOutline, Close, ContentCopy, HighlightOffRounded, HistoryToggleOffRounded, IosShare, Share } from '@mui/icons-material';
+import { AddCircleOutline, Close, ContentCopy, HighlightOffRounded, HistoryToggleOffRounded, IosShare, Share } from '@mui/icons-material';
 import { Storage } from 'aws-amplify';
 import { Box } from '@mui/system';
 import TextEditorControls from '../components/TextEditorControls';
