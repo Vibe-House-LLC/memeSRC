@@ -7,6 +7,28 @@ import App from './App';
 import * as serviceWorker from './serviceWorker';
 import reportWebVitals from './reportWebVitals';
 
+// Define a function to replace default exports with custom api domains
+const replaceEndpoints = (arr, dict) => {
+  return arr.map(obj => {
+    if (obj.name in dict) {
+      return {...obj, endpoint: dict[obj.name]};
+    }
+    return obj;
+  });
+};
+
+// Define the custom domain mappings for apis
+const mappings = {
+  'publicapi': `https://api-dev.memesrc.com/${process.env.REACT_APP_USER_BRANCH}`,
+  'AdminQueries': `https://admin.memesrc.com/${process.env.REACT_APP_USER_BRANCH}`
+}
+
+// Replace the default domains with custom ones
+awsExports.aws_cloud_logic_custom = replaceEndpoints(
+  awsExports.aws_cloud_logic_custom,
+  mappings
+)
+
 Amplify.configure(awsExports);
 
 // // Use the API Key by default

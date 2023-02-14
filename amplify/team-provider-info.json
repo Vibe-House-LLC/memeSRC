@@ -33,7 +33,7 @@
         "SearchFunction": {
           "secretsPathAmplifyAppId": "d32pnvtwxwtte5",
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/SearchFunction-74597737364654637344-build.zip"
+          "s3Key": "amplify-builds/SearchFunction-686946634d32672f7836-build.zip"
         },
         "memesrcSearch": {}
       },
@@ -62,9 +62,10 @@
       "function": {
         "AdminQueries9e1cafc6": {
           "deploymentBucketName": "amplify-memesrc-beta-190209-deployment",
-          "s3Key": "amplify-builds/AdminQueries9e1cafc6-56573733493368737339-build.zip"
+          "s3Key": "amplify-builds/AdminQueries9e1cafc6-76354871457449787037-build.zip"
         },
-        "memesrcc3c71449": {}
+        "memesrcc3c71449": {},
+        "SearchFunction": {}
       },
       "api": {
         "AdminQueries": {},
