@@ -1,5 +1,6 @@
 import styled from "@emotion/styled";
 import { Button, Fab, Grid, Typography } from "@mui/material";
+import { Box } from "@mui/system";
 import { ArrowDownwardRounded, Favorite, MapsUgc, Shuffle } from "@mui/icons-material";
 import { API, graphqlOperation } from 'aws-amplify';
 import { useCallback, useEffect, useState } from "react";
@@ -55,20 +56,6 @@ const StyledSearchButton = styled(Button)`
   padding: 10px 12px;
 `;
 
-// Create a grid container component
-const StyledGridContainer = styled(Grid)`
-  min-height: 100vh;
-  background-image: linear-gradient(45deg,
-    #5461c8 12.5% /* 1*12.5% */,
-    #c724b1 0, #c724b1 25%   /* 2*12.5% */,
-    #e4002b 0, #e4002b 37.5% /* 3*12.5% */,
-    #ff6900 0, #ff6900 50%   /* 4*12.5% */,
-    #f6be00 0, #f6be00 62.5% /* 5*12.5% */,
-    #97d700 0, #97d700 75%   /* 6*12.5% */,
-    #00ab84 0, #00ab84 87.5% /* 7*12.5% */,
-    #00a3e0 0);
-`;
-
 // Create a label component
 const StyledLabel = styled.label`
     margin-bottom: 8px;
@@ -105,7 +92,6 @@ const StyledSearchInput = styled.input`
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   transition: box-shadow 0.3s;
   height: 50px;
-
   &:focus {
     box-shadow: 0 2px 4px rgba(0,0,0,0.3);
     outline: none;
@@ -156,10 +142,15 @@ const StyledRightFooter = styled('footer')`
 
 async function fetchShows() {
   const result = await API.graphql({
-    ...graphqlOperation(listContentMetadata, { filter: {}, limit: 10 }),
+    ...graphqlOperation(listContentMetadata, { filter: {}, limit: 50 }),
     authMode: "API_KEY"
   });
-  return result.data.listContentMetadata.items;
+  const sortedMetadata = result.data.listContentMetadata.items.sort((a, b) => {
+    if (a.title < b.title) return -1;
+    if (a.title > b.title) return 1;
+    return 0;
+  });
+  return sortedMetadata;
 }
 
 async function fetchSections() {
@@ -172,18 +163,76 @@ async function fetchSections() {
 
 FullScreenSearch.propTypes = searchPropTypes;
 
+// Create a grid container component
+const StyledGridContainer = styled(Grid)`
+min-height: 100vh;
+`;
 
-export default function FullScreenSearch(props) {
+// Theme Defaults
+const defaultTitleText = 'memeSRC'
+const defaultBragText = 'Search over 36 million screencaps from your favorite shows.'
+const defaultFontColor = '#FFFFFF'
+const defaultBackground = `linear-gradient(45deg,
+  #5461c8 12.5% /* 1*12.5% */,
+  #c724b1 0, #c724b1 25%   /* 2*12.5% */,
+  #e4002b 0, #e4002b 37.5% /* 3*12.5% */,
+  #ff6900 0, #ff6900 50%   /* 4*12.5% */,
+  #f6be00 0, #f6be00 62.5% /* 5*12.5% */,
+  #97d700 0, #97d700 75%   /* 6*12.5% */,
+  #00ab84 0, #00ab84 87.5% /* 7*12.5% */,
+  #00a3e0 0)`
+
+export default function FullScreenSearch({
+  searchTerms,
+  setSearchTerm,
+  seriesTitle,
+  setSeriesTitle,
+  searchFunction
+}) {
   const [shows, setShows] = useState([]);
   const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingRandom, setLoadingRandom] = useState(false);
   const [scrollToSections, setScrollToSections] = useState();
-  const { searchTerms, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction } = props
+
+  // Theme States
+  const [currentThemeBragText, setCurrentThemeBragText] = useState(defaultBragText)
+  const [currentThemeTitleText, setCurrentThemeTitleText] = useState(defaultTitleText)
+  const [currentThemeFontColor, setCurrentThemeFontColor] = useState(defaultFontColor);
+  const [currentThemeBackground, setCurrentThemeBackground] = useState({
+    backgroundImage: defaultBackground
+  });
 
   const { sectionIndex } = useParams();
 
   const navigate = useNavigate();
+
+  const resetTheme = () => {
+    setCurrentThemeBackground({ backgroundImage: defaultBackground })
+    setCurrentThemeFontColor(defaultFontColor)
+    setCurrentThemeTitleText(defaultTitleText)
+    setCurrentThemeBragText(defaultBragText)
+  }
+
+  const handleChangeSeries = newSeriesTitle => {
+    setSeriesTitle(newSeriesTitle);
+    if (newSeriesTitle !== '_universal') {
+      const selectedSeriesProperties = shows.findIndex(object => object.id === newSeriesTitle);
+      console.log(selectedSeriesProperties)
+      setCurrentThemeBackground({ backgroundColor: `${shows[selectedSeriesProperties].colorMain}` })
+      setCurrentThemeFontColor(shows[selectedSeriesProperties].colorSecondary);
+      setCurrentThemeTitleText(shows[selectedSeriesProperties].title)
+      setCurrentThemeBragText(`Search over ${shows[selectedSeriesProperties].frameCount.toLocaleString('en-US')} frames from ${shows[selectedSeriesProperties].title}`)
+    } else {
+      resetTheme();
+    }
+  }
+
+  // useEffect(() => {
+  //   changeTheme()
+  // }, [seriesTitle])
+
+
 
   useEffect(() => {
     async function getData() {
@@ -202,7 +251,7 @@ export default function FullScreenSearch(props) {
     document.addEventListener('scroll', () => {
 
       // Find the height of the entire document
-      const body = document.body;
+      const { body } = document;
       const html = document.documentElement;
       const height = Math.max(body.scrollHeight, body.offsetHeight, html.clientHeight, html.scrollHeight, html.offsetHeight);
 
@@ -256,6 +305,7 @@ export default function FullScreenSearch(props) {
       const sectionElement = sectionIndex.toString();
       scrollToSection(sectionElement);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sections, sectionIndex])
 
 
@@ -303,21 +353,22 @@ export default function FullScreenSearch(props) {
 
   return (
     <>
-      <StyledGridContainer container paddingX={3}>
+      <StyledGridContainer container paddingX={3} sx={currentThemeBackground}>
         <Grid container marginY='auto' justifyContent='center'>
           <Grid container justifyContent='center'>
             <Grid item textAlign='center' marginBottom={5}>
-              <Typography component='h1' variant='h1' sx={{ color: '#FFFFFF', textShadow: '1px 1px 3px rgba(0, 0, 0, 0.30);' }}>
-                <Logo sx={{ display: 'inline', width: '150px', height: 'auto', margin: '-20px' }} color="white" />
-                <br />
-                memeSRC
+              <Typography component='h1' variant='h1' sx={{ color: currentThemeFontColor, textShadow: '1px 1px 3px rgba(0, 0, 0, 0.30);' }}>
+                <Box onClick={() => handleChangeSeries('_universal')}>
+                  <Logo sx={{ display: 'inline', width: '150px', height: 'auto', margin: '-18px', color: 'yellow' }} color="white" />
+                </Box>
+                {currentThemeTitleText}
               </Typography>
             </Grid>
           </Grid>
           <StyledSearchForm onSubmit={e => searchFunction(e)}>
             <Grid container justifyContent='center'>
               <Grid item sm={3.5} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
-                <StyledSearchSelector onChange={(x) => { setSeriesTitle(x.target.value); }} value={seriesTitle}>
+                <StyledSearchSelector onChange={(x) => { handleChangeSeries(x.target.value); }} value={seriesTitle}>
                   <option key='_universal' value='_universal' selected>🌈 All Shows</option>
                   {(loading) ? <option key="loading" value="loading" disabled>Loading...</option> : shows.map((item) => (
                     <option key={item.id} value={item.id}>{item.emoji} {item.title}</option>
@@ -339,13 +390,13 @@ export default function FullScreenSearch(props) {
               </Grid>
             </Grid>
           </StyledSearchForm>
-          <Grid item xs={12} textAlign='center' color='#FFFFFF' marginTop={4}>
+          <Grid item xs={12} textAlign='center' color={currentThemeFontColor} marginTop={4}>
             <Typography component='h4' variant='h4'>
-              Search over 36 million screencaps from your favorite shows.
+              {currentThemeBragText}
             </Typography>
             <Button onClick={() => scrollToSection()} startIcon='🚀' sx={[{ marginTop: '12px', backgroundColor: 'unset', '&:hover': { backgroundColor: 'unset' } }]}>
-              <Typography sx={{ textDecoration: 'underline', fontSize: '1em', fontWeight: '800', color: "#FFFFFF" }}>
-                New Feature: Universal Search
+              <Typography sx={{ textDecoration: 'underline', fontSize: '1em', fontWeight: '800', color: currentThemeFontColor }}>
+                Beta: Layer editor and more!
               </Typography>
             </Button>
           </Grid>
@@ -371,21 +422,19 @@ export default function FullScreenSearch(props) {
           </Fab>
         </StyledFooter>
       </StyledGridContainer>
-      {sections.map((section) => {
-        return (
-          <HomePageSection
-            key={section.id}
-            index={section.index}
-            backgroundColor={section.backgroundColor}
-            textColor={section.textColor}
-            title={section.title}
-            subtitle={section.subtitle}
-            buttons={JSON.parse(section.buttons)}
-            bottomImage={JSON.parse(section.bottomImage)}
-            buttonSubtext={JSON.parse(section.buttonSubtext)}
-          />
-        )
-      })}
+      {sections.map((section) => 
+        <HomePageSection
+          key={section.id}
+          index={section.index}
+          backgroundColor={section.backgroundColor}
+          textColor={section.textColor}
+          title={section.title}
+          subtitle={section.subtitle}
+          buttons={JSON.parse(section.buttons)}
+          bottomImage={JSON.parse(section.bottomImage)}
+          buttonSubtext={JSON.parse(section.buttonSubtext)}
+        />
+      )}
     </>
   )
 }

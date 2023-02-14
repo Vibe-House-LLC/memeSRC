@@ -6,7 +6,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
 import { Button, Card, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, Popover, Slider, Snackbar, Stack, TextField, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
-import { Add, AddCircleOutline, CheckCircleOutline, Close, ContentCopy, HighlightOffRounded, HistoryToggleOffRounded, IosShare, Share } from '@mui/icons-material';
+import { AddCircleOutline, Close, ContentCopy, HighlightOffRounded, HistoryToggleOffRounded, IosShare, Share } from '@mui/icons-material';
 import { Storage } from 'aws-amplify';
 import { Box } from '@mui/system';
 import TextEditorControls from '../components/TextEditorControls';
@@ -105,7 +105,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     }
 
     useEffect(() => {
-        if (shows.length > 1) {
+        if (shows.length > 0) {
             console.log(loadedSeriesTitle);
             setSeriesTitle(loadedSeriesTitle);
         }
@@ -563,7 +563,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                     onClose={() => setColorPickerShowing(false)}
                     id="colorPicker"
                     anchorOrigin={{
-                        vertical: 'top',
+                        vertical: 'bottom',
                         horizontal: 'center',
                     }}
                     transformOrigin={{
@@ -590,7 +590,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                     onClose={() => setFontSizePickerShowing(false)}
                     id="colorPicker"
                     anchorOrigin={{
-                        vertical: 'top',
+                        vertical: 'bottom',
                         horizontal: 'center',
                     }}
                     transformOrigin={{
@@ -628,7 +628,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                     </DialogTitle>
                     <DialogContent sx={{ flex: 'none', marginTop: 'auto', overflow: 'hidden', overflowY: 'hidden', paddingBottom: 2, paddingLeft: '12px', paddingRight: '12px' }}>
                         <DialogContentText sx={{ marginTop: 'auto', marginBottom: 'auto' }}>
-                            {!imageUploading && <img src={`https://i-dev.memesrc.com/${generatedImageFilename}`} alt="generated meme" />}
+                            {!imageUploading && <img src={`https://i${(process.env.REACT_APP_USER_BRANCH) === 'prod' ? 'prod' : `-${process.env.REACT_APP_USER_BRANCH}`}.memesrc.com/${generatedImageFilename}`} alt="generated meme" />}
                             {imageUploading && <center><CircularProgress sx={{ margin: '30%' }} /></center>}
                         </DialogContentText>
                     </DialogContent>

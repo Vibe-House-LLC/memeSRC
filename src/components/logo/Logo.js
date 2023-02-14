@@ -21,13 +21,6 @@ const Logo = forwardRef(({ disabledLink = false, sx, ...other }) => {
 
   // OR using local (public folder)
   // -------------------------------------------------------
-  const logo = (
-    <Box
-      component="img"
-      src={`/assets/memeSRC${other.color === 'white' ? '-white' : '-color'}.svg`}
-      sx={{ width: 40, objectFit: 'contain', height: 'auto', cursor: 'pointer', ...sx }}
-    />
-  );
 
   // const logo = (
   //   <Box
@@ -77,14 +70,16 @@ const Logo = forwardRef(({ disabledLink = false, sx, ...other }) => {
   //   </Box>
   // );
 
-  if (disabledLink) {
-    return <>{logo}</>;
-  }
+  // if (disabledLink) {
+  //   return <>{logo}</>;
+  // }
 
   return (
-    <Link to="/" component={RouterLink} sx={{ display: 'contents' }}>
-      {logo}
-    </Link>
+    <Box
+      component="img"
+      src={`/assets/memeSRC${other.color === 'white' ? '-white' : '-color'}.svg`}
+      sx={{ width: 40, objectFit: 'contain', height: 'auto', cursor: 'pointer', ...sx }}
+    />
   );
 });
 

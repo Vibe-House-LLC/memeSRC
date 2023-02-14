@@ -3,7 +3,6 @@ import { lazy } from 'react';
 import TopBannerSearchRevised from './sections/search/TopBannerSeachRevised';
 
 const DashboardLayout = lazy(() => import('./layouts/dashboard'));
-const SimpleLayout = lazy(() => import('./layouts/simple'));
 const BlogPage = lazy(() => import('./pages/BlogPage'));
 const UserPage = lazy(() => import('./pages/UserPage'));
 const Page404 = lazy(() => import('./pages/Page404'));
@@ -68,7 +67,7 @@ export default function Router() {
     },
     {
       path: '/episode/:seriesId/:seasonNum/:episodeNum',
-      element: <EpisodePage />
+      element: <TopBannerSearchRevised><EpisodePage /></TopBannerSearchRevised>
     },
     {
       path: '/404',
