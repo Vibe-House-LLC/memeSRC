@@ -115,7 +115,7 @@ app.post('/confirmUserSignUp', async (req, res, next) => {
   }
 });
 
-app.post('/disableUser', async (req, res, next) => {
+app.post(`/${process.env.AMPLIFY_ENV}/admin/disableUser`, async (req, res, next) => {
   if (!req.body.username) {
     const err = new Error('username is required');
     err.statusCode = 400;
@@ -160,7 +160,7 @@ app.get('/getUser', async (req, res, next) => {
   }
 });
 
-app.get('/listUsers', async (req, res, next) => {
+app.get(`/${process.env.AMPLIFY_ENV}/admin/listUsers`, async (req, res, next) => {
   try {
     let response;
     if (req.query.token) {

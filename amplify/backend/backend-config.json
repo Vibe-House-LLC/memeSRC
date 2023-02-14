@@ -141,6 +141,14 @@
     }
   },
   "parameters": {
+    "AMPLIFY_function_AdminQueries9e1cafc6_amplifyEnv": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "AdminQueries9e1cafc6"
+        }
+      ]
+    },
     "AMPLIFY_function_AdminQueries9e1cafc6_deploymentBucketName": {
       "usedBy": [
         {
@@ -154,6 +162,14 @@
         {
           "category": "function",
           "resourceName": "AdminQueries9e1cafc6"
+        }
+      ]
+    },
+    "AMPLIFY_function_SearchFunction_amplifyEnv": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "SearchFunction"
         }
       ]
     },
