@@ -20,7 +20,7 @@ const replaceEndpoints = (arr, dict) => {
 // Define the custom domain mappings for apis
 const mappings = {
   'publicapi': `https://api-dev.memesrc.com/${process.env.REACT_APP_USER_BRANCH}`,
-  'AdminQueries': `https://admin.memesrc.com/${process.env.REACT_APP_USER_BRANCH}`
+  // 'AdminQueries': `https://admin.memesrc.com/${process.env.REACT_APP_USER_BRANCH}`  // Disabling until the custom domain path issue is fixed
 }
 
 // Replace the default domains with custom ones
