@@ -7,6 +7,13 @@
       "permissions": {
         "setting": "open"
       }
+    },
+    "/random": {
+      "name": "/random",
+      "lambdaFunction": "memesrcRandom",
+      "permissions": {
+        "setting": "open"
+      }
     }
   }
 }

@@ -64,6 +64,14 @@
           ],
           "category": "function",
           "resourceName": "SearchFunction"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcRandom"
         }
       ],
       "providerPlugin": "awscloudformation",
@@ -132,6 +140,11 @@
       "dependsOn": [],
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
+    },
+    "memesrcRandom": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
     }
   },
   "hosting": {
@@ -194,6 +207,22 @@
         {
           "category": "function",
           "resourceName": "SearchFunction"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcRandom_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcRandom"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcRandom_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcRandom"
         }
       ]
     }

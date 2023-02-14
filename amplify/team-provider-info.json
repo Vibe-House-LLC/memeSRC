@@ -37,7 +37,11 @@
           "s3Key": "amplify-builds/SearchFunction-686946634d32672f7836-build.zip",
           "amplifyEnv": "dev"
         },
-        "memesrcSearch": {}
+        "memesrcSearch": {},
+        "memesrcRandom": {
+          "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
+          "s3Key": "amplify-builds/memesrcRandom-526b70754e3933514d46-build.zip"
+        }
       },
       "storage": {
         "memesrcGeneratedImages": {}
