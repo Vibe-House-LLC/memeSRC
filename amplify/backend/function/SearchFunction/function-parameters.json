@@ -1,0 +1,8 @@
+{
+  "lambdaLayers": [],
+  "secretNames": [
+    "opensearch_user",
+    "opensearch_pass",
+    "opensearch_url"
+  ]
+}
