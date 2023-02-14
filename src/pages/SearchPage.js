@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { API } from 'aws-amplify';
 import { Grid, CircularProgress, Card } from '@mui/material';
 import styled from '@emotion/styled';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -118,27 +119,27 @@ export default function SearchPage() {
         setSeriesTitle(params.seriesId)
         console.log(params)
         setLoading(true);
-        let apiSearchUrl;
-        if (seriesTitle && seriesTitle !== '_universal') {
-          apiSearchUrl = `https://api.memesrc.com/?series=${seriesTitle}&search=${searchTerm}`;
-        } else {
-          apiSearchUrl = `https://api.memesrc.com/?search=${searchTerm}`;
+        // TODO: switch to using amplify to access the publicapi
+        const apiName = 'publicapi';
+        const path = '/search';
+        const myInit = {
+          queryStringParameters: {
+            q: searchTerm,
+            series: seriesTitle
+          }
         }
 
-        getSessionID().then(sessionID => {
-          fetch(`${apiSearchUrl}&sessionID=${sessionID}`)
-            .then(response => response.json())
-            .then(data => {
-              setResults(data);
-              setLoading(false);
-              setLoadedSearchTerm(searchTerm);
-              setLoadedSeriesTitle(seriesTitle);
-            })
-            .catch(error => {
-              console.error(error);
-              setLoading(false);
-            });
-        }).catch(err => console.log(`Error with sessionID: ${err}`))
+        API.get(apiName, path, myInit)
+          .then(data => {
+            setResults(data);
+            setLoading(false);
+            setLoadedSearchTerm(searchTerm);
+            setLoadedSeriesTitle(seriesTitle);
+          })
+          .catch(error => {
+            console.error(error);
+            setLoading(false);
+          });
       }
     }
   }, [params, searchTerm, seriesTitle, loadedSeriesTitle, loadedSearchTerm])
@@ -172,9 +173,9 @@ export default function SearchPage() {
                   <SeasonEpisodeText><b>S.</b>{result.season_number} <b>E.</b>{result.episode_number}</SeasonEpisodeText> <b>{result.series_name}</b>
                 </TopCardInfo>
                 <BottomCardCaption>
-                {result.subtitle}
+                  {result.subtitle}
                 </BottomCardCaption>
-                  
+
                 {/* <StyledTypography variant="body2">
                   Subtitle: {result.subtitle}<br />
                   Series: {result.series_name}<br />

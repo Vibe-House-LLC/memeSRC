@@ -1,18 +1,22 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "{\"createdOn\":\"Mac\",\"createdBy\":\"Amplify\",\"createdWith\":\"10.5.1\",\"stackType\":\"function-Lambda\",\"metadata\":{}}",
+  "Description": "{\"createdOn\":\"Mac\",\"createdBy\":\"Amplify\",\"createdWith\":\"10.7.2\",\"stackType\":\"function-Lambda\",\"metadata\":{}}",
   "Parameters": {
-    "env": {
-      "Type": "String"
-    },
-    "authmemesrcc3c71449UserPoolId": {
+    "CloudWatchRule": {
       "Type": "String",
-      "Default": "authmemesrcc3c71449UserPoolId"
+      "Default": "NONE",
+      "Description": " Schedule Expression"
     },
     "deploymentBucketName": {
       "Type": "String"
     },
+    "env": {
+      "Type": "String"
+    },
     "s3Key": {
+      "Type": "String"
+    },
+    "secretsPathAmplifyAppId": {
       "Type": "String"
     },
     "amplifyEnv": {
@@ -37,16 +41,24 @@
         "aws:asset:property": "Code"
       },
       "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Ref": "deploymentBucketName"
+          },
+          "S3Key": {
+            "Ref": "s3Key"
+          }
+        },
         "Handler": "index.handler",
         "FunctionName": {
           "Fn::If": [
             "ShouldNotCreateEnvResources",
-            "AdminQueries9e1cafc6",
+            "SearchFunction",
             {
               "Fn::Join": [
                 "",
                 [
-                  "AdminQueries9e1cafc6",
+                  "SearchFunction",
                   "-",
                   {
                     "Ref": "env"
@@ -61,9 +73,74 @@
             "ENV": {
               "Ref": "env"
             },
-            "GROUP": "admins",
-            "USERPOOL": {
-              "Ref": "authmemesrcc3c71449UserPoolId"
+            "REGION": {
+              "Ref": "AWS::Region"
+            },
+            "opensearch_user": {
+              "Fn::Join": [
+                "",
+                [
+                  {
+                    "Fn::Sub": [
+                      "/amplify/${appId}/${env}/AMPLIFY_${functionName}_",
+                      {
+                        "appId": {
+                          "Ref": "secretsPathAmplifyAppId"
+                        },
+                        "env": {
+                          "Ref": "env"
+                        },
+                        "functionName": "SearchFunction"
+                      }
+                    ]
+                  },
+                  "opensearch_user"
+                ]
+              ]
+            },
+            "opensearch_pass": {
+              "Fn::Join": [
+                "",
+                [
+                  {
+                    "Fn::Sub": [
+                      "/amplify/${appId}/${env}/AMPLIFY_${functionName}_",
+                      {
+                        "appId": {
+                          "Ref": "secretsPathAmplifyAppId"
+                        },
+                        "env": {
+                          "Ref": "env"
+                        },
+                        "functionName": "SearchFunction"
+                      }
+                    ]
+                  },
+                  "opensearch_pass"
+                ]
+              ]
+            },
+            "opensearch_url": {
+              "Fn::Join": [
+                "",
+                [
+                  {
+                    "Fn::Sub": [
+                      "/amplify/${appId}/${env}/AMPLIFY_${functionName}_",
+                      {
+                        "appId": {
+                          "Ref": "secretsPathAmplifyAppId"
+                        },
+                        "env": {
+                          "Ref": "env"
+                        },
+                        "functionName": "SearchFunction"
+                      }
+                    ]
+                  },
+                  "opensearch_url"
+                ]
+              ]
             },
             "AMPLIFY_ENV": {
               "Ref": "amplifyEnv"
@@ -77,15 +154,8 @@
           ]
         },
         "Runtime": "nodejs14.x",
-        "Timeout": 25,
-        "Code": {
-          "S3Bucket": {
-            "Ref": "deploymentBucketName"
-          },
-          "S3Key": {
-            "Ref": "s3Key"
-          }
-        }
+        "Layers": [],
+        "Timeout": 25
       }
     },
     "LambdaExecutionRole": {
@@ -94,12 +164,12 @@
         "RoleName": {
           "Fn::If": [
             "ShouldNotCreateEnvResources",
-            "AdminQueries9e1cafc6LambdaRole",
+            "memesrcLambdaRole72f1c99b",
             {
               "Fn::Join": [
                 "",
                 [
-                  "AdminQueries9e1cafc6LambdaRole",
+                  "memesrcLambdaRole72f1c99b",
                   "-",
                   {
                     "Ref": "env"
@@ -165,27 +235,34 @@
                   }
                 ]
               }
-            },
+            }
+          ]
+        }
+      }
+    },
+    "AmplifyFunctionSecretsPolicy": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyName": "amplify-function-secrets-policy",
+        "Roles": [
+          {
+            "Ref": "LambdaExecutionRole"
+          }
+        ],
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
             {
               "Effect": "Allow",
               "Action": [
-                "cognito-idp:ListUsersInGroup",
-                "cognito-idp:AdminUserGlobalSignOut",
-                "cognito-idp:AdminEnableUser",
-                "cognito-idp:AdminDisableUser",
-                "cognito-idp:AdminRemoveUserFromGroup",
-                "cognito-idp:AdminAddUserToGroup",
-                "cognito-idp:AdminListGroupsForUser",
-                "cognito-idp:AdminGetUser",
-                "cognito-idp:AdminConfirmSignUp",
-                "cognito-idp:ListUsers",
-                "cognito-idp:ListGroups"
+                "ssm:GetParameter",
+                "ssm:GetParameters"
               ],
               "Resource": {
                 "Fn::Join": [
                   "",
                   [
-                    "arn:aws:cognito-idp:",
+                    "arn:aws:ssm:",
                     {
                       "Ref": "AWS::Region"
                     },
@@ -193,17 +270,32 @@
                     {
                       "Ref": "AWS::AccountId"
                     },
-                    ":userpool/",
+                    ":parameter",
                     {
-                      "Ref": "authmemesrcc3c71449UserPoolId"
-                    }
+                      "Fn::Sub": [
+                        "/amplify/${appId}/${env}/AMPLIFY_${functionName}_",
+                        {
+                          "appId": {
+                            "Ref": "secretsPathAmplifyAppId"
+                          },
+                          "env": {
+                            "Ref": "env"
+                          },
+                          "functionName": "SearchFunction"
+                        }
+                      ]
+                    },
+                    "*"
                   ]
                 ]
               }
             }
           ]
         }
-      }
+      },
+      "DependsOn": [
+        "LambdaExecutionRole"
+      ]
     }
   },
   "Outputs": {

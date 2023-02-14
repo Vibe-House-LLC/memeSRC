@@ -54,6 +54,28 @@
       },
       "providerPlugin": "awscloudformation",
       "service": "AppSync"
+    },
+    "publicapi": {
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "SearchFunction"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcRandom"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "API Gateway"
     }
   },
   "auth": {
@@ -112,6 +134,17 @@
       ],
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
+    },
+    "SearchFunction": {
+      "build": true,
+      "dependsOn": [],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "memesrcRandom": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
     }
   },
   "hosting": {
@@ -121,6 +154,14 @@
     }
   },
   "parameters": {
+    "AMPLIFY_function_AdminQueries9e1cafc6_amplifyEnv": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "AdminQueries9e1cafc6"
+        }
+      ]
+    },
     "AMPLIFY_function_AdminQueries9e1cafc6_deploymentBucketName": {
       "usedBy": [
         {
@@ -134,6 +175,54 @@
         {
           "category": "function",
           "resourceName": "AdminQueries9e1cafc6"
+        }
+      ]
+    },
+    "AMPLIFY_function_SearchFunction_amplifyEnv": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "SearchFunction"
+        }
+      ]
+    },
+    "AMPLIFY_function_SearchFunction_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "SearchFunction"
+        }
+      ]
+    },
+    "AMPLIFY_function_SearchFunction_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "SearchFunction"
+        }
+      ]
+    },
+    "AMPLIFY_function_SearchFunction_secretsPathAmplifyAppId": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "SearchFunction"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcRandom_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcRandom"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcRandom_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcRandom"
         }
       ]
     }

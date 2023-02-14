@@ -1,0 +1,8 @@
+{
+  "environmentVariableList": [
+    {
+      "cloudFormationParameterName": "amplifyEnv",
+      "environmentVariableName": "AMPLIFY_ENV"
+    }
+  ]
+}
