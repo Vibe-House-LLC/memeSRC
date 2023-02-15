@@ -5,10 +5,6 @@
     "opensearch_pass",
     "opensearch_url"
   ],
-  "environmentVariableList": [
-    {
-      "cloudFormationParameterName": "amplifyEnv",
-      "environmentVariableName": "AMPLIFY_ENV"
-    }
-  ]
+  "environmentVariableList": [],
+  "permissions": {}
 }

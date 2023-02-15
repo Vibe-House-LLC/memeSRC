@@ -14,9 +14,6 @@
     },
     "s3Key": {
       "Type": "String"
-    },
-    "amplifyEnv": {
-      "Type": "String"
     }
   },
   "Conditions": {
@@ -64,9 +61,6 @@
             "GROUP": "admins",
             "USERPOOL": {
               "Ref": "authmemesrcc3c71449UserPoolId"
-            },
-            "AMPLIFY_ENV": {
-              "Ref": "amplifyEnv"
             }
           }
         },

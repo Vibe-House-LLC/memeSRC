@@ -336,11 +336,18 @@ export default function FullScreenSearch({
   }
 
   const loadRandomFrame = useCallback(() => {
-    const apiEpisodeLookupUrl = `https://api.memesrc.com/random/generate${seriesTitle === '_universal' ? '' : `?series=${seriesTitle}`}`
     setLoadingRandom(true);
-    fetch(apiEpisodeLookupUrl)
+    const apiName = 'publicapi';
+    const path = '/random';
+    const myInit = {
+      queryStringParameters: {
+        series: seriesTitle
+      }
+    }
+
+    API.get(apiName, path, myInit)
       .then(response => {
-        const fid = response.url.split('=')[1];
+        const fid = response.frame_id;
         console.log(fid)
         navigate(`/editor/${fid}`);
         setLoadingRandom(false);
