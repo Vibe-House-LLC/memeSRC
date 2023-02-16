@@ -1,4 +1,8 @@
-/*
+/* Amplify Params - DO NOT EDIT
+	ENV
+	REGION
+	STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME
+Amplify Params - DO NOT EDIT *//*
 Use the following code to retrieve configured secrets from SSM:
 
 const aws = require('aws-sdk');
@@ -20,6 +24,8 @@ const aws = require('aws-sdk');
 const axios = require('axios');
 
 exports.handler = async (event) => {
+    console.log(`ENV VARS:\n${JSON.stringify(process.env)}`)
+
     // Pull secrets from SSM
     const { Parameters } = await (new aws.SSM())
         .getParameters({
