@@ -124,7 +124,6 @@ export default function SearchPage() {
         } else {
           apiSearchUrl = `https://api.memesrc.com/?search=${searchTerm}`;
         }
-
         getSessionID().then(sessionID => {
           fetch(`${apiSearchUrl}&sessionID=${sessionID}`)
             .then(response => response.json())
@@ -135,10 +134,15 @@ export default function SearchPage() {
               setLoadedSeriesTitle(seriesTitle);
             })
             .catch(error => {
-              console.error(error);
+              console.error(`Error: ${error}`);
+              navigate(`/error`)
               setLoading(false);
             });
-        }).catch(err => console.log(`Error with sessionID: ${err}`))
+        })
+        .catch(err => {
+          console.log(`Error with sessionID: ${err}`)
+          navigate(`/error`)
+        })
       }
     }
   }, [params, searchTerm, seriesTitle, loadedSeriesTitle, loadedSearchTerm])
@@ -153,7 +157,6 @@ export default function SearchPage() {
   }, [seriesTitle, searchTerm, navigate]);
 
   return (
-
     <>
       {(memoizedResults || loading) && <TopBannerSearch searchFunction={handleSearch} setSearchTerm={setSearchTerm} setSeriesTitle={setSeriesTitle} searchTerm={searchTerm} seriesTitle={seriesTitle} loading={loading} />}
       <Grid container spacing={2} alignItems='stretch' paddingX={{ xs: 2, md: 6 }}>
