@@ -1,19 +1,36 @@
 /* Amplify Params - DO NOT EDIT
-	ENV
-	REGION
-	STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME
+  ENV
+  REGION
+  STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME
 Amplify Params - DO NOT EDIT *//**
  * @type {import('@types/aws-lambda').APIGatewayProxyHandler}
  */
 
-const aws = require('aws-sdk');
+const { S3 } = require("@aws-sdk/client-s3");
+const { SSM, GetParametersCommand } = require("@aws-sdk/client-ssm");
 const axios = require('axios');
+const uuid = require('uuid');
 
 // Define the function to search OpenSearch
 const search = (search_string, series_name, opensearch_endpoint, opensearch_user, opensearch_pass) => {
   const max_results = 50;
 
   console.log(`ENV VARS:\n${JSON.stringify(process.env)}`)
+
+  // S3 bucket name for the analyticsBucket
+  const analyticsBucket = process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME;
+
+  const createTestObject = (prefix, data) => {
+    const uniqueId = uuid.v4(); // use UUID for unique identifier
+    const s3 = new S3(); // create a new instance of the AWS SDK S3 client
+    const s3Params = { // Set up the parameters for the S3 object
+      Bucket: analyticsBucket,
+      Key: `${prefix}/${uniqueId}.json`,
+      Body: JSON.stringify(data),
+      ContentType: 'application/json'
+    };
+    return s3.putObject(s3Params); // Return the S3 promise for the S3 object
+  }
 
   const opensearch_auth = {
     username: opensearch_user,
@@ -49,12 +66,13 @@ const search = (search_string, series_name, opensearch_endpoint, opensearch_user
 exports.handler = async (event) => {
 
   // Pull secrets from SSM
-  const { Parameters } = await (new aws.SSM())
-    .getParameters({
-      Names: ["opensearch_user", "opensearch_pass", "opensearch_url"].map(secretName => process.env[secretName]),
-      WithDecryption: true,
-    })
-    .promise();
+  const ssmClient = new SSM();
+  const ssmParams = {
+    Names: ["opensearch_user", "opensearch_pass", "opensearch_url"].map(secretName => process.env[secretName]),
+    WithDecryption: true,
+  };
+  const { Parameters } = await ssmClient.send(new GetParametersCommand(ssmParams));
+
 
   // OpenSearch values
   const opensearch_url = Parameters.find(param => param.Name === process.env['opensearch_url']).Value
