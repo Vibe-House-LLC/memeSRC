@@ -631,6 +631,11 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                             {!imageUploading && <img src={`https://i${(process.env.REACT_APP_USER_BRANCH) === 'prod' ? 'prod' : `-${process.env.REACT_APP_USER_BRANCH}`}.memesrc.com/${generatedImageFilename}`} alt="generated meme" />}
                             {imageUploading && <center><CircularProgress sx={{ margin: '30%' }} /></center>}
                         </DialogContentText>
+                        <DialogContentText sx={{ paddingX: 4, marginY: 'auto'}}>
+                            <center>
+                                <p>☝️ {('ontouchstart' in window) ? 'Tap and hold' : 'Right click'} the image to save, or use the quick actions:</p>
+                            </center>
+                        </DialogContentText>
                     </DialogContent>
                     <DialogActions sx={{ marginBottom: 'auto', display: 'inline-flex', padding: '0 23px' }}>
                         <Box display='grid' width='100%'>
