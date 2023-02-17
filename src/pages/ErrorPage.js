@@ -32,12 +32,12 @@ export default function ErrorPage() {
           </Typography>
 
           <Typography sx={{ color: 'text.secondary' }}>
-            Sorry, it seems like memeSRC is struggling right now. Try again in a sec.
+            Sorry. It seems memeSRC is struggling. Try again in a sec.
           </Typography>
 
           <Box
             component="img"
-            src="/assets/illustrations/illustration_404.svg"
+            src="/assets/memeSRC-color.svg"
             sx={{ height: 260, mx: 'auto', my: { xs: 5, sm: 10 } }}
           />
 
