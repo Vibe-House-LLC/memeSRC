@@ -4,5 +4,14 @@
     "opensearch_user",
     "opensearch_pass",
     "opensearch_url"
-  ]
+  ],
+  "permissions": {
+    "storage": {
+      "memesrcGeneratedImages": [
+        "create",
+        "read",
+        "update"
+      ]
+    }
+  }
 }

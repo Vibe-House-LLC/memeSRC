@@ -1,6 +1,7 @@
 /* Amplify Params - DO NOT EDIT
 	ENV
 	REGION
+	STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME
 Amplify Params - DO NOT EDIT *//**
  * @type {import('@types/aws-lambda').APIGatewayProxyHandler}
  */
@@ -11,6 +12,8 @@ const axios = require('axios');
 // Define the function to search OpenSearch
 const search = (search_string, series_name, opensearch_endpoint, opensearch_user, opensearch_pass) => {
   const max_results = 50;
+
+  console.log(`ENV VARS:\n${JSON.stringify(process.env)}`)
 
   const opensearch_auth = {
     username: opensearch_user,
