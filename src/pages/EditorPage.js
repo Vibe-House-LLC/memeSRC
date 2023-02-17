@@ -633,7 +633,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                         </DialogContentText>
                         <DialogContentText sx={{ paddingX: 4, marginY: 'auto'}}>
                             <center>
-                                <p>☝️ {('ontouchstart' in window) ? 'Tap and hold' : 'Right click'} the image to save, or use the quick actions:</p>
+                                <p>☝️ {('ontouchstart' in window) ? 'Tap and hold' : 'Right click'} the image to save, or use a quick action:</p>
                             </center>
                         </DialogContentText>
                     </DialogContent>
