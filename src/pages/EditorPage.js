@@ -632,6 +632,11 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                             {imageUploading && <center><CircularProgress sx={{ margin: '30%' }} /></center>}
                         </DialogContentText>
                     </DialogContent>
+                    <DialogContentText sx={{ paddingX: 4, marginY: 'auto'}}>
+                        <center>
+                            <p>☝️ {('ontouchstart' in window) ? 'Tap and hold' : 'Right click'} the image to save, or use a quick action:</p>
+                        </center>
+                    </DialogContentText>
                     <DialogActions sx={{ marginBottom: 'auto', display: 'inline-flex', padding: '0 23px' }}>
                         <Box display='grid' width='100%'>
                             {navigator.canShare &&
