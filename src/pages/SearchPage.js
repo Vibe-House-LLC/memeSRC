@@ -128,10 +128,14 @@ export default function SearchPage() {
           fetch(`${apiSearchUrl}&sessionID=${sessionID}`)
             .then(response => response.json())
             .then(data => {
-              setResults(data);
-              setLoading(false);
-              setLoadedSearchTerm(searchTerm);
-              setLoadedSeriesTitle(seriesTitle);
+              if (data.length > 0) {
+                setResults(data);
+                setLoading(false);
+                setLoadedSearchTerm(searchTerm);
+                setLoadedSeriesTitle(seriesTitle);
+              } else {
+                navigate(`/error`)
+              }
             })
             .catch(error => {
               console.error(`Error: ${error}`);
