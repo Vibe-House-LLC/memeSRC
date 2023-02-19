@@ -7,7 +7,7 @@ import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
 import { Button, Card, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, Popover, Slider, Snackbar, Stack, TextField, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { AddCircleOutline, Close, ContentCopy, HighlightOffRounded, HistoryToggleOffRounded, IosShare, Share } from '@mui/icons-material';
-import { Storage } from 'aws-amplify';
+import { API, Storage } from 'aws-amplify';
 import { Box } from '@mui/system';
 import TextEditorControls from '../components/TextEditorControls';
 
@@ -222,29 +222,25 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     }, [editor]);
 
     const loadEditorDefaults = useCallback(() => {
-        const apiSearchUrl = `https://api.memesrc.com/?fid=${selectedFid}`;
-        getSessionID().then(sessionID => {
-            fetch(`${apiSearchUrl}&sessionID=${sessionID}`).then(response => {
-                console.log('test')
-                response.json().then(data => {
-                    console.log(data)
-                    setLoadedSeriesTitle(data.series_name);
-                    setSurroundingFrames(data.frames_surrounding);
-                    const episodeDetails = selectedFid.split('-');
-                    setEpisodeDetails(episodeDetails);
-                    // Pre load fine tuning frames
-                    loadImg(data.frames_fine_tuning, oImgBuild).then((images) => {
-                        setFineTuningFrames(images)
-                    });
-                    // Background image from the 
-                    fabric.Image.fromURL(`https://memesrc.com${data.frame_image}`, (oImg) => {
-                        console.log(oImg)
-                        setDefaultFrame(oImg);
-                        setDefaultSubtitle(data.subtitle);
-                    }, { crossOrigin: "anonymous" });
-                }).catch(err => console.log(err))
-            }).catch(err => console.log(err))
-        }).catch(err => console.log(`Error with sessionID: ${err}`))
+        const queryStringParams = { queryStringParameters: { fid: selectedFid } }
+        API.get('publicapi', 'frame', queryStringParams).then(data => {
+            console.log('test')
+            console.log(data)
+            setLoadedSeriesTitle(data.series_name);
+            setSurroundingFrames(data.frames_surrounding);
+            const episodeDetails = selectedFid.split('-');
+            setEpisodeDetails(episodeDetails);
+            // Pre load fine tuning frames
+            loadImg(data.frames_fine_tuning, oImgBuild).then((images) => {
+                setFineTuningFrames(images)
+            });
+            // Background image from the 
+            fabric.Image.fromURL(`https://memesrc.com${data.frame_image}`, (oImg) => {
+                console.log(oImg)
+                setDefaultFrame(oImg);
+                setDefaultSubtitle(data.subtitle);
+            }, { crossOrigin: "anonymous" });
+        }).catch(err => console.log(err))
     }, [resizeCanvas, selectedFid, editor, addText])
 
     // Look up data for the fid and set defaults
@@ -621,7 +617,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                     aria-labelledby="responsive-dialog-title"
                     fullWidth
                     PaperProps={{ sx: { xs: { minWidth: '85vw' }, sm: { minWidth: '85vw' }, md: { minWidth: '85vw' }, } }}
-                    BackdropProps={{style: {backgroundColor: 'rgb(33, 33, 33, 0.9)'}}}
+                    BackdropProps={{ style: { backgroundColor: 'rgb(33, 33, 33, 0.9)' } }}
                 >
                     <DialogTitle id="responsive-dialog-title" >
                         Save Image
@@ -632,7 +628,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                             {imageUploading && <center><CircularProgress sx={{ margin: '30%' }} /></center>}
                         </DialogContentText>
                     </DialogContent>
-                    <DialogContentText sx={{ paddingX: 4, marginTop: 'auto', paddingBottom: 2}}>
+                    <DialogContentText sx={{ paddingX: 4, marginTop: 'auto', paddingBottom: 2 }}>
                         <center>
                             <p>☝️ <b>{('ontouchstart' in window) ? 'Tap and hold' : 'Right click'} the image to save</b>, or use a quick action:</p>
                         </center>
