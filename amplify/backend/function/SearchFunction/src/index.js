@@ -52,23 +52,22 @@ const search = async (searchString, seriesName, opensearchEndpoint, opensearchUs
   const max_results = 50;
 
   // console.log(`ENV VARS:\n${JSON.stringify(process.env)}`)
-
-  const data = {
-    searchString,
-    seriesName
-  };
   
   // trackAnalyticsEventToS3(data, "search")
   //   .then(() => console.log("Successfully wrote data to S3"))
   //   .catch((err) => console.error(err));
 
-    // Track analytics event
-    try {
-      await trackAnalyticsEventToS3(data, "search");
-      console.log("Successfully wrote data to S3");
-    } catch (error) {
-      console.error(error);
-    }
+  // Track analytics event
+  const data = {
+    searchString,
+    seriesName
+  };
+  try {
+    await trackAnalyticsEventToS3(data, "search");
+    console.log("Successfully wrote data to S3");
+  } catch (error) {
+    console.error(error);
+  }
   
 
   const opensearch_auth = {
@@ -111,7 +110,6 @@ exports.handler = async (event) => {
     WithDecryption: true,
   };
   const { Parameters } = await ssmClient.send(new GetParametersCommand(ssmParams));
-
 
   // OpenSearch values
   const opensearch_url = Parameters.find(param => param.Name === process.env['opensearch_url']).Value
