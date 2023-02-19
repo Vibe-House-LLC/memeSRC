@@ -1,35 +1,90 @@
 /* Amplify Params - DO NOT EDIT
-	ENV
-	REGION
-	STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME
+  ENV
+  REGION
+  STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME
 Amplify Params - DO NOT EDIT *//**
  * @type {import('@types/aws-lambda').APIGatewayProxyHandler}
  */
 
-const aws = require('aws-sdk');
+const { S3 } = require("@aws-sdk/client-s3");
+const { SSM, GetParametersCommand } = require("@aws-sdk/client-ssm");
 const axios = require('axios');
+const uuid = require('uuid');
+
+// S3 bucket name for the analyticsBucket
+const analyticsBucket = process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME;
+
+const trackAnalyticsEventToS3 = (eventData, eventType) => {
+  const uniqueId = uuid.v4();
+  const s3 = new S3();
+  const eventTime = new Date(Date.now());
+  const year = eventTime.getUTCFullYear();
+  const month = `0${eventTime.getUTCMonth() + 1}`.slice(-2);
+  const day = `0${eventTime.getUTCDate()}`.slice(-2);
+
+  const s3Params = {
+    Bucket: analyticsBucket,
+    Key: `analytics/${eventType}/year=${year}/month=${month}/day=${day}/${uniqueId}.json`,
+    Body: JSON.stringify({ ...eventData, eventTime, eventYear: year, eventMonth: month, eventDay: day }),
+    ContentType: "application/json"
+  };
+
+  console.log(s3Params)
+
+  return s3.putObject(s3Params);
+};
+
+
+const createTestObject = (prefix, data) => {
+  const uniqueId = uuid.v4(); // use UUID for unique identifier
+  const s3 = new S3(); // create a new instance of the AWS SDK S3 client
+  const s3Params = { // Set up the parameters for the S3 object
+    Bucket: analyticsBucket,
+    Key: `${prefix}/${uniqueId}.json`,
+    Body: JSON.stringify(data),
+    ContentType: 'application/json'
+  };
+  return s3.putObject(s3Params); // Return the S3 promise for the S3 object
+}
 
 // Define the function to search OpenSearch
-const search = (search_string, series_name, opensearch_endpoint, opensearch_user, opensearch_pass) => {
+const search = async (searchString, seriesName, opensearchEndpoint, opensearchUser, opensearchPass) => {
   const max_results = 50;
 
-  console.log(`ENV VARS:\n${JSON.stringify(process.env)}`)
+  // console.log(`ENV VARS:\n${JSON.stringify(process.env)}`)
+  
+  // trackAnalyticsEventToS3(data, "search")
+  //   .then(() => console.log("Successfully wrote data to S3"))
+  //   .catch((err) => console.error(err));
+
+  // Track analytics event
+  const data = {
+    searchString,
+    seriesName
+  };
+  try {
+    await trackAnalyticsEventToS3(data, "search");
+    console.log("Successfully wrote data to S3");
+  } catch (error) {
+    console.error(error);
+  }
+  
 
   const opensearch_auth = {
-    username: opensearch_user,
-    password: opensearch_pass
+    username: opensearchUser,
+    password: opensearchPass
   };
 
   let url;
-  if (series_name === '_universal') {
-    url = `${opensearch_endpoint}/*,-fc-*/_search?size=${max_results}`;
+  if (seriesName === '_universal') {
+    url = `${opensearchEndpoint}/*,-fc-*/_search?size=${max_results}`;
   } else {
-    url = `${opensearch_endpoint}/${series_name}/_search?size=${max_results}`;
+    url = `${opensearchEndpoint}/${seriesName}/_search?size=${max_results}`;
   }
   const payload = {
     query: {
       match: {
-        sub_content: search_string
+        sub_content: searchString
       }
     }
   };
@@ -49,12 +104,12 @@ const search = (search_string, series_name, opensearch_endpoint, opensearch_user
 exports.handler = async (event) => {
 
   // Pull secrets from SSM
-  const { Parameters } = await (new aws.SSM())
-    .getParameters({
-      Names: ["opensearch_user", "opensearch_pass", "opensearch_url"].map(secretName => process.env[secretName]),
-      WithDecryption: true,
-    })
-    .promise();
+  const ssmClient = new SSM();
+  const ssmParams = {
+    Names: ["opensearch_user", "opensearch_pass", "opensearch_url"].map(secretName => process.env[secretName]),
+    WithDecryption: true,
+  };
+  const { Parameters } = await ssmClient.send(new GetParametersCommand(ssmParams));
 
   // OpenSearch values
   const opensearch_url = Parameters.find(param => param.Name === process.env['opensearch_url']).Value
@@ -62,7 +117,7 @@ exports.handler = async (event) => {
   const opensearch_pass = Parameters.find(param => param.Name === process.env['opensearch_pass']).Value
 
   // Output the event for debugging purposes
-  console.log(`EVENT: ${JSON.stringify(event)}`);
+  // console.log(`EVENT: ${JSON.stringify(event)}`);
 
   // Get the query string params
   const params = event.queryStringParameters;
