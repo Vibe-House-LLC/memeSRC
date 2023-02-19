@@ -89,6 +89,9 @@ function parseFrameData(frameData) {
   const seriesName = content_id.split('-')[0];
   const [idS, idE] = frame_id.split('-').slice(1);
 
+  const surroundingFrames = generateSurroundingFrames(frame_id)
+  const fineTuningFrames = generateFineTuningFrames(frame_id)
+
   return {
     fid: frame_id,
     series_name: seriesName,
@@ -96,8 +99,8 @@ function parseFrameData(frameData) {
     episode_number: parseInt(idE),
     subtitle: sub_content,
     frame_image: `/${seriesName}/img/${idS}/${idE}/${frame_id}.jpg`,
-    frames_surrounding: generateSurroundingFrames(frame_id),
-    frames_fine_tuning: generateFineTuningFrames(frame_id)
+    frames_surrounding: surroundingFrames,
+    frames_fine_tuning: fineTuningFrames
   };
 }
 
@@ -118,7 +121,7 @@ exports.handler = async (event) => {
   const opensearch_pass = Parameters.find(param => param.Name === process.env['opensearch_pass']).Value
 
   // Define function to get a random frame
-  const getFrame = fid => {
+  const getFrame = async fid => {
     const seriesId = fid.split('-')[0]
     const url = `${opensearch_url}/${seriesId}/_doc/${fid}`
     console.log(`OPENSEARCH REQUEST URL: ${url}`)
@@ -131,10 +134,9 @@ exports.handler = async (event) => {
       auth: opensearch_auth,
       headers
     }).then((response) => {
-      console.log(response)
-      1/0
+      // console.log(response)
       const frame = parseFrameData(response.data._source)
-      console.log(frame)
+      // console.log(frame)
       return frame;
     }).catch((error) => {
       console.log(error);
@@ -142,16 +144,38 @@ exports.handler = async (event) => {
   }
 
   // Output the event for debugging purposes
-  console.log(`EVENT: ${JSON.stringify(event)}`);
+  // console.log(`EVENT: ${JSON.stringify(event)}`);
 
   // Get the query string params
   const params = event.queryStringParameters;
 
-  console.log(`EVENT: ${JSON.stringify(event)}`);
+  // console.log(`EVENT: ${JSON.stringify(event)}`);
 
   const fid = params.fid;
 
   const frame = await getFrame(fid);
+
+  // TESTING
+  console.log(`STARTTTTT:`);
+  const surroundingFramesWithSubtitles = await Promise.all(frame.frames_surrounding.map(async record => {
+    try {
+      const frameData = await getFrame(record.fid);
+      return {
+        ...record,
+        subtitle: frameData.subtitle
+      };
+    } catch (error) {
+      console.log(error);
+    }
+  }));
+
+  frame.frames_surrounding = surroundingFramesWithSubtitles
+  
+  
+  // console.log(output);
+  
+
+  // console.log(`BRAND NEW OUTPUT: ${JSON.stringify(surroundingFramesWithSubtitles)}`);
 
   // Track analytics event
   const data = {
