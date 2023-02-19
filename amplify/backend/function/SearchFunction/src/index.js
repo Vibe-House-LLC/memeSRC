@@ -11,42 +11,81 @@ const { SSM, GetParametersCommand } = require("@aws-sdk/client-ssm");
 const axios = require('axios');
 const uuid = require('uuid');
 
+// S3 bucket name for the analyticsBucket
+const analyticsBucket = process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME;
+
+const trackAnalyticsEventToS3 = (eventData, eventType) => {
+  const uniqueId = uuid.v4();
+  const s3 = new S3();
+  const eventTime = new Date(Date.now());
+  const year = eventTime.getUTCFullYear();
+  const month = `0${eventTime.getUTCMonth() + 1}`.slice(-2);
+  const day = `0${eventTime.getUTCDate()}`.slice(-2);
+
+  const s3Params = {
+    Bucket: analyticsBucket,
+    Key: `analytics/${eventType}/year=${year}/month=${month}/day=${day}/${uniqueId}.json`,
+    Body: JSON.stringify({ ...eventData, eventTime, eventYear: year, eventMonth: month, eventDay: day }),
+    ContentType: "application/json"
+  };
+
+  console.log(s3Params)
+
+  return s3.putObject(s3Params);
+};
+
+
+const createTestObject = (prefix, data) => {
+  const uniqueId = uuid.v4(); // use UUID for unique identifier
+  const s3 = new S3(); // create a new instance of the AWS SDK S3 client
+  const s3Params = { // Set up the parameters for the S3 object
+    Bucket: analyticsBucket,
+    Key: `${prefix}/${uniqueId}.json`,
+    Body: JSON.stringify(data),
+    ContentType: 'application/json'
+  };
+  return s3.putObject(s3Params); // Return the S3 promise for the S3 object
+}
+
 // Define the function to search OpenSearch
-const search = (search_string, series_name, opensearch_endpoint, opensearch_user, opensearch_pass) => {
+const search = async (searchString, seriesName, opensearchEndpoint, opensearchUser, opensearchPass) => {
   const max_results = 50;
 
-  console.log(`ENV VARS:\n${JSON.stringify(process.env)}`)
+  // console.log(`ENV VARS:\n${JSON.stringify(process.env)}`)
 
-  // S3 bucket name for the analyticsBucket
-  const analyticsBucket = process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME;
+  const data = {
+    searchString,
+    seriesName
+  };
+  
+  // trackAnalyticsEventToS3(data, "search")
+  //   .then(() => console.log("Successfully wrote data to S3"))
+  //   .catch((err) => console.error(err));
 
-  const createTestObject = (prefix, data) => {
-    const uniqueId = uuid.v4(); // use UUID for unique identifier
-    const s3 = new S3(); // create a new instance of the AWS SDK S3 client
-    const s3Params = { // Set up the parameters for the S3 object
-      Bucket: analyticsBucket,
-      Key: `${prefix}/${uniqueId}.json`,
-      Body: JSON.stringify(data),
-      ContentType: 'application/json'
-    };
-    return s3.putObject(s3Params); // Return the S3 promise for the S3 object
-  }
+    // Track analytics event
+    try {
+      await trackAnalyticsEventToS3(data, "search");
+      console.log("Successfully wrote data to S3");
+    } catch (error) {
+      console.error(error);
+    }
+  
 
   const opensearch_auth = {
-    username: opensearch_user,
-    password: opensearch_pass
+    username: opensearchUser,
+    password: opensearchPass
   };
 
   let url;
-  if (series_name === '_universal') {
-    url = `${opensearch_endpoint}/*,-fc-*/_search?size=${max_results}`;
+  if (seriesName === '_universal') {
+    url = `${opensearchEndpoint}/*,-fc-*/_search?size=${max_results}`;
   } else {
-    url = `${opensearch_endpoint}/${series_name}/_search?size=${max_results}`;
+    url = `${opensearchEndpoint}/${seriesName}/_search?size=${max_results}`;
   }
   const payload = {
     query: {
       match: {
-        sub_content: search_string
+        sub_content: searchString
       }
     }
   };
@@ -80,7 +119,7 @@ exports.handler = async (event) => {
   const opensearch_pass = Parameters.find(param => param.Name === process.env['opensearch_pass']).Value
 
   // Output the event for debugging purposes
-  console.log(`EVENT: ${JSON.stringify(event)}`);
+  // console.log(`EVENT: ${JSON.stringify(event)}`);
 
   // Get the query string params
   const params = event.queryStringParameters;
@@ -100,7 +139,8 @@ exports.handler = async (event) => {
   // Return the search results as JSON
   return {
     statusCode: 200,
-    body: JSON.stringify(cleanResults),
+    // body: JSON.stringify(cleanResults), // todo: re enable this line
+    body: 'testing',
     headers: {
       'ContentType': 'application/json',
       "Access-Control-Allow-Origin": "*",
