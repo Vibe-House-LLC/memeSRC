@@ -72,6 +72,14 @@
           ],
           "category": "function",
           "resourceName": "memesrcRandom"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcFrameFunction"
         }
       ],
       "providerPlugin": "awscloudformation",
@@ -149,6 +157,20 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "memesrcFrameFunction": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "BucketName"
+          ],
+          "category": "storage",
+          "resourceName": "memesrcGeneratedImages"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "memesrcRandom": {
       "build": true,
       "dependsOn": [
@@ -208,6 +230,30 @@
         {
           "category": "function",
           "resourceName": "SearchFunction"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcFrameFunction_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcFrameFunction"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcFrameFunction_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcFrameFunction"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcFrameFunction_secretsPathAmplifyAppId": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcFrameFunction"
         }
       ]
     },

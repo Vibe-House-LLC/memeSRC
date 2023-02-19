@@ -14,6 +14,13 @@
       "permissions": {
         "setting": "open"
       }
+    },
+    "/frame": {
+      "name": "/frame",
+      "lambdaFunction": "memesrcFrameFunction",
+      "permissions": {
+        "setting": "open"
+      }
     }
   }
 }
