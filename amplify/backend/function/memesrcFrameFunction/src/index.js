@@ -50,6 +50,39 @@ const trackAnalyticsEventToS3 = (eventData, eventType) => {
   return s3.putObject(s3Params);
 };
 
+const splitFrameId = (frameId) => {
+  const [seriesId, idS, idE, frameNum] = frameId.split('-')
+  return { seriesId, frameNum: parseInt(frameNum), idS, idE }
+}
+
+const generateFrameIds = (frameId, fineTuning = false) => {
+  const frameMultiple = fineTuning ? 1 : 9
+  const { seriesId, frameNum, idS, idE } = splitFrameId(frameId)
+  const baseId = `${seriesId}-${idS}-${idE}`
+  const prevIds = Array.from({ length: 9 }, (_, i) => {
+    const newFrameNum = frameNum + (i - 4) * frameMultiple
+    return `${baseId}-${newFrameNum}`
+  })
+  return prevIds
+}
+
+const generateSurroundingFrames = (frameId) => {
+  const ids = generateFrameIds(frameId)
+  const { seriesId, idS, idE } = splitFrameId(frameId)
+  const surroundingFrameData = ids.map((id) => {
+    const newFrameNum = id.split('-')[3]
+    return { fid: id, frame_image: `/${seriesId}/img/${idS}/${idE}/${id}.jpg` }
+  })
+  return surroundingFrameData
+}
+
+const generateFineTuningFrames = (frameId) => {
+  const ids = generateFrameIds(frameId, true)
+  const { seriesId, idS, idE } = splitFrameId(frameId)
+  const fineTuningData = ids.map((id) => `/${seriesId}/img/${idS}/${idE}/${id}.jpg`)
+  return fineTuningData
+}
+
 function parseFrameData(frameData) {
   const { content_id, frame_id, sub_content } = frameData;
 
@@ -63,11 +96,10 @@ function parseFrameData(frameData) {
     episode_number: parseInt(idE),
     subtitle: sub_content,
     frame_image: `/${seriesName}/img/${idS}/${idE}/${frame_id}.jpg`,
-    frames_surrounding: 'todo',
-    frames_fine_tuning: 'todo',
+    frames_surrounding: generateSurroundingFrames(frame_id),
+    frames_fine_tuning: generateFineTuningFrames(frame_id)
   };
 }
-
 
 exports.handler = async (event) => {
   console.log(`ENV VARS:\n${JSON.stringify(process.env)}`)
