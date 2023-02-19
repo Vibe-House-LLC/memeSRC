@@ -139,8 +139,7 @@ exports.handler = async (event) => {
   // Return the search results as JSON
   return {
     statusCode: 200,
-    // body: JSON.stringify(cleanResults), // todo: re enable this line
-    body: 'testing',
+    body: JSON.stringify(cleanResults),
     headers: {
       'ContentType': 'application/json',
       "Access-Control-Allow-Origin": "*",
