@@ -6,6 +6,7 @@ const DashboardLayout = lazy(() => import('./layouts/dashboard'));
 const BlogPage = lazy(() => import('./pages/BlogPage'));
 const UserPage = lazy(() => import('./pages/UserPage'));
 const Page404 = lazy(() => import('./pages/Page404'));
+const ErrorPage = lazy(() => import('./pages/ErrorPage'));
 const ProductsPage = lazy(() => import('./pages/ProductsPage'));
 const DashboardAppPage = lazy(() => import('./pages/DashboardAppPage'));
 const AuthPage = lazy(() => import('./pages/AuthPage'));
@@ -68,6 +69,10 @@ export default function Router() {
     {
       path: '/episode/:seriesId/:seasonNum/:episodeNum',
       element: <TopBannerSearchRevised><EpisodePage /></TopBannerSearchRevised>
+    },
+    {
+      path: '/error',
+      element: <ErrorPage/>
     },
     {
       path: '/404',

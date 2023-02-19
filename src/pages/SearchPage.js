@@ -154,7 +154,6 @@ export default function SearchPage() {
   }, [seriesTitle, searchTerm, navigate]);
 
   return (
-
     <>
       {(memoizedResults || loading) && <TopBannerSearch searchFunction={handleSearch} setSearchTerm={setSearchTerm} setSeriesTitle={setSeriesTitle} searchTerm={searchTerm} seriesTitle={seriesTitle} loading={loading} />}
       <Grid container spacing={2} alignItems='stretch' paddingX={{ xs: 2, md: 6 }}>
