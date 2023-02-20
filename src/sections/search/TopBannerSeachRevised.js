@@ -128,27 +128,47 @@ export default function TopBannerSearchRevised(props) {
   //   // eslint-disable-next-line react-hooks/exhaustive-deps
   // }, [seriesTitle])
 
+  const getSessionID = async () => {
+    let sessionID;
+    if ("sessionID" in sessionStorage) {
+      sessionID = sessionStorage.getItem("sessionID");
+      return Promise.resolve(sessionID);
+    }
+    return API.get('publicapi', '/uuid')
+      .then(generatedSessionID => {
+        sessionStorage.setItem("sessionID", generatedSessionID);
+        return generatedSessionID;
+      })
+      .catch(err => {
+        console.log(`UUID Gen Fetch Error:  ${err}`);
+        throw err;
+      });
+  };
+
   const loadRandomFrame = useCallback(() => {
     setLoadingRandom(true);
-    const apiName = 'publicapi';
-    const path = '/random';
-    const myInit = {
-      queryStringParameters: {
-        series: seriesTitle
+    getSessionID().then(sessionId => {
+      const apiName = 'publicapi';
+      const path = '/random';
+      const myInit = {
+        queryStringParameters: {
+          series: seriesTitle,
+          sessionId
+        }
       }
-    }
 
-    API.get(apiName, path, myInit)
-      .then(response => {
-        const fid = response.frame_id;
-        console.log(fid)
-        navigate(`/editor/${fid}`);
-        setLoadingRandom(false);
-      })
-      .catch(error => {
-        console.error(error);
-        setLoadingRandom(false);
-      });
+      API.get(apiName, path, myInit)
+        .then(response => {
+          const fid = response.frame_id;
+          console.log(fid)
+          navigate(`/editor/${fid}`);
+          setLoadingRandom(false);
+        })
+        .catch(error => {
+          console.error(error);
+          setLoadingRandom(false);
+        });
+    })
   }, [navigate, seriesTitle]);
 
   return (

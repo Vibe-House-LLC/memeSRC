@@ -183,19 +183,19 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     const getSessionID = async () => {
         let sessionID;
         if ("sessionID" in sessionStorage) {
-            sessionID = sessionStorage.getItem("sessionID");
-        } else {
-            await fetch(`https://api.memesrc.com/?uuidGen`)
-                .then(response => {
-                    response.json()
-                        .then(generatedSessionID => {
-                            sessionStorage.setItem("sessionID", generatedSessionID);
-                            sessionID = generatedSessionID
-                        }).catch(err => console.log(`JSON Parse Error:  ${err}`));
-                }).catch(err => console.log(`UUID Gen Fetch Error:  ${err}`));
+          sessionID = sessionStorage.getItem("sessionID");
+          return Promise.resolve(sessionID);
         }
-        return sessionID;
-    }
+        return API.get('publicapi', '/uuid')
+          .then(generatedSessionID => {
+            sessionStorage.setItem("sessionID", generatedSessionID);
+            return generatedSessionID;
+          })
+          .catch(err => {
+            console.log(`UUID Gen Fetch Error:  ${err}`);
+            throw err;
+          });
+      };
 
     const addText = useCallback((updatedText, append) => {
         const text = new fabric.Textbox(updatedText, {
@@ -228,24 +228,26 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     }, [editor]);
 
     const loadEditorDefaults = useCallback(() => {
-        const queryStringParams = { queryStringParameters: { fid: selectedFid } }
-        API.get('publicapi', 'frame', queryStringParams).then(data => {
-            console.log('test')
-            console.log(data)
-            setLoadedSeriesTitle(data.series_name);
-            setSurroundingFrames(data.frames_surrounding);
-            const episodeDetails = selectedFid.split('-');
-            setEpisodeDetails(episodeDetails);
-            // Pre load fine tuning frames
-            loadImg(data.frames_fine_tuning, oImgBuild).then((images) => {
-                setFineTuningFrames(images)
-            });
-            // Background image from the 
-            fabric.Image.fromURL(`https://memesrc.com${data.frame_image}`, (oImg) => {
-                console.log(oImg)
-                setDefaultFrame(oImg);
-                setDefaultSubtitle(data.subtitle);
-            }, { crossOrigin: "anonymous" });
+        getSessionID().then(sessionId => {
+            const queryStringParams = { queryStringParameters: { fid: selectedFid, sessionId } }
+            API.get('publicapi', '/frame', queryStringParams).then(data => {
+                console.log('test')
+                console.log(data)
+                setLoadedSeriesTitle(data.series_name);
+                setSurroundingFrames(data.frames_surrounding);
+                const episodeDetails = selectedFid.split('-');
+                setEpisodeDetails(episodeDetails);
+                // Pre load fine tuning frames
+                loadImg(data.frames_fine_tuning, oImgBuild).then((images) => {
+                    setFineTuningFrames(images)
+                });
+                // Background image from the 
+                fabric.Image.fromURL(`https://memesrc.com${data.frame_image}`, (oImg) => {
+                    console.log(oImg)
+                    setDefaultFrame(oImg);
+                    setDefaultSubtitle(data.subtitle);
+                }, { crossOrigin: "anonymous" });
+            }).catch(err => console.log(err))
         }).catch(err => console.log(err))
     }, [resizeCanvas, selectedFid, editor, addText])
 
@@ -321,29 +323,28 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
             .then(res => res.blob())
             .then(blob => {
                 setImageBlob(blob);
-                fetch(`https://api.memesrc.com/?uuidGen`).then(response => {
-                    response.json().then(uuid => {
-                        const filename = `${uuid}.jpg`
-                        setGeneratedImageFilename(filename)
-                        Storage.put(`${uuid}.jpg`, blob, {
-                            resumable: true,
-                            contentType: "image/jpeg",
-                            completeCallback: (event) => {
-                                Storage.get(event.key).then(() => {
-                                    // setGeneratedImage(image);
-                                    const file = new File([blob], filename, { type: 'image/jpeg' });
-                                    setShareImageFile(file);
-                                    setImageUploading(false);
-                                })
-                            },
-                            progressCallback: (progress) => {
-                                console.log(`Uploaded: ${progress.loaded}/${progress.total}`);
-                            },
-                            errorCallback: (err) => {
-                                console.error('Unexpected error while uploading', err);
-                            }
-                        })
-                    }).catch(err => console.log(`JSON Parse Error:  ${err}`));
+                API.get('publicapi', '/uuid').then(uuid => {
+                    console.log(`GOT THIS UUID: ${JSON.stringify(uuid)}`)
+                    const filename = `${uuid}.jpg`
+                    setGeneratedImageFilename(filename)
+                    Storage.put(`${uuid}.jpg`, blob, {
+                        resumable: true,
+                        contentType: "image/jpeg",
+                        completeCallback: (event) => {
+                            Storage.get(event.key).then(() => {
+                                // setGeneratedImage(image);
+                                const file = new File([blob], filename, { type: 'image/jpeg' });
+                                setShareImageFile(file);
+                                setImageUploading(false);
+                            })
+                        },
+                        progressCallback: (progress) => {
+                            console.log(`Uploaded: ${progress.loaded}/${progress.total}`);
+                        },
+                        errorCallback: (err) => {
+                            console.error('Unexpected error while uploading', err);
+                        }
+                    })
                 }).catch(err => console.log(`UUID Gen Fetch Error:  ${err}`));
             })
     }

@@ -98,18 +98,18 @@ export default function SearchPage() {
     let sessionID;
     if ("sessionID" in sessionStorage) {
       sessionID = sessionStorage.getItem("sessionID");
-    } else {
-      await fetch(`https://api.memesrc.com/?uuidGen`)
-        .then(response => {
-          response.json()
-            .then(generatedSessionID => {
-              sessionStorage.setItem("sessionID", generatedSessionID);
-              sessionID = generatedSessionID
-            }).catch(err => console.log(`JSON Parse Error:  ${err}`));
-        }).catch(err => console.log(`UUID Gen Fetch Error:  ${err}`));
+      return Promise.resolve(sessionID);
     }
-    return sessionID;
-  }
+    return API.get('publicapi', '/uuid')
+      .then(generatedSessionID => {
+        sessionStorage.setItem("sessionID", generatedSessionID);
+        return generatedSessionID;
+      })
+      .catch(err => {
+        console.log(`UUID Gen Fetch Error:  ${err}`);
+        throw err;
+      });
+  };
 
   useEffect(() => {
     if (params) {
@@ -120,26 +120,28 @@ export default function SearchPage() {
         console.log(params)
         setLoading(true);
         // TODO: switch to using amplify to access the publicapi
-        const apiName = 'publicapi';
-        const path = '/search';
-        const myInit = {
-          queryStringParameters: {
-            q: searchTerm,
-            series: seriesTitle
+        getSessionID().then(sessionId => {
+          const apiName = 'publicapi';
+          const path = '/search';
+          const myInit = {
+            queryStringParameters: {
+              q: searchTerm,
+              series: seriesTitle,
+              sessionId
+            }
           }
-        }
-
-        API.get(apiName, path, myInit)
-          .then(data => {
-            setResults(data);
-            setLoading(false);
-            setLoadedSearchTerm(searchTerm);
-            setLoadedSeriesTitle(seriesTitle);
-          })
-          .catch(error => {
-            console.error(error);
-            setLoading(false);
-          });
+          API.get(apiName, path, myInit)
+            .then(data => {
+              setResults(data);
+              setLoading(false);
+              setLoadedSearchTerm(searchTerm);
+              setLoadedSeriesTitle(seriesTitle);
+            })
+            .catch(error => {
+              console.error(error);
+              setLoading(false);
+            });
+        })
       }
     }
   }, [params, searchTerm, seriesTitle, loadedSeriesTitle, loadedSearchTerm])

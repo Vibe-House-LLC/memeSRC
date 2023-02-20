@@ -33,18 +33,22 @@
         "SearchFunction": {
           "secretsPathAmplifyAppId": "d32pnvtwxwtte5",
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/SearchFunction-704231304c5441557543-build.zip"
+          "s3Key": "amplify-builds/SearchFunction-58715036516b45385950-build.zip"
         },
         "memesrcSearch": {},
         "memesrcRandom": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcRandom-4b504265646945433164-build.zip",
+          "s3Key": "amplify-builds/memesrcRandom-352f792b476946414767-build.zip",
           "secretsPathAmplifyAppId": "d32pnvtwxwtte5"
         },
         "memesrcFrameFunction": {
           "secretsPathAmplifyAppId": "d32pnvtwxwtte5",
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcFrameFunction-654e2f7249363671386e-build.zip"
+          "s3Key": "amplify-builds/memesrcFrameFunction-4577307a4466796b6c79-build.zip"
+        },
+        "memesrcUUID": {
+          "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
+          "s3Key": "amplify-builds/memesrcUUID-2b316551747351376944-build.zip"
         }
       },
       "storage": {

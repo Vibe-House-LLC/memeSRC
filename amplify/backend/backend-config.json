@@ -80,6 +80,14 @@
           ],
           "category": "function",
           "resourceName": "memesrcFrameFunction"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcUUID"
         }
       ],
       "providerPlugin": "awscloudformation",
@@ -184,6 +192,11 @@
       ],
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
+    },
+    "memesrcUUID": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
     }
   },
   "hosting": {
@@ -278,6 +291,22 @@
         {
           "category": "function",
           "resourceName": "memesrcRandom"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcUUID_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcUUID"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcUUID_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcUUID"
         }
       ]
     }

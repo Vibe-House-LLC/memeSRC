@@ -21,6 +21,13 @@
       "permissions": {
         "setting": "open"
       }
+    },
+    "/uuid": {
+      "name": "/uuid",
+      "lambdaFunction": "memesrcUUID",
+      "permissions": {
+        "setting": "open"
+      }
     }
   }
 }
