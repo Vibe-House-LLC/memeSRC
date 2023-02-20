@@ -120,26 +120,28 @@ export default function SearchPage() {
         console.log(params)
         setLoading(true);
         // TODO: switch to using amplify to access the publicapi
-        const apiName = 'publicapi';
-        const path = '/search';
-        const myInit = {
-          queryStringParameters: {
-            q: searchTerm,
-            series: seriesTitle
+        getSessionID().then(sessionId => {
+          const apiName = 'publicapi';
+          const path = '/search';
+          const myInit = {
+            queryStringParameters: {
+              q: searchTerm,
+              series: seriesTitle,
+              sessionId
+            }
           }
-        }
-
-        API.get(apiName, path, myInit)
-          .then(data => {
-            setResults(data);
-            setLoading(false);
-            setLoadedSearchTerm(searchTerm);
-            setLoadedSeriesTitle(seriesTitle);
-          })
-          .catch(error => {
-            console.error(error);
-            setLoading(false);
-          });
+          API.get(apiName, path, myInit)
+            .then(data => {
+              setResults(data);
+              setLoading(false);
+              setLoadedSearchTerm(searchTerm);
+              setLoadedSeriesTitle(seriesTitle);
+            })
+            .catch(error => {
+              console.error(error);
+              setLoading(false);
+            });
+        })
       }
     }
   }, [params, searchTerm, seriesTitle, loadedSeriesTitle, loadedSearchTerm])

@@ -228,24 +228,26 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     }, [editor]);
 
     const loadEditorDefaults = useCallback(() => {
-        const queryStringParams = { queryStringParameters: { fid: selectedFid } }
-        API.get('publicapi', '/frame', queryStringParams).then(data => {
-            console.log('test')
-            console.log(data)
-            setLoadedSeriesTitle(data.series_name);
-            setSurroundingFrames(data.frames_surrounding);
-            const episodeDetails = selectedFid.split('-');
-            setEpisodeDetails(episodeDetails);
-            // Pre load fine tuning frames
-            loadImg(data.frames_fine_tuning, oImgBuild).then((images) => {
-                setFineTuningFrames(images)
-            });
-            // Background image from the 
-            fabric.Image.fromURL(`https://memesrc.com${data.frame_image}`, (oImg) => {
-                console.log(oImg)
-                setDefaultFrame(oImg);
-                setDefaultSubtitle(data.subtitle);
-            }, { crossOrigin: "anonymous" });
+        getSessionID().then(sessionId => {
+            const queryStringParams = { queryStringParameters: { fid: selectedFid, sessionId } }
+            API.get('publicapi', '/frame', queryStringParams).then(data => {
+                console.log('test')
+                console.log(data)
+                setLoadedSeriesTitle(data.series_name);
+                setSurroundingFrames(data.frames_surrounding);
+                const episodeDetails = selectedFid.split('-');
+                setEpisodeDetails(episodeDetails);
+                // Pre load fine tuning frames
+                loadImg(data.frames_fine_tuning, oImgBuild).then((images) => {
+                    setFineTuningFrames(images)
+                });
+                // Background image from the 
+                fabric.Image.fromURL(`https://memesrc.com${data.frame_image}`, (oImg) => {
+                    console.log(oImg)
+                    setDefaultFrame(oImg);
+                    setDefaultSubtitle(data.subtitle);
+                }, { crossOrigin: "anonymous" });
+            }).catch(err => console.log(err))
         }).catch(err => console.log(err))
     }, [resizeCanvas, selectedFid, editor, addText])
 
