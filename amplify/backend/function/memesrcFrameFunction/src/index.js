@@ -30,7 +30,7 @@ const axios = require('axios');
 // Analytics bucket name
 const analyticsBucket = process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME;
 
-const trackAnalyticsEventToS3 = (eventData, eventType) => {
+const trackAnalyticsEventToS3 = (eventData, eventType, sessionId) => {
   const uniqueId = uuid.v4();
   const s3 = new S3();
   const eventTime = new Date(Date.now());
@@ -41,7 +41,7 @@ const trackAnalyticsEventToS3 = (eventData, eventType) => {
   const s3Params = {
     Bucket: analyticsBucket,
     Key: `analytics/${eventType}/year=${year}/month=${month}/day=${day}/${uniqueId}.json`,
-    Body: JSON.stringify({ ...eventData, eventTime, eventYear: year, eventMonth: month, eventDay: day }),
+    Body: JSON.stringify({ id: uniqueId, ...eventData, sessionId, eventTime, eventYear: year, eventMonth: month, eventDay: day }),
     ContentType: "application/json"
   };
 
@@ -180,7 +180,7 @@ exports.handler = async (event) => {
     fid: fid
   };
   try {
-    await trackAnalyticsEventToS3(data, "frame");
+    await trackAnalyticsEventToS3(data, "frame", params.sessionId);
     console.log("Successfully wrote data to S3");
   } catch (error) {
     console.error(error);

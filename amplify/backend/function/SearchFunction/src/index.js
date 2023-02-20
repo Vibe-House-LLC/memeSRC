@@ -14,7 +14,7 @@ const uuid = require('uuid');
 // S3 bucket name for the analyticsBucket
 const analyticsBucket = process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME;
 
-const trackAnalyticsEventToS3 = (eventData, eventType) => {
+const trackAnalyticsEventToS3 = (eventData, eventType, sessionId) => {
   const uniqueId = uuid.v4();
   const s3 = new S3();
   const eventTime = new Date(Date.now());
@@ -25,7 +25,7 @@ const trackAnalyticsEventToS3 = (eventData, eventType) => {
   const s3Params = {
     Bucket: analyticsBucket,
     Key: `analytics/${eventType}/year=${year}/month=${month}/day=${day}/${uniqueId}.json`,
-    Body: JSON.stringify({ ...eventData, eventTime, eventYear: year, eventMonth: month, eventDay: day }),
+    Body: JSON.stringify({ id: uniqueId, ...eventData, sessionId, eventTime, eventYear: year, eventMonth: month, eventDay: day }),
     ContentType: "application/json"
   };
 
@@ -48,7 +48,7 @@ const createTestObject = (prefix, data) => {
 }
 
 // Define the function to search OpenSearch
-const search = async (searchString, seriesName, opensearchEndpoint, opensearchUser, opensearchPass) => {
+const search = async (searchString, seriesName, sessionId, opensearchEndpoint, opensearchUser, opensearchPass) => {
   const max_results = 50;
 
   // console.log(`ENV VARS:\n${JSON.stringify(process.env)}`)
@@ -63,7 +63,7 @@ const search = async (searchString, seriesName, opensearchEndpoint, opensearchUs
     seriesName
   };
   try {
-    await trackAnalyticsEventToS3(data, "search");
+    await trackAnalyticsEventToS3(data, "search", sessionId);
     console.log("Successfully wrote data to S3");
   } catch (error) {
     console.error(error);
@@ -123,7 +123,7 @@ exports.handler = async (event) => {
   const params = event.queryStringParameters;
 
   // Pull the results from OpenSearch and clean them up
-  const response = await search(params.q, params.series, opensearch_url, opensearch_user, opensearch_pass)
+  const response = await search(params.q, params.series, params.sessionId, opensearch_url, opensearch_user, opensearch_pass)
   const hits = response.hits.hits
   const cleanResults = hits.map(hit => ({
     fid: hit._id,
