@@ -6,7 +6,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
 import { Accordion, AccordionDetails, AccordionSummary, Button, Card, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, TextField, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
-import { AddCircleOutline, Close, ContentCopy, Description, HighlightOffRounded, HistoryToggleOffRounded, IosShare, Menu, More, Share } from '@mui/icons-material';
+import { AddCircleOutline, ArrowForward, ArrowForwardIos, Close, ContentCopy, Description, HighlightOffRounded, HistoryToggleOffRounded, IosShare, Menu, More, Share } from '@mui/icons-material';
 import { API, Storage } from 'aws-amplify';
 import { Box } from '@mui/system';
 import TextEditorControls from '../components/TextEditorControls';
@@ -84,6 +84,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     const [selectedFontSize, setSelectedFontSize] = useState(100);
 
     const [editorAspectRatio, setEditorAspectRatio] = useState(1);
+
+    const [loading, setLoading] = useState(true)
 
     const [fineTuningValue, setFineTuningValue] = useState(4);
     const [episodeDetails, setEpisodeDetails] = useState();
@@ -183,19 +185,19 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     const getSessionID = async () => {
         let sessionID;
         if ("sessionID" in sessionStorage) {
-          sessionID = sessionStorage.getItem("sessionID");
-          return Promise.resolve(sessionID);
+            sessionID = sessionStorage.getItem("sessionID");
+            return Promise.resolve(sessionID);
         }
         return API.get('publicapi', '/uuid')
-          .then(generatedSessionID => {
-            sessionStorage.setItem("sessionID", generatedSessionID);
-            return generatedSessionID;
-          })
-          .catch(err => {
-            console.log(`UUID Gen Fetch Error:  ${err}`);
-            throw err;
-          });
-      };
+            .then(generatedSessionID => {
+                sessionStorage.setItem("sessionID", generatedSessionID);
+                return generatedSessionID;
+            })
+            .catch(err => {
+                console.log(`UUID Gen Fetch Error:  ${err}`);
+                throw err;
+            });
+    };
 
     const addText = useCallback((updatedText, append) => {
         const text = new fabric.Textbox(updatedText, {
@@ -229,6 +231,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
     const loadEditorDefaults = useCallback(() => {
         getSessionID().then(sessionId => {
+            setLoading(true)
             const queryStringParams = { queryStringParameters: { fid: selectedFid, sessionId } }
             API.get('publicapi', '/frame', queryStringParams).then(data => {
                 console.log('test')
@@ -246,6 +249,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                     console.log(oImg)
                     setDefaultFrame(oImg);
                     setDefaultSubtitle(data.subtitle);
+                    setLoading(false)
                 }, { crossOrigin: "anonymous" });
             }).catch(err => console.log(err))
         }).catch(err => console.log(err))
@@ -496,17 +500,31 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                         )
                                         )}
                                     </Grid>
-                                    <Card marginTop={3}>
+                                    <Card>
                                         <Accordion expanded={subtitlesExpanded}>
-                                            <AccordionSummary onClick={handleSubtitlesExpand} textAlign="center">
-                                                <Typography marginLeft="auto" marginRight="auto" fontWeight="bold" color="#CACACA" fontSize={14}>
-                                                    {subtitlesExpanded ? <Close style={{ verticalAlign: "middle", marginTop: "-3px", marginRight: "10px" }} /> : <Menu style={{ verticalAlign: "middle", marginTop: "-3px", marginRight: "10px" }} />}
+                                            <AccordionSummary padding={0} margin={0} onClick={handleSubtitlesExpand} textAlign="center">
+                                                <Typography
+                                                    marginLeft="auto"
+                                                    marginRight="auto"
+                                                    fontWeight="bold"
+                                                    color="#CACACA"
+                                                    fontSize={14}
+                                                >
+                                                    {subtitlesExpanded ? (
+                                                        <Close
+                                                            style={{ verticalAlign: "middle", marginTop: "-3px", marginRight: "10px" }}
+                                                        />
+                                                    ) : (
+                                                        <Menu
+                                                            style={{ verticalAlign: "middle", marginTop: "-3px", marginRight: "10px" }}
+                                                        />
+                                                    )}
                                                     {subtitlesExpanded ? "Hide" : "Show"} Nearby Subtitles
                                                 </Typography>
                                             </AccordionSummary>
                                             <AccordionDetails>
                                                 <Divider sx={{ margin: "0.5rem 5.0rem 0 5.0rem" }} />
-                                                <List>
+                                                <List sx={{ margin: '10px -15px 10px -25px', padding: '0px' }}>
                                                     {surroundingFrames &&
                                                         surroundingFrames
                                                             .filter(
@@ -534,12 +552,27 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                                         </Fab>
                                                                     </ListItemIcon>
                                                                     <ListItemText primary={result.subtitle.replace(/\n/g, " ")} />
+                                                                    <ListItemIcon sx={{ paddingRight: "0" }}>
+                                                                        {loading ? (
+                                                                            <CircularProgress size={20} sx={{ color: "#565656" }} />
+                                                                        ) : (
+                                                                            <ArrowForward
+                                                                                sx={{ color: "rgb(89, 89, 89)", cursor: "pointer" }}
+                                                                                onClick={() => navigate(`/editor/${result.fid}`)}
+                                                                            />
+                                                                        )}
+                                                                    </ListItemIcon>
                                                                 </ListItem>
                                                             ))}
                                                 </List>
+                                                <Divider sx={{ margin: "0.5rem 5.0rem 0.5rem 5.0rem" }} />
                                             </AccordionDetails>
                                         </Accordion>
                                     </Card>
+
+
+
+
                                 </Grid>
                                 <Grid item xs={12} md={7} lg={7} marginRight={{ xs: '', md: 'auto' }} order={{ xs: 2, md: 3 }}>
                                     <Stack spacing={2} direction='row' alignItems={'center'}>
