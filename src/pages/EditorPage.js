@@ -498,8 +498,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                     <Card marginTop={3}>
                                         <Accordion expanded={subtitlesExpanded}>
                                             <AccordionSummary onClick={handleSubtitlesExpand} textAlign="center">
-                                                <Typography  marginLeft="auto" marginRight="auto" fontWeight="bold" color="#CACACA" fontSize={14}>
-                                                    {subtitlesExpanded ? <Close style={{verticalAlign: "middle", marginTop: "-3px", marginRight: "10px"}}/> : <Menu style={{verticalAlign: "middle", marginTop: "-3px", marginRight: "10px"}}/>}
+                                                <Typography marginLeft="auto" marginRight="auto" fontWeight="bold" color="#CACACA" fontSize={14}>
+                                                    {subtitlesExpanded ? <Close style={{ verticalAlign: "middle", marginTop: "-3px", marginRight: "10px" }} /> : <Menu style={{ verticalAlign: "middle", marginTop: "-3px", marginRight: "10px" }} />}
                                                     {subtitlesExpanded ? "Hide" : "Show"} Nearby Subtitles
                                                 </Typography>
                                             </AccordionSummary>
@@ -517,7 +517,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                             )
                                                             .map((result) => (
                                                                 <ListItem key={result.id}>
-                                                                    <ListItemIcon>
+                                                                    <ListItemIcon sx={{ paddingLeft: "0" }}>
                                                                         <Fab
                                                                             size="small"
                                                                             sx={{
@@ -525,9 +525,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                                                 boxShadow: "none",
                                                                             }}
                                                                             onClick={() => {
-                                                                                navigator.clipboard.writeText(
-                                                                                    result.subtitle.replace(/\n/g, " ")
-                                                                                );
+                                                                                navigator.clipboard.writeText(result.subtitle.replace(/\n/g, " "));
                                                                                 handleSnackbarOpen();
                                                                             }}
                                                                         >
