@@ -171,10 +171,8 @@ exports.handler = async (event) => {
 
   frame.frames_surrounding = surroundingFramesWithSubtitles
   
-  
   // console.log(output);
   
-
   // console.log(`BRAND NEW OUTPUT: ${JSON.stringify(surroundingFramesWithSubtitles)}`);
 
   // Track analytics event

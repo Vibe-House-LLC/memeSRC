@@ -44,7 +44,11 @@
         "memesrcFrameFunction": {
           "secretsPathAmplifyAppId": "d32pnvtwxwtte5",
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcFrameFunction-654e2f7249363671386e-build.zip"
+          "s3Key": "amplify-builds/memesrcFrameFunction-2f645563742b746c7179-build.zip"
+        },
+        "memesrcUUID": {
+          "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
+          "s3Key": "amplify-builds/memesrcUUID-2b316551747351376944-build.zip"
         }
       },
       "storage": {

@@ -98,18 +98,18 @@ export default function SearchPage() {
     let sessionID;
     if ("sessionID" in sessionStorage) {
       sessionID = sessionStorage.getItem("sessionID");
-    } else {
-      await fetch(`https://api.memesrc.com/?uuidGen`)
-        .then(response => {
-          response.json()
-            .then(generatedSessionID => {
-              sessionStorage.setItem("sessionID", generatedSessionID);
-              sessionID = generatedSessionID
-            }).catch(err => console.log(`JSON Parse Error:  ${err}`));
-        }).catch(err => console.log(`UUID Gen Fetch Error:  ${err}`));
+      return Promise.resolve(sessionID);
     }
-    return sessionID;
-  }
+    return API.get('publicapi', '/uuid')
+      .then(generatedSessionID => {
+        sessionStorage.setItem("sessionID", generatedSessionID);
+        return generatedSessionID;
+      })
+      .catch(err => {
+        console.log(`UUID Gen Fetch Error:  ${err}`);
+        throw err;
+      });
+  };
 
   useEffect(() => {
     if (params) {
