@@ -554,10 +554,10 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                                     <ListItemText primary={result.subtitle.replace(/\n/g, " ")} />
                                                                     <ListItemIcon sx={{ paddingRight: "0" }}>
                                                                         {loading ? (
-                                                                            <CircularProgress size={20} sx={{ color: "#565656" }} />
+                                                                            <CircularProgress size={20} sx={{ color: "#565656", marginLeft: 'auto' }} />
                                                                         ) : (
                                                                             <ArrowForward
-                                                                                sx={{ color: "rgb(89, 89, 89)", cursor: "pointer" }}
+                                                                                sx={{ color: "rgb(89, 89, 89)", cursor: "pointer", marginLeft: 'auto'}}
                                                                                 onClick={() => navigate(`/editor/${result.fid}`)}
                                                                             />
                                                                         )}
