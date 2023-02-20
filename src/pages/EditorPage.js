@@ -6,7 +6,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
 import { Accordion, AccordionDetails, AccordionSummary, Button, Card, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, TextField, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
-import { AddCircleOutline, Close, ContentCopy, Description, HighlightOffRounded, HistoryToggleOffRounded, IosShare, Share } from '@mui/icons-material';
+import { AddCircleOutline, Close, ContentCopy, Description, HighlightOffRounded, HistoryToggleOffRounded, IosShare, Menu, More, Share } from '@mui/icons-material';
 import { API, Storage } from 'aws-amplify';
 import { Box } from '@mui/system';
 import TextEditorControls from '../components/TextEditorControls';
@@ -495,10 +495,11 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                         )
                                         )}
                                     </Grid>
-                                    <Card>
+                                    <Card marginTop={3}>
                                         <Accordion expanded={subtitlesExpanded}>
                                             <AccordionSummary onClick={handleSubtitlesExpand} textAlign="center">
-                                                <Typography marginLeft="auto" marginRight="auto" fontWeight="bold" color="#CACACA" fontSize={14}>
+                                                <Typography  marginLeft="auto" marginRight="auto" fontWeight="bold" color="#CACACA" fontSize={14}>
+                                                    {subtitlesExpanded ? <Close style={{verticalAlign: "middle", marginTop: "-3px", marginRight: "10px"}}/> : <Menu style={{verticalAlign: "middle", marginTop: "-3px", marginRight: "10px"}}/>}
                                                     {subtitlesExpanded ? "Hide" : "Show"} Nearby Subtitles
                                                 </Typography>
                                             </AccordionSummary>
