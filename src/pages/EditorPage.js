@@ -495,35 +495,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                         )
                                         )}
                                     </Grid>
-                                </Grid>
-                                <Grid item xs={12} md={7} lg={7} marginRight={{ xs: '', md: 'auto' }} order={{ xs: 2, md: 3 }}>
-                                    <Stack spacing={2} direction='row' alignItems={'center'}>
-                                        <Tooltip title="Fine Tuning">
-                                            <IconButton>
-                                                <HistoryToggleOffRounded alt='Fine Tuning' />
-                                            </IconButton>
-                                        </Tooltip>
-                                        <Slider
-                                            size="small"
-                                            defaultValue={4}
-                                            min={0}
-                                            max={8}
-                                            value={fineTuningValue}
-                                            aria-label="Small"
-                                            valueLabelDisplay="auto"
-                                            onChange={(event) => {
-                                                handleFineTuning(event);
-                                                setFineTuningValue(event.target.value);
-                                            }}
-                                            valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
-                                            marks
-                                            track={false}
-                                        />
-                                    </Stack>
-                                    {/* <button type='button' onClick={addImage}>Add Image</button>
-                                    <button type='button' onClick={saveProject}>Save Project</button>
-                                    <button type='button' onClick={loadProject}>Load Project</button>
-                                    <button type='button' onClick={handleClickDialogOpen}>Save Image</button> */}
                                     <Card>
                                         <Accordion expanded={subtitlesExpanded}>
                                             <AccordionSummary onClick={handleSubtitlesExpand} textAlign="center">
@@ -569,6 +540,35 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                             </AccordionDetails>
                                         </Accordion>
                                     </Card>
+                                </Grid>
+                                <Grid item xs={12} md={7} lg={7} marginRight={{ xs: '', md: 'auto' }} order={{ xs: 2, md: 3 }}>
+                                    <Stack spacing={2} direction='row' alignItems={'center'}>
+                                        <Tooltip title="Fine Tuning">
+                                            <IconButton>
+                                                <HistoryToggleOffRounded alt='Fine Tuning' />
+                                            </IconButton>
+                                        </Tooltip>
+                                        <Slider
+                                            size="small"
+                                            defaultValue={4}
+                                            min={0}
+                                            max={8}
+                                            value={fineTuningValue}
+                                            aria-label="Small"
+                                            valueLabelDisplay="auto"
+                                            onChange={(event) => {
+                                                handleFineTuning(event);
+                                                setFineTuningValue(event.target.value);
+                                            }}
+                                            valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
+                                            marks
+                                            track={false}
+                                        />
+                                    </Stack>
+                                    {/* <button type='button' onClick={addImage}>Add Image</button>
+                                    <button type='button' onClick={saveProject}>Save Project</button>
+                                    <button type='button' onClick={loadProject}>Load Project</button>
+                                    <button type='button' onClick={handleClickDialogOpen}>Save Image</button> */}
 
                                 </Grid>
                                 <Grid container item spacing={1} order='5'>
