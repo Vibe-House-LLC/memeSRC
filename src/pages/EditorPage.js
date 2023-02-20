@@ -5,8 +5,8 @@ import styled from '@emotion/styled';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
-import { Button, Card, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, Popover, Slider, Snackbar, Stack, TextField, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
-import { AddCircleOutline, Close, ContentCopy, HighlightOffRounded, HistoryToggleOffRounded, IosShare, Share } from '@mui/icons-material';
+import { Accordion, AccordionDetails, AccordionSummary, Button, Card, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, TextField, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
+import { AddCircleOutline, Close, ContentCopy, Description, HighlightOffRounded, HistoryToggleOffRounded, IosShare, Share } from '@mui/icons-material';
 import { API, Storage } from 'aws-amplify';
 import { Box } from '@mui/system';
 import TextEditorControls from '../components/TextEditorControls';
@@ -95,6 +95,12 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     const theme = useTheme();
     const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
     const [loadedSeriesTitle, setLoadedSeriesTitle] = useState('_universal');
+
+    const [subtitlesExpanded, setSubtitlesExpanded] = useState(false);
+
+    const handleSubtitlesExpand = () => {
+        setSubtitlesExpanded(!subtitlesExpanded);
+    };
 
     const handleSnackbarOpen = () => {
         setSnackBarOpen(true);
@@ -518,6 +524,52 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                     <button type='button' onClick={saveProject}>Save Project</button>
                                     <button type='button' onClick={loadProject}>Load Project</button>
                                     <button type='button' onClick={handleClickDialogOpen}>Save Image</button> */}
+                                    <Card>
+                                        <Accordion expanded={subtitlesExpanded}>
+                                            <AccordionSummary onClick={handleSubtitlesExpand} textAlign="center">
+                                                <Typography marginLeft="auto" marginRight="auto" fontWeight="bold" color="#CACACA" fontSize={14}>
+                                                    {subtitlesExpanded ? "Hide" : "Show"} Nearby Subtitles
+                                                </Typography>
+                                            </AccordionSummary>
+                                            <AccordionDetails>
+                                                <Divider sx={{ margin: "0.5rem 5.0rem 0 5.0rem" }} />
+                                                <List>
+                                                    {surroundingFrames &&
+                                                        surroundingFrames
+                                                            .filter(
+                                                                (result, index, array) =>
+                                                                    result.subtitle &&
+                                                                    (index === 0 ||
+                                                                        result.subtitle.replace(/\n/g, " ") !==
+                                                                        array[index - 1].subtitle.replace(/\n/g, " "))
+                                                            )
+                                                            .map((result) => (
+                                                                <ListItem key={result.id}>
+                                                                    <ListItemIcon>
+                                                                        <Fab
+                                                                            size="small"
+                                                                            sx={{
+                                                                                backgroundColor: theme.palette.background.paper,
+                                                                                boxShadow: "none",
+                                                                            }}
+                                                                            onClick={() => {
+                                                                                navigator.clipboard.writeText(
+                                                                                    result.subtitle.replace(/\n/g, " ")
+                                                                                );
+                                                                                handleSnackbarOpen();
+                                                                            }}
+                                                                        >
+                                                                            <Description sx={{ color: "rgb(89, 89, 89)" }} />
+                                                                        </Fab>
+                                                                    </ListItemIcon>
+                                                                    <ListItemText primary={result.subtitle.replace(/\n/g, " ")} />
+                                                                </ListItem>
+                                                            ))}
+                                                </List>
+                                            </AccordionDetails>
+                                        </Accordion>
+                                    </Card>
+
                                 </Grid>
                                 <Grid container item spacing={1} order='5'>
                                     {surroundingFrames && surroundingFrames.map(result => (
@@ -687,13 +739,13 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
             <Snackbar
                 open={snackbarOpen}
-                autoHideDuration={3000}
+                autoHideDuration={1000}
                 severity="success"
                 onClose={handleSnackbarClose}
-                message="Image Copied!"
+                message="Copied to clipboard!"
             >
                 <Alert onClose={handleSnackbarClose} severity="success" sx={{ width: '100%' }}>
-                    Image copied!
+                    Copied to clipboard!
                 </Alert>
             </Snackbar>
 
