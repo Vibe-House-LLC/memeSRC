@@ -524,7 +524,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                             </AccordionSummary>
                                             <AccordionDetails>
                                                 <Divider sx={{ margin: "0.5rem 5.0rem 0 5.0rem" }} />
-                                                <List sx={{ margin: '10px -15px 10px -25px', padding: '0px' }}>
+                                                <List sx={{ padding: '0px' }}>
                                                     {surroundingFrames &&
                                                         surroundingFrames
                                                             .filter(
@@ -535,7 +535,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                                         array[index - 1].subtitle.replace(/\n/g, " "))
                                                             )
                                                             .map((result) => (
-                                                                <ListItem key={result.id}>
+                                                                <ListItem key={result.id} disablePadding>
                                                                     <ListItemIcon sx={{ paddingLeft: "0" }}>
                                                                         <Fab
                                                                             size="small"
