@@ -510,7 +510,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                     marginRight="auto"
                                                     fontWeight="bold"
                                                     color="#CACACA"
-                                                    fontSize={14}
+                                                    fontSize={14.8}
                                                 >
                                                     {subtitlesExpanded ? (
                                                         <Close
@@ -553,7 +553,11 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                                             <Description sx={{ color: "rgb(89, 89, 89)" }} />
                                                                         </Fab>
                                                                     </ListItemIcon>
-                                                                    <ListItemText primary={result.subtitle.replace(/\n/g, " ")} />
+                                                                    <ListItemText sx={{color: 'rgb(173, 173, 173)', fontSize: '4em'}}>
+                                                                        <Typography component='p' variant='body2'>
+                                                                            {result.subtitle.replace(/\n/g, " ")}
+                                                                        </Typography>
+                                                                    </ListItemText>
                                                                     <ListItemIcon sx={{ paddingRight: "0" }}>
                                                                     <Fab
                                                                             size="small"
