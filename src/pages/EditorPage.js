@@ -618,7 +618,10 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                     {surroundingFrames && surroundingFrames.map(result => (
                                         <Grid item xs={4} sm={4} md={12 / 9} key={result.fid}>
                                             <a style={{ textDecoration: 'none' }}>
-                                                <StyledCard>
+                                                <StyledCard
+                                                    style={{border: (fid === result.fid) ? '3px solid orange' : ''}}
+                                                >
+                                                    {console.log(`${fid} = ${result.fid}`)}
                                                     <StyledCardMedia
                                                         component="img"
                                                         src={`https://memesrc.com${result.frame_image}`}
