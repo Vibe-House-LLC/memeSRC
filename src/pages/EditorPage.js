@@ -520,7 +520,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                             style={{ verticalAlign: "middle", marginTop: "-3px", marginRight: "10px" }}
                                                         />
                                                     )}
-                                                    {subtitlesExpanded ? "Hide" : "Show"} Nearby Subtitles
+                                                    {subtitlesExpanded ? "Hide" : "View"} Nearby Subtitles
                                                 </Typography>
                                                 <Chip size="small" label="New!" color="success" />
                                             </AccordionSummary>
