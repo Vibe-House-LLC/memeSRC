@@ -506,7 +506,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                         <Accordion expanded={subtitlesExpanded}  disableGutters>
                                             <AccordionSummary onClick={handleSubtitlesExpand} textAlign="center">
                                                 <Typography
-                                                    marginLeft={{xs: 0.8, md: 'auto'}}
+                                                    marginLeft={{xs: 0.8}}
                                                     marginRight="auto"
                                                     fontWeight="bold"
                                                     color="#CACACA"
@@ -524,7 +524,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                     {subtitlesExpanded ? "Hide" : "Show"} Nearby Subtitles
                                                 </Typography>
                                             </AccordionSummary>
-                                            <AccordionDetails>
+                                            <AccordionDetails sx={{paddingTop: 0}}>
                                                 <Divider sx={{ margin: "0rem 5.0rem 0 5.0rem" }} />
                                                 <List sx={{ padding: '.5em 0' }}>
                                                     {surroundingFrames &&
