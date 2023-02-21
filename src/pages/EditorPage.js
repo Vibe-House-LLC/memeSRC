@@ -581,7 +581,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                                                 backgroundColor: theme.palette.background.paper,
                                                                                 boxShadow: "none",
                                                                                 marginLeft: '5px',
-                                                                                '&:hover': {xs: {backgroundColor: 'inherit'}, md: {backgroundColor: 'ButtonHighlight'}}
+                                                                                '&:hover': {xs: {backgroundColor: 'inherit'}, md: {backgroundColor: (result.subtitle.replace(/\n/g, " ") === defaultSubtitle.replace(/\n/g, " ")) ? 'rgba(0, 0, 0, 0)' : 'ButtonHighlight'}}
                                                                             }}
                                                                             onClick={() => navigate(`/editor/${result.fid}`)}
                                                                         >
