@@ -530,13 +530,13 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                         surroundingFrames
                                                             .filter(
                                                                 (result, index, array) =>
-                                                                    result.subtitle &&
+                                                                    result?.subtitle &&
                                                                     (index === 0 ||
-                                                                        result.subtitle.replace(/\n/g, " ") !==
+                                                                        result?.subtitle.replace(/\n/g, " ") !==
                                                                         array[index - 1].subtitle.replace(/\n/g, " "))
                                                             )
                                                             .map((result) => (
-                                                                <ListItem key={result.id} disablePadding sx={{padding: '0 0 .6em 0'}}>
+                                                                <ListItem key={result?.id} disablePadding sx={{padding: '0 0 .6em 0'}}>
                                                                     <ListItemIcon sx={{ paddingLeft: "0" }}>
                                                                         <Fab
                                                                             size="small"
@@ -546,7 +546,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                                                 '&:hover': {xs: {backgroundColor: 'inherit'}, md: {backgroundColor: 'ButtonHighlight'}}
                                                                             }}
                                                                             onClick={() => {
-                                                                                navigator.clipboard.writeText(result.subtitle.replace(/\n/g, " "));
+                                                                                navigator.clipboard.writeText(result?.subtitle.replace(/\n/g, " "));
                                                                                 handleSnackbarOpen();
                                                                             }}
                                                                         >
@@ -554,8 +554,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                                         </Fab>
                                                                     </ListItemIcon>
                                                                     <ListItemText sx={{color: 'rgb(173, 173, 173)', fontSize: '4em'}}>
-                                                                        <Typography component='p' variant='body2' color={(result.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 'rgb(202, 202, 202)' : ''} fontWeight={(result.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 700 : 400}>
-                                                                            {result.subtitle.replace(/\n/g, " ")}
+                                                                        <Typography component='p' variant='body2' color={(result?.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 'rgb(202, 202, 202)' : ''} fontWeight={(result?.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 700 : 400}>
+                                                                            {result?.subtitle.replace(/\n/g, " ")}
                                                                         </Typography>
                                                                     </ListItemText>
                                                                     <ListItemIcon sx={{ paddingRight: "0", marginLeft: 'auto' }}>
@@ -567,7 +567,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                                                 marginLeft: 'auto',
                                                                                 '&:hover': {xs: {backgroundColor: 'inherit'}, md: {backgroundColor: 'ButtonHighlight'}}
                                                                             }}
-                                                                            onClick={() => addText(result.subtitle.replace(/\n/g, " "), true)}
+                                                                            onClick={() => addText(result?.subtitle.replace(/\n/g, " "), true)}
                                                                         >
                                                                         {loading ? (
                                                                             <CircularProgress size={20} sx={{ color: "#565656"}} />
@@ -581,14 +581,14 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                                                 backgroundColor: theme.palette.background.paper,
                                                                                 boxShadow: "none",
                                                                                 marginLeft: '5px',
-                                                                                '&:hover': {xs: {backgroundColor: 'inherit'}, md: {backgroundColor: (result.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 'rgba(0, 0, 0, 0)' : 'ButtonHighlight'}}
+                                                                                '&:hover': {xs: {backgroundColor: 'inherit'}, md: {backgroundColor: (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 'rgba(0, 0, 0, 0)' : 'ButtonHighlight'}}
                                                                             }}
-                                                                            onClick={() => navigate(`/editor/${result.fid}`)}
+                                                                            onClick={() => navigate(`/editor/${result?.fid}`)}
                                                                         >
                                                                         {loading ? (
                                                                             <CircularProgress size={20} sx={{ color: "#565656"}} />
                                                                         ) : (
-                                                                            (result.subtitle.replace(/\n/g, " ") === defaultSubtitle.replace(/\n/g, " ")) ? <GpsFixed sx={{ color: (result.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 'rgb(50, 50, 50)' : 'rgb(89, 89, 89)', cursor: "pointer"}} /> : <ArrowForward sx={{ color: "rgb(89, 89, 89)", cursor: "pointer"}} /> 
+                                                                            (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle.replace(/\n/g, " ")) ? <GpsFixed sx={{ color: (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 'rgb(50, 50, 50)' : 'rgb(89, 89, 89)', cursor: "pointer"}} /> : <ArrowForward sx={{ color: "rgb(89, 89, 89)", cursor: "pointer"}} /> 
                                                                         )}
                                                                         </Fab>
                                                                     </ListItemIcon>
@@ -631,21 +631,21 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                 </Grid>
                                 <Grid container item spacing={1} order='5'>
                                     {surroundingFrames && surroundingFrames.map(result => (
-                                        <Grid item xs={4} sm={4} md={12 / 9} key={result.fid}>
+                                        <Grid item xs={4} sm={4} md={12 / 9} key={result?.fid}>
                                             <a style={{ textDecoration: 'none' }}>
                                                 <StyledCard
-                                                    style={{border: (fid === result.fid) ? '3px solid orange' : ''}}
+                                                    style={{border: (fid === result?.fid) ? '3px solid orange' : ''}}
                                                 >
-                                                    {console.log(`${fid} = ${result.fid}`)}
+                                                    {console.log(`${fid} = ${result?.fid}`)}
                                                     <StyledCardMedia
                                                         component="img"
-                                                        src={`https://memesrc.com${result.frame_image}`}
-                                                        alt={result.subtitle}
-                                                        title={result.subtitle}
+                                                        src={`https://memesrc.com${result?.frame_image}`}
+                                                        alt={result?.subtitle}
+                                                        title={result?.subtitle}
                                                         onClick={() => {
                                                             editor.canvas._objects = [];
-                                                            setSelectedFid(result.fid);
-                                                            navigate(`/editor/${result.fid}`)
+                                                            setSelectedFid(result?.fid);
+                                                            navigate(`/editor/${result?.fid}`)
                                                             setFineTuningValue(4)
                                                         }}
                                                     />
