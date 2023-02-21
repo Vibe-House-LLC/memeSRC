@@ -6,7 +6,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
 import { Accordion, AccordionDetails, AccordionSummary, Button, Card, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, TextField, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
-import { Add, AddCircleOutline, ArrowForward, ArrowForwardIos, Close, ContentCopy, Description, GpsFixed, HighlightOffRounded, HistoryToggleOffRounded, IosShare, Menu, More, PlusOne, Share } from '@mui/icons-material';
+import { Add, AddCircleOutline, ArrowForward, ArrowForwardIos, Close, ContentCopy, Description, GpsFixed, GpsNotFixed, HighlightOffRounded, HistoryToggleOffRounded, IosShare, Menu, More, PlusOne, Share } from '@mui/icons-material';
 import { API, Storage } from 'aws-amplify';
 import { Box } from '@mui/system';
 import TextEditorControls from '../components/TextEditorControls';
@@ -501,10 +501,10 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                         )}
                                     </Grid>
                                 </Grid>
-                                <Grid item xs={12} md={7} lg={7} marginRight={{ xs: '', md: 'auto'}} marginTop={{xs: -2.5, md: -1.5}} order={{ xs: 4, md: 4}}>
-                                <Card>
-                                        <Accordion expanded={subtitlesExpanded}  disableGutters>
-                                            <AccordionSummary sx={{paddingX: 1.55}} onClick={handleSubtitlesExpand} textAlign="center">
+                                <Grid item xs={12} md={7} lg={7} marginRight={{ xs: '', md: 'auto' }} marginTop={{ xs: -2.5, md: -1.5 }} order={{ xs: 4, md: 4 }}>
+                                    <Card>
+                                        <Accordion expanded={subtitlesExpanded} disableGutters>
+                                            <AccordionSummary sx={{ paddingX: 1.55 }} onClick={handleSubtitlesExpand} textAlign="center">
                                                 <Typography
                                                     marginRight="auto"
                                                     fontWeight="bold"
@@ -524,7 +524,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                 </Typography>
                                                 <Chip size="small" label="New!" color="success" />
                                             </AccordionSummary>
-                                            <AccordionDetails sx={{paddingY: 0, paddingX: 0}}>
+                                            <AccordionDetails sx={{ paddingY: 0, paddingX: 0 }}>
                                                 <List sx={{ padding: '.5em 0' }}>
                                                     {surroundingFrames &&
                                                         surroundingFrames
@@ -536,27 +536,27 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                                         array[index - 1].subtitle.replace(/\n/g, " "))
                                                             )
                                                             .map((result) => (
-                                                                <ListItem key={result?.id} disablePadding sx={{padding: '0 0 .6em 0'}}>
+                                                                <ListItem key={result?.id} disablePadding sx={{ padding: '0 0 .6em 0' }}>
                                                                     <ListItemIcon sx={{ paddingLeft: "0" }}>
-                                                                        
+
                                                                         <Fab
                                                                             size="small"
                                                                             sx={{
                                                                                 backgroundColor: theme.palette.background.paper,
                                                                                 boxShadow: "none",
                                                                                 marginLeft: '5px',
-                                                                                '&:hover': {xs: {backgroundColor: 'inherit'}, md: {backgroundColor: (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 'rgba(0, 0, 0, 0)' : 'ButtonHighlight'}}
+                                                                                '&:hover': { xs: { backgroundColor: 'inherit' }, md: { backgroundColor: (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 'rgba(0, 0, 0, 0)' : 'ButtonHighlight' } }
                                                                             }}
                                                                             onClick={() => navigate(`/editor/${result?.fid}`)}
                                                                         >
-                                                                        {loading ? (
-                                                                            <CircularProgress size={20} sx={{ color: "#565656"}} />
-                                                                        ) : (
-                                                                            (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle.replace(/\n/g, " ")) ? <GpsFixed sx={{ color: (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 'rgb(202, 202, 202)' : 'rgb(89, 89, 89)', cursor: "pointer"}} /> : <ArrowForward sx={{ color: "rgb(89, 89, 89)", cursor: "pointer"}} /> 
-                                                                        )}
+                                                                            {loading ? (
+                                                                                <CircularProgress size={20} sx={{ color: "#565656" }} />
+                                                                            ) : (
+                                                                                (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle.replace(/\n/g, " ")) ? <GpsFixed sx={{ color: (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 'rgb(202, 202, 202)' : 'rgb(89, 89, 89)', cursor: "pointer" }} /> : <GpsNotFixed sx={{ color: "rgb(89, 89, 89)", cursor: "pointer" }} />
+                                                                            )}
                                                                         </Fab>
                                                                     </ListItemIcon>
-                                                                    <ListItemText sx={{color: 'rgb(173, 173, 173)', fontSize: '4em'}}>
+                                                                    <ListItemText sx={{ color: 'rgb(173, 173, 173)', fontSize: '4em' }}>
                                                                         <Typography component='p' variant='body2' color={(result?.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 'rgb(202, 202, 202)' : ''} fontWeight={(result?.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 700 : 400}>
                                                                             {result?.subtitle.replace(/\n/g, " ")}
                                                                         </Typography>
@@ -568,7 +568,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                                                 backgroundColor: theme.palette.background.paper,
                                                                                 boxShadow: "none",
                                                                                 marginRight: '2px',
-                                                                                '&:hover': {xs: {backgroundColor: 'inherit'}, md: {backgroundColor: 'ButtonHighlight'}}
+                                                                                '&:hover': { xs: { backgroundColor: 'inherit' }, md: { backgroundColor: 'ButtonHighlight' } }
                                                                             }}
                                                                             onClick={() => {
                                                                                 navigator.clipboard.writeText(result?.subtitle.replace(/\n/g, " "));
@@ -578,20 +578,16 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                                             <ContentCopy sx={{ color: "rgb(89, 89, 89)" }} />
                                                                         </Fab>
                                                                         <Fab
-                                                                                size="small"
-                                                                                sx={{
-                                                                                    backgroundColor: theme.palette.background.paper,
-                                                                                    boxShadow: "none",
-                                                                                    marginLeft: 'auto',
-                                                                                    '&:hover': {xs: {backgroundColor: 'inherit'}, md: {backgroundColor: 'ButtonHighlight'}}
-                                                                                }}
-                                                                                onClick={() => addText(result?.subtitle.replace(/\n/g, " "), true)}
-                                                                            >
-                                                                            {loading ? (
-                                                                                <CircularProgress size={20} sx={{ color: "#565656"}} />
-                                                                            ) : (
-                                                                                <Add sx={{ color: 'rgb(89, 89, 89)', cursor: "pointer"}} />
-                                                                            )}
+                                                                            size="small"
+                                                                            sx={{
+                                                                                backgroundColor: theme.palette.background.paper,
+                                                                                boxShadow: "none",
+                                                                                marginLeft: 'auto',
+                                                                                '&:hover': { xs: { backgroundColor: 'inherit' }, md: { backgroundColor: 'ButtonHighlight' } }
+                                                                            }}
+                                                                            onClick={() => addText(result?.subtitle.replace(/\n/g, " "), true)}
+                                                                        >
+                                                                            <Add sx={{ color: 'rgb(89, 89, 89)', cursor: "pointer" }} />
                                                                         </Fab>
                                                                         {/* <Fab
                                                                             size="small"
@@ -652,7 +648,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                         <Grid item xs={4} sm={4} md={12 / 9} key={result?.fid}>
                                             <a style={{ textDecoration: 'none' }}>
                                                 <StyledCard
-                                                    style={{border: (fid === result?.fid) ? '3px solid orange' : ''}}
+                                                    style={{ border: (fid === result?.fid) ? '3px solid orange' : '' }}
                                                 >
                                                     {console.log(`${fid} = ${result?.fid}`)}
                                                     <StyledCardMedia
