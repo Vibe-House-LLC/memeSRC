@@ -467,7 +467,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                             Add Layer
                                         </Button>
                                     </Grid>
-                                    <Grid container item xs={12} maxHeight={{ xs: {}, md: `${canvasSize.height - 52}px` }} paddingX={{ xs: 0, md: 2 }} sx={{ overflowY: 'scroll', overflow: 'auto' }} flexDirection='col-reverse'>
+                                    <Grid container item xs={12} maxHeight={{ xs: {}, md: `${canvasSize.height - 104}px` }} paddingX={{ xs: 0, md: 2 }} sx={{ overflowY: 'scroll', overflow: 'auto' }} flexDirection='col-reverse'>
                                         {canvasObjects && canvasObjects.map((object, index) => (
 
                                             ('text' in object) &&
