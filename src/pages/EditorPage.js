@@ -554,7 +554,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                                         </Fab>
                                                                     </ListItemIcon>
                                                                     <ListItemText sx={{color: 'rgb(173, 173, 173)', fontSize: '4em'}}>
-                                                                        <Typography component='p' variant='body2'>
+                                                                        <Typography component='p' variant='body2' color={(result.subtitle.replace(/\n/g, " ") === defaultSubtitle.replace(/\n/g, " ")) ? '#FFFFFF' : ''} fontWeight={(result.subtitle.replace(/\n/g, " ") === defaultSubtitle.replace(/\n/g, " ")) ? 700 : 400}>
                                                                             {result.subtitle.replace(/\n/g, " ")}
                                                                         </Typography>
                                                                     </ListItemText>
