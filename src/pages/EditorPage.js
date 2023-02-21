@@ -525,7 +525,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                 </Typography>
                                             </AccordionSummary>
                                             <AccordionDetails sx={{paddingTop: 0}}>
-                                                <Divider sx={{ margin: "0rem 5.0rem 0 5.0rem" }} />
                                                 <List sx={{ padding: '.5em 0' }}>
                                                     {surroundingFrames &&
                                                         surroundingFrames
@@ -537,7 +536,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                                         array[index - 1].subtitle.replace(/\n/g, " "))
                                                             )
                                                             .map((result) => (
-                                                                <ListItem key={result.id} disablePadding sx={{padding: '.3em 0'}}>
+                                                                <ListItem key={result.id} disablePadding sx={{padding: '0 0 .6em 0'}}>
                                                                     <ListItemIcon sx={{ paddingLeft: "0" }}>
                                                                         <Fab
                                                                             size="small"
@@ -554,7 +553,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                                         </Fab>
                                                                     </ListItemIcon>
                                                                     <ListItemText sx={{color: 'rgb(173, 173, 173)', fontSize: '4em'}}>
-                                                                        <Typography component='p' variant='body2' color={(result.subtitle.replace(/\n/g, " ") === defaultSubtitle.replace(/\n/g, " ")) ? '#FFFFFF' : ''} fontWeight={(result.subtitle.replace(/\n/g, " ") === defaultSubtitle.replace(/\n/g, " ")) ? 700 : 400}>
+                                                                        <Typography component='p' variant='body2' color={(result.subtitle.replace(/\n/g, " ") === defaultSubtitle.replace(/\n/g, " ")) ? 'rgb(202, 202, 202)' : ''} fontWeight={(result.subtitle.replace(/\n/g, " ") === defaultSubtitle.replace(/\n/g, " ")) ? 700 : 400}>
                                                                             {result.subtitle.replace(/\n/g, " ")}
                                                                         </Typography>
                                                                     </ListItemText>
@@ -581,7 +580,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                                 </ListItem>
                                                             ))}
                                                 </List>
-                                                <Divider sx={{ margin: "0.5rem 5.0rem 0.5rem 5.0rem" }} />
                                             </AccordionDetails>
                                         </Accordion>
                                     </Card>
