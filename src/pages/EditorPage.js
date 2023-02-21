@@ -502,7 +502,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                     </Grid>
                                     <Card>
                                         <Accordion expanded={subtitlesExpanded}  disableGutters>
-                                            <AccordionSummary padding={0} margin={0} onClick={handleSubtitlesExpand} textAlign="center">
+                                            <AccordionSummary onClick={handleSubtitlesExpand} textAlign="center">
                                                 <Typography
                                                     marginLeft="auto"
                                                     marginRight="auto"
@@ -523,8 +523,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                 </Typography>
                                             </AccordionSummary>
                                             <AccordionDetails>
-                                                <Divider sx={{ margin: "0.5rem 5.0rem 0 5.0rem" }} />
-                                                <List sx={{ padding: '0px' }}>
+                                                <Divider sx={{ margin: "0rem 5.0rem 0 5.0rem" }} />
+                                                <List sx={{ padding: '.5em 0' }}>
                                                     {surroundingFrames &&
                                                         surroundingFrames
                                                             .filter(
@@ -535,7 +535,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                                         array[index - 1].subtitle.replace(/\n/g, " "))
                                                             )
                                                             .map((result) => (
-                                                                <ListItem key={result.id} disablePadding>
+                                                                <ListItem key={result.id} disablePadding sx={{padding: '.3em 0'}}>
                                                                     <ListItemIcon sx={{ paddingLeft: "0" }}>
                                                                         <Fab
                                                                             size="small"
