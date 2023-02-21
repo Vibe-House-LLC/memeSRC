@@ -553,10 +553,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                                     </ListItemIcon>
                                                                     <ListItemText primary={result.subtitle.replace(/\n/g, " ")} />
                                                                     <ListItemIcon sx={{ paddingRight: "0" }}>
-                                                                        {loading ? (
-                                                                            <CircularProgress size={20} sx={{ color: "#565656", marginLeft: 'auto' }} />
-                                                                        ) : (
-                                                                            <Fab
+                                                                    <Fab
                                                                             size="small"
                                                                             sx={{
                                                                                 backgroundColor: theme.palette.background.paper,
@@ -565,11 +562,15 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                                             }}
                                                                             onClick={() => navigate(`/editor/${result.fid}`)}
                                                                         >
+                                                                        {loading ? (
+                                                                            <CircularProgress size={20} sx={{ color: "#565656"}} />
+                                                                        ) : (
+                                                                            
                                                                             <ArrowForward
                                                                                 sx={{ color: "rgb(89, 89, 89)", cursor: "pointer"}}
                                                                             />
-                                                                        </Fab>
                                                                         )}
+                                                                        </Fab>
                                                                     </ListItemIcon>
                                                                 </ListItem>
                                                             ))}
