@@ -504,9 +504,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                 <Grid item xs={12} md={7} lg={7} marginRight={{ xs: '', md: 'auto'}} marginTop={{xs: -2.5, md: -1.5}} order={{ xs: 4, md: 4}}>
                                 <Card>
                                         <Accordion expanded={subtitlesExpanded}  disableGutters>
-                                            <AccordionSummary onClick={handleSubtitlesExpand} textAlign="center">
+                                            <AccordionSummary sx={{paddingX: 1}} onClick={handleSubtitlesExpand} textAlign="center">
                                                 <Typography
-                                                    marginLeft={{xs: 0.8}}
                                                     marginRight="auto"
                                                     fontWeight="bold"
                                                     color="#CACACA"
@@ -525,7 +524,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                 </Typography>
                                                 <Chip size="small" label="New!" color="success" />
                                             </AccordionSummary>
-                                            <AccordionDetails sx={{paddingTop: 0}}>
+                                            <AccordionDetails sx={{paddingY: 0}}>
                                                 <List sx={{ padding: '.5em 0' }}>
                                                     {surroundingFrames &&
                                                         surroundingFrames
@@ -559,25 +558,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                                             {result.subtitle.replace(/\n/g, " ")}
                                                                         </Typography>
                                                                     </ListItemText>
-                                                                    <ListItemIcon sx={{ paddingRight: "0" }}>
-                                                                    <Fab
-                                                                            size="small"
-                                                                            sx={{
-                                                                                backgroundColor: theme.palette.background.paper,
-                                                                                boxShadow: "none",
-                                                                                marginLeft: 'auto',
-                                                                                '&:hover': {xs: {backgroundColor: 'inherit'}, md: {backgroundColor: 'ButtonHighlight'}}
-                                                                            }}
-                                                                            onClick={() => navigate(`/editor/${result.fid}`)}
-                                                                        >
-                                                                        {loading ? (
-                                                                            <CircularProgress size={20} sx={{ color: "#565656"}} />
-                                                                        ) : (
-                                                                            (result.subtitle.replace(/\n/g, " ") === defaultSubtitle.replace(/\n/g, " ")) ? <GpsFixed sx={{ color: (result.subtitle.replace(/\n/g, " ") === defaultSubtitle.replace(/\n/g, " ")) ? 'rgb(50, 50, 50)' : 'rgb(89, 89, 89)', cursor: "pointer"}} /> : <ArrowForward sx={{ color: "rgb(89, 89, 89)", cursor: "pointer"}} /> 
-                                                                        )}
-                                                                        </Fab>
-                                                                    </ListItemIcon>
-                                                                    <ListItemIcon sx={{ paddingRight: "0" }}>
+                                                                    <ListItemIcon sx={{ paddingRight: "0", marginLeft: 'auto' }}>
                                                                     <Fab
                                                                             size="small"
                                                                             sx={{
@@ -592,6 +573,22 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                                             <CircularProgress size={20} sx={{ color: "#565656"}} />
                                                                         ) : (
                                                                              <Add sx={{ color: 'rgb(89, 89, 89)', cursor: "pointer"}} />
+                                                                        )}
+                                                                        </Fab>
+                                                                        <Fab
+                                                                            size="small"
+                                                                            sx={{
+                                                                                backgroundColor: theme.palette.background.paper,
+                                                                                boxShadow: "none",
+                                                                                marginLeft: '5px',
+                                                                                '&:hover': {xs: {backgroundColor: 'inherit'}, md: {backgroundColor: 'ButtonHighlight'}}
+                                                                            }}
+                                                                            onClick={() => navigate(`/editor/${result.fid}`)}
+                                                                        >
+                                                                        {loading ? (
+                                                                            <CircularProgress size={20} sx={{ color: "#565656"}} />
+                                                                        ) : (
+                                                                            (result.subtitle.replace(/\n/g, " ") === defaultSubtitle.replace(/\n/g, " ")) ? <GpsFixed sx={{ color: (result.subtitle.replace(/\n/g, " ") === defaultSubtitle.replace(/\n/g, " ")) ? 'rgb(50, 50, 50)' : 'rgb(89, 89, 89)', cursor: "pointer"}} /> : <ArrowForward sx={{ color: "rgb(89, 89, 89)", cursor: "pointer"}} /> 
                                                                         )}
                                                                         </Fab>
                                                                     </ListItemIcon>
