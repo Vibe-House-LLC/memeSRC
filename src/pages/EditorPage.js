@@ -501,12 +501,12 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                         )}
                                     </Grid>
                                 </Grid>
-                                <Grid item xs={12} md={7} lg={7} marginRight={{ xs: '', md: 'auto'}} order={{ xs: 4, md: 4}}>
+                                <Grid item xs={12} md={7} lg={7} marginRight={{ xs: '', md: 'auto'}} marginTop={{xs: -2.5, md: -1.5}} order={{ xs: 4, md: 4}}>
                                 <Card>
                                         <Accordion expanded={subtitlesExpanded}  disableGutters>
                                             <AccordionSummary onClick={handleSubtitlesExpand} textAlign="center">
                                                 <Typography
-                                                    marginLeft="auto"
+                                                    marginLeft={{xs: 0.8, md: 'auto'}}
                                                     marginRight="auto"
                                                     fontWeight="bold"
                                                     color="#CACACA"
