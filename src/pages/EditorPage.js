@@ -504,7 +504,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                 <Grid item xs={12} md={7} lg={7} marginRight={{ xs: '', md: 'auto'}} marginTop={{xs: -2.5, md: -1.5}} order={{ xs: 4, md: 4}}>
                                 <Card>
                                         <Accordion expanded={subtitlesExpanded}  disableGutters>
-                                            <AccordionSummary sx={{paddingX: 1}} onClick={handleSubtitlesExpand} textAlign="center">
+                                            <AccordionSummary sx={{paddingX: 1.55}} onClick={handleSubtitlesExpand} textAlign="center">
                                                 <Typography
                                                     marginRight="auto"
                                                     fontWeight="bold"
@@ -524,7 +524,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                 </Typography>
                                                 <Chip size="small" label="New!" color="success" />
                                             </AccordionSummary>
-                                            <AccordionDetails sx={{paddingY: 0}}>
+                                            <AccordionDetails sx={{paddingY: 0, paddingX: 0}}>
                                                 <List sx={{ padding: '.5em 0' }}>
                                                     {surroundingFrames &&
                                                         surroundingFrames
@@ -538,19 +538,22 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                             .map((result) => (
                                                                 <ListItem key={result?.id} disablePadding sx={{padding: '0 0 .6em 0'}}>
                                                                     <ListItemIcon sx={{ paddingLeft: "0" }}>
+                                                                        
                                                                         <Fab
                                                                             size="small"
                                                                             sx={{
                                                                                 backgroundColor: theme.palette.background.paper,
                                                                                 boxShadow: "none",
-                                                                                '&:hover': {xs: {backgroundColor: 'inherit'}, md: {backgroundColor: 'ButtonHighlight'}}
+                                                                                marginLeft: '5px',
+                                                                                '&:hover': {xs: {backgroundColor: 'inherit'}, md: {backgroundColor: (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 'rgba(0, 0, 0, 0)' : 'ButtonHighlight'}}
                                                                             }}
-                                                                            onClick={() => {
-                                                                                navigator.clipboard.writeText(result?.subtitle.replace(/\n/g, " "));
-                                                                                handleSnackbarOpen();
-                                                                            }}
+                                                                            onClick={() => navigate(`/editor/${result?.fid}`)}
                                                                         >
-                                                                            <Description sx={{ color: "rgb(89, 89, 89)" }} />
+                                                                        {loading ? (
+                                                                            <CircularProgress size={20} sx={{ color: "#565656"}} />
+                                                                        ) : (
+                                                                            (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle.replace(/\n/g, " ")) ? <GpsFixed sx={{ color: (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 'rgb(202, 202, 202)' : 'rgb(89, 89, 89)', cursor: "pointer"}} /> : <ArrowForward sx={{ color: "rgb(89, 89, 89)", cursor: "pointer"}} /> 
+                                                                        )}
                                                                         </Fab>
                                                                     </ListItemIcon>
                                                                     <ListItemText sx={{color: 'rgb(173, 173, 173)', fontSize: '4em'}}>
@@ -559,23 +562,38 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                                         </Typography>
                                                                     </ListItemText>
                                                                     <ListItemIcon sx={{ paddingRight: "0", marginLeft: 'auto' }}>
-                                                                    <Fab
+                                                                        <Fab
                                                                             size="small"
                                                                             sx={{
                                                                                 backgroundColor: theme.palette.background.paper,
                                                                                 boxShadow: "none",
-                                                                                marginLeft: 'auto',
+                                                                                marginRight: '2px',
                                                                                 '&:hover': {xs: {backgroundColor: 'inherit'}, md: {backgroundColor: 'ButtonHighlight'}}
                                                                             }}
-                                                                            onClick={() => addText(result?.subtitle.replace(/\n/g, " "), true)}
+                                                                            onClick={() => {
+                                                                                navigator.clipboard.writeText(result?.subtitle.replace(/\n/g, " "));
+                                                                                handleSnackbarOpen();
+                                                                            }}
                                                                         >
-                                                                        {loading ? (
-                                                                            <CircularProgress size={20} sx={{ color: "#565656"}} />
-                                                                        ) : (
-                                                                             <Add sx={{ color: 'rgb(89, 89, 89)', cursor: "pointer"}} />
-                                                                        )}
+                                                                            <ContentCopy sx={{ color: "rgb(89, 89, 89)" }} />
                                                                         </Fab>
                                                                         <Fab
+                                                                                size="small"
+                                                                                sx={{
+                                                                                    backgroundColor: theme.palette.background.paper,
+                                                                                    boxShadow: "none",
+                                                                                    marginLeft: 'auto',
+                                                                                    '&:hover': {xs: {backgroundColor: 'inherit'}, md: {backgroundColor: 'ButtonHighlight'}}
+                                                                                }}
+                                                                                onClick={() => addText(result?.subtitle.replace(/\n/g, " "), true)}
+                                                                            >
+                                                                            {loading ? (
+                                                                                <CircularProgress size={20} sx={{ color: "#565656"}} />
+                                                                            ) : (
+                                                                                <Add sx={{ color: 'rgb(89, 89, 89)', cursor: "pointer"}} />
+                                                                            )}
+                                                                        </Fab>
+                                                                        {/* <Fab
                                                                             size="small"
                                                                             sx={{
                                                                                 backgroundColor: theme.palette.background.paper,
@@ -590,7 +608,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                                         ) : (
                                                                             (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle.replace(/\n/g, " ")) ? <GpsFixed sx={{ color: (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 'rgb(50, 50, 50)' : 'rgb(89, 89, 89)', cursor: "pointer"}} /> : <ArrowForward sx={{ color: "rgb(89, 89, 89)", cursor: "pointer"}} /> 
                                                                         )}
-                                                                        </Fab>
+                                                                        </Fab> */}
                                                                     </ListItemIcon>
                                                                 </ListItem>
                                                             ))}
