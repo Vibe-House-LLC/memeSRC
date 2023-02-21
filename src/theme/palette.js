@@ -44,12 +44,12 @@ const INFO = {
 };
 
 const SUCCESS = {
-  lighter: '#E9FCD4',
-  light: '#AAF27F',
+  lighter: '#08660D',
+  light: '#229A16',
   main: '#54D62C',
-  dark: '#229A16',
-  darker: '#08660D',
-  contrastText: GREY[200],
+  dark: '#AAF27F',
+  darker: '#E9FCD4',
+  contrastText: GREY[800],
 };
 
 const WARNING = {

@@ -5,7 +5,7 @@ import styled from '@emotion/styled';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
-import { Accordion, AccordionDetails, AccordionSummary, Button, Card, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, TextField, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
+import { Accordion, AccordionDetails, AccordionSummary, Button, Card, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, TextField, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { AddCircleOutline, ArrowForward, ArrowForwardIos, Close, ContentCopy, Description, HighlightOffRounded, HistoryToggleOffRounded, IosShare, Menu, More, Share } from '@mui/icons-material';
 import { API, Storage } from 'aws-amplify';
 import { Box } from '@mui/system';
@@ -523,6 +523,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                     )}
                                                     {subtitlesExpanded ? "Hide" : "Show"} Nearby Subtitles
                                                 </Typography>
+                                                <Chip size="small" label="New!" color="success" />
                                             </AccordionSummary>
                                             <AccordionDetails sx={{paddingTop: 0}}>
                                                 <List sx={{ padding: '.5em 0' }}>
