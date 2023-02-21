@@ -501,7 +501,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                         )}
                                     </Grid>
                                     <Card>
-                                        <Accordion expanded={subtitlesExpanded}>
+                                        <Accordion expanded={subtitlesExpanded}  disableGutters>
                                             <AccordionSummary padding={0} margin={0} onClick={handleSubtitlesExpand} textAlign="center">
                                                 <Typography
                                                     marginLeft="auto"
