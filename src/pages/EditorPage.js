@@ -554,7 +554,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                                         </Fab>
                                                                     </ListItemIcon>
                                                                     <ListItemText sx={{color: 'rgb(173, 173, 173)', fontSize: '4em'}}>
-                                                                        <Typography component='p' variant='body2' color={(result.subtitle.replace(/\n/g, " ") === defaultSubtitle.replace(/\n/g, " ")) ? 'rgb(202, 202, 202)' : ''} fontWeight={(result.subtitle.replace(/\n/g, " ") === defaultSubtitle.replace(/\n/g, " ")) ? 700 : 400}>
+                                                                        <Typography component='p' variant='body2' color={(result.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 'rgb(202, 202, 202)' : ''} fontWeight={(result.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 700 : 400}>
                                                                             {result.subtitle.replace(/\n/g, " ")}
                                                                         </Typography>
                                                                     </ListItemText>
@@ -581,14 +581,14 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                                                 backgroundColor: theme.palette.background.paper,
                                                                                 boxShadow: "none",
                                                                                 marginLeft: '5px',
-                                                                                '&:hover': {xs: {backgroundColor: 'inherit'}, md: {backgroundColor: (result.subtitle.replace(/\n/g, " ") === defaultSubtitle.replace(/\n/g, " ")) ? 'rgba(0, 0, 0, 0)' : 'ButtonHighlight'}}
+                                                                                '&:hover': {xs: {backgroundColor: 'inherit'}, md: {backgroundColor: (result.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 'rgba(0, 0, 0, 0)' : 'ButtonHighlight'}}
                                                                             }}
                                                                             onClick={() => navigate(`/editor/${result.fid}`)}
                                                                         >
                                                                         {loading ? (
                                                                             <CircularProgress size={20} sx={{ color: "#565656"}} />
                                                                         ) : (
-                                                                            (result.subtitle.replace(/\n/g, " ") === defaultSubtitle.replace(/\n/g, " ")) ? <GpsFixed sx={{ color: (result.subtitle.replace(/\n/g, " ") === defaultSubtitle.replace(/\n/g, " ")) ? 'rgb(50, 50, 50)' : 'rgb(89, 89, 89)', cursor: "pointer"}} /> : <ArrowForward sx={{ color: "rgb(89, 89, 89)", cursor: "pointer"}} /> 
+                                                                            (result.subtitle.replace(/\n/g, " ") === defaultSubtitle.replace(/\n/g, " ")) ? <GpsFixed sx={{ color: (result.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 'rgb(50, 50, 50)' : 'rgb(89, 89, 89)', cursor: "pointer"}} /> : <ArrowForward sx={{ color: "rgb(89, 89, 89)", cursor: "pointer"}} /> 
                                                                         )}
                                                                         </Fab>
                                                                     </ListItemIcon>
