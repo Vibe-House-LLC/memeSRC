@@ -556,10 +556,19 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                                         {loading ? (
                                                                             <CircularProgress size={20} sx={{ color: "#565656", marginLeft: 'auto' }} />
                                                                         ) : (
+                                                                            <Fab
+                                                                            size="small"
+                                                                            sx={{
+                                                                                backgroundColor: theme.palette.background.paper,
+                                                                                boxShadow: "none",
+                                                                                marginLeft: 'auto'
+                                                                            }}
+                                                                            onClick={() => navigate(`/editor/${result.fid}`)}
+                                                                        >
                                                                             <ArrowForward
-                                                                                sx={{ color: "rgb(89, 89, 89)", cursor: "pointer", marginLeft: 'auto'}}
-                                                                                onClick={() => navigate(`/editor/${result.fid}`)}
+                                                                                sx={{ color: "rgb(89, 89, 89)", cursor: "pointer"}}
                                                                             />
+                                                                        </Fab>
                                                                         )}
                                                                     </ListItemIcon>
                                                                 </ListItem>
