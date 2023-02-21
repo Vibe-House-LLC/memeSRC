@@ -543,6 +543,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                                             sx={{
                                                                                 backgroundColor: theme.palette.background.paper,
                                                                                 boxShadow: "none",
+                                                                                '&:hover': {xs: {backgroundColor: 'inherit'}, md: {backgroundColor: 'ButtonHighlight'}}
                                                                             }}
                                                                             onClick={() => {
                                                                                 navigator.clipboard.writeText(result.subtitle.replace(/\n/g, " "));
@@ -563,7 +564,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                                             sx={{
                                                                                 backgroundColor: theme.palette.background.paper,
                                                                                 boxShadow: "none",
-                                                                                marginLeft: 'auto'
+                                                                                marginLeft: 'auto',
+                                                                                '&:hover': {xs: {backgroundColor: 'inherit'}, md: {backgroundColor: 'ButtonHighlight'}}
                                                                             }}
                                                                             onClick={() => navigate(`/editor/${result.fid}`)}
                                                                         >
