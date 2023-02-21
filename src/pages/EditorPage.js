@@ -500,7 +500,9 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                         )
                                         )}
                                     </Grid>
-                                    <Card>
+                                </Grid>
+                                <Grid item xs={12} md={7} lg={7} marginRight={{ xs: '', md: 'auto'}} order={{ xs: 4, md: 4}}>
+                                <Card>
                                         <Accordion expanded={subtitlesExpanded}  disableGutters>
                                             <AccordionSummary onClick={handleSubtitlesExpand} textAlign="center">
                                                 <Typography
@@ -579,10 +581,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                             </AccordionDetails>
                                         </Accordion>
                                     </Card>
-
-
-
-
                                 </Grid>
                                 <Grid item xs={12} md={7} lg={7} marginRight={{ xs: '', md: 'auto' }} order={{ xs: 2, md: 3 }}>
                                     <Stack spacing={2} direction='row' alignItems={'center'}>
