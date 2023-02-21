@@ -6,7 +6,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
 import { Accordion, AccordionDetails, AccordionSummary, Button, Card, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, TextField, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
-import { AddCircleOutline, ArrowForward, ArrowForwardIos, Close, ContentCopy, Description, HighlightOffRounded, HistoryToggleOffRounded, IosShare, Menu, More, Share } from '@mui/icons-material';
+import { AddCircleOutline, ArrowForward, ArrowForwardIos, Close, ContentCopy, Description, GpsFixed, HighlightOffRounded, HistoryToggleOffRounded, IosShare, Menu, More, Share } from '@mui/icons-material';
 import { API, Storage } from 'aws-amplify';
 import { Box } from '@mui/system';
 import TextEditorControls from '../components/TextEditorControls';
@@ -573,10 +573,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                                         {loading ? (
                                                                             <CircularProgress size={20} sx={{ color: "#565656"}} />
                                                                         ) : (
-                                                                            
-                                                                            <ArrowForward
-                                                                                sx={{ color: "rgb(89, 89, 89)", cursor: "pointer"}}
-                                                                            />
+                                                                            (result.subtitle.replace(/\n/g, " ") === defaultSubtitle.replace(/\n/g, " ")) ? <GpsFixed sx={{ color: "rgb(89, 89, 89)", cursor: "pointer"}} /> : <ArrowForward sx={{ color: "rgb(89, 89, 89)", cursor: "pointer"}} /> 
                                                                         )}
                                                                         </Fab>
                                                                     </ListItemIcon>
