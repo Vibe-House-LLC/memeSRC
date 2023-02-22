@@ -28,6 +28,23 @@
       "permissions": {
         "setting": "open"
       }
+    },
+    "/analytics": {
+      "name": "/analytics",
+      "lambdaFunction": "memesrcAnalyticsReporting",
+      "permissions": {
+        "groups": {
+          "admins": [
+            "create",
+            "read",
+            "update"
+          ],
+          "mods": [
+            "read"
+          ]
+        },
+        "setting": "private"
+      }
     }
   }
 }
