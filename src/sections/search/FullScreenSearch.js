@@ -335,20 +335,48 @@ export default function FullScreenSearch({
     }
   }
 
-  const loadRandomFrame = useCallback(() => {
-    const apiEpisodeLookupUrl = `https://api.memesrc.com/random/generate${seriesTitle === '_universal' ? '' : `?series=${seriesTitle}`}`
-    setLoadingRandom(true);
-    fetch(apiEpisodeLookupUrl)
-      .then(response => {
-        const fid = response.url.split('=')[1];
-        console.log(fid)
-        navigate(`/editor/${fid}`);
-        setLoadingRandom(false);
+  const getSessionID = async () => {
+    let sessionID;
+    if ("sessionID" in sessionStorage) {
+      sessionID = sessionStorage.getItem("sessionID");
+      return Promise.resolve(sessionID);
+    }
+    return API.get('publicapi', '/uuid')
+      .then(generatedSessionID => {
+        sessionStorage.setItem("sessionID", generatedSessionID);
+        return generatedSessionID;
       })
-      .catch(error => {
-        console.error(error);
-        setLoadingRandom(false);
+      .catch(err => {
+        console.log(`UUID Gen Fetch Error:  ${err}`);
+        throw err;
       });
+  };
+
+  const loadRandomFrame = useCallback(() => {
+    setLoadingRandom(true);
+    getSessionID().then(sessionId => {
+      const apiName = 'publicapi';
+      const path = '/random';
+      const myInit = {
+        queryStringParameters: {
+          series: seriesTitle,
+          sessionId
+        }
+      }
+
+      API.get(apiName, path, myInit)
+        .then(response => {
+          const fid = response.frame_id;
+          console.log(fid)
+          navigate(`/editor/${fid}`);
+          setLoadingRandom(false);
+        })
+        .catch(error => {
+          console.error(error);
+          setLoadingRandom(false);
+        });
+    })
+
   }, [navigate, seriesTitle]);
 
   return (
@@ -422,7 +450,7 @@ export default function FullScreenSearch({
           </Fab>
         </StyledFooter>
       </StyledGridContainer>
-      {sections.map((section) => 
+      {sections.map((section) =>
         <HomePageSection
           key={section.id}
           index={section.index}

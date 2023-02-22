@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { API } from 'aws-amplify';
 import { Grid, CircularProgress, Card } from '@mui/material';
 import styled from '@emotion/styled';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -97,18 +98,18 @@ export default function SearchPage() {
     let sessionID;
     if ("sessionID" in sessionStorage) {
       sessionID = sessionStorage.getItem("sessionID");
-    } else {
-      await fetch(`https://api.memesrc.com/?uuidGen`)
-        .then(response => {
-          response.json()
-            .then(generatedSessionID => {
-              sessionStorage.setItem("sessionID", generatedSessionID);
-              sessionID = generatedSessionID
-            }).catch(err => console.log(`JSON Parse Error:  ${err}`));
-        }).catch(err => console.log(`UUID Gen Fetch Error:  ${err}`));
+      return Promise.resolve(sessionID);
     }
-    return sessionID;
-  }
+    return API.get('publicapi', '/uuid')
+      .then(generatedSessionID => {
+        sessionStorage.setItem("sessionID", generatedSessionID);
+        return generatedSessionID;
+      })
+      .catch(err => {
+        console.log(`UUID Gen Fetch Error:  ${err}`);
+        throw err;
+      });
+  };
 
   useEffect(() => {
     if (params) {
@@ -118,16 +119,18 @@ export default function SearchPage() {
         setSeriesTitle(params.seriesId)
         console.log(params)
         setLoading(true);
-        let apiSearchUrl;
-        if (seriesTitle && seriesTitle !== '_universal') {
-          apiSearchUrl = `https://api.memesrc.com/?series=${seriesTitle}&search=${searchTerm}`;
-        } else {
-          apiSearchUrl = `https://api.memesrc.com/?search=${searchTerm}`;
-        }
-
-        getSessionID().then(sessionID => {
-          fetch(`${apiSearchUrl}&sessionID=${sessionID}`)
-            .then(response => response.json())
+        // TODO: switch to using amplify to access the publicapi
+        getSessionID().then(sessionId => {
+          const apiName = 'publicapi';
+          const path = '/search';
+          const myInit = {
+            queryStringParameters: {
+              q: searchTerm,
+              series: seriesTitle,
+              sessionId
+            }
+          }
+          API.get(apiName, path, myInit)
             .then(data => {
               setResults(data);
               setLoading(false);
@@ -138,7 +141,7 @@ export default function SearchPage() {
               console.error(error);
               setLoading(false);
             });
-        }).catch(err => console.log(`Error with sessionID: ${err}`))
+        })
       }
     }
   }, [params, searchTerm, seriesTitle, loadedSeriesTitle, loadedSearchTerm])
@@ -153,7 +156,6 @@ export default function SearchPage() {
   }, [seriesTitle, searchTerm, navigate]);
 
   return (
-
     <>
       {(memoizedResults || loading) && <TopBannerSearch searchFunction={handleSearch} setSearchTerm={setSearchTerm} setSeriesTitle={setSeriesTitle} searchTerm={searchTerm} seriesTitle={seriesTitle} loading={loading} />}
       <Grid container spacing={2} alignItems='stretch' paddingX={{ xs: 2, md: 6 }}>
@@ -172,9 +174,9 @@ export default function SearchPage() {
                   <SeasonEpisodeText><b>S.</b>{result.season_number} <b>E.</b>{result.episode_number}</SeasonEpisodeText> <b>{result.series_name}</b>
                 </TopCardInfo>
                 <BottomCardCaption>
-                {result.subtitle}
+                  {result.subtitle}
                 </BottomCardCaption>
-                  
+
                 {/* <StyledTypography variant="body2">
                   Subtitle: {result.subtitle}<br />
                   Series: {result.series_name}<br />
