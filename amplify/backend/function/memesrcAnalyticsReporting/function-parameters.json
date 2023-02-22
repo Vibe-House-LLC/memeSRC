@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "storage": {
+      "memesrcGeneratedImages": [
+        "create",
+        "read"
+      ]
+    }
+  },
+  "lambdaLayers": []
+}

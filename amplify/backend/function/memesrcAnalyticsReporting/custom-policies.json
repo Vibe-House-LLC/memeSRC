@@ -1,0 +1,12 @@
+[
+  {
+    "Effect": "Allow",
+    "Action": [
+      "athena:*",
+      "glue:*"
+    ],
+    "Resource": [
+      "*"
+    ]
+  }
+]

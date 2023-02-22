@@ -88,6 +88,35 @@
           ],
           "category": "function",
           "resourceName": "memesrcUUID"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcAnalyticsReporting"
+        },
+        {
+          "attributes": [
+            "UserPoolId"
+          ],
+          "category": "auth",
+          "resourceName": "memesrcc3c71449"
+        },
+        {
+          "attributes": [
+            "adminsGroupRole"
+          ],
+          "category": "auth",
+          "resourceName": "userPoolGroups"
+        },
+        {
+          "attributes": [
+            "modsGroupRole"
+          ],
+          "category": "auth",
+          "resourceName": "userPoolGroups"
         }
       ],
       "providerPlugin": "awscloudformation",
@@ -152,6 +181,34 @@
       "service": "Lambda"
     },
     "SearchFunction": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "BucketName"
+          ],
+          "category": "storage",
+          "resourceName": "memesrcGeneratedImages"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "memesrcAnalyticsMsck": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "BucketName"
+          ],
+          "category": "storage",
+          "resourceName": "memesrcGeneratedImages"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "memesrcAnalyticsReporting": {
       "build": true,
       "dependsOn": [
         {
@@ -243,6 +300,38 @@
         {
           "category": "function",
           "resourceName": "SearchFunction"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcAnalyticsMsck_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcAnalyticsMsck"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcAnalyticsMsck_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcAnalyticsMsck"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcAnalyticsReporting_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcAnalyticsReporting"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcAnalyticsReporting_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcAnalyticsReporting"
         }
       ]
     },

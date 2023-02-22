@@ -52,6 +52,7 @@ async function fetchHomepageSections(items = [], nextToken = null) {
 
 export default function DashboardAppPage() {
   const [sections, setSections] = useState([]);
+  const [frameViewsDaily, setFrameViewsDaily] = useState()
 
   // Pull the homepage sections from GraphQL when the component loads
   useEffect(() => {
@@ -62,6 +63,14 @@ export default function DashboardAppPage() {
     }
     getData();
   }, []);
+
+  // Pull the analytics data for the dashboard
+  useEffect(() => {
+    API.get('publicapi', '/analytics').then(data => {
+      console.log(data)
+      setFrameViewsDaily(data)
+    })
+  }, [])
 
   const theme = useTheme();
 
@@ -99,7 +108,7 @@ export default function DashboardAppPage() {
 
           <Grid container spacing={3}>
             <Grid item xs={12} sm={6} md={3}>
-              <AppWidgetSummary title="Weekly Sales" total={714000} icon={'ant-design:android-filled'} />
+              <AppWidgetSummary title={`Frame Views (24h - ${process.env.REACT_APP_USER_BRANCH})`} total={frameViewsDaily} icon={'ant-design:android-filled'} />
             </Grid>
 
             <Grid item xs={12} sm={6} md={3}>

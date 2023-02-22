@@ -1,0 +1,81 @@
+/* Amplify Params - DO NOT EDIT
+    ENV
+    REGION
+    STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME
+Amplify Params - DO NOT EDIT */
+
+/**
+ * @type {import('@types/aws-lambda').APIGatewayProxyHandler}
+ */
+
+const { AthenaClient, StartQueryExecutionCommand, GetQueryExecutionCommand, GetQueryResultsCommand } = require("@aws-sdk/client-athena");
+
+const ATHENA_DB = 'memesrc';
+const ATHENA_OUTPUT_LOCATION = `s3://${process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME}/athena`;
+const ATHENA_QUERY = `
+    SELECT COUNT(*) AS TOTAL_FRAME_VIEWS
+    FROM memesrc.${process.env.ENV}_raw__frame_views
+    WHERE FROM_ISO8601_TIMESTAMP(event_time) > current_timestamp - interval '1' day
+    AND CAST(year AS INTEGER) = YEAR(CURRENT_DATE) 
+    AND CAST(month AS INTEGER) = MONTH(CURRENT_DATE) 
+    AND (CAST(day AS INTEGER) = DAY(CURRENT_DATE) OR CAST(day AS INTEGER) = DAY(current_timestamp - interval '1' day));
+`;
+
+console.log(ATHENA_QUERY)
+
+const athena = new AthenaClient({ region: 'us-east-1' });
+
+exports.handler = async (event) => {
+    try {
+        console.log(`EVENT: ${JSON.stringify(event)}`);
+        console.log(`Executing query: ${ATHENA_QUERY}`);
+
+        // Start the query execution
+        const startQueryExecutionCommand = new StartQueryExecutionCommand({
+            QueryString: ATHENA_QUERY,
+            QueryExecutionContext: { Database: ATHENA_DB },
+            ResultConfiguration: { OutputLocation: ATHENA_OUTPUT_LOCATION }
+        });
+        const startQueryExecutionResponse = await athena.send(startQueryExecutionCommand);
+        const queryExecutionId = startQueryExecutionResponse.QueryExecutionId;
+
+        // Wait for the query to complete
+        let status = 'QUEUED';
+        while (status === 'QUEUED' || status === 'RUNNING') {
+            const getQueryExecutionCommand = new GetQueryExecutionCommand({ QueryExecutionId: queryExecutionId });
+            const getQueryExecutionResponse = await athena.send(getQueryExecutionCommand);
+            status = getQueryExecutionResponse.QueryExecution.Status.State;
+            console.log(`Query status: ${status}`);
+            if (status === 'FAILED' || status === 'CANCELLED') {
+                throw new Error(`Query ${queryExecutionId} failed or was cancelled`);
+            }
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+
+        // Get the query results
+        const getQueryResultsCommand = new GetQueryResultsCommand({ QueryExecutionId: queryExecutionId });
+        const getQueryResultsResponse = await athena.send(getQueryResultsCommand);
+        const queryResults = getQueryResultsResponse.ResultSet.Rows.map(row => row.Data.map(col => col.VarCharValue));
+        console.log(`Query results: ${JSON.stringify(queryResults)}`);
+
+
+        console.log(`What the hell is results? ${queryResults}`)
+        const frameViews = queryResults[1][0]
+
+        return {
+            statusCode: 200,
+            headers: {
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Headers": "*",
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(frameViews),
+        };
+    } catch (error) {
+        console.error(`Error: ${error}`);
+        return {
+            statusCode: 500,
+            body: JSON.stringify({ message: error.message })
+        };
+    }
+};
