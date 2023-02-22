@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "paths": {
+    "/search": {
+      "name": "/search",
+      "lambdaFunction": "SearchFunction",
+      "permissions": {
+        "setting": "open"
+      }
+    },
+    "/random": {
+      "name": "/random",
+      "lambdaFunction": "memesrcRandom",
+      "permissions": {
+        "setting": "open"
+      }
+    },
+    "/frame": {
+      "name": "/frame",
+      "lambdaFunction": "memesrcFrameFunction",
+      "permissions": {
+        "setting": "open"
+      }
+    },
+    "/uuid": {
+      "name": "/uuid",
+      "lambdaFunction": "memesrcUUID",
+      "permissions": {
+        "setting": "open"
+      }
+    }
+  }
+}

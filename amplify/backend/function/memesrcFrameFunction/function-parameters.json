@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "storage": {
+      "memesrcGeneratedImages": [
+        "create",
+        "read",
+        "update"
+      ]
+    }
+  },
+  "lambdaLayers": [],
+  "secretNames": [
+    "opensearch_user",
+    "opensearch_url",
+    "opensearch_pass"
+  ]
+}

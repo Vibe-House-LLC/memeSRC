@@ -5,9 +5,9 @@ import styled from '@emotion/styled';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
-import { Button, Card, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, Popover, Slider, Snackbar, Stack, TextField, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
-import { AddCircleOutline, Close, ContentCopy, HighlightOffRounded, HistoryToggleOffRounded, IosShare, Share } from '@mui/icons-material';
-import { Storage } from 'aws-amplify';
+import { Accordion, AccordionDetails, AccordionSummary, Button, Card, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, TextField, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
+import { Add, AddCircleOutline, ArrowForward, ArrowForwardIos, Close, ContentCopy, Description, GpsFixed, GpsNotFixed, HighlightOffRounded, HistoryToggleOffRounded, IosShare, Menu, More, PlusOne, Share } from '@mui/icons-material';
+import { API, Storage } from 'aws-amplify';
 import { Box } from '@mui/system';
 import TextEditorControls from '../components/TextEditorControls';
 
@@ -85,6 +85,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
     const [editorAspectRatio, setEditorAspectRatio] = useState(1);
 
+    const [loading, setLoading] = useState(true)
+
     const [fineTuningValue, setFineTuningValue] = useState(4);
     const [episodeDetails, setEpisodeDetails] = useState();
     const [open, setOpen] = useState(false);
@@ -95,6 +97,12 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     const theme = useTheme();
     const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
     const [loadedSeriesTitle, setLoadedSeriesTitle] = useState('_universal');
+
+    const [subtitlesExpanded, setSubtitlesExpanded] = useState(false);
+
+    const handleSubtitlesExpand = () => {
+        setSubtitlesExpanded(!subtitlesExpanded);
+    };
 
     const handleSnackbarOpen = () => {
         setSnackBarOpen(true);
@@ -178,18 +186,18 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         let sessionID;
         if ("sessionID" in sessionStorage) {
             sessionID = sessionStorage.getItem("sessionID");
-        } else {
-            await fetch(`https://api.memesrc.com/?uuidGen`)
-                .then(response => {
-                    response.json()
-                        .then(generatedSessionID => {
-                            sessionStorage.setItem("sessionID", generatedSessionID);
-                            sessionID = generatedSessionID
-                        }).catch(err => console.log(`JSON Parse Error:  ${err}`));
-                }).catch(err => console.log(`UUID Gen Fetch Error:  ${err}`));
+            return Promise.resolve(sessionID);
         }
-        return sessionID;
-    }
+        return API.get('publicapi', '/uuid')
+            .then(generatedSessionID => {
+                sessionStorage.setItem("sessionID", generatedSessionID);
+                return generatedSessionID;
+            })
+            .catch(err => {
+                console.log(`UUID Gen Fetch Error:  ${err}`);
+                throw err;
+            });
+    };
 
     const addText = useCallback((updatedText, append) => {
         const text = new fabric.Textbox(updatedText, {
@@ -222,29 +230,29 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     }, [editor]);
 
     const loadEditorDefaults = useCallback(() => {
-        const apiSearchUrl = `https://api.memesrc.com/?fid=${selectedFid}`;
-        getSessionID().then(sessionID => {
-            fetch(`${apiSearchUrl}&sessionID=${sessionID}`).then(response => {
+        getSessionID().then(sessionId => {
+            setLoading(true)
+            const queryStringParams = { queryStringParameters: { fid: selectedFid, sessionId } }
+            API.get('publicapi', '/frame', queryStringParams).then(data => {
                 console.log('test')
-                response.json().then(data => {
-                    console.log(data)
-                    setLoadedSeriesTitle(data.series_name);
-                    setSurroundingFrames(data.frames_surrounding);
-                    const episodeDetails = selectedFid.split('-');
-                    setEpisodeDetails(episodeDetails);
-                    // Pre load fine tuning frames
-                    loadImg(data.frames_fine_tuning, oImgBuild).then((images) => {
-                        setFineTuningFrames(images)
-                    });
-                    // Background image from the 
-                    fabric.Image.fromURL(`https://memesrc.com${data.frame_image}`, (oImg) => {
-                        console.log(oImg)
-                        setDefaultFrame(oImg);
-                        setDefaultSubtitle(data.subtitle);
-                    }, { crossOrigin: "anonymous" });
-                }).catch(err => console.log(err))
+                console.log(data)
+                setLoadedSeriesTitle(data.series_name);
+                setSurroundingFrames(data.frames_surrounding);
+                const episodeDetails = selectedFid.split('-');
+                setEpisodeDetails(episodeDetails);
+                // Pre load fine tuning frames
+                loadImg(data.frames_fine_tuning, oImgBuild).then((images) => {
+                    setFineTuningFrames(images)
+                });
+                // Background image from the 
+                fabric.Image.fromURL(`https://memesrc.com${data.frame_image}`, (oImg) => {
+                    console.log(oImg)
+                    setDefaultFrame(oImg);
+                    setDefaultSubtitle(data.subtitle);
+                    setLoading(false)
+                }, { crossOrigin: "anonymous" });
             }).catch(err => console.log(err))
-        }).catch(err => console.log(`Error with sessionID: ${err}`))
+        }).catch(err => console.log(err))
     }, [resizeCanvas, selectedFid, editor, addText])
 
     // Look up data for the fid and set defaults
@@ -319,29 +327,28 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
             .then(res => res.blob())
             .then(blob => {
                 setImageBlob(blob);
-                fetch(`https://api.memesrc.com/?uuidGen`).then(response => {
-                    response.json().then(uuid => {
-                        const filename = `${uuid}.jpg`
-                        setGeneratedImageFilename(filename)
-                        Storage.put(`${uuid}.jpg`, blob, {
-                            resumable: true,
-                            contentType: "image/jpeg",
-                            completeCallback: (event) => {
-                                Storage.get(event.key).then(() => {
-                                    // setGeneratedImage(image);
-                                    const file = new File([blob], filename, { type: 'image/jpeg' });
-                                    setShareImageFile(file);
-                                    setImageUploading(false);
-                                })
-                            },
-                            progressCallback: (progress) => {
-                                console.log(`Uploaded: ${progress.loaded}/${progress.total}`);
-                            },
-                            errorCallback: (err) => {
-                                console.error('Unexpected error while uploading', err);
-                            }
-                        })
-                    }).catch(err => console.log(`JSON Parse Error:  ${err}`));
+                API.get('publicapi', '/uuid').then(uuid => {
+                    console.log(`GOT THIS UUID: ${JSON.stringify(uuid)}`)
+                    const filename = `${uuid}.jpg`
+                    setGeneratedImageFilename(filename)
+                    Storage.put(`${uuid}.jpg`, blob, {
+                        resumable: true,
+                        contentType: "image/jpeg",
+                        completeCallback: (event) => {
+                            Storage.get(event.key).then(() => {
+                                // setGeneratedImage(image);
+                                const file = new File([blob], filename, { type: 'image/jpeg' });
+                                setShareImageFile(file);
+                                setImageUploading(false);
+                            })
+                        },
+                        progressCallback: (progress) => {
+                            console.log(`Uploaded: ${progress.loaded}/${progress.total}`);
+                        },
+                        errorCallback: (err) => {
+                            console.error('Unexpected error while uploading', err);
+                        }
+                    })
                 }).catch(err => console.log(`UUID Gen Fetch Error:  ${err}`));
             })
     }
@@ -460,7 +467,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                             Add Layer
                                         </Button>
                                     </Grid>
-                                    <Grid container item xs={12} maxHeight={{ xs: {}, md: `${canvasSize.height - 52}px` }} paddingX={{ xs: 0, md: 2 }} sx={{ overflowY: 'scroll', overflow: 'auto' }} flexDirection='col-reverse'>
+                                    <Grid container item xs={12} maxHeight={{ xs: {}, md: `${canvasSize.height - 104}px` }} paddingX={{ xs: 0, md: 2 }} sx={{ overflowY: 'scroll', overflow: 'auto' }} flexDirection='col-reverse'>
                                         {canvasObjects && canvasObjects.map((object, index) => (
 
                                             ('text' in object) &&
@@ -494,6 +501,118 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                         )}
                                     </Grid>
                                 </Grid>
+                                <Grid item xs={12} md={7} lg={7} marginRight={{ xs: '', md: 'auto' }} marginTop={{ xs: -2.5, md: -1.5 }} order={{ xs: 4, md: 4 }}>
+                                    <Card>
+                                        <Accordion expanded={subtitlesExpanded} disableGutters>
+                                            <AccordionSummary sx={{ paddingX: 1.55 }} onClick={handleSubtitlesExpand} textAlign="center">
+                                                <Typography
+                                                    marginRight="auto"
+                                                    fontWeight="bold"
+                                                    color="#CACACA"
+                                                    fontSize={14.8}
+                                                >
+                                                    {subtitlesExpanded ? (
+                                                        <Close
+                                                            style={{ verticalAlign: "middle", marginTop: "-3px", marginRight: "10px" }}
+                                                        />
+                                                    ) : (
+                                                        <Menu
+                                                            style={{ verticalAlign: "middle", marginTop: "-3px", marginRight: "10px" }}
+                                                        />
+                                                    )}
+                                                    {subtitlesExpanded ? "Hide" : "View"} Nearby Subtitles
+                                                </Typography>
+                                                <Chip size="small" label="New!" color="success" />
+                                            </AccordionSummary>
+                                            <AccordionDetails sx={{ paddingY: 0, paddingX: 0 }}>
+                                                <List sx={{ padding: '.5em 0' }}>
+                                                    {surroundingFrames &&
+                                                        surroundingFrames
+                                                            .filter(
+                                                                (result, index, array) =>
+                                                                    result?.subtitle &&
+                                                                    (index === 0 ||
+                                                                        result?.subtitle.replace(/\n/g, " ") !==
+                                                                        array[index - 1].subtitle.replace(/\n/g, " "))
+                                                            )
+                                                            .map((result) => (
+                                                                <ListItem key={result?.id} disablePadding sx={{ padding: '0 0 .6em 0' }}>
+                                                                    <ListItemIcon sx={{ paddingLeft: "0" }}>
+
+                                                                        <Fab
+                                                                            size="small"
+                                                                            sx={{
+                                                                                backgroundColor: theme.palette.background.paper,
+                                                                                boxShadow: "none",
+                                                                                marginLeft: '5px',
+                                                                                '&:hover': { xs: { backgroundColor: 'inherit' }, md: { backgroundColor: (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 'rgba(0, 0, 0, 0)' : 'ButtonHighlight' } }
+                                                                            }}
+                                                                            onClick={() => navigate(`/editor/${result?.fid}`)}
+                                                                        >
+                                                                            {loading ? (
+                                                                                <CircularProgress size={20} sx={{ color: "#565656" }} />
+                                                                            ) : (
+                                                                                (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle.replace(/\n/g, " ")) ? <GpsFixed sx={{ color: (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 'rgb(202, 202, 202)' : 'rgb(89, 89, 89)', cursor: "pointer" }} /> : <GpsNotFixed sx={{ color: "rgb(89, 89, 89)", cursor: "pointer" }} />
+                                                                            )}
+                                                                        </Fab>
+                                                                    </ListItemIcon>
+                                                                    <ListItemText sx={{ color: 'rgb(173, 173, 173)', fontSize: '4em' }}>
+                                                                        <Typography component='p' variant='body2' color={(result?.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 'rgb(202, 202, 202)' : ''} fontWeight={(result?.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 700 : 400}>
+                                                                            {result?.subtitle.replace(/\n/g, " ")}
+                                                                        </Typography>
+                                                                    </ListItemText>
+                                                                    <ListItemIcon sx={{ paddingRight: "0", marginLeft: 'auto' }}>
+                                                                        <Fab
+                                                                            size="small"
+                                                                            sx={{
+                                                                                backgroundColor: theme.palette.background.paper,
+                                                                                boxShadow: "none",
+                                                                                marginRight: '2px',
+                                                                                '&:hover': { xs: { backgroundColor: 'inherit' }, md: { backgroundColor: 'ButtonHighlight' } }
+                                                                            }}
+                                                                            onClick={() => {
+                                                                                navigator.clipboard.writeText(result?.subtitle.replace(/\n/g, " "));
+                                                                                handleSnackbarOpen();
+                                                                            }}
+                                                                        >
+                                                                            <ContentCopy sx={{ color: "rgb(89, 89, 89)" }} />
+                                                                        </Fab>
+                                                                        <Fab
+                                                                            size="small"
+                                                                            sx={{
+                                                                                backgroundColor: theme.palette.background.paper,
+                                                                                boxShadow: "none",
+                                                                                marginLeft: 'auto',
+                                                                                '&:hover': { xs: { backgroundColor: 'inherit' }, md: { backgroundColor: 'ButtonHighlight' } }
+                                                                            }}
+                                                                            onClick={() => addText(result?.subtitle.replace(/\n/g, " "), true)}
+                                                                        >
+                                                                            <Add sx={{ color: 'rgb(89, 89, 89)', cursor: "pointer" }} />
+                                                                        </Fab>
+                                                                        {/* <Fab
+                                                                            size="small"
+                                                                            sx={{
+                                                                                backgroundColor: theme.palette.background.paper,
+                                                                                boxShadow: "none",
+                                                                                marginLeft: '5px',
+                                                                                '&:hover': {xs: {backgroundColor: 'inherit'}, md: {backgroundColor: (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 'rgba(0, 0, 0, 0)' : 'ButtonHighlight'}}
+                                                                            }}
+                                                                            onClick={() => navigate(`/editor/${result?.fid}`)}
+                                                                        >
+                                                                        {loading ? (
+                                                                            <CircularProgress size={20} sx={{ color: "#565656"}} />
+                                                                        ) : (
+                                                                            (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle.replace(/\n/g, " ")) ? <GpsFixed sx={{ color: (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 'rgb(50, 50, 50)' : 'rgb(89, 89, 89)', cursor: "pointer"}} /> : <ArrowForward sx={{ color: "rgb(89, 89, 89)", cursor: "pointer"}} /> 
+                                                                        )}
+                                                                        </Fab> */}
+                                                                    </ListItemIcon>
+                                                                </ListItem>
+                                                            ))}
+                                                </List>
+                                            </AccordionDetails>
+                                        </Accordion>
+                                    </Card>
+                                </Grid>
                                 <Grid item xs={12} md={7} lg={7} marginRight={{ xs: '', md: 'auto' }} order={{ xs: 2, md: 3 }}>
                                     <Stack spacing={2} direction='row' alignItems={'center'}>
                                         <Tooltip title="Fine Tuning">
@@ -522,21 +641,25 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                     <button type='button' onClick={saveProject}>Save Project</button>
                                     <button type='button' onClick={loadProject}>Load Project</button>
                                     <button type='button' onClick={handleClickDialogOpen}>Save Image</button> */}
+
                                 </Grid>
                                 <Grid container item spacing={1} order='5'>
                                     {surroundingFrames && surroundingFrames.map(result => (
-                                        <Grid item xs={4} sm={4} md={12 / 9} key={result.fid}>
+                                        <Grid item xs={4} sm={4} md={12 / 9} key={result?.fid}>
                                             <a style={{ textDecoration: 'none' }}>
-                                                <StyledCard>
+                                                <StyledCard
+                                                    style={{ border: (fid === result?.fid) ? '3px solid orange' : '' }}
+                                                >
+                                                    {console.log(`${fid} = ${result?.fid}`)}
                                                     <StyledCardMedia
                                                         component="img"
-                                                        src={`https://memesrc.com${result.frame_image}`}
-                                                        alt={result.subtitle}
-                                                        title={result.subtitle}
+                                                        src={`https://memesrc.com${result?.frame_image}`}
+                                                        alt={result?.subtitle}
+                                                        title={result?.subtitle}
                                                         onClick={() => {
                                                             editor.canvas._objects = [];
-                                                            setSelectedFid(result.fid);
-                                                            navigate(`/editor/${result.fid}`)
+                                                            setSelectedFid(result?.fid);
+                                                            navigate(`/editor/${result?.fid}`)
                                                             setFineTuningValue(4)
                                                         }}
                                                     />
@@ -621,7 +744,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                     aria-labelledby="responsive-dialog-title"
                     fullWidth
                     PaperProps={{ sx: { xs: { minWidth: '85vw' }, sm: { minWidth: '85vw' }, md: { minWidth: '85vw' }, } }}
-                    BackdropProps={{style: {backgroundColor: 'rgb(33, 33, 33, 0.9)'}}}
+                    BackdropProps={{ style: { backgroundColor: 'rgb(33, 33, 33, 0.9)' } }}
                 >
                     <DialogTitle id="responsive-dialog-title" >
                         Save Image
@@ -632,7 +755,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                             {imageUploading && <center><CircularProgress sx={{ margin: '30%' }} /></center>}
                         </DialogContentText>
                     </DialogContent>
-                    <DialogContentText sx={{ paddingX: 4, marginTop: 'auto', paddingBottom: 2}}>
+                    <DialogContentText sx={{ paddingX: 4, marginTop: 'auto', paddingBottom: 2 }}>
                         <center>
                             <p>☝️ <b>{('ontouchstart' in window) ? 'Tap and hold' : 'Right click'} the image to save</b>, or use a quick action:</p>
                         </center>
@@ -691,13 +814,13 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
             <Snackbar
                 open={snackbarOpen}
-                autoHideDuration={3000}
+                autoHideDuration={1000}
                 severity="success"
                 onClose={handleSnackbarClose}
-                message="Image Copied!"
+                message="Copied to clipboard!"
             >
                 <Alert onClose={handleSnackbarClose} severity="success" sx={{ width: '100%' }}>
-                    Image copied!
+                    Copied to clipboard!
                 </Alert>
             </Snackbar>
 
