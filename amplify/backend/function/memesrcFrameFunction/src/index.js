@@ -41,7 +41,7 @@ const trackAnalyticsEventToS3 = (eventData, eventType, sessionId) => {
   const s3Params = {
     Bucket: analyticsBucket,
     Key: `analytics/${eventType}/year=${year}/month=${month}/day=${day}/${uniqueId}.json`,
-    Body: JSON.stringify({ id: uniqueId, ...eventData, sessionId, eventTime, eventYear: year, eventMonth: month, eventDay: day }),
+    Body: JSON.stringify({ id: uniqueId, ...eventData, session_id: sessionId, event_time: eventTime}),
     ContentType: "application/json"
   };
 
@@ -176,9 +176,15 @@ exports.handler = async (event) => {
   // console.log(`BRAND NEW OUTPUT: ${JSON.stringify(surroundingFramesWithSubtitles)}`);
 
   // Track analytics event
+  const frameData = splitFrameId(fid);
+  // seriesId, idS, idE, frameNum
   const data = {
-    fid: fid
-  };
+    fid,
+    series_id: frameData.seriesId,
+    season_num: frameData.idS,
+    epsiode_num: frameData.idE,
+    frame_num: frameData.frameNum
+  }
   try {
     await trackAnalyticsEventToS3(data, "frame", params.sessionId);
     console.log("Successfully wrote data to S3");

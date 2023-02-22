@@ -25,7 +25,7 @@ const trackAnalyticsEventToS3 = (eventData, eventType, sessionId) => {
   const s3Params = {
     Bucket: analyticsBucket,
     Key: `analytics/${eventType}/year=${year}/month=${month}/day=${day}/${uniqueId}.json`,
-    Body: JSON.stringify({ id: uniqueId, ...eventData, sessionId, eventTime, eventYear: year, eventMonth: month, eventDay: day }),
+    Body: JSON.stringify({ id: uniqueId, ...eventData, session_id: sessionId, event_time: eventTime}),
     ContentType: "application/json"
   };
 
