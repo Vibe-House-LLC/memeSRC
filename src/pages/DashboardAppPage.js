@@ -171,8 +171,8 @@ export default function DashboardAppPage() {
 
             <Grid item xs={12} md={6} lg={8}>
               <AppConversionRates
-                title={`Searches by show (${process.env.REACT_APP_USER_BRANCH})`}
-                subheader="last 24 hours"
+                title={`Frame Views per show (${process.env.REACT_APP_USER_BRANCH})`}
+                subheader="all-time"
                 chartData={popularShows}
               />
             </Grid>
