@@ -15,7 +15,7 @@ const ATHENA_OUTPUT_LOCATION = `s3://${process.env.STORAGE_MEMESRCGENERATEDIMAGE
 
 // Analytics Queries for Athena
 const analyticsQueries = {
-    frameViews: `
+    totalFrameViews: `
         SELECT COUNT(*) AS TOTAL_FRAME_VIEWS
         FROM memesrc.${process.env.ENV}_raw__frame_views
         WHERE FROM_ISO8601_TIMESTAMP(event_time) > current_timestamp - interval '1' day

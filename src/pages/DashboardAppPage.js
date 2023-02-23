@@ -53,6 +53,8 @@ async function fetchHomepageSections(items = [], nextToken = null) {
 export default function DashboardAppPage() {
   const [sections, setSections] = useState([]);
   const [frameViewsDaily, setFrameViewsDaily] = useState()
+  const [searchesDaily, setSearchesDaily] = useState()
+  const [randomsDaily, setRandomsDaily] = useState()
 
   // Pull the homepage sections from GraphQL when the component loads
   useEffect(() => {
@@ -66,9 +68,15 @@ export default function DashboardAppPage() {
 
   // Pull the analytics data for the dashboard
   useEffect(() => {
-    API.get('publicapi', '/analytics').then(data => {
+    API.get('publicapi', '/analytics', { "queryStringParameters": { "metric": "totalFrameViews" } }).then(data => {
       console.log(data)
       setFrameViewsDaily(data)
+    })
+    API.get('publicapi', '/analytics', { "queryStringParameters": { "metric": "totalRandoms" } }).then(data => {
+      setRandomsDaily(data)
+    })
+    API.get('publicapi', '/analytics', { "queryStringParameters": { "metric": "totalSearches" } }).then(data => {
+      setSearchesDaily(data)
     })
   }, [])
 
@@ -112,11 +120,11 @@ export default function DashboardAppPage() {
             </Grid>
 
             <Grid item xs={12} sm={6} md={3}>
-              <AppWidgetSummary title="New Users" total={1352831} color="info" icon={'ant-design:apple-filled'} />
+              <AppWidgetSummary title={`Searches (24h - ${process.env.REACT_APP_USER_BRANCH})`} total={searchesDaily} color="info" icon={'ant-design:apple-filled'} />
             </Grid>
 
             <Grid item xs={12} sm={6} md={3}>
-              <AppWidgetSummary title="Item Orders" total={1723315} color="warning" icon={'ant-design:windows-filled'} />
+              <AppWidgetSummary title={`Randoms (24h - ${process.env.REACT_APP_USER_BRANCH})`} total={randomsDaily} color="warning" icon={'ant-design:windows-filled'} />
             </Grid>
 
             <Grid item xs={12} sm={6} md={3}>
