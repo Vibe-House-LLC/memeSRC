@@ -12,16 +12,31 @@ const { AthenaClient, StartQueryExecutionCommand, GetQueryExecutionCommand, GetQ
 
 const ATHENA_DB = 'memesrc';
 const ATHENA_OUTPUT_LOCATION = `s3://${process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME}/athena`;
-const ATHENA_QUERY = `
-    SELECT COUNT(*) AS TOTAL_FRAME_VIEWS
-    FROM memesrc.${process.env.ENV}_raw__frame_views
-    WHERE FROM_ISO8601_TIMESTAMP(event_time) > current_timestamp - interval '1' day
-    AND CAST(year AS INTEGER) = YEAR(CURRENT_DATE) 
-    AND CAST(month AS INTEGER) = MONTH(CURRENT_DATE) 
-    AND (CAST(day AS INTEGER) = DAY(CURRENT_DATE) OR CAST(day AS INTEGER) = DAY(current_timestamp - interval '1' day));
-`;
 
-console.log(ATHENA_QUERY)
+// Analytics Queries for Athena
+const analyticsQueries = {
+    frameViews: `
+        SELECT COUNT(*) AS TOTAL_FRAME_VIEWS
+        FROM memesrc.${process.env.ENV}_raw__frame_views
+        WHERE FROM_ISO8601_TIMESTAMP(event_time) > current_timestamp - interval '1' day
+        AND CAST(year AS INTEGER) = YEAR(CURRENT_DATE) 
+        AND CAST(month AS INTEGER) = MONTH(CURRENT_DATE) 
+        AND (CAST(day AS INTEGER) = DAY(CURRENT_DATE) OR CAST(day AS INTEGER) = DAY(current_timestamp - interval '1' day));`,
+    totalSearches: `
+        SELECT COUNT(*) AS TOTAL_SEARCHES
+        FROM memesrc.${process.env.ENV}_raw__searches
+        WHERE FROM_ISO8601_TIMESTAMP(event_time) > current_timestamp - interval '1' day
+        AND CAST(year AS INTEGER) = YEAR(CURRENT_DATE) 
+        AND CAST(month AS INTEGER) = MONTH(CURRENT_DATE) 
+        AND (CAST(day AS INTEGER) = DAY(CURRENT_DATE) OR CAST(day AS INTEGER) = DAY(current_timestamp - interval '1' day));`,
+    totalRandoms: `
+        SELECT COUNT(*) AS TOTAL_RANDOMS
+        FROM memesrc.${process.env.ENV}_raw__randoms
+        WHERE FROM_ISO8601_TIMESTAMP(event_time) > current_timestamp - interval '1' day
+        AND CAST(year AS INTEGER) = YEAR(CURRENT_DATE) 
+        AND CAST(month AS INTEGER) = MONTH(CURRENT_DATE) 
+        AND (CAST(day AS INTEGER) = DAY(CURRENT_DATE) OR CAST(day AS INTEGER) = DAY(current_timestamp - interval '1' day));`
+}
 
 const athena = new AthenaClient({ region: 'us-east-1' });
 
@@ -29,44 +44,43 @@ exports.handler = async (event) => {
     try {
         console.log(`EVENT: ${JSON.stringify(event)}`);
 
-        // Split the query into separate statements
-        const queries = ATHENA_QUERY.split(';').map(q => q.trim()).filter(q => q.length > 0);
+        // Pick the query based on the request
+        const { metric } = event.queryStringParameters
+        const query = analyticsQueries[metric]
+        console.log(query)
 
         // Execute each query separately
-        const results = [];
-        for (const query of queries) {
-            console.log(`Executing query: ${query}`);
+        console.log(`Executing query: ${query}`);
 
-            // Start the query execution
-            const startQueryExecutionCommand = new StartQueryExecutionCommand({
-                QueryString: query,
-                QueryExecutionContext: { Database: ATHENA_DB },
-                ResultConfiguration: { OutputLocation: ATHENA_OUTPUT_LOCATION }
-            });
-            const startQueryExecutionResponse = await athena.send(startQueryExecutionCommand);
-            const queryExecutionId = startQueryExecutionResponse.QueryExecutionId;
+        // Start the query execution
+        const startQueryExecutionCommand = new StartQueryExecutionCommand({
+            QueryString: query,
+            QueryExecutionContext: { Database: ATHENA_DB },
+            ResultConfiguration: { OutputLocation: ATHENA_OUTPUT_LOCATION }
+        });
+        const startQueryExecutionResponse = await athena.send(startQueryExecutionCommand);
+        const queryExecutionId = startQueryExecutionResponse.QueryExecutionId;
 
-            // Wait for the query to complete
-            let status = 'QUEUED';
-            while (status === 'QUEUED' || status === 'RUNNING') {
-                const getQueryExecutionCommand = new GetQueryExecutionCommand({ QueryExecutionId: queryExecutionId });
-                const getQueryExecutionResponse = await athena.send(getQueryExecutionCommand);
-                status = getQueryExecutionResponse.QueryExecution.Status.State;
-                console.log(`Query status: ${status}`);
-                if (status === 'FAILED' || status === 'CANCELLED') {
-                    throw new Error(`Query ${queryExecutionId} failed or was cancelled`);
-                }
-                await new Promise(resolve => setTimeout(resolve, 1000));
+        // Wait for the query to complete
+        let status = 'QUEUED';
+        while (status === 'QUEUED' || status === 'RUNNING') {
+            const getQueryExecutionCommand = new GetQueryExecutionCommand({ QueryExecutionId: queryExecutionId });
+            const getQueryExecutionResponse = await athena.send(getQueryExecutionCommand);
+            status = getQueryExecutionResponse.QueryExecution.Status.State;
+            console.log(`Query status: ${status}`);
+            if (status === 'FAILED' || status === 'CANCELLED') {
+                throw new Error(`Query ${queryExecutionId} failed or was cancelled`);
             }
-
-            // Get the query results
-            const getQueryResultsCommand = new GetQueryResultsCommand({ QueryExecutionId: queryExecutionId });
-            const getQueryResultsResponse = await athena.send(getQueryResultsCommand);
-            const queryResults = getQueryResultsResponse.ResultSet.Rows.map(row => row.Data.map(col => col.VarCharValue));
-            console.log(`Query results: ${JSON.stringify(queryResults)}`);
-
-            results.push(queryResults);
+            await new Promise(resolve => setTimeout(resolve, 1000));
         }
+
+        // Get the query results
+        const getQueryResultsCommand = new GetQueryResultsCommand({ QueryExecutionId: queryExecutionId });
+        const getQueryResultsResponse = await athena.send(getQueryResultsCommand);
+        const queryResults = getQueryResultsResponse.ResultSet.Rows.map(row => row.Data.map(col => col.VarCharValue));
+        console.log(`Query results: ${JSON.stringify(queryResults)}`);
+
+        result = queryResults[1][0]
 
         return {
             statusCode: 200,
@@ -75,7 +89,7 @@ exports.handler = async (event) => {
                 "Access-Control-Allow-Headers": "*",
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify(frameViews),
+            body: JSON.stringify(result),
         };
     } catch (error) {
         console.error(`Error: ${error}`);
