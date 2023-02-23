@@ -2,7 +2,8 @@
   {
     "Effect": "Allow",
     "Action": [
-      "athena:*"
+      "athena:*",
+      "glue:*"
     ],
     "Resource": [
       "*"
