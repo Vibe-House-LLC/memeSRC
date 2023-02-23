@@ -140,19 +140,19 @@ export default function DashboardAppPage() {
 
           <Grid container spacing={3}>
             <Grid item xs={12} sm={6} md={3}>
-              <AppWidgetSummary title={`Frame Views (24h - ${process.env.REACT_APP_USER_BRANCH})`} total={frameViewsDaily} icon={'ant-design:android-filled'} />
+              <AppWidgetSummary title={`Frame Views (${process.env.REACT_APP_USER_BRANCH})`} total={frameViewsDaily} icon={'ant-design:android-filled'} />
             </Grid>
 
             <Grid item xs={12} sm={6} md={3}>
-              <AppWidgetSummary title={`Searches (24h - ${process.env.REACT_APP_USER_BRANCH})`} total={searchesDaily} color="info" icon={'ant-design:apple-filled'} />
+              <AppWidgetSummary title={`Searches (${process.env.REACT_APP_USER_BRANCH})`} total={searchesDaily} color="info" icon={'ant-design:apple-filled'} />
             </Grid>
 
             <Grid item xs={12} sm={6} md={3}>
-              <AppWidgetSummary title={`Randoms (24h - ${process.env.REACT_APP_USER_BRANCH})`} total={randomsDaily} color="warning" icon={'ant-design:windows-filled'} />
+              <AppWidgetSummary title={`Randoms (${process.env.REACT_APP_USER_BRANCH})`} total={randomsDaily} color="warning" icon={'ant-design:windows-filled'} />
             </Grid>
 
             <Grid item xs={12} sm={6} md={3}>
-              <AppWidgetSummary title={`API Sessions (24h - ${process.env.REACT_APP_USER_BRANCH})`} total={sessionsDaily} color="error" icon={'ant-design:bug-filled'} />
+              <AppWidgetSummary title={`API Sessions (${process.env.REACT_APP_USER_BRANCH})`} total={sessionsDaily} color="error" icon={'ant-design:bug-filled'} />
             </Grid>
 
             <Grid item xs={12} md={6} lg={4}>
