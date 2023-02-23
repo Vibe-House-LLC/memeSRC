@@ -28,39 +28,45 @@ const athena = new AthenaClient({ region: 'us-east-1' });
 exports.handler = async (event) => {
     try {
         console.log(`EVENT: ${JSON.stringify(event)}`);
-        console.log(`Executing query: ${ATHENA_QUERY}`);
 
-        // Start the query execution
-        const startQueryExecutionCommand = new StartQueryExecutionCommand({
-            QueryString: ATHENA_QUERY,
-            QueryExecutionContext: { Database: ATHENA_DB },
-            ResultConfiguration: { OutputLocation: ATHENA_OUTPUT_LOCATION }
-        });
-        const startQueryExecutionResponse = await athena.send(startQueryExecutionCommand);
-        const queryExecutionId = startQueryExecutionResponse.QueryExecutionId;
+        // Split the query into separate statements
+        const queries = ATHENA_QUERY.split(';').map(q => q.trim()).filter(q => q.length > 0);
 
-        // Wait for the query to complete
-        let status = 'QUEUED';
-        while (status === 'QUEUED' || status === 'RUNNING') {
-            const getQueryExecutionCommand = new GetQueryExecutionCommand({ QueryExecutionId: queryExecutionId });
-            const getQueryExecutionResponse = await athena.send(getQueryExecutionCommand);
-            status = getQueryExecutionResponse.QueryExecution.Status.State;
-            console.log(`Query status: ${status}`);
-            if (status === 'FAILED' || status === 'CANCELLED') {
-                throw new Error(`Query ${queryExecutionId} failed or was cancelled`);
+        // Execute each query separately
+        const results = [];
+        for (const query of queries) {
+            console.log(`Executing query: ${query}`);
+
+            // Start the query execution
+            const startQueryExecutionCommand = new StartQueryExecutionCommand({
+                QueryString: query,
+                QueryExecutionContext: { Database: ATHENA_DB },
+                ResultConfiguration: { OutputLocation: ATHENA_OUTPUT_LOCATION }
+            });
+            const startQueryExecutionResponse = await athena.send(startQueryExecutionCommand);
+            const queryExecutionId = startQueryExecutionResponse.QueryExecutionId;
+
+            // Wait for the query to complete
+            let status = 'QUEUED';
+            while (status === 'QUEUED' || status === 'RUNNING') {
+                const getQueryExecutionCommand = new GetQueryExecutionCommand({ QueryExecutionId: queryExecutionId });
+                const getQueryExecutionResponse = await athena.send(getQueryExecutionCommand);
+                status = getQueryExecutionResponse.QueryExecution.Status.State;
+                console.log(`Query status: ${status}`);
+                if (status === 'FAILED' || status === 'CANCELLED') {
+                    throw new Error(`Query ${queryExecutionId} failed or was cancelled`);
+                }
+                await new Promise(resolve => setTimeout(resolve, 1000));
             }
-            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            // Get the query results
+            const getQueryResultsCommand = new GetQueryResultsCommand({ QueryExecutionId: queryExecutionId });
+            const getQueryResultsResponse = await athena.send(getQueryResultsCommand);
+            const queryResults = getQueryResultsResponse.ResultSet.Rows.map(row => row.Data.map(col => col.VarCharValue));
+            console.log(`Query results: ${JSON.stringify(queryResults)}`);
+
+            results.push(queryResults);
         }
-
-        // Get the query results
-        const getQueryResultsCommand = new GetQueryResultsCommand({ QueryExecutionId: queryExecutionId });
-        const getQueryResultsResponse = await athena.send(getQueryResultsCommand);
-        const queryResults = getQueryResultsResponse.ResultSet.Rows.map(row => row.Data.map(col => col.VarCharValue));
-        console.log(`Query results: ${JSON.stringify(queryResults)}`);
-
-
-        console.log(`What the hell is results? ${queryResults}`)
-        const frameViews = queryResults[1][0]
 
         return {
             statusCode: 200,
