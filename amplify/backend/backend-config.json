@@ -194,6 +194,20 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "memesrcAnalyticsInitDBs": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "BucketName"
+          ],
+          "category": "storage",
+          "resourceName": "memesrcGeneratedImages"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "memesrcAnalyticsMsck": {
       "build": true,
       "dependsOn": [
@@ -300,6 +314,22 @@
         {
           "category": "function",
           "resourceName": "SearchFunction"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcAnalyticsInitDBs_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcAnalyticsInitDBs"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcAnalyticsInitDBs_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcAnalyticsInitDBs"
         }
       ]
     },
