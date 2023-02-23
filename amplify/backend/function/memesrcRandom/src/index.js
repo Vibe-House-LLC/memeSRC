@@ -112,7 +112,7 @@ exports.handler = async (event) => {
 
     // Track analytics event
     const data = {
-        seriesName: params.series
+        series_id: params.series
     };
     try {
         await trackAnalyticsEventToS3(data, "random", params.sessionId);

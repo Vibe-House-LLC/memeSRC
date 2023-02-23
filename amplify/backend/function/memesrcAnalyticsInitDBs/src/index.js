@@ -10,11 +10,54 @@ Amplify Params - DO NOT EDIT */
 
 const { AthenaClient, StartQueryExecutionCommand, GetQueryExecutionCommand, GetQueryResultsCommand } = require("@aws-sdk/client-athena");
 
+
+const test = {
+    "id": "eadf48f0-d665-4571-b1ea-ca2e7b364414",
+    "searchString": "Garfield",
+    "seriesName": "ithinkyoushouldleave",
+    "session_id": "001016ae-1e87-4cf9-9afe-26721ee2ae5c",
+    "event_time": "2023-02-22T22:44:42.127Z"
+}
+
 const ATHENA_DB = 'memesrc';
 const ATHENA_OUTPUT_LOCATION = `s3://${process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME}/athena`;
 const ATHENA_QUERY = `
+    DROP TABLE IF EXISTS memesrc.${process.env.ENV}_raw__frame_views;
+    CREATE EXTERNAL TABLE memesrc.${process.env.ENV}_raw__frame_views ( 
+            id string
+            , session_id string
+            , fid string
+            , series_id string
+            , season_num int
+            , epsiode_num int
+            , frame_num int
+            , event_time string )
+        PARTITIONED BY (year string, month string, day string)
+        ROW FORMAT SERDE 'org.openx.data.jsonserde.JsonSerDe'
+        LOCATION 's3://${process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME}/analytics/frame';
     MSCK REPAIR TABLE memesrc.${process.env.ENV}_raw__frame_views;
+
+    DROP TABLE IF EXISTS memesrc.${process.env.ENV}_raw__searches;
+    CREATE EXTERNAL TABLE memesrc.${process.env.ENV}_raw__searches ( 
+            id string
+            , session_id string
+            , search_query string
+            , series_id string
+            , event_time string )
+        PARTITIONED BY (year string, month string, day string)
+        ROW FORMAT SERDE 'org.openx.data.jsonserde.JsonSerDe'
+        LOCATION 's3://${process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME}/analytics/search';
     MSCK REPAIR TABLE memesrc.${process.env.ENV}_raw__searches;
+
+    DROP TABLE IF EXISTS memesrc.${process.env.ENV}_raw__randoms;
+    CREATE EXTERNAL TABLE memesrc.${process.env.ENV}_raw__randoms ( 
+            id string
+            , session_id string
+            , series_id string
+            , event_time string )
+        PARTITIONED BY (year string, month string, day string)
+        ROW FORMAT SERDE 'org.openx.data.jsonserde.JsonSerDe'
+        LOCATION 's3://${process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME}/analytics/random';
     MSCK REPAIR TABLE memesrc.${process.env.ENV}_raw__randoms;
 `;
 
@@ -67,11 +110,11 @@ exports.handler = async (event) => {
 
         return {
             statusCode: 200,
-            // Uncomment below to enable CORS requests
-            // headers: {
-            //     "Access-Control-Allow-Origin": "*",
-            //     "Access-Control-Allow-Headers": "*"
-            // }, 
+            headers: {
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Headers": "*",
+                "Content-Type": "application/json"
+            }, 
             body: JSON.stringify(results),
         };
     } catch (error) {

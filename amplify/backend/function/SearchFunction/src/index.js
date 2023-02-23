@@ -73,8 +73,8 @@ const search = async (searchString, seriesName, sessionId, opensearchEndpoint, o
 
   // Track analytics event
   const data = {
-    searchString,
-    seriesName
+    search_query: searchString,
+    series_id: seriesName
   };
   try {
     await trackAnalyticsEventToS3(data, "search", sessionId);

@@ -33,12 +33,12 @@
         "SearchFunction": {
           "secretsPathAmplifyAppId": "d32pnvtwxwtte5",
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/SearchFunction-4873376a707139756e36-build.zip"
+          "s3Key": "amplify-builds/SearchFunction-6c6143596d716376596d-build.zip"
         },
         "memesrcSearch": {},
         "memesrcRandom": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcRandom-4450756252695569644d-build.zip",
+          "s3Key": "amplify-builds/memesrcRandom-41497752685675656450-build.zip",
           "secretsPathAmplifyAppId": "d32pnvtwxwtte5"
         },
         "memesrcFrameFunction": {
@@ -52,11 +52,15 @@
         },
         "memesrcAnalyticsMsck": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcAnalyticsMsck-727a57695932412f6357-build.zip"
+          "s3Key": "amplify-builds/memesrcAnalyticsMsck-31496745794f67787954-build.zip"
         },
         "memesrcAnalyticsReporting": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcAnalyticsReporting-3354496572693178466f-build.zip"
+          "s3Key": "amplify-builds/memesrcAnalyticsReporting-662b552b32495050754d-build.zip"
+        },
+        "memesrcAnalyticsInitDBs": {
+          "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
+          "s3Key": "amplify-builds/memesrcAnalyticsInitDBs-4670773751664d75506c-build.zip"
         }
       },
       "storage": {
