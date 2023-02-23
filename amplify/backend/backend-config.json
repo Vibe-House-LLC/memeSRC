@@ -276,6 +276,160 @@
       "service": "S3AndCloudFront"
     }
   },
+  "parameters": {
+    "AMPLIFY_function_AdminQueries9e1cafc6_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "AdminQueries9e1cafc6"
+        }
+      ]
+    },
+    "AMPLIFY_function_AdminQueries9e1cafc6_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "AdminQueries9e1cafc6"
+        }
+      ]
+    },
+    "AMPLIFY_function_SearchFunction_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "SearchFunction"
+        }
+      ]
+    },
+    "AMPLIFY_function_SearchFunction_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "SearchFunction"
+        }
+      ]
+    },
+    "AMPLIFY_function_SearchFunction_secretsPathAmplifyAppId": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "SearchFunction"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcAnalyticsInitDBs_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcAnalyticsInitDBs"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcAnalyticsInitDBs_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcAnalyticsInitDBs"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcAnalyticsMsck_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcAnalyticsMsck"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcAnalyticsMsck_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcAnalyticsMsck"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcAnalyticsReporting_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcAnalyticsReporting"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcAnalyticsReporting_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcAnalyticsReporting"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcFrameFunction_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcFrameFunction"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcFrameFunction_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcFrameFunction"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcFrameFunction_secretsPathAmplifyAppId": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcFrameFunction"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcRandom_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcRandom"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcRandom_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcRandom"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcRandom_secretsPathAmplifyAppId": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcRandom"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcUUID_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcUUID"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcUUID_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcUUID"
+        }
+      ]
+    }
+  },
   "storage": {
     "memesrcGeneratedImages": {
       "dependsOn": [
