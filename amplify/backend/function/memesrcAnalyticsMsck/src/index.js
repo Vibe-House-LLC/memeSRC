@@ -14,6 +14,8 @@ const ATHENA_DB = 'memesrc';
 const ATHENA_OUTPUT_LOCATION = `s3://${process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME}/athena`;
 const ATHENA_QUERY = `
     MSCK REPAIR TABLE memesrc.${process.env.ENV}_raw__frame_views;
+    MSCK REPAIR TABLE memesrc.${process.env.ENV}_raw__searches;
+    MSCK REPAIR TABLE memesrc.${process.env.ENV}_raw__randoms;
 `;
 
 console.log(ATHENA_OUTPUT_LOCATION)
