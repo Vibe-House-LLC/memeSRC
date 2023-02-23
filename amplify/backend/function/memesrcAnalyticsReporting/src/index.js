@@ -64,7 +64,7 @@ const analyticsQueries = {
         ORDER BY TOTAL_SESSIONS DESC;`,
     popularShows: `
         SELECT 
-          series_id
+          COALESCE(series_id, '_unknown') AS series_id
         , COUNT(*) AS TOTAL_FRAME_VIEWS
         FROM memesrc.${process.env.ENV}_raw__frame_views
         -- WHERE FROM_ISO8601_TIMESTAMP(event_time) > current_timestamp - interval '1' day
