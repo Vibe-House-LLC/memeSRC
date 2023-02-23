@@ -22,10 +22,9 @@ const test = {
 const ATHENA_DB = 'memesrc';
 const ATHENA_OUTPUT_LOCATION = `s3://${process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME}/athena`;
 const ATHENA_QUERY = `
-    
     DROP TABLE IF EXISTS memesrc.${process.env.ENV}_raw__frame_views;
     CREATE EXTERNAL TABLE memesrc.${process.env.ENV}_raw__frame_views ( 
-              id string
+            id string
             , session_id string
             , fid string
             , series_id string
@@ -40,26 +39,26 @@ const ATHENA_QUERY = `
 
     DROP TABLE IF EXISTS memesrc.${process.env.ENV}_raw__searches;
     CREATE EXTERNAL TABLE memesrc.${process.env.ENV}_raw__searches ( 
-          id string
-        , session_id string
-        , search_query string
-        , series_id string
-        , event_time string )
+            id string
+            , session_id string
+            , search_query string
+            , series_id string
+            , event_time string )
         PARTITIONED BY (year string, month string, day string)
         ROW FORMAT SERDE 'org.openx.data.jsonserde.JsonSerDe'
         LOCATION 's3://${process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME}/analytics/search';
     MSCK REPAIR TABLE memesrc.${process.env.ENV}_raw__searches;
 
-    DROP TABLE IF EXISTS memesrc.${process.env.ENV}_raw__random;
-    CREATE EXTERNAL TABLE memesrc.${process.env.ENV}_raw__random ( 
-          id string
-        , session_id string
-        , series_id string
-        , event_time string )
+    DROP TABLE IF EXISTS memesrc.${process.env.ENV}_raw__randoms;
+    CREATE EXTERNAL TABLE memesrc.${process.env.ENV}_raw__randoms ( 
+            id string
+            , session_id string
+            , series_id string
+            , event_time string )
         PARTITIONED BY (year string, month string, day string)
         ROW FORMAT SERDE 'org.openx.data.jsonserde.JsonSerDe'
         LOCATION 's3://${process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME}/analytics/random';
-    MSCK REPAIR TABLE memesrc.${process.env.ENV}_raw__random;
+    MSCK REPAIR TABLE memesrc.${process.env.ENV}_raw__randoms;
 `;
 
 console.log(ATHENA_OUTPUT_LOCATION)
