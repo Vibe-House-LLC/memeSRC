@@ -12,27 +12,85 @@ const { AthenaClient, StartQueryExecutionCommand, GetQueryExecutionCommand, GetQ
 
 const ATHENA_DB = 'memesrc';
 const ATHENA_OUTPUT_LOCATION = `s3://${process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME}/athena`;
-const ATHENA_QUERY = `
-    SELECT COUNT(*) AS TOTAL_FRAME_VIEWS
-    FROM memesrc.${process.env.ENV}_raw__frame_views
-    WHERE FROM_ISO8601_TIMESTAMP(event_time) > current_timestamp - interval '1' day
-    AND CAST(year AS INTEGER) = YEAR(CURRENT_DATE) 
-    AND CAST(month AS INTEGER) = MONTH(CURRENT_DATE) 
-    AND (CAST(day AS INTEGER) = DAY(CURRENT_DATE) OR CAST(day AS INTEGER) = DAY(current_timestamp - interval '1' day));
-`;
 
-console.log(ATHENA_QUERY)
+// Analytics Queries for Athena
+const analyticsQueries = {
+    totalFrameViews: `
+        SELECT COUNT(*) AS TOTAL_FRAME_VIEWS
+        FROM memesrc.${process.env.ENV}_raw__frame_views
+        WHERE FROM_ISO8601_TIMESTAMP(event_time) > current_timestamp - interval '1' day
+          AND CAST(year AS INTEGER) = YEAR(CURRENT_DATE) 
+          AND CAST(month AS INTEGER) = MONTH(CURRENT_DATE) 
+          AND (CAST(day AS INTEGER) = DAY(CURRENT_DATE) OR CAST(day AS INTEGER) = DAY(current_timestamp - interval '1' day));`,
+    totalSearches: `
+        SELECT COUNT(*) AS TOTAL_SEARCHES
+        FROM memesrc.${process.env.ENV}_raw__searches
+        WHERE FROM_ISO8601_TIMESTAMP(event_time) > current_timestamp - interval '1' day
+          AND CAST(year AS INTEGER) = YEAR(CURRENT_DATE) 
+          AND CAST(month AS INTEGER) = MONTH(CURRENT_DATE) 
+          AND (CAST(day AS INTEGER) = DAY(CURRENT_DATE) OR CAST(day AS INTEGER) = DAY(current_timestamp - interval '1' day));`,
+    totalRandoms: `
+        SELECT COUNT(*) AS TOTAL_RANDOMS
+        FROM memesrc.${process.env.ENV}_raw__randoms
+        WHERE FROM_ISO8601_TIMESTAMP(event_time) > current_timestamp - interval '1' day
+          AND CAST(year AS INTEGER) = YEAR(CURRENT_DATE) 
+          AND CAST(month AS INTEGER) = MONTH(CURRENT_DATE) 
+          AND (CAST(day AS INTEGER) = DAY(CURRENT_DATE) OR CAST(day AS INTEGER) = DAY(current_timestamp - interval '1' day));`,
+    totalSessions: `
+        WITH combined AS (
+            SELECT session_id
+            FROM memesrc.${process.env.ENV}_raw__frame_views
+            WHERE FROM_ISO8601_TIMESTAMP(event_time) > current_timestamp - interval '1' day
+              AND CAST(year AS INTEGER) = YEAR(CURRENT_DATE) 
+              AND CAST(month AS INTEGER) = MONTH(CURRENT_DATE) 
+              AND (CAST(day AS INTEGER) = DAY(CURRENT_DATE) OR CAST(day AS INTEGER) = DAY(current_timestamp - interval '1' day))
+            UNION
+            SELECT session_id
+            FROM memesrc.${process.env.ENV}_raw__searches
+            WHERE FROM_ISO8601_TIMESTAMP(event_time) > current_timestamp - interval '1' day
+              AND CAST(year AS INTEGER) = YEAR(CURRENT_DATE) 
+              AND CAST(month AS INTEGER) = MONTH(CURRENT_DATE) 
+              AND (CAST(day AS INTEGER) = DAY(CURRENT_DATE) OR CAST(day AS INTEGER) = DAY(current_timestamp - interval '1' day))
+            UNION
+            SELECT session_id
+            FROM memesrc.${process.env.ENV}_raw__randoms
+            WHERE FROM_ISO8601_TIMESTAMP(event_time) > current_timestamp - interval '1' day
+               AND CAST(year AS INTEGER) = YEAR(CURRENT_DATE) 
+               AND CAST(month AS INTEGER) = MONTH(CURRENT_DATE) 
+               AND (CAST(day AS INTEGER) = DAY(CURRENT_DATE) OR CAST(day AS INTEGER) = DAY(current_timestamp - interval '1' day))
+        )
+        SELECT COUNT(DISTINCT session_id) AS TOTAL_SESSIONS
+        FROM combined
+        ORDER BY TOTAL_SESSIONS DESC;`,
+    popularShows: `
+        SELECT 
+          series_id
+        , COUNT(*) AS TOTAL_FRAME_VIEWS
+        FROM memesrc.${process.env.ENV}_raw__frame_views
+        WHERE FROM_ISO8601_TIMESTAMP(event_time) > current_timestamp - interval '1' day
+          AND CAST(year AS INTEGER) = YEAR(CURRENT_DATE) 
+          AND CAST(month AS INTEGER) = MONTH(CURRENT_DATE) 
+          AND (CAST(day AS INTEGER) = DAY(CURRENT_DATE) OR CAST(day AS INTEGER) = DAY(current_timestamp - interval '1' day))
+        GROUP BY series_id;`
+}
 
 const athena = new AthenaClient({ region: 'us-east-1' });
 
 exports.handler = async (event) => {
     try {
         console.log(`EVENT: ${JSON.stringify(event)}`);
-        console.log(`Executing query: ${ATHENA_QUERY}`);
+
+        // Pick the query based on the request
+        const { metric } = event.queryStringParameters
+        const query = analyticsQueries[metric]
+        console.log(query)
+
+        // Execute each query separately
+        console.log(`Executing query: ${query}`);
 
         // Start the query execution
         const startQueryExecutionCommand = new StartQueryExecutionCommand({
-            QueryString: ATHENA_QUERY,
+            QueryString: query,
             QueryExecutionContext: { Database: ATHENA_DB },
             ResultConfiguration: { OutputLocation: ATHENA_OUTPUT_LOCATION }
         });
@@ -58,9 +116,7 @@ exports.handler = async (event) => {
         const queryResults = getQueryResultsResponse.ResultSet.Rows.map(row => row.Data.map(col => col.VarCharValue));
         console.log(`Query results: ${JSON.stringify(queryResults)}`);
 
-
-        console.log(`What the hell is results? ${queryResults}`)
-        const frameViews = queryResults[1][0]
+        result = queryResults  // [1][0]
 
         return {
             statusCode: 200,
@@ -69,7 +125,7 @@ exports.handler = async (event) => {
                 "Access-Control-Allow-Headers": "*",
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify(frameViews),
+            body: JSON.stringify(result),
         };
     } catch (error) {
         console.error(`Error: ${error}`);
