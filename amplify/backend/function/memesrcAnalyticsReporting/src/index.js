@@ -18,59 +18,59 @@ const analyticsQueries = {
     totalFrameViews: `
         SELECT COUNT(*) AS TOTAL_FRAME_VIEWS
         FROM memesrc.${process.env.ENV}_raw__frame_views
-        WHERE FROM_ISO8601_TIMESTAMP(event_time) > current_timestamp - interval '1' day
-          AND CAST(year AS INTEGER) = YEAR(CURRENT_DATE) 
-          AND CAST(month AS INTEGER) = MONTH(CURRENT_DATE) 
-          AND (CAST(day AS INTEGER) = DAY(CURRENT_DATE) OR CAST(day AS INTEGER) = DAY(current_timestamp - interval '1' day));`,
+        -- WHERE FROM_ISO8601_TIMESTAMP(event_time) > current_timestamp - interval '1' day
+        --   AND CAST(year AS INTEGER) = YEAR(CURRENT_DATE) 
+        --   AND CAST(month AS INTEGER) = MONTH(CURRENT_DATE) 
+        --   AND (CAST(day AS INTEGER) = DAY(CURRENT_DATE) OR CAST(day AS INTEGER) = DAY(current_timestamp - interval '1' day));`,
     totalSearches: `
         SELECT COUNT(*) AS TOTAL_SEARCHES
         FROM memesrc.${process.env.ENV}_raw__searches
-        WHERE FROM_ISO8601_TIMESTAMP(event_time) > current_timestamp - interval '1' day
-          AND CAST(year AS INTEGER) = YEAR(CURRENT_DATE) 
-          AND CAST(month AS INTEGER) = MONTH(CURRENT_DATE) 
-          AND (CAST(day AS INTEGER) = DAY(CURRENT_DATE) OR CAST(day AS INTEGER) = DAY(current_timestamp - interval '1' day));`,
+        -- WHERE FROM_ISO8601_TIMESTAMP(event_time) > current_timestamp - interval '1' day
+        --   AND CAST(year AS INTEGER) = YEAR(CURRENT_DATE) 
+        --   AND CAST(month AS INTEGER) = MONTH(CURRENT_DATE) 
+        --   AND (CAST(day AS INTEGER) = DAY(CURRENT_DATE) OR CAST(day AS INTEGER) = DAY(current_timestamp - interval '1' day));`,
     totalRandoms: `
         SELECT COUNT(*) AS TOTAL_RANDOMS
         FROM memesrc.${process.env.ENV}_raw__randoms
-        WHERE FROM_ISO8601_TIMESTAMP(event_time) > current_timestamp - interval '1' day
-          AND CAST(year AS INTEGER) = YEAR(CURRENT_DATE) 
-          AND CAST(month AS INTEGER) = MONTH(CURRENT_DATE) 
-          AND (CAST(day AS INTEGER) = DAY(CURRENT_DATE) OR CAST(day AS INTEGER) = DAY(current_timestamp - interval '1' day));`,
+        -- WHERE FROM_ISO8601_TIMESTAMP(event_time) > current_timestamp - interval '1' day
+        --   AND CAST(year AS INTEGER) = YEAR(CURRENT_DATE) 
+        --   AND CAST(month AS INTEGER) = MONTH(CURRENT_DATE) 
+        --   AND (CAST(day AS INTEGER) = DAY(CURRENT_DATE) OR CAST(day AS INTEGER) = DAY(current_timestamp - interval '1' day));`,
     totalSessions: `
         WITH combined AS (
             SELECT session_id
             FROM memesrc.${process.env.ENV}_raw__frame_views
-            WHERE FROM_ISO8601_TIMESTAMP(event_time) > current_timestamp - interval '1' day
-              AND CAST(year AS INTEGER) = YEAR(CURRENT_DATE) 
-              AND CAST(month AS INTEGER) = MONTH(CURRENT_DATE) 
-              AND (CAST(day AS INTEGER) = DAY(CURRENT_DATE) OR CAST(day AS INTEGER) = DAY(current_timestamp - interval '1' day))
+            -- WHERE FROM_ISO8601_TIMESTAMP(event_time) > current_timestamp - interval '1' day
+            --   AND CAST(year AS INTEGER) = YEAR(CURRENT_DATE) 
+            --   AND CAST(month AS INTEGER) = MONTH(CURRENT_DATE) 
+            --   AND (CAST(day AS INTEGER) = DAY(CURRENT_DATE) OR CAST(day AS INTEGER) = DAY(current_timestamp - interval '1' day))
             UNION
             SELECT session_id
             FROM memesrc.${process.env.ENV}_raw__searches
-            WHERE FROM_ISO8601_TIMESTAMP(event_time) > current_timestamp - interval '1' day
-              AND CAST(year AS INTEGER) = YEAR(CURRENT_DATE) 
-              AND CAST(month AS INTEGER) = MONTH(CURRENT_DATE) 
-              AND (CAST(day AS INTEGER) = DAY(CURRENT_DATE) OR CAST(day AS INTEGER) = DAY(current_timestamp - interval '1' day))
+            -- WHERE FROM_ISO8601_TIMESTAMP(event_time) > current_timestamp - interval '1' day
+            --   AND CAST(year AS INTEGER) = YEAR(CURRENT_DATE) 
+            --   AND CAST(month AS INTEGER) = MONTH(CURRENT_DATE) 
+            --   AND (CAST(day AS INTEGER) = DAY(CURRENT_DATE) OR CAST(day AS INTEGER) = DAY(current_timestamp - interval '1' day))
             UNION
             SELECT session_id
             FROM memesrc.${process.env.ENV}_raw__randoms
-            WHERE FROM_ISO8601_TIMESTAMP(event_time) > current_timestamp - interval '1' day
-               AND CAST(year AS INTEGER) = YEAR(CURRENT_DATE) 
-               AND CAST(month AS INTEGER) = MONTH(CURRENT_DATE) 
-               AND (CAST(day AS INTEGER) = DAY(CURRENT_DATE) OR CAST(day AS INTEGER) = DAY(current_timestamp - interval '1' day))
+            -- WHERE FROM_ISO8601_TIMESTAMP(event_time) > current_timestamp - interval '1' day
+            --    AND CAST(year AS INTEGER) = YEAR(CURRENT_DATE) 
+            --    AND CAST(month AS INTEGER) = MONTH(CURRENT_DATE) 
+            --    AND (CAST(day AS INTEGER) = DAY(CURRENT_DATE) OR CAST(day AS INTEGER) = DAY(current_timestamp - interval '1' day))
         )
         SELECT COUNT(DISTINCT session_id) AS TOTAL_SESSIONS
         FROM combined
         ORDER BY TOTAL_SESSIONS DESC;`,
     popularShows: `
         SELECT 
-          series_id
+          COALESCE(series_id, '_unknown') AS series_id
         , COUNT(*) AS TOTAL_FRAME_VIEWS
         FROM memesrc.${process.env.ENV}_raw__frame_views
-        WHERE FROM_ISO8601_TIMESTAMP(event_time) > current_timestamp - interval '1' day
-          AND CAST(year AS INTEGER) = YEAR(CURRENT_DATE) 
-          AND CAST(month AS INTEGER) = MONTH(CURRENT_DATE) 
-          AND (CAST(day AS INTEGER) = DAY(CURRENT_DATE) OR CAST(day AS INTEGER) = DAY(current_timestamp - interval '1' day))
+        -- WHERE FROM_ISO8601_TIMESTAMP(event_time) > current_timestamp - interval '1' day
+        --   AND CAST(year AS INTEGER) = YEAR(CURRENT_DATE) 
+        --   AND CAST(month AS INTEGER) = MONTH(CURRENT_DATE) 
+        --   AND (CAST(day AS INTEGER) = DAY(CURRENT_DATE) OR CAST(day AS INTEGER) = DAY(current_timestamp - interval '1' day))
         GROUP BY series_id;`
 }
 
