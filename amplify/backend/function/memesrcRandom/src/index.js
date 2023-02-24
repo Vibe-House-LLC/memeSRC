@@ -74,7 +74,7 @@ exports.handler = async (event) => {
             auth: opensearch_auth,
             headers
         }).then((response) => {
-            const indexes = response.data
+            const indexes = response.data.filter(item => !item.index.startsWith('.'));
             console.log(indexes)
             return indexes;
         }).catch((error) => {
