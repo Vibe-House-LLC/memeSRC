@@ -84,6 +84,7 @@ exports.handler = async (event) => {
 
     // Define function to get a random frame
     const getRandomFrame = async series => {
+        console.log(`SELECTED SERIES: ${series}`)
         let index;
         if (series && series !== '_universal') {
             index = series
@@ -95,7 +96,7 @@ exports.handler = async (event) => {
                 index = indexes[Math.floor(Math.random() * indexes.length)].index
             })
         }
-        console.log(`SELECTED INDEX: ${index}`)
+        console.log(`SEARCHING INDEX: ${index}`)
         const url = `${opensearch_url}/${index}/_search`
         const headers = { 'Content-Type': 'application/json' };
         const opensearch_auth = {
@@ -145,9 +146,9 @@ exports.handler = async (event) => {
     };
     try {
         await trackAnalyticsEventToS3(data, "random", params.sessionId);
-        console.log("Analytics tracked to S3 data lake");
+        console.log("Analytics event tracked to S3 data lake");
     } catch (error) {
-        console.error(error);
+        console.error(`Analytics error: ${error}`);
     }
 
     return {
