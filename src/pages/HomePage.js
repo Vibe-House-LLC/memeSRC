@@ -10,7 +10,8 @@ export default function SearchPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    API.get('publicapi', '/search/test', { queryStringParameters: { warmup: true } })
+    API.get('publicapi', '/search', { queryStringParameters: { warmup: true } })
+    API.get('publicapi', '/random', { queryStringParameters: { warmup: true } })
   }, [])
 
   const handleSearch = useCallback((e) => {

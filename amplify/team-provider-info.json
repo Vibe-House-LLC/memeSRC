@@ -38,7 +38,7 @@
         "memesrcSearch": {},
         "memesrcRandom": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcRandom-4757424e51534a5a3847-build.zip",
+          "s3Key": "amplify-builds/memesrcRandom-4152797459364f446235-build.zip",
           "secretsPathAmplifyAppId": "d32pnvtwxwtte5"
         },
         "memesrcFrameFunction": {
