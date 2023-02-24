@@ -18,18 +18,12 @@ const TABLE_NAMES = [
 ]
 const ATHENA_OUTPUT_LOCATION = `s3://${process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME}/athena`;
 
-// Build the athena queries
+// Build athena queries to add today's parition to the index for each table
 const date = new Date();
 const year = date.getFullYear();
 const month = (date.getMonth() + 1).toString().padStart(2, '0');
 const day = date.getDate().toString().padStart(2, '0');
-const tableName = 'my_table_name';
 const ATHENA_QUERY = TABLE_NAMES.map(tableName => `ALTER TABLE ${tableName} ADD PARTITION (year=${year}, month=${month}, day=${day});`).join('\n');
-
-// Generate the SQL query to add the partition for today's date
-const query = `
-    ALTER TABLE ${tableName} ADD PARTITION (year=${year}, month=${month}, day=${day});
-`;
 
 console.log(ATHENA_OUTPUT_LOCATION)
 
