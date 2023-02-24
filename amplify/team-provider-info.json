@@ -38,7 +38,7 @@
         "memesrcSearch": {},
         "memesrcRandom": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcRandom-41497752685675656450-build.zip",
+          "s3Key": "amplify-builds/memesrcRandom-65595a616f4d7158374d-build.zip",
           "secretsPathAmplifyAppId": "d32pnvtwxwtte5"
         },
         "memesrcFrameFunction": {
@@ -64,7 +64,7 @@
         },
         "memesrcAnalyticsAddDailyPartition": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcAnalyticsAddDailyPartition-3747386567434c337268-build.zip"
+          "s3Key": "amplify-builds/memesrcAnalyticsAddDailyPartition-7649774674546e587079-build.zip"
         }
       },
       "storage": {

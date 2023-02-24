@@ -49,8 +49,6 @@ const trackAnalyticsEventToS3 = (eventData, eventType, sessionId) => {
 };
 
 exports.handler = async (event) => {
-    console.log(`ENV VARS:\n${JSON.stringify(process.env)}`)
-
     // Pull secrets from SSM
     const ssmClient = new SSM();
     const ssmParams = {
@@ -64,9 +62,40 @@ exports.handler = async (event) => {
     const opensearch_user = Parameters.find(param => param.Name === process.env['opensearch_user']).Value
     const opensearch_pass = Parameters.find(param => param.Name === process.env['opensearch_pass']).Value
 
+    const listIndexes = async () => {
+        // /_cat/indices?h=index,docs.count&format=json
+        const url = `${opensearch_url}/_cat/indices?h=index&format=json`
+        const headers = { 'Content-Type': 'application/json' };
+        const opensearch_auth = {
+            username: opensearch_user,
+            password: opensearch_pass
+        };
+        return axios.get(url, {
+            auth: opensearch_auth,
+            headers
+        }).then((response) => {
+            const indexes = response.data
+            console.log(indexes)
+            return indexes;
+        }).catch((error) => {
+            console.log(error);
+        });
+    }
+
     // Define function to get a random frame
-    const getRandomFrame = series => {
-        const index = (series && series !== '_universal') ? series : "*,-fc-*"
+    const getRandomFrame = async series => {
+        let index;
+        if (series && series !== '_universal') {
+            index = series
+        }
+        else {
+            await listIndexes().then(indexes => {
+                console.log(indexes)
+                console.log(Math.floor(Math.random() * indexes.length))
+                index = indexes[Math.floor(Math.random() * indexes.length)].index
+            })
+        }
+        console.log(`SELECTED INDEX: ${index}`)
         const url = `${opensearch_url}/${index}/_search`
         const headers = { 'Content-Type': 'application/json' };
         const opensearch_auth = {
