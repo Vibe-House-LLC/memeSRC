@@ -1,5 +1,6 @@
 {
   "queryStringParameters": {
-    "series": "_universal"
+    "series": "_universal",
+    "warmup": false
   }
 }
