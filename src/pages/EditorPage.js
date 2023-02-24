@@ -172,7 +172,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
     // Warm up the UUID function for faster save dialog response
     useEffect(() => {
-        API.get('publicapi', '/random', { queryStringParameters: { warmup: true } })
+        API.get('publicapi', '/uuid', { queryStringParameters: { warmup: true } })
     }, [])
 
     useEffect(() => {
