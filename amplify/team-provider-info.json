@@ -33,12 +33,12 @@
         "SearchFunction": {
           "secretsPathAmplifyAppId": "d32pnvtwxwtte5",
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/SearchFunction-6c6143596d716376596d-build.zip"
+          "s3Key": "amplify-builds/SearchFunction-5557724857706439756f-build.zip"
         },
         "memesrcSearch": {},
         "memesrcRandom": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcRandom-65595a616f4d7158374d-build.zip",
+          "s3Key": "amplify-builds/memesrcRandom-4757424e51534a5a3847-build.zip",
           "secretsPathAmplifyAppId": "d32pnvtwxwtte5"
         },
         "memesrcFrameFunction": {

@@ -1,4 +1,5 @@
-import React, { useState, useCallback } from 'react';
+import { API } from 'aws-amplify';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import FullScreenSearch from '../sections/search/FullScreenSearch';
 
@@ -7,6 +8,10 @@ export default function SearchPage() {
   const [seriesTitle, setSeriesTitle] = useState('_universal');
 
   const navigate = useNavigate();
+
+  useEffect(() => {
+    API.get('publicapi', '/search/test', { queryStringParameters: { warmup: true } })
+  }, [])
 
   const handleSearch = useCallback((e) => {
     if(e) {
