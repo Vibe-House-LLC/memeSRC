@@ -170,6 +170,11 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     //     navigate(`/editor/${selectedFid}`)
     // }, [selectedFid, navigate])
 
+    // Warm up the UUID function for faster save dialog response
+    useEffect(() => {
+        API.get('publicapi', '/random', { queryStringParameters: { warmup: true } })
+    }, [])
+
     useEffect(() => {
         setSelectedFid(fid)
     }, [location, fid, editor])
