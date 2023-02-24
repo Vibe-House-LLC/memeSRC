@@ -43,7 +43,7 @@ const trackAnalyticsEventToS3 = (eventData, eventType, sessionId) => {
         ContentType: "application/json"
     };
 
-    console.log(s3Params)
+    // console.log(s3Params)
 
     return s3.putObject(s3Params);
 };
@@ -75,7 +75,7 @@ exports.handler = async (event) => {
             headers
         }).then((response) => {
             const indexes = response.data.filter(item => !item.index.startsWith('.'));
-            console.log(indexes)
+            // console.log(indexes)
             return indexes;
         }).catch((error) => {
             console.log(error);
@@ -90,8 +90,8 @@ exports.handler = async (event) => {
         }
         else {
             await listIndexes().then(indexes => {
-                console.log(indexes)
-                console.log(Math.floor(Math.random() * indexes.length))
+                // console.log(indexes)
+                // console.log(Math.floor(Math.random() * indexes.length))
                 index = indexes[Math.floor(Math.random() * indexes.length)].index
             })
         }
@@ -130,12 +130,12 @@ exports.handler = async (event) => {
     }
 
     // Output the event for debugging purposes
-    console.log(`EVENT: ${JSON.stringify(event)}`);
+    // console.log(`EVENT: ${JSON.stringify(event)}`);
 
     // Get the query string params
     const params = event.queryStringParameters;
 
-    console.log(`EVENT: ${JSON.stringify(event)}`);
+    // console.log(`EVENT: ${JSON.stringify(event)}`);
 
     const randomFrame = await getRandomFrame(params.series);
 
@@ -145,7 +145,7 @@ exports.handler = async (event) => {
     };
     try {
         await trackAnalyticsEventToS3(data, "random", params.sessionId);
-        console.log("Successfully wrote data to S3");
+        console.log("Analytics tracked to S3 data lake");
     } catch (error) {
         console.error(error);
     }
