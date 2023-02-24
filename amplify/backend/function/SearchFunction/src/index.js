@@ -39,7 +39,7 @@ const trackAnalyticsEventToS3 = (eventData, eventType, sessionId) => {
   const s3Params = {
     Bucket: analyticsBucket,
     Key: `analytics/${eventType}/year=${year}/month=${month}/day=${day}/${uniqueId}.json`,
-    Body: JSON.stringify({ id: uniqueId, ...eventData, session_id: sessionId, event_time: eventTime}),
+    Body: JSON.stringify({ id: uniqueId, ...eventData, session_id: sessionId, event_time: eventTime }),
     ContentType: "application/json"
   };
 
@@ -66,7 +66,7 @@ const search = async (searchString, seriesName, sessionId, opensearchEndpoint, o
   const max_results = 50;
 
   // console.log(`ENV VARS:\n${JSON.stringify(process.env)}`)
-  
+
   // trackAnalyticsEventToS3(data, "search")
   //   .then(() => console.log("Successfully wrote data to S3"))
   //   .catch((err) => console.error(err));
@@ -82,7 +82,7 @@ const search = async (searchString, seriesName, sessionId, opensearchEndpoint, o
   } catch (error) {
     console.error(error);
   }
-  
+
 
   const opensearch_auth = {
     username: opensearchUser,
@@ -116,37 +116,42 @@ const search = async (searchString, seriesName, sessionId, opensearchEndpoint, o
 };
 
 exports.handler = async (event) => {
-
-  // Pull secrets from SSM
-  const ssmClient = new SSM();
-  const ssmParams = {
-    Names: ["opensearch_user", "opensearch_pass", "opensearch_url"].map(secretName => process.env[secretName]),
-    WithDecryption: true,
-  };
-  const { Parameters } = await ssmClient.send(new GetParametersCommand(ssmParams));
-
-  // OpenSearch values
-  const opensearch_url = Parameters.find(param => param.Name === process.env['opensearch_url']).Value
-  const opensearch_user = Parameters.find(param => param.Name === process.env['opensearch_user']).Value
-  const opensearch_pass = Parameters.find(param => param.Name === process.env['opensearch_pass']).Value
-
-  // Output the event for debugging purposes
-  // console.log(`EVENT: ${JSON.stringify(event)}`);
-
   // Get the query string params
   const params = event.queryStringParameters;
 
-  // Pull the results from OpenSearch and clean them up
-  const response = await search(params.q, params.series, params.sessionId, opensearch_url, opensearch_user, opensearch_pass)
-  const hits = response.hits.hits
-  const cleanResults = hits.map(hit => ({
-    fid: hit._id,
-    series_name: hit._index,
-    season_number: hit._source.season.toString(),
-    episode_number: hit._source.episode.toString(),
-    frame_image: `/${hit._index}/img/${hit._source.season}/${hit._source.episode}/${hit._id}.jpg`,
-    subtitle: hit._source.sub_content
-  }));
+  let cleanResults
+
+  if (params.warmup) {
+    cleanResults = { "status": "ready" }
+  } else {
+    // Pull secrets from SSM
+    const ssmClient = new SSM();
+    const ssmParams = {
+      Names: ["opensearch_user", "opensearch_pass", "opensearch_url"].map(secretName => process.env[secretName]),
+      WithDecryption: true,
+    };
+    const { Parameters } = await ssmClient.send(new GetParametersCommand(ssmParams));
+
+    // OpenSearch values
+    const opensearch_url = Parameters.find(param => param.Name === process.env['opensearch_url']).Value
+    const opensearch_user = Parameters.find(param => param.Name === process.env['opensearch_user']).Value
+    const opensearch_pass = Parameters.find(param => param.Name === process.env['opensearch_pass']).Value
+
+    // Output the event for debugging purposes
+    // console.log(`EVENT: ${JSON.stringify(event)}`);
+
+    // Pull the results from OpenSearch and clean them up
+    const response = await search(params.q, params.series, params.sessionId, opensearch_url, opensearch_user, opensearch_pass)
+    const hits = response.hits.hits
+    cleanResults = hits.map(hit => ({
+      fid: hit._id,
+      series_name: hit._index,
+      season_number: hit._source.season.toString(),
+      episode_number: hit._source.episode.toString(),
+      frame_image: `/${hit._index}/img/${hit._source.season}/${hit._source.episode}/${hit._id}.jpg`,
+      subtitle: hit._source.sub_content
+    }));
+  }
 
   // Return the search results as JSON
   return {
