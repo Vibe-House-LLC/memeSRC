@@ -8,10 +8,9 @@ export const createAnalyticsMetrics = /* GraphQL */ `
   ) {
     createAnalyticsMetrics(input: $input, condition: $condition) {
       id
-      slug
       value
-      updatedAt
       createdAt
+      updatedAt
     }
   }
 `;
@@ -22,10 +21,9 @@ export const updateAnalyticsMetrics = /* GraphQL */ `
   ) {
     updateAnalyticsMetrics(input: $input, condition: $condition) {
       id
-      slug
       value
-      updatedAt
       createdAt
+      updatedAt
     }
   }
 `;
@@ -36,10 +34,9 @@ export const deleteAnalyticsMetrics = /* GraphQL */ `
   ) {
     deleteAnalyticsMetrics(input: $input, condition: $condition) {
       id
-      slug
       value
-      updatedAt
       createdAt
+      updatedAt
     }
   }
 `;

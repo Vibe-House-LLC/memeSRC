@@ -5,10 +5,9 @@ export const getAnalyticsMetrics = /* GraphQL */ `
   query GetAnalyticsMetrics($id: ID!) {
     getAnalyticsMetrics(id: $id) {
       id
-      slug
       value
-      updatedAt
       createdAt
+      updatedAt
     }
   }
 `;
@@ -25,10 +24,9 @@ export const listAnalyticsMetrics = /* GraphQL */ `
     ) {
       items {
         id
-        slug
         value
-        updatedAt
         createdAt
+        updatedAt
       }
       nextToken
     }
