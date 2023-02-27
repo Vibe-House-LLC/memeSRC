@@ -124,8 +124,8 @@ async function updateMetric(metric) {
     const { ResultSet } = await athena.send(getQueryResultsCommand);
 
     const queryResults = ResultSet.Rows.map(row => row.Data.map(col => col.VarCharValue));
-    result = JSON.stringify(queryResults)
-    
+    let result = JSON.stringify(queryResults)
+
     const now = new Date().toISOString();
 
     const getItemParams = {
