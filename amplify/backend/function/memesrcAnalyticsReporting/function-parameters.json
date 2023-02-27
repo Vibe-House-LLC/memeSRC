@@ -4,6 +4,11 @@
       "memesrcGeneratedImages": [
         "create",
         "read"
+      ],
+      "AnalyticsMetrics:@model(appsync)": [
+        "create",
+        "read",
+        "update"
       ]
     }
   },
