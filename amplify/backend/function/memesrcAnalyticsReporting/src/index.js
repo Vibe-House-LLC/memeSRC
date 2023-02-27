@@ -1,13 +1,15 @@
 /* Amplify Params - DO NOT EDIT
-    ENV
-    REGION
-    STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME
+	ENV
+	REGION
+	STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME
 Amplify Params - DO NOT EDIT */
+
 
 /**
  * @type {import('@types/aws-lambda').APIGatewayProxyHandler}
  */
 
+const axios = require('axios');
 const { AthenaClient, StartQueryExecutionCommand, GetQueryExecutionCommand, GetQueryResultsCommand } = require("@aws-sdk/client-athena");
 
 const ATHENA_DB = 'memesrc';
@@ -117,6 +119,35 @@ exports.handler = async (event) => {
         console.log(`Query results: ${JSON.stringify(queryResults)}`);
 
         result = queryResults  // [1][0]
+
+        const graphqlQuery = `mutation {
+            createAnalyticsMetrics(input: {
+                id: "${metric}",
+                value: ${Number(queryResults[1][0])}
+            }) {
+                id,
+                value,
+                createdAt,
+                updatedAt
+            }
+        }`;
+
+        const response = await axios.post(process.env.API_MEMESRC_GRAPHQLAPIENDPOINTOUTPUT, {
+            query: graphqlQuery
+        }, {
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': process.env.API_MEMESRC_GRAPHQLAPIKEYOUTPUT,
+            }
+        });
+
+        const { data, errors } = response.data;
+
+        if (errors) {
+            throw new Error(errors[0].message);
+        }
+
+        result = data.createAnalyticsMetrics;
 
         return {
             statusCode: 200,

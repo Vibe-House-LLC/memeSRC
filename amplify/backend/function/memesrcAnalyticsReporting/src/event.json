@@ -1,5 +1,5 @@
 {
   "queryStringParameters": {
-    "metric": "popularShows"
+    "metric": "totalFrameViews"
   }
 }
