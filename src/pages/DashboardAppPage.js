@@ -71,24 +71,24 @@ export default function DashboardAppPage() {
   // Pull the analytics data for the dashboard
   useEffect(() => {
     API.get('publicapi', '/analytics', { "queryStringParameters": { "metric": "totalFrameViews" } }).then(data => {
-      const result = data[1][0]
+      const result = JSON.parse(data.value)[1][0]
       console.log(result)
       setFrameViewsDaily(result)
     })
     API.get('publicapi', '/analytics', { "queryStringParameters": { "metric": "totalRandoms" } }).then(data => {
-      const result = data[1][0]
+      const result = JSON.parse(data.value)[1][0]
       setRandomsDaily(result)
     })
     API.get('publicapi', '/analytics', { "queryStringParameters": { "metric": "totalSearches" } }).then(data => {
-      const result = data[1][0]
+      const result = JSON.parse(data.value)[1][0]
       setSearchesDaily(result)
     })
     API.get('publicapi', '/analytics', { "queryStringParameters": { "metric": "totalSessions" } }).then(data => {
-      const result = data[1][0]
+      const result = JSON.parse(data.value)[1][0]
       setSessionsDaily(result)
     })
     API.get('publicapi', '/analytics', { "queryStringParameters": { "metric": "popularShows" } }).then(data => {
-      const result = data.slice(1).map(row => {
+      const result = JSON.parse(data.value).slice(1).map(row => {
         return {
           label: row[0],
           value: parseInt(row[1], 10)

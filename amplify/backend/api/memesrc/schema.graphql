@@ -8,7 +8,7 @@ type AnalyticsMetrics @model @auth(
   ]
 ) {
   id: ID!,
-  value: Int
+  value: String
 }
 
 type ContentMetadata @model @auth(

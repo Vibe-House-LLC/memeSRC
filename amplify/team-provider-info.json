@@ -56,7 +56,7 @@
         },
         "memesrcAnalyticsReporting": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcAnalyticsReporting-424e6f4b716e5a33586f-build.zip"
+          "s3Key": "amplify-builds/memesrcAnalyticsReporting-6570384c6f3972547248-build.zip"
         },
         "memesrcAnalyticsInitDBs": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",

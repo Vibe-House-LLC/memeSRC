@@ -1,7 +1,10 @@
 /* Amplify Params - DO NOT EDIT
-	ENV
-	REGION
-	STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME
+    API_MEMESRC_ANALYTICSMETRICSTABLE_ARN
+    API_MEMESRC_ANALYTICSMETRICSTABLE_NAME
+    API_MEMESRC_GRAPHQLAPIIDOUTPUT
+    ENV
+    REGION
+    STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME
 Amplify Params - DO NOT EDIT */
 
 
@@ -9,8 +12,11 @@ Amplify Params - DO NOT EDIT */
  * @type {import('@types/aws-lambda').APIGatewayProxyHandler}
  */
 
-const axios = require('axios');
 const { AthenaClient, StartQueryExecutionCommand, GetQueryExecutionCommand, GetQueryResultsCommand } = require("@aws-sdk/client-athena");
+const { DynamoDBClient, GetItemCommand, PutItemCommand, UpdateItemCommand } = require("@aws-sdk/client-dynamodb");
+const { marshall, unmarshall } = require("@aws-sdk/util-dynamodb");
+
+const client = new DynamoDBClient({ region: process.env.REGION });
 
 const ATHENA_DB = 'memesrc';
 const ATHENA_OUTPUT_LOCATION = `s3://${process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME}/athena`;
@@ -118,36 +124,63 @@ exports.handler = async (event) => {
         const queryResults = getQueryResultsResponse.ResultSet.Rows.map(row => row.Data.map(col => col.VarCharValue));
         console.log(`Query results: ${JSON.stringify(queryResults)}`);
 
-        result = queryResults  // [1][0]
+        result = JSON.stringify(queryResults)
 
-        const graphqlQuery = `mutation {
-            createAnalyticsMetrics(input: {
-                id: "${metric}",
-                value: ${Number(queryResults[1][0])}
-            }) {
-                id,
-                value,
-                createdAt,
-                updatedAt
-            }
-        }`;
+        // TODO: Create or update dynamodb (env vars has details) item with id=`'${metric}' so it has value=`${result}`.
+        const now = new Date().toISOString();
 
-        const response = await axios.post(process.env.API_MEMESRC_GRAPHQLAPIENDPOINTOUTPUT, {
-            query: graphqlQuery
-        }, {
-            headers: {
-                'Content-Type': 'application/json',
-                'x-api-key': process.env.API_MEMESRC_GRAPHQLAPIKEYOUTPUT,
-            }
-        });
+        const getItemParams = {
+            TableName: process.env.API_MEMESRC_ANALYTICSMETRICSTABLE_NAME,
+            Key: marshall({ id: metric })
+        };
 
-        const { data, errors } = response.data;
-
-        if (errors) {
-            throw new Error(errors[0].message);
+        let item;
+        try {
+            const getItemCommand = new GetItemCommand(getItemParams);
+            const { Item } = await client.send(getItemCommand);
+            item = Item && unmarshall(Item);
+        } catch (err) {
+            console.log(`Get item error: ${err}`);
         }
 
-        result = data.createAnalyticsMetrics;
+        const itemParams = {
+            TableName: process.env.API_MEMESRC_ANALYTICSMETRICSTABLE_NAME,
+            Item: marshall({
+                id: metric,
+                value: result,
+                createdAt: item ? item.createdAt : now,
+                updatedAt: now,
+                __typename: "AnalyticsMetrics"
+            })
+        };
+
+        if (item) {
+            const updateItemParams = {
+                TableName: process.env.API_MEMESRC_ANALYTICSMETRICSTABLE_NAME,
+                Key: marshall({ id: metric }),
+                UpdateExpression: "SET #value = :value, #updatedAt = :updatedAt",
+                ExpressionAttributeNames: {
+                    "#value": "value",
+                    "#updatedAt": "updatedAt"
+                },
+                ExpressionAttributeValues: marshall({
+                    ":value": result,
+                    ":updatedAt": now
+                }),
+                ReturnValues: "ALL_NEW"
+            };
+            const { Attributes } = await client.send(new UpdateItemCommand(updateItemParams));
+            item = unmarshall(Attributes);
+        } else {
+            const { Item } = await client.send(new PutItemCommand(itemParams));
+            item = unmarshall(Item);
+        }
+
+        resultBody = {
+            metric: metric,
+            value: item.value, 
+            updatedAt: item.updatedAt
+        }
 
         return {
             statusCode: 200,
@@ -156,7 +189,7 @@ exports.handler = async (event) => {
                 "Access-Control-Allow-Headers": "*",
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify(result),
+            body: JSON.stringify(resultBody),
         };
     } catch (error) {
         console.error(`Error: ${error}`);
