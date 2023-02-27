@@ -1,6 +1,45 @@
 /* eslint-disable */
 // this is an auto generated file. This will be overwritten
 
+export const createAnalyticsMetrics = /* GraphQL */ `
+  mutation CreateAnalyticsMetrics(
+    $input: CreateAnalyticsMetricsInput!
+    $condition: ModelAnalyticsMetricsConditionInput
+  ) {
+    createAnalyticsMetrics(input: $input, condition: $condition) {
+      id
+      value
+      createdAt
+      updatedAt
+    }
+  }
+`;
+export const updateAnalyticsMetrics = /* GraphQL */ `
+  mutation UpdateAnalyticsMetrics(
+    $input: UpdateAnalyticsMetricsInput!
+    $condition: ModelAnalyticsMetricsConditionInput
+  ) {
+    updateAnalyticsMetrics(input: $input, condition: $condition) {
+      id
+      value
+      createdAt
+      updatedAt
+    }
+  }
+`;
+export const deleteAnalyticsMetrics = /* GraphQL */ `
+  mutation DeleteAnalyticsMetrics(
+    $input: DeleteAnalyticsMetricsInput!
+    $condition: ModelAnalyticsMetricsConditionInput
+  ) {
+    deleteAnalyticsMetrics(input: $input, condition: $condition) {
+      id
+      value
+      createdAt
+      updatedAt
+    }
+  }
+`;
 export const createContentMetadata = /* GraphQL */ `
   mutation CreateContentMetadata(
     $input: CreateContentMetadataInput!
