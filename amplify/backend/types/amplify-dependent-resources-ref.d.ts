@@ -71,6 +71,7 @@ export type AmplifyDependentResourcesAttributes = {
     },
     "memesrcAnalyticsReporting": {
       "Arn": "string",
+      "CloudWatchEventRule": "string",
       "LambdaExecutionRole": "string",
       "LambdaExecutionRoleArn": "string",
       "Name": "string",

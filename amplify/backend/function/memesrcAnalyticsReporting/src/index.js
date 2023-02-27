@@ -1,14 +1,22 @@
 /* Amplify Params - DO NOT EDIT
+    API_MEMESRC_ANALYTICSMETRICSTABLE_ARN
+    API_MEMESRC_ANALYTICSMETRICSTABLE_NAME
+    API_MEMESRC_GRAPHQLAPIIDOUTPUT
     ENV
     REGION
     STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME
 Amplify Params - DO NOT EDIT */
+
 
 /**
  * @type {import('@types/aws-lambda').APIGatewayProxyHandler}
  */
 
 const { AthenaClient, StartQueryExecutionCommand, GetQueryExecutionCommand, GetQueryResultsCommand } = require("@aws-sdk/client-athena");
+const { DynamoDBClient, GetItemCommand, PutItemCommand, UpdateItemCommand } = require("@aws-sdk/client-dynamodb");
+const { marshall, unmarshall } = require("@aws-sdk/util-dynamodb");
+
+const client = new DynamoDBClient({ region: process.env.REGION });
 
 const ATHENA_DB = 'memesrc';
 const ATHENA_OUTPUT_LOCATION = `s3://${process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME}/athena`;
@@ -74,64 +82,119 @@ const analyticsQueries = {
         GROUP BY series_id;`
 }
 
-const athena = new AthenaClient({ region: 'us-east-1' });
+
+async function updateMetric(metric) {
+
+    const athena = new AthenaClient({ region: process.env.REGION });
+
+    const query = analyticsQueries[metric]
+
+    const startQueryExecutionCommand = new StartQueryExecutionCommand({
+        QueryString: query,
+        QueryExecutionContext: { Database: ATHENA_DB },
+        ResultConfiguration: { OutputLocation: ATHENA_OUTPUT_LOCATION },
+    });
+
+    const { QueryExecutionId } = await athena.send(startQueryExecutionCommand);
+
+    let state = 'RUNNING';
+
+    while (state === 'RUNNING' || state === 'QUEUED') {
+        const getQueryExecutionCommand = new GetQueryExecutionCommand({
+            QueryExecutionId,
+        });
+
+        const { QueryExecution } = await athena.send(getQueryExecutionCommand);
+
+        state = QueryExecution.Status.State;
+
+        if (state === 'RUNNING' || state === 'QUEUED') {
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+        }
+    }
+
+    if (state !== 'SUCCEEDED') {
+        throw new Error(`Query failed with status ${state}`);
+    }
+
+    const getQueryResultsCommand = new GetQueryResultsCommand({
+        QueryExecutionId,
+    });
+
+    const { ResultSet } = await athena.send(getQueryResultsCommand);
+
+    const queryResults = ResultSet.Rows.map(row => row.Data.map(col => col.VarCharValue));
+    let result = JSON.stringify(queryResults)
+
+    const now = new Date().toISOString();
+
+    const getItemParams = {
+        TableName: process.env.API_MEMESRC_ANALYTICSMETRICSTABLE_NAME,
+        Key: marshall({ id: metric })
+    };
+
+    let item;
+    try {
+        const getItemCommand = new GetItemCommand(getItemParams);
+        const { Item } = await client.send(getItemCommand);
+        item = Item && unmarshall(Item);
+    } catch (err) {
+        console.log(`Get item error: ${err}`);
+    }
+
+    const itemParams = {
+        TableName: process.env.API_MEMESRC_ANALYTICSMETRICSTABLE_NAME,
+        Item: marshall({
+            id: metric,
+            value: result,
+            createdAt: item ? item.createdAt : now,
+            updatedAt: now,
+            __typename: "AnalyticsMetrics"
+        })
+    };
+
+    if (item) {
+        const updateItemParams = {
+            TableName: process.env.API_MEMESRC_ANALYTICSMETRICSTABLE_NAME,
+            Key: marshall({ id: metric }),
+            UpdateExpression: "SET #value = :value, #updatedAt = :updatedAt",
+            ExpressionAttributeNames: {
+                "#value": "value",
+                "#updatedAt": "updatedAt"
+            },
+            ExpressionAttributeValues: marshall({
+                ":value": result,
+                ":updatedAt": now
+            }),
+            ReturnValues: "ALL_NEW"
+        };
+        const { Attributes } = await client.send(new UpdateItemCommand(updateItemParams));
+        item = unmarshall(Attributes);
+    } else {
+        const { Item } = await client.send(new PutItemCommand(itemParams));
+        item = unmarshall(Item);
+    }
+
+    return ResultSet;
+}
 
 exports.handler = async (event) => {
     try {
         console.log(`EVENT: ${JSON.stringify(event)}`);
 
-        // Pick the query based on the request
-        const { metric } = event.queryStringParameters
-        const query = analyticsQueries[metric]
-        console.log(query)
-
-        // Execute each query separately
-        console.log(`Executing query: ${query}`);
-
-        // Start the query execution
-        const startQueryExecutionCommand = new StartQueryExecutionCommand({
-            QueryString: query,
-            QueryExecutionContext: { Database: ATHENA_DB },
-            ResultConfiguration: { OutputLocation: ATHENA_OUTPUT_LOCATION }
-        });
-        const startQueryExecutionResponse = await athena.send(startQueryExecutionCommand);
-        const queryExecutionId = startQueryExecutionResponse.QueryExecutionId;
-
-        // Wait for the query to complete
-        let status = 'QUEUED';
-        while (status === 'QUEUED' || status === 'RUNNING') {
-            const getQueryExecutionCommand = new GetQueryExecutionCommand({ QueryExecutionId: queryExecutionId });
-            const getQueryExecutionResponse = await athena.send(getQueryExecutionCommand);
-            status = getQueryExecutionResponse.QueryExecution.Status.State;
-            console.log(`Query status: ${status}`);
-            if (status === 'FAILED' || status === 'CANCELLED') {
-                throw new Error(`Query ${queryExecutionId} failed or was cancelled`);
-            }
-            await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-
-        // Get the query results
-        const getQueryResultsCommand = new GetQueryResultsCommand({ QueryExecutionId: queryExecutionId });
-        const getQueryResultsResponse = await athena.send(getQueryResultsCommand);
-        const queryResults = getQueryResultsResponse.ResultSet.Rows.map(row => row.Data.map(col => col.VarCharValue));
-        console.log(`Query results: ${JSON.stringify(queryResults)}`);
-
-        result = queryResults  // [1][0]
+        const queryPromises = Object.keys(analyticsQueries).map(metric => updateMetric(metric));
+        const results = await Promise.all(queryPromises);
+        console.log('Results:', results);
 
         return {
             statusCode: 200,
-            headers: {
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Headers": "*",
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify(result),
+            body: JSON.stringify({ message: 'Queries executed successfully' })
         };
     } catch (error) {
-        console.error(`Error: ${error}`);
+        console.log('Error:', error);
         return {
             statusCode: 500,
-            body: JSON.stringify({ message: error.message })
+            body: JSON.stringify({ message: 'Error executing queries' })
         };
     }
 };

@@ -6,7 +6,7 @@ import { useTheme } from '@mui/material/styles';
 import { Grid, Container, Typography } from '@mui/material';
 // Amplify
 import { API, graphqlOperation } from 'aws-amplify';
-import { listHomepageSections } from '../graphql/queries';
+import { listHomepageSections, getAnalyticsMetrics } from '../graphql/queries';
 // components
 // import { API, graphqlOperation } from 'aws-amplify';
 import Iconify from '../components/iconify';
@@ -58,6 +58,73 @@ export default function DashboardAppPage() {
   const [sessionsDaily, setSessionsDaily] = useState()
   const [popularShows, setPopularShows] = useState([])
 
+  const fetchAnalyticsFrameViews = async () => {
+    const result = await API.graphql(
+      graphqlOperation(getAnalyticsMetrics, {
+        id: 'totalFrameViews'
+      })
+    )
+    console.log(result)
+    const cleaned = JSON.parse(result.data.getAnalyticsMetrics.value)[1][0]
+    setFrameViewsDaily(cleaned)
+  }
+
+  const fetchAnalyticsRandoms = async () => {
+    const result = await API.graphql(
+      graphqlOperation(getAnalyticsMetrics, {
+        id: 'totalRandoms'
+      })
+    )
+    console.log(result)
+    const cleaned = JSON.parse(result.data.getAnalyticsMetrics.value)[1][0]
+    setRandomsDaily(cleaned)
+  }
+
+  const fetchAnalyticsSearches = async () => {
+    const result = await API.graphql(
+      graphqlOperation(getAnalyticsMetrics, {
+        id: 'totalSearches'
+      })
+    )
+    console.log(result)
+    const cleaned = JSON.parse(result.data.getAnalyticsMetrics.value)[1][0]
+    setSearchesDaily(cleaned)
+  }
+
+  const fetchAnalyticsSessions = async () => {
+    const result = await API.graphql(
+      graphqlOperation(getAnalyticsMetrics, {
+        id: 'totalSessions'
+      })
+    )
+    console.log(result)
+    const cleaned = JSON.parse(result.data.getAnalyticsMetrics.value)[1][0]
+    setSessionsDaily(cleaned)
+  }
+
+  const fetchAnalyticsPopularShows = async () => {
+    const result = await API.graphql(
+      graphqlOperation(getAnalyticsMetrics, {
+        id: 'popularShows'
+      })
+    )
+    console.log(result)
+    console.log(`POPULAR SHOWS: ${result.data.getAnalyticsMetrics.value}`)
+    const cleaned = JSON.parse(result.data.getAnalyticsMetrics.value).slice(1).map(row => {
+      return {
+        label: row[0],
+        value: parseInt(row[1], 10)
+      };
+    });
+    const cleanedSorted = cleaned.sort((a, b) => {
+      if (a.value < b.value) return 1;
+      if (a.value > b.value) return -1;
+      return 0;
+    });
+    console.log(`Cleaned and sorted: ${cleanedSorted}`)
+    setPopularShows(cleanedSorted)
+  }
+
   // Pull the homepage sections from GraphQL when the component loads
   useEffect(() => {
     async function getData() {
@@ -70,38 +137,43 @@ export default function DashboardAppPage() {
 
   // Pull the analytics data for the dashboard
   useEffect(() => {
-    API.get('publicapi', '/analytics', { "queryStringParameters": { "metric": "totalFrameViews" } }).then(data => {
-      const result = data[1][0]
-      console.log(result)
-      setFrameViewsDaily(result)
-    })
-    API.get('publicapi', '/analytics', { "queryStringParameters": { "metric": "totalRandoms" } }).then(data => {
-      const result = data[1][0]
-      setRandomsDaily(result)
-    })
-    API.get('publicapi', '/analytics', { "queryStringParameters": { "metric": "totalSearches" } }).then(data => {
-      const result = data[1][0]
-      setSearchesDaily(result)
-    })
-    API.get('publicapi', '/analytics', { "queryStringParameters": { "metric": "totalSessions" } }).then(data => {
-      const result = data[1][0]
-      setSessionsDaily(result)
-    })
-    API.get('publicapi', '/analytics', { "queryStringParameters": { "metric": "popularShows" } }).then(data => {
-      const result = data.slice(1).map(row => {
-        return {
-          label: row[0],
-          value: parseInt(row[1], 10)
-        };
-      });
-      const resultSorted = result.sort((a, b) => {
-        if (a.value < b.value) return 1;
-        if (a.value > b.value) return -1;
-        return 0;
-      });
-      console.log(resultSorted)
-      setPopularShows(resultSorted)
-    })
+    fetchAnalyticsFrameViews();
+    fetchAnalyticsRandoms();
+    fetchAnalyticsSearches();
+    fetchAnalyticsSessions();
+    fetchAnalyticsPopularShows();
+    // API.get('publicapi', '/analytics', { "queryStringParameters": { "metric": "totalFrameViews" } }).then(data => {
+    //   const result = JSON.parse(data.value)[1][0]
+    //   console.log(result)
+    //   setFrameViewsDaily(result)
+    // })
+    // API.get('publicapi', '/analytics', { "queryStringParameters": { "metric": "totalRandoms" } }).then(data => {
+    //   const result = JSON.parse(data.value)[1][0]
+    //   setRandomsDaily(result)
+    // })
+    // API.get('publicapi', '/analytics', { "queryStringParameters": { "metric": "totalSearches" } }).then(data => {
+    //   const result = JSON.parse(data.value)[1][0]
+    //   setSearchesDaily(result)
+    // })
+    // API.get('publicapi', '/analytics', { "queryStringParameters": { "metric": "totalSessions" } }).then(data => {
+    //   const result = JSON.parse(data.value)[1][0]
+    //   setSessionsDaily(result)
+    // })
+    // API.get('publicapi', '/analytics', { "queryStringParameters": { "metric": "popularShows" } }).then(data => {
+    //   const result = JSON.parse(data.value).slice(1).map(row => {
+    //     return {
+    //       label: row[0],
+    //       value: parseInt(row[1], 10)
+    //     };
+    //   });
+    //   const resultSorted = result.sort((a, b) => {
+    //     if (a.value < b.value) return 1;
+    //     if (a.value > b.value) return -1;
+    //     return 0;
+    //   });
+    //   console.log(resultSorted)
+    //   setPopularShows(resultSorted)
+    // })
   }, [])
 
   const theme = useTheme();

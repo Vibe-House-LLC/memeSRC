@@ -19,6 +19,10 @@
     "storagememesrcGeneratedImagesBucketName": {
       "Type": "String",
       "Default": "storagememesrcGeneratedImagesBucketName"
+    },
+    "apimemesrcGraphQLAPIIdOutput": {
+      "Type": "String",
+      "Default": "apimemesrcGraphQLAPIIdOutput"
     }
   },
   "Conditions": {
@@ -76,6 +80,35 @@
             },
             "STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME": {
               "Ref": "storagememesrcGeneratedImagesBucketName"
+            },
+            "API_MEMESRC_ANALYTICSMETRICSTABLE_NAME": {
+              "Fn::ImportValue": {
+                "Fn::Sub": "${apimemesrcGraphQLAPIIdOutput}:GetAtt:AnalyticsMetricsTable:Name"
+              }
+            },
+            "API_MEMESRC_ANALYTICSMETRICSTABLE_ARN": {
+              "Fn::Join": [
+                "",
+                [
+                  "arn:aws:dynamodb:",
+                  {
+                    "Ref": "AWS::Region"
+                  },
+                  ":",
+                  {
+                    "Ref": "AWS::AccountId"
+                  },
+                  ":table/",
+                  {
+                    "Fn::ImportValue": {
+                      "Fn::Sub": "${apimemesrcGraphQLAPIIdOutput}:GetAtt:AnalyticsMetricsTable:Name"
+                    }
+                  }
+                ]
+              ]
+            },
+            "API_MEMESRC_GRAPHQLAPIIDOUTPUT": {
+              "Ref": "apimemesrcGraphQLAPIIdOutput"
             }
           }
         },
@@ -224,6 +257,67 @@
                   ]
                 }
               ]
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "dynamodb:Put*",
+                "dynamodb:Create*",
+                "dynamodb:BatchWriteItem",
+                "dynamodb:Get*",
+                "dynamodb:BatchGetItem",
+                "dynamodb:List*",
+                "dynamodb:Describe*",
+                "dynamodb:Scan",
+                "dynamodb:Query",
+                "dynamodb:Update*",
+                "dynamodb:RestoreTable*"
+              ],
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:dynamodb:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":",
+                      {
+                        "Ref": "AWS::AccountId"
+                      },
+                      ":table/",
+                      {
+                        "Fn::ImportValue": {
+                          "Fn::Sub": "${apimemesrcGraphQLAPIIdOutput}:GetAtt:AnalyticsMetricsTable:Name"
+                        }
+                      }
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:dynamodb:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":",
+                      {
+                        "Ref": "AWS::AccountId"
+                      },
+                      ":table/",
+                      {
+                        "Fn::ImportValue": {
+                          "Fn::Sub": "${apimemesrcGraphQLAPIIdOutput}:GetAtt:AnalyticsMetricsTable:Name"
+                        }
+                      },
+                      "/index/*"
+                    ]
+                  ]
+                }
+              ]
             }
           ]
         }
@@ -293,6 +387,45 @@
         ]
       },
       "DependsOn": "LambdaExecutionRole"
+    },
+    "CloudWatchEvent": {
+      "Type": "AWS::Events::Rule",
+      "Properties": {
+        "Description": "Schedule rule for Lambda",
+        "ScheduleExpression": {
+          "Ref": "CloudWatchRule"
+        },
+        "State": "ENABLED",
+        "Targets": [
+          {
+            "Arn": {
+              "Fn::GetAtt": [
+                "LambdaFunction",
+                "Arn"
+              ]
+            },
+            "Id": {
+              "Ref": "LambdaFunction"
+            }
+          }
+        ]
+      }
+    },
+    "PermissionForEventsToInvokeLambda": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "LambdaFunction"
+        },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "events.amazonaws.com",
+        "SourceArn": {
+          "Fn::GetAtt": [
+            "CloudWatchEvent",
+            "Arn"
+          ]
+        }
+      }
     }
   },
   "Outputs": {
@@ -325,6 +458,11 @@
           "LambdaExecutionRole",
           "Arn"
         ]
+      }
+    },
+    "CloudWatchEventRule": {
+      "Value": {
+        "Ref": "CloudWatchEvent"
       }
     }
   }
