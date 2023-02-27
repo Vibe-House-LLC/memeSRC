@@ -1,6 +1,45 @@
 /* eslint-disable */
 // this is an auto generated file. This will be overwritten
 
+export const onCreateAnalyticsMetrics = /* GraphQL */ `
+  subscription OnCreateAnalyticsMetrics(
+    $filter: ModelSubscriptionAnalyticsMetricsFilterInput
+  ) {
+    onCreateAnalyticsMetrics(filter: $filter) {
+      id
+      slug
+      value
+      updatedAt
+      createdAt
+    }
+  }
+`;
+export const onUpdateAnalyticsMetrics = /* GraphQL */ `
+  subscription OnUpdateAnalyticsMetrics(
+    $filter: ModelSubscriptionAnalyticsMetricsFilterInput
+  ) {
+    onUpdateAnalyticsMetrics(filter: $filter) {
+      id
+      slug
+      value
+      updatedAt
+      createdAt
+    }
+  }
+`;
+export const onDeleteAnalyticsMetrics = /* GraphQL */ `
+  subscription OnDeleteAnalyticsMetrics(
+    $filter: ModelSubscriptionAnalyticsMetricsFilterInput
+  ) {
+    onDeleteAnalyticsMetrics(filter: $filter) {
+      id
+      slug
+      value
+      updatedAt
+      createdAt
+    }
+  }
+`;
 export const onCreateContentMetadata = /* GraphQL */ `
   subscription OnCreateContentMetadata(
     $filter: ModelSubscriptionContentMetadataFilterInput

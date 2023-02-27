@@ -2,6 +2,17 @@
 # all models in this schema. Learn more about authorization rules here: https://docs.amplify.aws/cli/graphql/authorization-rules
 # input AMPLIFY { globalAuthRule: AuthRule = { allow: public } } # FOR TESTING ONLY!
 
+type AnalyticsMetrics @model @auth(
+  rules: [
+    { allow: groups, groups: ["admins", "mods"] }
+  ]
+) {
+  id: ID!,
+  slug: String,
+  value: Int,
+  updatedAt: Int
+}
+
 type ContentMetadata @model @auth(
   rules: [
     { allow: groups, groups: ["admins", "mods"] },
