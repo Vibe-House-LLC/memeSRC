@@ -1,6 +1,37 @@
 /* eslint-disable */
 // this is an auto generated file. This will be overwritten
 
+export const getAnalyticsMetrics = /* GraphQL */ `
+  query GetAnalyticsMetrics($id: ID!) {
+    getAnalyticsMetrics(id: $id) {
+      id
+      value
+      createdAt
+      updatedAt
+    }
+  }
+`;
+export const listAnalyticsMetrics = /* GraphQL */ `
+  query ListAnalyticsMetrics(
+    $filter: ModelAnalyticsMetricsFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listAnalyticsMetrics(
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        value
+        createdAt
+        updatedAt
+      }
+      nextToken
+    }
+  }
+`;
 export const getContentMetadata = /* GraphQL */ `
   query GetContentMetadata($id: ID!) {
     getContentMetadata(id: $id) {

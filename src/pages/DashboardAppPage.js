@@ -6,7 +6,7 @@ import { useTheme } from '@mui/material/styles';
 import { Grid, Container, Typography } from '@mui/material';
 // Amplify
 import { API, graphqlOperation } from 'aws-amplify';
-import { listHomepageSections } from '../graphql/queries';
+import { listHomepageSections, getAnalyticsMetrics } from '../graphql/queries';
 // components
 // import { API, graphqlOperation } from 'aws-amplify';
 import Iconify from '../components/iconify';
@@ -52,6 +52,78 @@ async function fetchHomepageSections(items = [], nextToken = null) {
 
 export default function DashboardAppPage() {
   const [sections, setSections] = useState([]);
+  const [frameViewsDaily, setFrameViewsDaily] = useState()
+  const [searchesDaily, setSearchesDaily] = useState()
+  const [randomsDaily, setRandomsDaily] = useState()
+  const [sessionsDaily, setSessionsDaily] = useState()
+  const [popularShows, setPopularShows] = useState([])
+
+  const fetchAnalyticsFrameViews = async () => {
+    const result = await API.graphql(
+      graphqlOperation(getAnalyticsMetrics, {
+        id: 'totalFrameViews'
+      })
+    )
+    console.log(result)
+    const cleaned = JSON.parse(result.data.getAnalyticsMetrics.value)[1][0]
+    setFrameViewsDaily(cleaned)
+  }
+
+  const fetchAnalyticsRandoms = async () => {
+    const result = await API.graphql(
+      graphqlOperation(getAnalyticsMetrics, {
+        id: 'totalRandoms'
+      })
+    )
+    console.log(result)
+    const cleaned = JSON.parse(result.data.getAnalyticsMetrics.value)[1][0]
+    setRandomsDaily(cleaned)
+  }
+
+  const fetchAnalyticsSearches = async () => {
+    const result = await API.graphql(
+      graphqlOperation(getAnalyticsMetrics, {
+        id: 'totalSearches'
+      })
+    )
+    console.log(result)
+    const cleaned = JSON.parse(result.data.getAnalyticsMetrics.value)[1][0]
+    setSearchesDaily(cleaned)
+  }
+
+  const fetchAnalyticsSessions = async () => {
+    const result = await API.graphql(
+      graphqlOperation(getAnalyticsMetrics, {
+        id: 'totalSessions'
+      })
+    )
+    console.log(result)
+    const cleaned = JSON.parse(result.data.getAnalyticsMetrics.value)[1][0]
+    setSessionsDaily(cleaned)
+  }
+
+  const fetchAnalyticsPopularShows = async () => {
+    const result = await API.graphql(
+      graphqlOperation(getAnalyticsMetrics, {
+        id: 'popularShows'
+      })
+    )
+    console.log(result)
+    console.log(`POPULAR SHOWS: ${result.data.getAnalyticsMetrics.value}`)
+    const cleaned = JSON.parse(result.data.getAnalyticsMetrics.value).slice(1).map(row => {
+      return {
+        label: row[0],
+        value: parseInt(row[1], 10)
+      };
+    });
+    const cleanedSorted = cleaned.sort((a, b) => {
+      if (a.value < b.value) return 1;
+      if (a.value > b.value) return -1;
+      return 0;
+    });
+    console.log(`Cleaned and sorted: ${cleanedSorted}`)
+    setPopularShows(cleanedSorted)
+  }
 
   // Pull the homepage sections from GraphQL when the component loads
   useEffect(() => {
@@ -62,6 +134,47 @@ export default function DashboardAppPage() {
     }
     getData();
   }, []);
+
+  // Pull the analytics data for the dashboard
+  useEffect(() => {
+    fetchAnalyticsFrameViews();
+    fetchAnalyticsRandoms();
+    fetchAnalyticsSearches();
+    fetchAnalyticsSessions();
+    fetchAnalyticsPopularShows();
+    // API.get('publicapi', '/analytics', { "queryStringParameters": { "metric": "totalFrameViews" } }).then(data => {
+    //   const result = JSON.parse(data.value)[1][0]
+    //   console.log(result)
+    //   setFrameViewsDaily(result)
+    // })
+    // API.get('publicapi', '/analytics', { "queryStringParameters": { "metric": "totalRandoms" } }).then(data => {
+    //   const result = JSON.parse(data.value)[1][0]
+    //   setRandomsDaily(result)
+    // })
+    // API.get('publicapi', '/analytics', { "queryStringParameters": { "metric": "totalSearches" } }).then(data => {
+    //   const result = JSON.parse(data.value)[1][0]
+    //   setSearchesDaily(result)
+    // })
+    // API.get('publicapi', '/analytics', { "queryStringParameters": { "metric": "totalSessions" } }).then(data => {
+    //   const result = JSON.parse(data.value)[1][0]
+    //   setSessionsDaily(result)
+    // })
+    // API.get('publicapi', '/analytics', { "queryStringParameters": { "metric": "popularShows" } }).then(data => {
+    //   const result = JSON.parse(data.value).slice(1).map(row => {
+    //     return {
+    //       label: row[0],
+    //       value: parseInt(row[1], 10)
+    //     };
+    //   });
+    //   const resultSorted = result.sort((a, b) => {
+    //     if (a.value < b.value) return 1;
+    //     if (a.value > b.value) return -1;
+    //     return 0;
+    //   });
+    //   console.log(resultSorted)
+    //   setPopularShows(resultSorted)
+    // })
+  }, [])
 
   const theme = useTheme();
 
@@ -99,19 +212,41 @@ export default function DashboardAppPage() {
 
           <Grid container spacing={3}>
             <Grid item xs={12} sm={6} md={3}>
-              <AppWidgetSummary title="Weekly Sales" total={714000} icon={'ant-design:android-filled'} />
+              <AppWidgetSummary title={`Frame Views (${process.env.REACT_APP_USER_BRANCH})`} total={frameViewsDaily} icon={'ant-design:android-filled'} />
             </Grid>
 
             <Grid item xs={12} sm={6} md={3}>
-              <AppWidgetSummary title="New Users" total={1352831} color="info" icon={'ant-design:apple-filled'} />
+              <AppWidgetSummary title={`Searches (${process.env.REACT_APP_USER_BRANCH})`} total={searchesDaily} color="info" icon={'ant-design:apple-filled'} />
             </Grid>
 
             <Grid item xs={12} sm={6} md={3}>
-              <AppWidgetSummary title="Item Orders" total={1723315} color="warning" icon={'ant-design:windows-filled'} />
+              <AppWidgetSummary title={`Randoms (${process.env.REACT_APP_USER_BRANCH})`} total={randomsDaily} color="warning" icon={'ant-design:windows-filled'} />
             </Grid>
 
             <Grid item xs={12} sm={6} md={3}>
-              <AppWidgetSummary title="Bug Reports" total={234} color="error" icon={'ant-design:bug-filled'} />
+              <AppWidgetSummary title={`API Sessions (${process.env.REACT_APP_USER_BRANCH})`} total={sessionsDaily} color="error" icon={'ant-design:bug-filled'} />
+            </Grid>
+
+            <Grid item xs={12} md={6} lg={4}>
+              <AppCurrentVisits
+                title={`Popular shows (${process.env.REACT_APP_USER_BRANCH})`}
+                chartData={popularShows}
+                chartColors={[
+                  theme.palette.primary.main,
+                  theme.palette.info.main,
+                  theme.palette.warning.main,
+                  theme.palette.error.main,
+                  theme.palette.grey[500]
+                ]}
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6} lg={8}>
+              <AppConversionRates
+                title={`Frame Views per show (${process.env.REACT_APP_USER_BRANCH})`}
+                subheader="all-time"
+                chartData={popularShows}
+              />
             </Grid>
 
             <Grid item xs={12} md={6} lg={8}>
@@ -192,43 +327,6 @@ export default function DashboardAppPage() {
                     fill: 'solid',
                     data: [30, 25, 36, 30, 45, 35, 64, 52, 59, 36, 39],
                   },
-                ]}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={6} lg={4}>
-              <AppCurrentVisits
-                title="Current Visits"
-                chartData={[
-                  { label: 'America', value: 4344 },
-                  { label: 'Asia', value: 5435 },
-                  { label: 'Europe', value: 1443 },
-                  { label: 'Africa', value: 4443 },
-                ]}
-                chartColors={[
-                  theme.palette.primary.main,
-                  theme.palette.info.main,
-                  theme.palette.warning.main,
-                  theme.palette.error.main,
-                ]}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={6} lg={8}>
-              <AppConversionRates
-                title="Conversion Rates"
-                subheader="(+43%) than last year"
-                chartData={[
-                  { label: 'Italy', value: 400 },
-                  { label: 'Japan', value: 430 },
-                  { label: 'China', value: 448 },
-                  { label: 'Canada', value: 470 },
-                  { label: 'France', value: 540 },
-                  { label: 'Germany', value: 580 },
-                  { label: 'South Korea', value: 690 },
-                  { label: 'Netherlands', value: 1100 },
-                  { label: 'United States', value: 1200 },
-                  { label: 'United Kingdom', value: 1380 },
                 ]}
               />
             </Grid>

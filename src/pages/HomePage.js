@@ -1,12 +1,36 @@
-import React, { useState, useCallback } from 'react';
+import { API } from 'aws-amplify';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import FullScreenSearch from '../sections/search/FullScreenSearch';
+
+const prepSessionID = async () => {
+  let sessionID;
+  if (!("sessionID" in sessionStorage)) {
+    API.get('publicapi', '/uuid')
+      .then(generatedSessionID => {
+          sessionStorage.setItem("sessionID", generatedSessionID);
+          return generatedSessionID;
+      })
+      .catch(err => {
+          console.log(`UUID Gen Fetch Error:  ${err}`);
+          throw err;
+      });
+  }
+};
 
 export default function SearchPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [seriesTitle, setSeriesTitle] = useState('_universal');
 
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Make sure API functions are warm
+    API.get('publicapi', '/search', { queryStringParameters: { warmup: true } })
+    API.get('publicapi', '/random', { queryStringParameters: { warmup: true } })
+    // Prep sessionID for future use
+    prepSessionID()
+  }, [])
 
   const handleSearch = useCallback((e) => {
     if(e) {
