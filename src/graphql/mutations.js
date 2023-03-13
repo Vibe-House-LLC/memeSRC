@@ -1,6 +1,342 @@
 /* eslint-disable */
 // this is an auto generated file. This will be overwritten
 
+export const createSeries = /* GraphQL */ `
+  mutation CreateSeries(
+    $input: CreateSeriesInput!
+    $condition: ModelSeriesConditionInput
+  ) {
+    createSeries(input: $input, condition: $condition) {
+      id
+      tvdbid
+      slug
+      name
+      year
+      image
+      description
+      seasons {
+        items {
+          id
+          tvdbid
+          year
+          image
+          description
+          createdAt
+          updatedAt
+          seriesSeasonsId
+        }
+        nextToken
+      }
+      createdAt
+      updatedAt
+    }
+  }
+`;
+export const updateSeries = /* GraphQL */ `
+  mutation UpdateSeries(
+    $input: UpdateSeriesInput!
+    $condition: ModelSeriesConditionInput
+  ) {
+    updateSeries(input: $input, condition: $condition) {
+      id
+      tvdbid
+      slug
+      name
+      year
+      image
+      description
+      seasons {
+        items {
+          id
+          tvdbid
+          year
+          image
+          description
+          createdAt
+          updatedAt
+          seriesSeasonsId
+        }
+        nextToken
+      }
+      createdAt
+      updatedAt
+    }
+  }
+`;
+export const deleteSeries = /* GraphQL */ `
+  mutation DeleteSeries(
+    $input: DeleteSeriesInput!
+    $condition: ModelSeriesConditionInput
+  ) {
+    deleteSeries(input: $input, condition: $condition) {
+      id
+      tvdbid
+      slug
+      name
+      year
+      image
+      description
+      seasons {
+        items {
+          id
+          tvdbid
+          year
+          image
+          description
+          createdAt
+          updatedAt
+          seriesSeasonsId
+        }
+        nextToken
+      }
+      createdAt
+      updatedAt
+    }
+  }
+`;
+export const createSeason = /* GraphQL */ `
+  mutation CreateSeason(
+    $input: CreateSeasonInput!
+    $condition: ModelSeasonConditionInput
+  ) {
+    createSeason(input: $input, condition: $condition) {
+      id
+      tvdbid
+      year
+      image
+      description
+      episodes {
+        items {
+          id
+          tvdbid
+          year
+          image
+          description
+          createdAt
+          updatedAt
+          seasonEpisodesId
+        }
+        nextToken
+      }
+      createdAt
+      updatedAt
+      seriesSeasonsId
+    }
+  }
+`;
+export const updateSeason = /* GraphQL */ `
+  mutation UpdateSeason(
+    $input: UpdateSeasonInput!
+    $condition: ModelSeasonConditionInput
+  ) {
+    updateSeason(input: $input, condition: $condition) {
+      id
+      tvdbid
+      year
+      image
+      description
+      episodes {
+        items {
+          id
+          tvdbid
+          year
+          image
+          description
+          createdAt
+          updatedAt
+          seasonEpisodesId
+        }
+        nextToken
+      }
+      createdAt
+      updatedAt
+      seriesSeasonsId
+    }
+  }
+`;
+export const deleteSeason = /* GraphQL */ `
+  mutation DeleteSeason(
+    $input: DeleteSeasonInput!
+    $condition: ModelSeasonConditionInput
+  ) {
+    deleteSeason(input: $input, condition: $condition) {
+      id
+      tvdbid
+      year
+      image
+      description
+      episodes {
+        items {
+          id
+          tvdbid
+          year
+          image
+          description
+          createdAt
+          updatedAt
+          seasonEpisodesId
+        }
+        nextToken
+      }
+      createdAt
+      updatedAt
+      seriesSeasonsId
+    }
+  }
+`;
+export const createEpisode = /* GraphQL */ `
+  mutation CreateEpisode(
+    $input: CreateEpisodeInput!
+    $condition: ModelEpisodeConditionInput
+  ) {
+    createEpisode(input: $input, condition: $condition) {
+      id
+      tvdbid
+      year
+      image
+      description
+      subtitles {
+        items {
+          id
+          tvdbid
+          year
+          image
+          description
+          start
+          end
+          createdAt
+          updatedAt
+          episodeSubtitlesId
+        }
+        nextToken
+      }
+      createdAt
+      updatedAt
+      seasonEpisodesId
+    }
+  }
+`;
+export const updateEpisode = /* GraphQL */ `
+  mutation UpdateEpisode(
+    $input: UpdateEpisodeInput!
+    $condition: ModelEpisodeConditionInput
+  ) {
+    updateEpisode(input: $input, condition: $condition) {
+      id
+      tvdbid
+      year
+      image
+      description
+      subtitles {
+        items {
+          id
+          tvdbid
+          year
+          image
+          description
+          start
+          end
+          createdAt
+          updatedAt
+          episodeSubtitlesId
+        }
+        nextToken
+      }
+      createdAt
+      updatedAt
+      seasonEpisodesId
+    }
+  }
+`;
+export const deleteEpisode = /* GraphQL */ `
+  mutation DeleteEpisode(
+    $input: DeleteEpisodeInput!
+    $condition: ModelEpisodeConditionInput
+  ) {
+    deleteEpisode(input: $input, condition: $condition) {
+      id
+      tvdbid
+      year
+      image
+      description
+      subtitles {
+        items {
+          id
+          tvdbid
+          year
+          image
+          description
+          start
+          end
+          createdAt
+          updatedAt
+          episodeSubtitlesId
+        }
+        nextToken
+      }
+      createdAt
+      updatedAt
+      seasonEpisodesId
+    }
+  }
+`;
+export const createSubtitle = /* GraphQL */ `
+  mutation CreateSubtitle(
+    $input: CreateSubtitleInput!
+    $condition: ModelSubtitleConditionInput
+  ) {
+    createSubtitle(input: $input, condition: $condition) {
+      id
+      tvdbid
+      year
+      image
+      description
+      start
+      end
+      createdAt
+      updatedAt
+      episodeSubtitlesId
+    }
+  }
+`;
+export const updateSubtitle = /* GraphQL */ `
+  mutation UpdateSubtitle(
+    $input: UpdateSubtitleInput!
+    $condition: ModelSubtitleConditionInput
+  ) {
+    updateSubtitle(input: $input, condition: $condition) {
+      id
+      tvdbid
+      year
+      image
+      description
+      start
+      end
+      createdAt
+      updatedAt
+      episodeSubtitlesId
+    }
+  }
+`;
+export const deleteSubtitle = /* GraphQL */ `
+  mutation DeleteSubtitle(
+    $input: DeleteSubtitleInput!
+    $condition: ModelSubtitleConditionInput
+  ) {
+    deleteSubtitle(input: $input, condition: $condition) {
+      id
+      tvdbid
+      year
+      image
+      description
+      start
+      end
+      createdAt
+      updatedAt
+      episodeSubtitlesId
+    }
+  }
+`;
 export const createAnalyticsMetrics = /* GraphQL */ `
   mutation CreateAnalyticsMetrics(
     $input: CreateAnalyticsMetricsInput!

@@ -32,6 +32,202 @@ export const listAnalyticsMetrics = /* GraphQL */ `
     }
   }
 `;
+export const getSeries = /* GraphQL */ `
+  query GetSeries($id: ID!) {
+    getSeries(id: $id) {
+      id
+      tvdbid
+      slug
+      name
+      year
+      image
+      description
+      seasons {
+        items {
+          id
+          tvdbid
+          year
+          image
+          description
+          createdAt
+          updatedAt
+          seriesSeasonsId
+        }
+        nextToken
+      }
+      createdAt
+      updatedAt
+    }
+  }
+`;
+export const listSeries = /* GraphQL */ `
+  query ListSeries(
+    $filter: ModelSeriesFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listSeries(filter: $filter, limit: $limit, nextToken: $nextToken) {
+      items {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        seasons {
+          nextToken
+        }
+        createdAt
+        updatedAt
+      }
+      nextToken
+    }
+  }
+`;
+export const getSeason = /* GraphQL */ `
+  query GetSeason($id: ID!) {
+    getSeason(id: $id) {
+      id
+      tvdbid
+      year
+      image
+      description
+      episodes {
+        items {
+          id
+          tvdbid
+          year
+          image
+          description
+          createdAt
+          updatedAt
+          seasonEpisodesId
+        }
+        nextToken
+      }
+      createdAt
+      updatedAt
+      seriesSeasonsId
+    }
+  }
+`;
+export const listSeasons = /* GraphQL */ `
+  query ListSeasons(
+    $filter: ModelSeasonFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listSeasons(filter: $filter, limit: $limit, nextToken: $nextToken) {
+      items {
+        id
+        tvdbid
+        year
+        image
+        description
+        episodes {
+          nextToken
+        }
+        createdAt
+        updatedAt
+        seriesSeasonsId
+      }
+      nextToken
+    }
+  }
+`;
+export const getEpisode = /* GraphQL */ `
+  query GetEpisode($id: ID!) {
+    getEpisode(id: $id) {
+      id
+      tvdbid
+      year
+      image
+      description
+      subtitles {
+        items {
+          id
+          tvdbid
+          year
+          image
+          description
+          start
+          end
+          createdAt
+          updatedAt
+          episodeSubtitlesId
+        }
+        nextToken
+      }
+      createdAt
+      updatedAt
+      seasonEpisodesId
+    }
+  }
+`;
+export const listEpisodes = /* GraphQL */ `
+  query ListEpisodes(
+    $filter: ModelEpisodeFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listEpisodes(filter: $filter, limit: $limit, nextToken: $nextToken) {
+      items {
+        id
+        tvdbid
+        year
+        image
+        description
+        subtitles {
+          nextToken
+        }
+        createdAt
+        updatedAt
+        seasonEpisodesId
+      }
+      nextToken
+    }
+  }
+`;
+export const getSubtitle = /* GraphQL */ `
+  query GetSubtitle($id: ID!) {
+    getSubtitle(id: $id) {
+      id
+      tvdbid
+      year
+      image
+      description
+      start
+      end
+      createdAt
+      updatedAt
+      episodeSubtitlesId
+    }
+  }
+`;
+export const listSubtitles = /* GraphQL */ `
+  query ListSubtitles(
+    $filter: ModelSubtitleFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listSubtitles(filter: $filter, limit: $limit, nextToken: $nextToken) {
+      items {
+        id
+        tvdbid
+        year
+        image
+        description
+        start
+        end
+        createdAt
+        updatedAt
+        episodeSubtitlesId
+      }
+      nextToken
+    }
+  }
+`;
 export const getContentMetadata = /* GraphQL */ `
   query GetContentMetadata($id: ID!) {
     getContentMetadata(id: $id) {

@@ -2,6 +2,69 @@
 # all models in this schema. Learn more about authorization rules here: https://docs.amplify.aws/cli/graphql/authorization-rules
 # input AMPLIFY { globalAuthRule: AuthRule = { allow: public } } # FOR TESTING ONLY!
 
+type Series @model @auth(
+  rules: [
+    { allow: groups, groups: ["admins", "mods"] },
+    { allow: private, operations: [read] },
+    { allow: public, operations: [read] }
+  ]
+) {
+  id: ID!,
+  tvdbid: Int!,
+  slug: String,
+  name: String,
+  year: Int,
+  image: String,
+  description: String,
+  seasons: [Season] @hasMany
+}
+
+type Season @model @auth(
+  rules: [
+    { allow: groups, groups: ["admins", "mods"] },
+    { allow: private, operations: [read] },
+    { allow: public, operations: [read] }
+  ]
+) {
+  id: ID!,
+  tvdbid: Int!,
+  year: Int,
+  image: String,
+  description: String,
+  episodes: [Episode] @hasMany
+}
+
+type Episode @model @auth(
+  rules: [
+    { allow: groups, groups: ["admins", "mods"] },
+    { allow: private, operations: [read] },
+    { allow: public, operations: [read] }
+  ]
+) {
+  id: ID!,
+  tvdbid: Int!,
+  year: Int,
+  image: String,
+  description: String,
+  subtitles: [Subtitle] @hasMany
+}
+
+type Subtitle @model @auth(
+  rules: [
+    { allow: groups, groups: ["admins", "mods"] },
+    { allow: private, operations: [read] },
+    { allow: public, operations: [read] }
+  ]
+) {
+  id: ID!,
+  tvdbid: Int!,
+  year: Int,
+  image: String,
+  description: String,
+  start: Int,
+  end: Int
+}
+
 type AnalyticsMetrics @model @auth(
   rules: [
     { allow: groups, groups: ["admins", "mods"] }
