@@ -1,7 +1,8 @@
 import { Navigate, useRoutes } from 'react-router-dom';
 import { lazy } from 'react';
-import TopBannerSearchRevised from './sections/search/TopBannerSeachRevised';
 
+const TopBannerSearchRevised = lazy(() => import('./sections/search/TopBannerSeachRevised'));
+const DashboardSeriesPage = lazy(() => import('./pages/DashboardSeriesPage'));
 const DashboardLayout = lazy(() => import('./layouts/dashboard'));
 const BlogPage = lazy(() => import('./pages/BlogPage'));
 const UserPage = lazy(() => import('./pages/UserPage'));
@@ -39,7 +40,8 @@ export default function Router() {
         { path: 'editor', element: <EditorPage /> },
         { path: 'editor/:fid', element: <EditorPage /> },
         { path: 'metadata', element: <MetadataPage /> },
-        { path: 'homepagesections', element: <HomepageSectionPage /> }
+        { path: 'homepagesections', element: <HomepageSectionPage /> },
+        { path: 'series', element: <DashboardSeriesPage /> }
       ],
     },
     {
