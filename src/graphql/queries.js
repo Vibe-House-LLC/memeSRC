@@ -93,6 +93,20 @@ export const getSeason = /* GraphQL */ `
       year
       image
       description
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        seasons {
+          nextToken
+        }
+        createdAt
+        updatedAt
+      }
       episodes {
         items {
           id
@@ -125,6 +139,17 @@ export const listSeasons = /* GraphQL */ `
         year
         image
         description
+        series {
+          id
+          tvdbid
+          slug
+          name
+          year
+          image
+          description
+          createdAt
+          updatedAt
+        }
         episodes {
           nextToken
         }
@@ -144,6 +169,30 @@ export const getEpisode = /* GraphQL */ `
       year
       image
       description
+      season {
+        id
+        tvdbid
+        year
+        image
+        description
+        series {
+          id
+          tvdbid
+          slug
+          name
+          year
+          image
+          description
+          createdAt
+          updatedAt
+        }
+        episodes {
+          nextToken
+        }
+        createdAt
+        updatedAt
+        seriesSeasonsId
+      }
       subtitles {
         items {
           id
@@ -178,6 +227,16 @@ export const listEpisodes = /* GraphQL */ `
         year
         image
         description
+        season {
+          id
+          tvdbid
+          year
+          image
+          description
+          createdAt
+          updatedAt
+          seriesSeasonsId
+        }
         subtitles {
           nextToken
         }
@@ -199,6 +258,29 @@ export const getSubtitle = /* GraphQL */ `
       description
       start
       end
+      episode {
+        id
+        tvdbid
+        year
+        image
+        description
+        season {
+          id
+          tvdbid
+          year
+          image
+          description
+          createdAt
+          updatedAt
+          seriesSeasonsId
+        }
+        subtitles {
+          nextToken
+        }
+        createdAt
+        updatedAt
+        seasonEpisodesId
+      }
       createdAt
       updatedAt
       episodeSubtitlesId
@@ -220,6 +302,16 @@ export const listSubtitles = /* GraphQL */ `
         description
         start
         end
+        episode {
+          id
+          tvdbid
+          year
+          image
+          description
+          createdAt
+          updatedAt
+          seasonEpisodesId
+        }
         createdAt
         updatedAt
         episodeSubtitlesId

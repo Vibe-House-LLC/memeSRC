@@ -31,6 +31,7 @@ type Season @model @auth(
   year: Int,
   image: String,
   description: String,
+  series: Series @belongsTo,
   episodes: [Episode] @hasMany
 }
 
@@ -46,6 +47,7 @@ type Episode @model @auth(
   year: Int,
   image: String,
   description: String,
+  season: Season @belongsTo
   subtitles: [Subtitle] @hasMany
 }
 
@@ -62,7 +64,8 @@ type Subtitle @model @auth(
   image: String,
   description: String,
   start: Int,
-  end: Int
+  end: Int,
+  episode: Episode @belongsTo
 }
 
 type AnalyticsMetrics @model @auth(

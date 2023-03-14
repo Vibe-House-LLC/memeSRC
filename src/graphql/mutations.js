@@ -105,6 +105,20 @@ export const createSeason = /* GraphQL */ `
       year
       image
       description
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        seasons {
+          nextToken
+        }
+        createdAt
+        updatedAt
+      }
       episodes {
         items {
           id
@@ -135,6 +149,20 @@ export const updateSeason = /* GraphQL */ `
       year
       image
       description
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        seasons {
+          nextToken
+        }
+        createdAt
+        updatedAt
+      }
       episodes {
         items {
           id
@@ -165,6 +193,20 @@ export const deleteSeason = /* GraphQL */ `
       year
       image
       description
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        seasons {
+          nextToken
+        }
+        createdAt
+        updatedAt
+      }
       episodes {
         items {
           id
@@ -195,6 +237,30 @@ export const createEpisode = /* GraphQL */ `
       year
       image
       description
+      season {
+        id
+        tvdbid
+        year
+        image
+        description
+        series {
+          id
+          tvdbid
+          slug
+          name
+          year
+          image
+          description
+          createdAt
+          updatedAt
+        }
+        episodes {
+          nextToken
+        }
+        createdAt
+        updatedAt
+        seriesSeasonsId
+      }
       subtitles {
         items {
           id
@@ -227,6 +293,30 @@ export const updateEpisode = /* GraphQL */ `
       year
       image
       description
+      season {
+        id
+        tvdbid
+        year
+        image
+        description
+        series {
+          id
+          tvdbid
+          slug
+          name
+          year
+          image
+          description
+          createdAt
+          updatedAt
+        }
+        episodes {
+          nextToken
+        }
+        createdAt
+        updatedAt
+        seriesSeasonsId
+      }
       subtitles {
         items {
           id
@@ -259,6 +349,30 @@ export const deleteEpisode = /* GraphQL */ `
       year
       image
       description
+      season {
+        id
+        tvdbid
+        year
+        image
+        description
+        series {
+          id
+          tvdbid
+          slug
+          name
+          year
+          image
+          description
+          createdAt
+          updatedAt
+        }
+        episodes {
+          nextToken
+        }
+        createdAt
+        updatedAt
+        seriesSeasonsId
+      }
       subtitles {
         items {
           id
@@ -293,6 +407,29 @@ export const createSubtitle = /* GraphQL */ `
       description
       start
       end
+      episode {
+        id
+        tvdbid
+        year
+        image
+        description
+        season {
+          id
+          tvdbid
+          year
+          image
+          description
+          createdAt
+          updatedAt
+          seriesSeasonsId
+        }
+        subtitles {
+          nextToken
+        }
+        createdAt
+        updatedAt
+        seasonEpisodesId
+      }
       createdAt
       updatedAt
       episodeSubtitlesId
@@ -312,6 +449,29 @@ export const updateSubtitle = /* GraphQL */ `
       description
       start
       end
+      episode {
+        id
+        tvdbid
+        year
+        image
+        description
+        season {
+          id
+          tvdbid
+          year
+          image
+          description
+          createdAt
+          updatedAt
+          seriesSeasonsId
+        }
+        subtitles {
+          nextToken
+        }
+        createdAt
+        updatedAt
+        seasonEpisodesId
+      }
       createdAt
       updatedAt
       episodeSubtitlesId
@@ -331,6 +491,29 @@ export const deleteSubtitle = /* GraphQL */ `
       description
       start
       end
+      episode {
+        id
+        tvdbid
+        year
+        image
+        description
+        season {
+          id
+          tvdbid
+          year
+          image
+          description
+          createdAt
+          updatedAt
+          seriesSeasonsId
+        }
+        subtitles {
+          nextToken
+        }
+        createdAt
+        updatedAt
+        seasonEpisodesId
+      }
       createdAt
       updatedAt
       episodeSubtitlesId
