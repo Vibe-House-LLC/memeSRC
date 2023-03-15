@@ -251,11 +251,10 @@ export default function DashboardSeriesPage() {
   //   setShowForm(true);
   // };
 
-  // const handleDelete = () => {
-  //   const item = metadata[selectedIndex];
-  //   deleteExistingSeries(item.id)
-  //   handleClose();
-  // }
+  const handleDelete = (id) => {
+    deleteExistingSeries(id)
+    handleClose();
+  }
 
   useEffect(() => {
     async function getData() {
@@ -282,21 +281,28 @@ export default function DashboardSeriesPage() {
         </Stack>
         <Container>
           <Grid container spacing={2}>
-
-                <SeriesCard post={{
-                  id: faker.datatype.uuid(),
-                  cover: `https://artworks.thetvdb.com/banners/posters/75805-12.jpg`,
-                  title: 'Testing',
-                  createdAt: faker.date.past(),
-                  view: faker.datatype.number(),
-                  comment: faker.datatype.number(),
-                  share: faker.datatype.number(),
-                  favorite: faker.datatype.number(),
-                  author: {
-                    name: faker.name.fullName(),
-                    avatarUrl: '🍌',
-                  }
-                }} />
+              {(loading) ? "Loading" : metadata.map((seriesItem, index) => (
+                <SeriesCard 
+                  key={index} 
+                  post={{
+                    id: seriesItem.id,
+                    cover: seriesItem.image,
+                    title: seriesItem.name,
+                    createdAt: seriesItem.createdAt,
+                    view: faker.datatype.number(),
+                    comment: faker.datatype.number(),
+                    share: faker.datatype.number(),
+                    favorite: faker.datatype.number(),
+                    author: {
+                      name: seriesItem.name,
+                      avatarUrl: '🍌',
+                    }
+                  }}
+                  handleEdit={handleEdit}
+                  handleDelete={handleDelete}
+                />
+              ))}
+                
 
             {/* (loading) ? "Loading" : metadata.map((metadataItem, index) => (
               <Grid item xs={12} sm={6} md={4} key={metadataItem.id}>

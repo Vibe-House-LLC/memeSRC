@@ -1,7 +1,9 @@
 import PropTypes from 'prop-types';
 // @mui
 import { alpha, styled } from '@mui/material/styles';
-import { Box, Link, Card, Grid, Avatar, Typography, CardContent } from '@mui/material';
+import { Box, Link, Card, Grid, Avatar, Typography, CardContent, IconButton, List, ListItem, ListItemText, Popover, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button } from '@mui/material';
+import { MoreVert } from '@mui/icons-material';
+import { useState } from 'react';
 // utils
 import { fDate } from '../../../utils/formatTime';
 import { fShortenNumber } from '../../../utils/formatNumber';
@@ -49,22 +51,53 @@ const StyledCover = styled('img')({
   position: 'absolute',
 });
 
+const StyledIconButton = styled(IconButton)({
+  position: 'absolute',
+  top: '5px',
+  right: '5px',
+  zIndex: '10',
+})
+
 // ----------------------------------------------------------------------
 
 SeriesCard.propTypes = {
   post: PropTypes.object.isRequired,
   isOverlay: PropTypes.bool,
   isLarge: PropTypes.bool,
+  handleEdit: PropTypes.func,
+  handleDelete: PropTypes.func,
 };
 
-export default function SeriesCard({ post, isOverlay = false, isLarge = false }) {
-  const { cover, title, view, comment, share, author, createdAt } = post;
+
+export default function SeriesCard({ post, isOverlay = false, isLarge = false, handleEdit, handleDelete }) {
+  const { cover, title, view, comment, share, author, createdAt, id } = post;
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [openConfirmation, setOpenConfirmation] = useState(false);
+
+  const handleConfirmationOpen = () => {
+    setOpenConfirmation(true);
+  };
+
+  const handleConfirmationClose = () => {
+    setOpenConfirmation(false);
+  };
 
   const POST_INFO = [
     { number: comment, icon: 'eva:message-circle-fill' },
     { number: view, icon: 'eva:eye-fill' },
     { number: share, icon: 'eva:share-fill' },
   ];
+
+  const open = Boolean(anchorEl);
+  const popoverId = open ? 'simple-popover' : undefined;
+  const handleMoreVertClick = (event, itemIndex) => {
+    // setSelectedIndex(itemIndex);
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
 
   return (
     <Grid item xs={12} sm={isLarge ? 12 : 6} md={isLarge ? 6 : 3}>
@@ -119,6 +152,9 @@ export default function SeriesCard({ post, isOverlay = false, isLarge = false })
           </StyledAvatar>
 
           <StyledCover alt={title} src={cover} />
+          <StyledIconButton onClick={(event) => handleMoreVertClick(event)}>
+            <MoreVert />
+          </StyledIconButton>
         </StyledCardMedia>
 
         <CardContent
@@ -169,6 +205,56 @@ export default function SeriesCard({ post, isOverlay = false, isLarge = false })
           </StyledInfo>
         </CardContent>
       </Card>
+      <Popover
+        id={popoverId}
+        open={open}
+        anchorEl={anchorEl}
+        onClose={handleClose}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'center',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+      >
+        <List>
+          <ListItem button >
+            <ListItemText primary="Edit" />
+          </ListItem>
+          <ListItem button onClick={() => {
+                handleClose();
+                handleConfirmationOpen();
+              }}>
+            <ListItemText primary="Delete" />
+          </ListItem>
+        </List>
+      </Popover>
+      <Dialog
+        open={openConfirmation}
+        onClose={handleConfirmationClose}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description"
+      >
+        <DialogTitle id="alert-dialog-title">
+          Confirm Deletion
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="alert-dialog-description">
+            Are you sure you want to permanently delete <b>'{title}'</b>?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button variant='contained' onClick={handleConfirmationClose}>Cancel</Button>
+          <Button color='error' onClick={() => {
+                handleDelete(id);
+                handleConfirmationClose();
+              }} autoFocus>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Grid>
   );
 }
