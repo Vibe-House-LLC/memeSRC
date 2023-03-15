@@ -12,9 +12,11 @@ import { styled } from '@mui/material/styles';
 // components
 import { useState, useEffect } from 'react';
 import { API, graphqlOperation } from 'aws-amplify';
+import { faker } from '@faker-js/faker';
 import Iconify from '../components/iconify';
 import { createSeries, updateSeries, deleteSeries } from '../graphql/mutations';
 import { listSeries } from '../graphql/queries';
+import SeriesCard from '../sections/@dashboard/series/SeriesCard';
 
 // ----------------------------------------------------------------------
 
@@ -145,23 +147,23 @@ export default function DashboardSeriesPage() {
 
   async function createNewSeries(seriesData) {
 
-    API.graphql(graphqlOperation(createSeries, {input: seriesData}))
-    .then((result) => {
-      console.log(result)
+    API.graphql(graphqlOperation(createSeries, { input: seriesData }))
+      .then((result) => {
+        console.log(result)
 
-      setMetadata([...metadata, result.data.createSeries])
-  
-      clearForm();
-  
-      return result.data.createSeries;
-    })
-    .catch((error) => console.log(error));
+        setMetadata([...metadata, result.data.createSeries])
 
-    
+        clearForm();
+
+        return result.data.createSeries;
+      })
+      .catch((error) => console.log(error));
+
+
   }
 
   async function updateExistingSeries(seriesData) {
-    
+
 
     try {
       const result = await API.graphql({ query: updateSeries, input: seriesData });
@@ -280,6 +282,22 @@ export default function DashboardSeriesPage() {
         </Stack>
         <Container>
           <Grid container spacing={2}>
+
+                <SeriesCard post={{
+                  id: faker.datatype.uuid(),
+                  cover: `https://artworks.thetvdb.com/banners/posters/75805-12.jpg`,
+                  title: 'Testing',
+                  createdAt: faker.date.past(),
+                  view: faker.datatype.number(),
+                  comment: faker.datatype.number(),
+                  share: faker.datatype.number(),
+                  favorite: faker.datatype.number(),
+                  author: {
+                    name: faker.name.fullName(),
+                    avatarUrl: '🍌',
+                  }
+                }} />
+
             {/* (loading) ? "Loading" : metadata.map((metadataItem, index) => (
               <Grid item xs={12} sm={6} md={4} key={metadataItem.id}>
                 <Card sx={{ maxWidth: 345 }}>
@@ -354,7 +372,7 @@ export default function DashboardSeriesPage() {
               </Grid>
                   )) */}
 
-                  
+
           </Grid>
         </Container>
       </Container>
