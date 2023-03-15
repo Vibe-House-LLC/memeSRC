@@ -125,7 +125,8 @@ export default function DashboardSeriesPage() {
   };
 
   const handleCloseForm = () => {
-    setShowForm(false)
+    setShowForm(false);
+    clearForm();
   };
 
   const open = Boolean(anchorEl);
@@ -230,26 +231,23 @@ export default function DashboardSeriesPage() {
     handleClose();
   };
 
-  // const handleEdit = () => {
-  //   // Set the form fields to the values of the item being edited
-  //   const item = metadata[selectedIndex];
-  //   console.log(selectedIndex)
-  //   console.log(item)
-  //   setId(item.id);
-  //   setTitle(item.title);
-  //   setDescription(item.description);
-  //   setFrameCount(item.frameCount);
-  //   setColorMain(item.colorMain);
-  //   setColorSecondary(item.colorSecondary);
-  //   setEmoji(item.emoji);
-  //   setStatus(item.status);
+  const handleEdit = (seriesData) => {
+    // Set the form fields to the values of the item being edited
+    setId(seriesData.id);
+    setTitle(seriesData.title);
+    setTvdbid(seriesData.tvdbid);
+    setSeriesDescription(seriesData.description);
+    setSlug(seriesData.slug);
+    setSeriesName(seriesData.name);
+    setSeriesYear(seriesData.year);
+    setSeriesImage(seriesData.cover);
 
-  //   // Set the form to edit mode
-  //   setMode(FormMode.EDIT);
+    // Set the form to edit mode
+    setMode(FormMode.EDIT);
 
-  //   // Show the form
-  //   setShowForm(true);
-  // };
+    // Show the form
+    setShowForm(true);
+  };
 
   const handleDelete = (id) => {
     deleteExistingSeries(id)
@@ -289,6 +287,10 @@ export default function DashboardSeriesPage() {
                     cover: seriesItem.image,
                     title: seriesItem.name,
                     createdAt: seriesItem.createdAt,
+                    tvdbid: seriesItem.tvdbid,
+                    slug: seriesItem.slug,
+                    year: seriesItem.year,
+                    description: seriesItem.description,
                     view: faker.datatype.number(),
                     comment: faker.datatype.number(),
                     share: faker.datatype.number(),

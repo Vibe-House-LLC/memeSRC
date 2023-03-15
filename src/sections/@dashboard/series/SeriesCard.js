@@ -220,7 +220,10 @@ export default function SeriesCard({ post, isOverlay = false, isLarge = false, h
         }}
       >
         <List>
-          <ListItem button >
+          <ListItem button onClick={() => {
+            handleClose();
+            handleEdit(post);
+          }}>
             <ListItemText primary="Edit" />
           </ListItem>
           <ListItem button onClick={() => {
