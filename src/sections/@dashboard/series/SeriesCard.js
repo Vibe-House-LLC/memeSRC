@@ -70,7 +70,7 @@ SeriesCard.propTypes = {
 
 
 export default function SeriesCard({ post, isOverlay = false, isLarge = false, handleEdit, handleDelete }) {
-  const { cover, title, view, comment, share, author, createdAt, id, year } = post;
+  const { cover, name, view, comment, share, author, createdAt, id, year } = post;
   const [anchorEl, setAnchorEl] = useState(null);
   const [openConfirmation, setOpenConfirmation] = useState(false);
 
@@ -154,7 +154,7 @@ export default function SeriesCard({ post, isOverlay = false, isLarge = false, h
             {author.avatarUrl}
           </StyledAvatar>
 
-          <StyledCover alt={title} src={cover} />
+          <StyledCover alt={name} src={cover} />
           <StyledIconButton onClick={(event) => handleMoreVertClick(event)} sx={{display: { xs: 'none', sm: 'flex' }}}>
             <MoreVert />
           </StyledIconButton>
@@ -186,7 +186,7 @@ export default function SeriesCard({ post, isOverlay = false, isLarge = false, h
               }),
             }}
           >
-            {title}
+            {name}
           </StyledTitle>
 
           <StyledInfo>
@@ -213,7 +213,7 @@ export default function SeriesCard({ post, isOverlay = false, isLarge = false, h
         <MoreVert onClick={(event) => handleMoreVertClick(event)} sx={{marginLeft: -0.8}} />
         <Grid xs={10}>
           <Typography component='p' variant='body1' noWrap paddingTop={1}>
-            {title}
+            {name}
           </Typography>
           <Typography component='p' variant='caption' noWrap paddingTop={0} sx={{color: '#919191' }}>
             {year}
@@ -263,7 +263,7 @@ export default function SeriesCard({ post, isOverlay = false, isLarge = false, h
         </DialogTitle>
         <DialogContent>
           <DialogContentText id="alert-dialog-description">
-            Are you sure you want to permanently delete <b>'{title}'</b>?
+            Are you sure you want to permanently delete <b>'{name}'</b>?
           </DialogContentText>
         </DialogContent>
         <DialogActions>

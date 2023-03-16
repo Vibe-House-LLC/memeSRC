@@ -13,6 +13,7 @@ import { styled } from '@mui/material/styles';
 import { useState, useEffect } from 'react';
 import { API, graphqlOperation } from 'aws-amplify';
 import { faker } from '@faker-js/faker';
+import { LoadingButton } from '@mui/lab';
 import Iconify from '../components/iconify';
 import { createSeries, updateSeries, deleteSeries } from '../graphql/mutations';
 import { listSeries } from '../graphql/queries';
@@ -77,8 +78,8 @@ async function fetchMetadata(items = [], nextToken = null) {
     })
   );
   const sortedMetadata = result.data.listSeries.items.sort((a, b) => {
-    if (a?.title < b?.title) return -1;
-    if (a?.title > b?.title) return 1;
+    if (a?.name < b?.name) return -1;
+    if (a?.name > b?.name) return 1;
     return 0;
   });
   const allItems = [...items, ...sortedMetadata];
@@ -95,7 +96,6 @@ export default function DashboardSeriesPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [id, setId] = useState(null);
-  const [title, setTitle] = useState('');
   const [tvdbid, setTvdbid] = useState('');
   const [seriesDescription, setSeriesDescription] = useState('');
   const [mode, setMode] = useState(FormMode.CREATE);
@@ -104,7 +104,9 @@ export default function DashboardSeriesPage() {
   const [seriesYear, setSeriesYear] = useState('');
   const [seriesImage, setSeriesImage] = useState('');
   const [seriesSeasons, setSeriesSeasons] = useState([]);
-
+  const [metadataLoaded, setMetadataLoaded] = useState(false);
+  const [dialogButtonText, setDialogButtonText] = useState('Next');
+  const [dialogButtonLoading, setDialogButtonLoading]= useState(false);
   const [expanded, setExpanded] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
 
@@ -134,7 +136,6 @@ export default function DashboardSeriesPage() {
 
   const clearForm = () => {
     setId('');
-    setTitle('');
     setTvdbid('');
     setSeriesDescription('');
     setSlug('');
@@ -142,12 +143,13 @@ export default function DashboardSeriesPage() {
     setSeriesYear('');
     setSeriesImage('');
     setSeriesSeasons('');
+    setMetadataLoaded(false);
   };
 
   // ----------------------------------------------------------------------
 
   async function createNewSeries(seriesData) {
-
+    console.log(seriesData);
     API.graphql(graphqlOperation(createSeries, { input: seriesData }))
       .then((result) => {
         console.log(result)
@@ -231,16 +233,37 @@ export default function DashboardSeriesPage() {
     handleClose();
   };
 
-  const handleEdit = (seriesData) => {
+  const handleGetMetadata = () => {
+    setDialogButtonLoading(true);
+    setTimeout(() => {
+    const seriesData = {
+      name: 'placeholder', 
+      tvdbid
+    }
     // Set the form fields to the values of the item being edited
     setId(seriesData.id);
-    setTitle(seriesData.title);
     setTvdbid(seriesData.tvdbid);
     setSeriesDescription(seriesData.description);
     setSlug(seriesData.slug);
     setSeriesName(seriesData.name);
     setSeriesYear(seriesData.year);
     setSeriesImage(seriesData.cover);
+    setDialogButtonLoading(false);
+    setDialogButtonText('Submit');
+    setMetadataLoaded(true);
+  }, 1000)
+}
+
+  const handleEdit = (seriesData) => {
+    // Set the form fields to the values of the item being edited
+    setId(seriesData.id);
+    setTvdbid(seriesData.tvdbid);
+    setSeriesDescription(seriesData.description);
+    setSlug(seriesData.slug);
+    setSeriesName(seriesData.name);
+    setSeriesYear(seriesData.year);
+    setSeriesImage(seriesData.cover);
+    setMetadataLoaded(true);
 
     // Set the form to edit mode
     setMode(FormMode.EDIT);
@@ -277,34 +300,34 @@ export default function DashboardSeriesPage() {
             New Content
           </Button>
         </Stack>
-        <Container sx={{paddingX: 0}}>
+        <Container sx={{ paddingX: 0 }}>
           <Grid container spacing={2}>
-              {(loading) ? "Loading" : metadata.map((seriesItem, index) => (
-                <SeriesCard 
-                  key={index} 
-                  post={{
-                    id: seriesItem.id,
-                    cover: seriesItem.image,
-                    title: seriesItem.name,
-                    createdAt: seriesItem.createdAt,
-                    tvdbid: seriesItem.tvdbid,
-                    slug: seriesItem.slug,
-                    year: seriesItem.year,
-                    description: seriesItem.description,
-                    view: faker.datatype.number(),
-                    comment: faker.datatype.number(),
-                    share: faker.datatype.number(),
-                    favorite: faker.datatype.number(),
-                    author: {
-                      name: seriesItem.name,
-                      avatarUrl: '🍌',
-                    }
-                  }}
-                  handleEdit={handleEdit}
-                  handleDelete={handleDelete}
-                />
-              ))}
-                
+            {(loading) ? "Loading" : metadata.map((seriesItem, index) => (
+              <SeriesCard
+                key={index}
+                post={{
+                  id: seriesItem.id,
+                  cover: seriesItem.image,
+                  name: seriesItem.name,
+                  createdAt: seriesItem.createdAt,
+                  tvdbid: seriesItem.tvdbid,
+                  slug: seriesItem.slug,
+                  year: seriesItem.year,
+                  description: seriesItem.description,
+                  view: faker.datatype.number(),
+                  comment: faker.datatype.number(),
+                  share: faker.datatype.number(),
+                  favorite: faker.datatype.number(),
+                  author: {
+                    name: seriesItem.name,
+                    avatarUrl: '🍌',
+                  }
+                }}
+                handleEdit={handleEdit}
+                handleDelete={handleDelete}
+              />
+            ))}
+
 
             {/* (loading) ? "Loading" : metadata.map((metadataItem, index) => (
               <Grid item xs={12} sm={6} md={4} key={metadataItem.id}>
@@ -389,16 +412,16 @@ export default function DashboardSeriesPage() {
       <Dialog open={showForm} onClose={handleClose}>
         <DialogTitle>Create New Content Metadata</DialogTitle>
         <DialogContent>
-          <form onSubmit={handleSubmit}>
-            <Grid container spacing={2}>
-              <Grid item xs={12}>
+          <form>
+            <Grid container spacing={2} paddingTop={2}>
+              {/* <Grid item xs={12}>
                 <TextField
                   label="ID"
                   fullWidth
                   value={id}
                   onChange={(event) => setId(event.target.value)}
                 />
-              </Grid>
+              </Grid> */}
               <Grid item xs={12}>
                 <TextField
                   label="TVDB ID"
@@ -407,53 +430,52 @@ export default function DashboardSeriesPage() {
                   onChange={(event) => setTvdbid(event.target.value)}
                 />
               </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  label="Slug"
-                  fullWidth
-                  value={seriesSlug}
-                  onChange={(event) => setSlug(event.target.value)}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  label="Name"
-                  fullWidth
-                  value={seriesName}
-                  onChange={(event) => setSeriesName(event.target.value)}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  label="Year"
-                  type='number'
-                  fullWidth
-                  value={seriesYear}
-                  onChange={(event) => setSeriesYear(event.target.value)}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  label="Image"
-                  fullWidth
-                  value={seriesImage}
-                  onChange={(event) => setSeriesImage(event.target.value)}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  label="Description"
-                  fullWidth
-                  value={seriesDescription}
-                  onChange={(event) => setSeriesDescription(event.target.value)}
-                />
-              </Grid>
+              {metadataLoaded &&
+                <>
+                  <Grid item xs={12}>
+                    <TextField
+                      label="Slug"
+                      fullWidth
+                      value={seriesSlug}
+                      onChange={(event) => setSlug(event.target.value)} />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      label="Name"
+                      fullWidth
+                      value={seriesName}
+                      onChange={(event) => setSeriesName(event.target.value)} />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      label="Year"
+                      type='number'
+                      fullWidth
+                      value={seriesYear}
+                      onChange={(event) => setSeriesYear(event.target.value)} />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      label="Image"
+                      fullWidth
+                      value={seriesImage}
+                      onChange={(event) => setSeriesImage(event.target.value)} />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      label="Description"
+                      fullWidth
+                      value={seriesDescription}
+                      onChange={(event) => setSeriesDescription(event.target.value)} />
+                  </Grid>
+                </>
+              }
             </Grid>
           </form>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseForm}>Cancel</Button>
-          <Button type="submit" onClick={handleSubmit}>Submit</Button>
+          <Button variant='contained' onClick={handleCloseForm}>Cancel</Button>
+          <LoadingButton variant='contained' type='submit' onClick={ metadataLoaded ? handleSubmit : handleGetMetadata } loading={dialogButtonLoading}>{dialogButtonText}</LoadingButton>
         </DialogActions>
       </Dialog>
     </>
