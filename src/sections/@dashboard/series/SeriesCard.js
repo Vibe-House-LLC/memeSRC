@@ -1,8 +1,8 @@
 import PropTypes from 'prop-types';
 // @mui
 import { alpha, styled } from '@mui/material/styles';
-import { Box, Link, Card, Grid, Avatar, Typography, CardContent, IconButton, List, ListItem, ListItemText, Popover, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button } from '@mui/material';
-import { MoreVert } from '@mui/icons-material';
+import { Box, Link, Card, Grid, Avatar, Typography, CardContent, IconButton, List, ListItem, ListItemText, Popover, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button, Stack } from '@mui/material';
+import { MoreHoriz, MoreVert } from '@mui/icons-material';
 import { useState } from 'react';
 // utils
 import { fDate } from '../../../utils/formatTime';
@@ -70,7 +70,7 @@ SeriesCard.propTypes = {
 
 
 export default function SeriesCard({ post, isOverlay = false, isLarge = false, handleEdit, handleDelete }) {
-  const { cover, title, view, comment, share, author, createdAt, id } = post;
+  const { cover, title, view, comment, share, author, createdAt, id, year } = post;
   const [anchorEl, setAnchorEl] = useState(null);
   const [openConfirmation, setOpenConfirmation] = useState(false);
 
@@ -100,7 +100,7 @@ export default function SeriesCard({ post, isOverlay = false, isLarge = false, h
   };
 
   return (
-    <Grid item xs={12} sm={isLarge ? 12 : 6} md={isLarge ? 6 : 3}>
+    <Grid item xs={4} sm={isLarge ? 12 : 6} md={isLarge ? 6 : 3}>
       <Card sx={{ position: 'relative' }}>
         <StyledCardMedia
           sx={{
@@ -134,6 +134,8 @@ export default function SeriesCard({ post, isOverlay = false, isLarge = false, h
               position: 'absolute',
               color: 'background.paper',
               ...((isLarge || isOverlay) && { display: 'none' }),
+              display: { xs: 'none', sm: 'block' }
+
             }}
           />
           <StyledAvatar
@@ -146,13 +148,14 @@ export default function SeriesCard({ post, isOverlay = false, isLarge = false, h
                 width: 40,
                 height: 40,
               }),
+              display: { xs: 'none', sm: 'flex' }
             }}
           >
             {author.avatarUrl}
           </StyledAvatar>
 
           <StyledCover alt={title} src={cover} />
-          <StyledIconButton onClick={(event) => handleMoreVertClick(event)}>
+          <StyledIconButton onClick={(event) => handleMoreVertClick(event)} sx={{display: { xs: 'none', sm: 'flex' }}}>
             <MoreVert />
           </StyledIconButton>
         </StyledCardMedia>
@@ -165,6 +168,7 @@ export default function SeriesCard({ post, isOverlay = false, isLarge = false, h
               width: '100%',
               position: 'absolute',
             }),
+            display: { xs: 'none', sm: 'block' }
           }}
         >
           <Typography gutterBottom variant="caption" sx={{ color: 'text.disabled', display: 'block' }}>
@@ -205,6 +209,20 @@ export default function SeriesCard({ post, isOverlay = false, isLarge = false, h
           </StyledInfo>
         </CardContent>
       </Card>
+      <Stack direction='row' alignItems='center' sx={{ display: { xs: 'flex', sm: 'none' } }}>
+        <MoreVert onClick={(event) => handleMoreVertClick(event)} sx={{marginLeft: -0.8}} />
+        <Grid xs={10}>
+          <Typography component='p' variant='body1' noWrap paddingTop={1}>
+            {title}
+          </Typography>
+          <Typography component='p' variant='caption' noWrap paddingTop={0} sx={{color: '#919191' }}>
+            {year}
+          </Typography>
+        </Grid>
+      </Stack>
+
+
+
       <Popover
         id={popoverId}
         open={open}
@@ -227,9 +245,9 @@ export default function SeriesCard({ post, isOverlay = false, isLarge = false, h
             <ListItemText primary="Edit" />
           </ListItem>
           <ListItem button onClick={() => {
-                handleClose();
-                handleConfirmationOpen();
-              }}>
+            handleClose();
+            handleConfirmationOpen();
+          }}>
             <ListItemText primary="Delete" />
           </ListItem>
         </List>
@@ -251,9 +269,9 @@ export default function SeriesCard({ post, isOverlay = false, isLarge = false, h
         <DialogActions>
           <Button variant='contained' onClick={handleConfirmationClose}>Cancel</Button>
           <Button color='error' onClick={() => {
-                handleDelete(id);
-                handleConfirmationClose();
-              }} autoFocus>
+            handleDelete(id);
+            handleConfirmationClose();
+          }} autoFocus>
             Delete
           </Button>
         </DialogActions>

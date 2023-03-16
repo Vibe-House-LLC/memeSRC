@@ -277,7 +277,7 @@ export default function DashboardSeriesPage() {
             New Content
           </Button>
         </Stack>
-        <Container>
+        <Container sx={{paddingX: 0}}>
           <Grid container spacing={2}>
               {(loading) ? "Loading" : metadata.map((seriesItem, index) => (
                 <SeriesCard 
