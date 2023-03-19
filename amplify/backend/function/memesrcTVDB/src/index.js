@@ -64,7 +64,7 @@ const searchTvdb = async (query) => {
   var config = {
     method: 'get',
     maxBodyLength: Infinity,
-    url: `https://api4.thetvdb.com/v4/search?query=${query}&limit=1`,
+    url: `https://api4.thetvdb.com/v4/search?query=${query}&limit=3`,
     headers: {
       'Authorization': `Bearer ${token}`
     }
