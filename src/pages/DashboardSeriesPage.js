@@ -106,7 +106,7 @@ export default function DashboardSeriesPage() {
   const [seriesSeasons, setSeriesSeasons] = useState([]);
   const [metadataLoaded, setMetadataLoaded] = useState(false);
   const [dialogButtonText, setDialogButtonText] = useState('Next');
-  const [dialogButtonLoading, setDialogButtonLoading]= useState(false);
+  const [dialogButtonLoading, setDialogButtonLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
 
@@ -236,23 +236,23 @@ export default function DashboardSeriesPage() {
   const handleGetMetadata = () => {
     setDialogButtonLoading(true);
     setTimeout(() => {
-    const seriesData = {
-      name: 'placeholder', 
-      tvdbid
-    }
-    // Set the form fields to the values of the item being edited
-    setId(seriesData.id);
-    setTvdbid(seriesData.tvdbid);
-    setSeriesDescription(seriesData.description);
-    setSlug(seriesData.slug);
-    setSeriesName(seriesData.name);
-    setSeriesYear(seriesData.year);
-    setSeriesImage(seriesData.cover);
-    setDialogButtonLoading(false);
-    setDialogButtonText('Submit');
-    setMetadataLoaded(true);
-  }, 1000)
-}
+      const seriesData = {
+        name: 'placeholder',
+        tvdbid
+      }
+      // Set the form fields to the values of the item being edited
+      setId(seriesData.id);
+      setTvdbid(seriesData.tvdbid);
+      setSeriesDescription(seriesData.description);
+      setSlug(seriesData.slug);
+      setSeriesName(seriesData.name);
+      setSeriesYear(seriesData.year);
+      setSeriesImage(seriesData.cover);
+      setDialogButtonLoading(false);
+      setDialogButtonText('Submit');
+      setMetadataLoaded(true);
+    }, 1000)
+  }
 
   const handleEdit = (seriesData) => {
     // Set the form fields to the values of the item being edited
@@ -285,6 +285,20 @@ export default function DashboardSeriesPage() {
     }
     getData();
   }, []);
+
+  const searchTvdb = async () => {
+    await API.get('publicapi', '/tvdb/search', {
+      'queryStringParameters': {
+        'query': tvdbid
+      }
+    }).then(results => {
+      console.log(results)
+      results.forEach(element => {
+        console.log(element)
+      });
+    }).catch(error => console.log(error))
+  }
+
 
   return (
     <>
@@ -472,10 +486,11 @@ export default function DashboardSeriesPage() {
               }
             </Grid>
           </form>
+          <Button variant='contained' onClick={searchTvdb} >Search</Button>
         </DialogContent>
         <DialogActions>
           <Button variant='contained' onClick={handleCloseForm}>Cancel</Button>
-          <LoadingButton variant='contained' type='submit' onClick={ metadataLoaded ? handleSubmit : handleGetMetadata } loading={dialogButtonLoading}>{dialogButtonText}</LoadingButton>
+          <LoadingButton variant='contained' type='submit' onClick={metadataLoaded ? handleSubmit : handleGetMetadata} loading={dialogButtonLoading}>{dialogButtonText}</LoadingButton>
         </DialogActions>
       </Dialog>
     </>
