@@ -117,6 +117,14 @@
           ],
           "category": "auth",
           "resourceName": "userPoolGroups"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcTVDB"
         }
       ],
       "providerPlugin": "awscloudformation",
@@ -285,6 +293,12 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "memesrcTVDB": {
+      "build": true,
+      "dependsOn": [],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "memesrcUUID": {
       "build": true,
       "providerPlugin": "awscloudformation",
@@ -447,6 +461,30 @@
         {
           "category": "function",
           "resourceName": "memesrcRandom"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcTVDB_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcTVDB"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcTVDB_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcTVDB"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcTVDB_secretsPathAmplifyAppId": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcTVDB"
         }
       ]
     },

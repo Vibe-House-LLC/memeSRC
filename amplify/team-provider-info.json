@@ -65,6 +65,11 @@
         "memesrcAnalyticsAddDailyPartition": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
           "s3Key": "amplify-builds/memesrcAnalyticsAddDailyPartition-7649774674546e587079-build.zip"
+        },
+        "memesrcTVDB": {
+          "secretsPathAmplifyAppId": "d32pnvtwxwtte5",
+          "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
+          "s3Key": "amplify-builds/memesrcTVDB-2b6b74544a2b4947426c-build.zip"
         }
       },
       "storage": {

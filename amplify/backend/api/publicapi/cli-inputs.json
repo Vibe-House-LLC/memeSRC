@@ -45,6 +45,27 @@
         },
         "setting": "private"
       }
+    },
+    "/tvdb": {
+      "name": "/tvdb",
+      "lambdaFunction": "memesrcTVDB",
+      "permissions": {
+        "groups": {
+          "admins": [
+            "create",
+            "read",
+            "update",
+            "delete"
+          ],
+          "mods": [
+            "create",
+            "read",
+            "update",
+            "delete"
+          ]
+        },
+        "setting": "private"
+      }
     }
   }
 }
