@@ -60,13 +60,34 @@ const getTvdbToken = async () => {
 
 const searchTvdb = async (query) => {
   const token = await getTvdbToken()
-
+  console.log(token)
   var config = {
     method: 'get',
     maxBodyLength: Infinity,
     url: `https://api4.thetvdb.com/v4/search?query=${query}&limit=1`,
     headers: {
-      'x-api-key': '7e8bc22c-ae9c-4abf-b246-07ed665c8e96',
+      'Authorization': `Bearer ${token}`
+    }
+  };
+
+  return await axios(config)
+    .then(function (response) {
+      return response.data;
+    })
+    .catch(function (error) {
+      console.log(error);
+      return { error }
+    });
+}
+
+const tvdbApi = async (path) => {
+  const token = await getTvdbToken()
+
+  var config = {
+    method: 'get',
+    maxBodyLength: Infinity,
+    url: `https://api4.thetvdb.com/v4/${path}`,
+    headers: {
       'Authorization': `Bearer ${token}`
     }
   };
@@ -84,15 +105,27 @@ const searchTvdb = async (query) => {
 exports.handler = async (event) => {
   console.log(`EVENT: ${JSON.stringify(event)}`);
 
-  results = await searchTvdb(event.queryStringParameters.query)
+  let results
+  
+  const action = event.path.split('/')[2];  // remove the first part of the path (i.e. remove '/dev' or '/beta')
+
+  console.log(action)
+  switch (action) {
+    case 'search':
+      results = await searchTvdb(event.queryStringParameters.query)
+      break
+    default:
+      results = "nothing"
+      break
+  }
 
   return {
     statusCode: 200,
-    //  Uncomment below to enable CORS requests
-    //  headers: {
-    //      "Access-Control-Allow-Origin": "*",
-    //      "Access-Control-Allow-Headers": "*"
-    //  }, 
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Headers": "*",
+      "Content-Type": "application/json"
+    },
     body: JSON.stringify(results.data),
   };
 };
