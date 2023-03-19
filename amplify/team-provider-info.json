@@ -69,7 +69,7 @@
         "memesrcTVDB": {
           "secretsPathAmplifyAppId": "d32pnvtwxwtte5",
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcTVDB-654d734872596f6e3231-build.zip"
+          "s3Key": "amplify-builds/memesrcTVDB-434b5468734f76757164-build.zip"
         }
       },
       "storage": {

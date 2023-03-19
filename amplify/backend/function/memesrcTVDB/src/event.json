@@ -1,5 +1,5 @@
 {
-  "path": "/dev/search",
+  "path": "/dev/public/tvdb/search",
   "queryStringParameters": {
     "query": "seinfeld"
   }

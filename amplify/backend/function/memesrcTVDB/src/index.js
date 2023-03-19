@@ -107,7 +107,9 @@ exports.handler = async (event) => {
 
   let results
   
-  const action = event.path.split('/')[2];  // remove the first part of the path (i.e. remove '/dev' or '/beta')
+  // Get the 'action' (last part of the path)
+  const pathSplit = event.path.split('/');
+  const action = pathSplit[pathSplit.length - 1]
 
   console.log(action)
   switch (action) {
