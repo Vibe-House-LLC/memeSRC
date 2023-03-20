@@ -20,7 +20,7 @@ const axios = require('axios');
  * @type {import('@types/aws-lambda').APIGatewayProxyHandler}
  */
 
-const getTvdbToken = async () => {
+const tvdbAuthToken = async () => {
   // Pull secrets from SSM
   const ssmClient = new SSM();
   const ssmParams = {
@@ -58,35 +58,13 @@ const getTvdbToken = async () => {
     });
 }
 
-const searchTvdb = async (query) => {
-  const token = await getTvdbToken()
+const tvdbSearch = async (query) => {
+  const token = await tvdbAuthToken()
   console.log(token)
   var config = {
     method: 'get',
     maxBodyLength: Infinity,
-    url: `https://api4.thetvdb.com/v4/search?query=${query}&limit=3`,
-    headers: {
-      'Authorization': `Bearer ${token}`
-    }
-  };
-
-  return await axios(config)
-    .then(function (response) {
-      return response.data;
-    })
-    .catch(function (error) {
-      console.log(error);
-      return { error }
-    });
-}
-
-const tvdbApi = async (path) => {
-  const token = await getTvdbToken()
-
-  var config = {
-    method: 'get',
-    maxBodyLength: Infinity,
-    url: `https://api4.thetvdb.com/v4/${path}`,
+    url: `https://api4.thetvdb.com/v4/search?query=${query}&limit=5`,
     headers: {
       'Authorization': `Bearer ${token}`
     }
@@ -114,7 +92,7 @@ exports.handler = async (event) => {
   console.log(action)
   switch (action) {
     case 'search':
-      results = await searchTvdb(event.queryStringParameters.query)
+      results = await tvdbSearch(event.queryStringParameters.query)
       break
     default:
       results = "nothing"
