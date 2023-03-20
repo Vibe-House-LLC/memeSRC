@@ -80,22 +80,42 @@ const tvdbSearch = async (query) => {
     });
 }
 
+const tvdbApi = async (path) => {
+  const token = await tvdbAuthToken()
+
+  var config = {
+    method: 'get',
+    maxBodyLength: Infinity,
+    url: `https://api4.thetvdb.com/v4/${path}`,
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  };
+
+  return await axios(config)
+    .then(function (response) {
+      return response.data;
+    })
+    .catch(function (error) {
+      console.log(error);
+      return { error }
+    });
+}
+
 exports.handler = async (event) => {
   console.log(`EVENT: ${JSON.stringify(event)}`);
 
   let results
   
-  // Get the 'action' (last part of the path)
-  const pathSplit = event.path.split('/');
-  const action = pathSplit[pathSplit.length - 1]
-
-  console.log(action)
-  switch (action) {
+  // Determine the action to take
+  const cleanPath = event.path.split(`/${process.env.ENV}/public/tvdb/`)[1];
+  console.log(`Clean Path: ${cleanPath}`)
+  switch (cleanPath) {
     case 'search':
       results = await tvdbSearch(event.queryStringParameters.query)
       break
     default:
-      results = "nothing"
+      results = await tvdbApi(cleanPath)
       break
   }
 
