@@ -312,10 +312,25 @@ export default function DashboardSeriesPage() {
     }).catch(error => console.log(error))
   }
 
+  const getTvdbSeasons = async () => {
+    await API.get('publicapi', `/tvdb/series/${tvdbid}/extended`)
+      .then(results => {
+        setSeriesSeasons(results.seasons);
+        console.log(results.seasons)
+      })
+      .catch(error => console.log(error))
+  }
+
   useEffect(() => {
     const timeOutId = setTimeout(() => searchTvdb(), 100);
     return () => clearTimeout(timeOutId);
   }, [tvdbSearchQuery]);
+
+  useEffect(() => {
+    if (tvdbid !== '') {
+      getTvdbSeasons();
+    }
+  }, [tvdbid])
 
 
   return (
@@ -454,75 +469,75 @@ export default function DashboardSeriesPage() {
                   onChange={(event) => setId(event.target.value)}
                 />
               </Grid> */}
-              
-                <Grid item xs={12}>
-                  <Autocomplete
-                    id="series-search"
-                    sx={{ width: '100%' }}
-                    open={tvdbSearchopen}
-                    onOpen={() => {
-                      setTvdbSearchOpen(true);
-                    }}
-                    onClose={() => {
-                      setTvdbSearchOpen(false);
-                    }}
-                    isOptionEqualToValue={(tvdbResults, value) => tvdbResults.name === value.name}
-                    getOptionLabel={(tvdbResults) => tvdbResults.name}
-                    noOptionsText="No Results Found"
-                    autoHighlight
-                    options={tvdbResults}
-                    loading={tvdbResultsLoading}
-                    loadingText="Searching..."
-                    onChange={(event, selected) => {
-                      if (typeof selected === 'object') {
-                        setTvdbid(selected.tvdb_id);
-                        setSeriesDescription(selected.overview);
-                        setSlug(selected.slug);
-                        setSeriesName(selected.name);
-                        setSeriesYear(selected.year);
-                        setSeriesImage(selected.image_url);
-                        setMetadataLoaded(true);
-                        console.log(selected.tvdb_id);
-                        setDialogButtonText('Submit');
-                      } else {
-                        setTvdbid('');
-                        setSeriesDescription('');
-                        setSlug('');
-                        setSeriesName('');
-                        setSeriesYear('');
-                        setSeriesImage('');
-                      }
-                    }}
-                    filterOptions={(x) => x}
-                    renderInput={(params) => (
-                      <TextField
-                        value={tvdbSearchQuery}
-                        onChange={(event) => {
-                          setTvdbSearchQuery(event.target.value);
-                          // if (event.target.value !== seriesName) {
-                          //   setTvdbid('');
-                          //   setSeriesDescription('');
-                          //   setSlug('');
-                          //   setSeriesName('');
-                          //   setSeriesYear('');
-                          //   setSeriesImage('');
-                          // }
-                        }}
-                        {...params}
-                        label="Search TVDB"
-                        InputProps={{
-                          ...params.InputProps,
-                          endAdornment: (
-                            <>
-                              {tvdbResultsLoading ? <CircularProgress color="inherit" size={20} /> : null}
-                              {params.InputProps.endAdornment}
-                            </>
-                          ),
-                        }}
-                      />
-                    )}
-                  />
-                </Grid>
+
+              <Grid item xs={12}>
+                <Autocomplete
+                  id="series-search"
+                  sx={{ width: '100%' }}
+                  open={tvdbSearchopen}
+                  onOpen={() => {
+                    setTvdbSearchOpen(true);
+                  }}
+                  onClose={() => {
+                    setTvdbSearchOpen(false);
+                  }}
+                  isOptionEqualToValue={(tvdbResults, value) => tvdbResults.name === value.name}
+                  getOptionLabel={(tvdbResults) => tvdbResults.name}
+                  noOptionsText="No Results Found"
+                  autoHighlight
+                  options={tvdbResults}
+                  loading={tvdbResultsLoading}
+                  loadingText="Searching..."
+                  onChange={(event, selected) => {
+                    if (typeof selected === 'object') {
+                      setTvdbid(selected.tvdb_id);
+                      setSeriesDescription(selected.overview);
+                      setSlug(selected.slug);
+                      setSeriesName(selected.name);
+                      setSeriesYear(selected.year);
+                      setSeriesImage(selected.image_url);
+                      setMetadataLoaded(true);
+                      console.log(selected.tvdb_id);
+                      setDialogButtonText('Submit');
+                    } else {
+                      setTvdbid('');
+                      setSeriesDescription('');
+                      setSlug('');
+                      setSeriesName('');
+                      setSeriesYear('');
+                      setSeriesImage('');
+                    }
+                  }}
+                  filterOptions={(x) => x}
+                  renderInput={(params) => (
+                    <TextField
+                      value={tvdbSearchQuery}
+                      onChange={(event) => {
+                        setTvdbSearchQuery(event.target.value);
+                        // if (event.target.value !== seriesName) {
+                        //   setTvdbid('');
+                        //   setSeriesDescription('');
+                        //   setSlug('');
+                        //   setSeriesName('');
+                        //   setSeriesYear('');
+                        //   setSeriesImage('');
+                        // }
+                      }}
+                      {...params}
+                      label="Search TVDB"
+                      InputProps={{
+                        ...params.InputProps,
+                        endAdornment: (
+                          <>
+                            {tvdbResultsLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                            {params.InputProps.endAdornment}
+                          </>
+                        ),
+                      }}
+                    />
+                  )}
+                />
+              </Grid>
               {metadataLoaded &&
                 <>
                   {/* <Grid item xs={12}>
@@ -569,6 +584,17 @@ export default function DashboardSeriesPage() {
                       value={seriesDescription}
                       onChange={(event) => setSeriesDescription(event.target.value)} />
                   </Grid>
+                  {seriesSeasons && seriesSeasons.map((season) => 
+                    (season.type.id === 1) ?
+                      <Grid item xs={6} md={4}>
+                        <img src={season.image} alt='season artwork' style={{width: '100%', height: 'auto'}} />
+                        <Typography component='h6' variant='h6'>
+                          Season {season.number}
+                        </Typography>
+                      </Grid>
+                      : null
+                    
+                  )}
                 </>
               }
             </Grid>
