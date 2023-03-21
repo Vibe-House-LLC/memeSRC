@@ -1,6 +1,6 @@
 import { Helmet } from 'react-helmet-async';
 // @mui
-import { Dialog, DialogTitle, DialogContent, FormControl, InputLabel, Select, MenuItem, DialogActions, TextField, List, CardHeader, Avatar, ListItem, ListItemText, Button, Container, Grid, Stack, Typography, Card, CardContent, CircularProgress, IconButton, Collapse } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, FormControl, InputLabel, Select, MenuItem, DialogActions, TextField, List, CardHeader, Avatar, ListItem, ListItemText, Button, Container, Grid, Stack, Typography, Card, CardContent, CircularProgress, IconButton, Collapse, Autocomplete } from '@mui/material';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import ShareIcon from '@mui/icons-material/Share';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -10,7 +10,7 @@ import { grey } from '@mui/material/colors';
 import CardActions from '@mui/material/CardActions';
 import { styled } from '@mui/material/styles';
 // components
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { API, graphqlOperation } from 'aws-amplify';
 import { faker } from '@faker-js/faker';
 import { LoadingButton } from '@mui/lab';
@@ -109,6 +109,10 @@ export default function DashboardSeriesPage() {
   const [dialogButtonLoading, setDialogButtonLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
+  const [tvdbSearchopen, setTvdbSearchOpen] = useState(false);
+  const [tvdbResults, setTvdbResults] = useState([]);
+  const [tvdbResultsLoading, setTvdbResultsLoading] = useState(false);
+  const [tvdbSearchQuery, setTvdbSearchQuery] = useState('');
 
   const [selectedIndex, setSelectedIndex] = useState(null)
 
@@ -144,6 +148,7 @@ export default function DashboardSeriesPage() {
     setSeriesImage('');
     setSeriesSeasons('');
     setMetadataLoaded(false);
+    setTvdbResults([]);
   };
 
   // ----------------------------------------------------------------------
@@ -287,17 +292,30 @@ export default function DashboardSeriesPage() {
   }, []);
 
   const searchTvdb = async () => {
+    setTvdbResultsLoading(true);
     await API.get('publicapi', '/tvdb/search', {
       'queryStringParameters': {
-        'query': tvdbid
+        'query': tvdbSearchQuery
       }
     }).then(results => {
       console.log(results)
+      if (typeof results === 'object') {
+        setTvdbResults(results);
+        setTvdbResultsLoading(false);
+      } else {
+        setTvdbResults([]);
+        setTvdbResultsLoading(false);
+      }
       results.forEach(element => {
         console.log(element)
       });
     }).catch(error => console.log(error))
   }
+
+  useEffect(() => {
+    const timeOutId = setTimeout(() => searchTvdb(), 100);
+    return () => clearTimeout(timeOutId);
+  }, [tvdbSearchQuery]);
 
 
   return (
@@ -436,16 +454,85 @@ export default function DashboardSeriesPage() {
                   onChange={(event) => setId(event.target.value)}
                 />
               </Grid> */}
-              <Grid item xs={12}>
-                <TextField
-                  label="TVDB ID"
-                  fullWidth
-                  value={tvdbid}
-                  onChange={(event) => setTvdbid(event.target.value)}
-                />
-              </Grid>
+              
+                <Grid item xs={12}>
+                  <Autocomplete
+                    id="series-search"
+                    sx={{ width: '100%' }}
+                    open={tvdbSearchopen}
+                    onOpen={() => {
+                      setTvdbSearchOpen(true);
+                    }}
+                    onClose={() => {
+                      setTvdbSearchOpen(false);
+                    }}
+                    isOptionEqualToValue={(tvdbResults, value) => tvdbResults.name === value.name}
+                    getOptionLabel={(tvdbResults) => tvdbResults.name}
+                    noOptionsText="No Results Found"
+                    autoHighlight
+                    options={tvdbResults}
+                    loading={tvdbResultsLoading}
+                    loadingText="Searching..."
+                    onChange={(event, selected) => {
+                      if (typeof selected === 'object') {
+                        setTvdbid(selected.tvdb_id);
+                        setSeriesDescription(selected.overview);
+                        setSlug(selected.slug);
+                        setSeriesName(selected.name);
+                        setSeriesYear(selected.year);
+                        setSeriesImage(selected.image_url);
+                        setMetadataLoaded(true);
+                        console.log(selected.tvdb_id);
+                        setDialogButtonText('Submit');
+                      } else {
+                        setTvdbid('');
+                        setSeriesDescription('');
+                        setSlug('');
+                        setSeriesName('');
+                        setSeriesYear('');
+                        setSeriesImage('');
+                      }
+                    }}
+                    filterOptions={(x) => x}
+                    renderInput={(params) => (
+                      <TextField
+                        value={tvdbSearchQuery}
+                        onChange={(event) => {
+                          setTvdbSearchQuery(event.target.value);
+                          // if (event.target.value !== seriesName) {
+                          //   setTvdbid('');
+                          //   setSeriesDescription('');
+                          //   setSlug('');
+                          //   setSeriesName('');
+                          //   setSeriesYear('');
+                          //   setSeriesImage('');
+                          // }
+                        }}
+                        {...params}
+                        label="Search TVDB"
+                        InputProps={{
+                          ...params.InputProps,
+                          endAdornment: (
+                            <>
+                              {tvdbResultsLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                              {params.InputProps.endAdornment}
+                            </>
+                          ),
+                        }}
+                      />
+                    )}
+                  />
+                </Grid>
               {metadataLoaded &&
                 <>
+                  {/* <Grid item xs={12}>
+                    <TextField
+                      label="TVDB ID"
+                      fullWidth
+                      value={tvdbid}
+                      onChange={(event) => setTvdbid(event.target.value)}
+                    />
+                  </Grid> */}
                   <Grid item xs={12}>
                     <TextField
                       label="Slug"
@@ -486,11 +573,11 @@ export default function DashboardSeriesPage() {
               }
             </Grid>
           </form>
-          <Button variant='contained' onClick={searchTvdb} >Search</Button>
+          {/* <Button variant='contained' onClick={searchTvdb} >Search</Button> */}
         </DialogContent>
         <DialogActions>
           <Button variant='contained' onClick={handleCloseForm}>Cancel</Button>
-          <LoadingButton variant='contained' type='submit' onClick={metadataLoaded ? handleSubmit : handleGetMetadata} loading={dialogButtonLoading}>{dialogButtonText}</LoadingButton>
+          {metadataLoaded && <LoadingButton variant='contained' type='submit' onClick={metadataLoaded ? handleSubmit : handleGetMetadata} loading={dialogButtonLoading}>{dialogButtonText}</LoadingButton>}
         </DialogActions>
       </Dialog>
     </>
