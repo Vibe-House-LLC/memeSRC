@@ -20,7 +20,7 @@ const axios = require('axios');
  * @type {import('@types/aws-lambda').APIGatewayProxyHandler}
  */
 
-const getTvdbToken = async () => {
+const tvdbAuthToken = async () => {
   // Pull secrets from SSM
   const ssmClient = new SSM();
   const ssmParams = {
@@ -58,13 +58,13 @@ const getTvdbToken = async () => {
     });
 }
 
-const searchTvdb = async (query) => {
-  const token = await getTvdbToken()
+const tvdbSearch = async (query) => {
+  const token = await tvdbAuthToken()
   console.log(token)
   var config = {
     method: 'get',
     maxBodyLength: Infinity,
-    url: `https://api4.thetvdb.com/v4/search?query=${query}&limit=3`,
+    url: `https://api4.thetvdb.com/v4/search?query=${query}&limit=5`,
     headers: {
       'Authorization': `Bearer ${token}`
     }
@@ -81,7 +81,7 @@ const searchTvdb = async (query) => {
 }
 
 const tvdbApi = async (path) => {
-  const token = await getTvdbToken()
+  const token = await tvdbAuthToken()
 
   var config = {
     method: 'get',
@@ -107,17 +107,15 @@ exports.handler = async (event) => {
 
   let results
   
-  // Get the 'action' (last part of the path)
-  const pathSplit = event.path.split('/');
-  const action = pathSplit[pathSplit.length - 1]
-
-  console.log(action)
-  switch (action) {
+  // Determine the action to take
+  const cleanPath = event.path.split(`/${process.env.ENV}/public/tvdb/`)[1];
+  console.log(`Clean Path: ${cleanPath}`)
+  switch (cleanPath) {
     case 'search':
-      results = await searchTvdb(event.queryStringParameters.query)
+      results = await tvdbSearch(event.queryStringParameters.query)
       break
     default:
-      results = "nothing"
+      results = await tvdbApi(cleanPath)
       break
   }
 
