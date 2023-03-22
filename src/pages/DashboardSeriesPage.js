@@ -173,8 +173,9 @@ export default function DashboardSeriesPage() {
   async function updateExistingSeries(seriesData) {
 
 
+    console.log(seriesData);
     try {
-      const result = await API.graphql({ query: updateSeries, input: seriesData });
+      const result = await API.graphql(graphqlOperation(updateSeries, { input: seriesData }));
       console.log(result);
       const updatedMetadata = result.data.updateSeries;
       setMetadata((prevMetadata) =>
@@ -220,6 +221,7 @@ export default function DashboardSeriesPage() {
 
   const handleSubmit = (event) => {
     const seriesData = {
+      id,
       tvdbid,
       description: seriesDescription,
       slug: seriesSlug,
@@ -488,6 +490,7 @@ export default function DashboardSeriesPage() {
                   options={tvdbResults}
                   loading={tvdbResultsLoading}
                   loadingText="Searching..."
+                  value={tvdbid}
                   onChange={(event, selected) => {
                     if (typeof selected === 'object') {
                       setTvdbid(selected.tvdb_id);
