@@ -157,7 +157,7 @@ export default function DashboardSeriesPage() {
     setSeriesSeasons('');
     setMetadataLoaded(false);
     setTvdbResults([]);
-    sub.unsubscribe();
+    if (sub) {sub.unsubscribe();}
     setStatusText('');
     setFileLocation('');
   };
@@ -232,7 +232,6 @@ export default function DashboardSeriesPage() {
 
   const handleSubmit = (event) => {
     const seriesData = {
-      id,
       tvdbid,
       description: seriesDescription,
       slug: seriesSlug,
@@ -245,7 +244,7 @@ export default function DashboardSeriesPage() {
     if (mode === FormMode.CREATE) {
       createNewSeries(seriesData);
     } else {
-      updateExistingSeries(seriesData);
+      updateExistingSeries({...seriesData, id});
     }
     clearForm();
     setShowForm(false);
