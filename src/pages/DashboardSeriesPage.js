@@ -11,7 +11,7 @@ import CardActions from '@mui/material/CardActions';
 import { styled } from '@mui/material/styles';
 // components
 import { useState, useEffect, Fragment } from 'react';
-import { API, graphqlOperation } from 'aws-amplify';
+import { API, graphqlOperation, Storage } from 'aws-amplify';
 import { faker } from '@faker-js/faker';
 import { LoadingButton } from '@mui/lab';
 import Iconify from '../components/iconify';
@@ -118,6 +118,8 @@ export default function DashboardSeriesPage() {
   const [tvdbResultsLoading, setTvdbResultsLoading] = useState(false);
   const [tvdbSearchQuery, setTvdbSearchQuery] = useState('');
   const [statusText, setStatusText] = useState('');
+  const [uploadProgress, setUploadProgress] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
   const [selectedIndex, setSelectedIndex] = useState(null)
 
@@ -286,7 +288,7 @@ export default function DashboardSeriesPage() {
     setMode(FormMode.EDIT);
     sub = API.graphql(
       graphqlOperation(onUpdateSeries, {
-        filter: {id: { eq: seriesData.id}}
+        filter: { id: { eq: seriesData.id } }
       })
     ).subscribe({
       next: (element) => setStatusText(element.value.data.onUpdateSeries.statusText),
@@ -340,6 +342,25 @@ export default function DashboardSeriesPage() {
       .catch(error => console.log(error))
   }
 
+  const handleUpload = (files) => {
+    Storage.put(files[0].name, files[0], {
+      resumable: true,
+      level: "protected",
+      completeCallback: (event) => {
+        setUploading(false);
+        console.log('Upload Complete!');
+        console.log(event);
+      },
+      progressCallback: (progress) => {
+        setUploadProgress({...progress})
+        console.log(`Uploaded: ${progress.loaded}/${progress.total}`);
+      },
+      errorCallback: (err) => {
+        console.error('Unexpected error while uploading', err);
+      }
+    })
+  }
+
   useEffect(() => {
     const timeOutId = setTimeout(() => searchTvdb(), 100);
     return () => clearTimeout(timeOutId);
@@ -349,7 +370,8 @@ export default function DashboardSeriesPage() {
     if (tvdbid !== '') {
       getTvdbSeasons();
     }
-  }, [tvdbid])
+  }, [tvdbid]);
+
 
 
   return (
@@ -606,22 +628,34 @@ export default function DashboardSeriesPage() {
                       onChange={(event) => setSeriesDescription(event.target.value)} />
                   </Grid>
                   <Grid item xs={12}>
+                    <Button variant="contained" fullWidth component="label">
+                      Upload
+                      <input
+                        hidden
+                        accept="*"
+                        type="file"
+                        onChange={(event) => handleUpload(event.target.files)}
+                      />
+                    </Button>
+                  </Grid>
+                  <Grid item xs={12}>
                     <TextField
                       label="Status"
                       fullWidth
                       value={statusText}
+                      disabled
                       onChange={(event) => setStatusText(event.target.value)} />
                   </Grid>
-                  {seriesSeasons && seriesSeasons.map((season) => 
+                  {seriesSeasons && seriesSeasons.map((season) =>
                     (season.type.id === 1) ?
                       <Grid item xs={6} md={4}>
-                        <img src={season.image} alt='season artwork' style={{width: '100%', height: 'auto'}} />
+                        <img src={season.image} alt='season artwork' style={{ width: '100%', height: 'auto' }} />
                         <Typography component='h6' variant='h6'>
                           Season {season.number}
                         </Typography>
                       </Grid>
                       : null
-                    
+
                   )}
                 </>
               }
