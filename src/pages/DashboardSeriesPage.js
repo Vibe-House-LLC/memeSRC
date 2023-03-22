@@ -1,6 +1,6 @@
 import { Helmet } from 'react-helmet-async';
 // @mui
-import { Dialog, DialogTitle, DialogContent, FormControl, InputLabel, Select, MenuItem, DialogActions, TextField, List, CardHeader, Avatar, ListItem, ListItemText, Button, Container, Grid, Stack, Typography, Card, CardContent, CircularProgress, IconButton, Collapse, Autocomplete } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, FormControl, InputLabel, Select, MenuItem, DialogActions, TextField, List, CardHeader, Avatar, ListItem, ListItemText, Button, Container, Grid, Stack, Typography, Card, CardContent, CircularProgress, IconButton, Collapse, Autocomplete, LinearProgress } from '@mui/material';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import ShareIcon from '@mui/icons-material/Share';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -11,7 +11,7 @@ import CardActions from '@mui/material/CardActions';
 import { styled } from '@mui/material/styles';
 // components
 import { useState, useEffect, Fragment } from 'react';
-import { API, graphqlOperation, Storage } from 'aws-amplify';
+import { API, Auth, graphqlOperation, Storage } from 'aws-amplify';
 import { faker } from '@faker-js/faker';
 import { LoadingButton } from '@mui/lab';
 import Iconify from '../components/iconify';
@@ -120,6 +120,7 @@ export default function DashboardSeriesPage() {
   const [statusText, setStatusText] = useState('');
   const [uploadProgress, setUploadProgress] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [fileLocation, setFileLocation] = useState('');
 
   const [selectedIndex, setSelectedIndex] = useState(null)
 
@@ -158,6 +159,7 @@ export default function DashboardSeriesPage() {
     setTvdbResults([]);
     sub.unsubscribe();
     setStatusText('');
+    setFileLocation('');
   };
 
   // ----------------------------------------------------------------------
@@ -343,16 +345,21 @@ export default function DashboardSeriesPage() {
   }
 
   const handleUpload = (files) => {
+    setUploading(true);
     Storage.put(files[0].name, files[0], {
       resumable: true,
       level: "protected",
       completeCallback: (event) => {
         setUploading(false);
         console.log('Upload Complete!');
-        console.log(event);
+        Auth.currentUserCredentials().then((creds) => {
+          setUploading(false);
+          console.log(`protected/${creds.identityId}/${event.key}`);
+          setFileLocation(`protected/${creds.identityId}/${event.key}`);
+        });
       },
       progressCallback: (progress) => {
-        setUploadProgress({...progress})
+        setUploadProgress(progress.loaded / progress.total * 100);
         console.log(`Uploaded: ${progress.loaded}/${progress.total}`);
       },
       errorCallback: (err) => {
@@ -637,6 +644,12 @@ export default function DashboardSeriesPage() {
                         onChange={(event) => handleUpload(event.target.files)}
                       />
                     </Button>
+                    <Typography component='p' variant='body1'>
+                      {fileLocation}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12}>
+                  {uploading && <LinearProgress variant="determinate" value={uploadProgress} />}
                   </Grid>
                   <Grid item xs={12}>
                     <TextField
