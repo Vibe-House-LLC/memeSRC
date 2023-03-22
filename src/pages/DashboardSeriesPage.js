@@ -17,6 +17,7 @@ import { LoadingButton } from '@mui/lab';
 import Iconify from '../components/iconify';
 import { createSeries, updateSeries, deleteSeries } from '../graphql/mutations';
 import { listSeries } from '../graphql/queries';
+import { onUpdateSeries } from '../graphql/subscriptions';
 import SeriesCard from '../sections/@dashboard/series/SeriesCard';
 
 // ----------------------------------------------------------------------
@@ -90,6 +91,8 @@ async function fetchMetadata(items = [], nextToken = null) {
   return allItems;
 }
 
+let sub;
+
 
 export default function DashboardSeriesPage() {
   const [metadata, setMetadata] = useState([]);
@@ -149,6 +152,7 @@ export default function DashboardSeriesPage() {
     setSeriesSeasons('');
     setMetadataLoaded(false);
     setTvdbResults([]);
+    sub.unsubscribe();
   };
 
   // ----------------------------------------------------------------------
@@ -274,7 +278,14 @@ export default function DashboardSeriesPage() {
 
     // Set the form to edit mode
     setMode(FormMode.EDIT);
-
+    sub = API.graphql(
+      graphqlOperation(onUpdateSeries, {
+        filter: {id: { eq: seriesData.id}}
+      })
+    ).subscribe({
+      next: (element) => console.log(element),
+      error: (error) => console.warn(error)
+    });
     // Show the form
     setShowForm(true);
   };
