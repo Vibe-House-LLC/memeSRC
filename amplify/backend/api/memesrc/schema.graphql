@@ -16,7 +16,8 @@ type Series @model @auth(
   year: Int,
   image: String,
   description: String,
-  seasons: [Season] @hasMany
+  seasons: [Season] @hasMany,
+  statusText: String,
 }
 
 type Season @model @auth(

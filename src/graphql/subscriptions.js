@@ -60,6 +60,7 @@ export const onCreateSeries = /* GraphQL */ `
         }
         nextToken
       }
+      statusText
       createdAt
       updatedAt
     }
@@ -88,6 +89,7 @@ export const onUpdateSeries = /* GraphQL */ `
         }
         nextToken
       }
+      statusText
       createdAt
       updatedAt
     }
@@ -116,6 +118,7 @@ export const onDeleteSeries = /* GraphQL */ `
         }
         nextToken
       }
+      statusText
       createdAt
       updatedAt
     }
@@ -140,6 +143,7 @@ export const onCreateSeason = /* GraphQL */ `
         seasons {
           nextToken
         }
+        statusText
         createdAt
         updatedAt
       }
@@ -181,6 +185,7 @@ export const onUpdateSeason = /* GraphQL */ `
         seasons {
           nextToken
         }
+        statusText
         createdAt
         updatedAt
       }
@@ -222,6 +227,7 @@ export const onDeleteSeason = /* GraphQL */ `
         seasons {
           nextToken
         }
+        statusText
         createdAt
         updatedAt
       }
@@ -266,6 +272,7 @@ export const onCreateEpisode = /* GraphQL */ `
           year
           image
           description
+          statusText
           createdAt
           updatedAt
         }
@@ -319,6 +326,7 @@ export const onUpdateEpisode = /* GraphQL */ `
           year
           image
           description
+          statusText
           createdAt
           updatedAt
         }
@@ -372,6 +380,7 @@ export const onDeleteEpisode = /* GraphQL */ `
           year
           image
           description
+          statusText
           createdAt
           updatedAt
         }

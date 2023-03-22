@@ -55,6 +55,7 @@ export const getSeries = /* GraphQL */ `
         }
         nextToken
       }
+      statusText
       createdAt
       updatedAt
     }
@@ -78,6 +79,7 @@ export const listSeries = /* GraphQL */ `
         seasons {
           nextToken
         }
+        statusText
         createdAt
         updatedAt
       }
@@ -104,6 +106,7 @@ export const getSeason = /* GraphQL */ `
         seasons {
           nextToken
         }
+        statusText
         createdAt
         updatedAt
       }
@@ -147,6 +150,7 @@ export const listSeasons = /* GraphQL */ `
           year
           image
           description
+          statusText
           createdAt
           updatedAt
         }
@@ -183,6 +187,7 @@ export const getEpisode = /* GraphQL */ `
           year
           image
           description
+          statusText
           createdAt
           updatedAt
         }
