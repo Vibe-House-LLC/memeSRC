@@ -70,7 +70,7 @@ SeriesCard.propTypes = {
 
 
 export default function SeriesCard({ post, isOverlay = false, isLarge = false, handleEdit, handleDelete }) {
-  const { cover, name, view, comment, share, author, createdAt, id, year } = post;
+  const { cover, name, view, comment, share, author, createdAt, id, year, statusText } = post;
   const [anchorEl, setAnchorEl] = useState(null);
   const [openConfirmation, setOpenConfirmation] = useState(false);
 

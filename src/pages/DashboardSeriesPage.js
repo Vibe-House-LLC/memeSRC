@@ -37,6 +37,7 @@ const listSeriesAndSeasons = /* GraphQL */ `
         year
         image
         description
+        statusText
         seasons {
           items {
             id
@@ -116,6 +117,7 @@ export default function DashboardSeriesPage() {
   const [tvdbResults, setTvdbResults] = useState([]);
   const [tvdbResultsLoading, setTvdbResultsLoading] = useState(false);
   const [tvdbSearchQuery, setTvdbSearchQuery] = useState('');
+  const [statusText, setStatusText] = useState('');
 
   const [selectedIndex, setSelectedIndex] = useState(null)
 
@@ -153,6 +155,7 @@ export default function DashboardSeriesPage() {
     setMetadataLoaded(false);
     setTvdbResults([]);
     sub.unsubscribe();
+    setStatusText('');
   };
 
   // ----------------------------------------------------------------------
@@ -232,6 +235,7 @@ export default function DashboardSeriesPage() {
       name: seriesName,
       year: parseInt(seriesYear, 10),
       image: seriesImage,
+      statusText
     }
     event.preventDefault();
     if (mode === FormMode.CREATE) {
@@ -259,6 +263,7 @@ export default function DashboardSeriesPage() {
       setSeriesName(seriesData.name);
       setSeriesYear(seriesData.year);
       setSeriesImage(seriesData.cover);
+      setStatusText(seriesData.statusText);
       setDialogButtonLoading(false);
       setDialogButtonText('Submit');
       setMetadataLoaded(true);
@@ -274,6 +279,7 @@ export default function DashboardSeriesPage() {
     setSeriesName(seriesData.name);
     setSeriesYear(seriesData.year);
     setSeriesImage(seriesData.cover);
+    setStatusText(seriesData.statusText);
     setMetadataLoaded(true);
 
     // Set the form to edit mode
@@ -283,7 +289,7 @@ export default function DashboardSeriesPage() {
         filter: {id: { eq: seriesData.id}}
       })
     ).subscribe({
-      next: (element) => console.log(element),
+      next: (element) => setStatusText(element.value.data.onUpdateSeries.statusText),
       error: (error) => console.warn(error)
     });
     // Show the form
@@ -373,6 +379,7 @@ export default function DashboardSeriesPage() {
                   tvdbid: seriesItem.tvdbid,
                   slug: seriesItem.slug,
                   year: seriesItem.year,
+                  statusText: seriesItem.statusText,
                   description: seriesItem.description,
                   view: faker.datatype.number(),
                   comment: faker.datatype.number(),
@@ -597,6 +604,13 @@ export default function DashboardSeriesPage() {
                       fullWidth
                       value={seriesDescription}
                       onChange={(event) => setSeriesDescription(event.target.value)} />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      label="Status"
+                      fullWidth
+                      value={statusText}
+                      onChange={(event) => setStatusText(event.target.value)} />
                   </Grid>
                   {seriesSeasons && seriesSeasons.map((season) => 
                     (season.type.id === 1) ?
