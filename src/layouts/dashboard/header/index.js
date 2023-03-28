@@ -1,7 +1,9 @@
 import PropTypes from 'prop-types';
 // @mui
-import { styled } from '@mui/material/styles';
+import { styled, useTheme } from '@mui/material/styles';
 import { Box, Stack, AppBar, Toolbar, IconButton } from '@mui/material';
+import { Brightness4, Brightness7 } from '@mui/icons-material';
+import { useContext } from 'react';
 // utils
 import { bgBlur } from '../../../utils/cssStyles';
 // components
@@ -11,6 +13,7 @@ import Searchbar from './Searchbar';
 import AccountPopover from './AccountPopover';
 import LanguagePopover from './LanguagePopover';
 import NotificationsPopover from './NotificationsPopover';
+import { ColorModeContext } from '../../../theme';
 
 // ----------------------------------------------------------------------
 
@@ -43,6 +46,11 @@ Header.propTypes = {
 };
 
 export default function Header({ onOpenNav }) {
+
+  const theme = useTheme();
+
+  const colorMode = useContext(ColorModeContext);
+
   return (
     <StyledRoot>
       <StyledToolbar>
@@ -68,7 +76,17 @@ export default function Header({ onOpenNav }) {
             sm: 1,
           }}
         >
-          <LanguagePopover />
+          {/* <LanguagePopover /> */}
+          <IconButton
+            onClick={colorMode.toggleColorMode}
+            sx={{
+              padding: 0,
+              width: 44,
+              height: 44,
+            }}
+          >
+            {theme.palette.mode === 'dark' ? <Brightness7 /> : <Brightness4 />}
+          </IconButton>
           <NotificationsPopover />
           <AccountPopover />
         </Stack>
