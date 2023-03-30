@@ -292,7 +292,10 @@ export default function DashboardSeriesPage() {
         filter: { id: { eq: seriesData.id } }
       })
     ).subscribe({
-      next: (element) => setStatusText(element.value.data.onUpdateSeries.statusText),
+      next: (element) => {
+        console.log(element)
+        setStatusText(element.value.data.onUpdateSeries.statusText)
+      },
       error: (error) => console.warn(error)
     });
     // Show the form

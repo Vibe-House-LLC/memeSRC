@@ -1,42 +1,6 @@
 /* eslint-disable */
 // this is an auto generated file. This will be overwritten
 
-export const onCreateAnalyticsMetrics = /* GraphQL */ `
-  subscription OnCreateAnalyticsMetrics(
-    $filter: ModelSubscriptionAnalyticsMetricsFilterInput
-  ) {
-    onCreateAnalyticsMetrics(filter: $filter) {
-      id
-      value
-      createdAt
-      updatedAt
-    }
-  }
-`;
-export const onUpdateAnalyticsMetrics = /* GraphQL */ `
-  subscription OnUpdateAnalyticsMetrics(
-    $filter: ModelSubscriptionAnalyticsMetricsFilterInput
-  ) {
-    onUpdateAnalyticsMetrics(filter: $filter) {
-      id
-      value
-      createdAt
-      updatedAt
-    }
-  }
-`;
-export const onDeleteAnalyticsMetrics = /* GraphQL */ `
-  subscription OnDeleteAnalyticsMetrics(
-    $filter: ModelSubscriptionAnalyticsMetricsFilterInput
-  ) {
-    onDeleteAnalyticsMetrics(filter: $filter) {
-      id
-      value
-      createdAt
-      updatedAt
-    }
-  }
-`;
 export const onCreateSeries = /* GraphQL */ `
   subscription OnCreateSeries($filter: ModelSubscriptionSeriesFilterInput) {
     onCreateSeries(filter: $filter) {
@@ -526,6 +490,42 @@ export const onDeleteSubtitle = /* GraphQL */ `
       createdAt
       updatedAt
       episodeSubtitlesId
+    }
+  }
+`;
+export const onCreateAnalyticsMetrics = /* GraphQL */ `
+  subscription OnCreateAnalyticsMetrics(
+    $filter: ModelSubscriptionAnalyticsMetricsFilterInput
+  ) {
+    onCreateAnalyticsMetrics(filter: $filter) {
+      id
+      value
+      createdAt
+      updatedAt
+    }
+  }
+`;
+export const onUpdateAnalyticsMetrics = /* GraphQL */ `
+  subscription OnUpdateAnalyticsMetrics(
+    $filter: ModelSubscriptionAnalyticsMetricsFilterInput
+  ) {
+    onUpdateAnalyticsMetrics(filter: $filter) {
+      id
+      value
+      createdAt
+      updatedAt
+    }
+  }
+`;
+export const onDeleteAnalyticsMetrics = /* GraphQL */ `
+  subscription OnDeleteAnalyticsMetrics(
+    $filter: ModelSubscriptionAnalyticsMetricsFilterInput
+  ) {
+    onDeleteAnalyticsMetrics(filter: $filter) {
+      id
+      value
+      createdAt
+      updatedAt
     }
   }
 `;
