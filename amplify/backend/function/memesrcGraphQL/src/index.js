@@ -87,7 +87,7 @@ export const handler = async (event) => {
         } else if (value >= 100) {
           statusMessage = 'done'
         }
-        const request = await createSignedQueryRequest(updateProgressQuery('2959d743-aba8-49a9-a2db-2d1968c24a79', (value < 100) ? `${value.toString()}% (${statusMessage})` : 'done'));
+        const request = await createSignedQueryRequest(updateProgressQuery('2959d743-aba8-49a9-a2db-2d1968c24a79', `${value.toString()}% (${statusMessage})`));
 
         try {
           const response = await fetch(request);
