@@ -1,4 +1,5 @@
 // component
+import { Settings } from '@mui/icons-material';
 import SvgColor from '../../../components/svg-color';
 
 // ----------------------------------------------------------------------
@@ -45,6 +46,11 @@ const navConfig = [
     title: 'series',
     path: '/dashboard/series',
     icon: icon('ic_booking')
+  },
+  {
+    title: 'add series',
+    path: '/dashboard/addseries',
+    icon: <Settings />
   }
   // {
   //   title: 'product',
