@@ -14,6 +14,7 @@ import { useState, useEffect, Fragment } from 'react';
 import { API, Auth, graphqlOperation, Storage } from 'aws-amplify';
 import { faker } from '@faker-js/faker';
 import { LoadingButton } from '@mui/lab';
+import { useNavigate } from 'react-router-dom';
 import Iconify from '../components/iconify';
 import { createSeries, updateSeries, deleteSeries } from '../graphql/mutations';
 import { listSeries } from '../graphql/queries';
@@ -96,6 +97,7 @@ let sub;
 
 
 export default function DashboardSeriesPage() {
+  const navigate = useNavigate();
   const [metadata, setMetadata] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -393,7 +395,7 @@ export default function DashboardSeriesPage() {
           <Typography variant="h4" gutterBottom>
             Metadata Settings {loading ? <CircularProgress size={25} /> : `(${metadata.length})`}
           </Typography>
-          <Button variant="contained" startIcon={<Iconify icon="eva:plus-fill" />} onClick={toggleForm}>
+          <Button variant="contained" startIcon={<Iconify icon="eva:plus-fill" />} onClick={() => navigate('/dashboard/addseries')}>
             New Content
           </Button>
         </Stack>
@@ -522,7 +524,13 @@ export default function DashboardSeriesPage() {
               </Grid> */}
 
               <Grid item xs={12}>
-                <Autocomplete
+              <TextField
+                  label="ID"
+                  fullWidth
+                  value={id}
+                  onChange={(event) => setId(event.target.value)}
+                />
+                {/* <Autocomplete
                   id="series-search"
                   sx={{ width: '100%' }}
                   open={tvdbSearchopen}
@@ -588,7 +596,7 @@ export default function DashboardSeriesPage() {
                       }}
                     />
                   )}
-                />
+                /> */}
               </Grid>
               {metadataLoaded &&
                 <>
