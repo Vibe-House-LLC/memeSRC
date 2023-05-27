@@ -6,8 +6,6 @@ import { styled, alpha } from '@mui/material/styles';
 import { Box, Link, Button, Drawer, Typography, Avatar, Stack } from '@mui/material';
 // mock
 import account from '../../../_mock/account';
-// hooks
-import useResponsive from '../../../hooks/useResponsive';
 // components
 import Logo from '../../../components/logo';
 import Scrollbar from '../../../components/scrollbar';
@@ -16,8 +14,6 @@ import NavSection from '../../../components/nav-section';
 import navConfig from './config';
 
 import { UserContext } from '../../../UserContext';
-
-// ----------------------------------------------------------------------
 
 const NAV_WIDTH = 280;
 
@@ -29,8 +25,6 @@ const StyledAccount = styled('div')(({ theme }) => ({
   backgroundColor: alpha(theme.palette.grey[500], 0.12),
 }));
 
-// ----------------------------------------------------------------------
-
 Nav.propTypes = {
   openNav: PropTypes.bool,
   onCloseNav: PropTypes.func,
@@ -38,7 +32,6 @@ Nav.propTypes = {
 
 export default function Nav({ openNav, onCloseNav }) {
   const { pathname } = useLocation();
-  const isDesktop = useResponsive('up', 'lg');
   const { user } = useContext(UserContext)
 
   useEffect(() => {
@@ -112,37 +105,22 @@ export default function Nav({ openNav, onCloseNav }) {
       component="nav"
       sx={{
         flexShrink: { lg: 0 },
-        width: { lg: NAV_WIDTH },
       }}
     >
-      {isDesktop ? (
-        <Drawer
-          open
-          variant="permanent"
-          PaperProps={{
-            sx: {
-              width: NAV_WIDTH,
-              bgcolor: 'background.default',
-              borderRightStyle: 'dashed',
-            },
-          }}
-        >
-          {renderContent}
-        </Drawer>
-      ) : (
-        <Drawer
-          open={openNav}
-          onClose={onCloseNav}
-          ModalProps={{
-            keepMounted: true,
-          }}
-          PaperProps={{
-            sx: { width: NAV_WIDTH },
-          }}
-        >
-          {renderContent}
-        </Drawer>
-      )}
+      <Drawer
+        open={openNav}
+        onClose={onCloseNav}
+        variant="temporary"
+        ModalProps={{
+          keepMounted: true,
+        }}
+        PaperProps={{
+          sx: { width: NAV_WIDTH },
+        }}
+      >
+        {renderContent}
+      </Drawer>
     </Box>
   );
+
 }
