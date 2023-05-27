@@ -37,7 +37,7 @@ export default function Router() {
         { path: 'user', element: <UserPage /> },
         { path: 'products', element: <ProductsPage /> },
         { path: 'blog', element: <BlogPage /> },
-        { path: 'search', element: <SearchPage /> },
+        { path: 'search', element: <HomePage /> },
         { path: 'editor', element: <EditorPage /> },
         { path: 'editor/:fid', element: <EditorPage /> },
         { path: 'metadata', element: <MetadataPage /> },
@@ -56,7 +56,10 @@ export default function Router() {
     },
     {
       path: '/',
-      element: <HomePage />
+      element: <CheckAuth><DashboardLayout /></CheckAuth>,
+      children: [
+        { element: <HomePage />, index: true }
+      ]
     },
     {
       path: '/section/:sectionIndex',
