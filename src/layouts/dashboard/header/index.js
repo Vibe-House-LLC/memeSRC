@@ -77,7 +77,7 @@ export default function Header({ onOpenNav }) {
           }}
         >
           {/* <LanguagePopover /> */}
-          <IconButton
+          {/* <IconButton
             onClick={colorMode.toggleColorMode}
             sx={{
               padding: 0,
@@ -86,7 +86,7 @@ export default function Header({ onOpenNav }) {
             }}
           >
             {theme.palette.mode === 'dark' ? <Brightness7 /> : <Brightness4 />}
-          </IconButton>
+          </IconButton> */}
           <NotificationsPopover />
           <AccountPopover />
         </Stack>
