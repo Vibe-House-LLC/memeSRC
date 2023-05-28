@@ -51,6 +51,35 @@ export default function Header({ onOpenNav }) {
 
   const [showLogo, setShowLogo] = useState(false);
 
+  const renderLogo = () => (
+    <Grid
+      container
+      direction="row"
+      justifyContent="center"
+      alignItems="center"
+    >
+      <Link 
+        to="/" 
+        component={RouterLink} 
+        sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          textDecoration: 'none',
+          color: 'inherit',
+          '&:hover': {
+            textDecoration: 'none',
+          },
+        }}
+      >
+        <Logo />
+        <Typography component='h6' variant='h6' sx={{ color: '#FFFFFF', textShadow: '1px 1px 3px rgba(0, 0, 0, 0.30);', marginLeft: '6px', display: 'inline' }}>
+          memeSRC
+        </Typography>
+      </Link>
+    </Grid>
+  );
+
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollPos = window.pageYOffset;
@@ -73,7 +102,7 @@ export default function Header({ onOpenNav }) {
     return () => {
       window.removeEventListener('scroll', handleScroll);
     };
-  }, []);
+  }, [window.location]);
   
 
   return (
@@ -92,34 +121,10 @@ export default function Header({ onOpenNav }) {
         <Searchbar />
         <Box sx={{ flexGrow: 1 }} />
 
-        <Slide direction="up" in={showLogo || location.pathname !== '/'} mountOnEnter unmountOnExit>
-          <Grid
-            container
-            direction="row"
-            justifyContent="center"
-            alignItems="center"
-          >
-            <Link 
-              to="/" 
-              component={RouterLink} 
-              sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                textDecoration: 'none',
-                color: 'inherit',
-                '&:hover': {
-                  textDecoration: 'none',
-                },
-              }}
-            >
-              <Logo />
-              <Typography component='h6' variant='h6' sx={{ color: '#FFFFFF', textShadow: '1px 1px 3px rgba(0, 0, 0, 0.30);', marginLeft: '6px', display: 'inline' }}>
-                memeSRC
-              </Typography>
-            </Link>
-          </Grid>
-        </Slide>
+        {location.pathname === '/'
+          ? <Slide direction="up" in={showLogo} mountOnEnter unmountOnExit>{renderLogo()}</Slide>
+          : renderLogo()
+        }
 
         <Stack
           direction="row"
