@@ -27,6 +27,19 @@ const HomepageSectionPage = lazy(() => import('./pages/HomepageSectionPage'));
 export default function Router() {
 
   const routes = useRoutes([
+    { 
+      path: '/',
+      element: <Navigate to="/search" />, 
+      index: true
+    },
+    {
+      path: '/search',
+      element: <CheckAuth><DashboardLayout /></CheckAuth>,
+      children: [
+        { element: <HomePage />, index: true },
+        { path: ':seriesId/:searchTerms', element: <SearchPage />}
+      ]
+    },
     {
       path: '/dashboard',
       element: <CheckAuth><DashboardLayout /></CheckAuth>,
@@ -37,7 +50,8 @@ export default function Router() {
         { path: 'user', element: <UserPage /> },
         { path: 'products', element: <ProductsPage /> },
         { path: 'blog', element: <BlogPage /> },
-        { path: 'search', element: <HomePage /> },
+        { path: 'home', element: <HomePage /> },
+        // { path: 'search/:seriesId/:searchTerms', element: <SearchPage />},
         { path: 'editor', element: <EditorPage /> },
         { path: 'editor/:fid', element: <EditorPage /> },
         { path: 'metadata', element: <MetadataPage /> },
@@ -53,13 +67,6 @@ export default function Router() {
     {
       path: '/signup',
       element: <CheckAuth><AuthPage method="signup" /></CheckAuth>,
-    },
-    {
-      path: '/',
-      element: <CheckAuth><DashboardLayout /></CheckAuth>,
-      children: [
-        { element: <HomePage />, index: true }
-      ]
     },
     {
       path: '/section/:sectionIndex',
