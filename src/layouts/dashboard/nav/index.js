@@ -3,7 +3,7 @@ import { useEffect, useContext } from 'react';
 import { useLocation } from 'react-router-dom';
 // @mui
 import { styled, alpha } from '@mui/material/styles';
-import { Box, Link, Button, Drawer, Typography, Avatar, Stack } from '@mui/material';
+import { Box, Link, Button, Drawer, Typography, Avatar, Stack, Chip } from '@mui/material';
 // mock
 import account from '../../../_mock/account';
 // components
@@ -49,7 +49,10 @@ export default function Nav({ openNav, onCloseNav }) {
       }}
     >
       <Box sx={{ px: 2.5, py: 3, display: 'inline-flex' }}>
-        <Logo />
+        <Stack direction='horizontal'>
+          <Logo />
+          <Chip label={process.env.REACT_APP_USER_BRANCH === 'prod' ? `v${process.env.REACT_APP_VERSION}` : `v${process.env.REACT_APP_VERSION}-${process.env.REACT_APP_USER_BRANCH}`} variant="outlined" />
+        </Stack>
       </Box>
 
       <Box sx={{ mb: 5, mx: 2.5 }}>
