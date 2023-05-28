@@ -102,7 +102,7 @@ export default function Header({ onOpenNav }) {
     return () => {
       window.removeEventListener('scroll', handleScroll);
     };
-  }, [window.location]);
+  }, [window.location.pathname]);
   
 
   return (
