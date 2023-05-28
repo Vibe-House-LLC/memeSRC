@@ -27,17 +27,13 @@ const HomepageSectionPage = lazy(() => import('./pages/HomepageSectionPage'));
 export default function Router() {
 
   const routes = useRoutes([
-    { 
-      path: '/',
-      element: <Navigate to="/search" />, 
-      index: true
-    },
     {
-      path: '/search',
+      path: '/',
       element: <CheckAuth><DashboardLayout /></CheckAuth>,
       children: [
         { element: <HomePage />, index: true },
-        { path: ':seriesId/:searchTerms', element: <SearchPage />}
+        { path: 'search/:seriesId/:searchTerms', element: <SearchPage /> },
+        { path: 'editor/:fid', element: <TopBannerSearchRevised><EditorPage /></TopBannerSearchRevised> }
       ]
     },
     {
@@ -51,7 +47,6 @@ export default function Router() {
         { path: 'products', element: <ProductsPage /> },
         { path: 'blog', element: <BlogPage /> },
         { path: 'home', element: <HomePage /> },
-        // { path: 'search/:seriesId/:searchTerms', element: <SearchPage />},
         { path: 'editor', element: <EditorPage /> },
         { path: 'editor/:fid', element: <EditorPage /> },
         { path: 'metadata', element: <MetadataPage /> },
@@ -73,24 +68,16 @@ export default function Router() {
       element: <HomePage />
     },
     {
-      path: '/search/:seriesId/:searchTerms',
-      element: <SearchPage />
-    },
-    {
-      path: '/editor/:fid',
-      element: <TopBannerSearchRevised><EditorPage /></TopBannerSearchRevised>,
-    },
-    {
       path: '/episode/:seriesId/:seasonNum/:episodeNum',
       element: <TopBannerSearchRevised><EpisodePage /></TopBannerSearchRevised>
     },
     {
       path: '/error',
-      element: <ErrorPage/>
+      element: <ErrorPage />
     },
     {
       path: '/404',
-      element: <Page404/>
+      element: <Page404 />
     },
     {
       path: '*',
