@@ -28,6 +28,15 @@ export default function Router() {
 
   const routes = useRoutes([
     {
+      path: '/',
+      element: <CheckAuth><DashboardLayout /></CheckAuth>,
+      children: [
+        { element: <HomePage />, index: true },
+        { path: 'search/:seriesId/:searchTerms', element: <SearchPage /> },
+        { path: 'editor/:fid', element: <TopBannerSearchRevised><EditorPage /></TopBannerSearchRevised> }
+      ]
+    },
+    {
       path: '/dashboard',
       element: <CheckAuth><DashboardLayout /></CheckAuth>,
       children: [
@@ -37,7 +46,7 @@ export default function Router() {
         { path: 'user', element: <UserPage /> },
         { path: 'products', element: <ProductsPage /> },
         { path: 'blog', element: <BlogPage /> },
-        { path: 'search', element: <HomePage /> },
+        { path: 'home', element: <HomePage /> },
         { path: 'editor', element: <EditorPage /> },
         { path: 'editor/:fid', element: <EditorPage /> },
         { path: 'metadata', element: <MetadataPage /> },
@@ -55,23 +64,8 @@ export default function Router() {
       element: <CheckAuth><AuthPage method="signup" /></CheckAuth>,
     },
     {
-      path: '/',
-      element: <CheckAuth><DashboardLayout /></CheckAuth>,
-      children: [
-        { element: <HomePage />, index: true }
-      ]
-    },
-    {
       path: '/section/:sectionIndex',
       element: <HomePage />
-    },
-    {
-      path: '/search/:seriesId/:searchTerms',
-      element: <SearchPage />
-    },
-    {
-      path: '/editor/:fid',
-      element: <TopBannerSearchRevised><EditorPage /></TopBannerSearchRevised>,
     },
     {
       path: '/episode/:seriesId/:seasonNum/:episodeNum',
@@ -79,11 +73,11 @@ export default function Router() {
     },
     {
       path: '/error',
-      element: <ErrorPage/>
+      element: <ErrorPage />
     },
     {
       path: '/404',
-      element: <Page404/>
+      element: <Page404 />
     },
     {
       path: '*',

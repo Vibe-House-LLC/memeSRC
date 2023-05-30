@@ -1,13 +1,15 @@
 import PropTypes from 'prop-types';
+import { useState, useEffect, useContext } from 'react';
 // @mui
 import { styled, useTheme } from '@mui/material/styles';
-import { Box, Stack, AppBar, Toolbar, IconButton } from '@mui/material';
+import { Box, Stack, AppBar, Toolbar, Link, IconButton, Grid, Typography, Slide } from '@mui/material';
 import { Brightness4, Brightness7 } from '@mui/icons-material';
-import { useContext } from 'react';
 // utils
+import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import { bgBlur } from '../../../utils/cssStyles';
 // components
 import Iconify from '../../../components/iconify';
+import Logo from "../../../components/logo/Logo";
 //
 import Searchbar from './Searchbar';
 import AccountPopover from './AccountPopover';
@@ -19,24 +21,18 @@ import { ColorModeContext } from '../../../theme';
 
 const NAV_WIDTH = 280;
 
-const HEADER_MOBILE = 64;
+const HEADER_MOBILE = 48;
 
-const HEADER_DESKTOP = 92;
+const HEADER_DESKTOP = 72;
 
 const StyledRoot = styled(AppBar)(({ theme }) => ({
   ...bgBlur({ color: theme.palette.background.default }),
   boxShadow: 'none',
-  // [theme.breakpoints.up('lg')]: {
-  //   width: `calc(100% - ${NAV_WIDTH + 1}px)`,
-  // },
+  overflow: 'hidden', // This line will hide the slide in/out animation outside the AppBar
 }));
 
 const StyledToolbar = styled(Toolbar)(({ theme }) => ({
   minHeight: HEADER_MOBILE,
-  // [theme.breakpoints.up('lg')]: {
-  //   minHeight: HEADER_DESKTOP,
-  //   padding: theme.spacing(0, 1),
-  // },
 }));
 
 // ----------------------------------------------------------------------
@@ -51,6 +47,64 @@ export default function Header({ onOpenNav }) {
 
   const colorMode = useContext(ColorModeContext);
 
+  const location = useLocation();
+
+  const [showLogo, setShowLogo] = useState(false);
+
+  const renderLogo = () => (
+    <Grid
+      container
+      direction="row"
+      justifyContent="center"
+      alignItems="center"
+    >
+      <Link 
+        to="/" 
+        component={RouterLink} 
+        sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          textDecoration: 'none',
+          color: 'inherit',
+          '&:hover': {
+            textDecoration: 'none',
+          },
+        }}
+      >
+        <Logo />
+        <Typography component='h6' variant='h6' sx={{ color: '#FFFFFF', textShadow: '1px 1px 3px rgba(0, 0, 0, 0.30);', marginLeft: '6px', display: 'inline' }}>
+          memeSRC
+        </Typography>
+      </Link>
+    </Grid>
+  );
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollPos = window.pageYOffset;
+  
+      // Show the logo if the user has scrolled down 1/3 of the view height, otherwise hide it
+      if (currentScrollPos > window.innerHeight / 3) {
+        setShowLogo(true);
+      } else {
+        // Delay the hiding of the logo by 200 milliseconds
+        setTimeout(() => {
+          setShowLogo(false);
+        }, 200);
+      }
+    };
+  
+    if (location.pathname === '/') {
+      window.addEventListener('scroll', handleScroll);
+    }
+  
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, [window.location.pathname]);
+  
+
   return (
     <StyledRoot>
       <StyledToolbar>
@@ -59,7 +113,6 @@ export default function Header({ onOpenNav }) {
           sx={{
             mr: 1,
             color: 'text.primary',
-            // display: { lg: 'none' },
           }}
         >
           <Iconify icon="eva:menu-2-fill" />
@@ -67,6 +120,11 @@ export default function Header({ onOpenNav }) {
 
         <Searchbar />
         <Box sx={{ flexGrow: 1 }} />
+
+        {location.pathname === '/'
+          ? <Slide direction="up" in={showLogo} mountOnEnter unmountOnExit>{renderLogo()}</Slide>
+          : renderLogo()
+        }
 
         <Stack
           direction="row"
@@ -76,17 +134,6 @@ export default function Header({ onOpenNav }) {
             sm: 1,
           }}
         >
-          {/* <LanguagePopover /> */}
-          {/* <IconButton
-            onClick={colorMode.toggleColorMode}
-            sx={{
-              padding: 0,
-              width: 44,
-              height: 44,
-            }}
-          >
-            {theme.palette.mode === 'dark' ? <Brightness7 /> : <Brightness4 />}
-          </IconButton> */}
           <NotificationsPopover />
           <AccountPopover />
         </Stack>
