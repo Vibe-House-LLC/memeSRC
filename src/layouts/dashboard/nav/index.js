@@ -32,7 +32,7 @@ Nav.propTypes = {
 
 export default function Nav({ openNav, onCloseNav }) {
   const { pathname } = useLocation();
-  const { user } = useContext(UserContext)
+  const userDetails = useContext(UserContext)
 
   useEffect(() => {
     if (openNav) {
@@ -62,7 +62,7 @@ export default function Nav({ openNav, onCloseNav }) {
 
             <Box sx={{ ml: 2 }}>
               <Typography variant="subtitle2" sx={{ color: 'text.primary' }}>
-                {user?.attributes?.email}
+                {userDetails?.user?.attributes?.email}
               </Typography>
 
               <Typography variant="body2" sx={{ color: 'text.secondary' }}>
