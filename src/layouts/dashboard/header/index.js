@@ -129,7 +129,7 @@ export default function Header({ onOpenNav }) {
           {location.pathname === '/'
             ?
 
-            <Slide direction="up" container={containerRef.current} exit in={showLogo} mountOnEnter unmountOnExit>
+            <Slide direction="up" container={containerRef.current} exit in={showLogo} mountOnEnter>
 
               {renderLogo()}
             </Slide>
