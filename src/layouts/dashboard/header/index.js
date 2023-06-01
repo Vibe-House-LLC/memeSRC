@@ -51,8 +51,6 @@ export default function Header({ onOpenNav }) {
 
   const [showLogo, setShowLogo] = useState(false);
 
-  const [logoShown, setLogoShown] = useState(false);
-
   const containerRef = useRef(null);
 
   const renderLogo = () => (
@@ -88,17 +86,15 @@ export default function Header({ onOpenNav }) {
     const currentScrollPos = window.pageYOffset;
   
     // Show the logo if the user has scrolled down 1/3 of the view height, and it hasn't been shown yet
-    if (currentScrollPos > window.innerHeight / 3 && !logoShown) {
+    if (currentScrollPos > window.innerHeight / 3 && !showLogo) {
       setShowLogo(true);
-      setLogoShown(true);
-    } else if (currentScrollPos <= window.innerHeight / 3 && logoShown) {
+    } else if (currentScrollPos <= window.innerHeight / 3 && showLogo) {
       // Delay the hiding of the logo by 200 milliseconds
       setTimeout(() => {
         setShowLogo(false);
-        setLogoShown(false);
       }, 200);
     }
-  }, [logoShown]);
+  }, [showLogo]);
   
   useEffect(() => {
     if (location.pathname === '/') {
