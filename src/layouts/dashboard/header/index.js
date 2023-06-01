@@ -23,7 +23,7 @@ const NAV_WIDTH = 280;
 
 const HEADER_MOBILE = 48;
 
-const HEADER_DESKTOP = 72;
+const HEADER_DESKTOP = 48;
 
 const StyledRoot = styled(AppBar)(({ theme }) => ({
   ...bgBlur({ color: theme.palette.background.default }),
@@ -32,7 +32,7 @@ const StyledRoot = styled(AppBar)(({ theme }) => ({
 }));
 
 const StyledToolbar = styled(Toolbar)(({ theme }) => ({
-  minHeight: HEADER_MOBILE,
+
 }));
 
 // ----------------------------------------------------------------------
@@ -109,7 +109,7 @@ export default function Header({ onOpenNav }) {
 
   return (
     <StyledRoot>
-      <StyledToolbar sx={{ position: 'relative' }} ref={containerRef}>
+      <StyledToolbar sx={{ position: 'relative', minHeight: {xs: 56, md: '56px !important'} }} ref={containerRef}>
         <IconButton
           onClick={onOpenNav}
           sx={{
@@ -136,8 +136,7 @@ export default function Header({ onOpenNav }) {
           direction="row"
           alignItems="center"
           spacing={{
-            xs: 0.5,
-            sm: 1,
+            xs: 0.5
           }}
         >
           <NotificationsPopover />
