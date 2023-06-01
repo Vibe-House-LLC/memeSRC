@@ -3,7 +3,7 @@ import { useEffect, useContext } from 'react';
 import { useLocation } from 'react-router-dom';
 // @mui
 import { styled, alpha } from '@mui/material/styles';
-import { Box, Link, Button, Drawer, Typography, Avatar, Stack, Chip } from '@mui/material';
+import { Box, Link, Button, Drawer, Typography, Avatar, Stack, Chip, Divider } from '@mui/material';
 // mock
 import account from '../../../_mock/account';
 // components
@@ -34,12 +34,12 @@ export default function Nav({ openNav, onCloseNav }) {
   const { pathname } = useLocation();
   const userDetails = useContext(UserContext)
 
-  useEffect(() => {
-    if (openNav) {
-      onCloseNav();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname]);
+  // useEffect(() => {
+  //   if (openNav) {
+  //     onCloseNav();
+  //   }
+  //   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, [openNav]);
 
   const renderContent = (
     <Scrollbar
@@ -58,17 +58,38 @@ export default function Nav({ openNav, onCloseNav }) {
       <Box sx={{ mb: 5, mx: 2.5 }}>
         <Link underline="none">
           <StyledAccount>
-            <Avatar src={account.photoURL} alt="photoURL" />
+            {userDetails.user &&
+              <>
+                <Avatar src={account.photoURL} alt="photoURL" />
 
-            <Box sx={{ ml: 2 }}>
-              <Typography variant="subtitle2" sx={{ color: 'text.primary' }}>
-                {userDetails?.user?.attributes?.email}
-              </Typography>
+                <Box sx={{ ml: 2 }}>
+                  <Typography variant="subtitle2" sx={{ color: 'text.primary' }}>
+                    {userDetails?.user?.attributes?.email}
+                  </Typography>
 
-              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                {account.role}
-              </Typography>
-            </Box>
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                    {account.role}
+                  </Typography>
+                </Box>
+              </>
+            }
+            {!userDetails.user &&
+              <>
+                <Box width='100%'>
+                  <Link href='/signup' underline='none'>
+                    <Typography variant="subtitle1" textAlign='center' sx={{ color: 'text.primary' }}>
+                      Create Account
+                    </Typography>
+                  </Link>
+                  <Divider sx={{my: 2}} />
+                  <Link href='/login' underline='none'>
+                    <Typography variant="subtitle1" textAlign='center' sx={{ color: 'text.primary' }}>
+                      Sign In
+                    </Typography>
+                  </Link>
+                </Box>
+              </>
+            }
           </StyledAccount>
         </Link>
       </Box>
@@ -77,7 +98,7 @@ export default function Nav({ openNav, onCloseNav }) {
 
       <Box sx={{ flexGrow: 1 }} />
 
-      <Box sx={{ px: 2.5, pb: 3, mt: 10 }}>
+      {/* <Box sx={{ px: 2.5, pb: 3, mt: 10 }}>
         <Stack alignItems="center" spacing={3} sx={{ pt: 5, borderRadius: 2, position: 'relative' }}>
           <Box
             component="img"
@@ -99,7 +120,7 @@ export default function Nav({ openNav, onCloseNav }) {
             Upgrade to Pro
           </Button>
         </Stack>
-      </Box>
+      </Box> */}
     </Scrollbar>
   );
 
