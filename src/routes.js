@@ -12,6 +12,7 @@ const ErrorPage = lazy(() => import('./pages/ErrorPage'));
 const ProductsPage = lazy(() => import('./pages/ProductsPage'));
 const DashboardAppPage = lazy(() => import('./pages/DashboardAppPage'));
 const AuthPage = lazy(() => import('./pages/AuthPage'));
+const GuestAuth = lazy(() => import('./sections/auth/login/GuestAuth'));
 const CheckAuth = lazy(() => import('./sections/auth/login/CheckAuth'));
 const ImageUploadPage = lazy(() => import('./pages/ImageUploadPage'));
 const HomePage = lazy(() => import('./pages/HomePage'))
@@ -29,7 +30,7 @@ export default function Router() {
   const routes = useRoutes([
     {
       path: '/',
-      element: <CheckAuth><DashboardLayout /></CheckAuth>,
+      element: <GuestAuth><DashboardLayout /></GuestAuth>,
       children: [
         { element: <HomePage />, index: true },
         { path: 'search/:seriesId/:searchTerms', element: <SearchPage /> },

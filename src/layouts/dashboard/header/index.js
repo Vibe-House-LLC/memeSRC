@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types';
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext, useRef, useCallback } from 'react';
 // @mui
 import { styled, useTheme } from '@mui/material/styles';
 import { Box, Stack, AppBar, Toolbar, Link, IconButton, Grid, Typography, Slide } from '@mui/material';
@@ -51,6 +51,10 @@ export default function Header({ onOpenNav }) {
 
   const [showLogo, setShowLogo] = useState(false);
 
+  const [logoShown, setLogoShown] = useState(false);
+
+  const containerRef = useRef(null);
+
   const renderLogo = () => (
     <Grid
       container
@@ -58,13 +62,13 @@ export default function Header({ onOpenNav }) {
       justifyContent="center"
       alignItems="center"
     >
-      <Link 
-        to="/" 
-        component={RouterLink} 
-        sx={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
+      <Link
+        to="/"
+        component={RouterLink}
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
           textDecoration: 'none',
           color: 'inherit',
           '&:hover': {
@@ -80,21 +84,23 @@ export default function Header({ onOpenNav }) {
     </Grid>
   );
 
+  const handleScroll = useCallback(() => {
+    const currentScrollPos = window.pageYOffset;
+  
+    // Show the logo if the user has scrolled down 1/3 of the view height, and it hasn't been shown yet
+    if (currentScrollPos > window.innerHeight / 3 && !logoShown) {
+      setShowLogo(true);
+      setLogoShown(true);
+    } else if (currentScrollPos <= window.innerHeight / 3 && logoShown) {
+      // Delay the hiding of the logo by 200 milliseconds
+      setTimeout(() => {
+        setShowLogo(false);
+        setLogoShown(false);
+      }, 200);
+    }
+  }, [logoShown]);
+  
   useEffect(() => {
-    const handleScroll = () => {
-      const currentScrollPos = window.pageYOffset;
-  
-      // Show the logo if the user has scrolled down 1/3 of the view height, otherwise hide it
-      if (currentScrollPos > window.innerHeight / 3) {
-        setShowLogo(true);
-      } else {
-        // Delay the hiding of the logo by 200 milliseconds
-        setTimeout(() => {
-          setShowLogo(false);
-        }, 200);
-      }
-    };
-  
     if (location.pathname === '/') {
       window.addEventListener('scroll', handleScroll);
     }
@@ -102,12 +108,12 @@ export default function Header({ onOpenNav }) {
     return () => {
       window.removeEventListener('scroll', handleScroll);
     };
-  }, [window.location.pathname]);
-  
+  }, [location.pathname, handleScroll]);
+
 
   return (
     <StyledRoot>
-      <StyledToolbar>
+      <StyledToolbar sx={{ position: 'relative' }} ref={containerRef}>
         <IconButton
           onClick={onOpenNav}
           sx={{
@@ -120,11 +126,15 @@ export default function Header({ onOpenNav }) {
 
         <Searchbar />
         <Box sx={{ flexGrow: 1 }} />
+          {location.pathname === '/'
+            ?
 
-        {location.pathname === '/'
-          ? <Slide direction="up" in={showLogo} mountOnEnter unmountOnExit>{renderLogo()}</Slide>
-          : renderLogo()
-        }
+            <Slide direction="up" container={containerRef.current} exit in={showLogo} mountOnEnter>
+
+              {renderLogo()}
+            </Slide>
+            : renderLogo()
+          }
 
         <Stack
           direction="row"

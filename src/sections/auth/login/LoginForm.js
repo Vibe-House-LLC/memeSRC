@@ -22,12 +22,15 @@ export default function LoginForm() {
 
   const [password, setPassword] = useState(null);
 
+  const [loading, setLoading] = useState(false);
+
   const {setUser} = useContext(UserContext)
 
   // Use the useLocation hook to get the location object
   const location = useLocation();
 
   const handleClick = () => {
+    setLoading(true);
     // Get the query string from the location object
     const queryString = location.search;
 
@@ -88,7 +91,7 @@ export default function LoginForm() {
         </Link>
       </Stack>
 
-      <LoadingButton fullWidth size="large" type="submit" variant="contained" onClick={handleClick}>
+      <LoadingButton loading={loading} fullWidth size="large" type="submit" variant="contained" onClick={handleClick}>
         Login
       </LoadingButton>
     </>
