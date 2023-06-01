@@ -26,8 +26,9 @@ export default function DashboardLayout() {
 
   const Main = styled('div')(({ theme }) => ({
     flexGrow: 1,
-    overflow: 'auto',
-    minHeight: '100%',
+    width: '100%',
+    // overflow: 'auto',
+    // minHeight: '100%',
     paddingTop: APP_BAR_MOBILE,
     paddingBottom: window.location.pathname === '/' ? 0 : theme.spacing(10),
     [theme.breakpoints.up('lg')]: {
