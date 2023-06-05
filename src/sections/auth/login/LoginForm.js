@@ -1,7 +1,7 @@
 import { useContext, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 // @mui
-import { Link, Stack, IconButton, InputAdornment, TextField, Checkbox, FormControlLabel } from '@mui/material';
+import { Link, Stack, IconButton, InputAdornment, TextField, Checkbox, FormControlLabel, Typography } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
 // components
 import { Auth } from 'aws-amplify';
@@ -24,7 +24,7 @@ export default function LoginForm() {
 
   const [loading, setLoading] = useState(false);
 
-  const {setUser} = useContext(UserContext)
+  const { setUser } = useContext(UserContext)
 
   // Use the useLocation hook to get the location object
   const location = useLocation();
@@ -52,7 +52,7 @@ export default function LoginForm() {
     }).catch((err) => {
       alert(err);
       console.log(err.name)
-      if(err.name === 'UserNotConfirmedException') {
+      if (err.name === 'UserNotConfirmedException') {
         setUser({
           userConfirmed: false,
           username
@@ -63,6 +63,12 @@ export default function LoginForm() {
 
   return (
     <>
+      <Typography variant="h4" gutterBottom>
+        Sign In
+      </Typography>
+      <Typography variant='body1' gutterBottom marginBottom={8}>
+        Need an account? <Link sx={{cursor: 'pointer'}} onClick={() => {navigate('/signup')}}>Click here.</Link>
+      </Typography>
       <Stack spacing={3}>
         <TextField name="text" label="Username" onInput={(x) => setUsername(x.target.value)} />
 

@@ -6,6 +6,9 @@ const TopBannerSearchRevised = lazy(() => import('./sections/search/TopBannerSea
 const DashboardSeriesPage = lazy(() => import('./pages/DashboardSeriesPage'));
 const DashboardLayout = lazy(() => import('./layouts/dashboard'));
 const BlogPage = lazy(() => import('./pages/BlogPage'));
+const LoginForm = lazy(() => import('./sections/auth/login/LoginForm'));
+const SignupForm = lazy(() => import('./sections/auth/login/SignupForm'));
+const VerifyForm = lazy(() => import('./sections/auth/login/VerifyForm'));
 const UserPage = lazy(() => import('./pages/UserPage'));
 const Page404 = lazy(() => import('./pages/Page404'));
 const ErrorPage = lazy(() => import('./pages/ErrorPage'));
@@ -58,11 +61,15 @@ export default function Router() {
     },
     {
       path: '/login',
-      element: <CheckAuth><AuthPage method="signin" /></CheckAuth>,
+      element: <CheckAuth><AuthPage><LoginForm /></AuthPage></CheckAuth>,
     },
     {
       path: '/signup',
-      element: <CheckAuth><AuthPage method="signup" /></CheckAuth>,
+      element: <CheckAuth><AuthPage><SignupForm /></AuthPage></CheckAuth>,
+    },
+    {
+      path: '/verify',
+      element: <CheckAuth><AuthPage><VerifyForm /></AuthPage></CheckAuth>,
     },
     {
       path: '/section/:sectionIndex',

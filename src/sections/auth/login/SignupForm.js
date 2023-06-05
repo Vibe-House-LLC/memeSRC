@@ -1,19 +1,23 @@
-import { useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 // import { useNavigate } from 'react-router-dom';
 // @mui
-import { Link, Stack, IconButton, InputAdornment, TextField, Checkbox } from '@mui/material';
+import { Link, Stack, IconButton, InputAdornment, TextField, Checkbox, Typography } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
 import { Auth } from 'aws-amplify';
 // utils
+import { useNavigate } from 'react-router-dom';
 import PropTypes from 'prop-types';
 // components
 import Iconify from '../../../components/iconify';
+import { UserContext } from '../../../UserContext';
 
 
 // ----------------------------------------------------------------------
 
 export default function SignupForm(props) {
-  // const navigate = useNavigate();
+  const navigate = useNavigate();
+
+  const { user, setUser } = useContext(UserContext);
 
   const [signupStatus, setSignupStatus] = useState({
     'loading': false,
@@ -105,7 +109,7 @@ export default function SignupForm(props) {
           'text': 'Sign Up Complete'
         });
         console.log(result)
-        props.setUser({
+        setUser({
           username,
           email,
           userConfirmed: false,
@@ -123,8 +127,20 @@ export default function SignupForm(props) {
     }
   }
 
+  useEffect(() => {
+    if (user && user.username && user.email && user.userConfirmed === false) {
+      navigate('/verify');
+    }
+  }, [user])
+
   return (
     <>
+      <Typography variant="h4" gutterBottom>
+        Sign Up
+      </Typography>
+      <Typography variant='body1' gutterBottom marginBottom={8}>
+        Already have an account? <Link sx={{cursor: 'pointer'}} onClick={() => {navigate('/login')}}>Click here.</Link>
+      </Typography>
       <Stack spacing={3}>
         <TextField
           name="username"

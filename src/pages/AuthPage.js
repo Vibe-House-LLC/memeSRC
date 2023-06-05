@@ -1,7 +1,7 @@
 import { Helmet } from 'react-helmet-async';
 import { useContext } from 'react';
 import { styled } from '@mui/material/styles';
-import { Container, Typography } from '@mui/material';
+import { Container, Link, Typography } from '@mui/material';
 import PropTypes from 'prop-types';
 import { LoginForm } from '../sections/auth/login';
 import Logo from '../components/logo';
@@ -61,10 +61,7 @@ export default function AuthPage(props) {
 
         <Container maxWidth="sm">
           <StyledContent>
-            <Typography variant="h4" gutterBottom marginBottom={8}>
-              {formTitle}
-            </Typography>
-            {formType}
+            {props.children}
           </StyledContent>
         </Container>
       </StyledRoot>
@@ -72,6 +69,6 @@ export default function AuthPage(props) {
   );
 };
 
-AuthPage.propTypes = {
-  method: PropTypes.string.isRequired,
-};
+// AuthPage.propTypes = {
+//   method: PropTypes.string.isRequired,
+// };
