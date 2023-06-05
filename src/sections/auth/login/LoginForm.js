@@ -41,16 +41,23 @@ export default function LoginForm() {
     const dest = queryParams.get('dest');
 
     // Handle sign in
-    if (!staySignedIn) {
-      Auth.configure({ storage: window.sessionStorage })
-    } else {
-      Auth.configure({ storage: window.localStorage })
-    }
+    // if (!staySignedIn) {
+    //   Auth.configure({ storage: window.sessionStorage })
+    // } else {
+    //   Auth.configure({ storage: window.localStorage })
+    // }
     Auth.signIn(username, password).then((x) => {
       setUser(x)
       navigate(dest || '/dashboard/app', { replace: true })
     }).catch((err) => {
       alert(err);
+      console.log(err.name)
+      if(err.name === 'UserNotConfirmedException') {
+        setUser({
+          userConfirmed: false,
+          username
+        })
+      }
     })
   };
 

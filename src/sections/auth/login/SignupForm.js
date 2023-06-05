@@ -81,7 +81,7 @@ export default function SignupForm(props) {
   const createUser = async () => {
     const errors = checkForErrors();
 
-    if (errors) {
+    if (!errors) {
       setSignupStatus({
         'loading': true,
         'disabled': true,
@@ -105,7 +105,11 @@ export default function SignupForm(props) {
           'text': 'Sign Up Complete'
         });
         console.log(result)
-        props.setUser(result.user)
+        props.setUser({
+          username,
+          email,
+          userConfirmed: false,
+        })
         console.log(result);
       }).catch((err) => {
         setSignupStatus({
@@ -138,6 +142,7 @@ export default function SignupForm(props) {
         <TextField
           name="email"
           label="Email address"
+          autoComplete='email'
           error={formErrors.email}
           onChange={(x) => {
             setEmail(x.target.value)
@@ -151,6 +156,7 @@ export default function SignupForm(props) {
         <TextField
           name="password"
           label="Password"
+          autoComplete='new-password'
           error={formErrors.password || formErrors.passwordMismatch}
           type={showPassword ? 'text' : 'password'}
           onChange={(x) => {
@@ -178,6 +184,7 @@ export default function SignupForm(props) {
           label="Confirm Password"
           error={formErrors.confirmPassword || formErrors.passwordMismatch}
           type={showPassword ? 'text' : 'password'}
+          autoComplete='new-password'
           onChange={(x) => {
             setConfirmPassword(x.target.value)
             setFormErrors({
