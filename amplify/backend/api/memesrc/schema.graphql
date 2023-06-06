@@ -20,6 +20,28 @@ type Series @model @auth(
   statusText: String,
 }
 
+type SourceMedia @model @auth(
+  rules: [
+    { allow: groups, groups: ["admins", "mods"] }
+  ]
+) {
+  id: ID!,
+  series: Series @hasOne,
+  files: [File] @hasMany,
+  status: String,
+}
+
+type File @model @auth(
+  rules: [
+    { allow: groups, groups: ["admins", "mods"] }
+  ]
+) {
+  id: ID!,
+  sourceMedia: SourceMedia @hasOne,
+  key: String,
+  status: String,
+}
+
 type Season @model @auth(
   rules: [
     { allow: groups, groups: ["admins", "mods"] },

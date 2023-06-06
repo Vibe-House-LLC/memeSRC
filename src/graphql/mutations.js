@@ -97,6 +97,243 @@ export const deleteSeries = /* GraphQL */ `
     }
   }
 `;
+export const createSourceMedia = /* GraphQL */ `
+  mutation CreateSourceMedia(
+    $input: CreateSourceMediaInput!
+    $condition: ModelSourceMediaConditionInput
+  ) {
+    createSourceMedia(input: $input, condition: $condition) {
+      id
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        seasons {
+          nextToken
+        }
+        statusText
+        createdAt
+        updatedAt
+      }
+      files {
+        items {
+          id
+          key
+          status
+          createdAt
+          updatedAt
+          sourceMediaFilesId
+          fileSourceMediaId
+        }
+        nextToken
+      }
+      status
+      createdAt
+      updatedAt
+      sourceMediaSeriesId
+    }
+  }
+`;
+export const updateSourceMedia = /* GraphQL */ `
+  mutation UpdateSourceMedia(
+    $input: UpdateSourceMediaInput!
+    $condition: ModelSourceMediaConditionInput
+  ) {
+    updateSourceMedia(input: $input, condition: $condition) {
+      id
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        seasons {
+          nextToken
+        }
+        statusText
+        createdAt
+        updatedAt
+      }
+      files {
+        items {
+          id
+          key
+          status
+          createdAt
+          updatedAt
+          sourceMediaFilesId
+          fileSourceMediaId
+        }
+        nextToken
+      }
+      status
+      createdAt
+      updatedAt
+      sourceMediaSeriesId
+    }
+  }
+`;
+export const deleteSourceMedia = /* GraphQL */ `
+  mutation DeleteSourceMedia(
+    $input: DeleteSourceMediaInput!
+    $condition: ModelSourceMediaConditionInput
+  ) {
+    deleteSourceMedia(input: $input, condition: $condition) {
+      id
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        seasons {
+          nextToken
+        }
+        statusText
+        createdAt
+        updatedAt
+      }
+      files {
+        items {
+          id
+          key
+          status
+          createdAt
+          updatedAt
+          sourceMediaFilesId
+          fileSourceMediaId
+        }
+        nextToken
+      }
+      status
+      createdAt
+      updatedAt
+      sourceMediaSeriesId
+    }
+  }
+`;
+export const createFile = /* GraphQL */ `
+  mutation CreateFile(
+    $input: CreateFileInput!
+    $condition: ModelFileConditionInput
+  ) {
+    createFile(input: $input, condition: $condition) {
+      id
+      sourceMedia {
+        id
+        series {
+          id
+          tvdbid
+          slug
+          name
+          year
+          image
+          description
+          statusText
+          createdAt
+          updatedAt
+        }
+        files {
+          nextToken
+        }
+        status
+        createdAt
+        updatedAt
+        sourceMediaSeriesId
+      }
+      key
+      status
+      createdAt
+      updatedAt
+      sourceMediaFilesId
+      fileSourceMediaId
+    }
+  }
+`;
+export const updateFile = /* GraphQL */ `
+  mutation UpdateFile(
+    $input: UpdateFileInput!
+    $condition: ModelFileConditionInput
+  ) {
+    updateFile(input: $input, condition: $condition) {
+      id
+      sourceMedia {
+        id
+        series {
+          id
+          tvdbid
+          slug
+          name
+          year
+          image
+          description
+          statusText
+          createdAt
+          updatedAt
+        }
+        files {
+          nextToken
+        }
+        status
+        createdAt
+        updatedAt
+        sourceMediaSeriesId
+      }
+      key
+      status
+      createdAt
+      updatedAt
+      sourceMediaFilesId
+      fileSourceMediaId
+    }
+  }
+`;
+export const deleteFile = /* GraphQL */ `
+  mutation DeleteFile(
+    $input: DeleteFileInput!
+    $condition: ModelFileConditionInput
+  ) {
+    deleteFile(input: $input, condition: $condition) {
+      id
+      sourceMedia {
+        id
+        series {
+          id
+          tvdbid
+          slug
+          name
+          year
+          image
+          description
+          statusText
+          createdAt
+          updatedAt
+        }
+        files {
+          nextToken
+        }
+        status
+        createdAt
+        updatedAt
+        sourceMediaSeriesId
+      }
+      key
+      status
+      createdAt
+      updatedAt
+      sourceMediaFilesId
+      fileSourceMediaId
+    }
+  }
+`;
 export const createSeason = /* GraphQL */ `
   mutation CreateSeason(
     $input: CreateSeasonInput!
