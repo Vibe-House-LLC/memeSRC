@@ -7,12 +7,15 @@ import { LoadingButton } from '@mui/lab';
 import { Auth } from 'aws-amplify';
 import Iconify from '../../../components/iconify';
 import { UserContext } from '../../../UserContext';
+import { SnackbarContext } from '../../../SnackbarContext';
 
 
 // ----------------------------------------------------------------------
 
 export default function LoginForm() {
   const navigate = useNavigate();
+
+  const { setSeverity, setMessage, setOpen } = useContext(SnackbarContext);
 
   const [showPassword, setShowPassword] = useState(false);
 
@@ -23,6 +26,11 @@ export default function LoginForm() {
   const [password, setPassword] = useState(null);
 
   const [loading, setLoading] = useState(false);
+
+  const [formErrors, setFormErrors] = useState({
+    username: false,
+    password: false
+  });
 
   const { setUser } = useContext(UserContext)
 
@@ -40,25 +48,62 @@ export default function LoginForm() {
     // Get the 'dest' parameter from the query string
     const dest = queryParams.get('dest');
 
+    // TODO: Get the session/local storage thing figured out. Currently if it's set to session, if you manually go to another page on the site it logs you out.
+
     // Handle sign in
     // if (!staySignedIn) {
     //   Auth.configure({ storage: window.sessionStorage })
     // } else {
     //   Auth.configure({ storage: window.localStorage })
     // }
-    Auth.signIn(username, password).then((x) => {
-      setUser(x)
-      navigate(dest || '/dashboard/app', { replace: true })
-    }).catch((err) => {
-      alert(err);
-      console.log(err.name)
-      if (err.name === 'UserNotConfirmedException') {
-        setUser({
-          userConfirmed: false,
-          username
-        })
-      }
-    })
+
+
+    if (username && password) {
+      Auth.signIn(username, password).then((x) => {
+        setUser(x)
+        navigate(dest || '/dashboard/app', { replace: true })
+      }).catch((error) => {
+        console.log(error.name)
+
+        switch (error.name) {
+          case 'UserNotConfirmedException':
+            setUser({
+              userConfirmed: false,
+              username
+            });
+            setOpen(true);
+            setMessage('Please verify your account.');
+            setSeverity('error');
+            navigate('/verify');
+            setLoading(false)
+            break;
+          case 'UserNotFoundException':
+            setOpen(true);
+            setMessage('Account not found. Please try again.');
+            setSeverity('error')
+            setFormErrors({
+              ...formErrors,
+              username: true
+            })
+            setLoading(false)
+            break;
+          default:
+            setOpen(true);
+            setMessage(`Error: ${error.message}`);
+            setSeverity('error')
+            setLoading(false)
+        }
+      })
+    } else {
+      setFormErrors({
+        username: (!username),
+        password: (!password)
+      })
+      setOpen(true);
+      setMessage(`${username ? '' : 'Username'}${(!username && !password) ? ' & ' : ''}${password ? '' : 'Password'} required.`);
+      setSeverity('error')
+      setLoading(false)
+    }
   };
 
   return (
@@ -67,15 +112,27 @@ export default function LoginForm() {
         Sign In
       </Typography>
       <Typography variant='body1' gutterBottom marginBottom={8}>
-        Need an account? <Link sx={{cursor: 'pointer'}} onClick={() => {navigate('/signup')}}>Click here.</Link>
+        Need an account? <Link sx={{ cursor: 'pointer' }} onClick={() => { navigate('/signup') }}>Click here.</Link>
       </Typography>
       <Stack spacing={3}>
-        <TextField name="text" label="Username" onInput={(x) => setUsername(x.target.value)} />
+        <TextField
+          name="text"
+          label="Username"
+          onInput={(x) => {
+            setUsername(x.target.value);
+            setFormErrors({
+              ...formErrors,
+              username: false
+            })
+          }}
+          error={formErrors.username}
+        />
 
         <TextField
           name="password"
           label="Password"
           type={showPassword ? 'text' : 'password'}
+          error={formErrors.password}
           InputProps={{
             endAdornment: (
               <InputAdornment position="end">
@@ -85,7 +142,13 @@ export default function LoginForm() {
               </InputAdornment>
             ),
           }}
-          onInput={(x) => setPassword(x.target.value)}
+          onInput={(x) => {
+            setPassword(x.target.value);
+            setFormErrors({
+              ...formErrors,
+              password: false
+            })
+          }}
         />
       </Stack>
 
@@ -95,6 +158,8 @@ export default function LoginForm() {
             <Checkbox
               name="remember"
               onChange={(event) => setStaySignedIn(event.target.checked)}
+              disabled
+              checked
             />
           }
           label="Remember me"

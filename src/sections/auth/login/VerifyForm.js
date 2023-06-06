@@ -4,9 +4,8 @@ import { Backdrop, CircularProgress, Link, Stack, TextField, Typography } from '
 import { LoadingButton } from '@mui/lab';
 import { Auth } from 'aws-amplify';
 import { useContext, useState } from 'react';
-import PropTypes from 'prop-types';
-import { Check } from '@mui/icons-material';
 import { UserContext } from '../../../UserContext';
+import { SnackbarContext } from '../../../SnackbarContext';
 
 // ----------------------------------------------------------------------
 
@@ -17,32 +16,78 @@ import { UserContext } from '../../../UserContext';
 export default function VerifyForm(props) {
   const navigate = useNavigate();
   const { user, setUser } = useContext(UserContext)
-
+  const { setSeverity, setMessage, setOpen } = useContext(SnackbarContext);
   const [code, setCode] = useState('')
   const [username, setUsername] = useState(user.username ? user.username : '');
-  const [email, setEmail] = useState(user.email ? user.email : '');
   const [loading, setLoading] = useState(false);
   const [backdropOpen, setBackdropOpen] = useState(false);
-  const [resendingCode, setResendingCode] = useState(false);
 
   const confirmSignUp = async () => {
+    setLoading(true)
     try {
       await Auth.confirmSignUp(username, code);
+      setSeverity('success');
+      setMessage(`Account Verified! ${user.username ? '' : 'Please log in.'}`);
+      setOpen(true)
       navigate('/dashboard', { replace: true });
+      setLoading(false)
     } catch (error) {
       console.log('error confirming sign up', error);
+      setLoading(false)
+      switch (error.name) {
+        case 'UserNotFoundException':
+          setSeverity('error');
+          setMessage(`Error: Username Not Found.`);
+          setOpen(true)
+          break;
+        case 'NotAuthorizedException':
+          if (error.message === 'User cannot be confirmed. Current status is CONFIRMED') {
+            setSeverity('success');
+            setMessage(`Account Already Verified. ${user.username ? '' : 'Please log in.'}`);
+            setOpen(true)
+            navigate('/dashboard', { replace: true });
+          } else {
+            setSeverity('error');
+            setMessage(`Error: ${error.message}`);
+            setOpen(true)
+          }
+          break;
+        default:
+          setSeverity('error');
+          setMessage(`Error: ${error.message}`);
+          setOpen(true)
+      }
     }
   }
 
   const handleResendVerification = () => {
-    setResendingCode('sending');
     setBackdropOpen(true)
     Auth.resendSignUp(username).then(() => {
-      setResendingCode('sent');
-      setTimeout(() => {
-        setBackdropOpen(false);
-      }, 1000)
-    }).catch(err => console.log(err));
+      setBackdropOpen(false)
+    }).catch(error => {
+      console.log(error);
+      switch(error.name) {
+        case 'TooManyRequestsException':
+          setSeverity('error');
+          setMessage(`Too many requests. Please try again later.`);
+          setOpen(true)
+        break;
+        case 'NotAuthorizedException': 
+        setSeverity('error');
+        setMessage(`Error: ${error.message}`);
+        setOpen(true)
+        break;
+        case 'InternalErrorException':
+          setSeverity('error');
+          setMessage(`Error: ${error.message}`);
+          setOpen(true)
+        break;
+        default:
+          setSeverity('error');
+          setMessage(`Error: ${error.message}`);
+          setOpen(true)
+      }
+    });
   }
 
   return (
@@ -81,7 +126,7 @@ export default function VerifyForm(props) {
         />
       </Stack>
 
-      <LoadingButton fullWidth size="large" type="submit" variant="contained" onClick={confirmSignUp}>
+      <LoadingButton loading={loading} fullWidth size="large" type="submit" variant="contained" onClick={confirmSignUp}>
         Verify
       </LoadingButton>
 
@@ -90,22 +135,12 @@ export default function VerifyForm(props) {
         open={backdropOpen}
       >
         <Stack alignItems='center' spacing={2}>
-          {(resendingCode === 'sending') &&
-            <>
-              <CircularProgress color="inherit" />
-              <Typography variant='h6'>
-                Resending verification code...
-              </Typography>
-            </>
-          }
-          {(resendingCode === 'sent') &&
-            <>
-              <Check fontSize='large' color='success' />
-              <Typography variant='h6'>
-                Verification Code Resent Successfully!
-              </Typography>
-            </>
-          }
+          <>
+            <CircularProgress color="inherit" />
+            <Typography variant='h6'>
+              Resending verification code...
+            </Typography>
+          </>
         </Stack>
       </Backdrop>
     </>
