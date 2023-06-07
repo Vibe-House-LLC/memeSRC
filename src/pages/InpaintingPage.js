@@ -51,16 +51,23 @@ export default function InpaintingPage() {
 
   const fabricCanvasInstance = React.useRef();
 
-  React.useEffect(() => {
+  const initializeCanvas = React.useCallback((newImageSrc) => {
+    if (fabricCanvasInstance.current) {
+      fabricCanvasInstance.current.dispose();
+    }
+
     const canvas = new fabric.Canvas(fabricCanvasRef.current, {
       selection: false,
     });
 
     fabricCanvasInstance.current = canvas;
+    canvas.isDrawingMode = true;
+    canvas.freeDrawingBrush.width = brushWidth;
+    canvas.freeDrawingBrush.color = 'red';
 
     const image = new Image();
-    image.crossOrigin = "anonymous";
-    image.src = imageSrc;
+    image.crossOrigin = 'anonymous';
+    image.src = newImageSrc;
     image.onload = function () {
       const fabricImage = new fabric.Image(image);
 
@@ -71,24 +78,17 @@ export default function InpaintingPage() {
         evented: false,
       });
 
-      canvas.clear();
       canvas.add(fabricImage);
-
       canvas.setDimensions({ width: image.width, height: image.height });
       fabricCanvasRef.current.width = image.width;
       fabricCanvasRef.current.height = image.height;
-
-      canvas.isDrawingMode = true;
-      canvas.freeDrawingBrush.width = brushWidth; 
-      canvas.freeDrawingBrush.color = 'red'; 
+      canvas.requestRenderAll();
     };
-  }, [imageSrc, brushWidth]);
+  }, [brushWidth]);
 
   React.useEffect(() => {
-    if (fabricCanvasInstance.current) {
-      fabricCanvasInstance.current.freeDrawingBrush.width = brushWidth;
-    }
-  }, [brushWidth]);
+    initializeCanvas(imageSrc);
+  }, [initializeCanvas, imageSrc, brushWidth]);
 
   const handleBrushWidthChange = (event, newValue) => {
     setBrushWidth(newValue);
@@ -125,7 +125,7 @@ export default function InpaintingPage() {
       if (obj instanceof fabric.Path) {
         const path = obj.toObject();
         const newPath = new fabric.Path(path.path, { ...path, fill: 'transparent', globalCompositeOperation: 'destination-out' });
-        
+
         newPath.scale(scale);
         newPath.set({ left: newPath.left * scale + offsetX, top: newPath.top * scale + offsetY });
 
@@ -176,29 +176,25 @@ export default function InpaintingPage() {
         setImageSrc(response.imageData);
       } catch (error) {
         console.log('Error posting to lambda function:', error);
-      }      
+      }
     }
   };
-
 
   return (
     <>
       <Helmet>
         <title>Inpainting Page | memeSRC 2.0</title>
       </Helmet>
-
       <Container>
         <StyledContent>
           <Typography variant="h4" paragraph>
             Inpainting Masking Demo
           </Typography>
-
           <Controls
             brushWidth={brushWidth}
             handleBrushWidthChange={handleBrushWidthChange}
             exportDrawing={exportDrawing}
           />
-
           <canvas ref={fabricCanvasRef} />
         </StyledContent>
       </Container>

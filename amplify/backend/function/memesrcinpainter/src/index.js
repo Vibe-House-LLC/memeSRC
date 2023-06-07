@@ -22,6 +22,8 @@ exports.handler = async (event) => {
     const mask_data = Buffer.from(body.mask.split(",")[1], 'base64');
     const prompt = body.prompt;
 
+    console.log('test')
+
     // Prepare the form data
     let formData = new FormData();
     formData.append('image', image_data, {
