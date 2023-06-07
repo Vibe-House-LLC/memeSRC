@@ -2,18 +2,48 @@ import React from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link as RouterLink } from 'react-router-dom';
 import { styled } from '@mui/material/styles';
-import { Button, Typography, Container, Slider } from '@mui/material';
+import { Button, Typography, Container, Slider, Box } from '@mui/material';
 import { fabric } from 'fabric';
 
 const StyledContent = styled('div')(({ theme }) => ({
-  maxWidth: 480,
   margin: 'auto',
   minHeight: '100vh',
   display: 'flex',
-  justifyContent: 'center',
   flexDirection: 'column',
-  padding: theme.spacing(12, 0),
+  alignItems: 'center',
+  padding: theme.spacing(2, 0),
 }));
+
+// Define the Controls component
+const Controls = ({ brushWidth, handleBrushWidthChange, exportDrawing }) => (
+  <Box sx={{ marginBottom: '16px', textAlign: 'center', display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+      <Typography id="brush-width-slider" sx={{ marginRight: '16px' }}>
+        Brush Width: {brushWidth}
+      </Typography>
+      <Box
+        sx={{
+          width: brushWidth,
+          height: brushWidth,
+          borderRadius: '50%',
+          backgroundColor: 'red',
+        }}
+      />
+    </Box>
+    <Slider
+      value={brushWidth}
+      onChange={handleBrushWidthChange}
+      min={1}
+      max={100}
+      step={1}
+      aria-labelledby="brush-width-slider"
+      sx={{ width: '50%' }} // Adjust this percentage as needed to fit your design
+    />
+    <Button onClick={exportDrawing} size="medium" variant="contained">
+      Export Masks
+    </Button>
+  </Box>
+);
 
 export default function InpaintingPage() {
   const fabricCanvasRef = React.useRef(null);
@@ -140,40 +170,20 @@ export default function InpaintingPage() {
       </Helmet>
 
       <Container>
-        <StyledContent sx={{ textAlign: 'center', alignItems: 'center' }}>
+        <StyledContent>
+        
+        
+        <Typography variant="h4" paragraph>  {/* Reduced the variant from h3 to h4 to decrease the font size */}
+          Inpainting Masking Demo
+        </Typography>
 
-          <Typography variant="h3" paragraph>
-            Inpainting Masking Demo
-          </Typography>
-
-          <canvas ref={fabricCanvasRef} />
-
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px' }}>
-            <Typography id="brush-width-slider" sx={{ marginRight: '16px' }}>
-              Brush Width: {brushWidth}
-            </Typography>
-            <div
-              style={{
-                width: brushWidth,
-                height: brushWidth,
-                borderRadius: '50%',
-                backgroundColor: 'red',
-              }}
-            />
-          </div>
-
-          <Slider
-            value={brushWidth}
-            onChange={handleBrushWidthChange}
-            min={1}
-            max={100}
-            step={1}
-            aria-labelledby="brush-width-slider"
+          <Controls
+            brushWidth={brushWidth}
+            handleBrushWidthChange={handleBrushWidthChange}
+            exportDrawing={exportDrawing}
           />
 
-          <Button onClick={exportDrawing} size="large" variant="contained">
-            Export Drawing
-          </Button>
+          <canvas ref={fabricCanvasRef} />
 
         </StyledContent>
       </Container>
