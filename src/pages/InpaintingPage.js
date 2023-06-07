@@ -3,6 +3,7 @@ import { Helmet } from 'react-helmet-async';
 import { styled } from '@mui/material/styles';
 import { Button, Typography, Container, Slider, Box } from '@mui/material';
 import { fabric } from 'fabric';
+import { API } from 'aws-amplify';
 
 const StyledContent = styled('div')(({ theme }) => ({
   margin: 'auto',
@@ -91,7 +92,7 @@ export default function InpaintingPage() {
     setBrushWidth(newValue);
   };
 
-  const exportDrawing = () => {
+  const exportDrawing = async () => {
     const originalCanvas = fabricCanvasInstance.current;
     const originalWidth = originalCanvas.getWidth();
     const originalHeight = originalCanvas.getHeight();
@@ -143,11 +144,6 @@ export default function InpaintingPage() {
       height: tempCanvasDrawing.getHeight(),
     });
 
-    const anchorDrawing = document.createElement('a');
-    anchorDrawing.href = dataURLDrawing;
-    anchorDrawing.download = 'mask.png';
-    anchorDrawing.click();
-
     if (fabricImage) {
       const tempCanvasBgImage = document.createElement('canvas');
       tempCanvasBgImage.width = 1024;
@@ -165,12 +161,22 @@ export default function InpaintingPage() {
 
       const dataURLBgImage = tempCanvasBgImage.toDataURL('image/png');
 
-      setTimeout(() => {
-        const anchorImage = document.createElement('a');
-        anchorImage.href = dataURLBgImage;
-        anchorImage.download = 'background.png';
-        anchorImage.click();
-      }, 1000);
+      // Create a JSON object with the base64 image data and the prompt
+      const data = {
+        image: dataURLBgImage,
+        mask: dataURLDrawing,
+        prompt: "rainbow",
+      };
+
+      // Make a POST request to the lambda function
+      try {
+        const response = await API.post('inpainter', '/endpoint', {
+          body: data
+        });
+        console.log(response);
+      } catch (error) {
+        console.log('Error posting to lambda function:', error);
+      }
     }
   };
 
