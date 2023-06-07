@@ -1,6 +1,5 @@
 import React from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Link as RouterLink } from 'react-router-dom';
 import { styled } from '@mui/material/styles';
 import { Button, Typography, Container, Slider, Box } from '@mui/material';
 import { fabric } from 'fabric';
@@ -14,7 +13,6 @@ const StyledContent = styled('div')(({ theme }) => ({
   padding: theme.spacing(2, 0),
 }));
 
-// Define the Controls component
 const Controls = ({ brushWidth, handleBrushWidthChange, exportDrawing }) => (
   <Box sx={{ marginBottom: '16px', textAlign: 'center', display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
     <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -47,37 +45,42 @@ const Controls = ({ brushWidth, handleBrushWidthChange, exportDrawing }) => (
 
 export default function InpaintingPage() {
   const fabricCanvasRef = React.useRef(null);
-  const [brushWidth, setBrushWidth] = React.useState(50); // Initial brush width
+  const [brushWidth, setBrushWidth] = React.useState(50);
 
-  // Reference to the fabric.Canvas instance
   const fabricCanvasInstance = React.useRef();
 
-  // Initialize canvas and load image (run only once after mounting)
   React.useEffect(() => {
     const canvas = new fabric.Canvas(fabricCanvasRef.current, {
       selection: false,
     });
+
     fabricCanvasInstance.current = canvas;
 
     const image = new Image();
     image.crossOrigin = "anonymous";
-    image.src = 'https://i-dev.memesrc.com/3fbef76c-4ef5-404d-a587-efef1342d512.jpg';
+    image.src = 'https://memesrc.com/seinfeld/img/5/10/seinfeld-5-10-2087.jpg';
     image.onload = function () {
       const fabricImage = new fabric.Image(image);
+
+      fabricImage.set({
+        left: 0,
+        top: 0,
+        selectable: false,
+        evented: false,
+      });
+
       canvas.add(fabricImage);
-      fabricImage.set({ selectable: false, evented: false });
+
       canvas.setDimensions({ width: image.width, height: image.height });
       fabricCanvasRef.current.width = image.width;
       fabricCanvasRef.current.height = image.height;
 
-      // Enable free drawing after the image is loaded and added
       canvas.isDrawingMode = true;
-      canvas.freeDrawingBrush.width = brushWidth; // Set initial brush width
-      canvas.freeDrawingBrush.color = 'red'; // Set brush color
+      canvas.freeDrawingBrush.width = brushWidth; 
+      canvas.freeDrawingBrush.color = 'red'; 
     };
   }, []);
 
-  // Update brush width when brushWidth state changes (run whenever brushWidth changes)
   React.useEffect(() => {
     if (fabricCanvasInstance.current) {
       fabricCanvasInstance.current.freeDrawingBrush.width = brushWidth;
@@ -90,15 +93,15 @@ export default function InpaintingPage() {
 
   const exportDrawing = () => {
     const originalCanvas = fabricCanvasInstance.current;
-  
-    // Create a temporary canvas for drawing
+    const originalWidth = originalCanvas.getWidth();
+    const originalHeight = originalCanvas.getHeight();
+
     const tempCanvasDrawing = new fabric.Canvas();
-    tempCanvasDrawing.setWidth(originalCanvas.getWidth());
-    tempCanvasDrawing.setHeight(originalCanvas.getHeight());
-  
-    let fabricImage = null; // Reference to the fabric.Image instance
-  
-    // Create a solid rectangle that covers the entire canvas
+    tempCanvasDrawing.setWidth(1024);
+    tempCanvasDrawing.setHeight(1024);
+
+    let fabricImage = null;
+
     const solidRect = new fabric.Rect({
       left: 0,
       top: 0,
@@ -108,24 +111,30 @@ export default function InpaintingPage() {
       selectable: false,
       evented: false,
     });
-  
+
     tempCanvasDrawing.add(solidRect);
-  
-    // Copy path objects (the drawings) from the original canvas to the temporary one
+
+    const scale = Math.min(1024 / originalWidth, 1024 / originalHeight);
+    const offsetX = (1024 - originalWidth * scale) / 2;
+    const offsetY = (1024 - originalHeight * scale) / 2;
+
     originalCanvas.getObjects().forEach((obj) => {
       if (obj instanceof fabric.Path) {
         const path = obj.toObject();
-        // Set fill to 'transparent' and globalCompositeOperation to 'destination-out'
-        // to create the effect of an inverted mask
-        tempCanvasDrawing.add(new fabric.Path(path.path, { ...path, fill: 'transparent', globalCompositeOperation: 'destination-out' }));
+        const newPath = new fabric.Path(path.path, { ...path, fill: 'transparent', globalCompositeOperation: 'destination-out' });
+        
+        // Scale and reposition the paths
+        newPath.scale(scale);
+        newPath.set({ left: newPath.left * scale + offsetX, top: newPath.top * scale + offsetY });
+
+        tempCanvasDrawing.add(newPath);
       }
-    
+
       if (obj instanceof fabric.Image) {
         fabricImage = obj;
       }
     });
-  
-    // Export the drawing
+
     const dataURLDrawing = tempCanvasDrawing.toDataURL({
       format: 'png',
       left: 0,
@@ -133,35 +142,38 @@ export default function InpaintingPage() {
       width: tempCanvasDrawing.getWidth(),
       height: tempCanvasDrawing.getHeight(),
     });
-  
-    // Create anchor for drawing download
+
     const anchorDrawing = document.createElement('a');
     anchorDrawing.href = dataURLDrawing;
-    anchorDrawing.download = 'drawing.png';
+    anchorDrawing.download = 'mask.png';
     anchorDrawing.click();
-  
+
     if (fabricImage) {
-      // Create a temporary canvas for background image
       const tempCanvasBgImage = document.createElement('canvas');
-      tempCanvasBgImage.width = originalCanvas.getWidth();
-      tempCanvasBgImage.height = originalCanvas.getHeight();
-  
-      // Draw the image onto the temporary canvas
+      tempCanvasBgImage.width = 1024;
+      tempCanvasBgImage.height = 1024;
+
       const context = tempCanvasBgImage.getContext('2d');
-      context.drawImage(fabricImage._element, 0, 0, tempCanvasBgImage.width, tempCanvasBgImage.height);
-  
-      // Export the background image
+
+      const scale = Math.min(tempCanvasBgImage.width / fabricImage.width, tempCanvasBgImage.height / fabricImage.height);
+      const width = fabricImage.width * scale;
+      const height = fabricImage.height * scale;
+      const x = (tempCanvasBgImage.width - width) / 2;
+      const y = (tempCanvasBgImage.height - height) / 2;
+
+      context.drawImage(fabricImage._element, x, y, width, height);
+
       const dataURLBgImage = tempCanvasBgImage.toDataURL('image/png');
-  
-      // Introduce a delay before initiating the second download
+
       setTimeout(() => {
         const anchorImage = document.createElement('a');
         anchorImage.href = dataURLBgImage;
         anchorImage.download = 'background.png';
         anchorImage.click();
-      }, 1000); // 1000 ms delay
+      }, 1000);
     }
-  };    
+  };
+
 
   return (
     <>
@@ -171,11 +183,9 @@ export default function InpaintingPage() {
 
       <Container>
         <StyledContent>
-        
-        
-        <Typography variant="h4" paragraph>  {/* Reduced the variant from h3 to h4 to decrease the font size */}
-          Inpainting Masking Demo
-        </Typography>
+          <Typography variant="h4" paragraph>
+            Inpainting Masking Demo
+          </Typography>
 
           <Controls
             brushWidth={brushWidth}
@@ -184,7 +194,6 @@ export default function InpaintingPage() {
           />
 
           <canvas ref={fabricCanvasRef} />
-
         </StyledContent>
       </Container>
     </>
