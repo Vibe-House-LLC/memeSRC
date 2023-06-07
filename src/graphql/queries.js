@@ -56,6 +56,139 @@ export const listSeries = /* GraphQL */ `
     }
   }
 `;
+export const getSourceMedia = /* GraphQL */ `
+  query GetSourceMedia($id: ID!) {
+    getSourceMedia(id: $id) {
+      id
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        seasons {
+          nextToken
+        }
+        statusText
+        createdAt
+        updatedAt
+      }
+      files {
+        items {
+          id
+          key
+          status
+          createdAt
+          updatedAt
+          sourceMediaFilesId
+          fileSourceMediaId
+        }
+        nextToken
+      }
+      status
+      createdAt
+      updatedAt
+      sourceMediaSeriesId
+    }
+  }
+`;
+export const listSourceMedias = /* GraphQL */ `
+  query ListSourceMedias(
+    $filter: ModelSourceMediaFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listSourceMedias(filter: $filter, limit: $limit, nextToken: $nextToken) {
+      items {
+        id
+        series {
+          id
+          tvdbid
+          slug
+          name
+          year
+          image
+          description
+          statusText
+          createdAt
+          updatedAt
+        }
+        files {
+          nextToken
+        }
+        status
+        createdAt
+        updatedAt
+        sourceMediaSeriesId
+      }
+      nextToken
+    }
+  }
+`;
+export const getFile = /* GraphQL */ `
+  query GetFile($id: ID!) {
+    getFile(id: $id) {
+      id
+      sourceMedia {
+        id
+        series {
+          id
+          tvdbid
+          slug
+          name
+          year
+          image
+          description
+          statusText
+          createdAt
+          updatedAt
+        }
+        files {
+          nextToken
+        }
+        status
+        createdAt
+        updatedAt
+        sourceMediaSeriesId
+      }
+      key
+      status
+      createdAt
+      updatedAt
+      sourceMediaFilesId
+      fileSourceMediaId
+    }
+  }
+`;
+export const listFiles = /* GraphQL */ `
+  query ListFiles(
+    $filter: ModelFileFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listFiles(filter: $filter, limit: $limit, nextToken: $nextToken) {
+      items {
+        id
+        sourceMedia {
+          id
+          status
+          createdAt
+          updatedAt
+          sourceMediaSeriesId
+        }
+        key
+        status
+        createdAt
+        updatedAt
+        sourceMediaFilesId
+        fileSourceMediaId
+      }
+      nextToken
+    }
+  }
+`;
 export const getSeason = /* GraphQL */ `
   query GetSeason($id: ID!) {
     getSeason(id: $id) {

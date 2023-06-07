@@ -5,6 +5,7 @@ import { Box, Link, Card, Grid, Avatar, Typography, CardContent, IconButton, Lis
 import { MoreHoriz, MoreVert } from '@mui/icons-material';
 import { useState } from 'react';
 // utils
+import { useNavigate } from 'react-router-dom';
 import { fDate } from '../../../utils/formatTime';
 import { fShortenNumber } from '../../../utils/formatNumber';
 //
@@ -73,6 +74,7 @@ export default function SeriesCard({ post, isOverlay = false, isLarge = false, h
   const { cover, name, view, comment, share, author, createdAt, id, year, statusText } = post;
   const [anchorEl, setAnchorEl] = useState(null);
   const [openConfirmation, setOpenConfirmation] = useState(false);
+  const navigate = useNavigate();
 
   const handleConfirmationOpen = () => {
     setOpenConfirmation(true);
@@ -243,6 +245,11 @@ export default function SeriesCard({ post, isOverlay = false, isLarge = false, h
             handleEdit(post);
           }}>
             <ListItemText primary="Edit" />
+          </ListItem>
+          <ListItem button onClick={() => {
+            navigate(`/dashboard/addtoseries/${id}`)
+          }}>
+            <ListItemText primary="Add To Series" />
           </ListItem>
           <ListItem button onClick={() => {
             handleClose();

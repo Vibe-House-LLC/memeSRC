@@ -88,6 +88,231 @@ export const onDeleteSeries = /* GraphQL */ `
     }
   }
 `;
+export const onCreateSourceMedia = /* GraphQL */ `
+  subscription OnCreateSourceMedia(
+    $filter: ModelSubscriptionSourceMediaFilterInput
+  ) {
+    onCreateSourceMedia(filter: $filter) {
+      id
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        seasons {
+          nextToken
+        }
+        statusText
+        createdAt
+        updatedAt
+      }
+      files {
+        items {
+          id
+          key
+          status
+          createdAt
+          updatedAt
+          sourceMediaFilesId
+          fileSourceMediaId
+        }
+        nextToken
+      }
+      status
+      createdAt
+      updatedAt
+      sourceMediaSeriesId
+    }
+  }
+`;
+export const onUpdateSourceMedia = /* GraphQL */ `
+  subscription OnUpdateSourceMedia(
+    $filter: ModelSubscriptionSourceMediaFilterInput
+  ) {
+    onUpdateSourceMedia(filter: $filter) {
+      id
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        seasons {
+          nextToken
+        }
+        statusText
+        createdAt
+        updatedAt
+      }
+      files {
+        items {
+          id
+          key
+          status
+          createdAt
+          updatedAt
+          sourceMediaFilesId
+          fileSourceMediaId
+        }
+        nextToken
+      }
+      status
+      createdAt
+      updatedAt
+      sourceMediaSeriesId
+    }
+  }
+`;
+export const onDeleteSourceMedia = /* GraphQL */ `
+  subscription OnDeleteSourceMedia(
+    $filter: ModelSubscriptionSourceMediaFilterInput
+  ) {
+    onDeleteSourceMedia(filter: $filter) {
+      id
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        seasons {
+          nextToken
+        }
+        statusText
+        createdAt
+        updatedAt
+      }
+      files {
+        items {
+          id
+          key
+          status
+          createdAt
+          updatedAt
+          sourceMediaFilesId
+          fileSourceMediaId
+        }
+        nextToken
+      }
+      status
+      createdAt
+      updatedAt
+      sourceMediaSeriesId
+    }
+  }
+`;
+export const onCreateFile = /* GraphQL */ `
+  subscription OnCreateFile($filter: ModelSubscriptionFileFilterInput) {
+    onCreateFile(filter: $filter) {
+      id
+      sourceMedia {
+        id
+        series {
+          id
+          tvdbid
+          slug
+          name
+          year
+          image
+          description
+          statusText
+          createdAt
+          updatedAt
+        }
+        files {
+          nextToken
+        }
+        status
+        createdAt
+        updatedAt
+        sourceMediaSeriesId
+      }
+      key
+      status
+      createdAt
+      updatedAt
+      sourceMediaFilesId
+      fileSourceMediaId
+    }
+  }
+`;
+export const onUpdateFile = /* GraphQL */ `
+  subscription OnUpdateFile($filter: ModelSubscriptionFileFilterInput) {
+    onUpdateFile(filter: $filter) {
+      id
+      sourceMedia {
+        id
+        series {
+          id
+          tvdbid
+          slug
+          name
+          year
+          image
+          description
+          statusText
+          createdAt
+          updatedAt
+        }
+        files {
+          nextToken
+        }
+        status
+        createdAt
+        updatedAt
+        sourceMediaSeriesId
+      }
+      key
+      status
+      createdAt
+      updatedAt
+      sourceMediaFilesId
+      fileSourceMediaId
+    }
+  }
+`;
+export const onDeleteFile = /* GraphQL */ `
+  subscription OnDeleteFile($filter: ModelSubscriptionFileFilterInput) {
+    onDeleteFile(filter: $filter) {
+      id
+      sourceMedia {
+        id
+        series {
+          id
+          tvdbid
+          slug
+          name
+          year
+          image
+          description
+          statusText
+          createdAt
+          updatedAt
+        }
+        files {
+          nextToken
+        }
+        status
+        createdAt
+        updatedAt
+        sourceMediaSeriesId
+      }
+      key
+      status
+      createdAt
+      updatedAt
+      sourceMediaFilesId
+      fileSourceMediaId
+    }
+  }
+`;
 export const onCreateSeason = /* GraphQL */ `
   subscription OnCreateSeason($filter: ModelSubscriptionSeasonFilterInput) {
     onCreateSeason(filter: $filter) {
