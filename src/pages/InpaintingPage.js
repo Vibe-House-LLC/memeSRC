@@ -98,12 +98,9 @@ export default function InpaintingPage() {
 
       <Container>
         <StyledContent sx={{ textAlign: 'center', alignItems: 'center' }}>
+          
           <Typography variant="h3" paragraph>
-            Inpainting Page
-          </Typography>
-
-          <Typography sx={{ color: 'text.secondary' }}>
-            This page allows you to perform image inpainting.
+            Inpainting Masking Demo
           </Typography>
 
           <canvas ref={fabricCanvasRef} />
@@ -135,9 +132,6 @@ export default function InpaintingPage() {
             Export Drawing
           </Button>
 
-          <Button to="/" size="large" variant="contained" component={RouterLink}>
-            Go to Home
-          </Button>
         </StyledContent>
       </Container>
     </>
