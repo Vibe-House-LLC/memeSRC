@@ -1,6 +1,7 @@
 import { Navigate, useRoutes } from 'react-router-dom';
 import { lazy } from 'react';
 import AddSeriesPage from './pages/AddSeriesPage';
+import InpaintingPage from './pages/InpaintingPage';
 
 const TopBannerSearchRevised = lazy(() => import('./sections/search/TopBannerSeachRevised'));
 const DashboardSeriesPage = lazy(() => import('./pages/DashboardSeriesPage'));
@@ -57,6 +58,7 @@ export default function Router() {
         { path: 'homepagesections', element: <HomepageSectionPage /> },
         { path: 'series', element: <DashboardSeriesPage /> },
         { path: 'addseries', element: <AddSeriesPage /> },
+        { path: 'inpainting', element: <InpaintingPage /> }
       ],
     },
     {
