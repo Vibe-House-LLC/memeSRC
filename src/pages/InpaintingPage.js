@@ -40,7 +40,7 @@ const Controls = ({ brushWidth, handleBrushWidthChange, exportDrawing }) => (
       sx={{ width: '50%' }} // Adjust this percentage as needed to fit your design
     />
     <Button onClick={exportDrawing} size="medium" variant="contained">
-      Export Masks
+      Export Components
     </Button>
   </Box>
 );
