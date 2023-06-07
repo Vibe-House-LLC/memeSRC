@@ -128,6 +128,14 @@
           ],
           "category": "function",
           "resourceName": "memesrcTVDB"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcinpainter"
         }
       ],
       "providerPlugin": "awscloudformation",
@@ -320,6 +328,12 @@
     },
     "memesrcUUID": {
       "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "memesrcinpainter": {
+      "build": true,
+      "dependsOn": [],
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     }
@@ -536,6 +550,30 @@
         {
           "category": "function",
           "resourceName": "memesrcUUID"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcinpainter_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcinpainter"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcinpainter_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcinpainter"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcinpainter_secretsPathAmplifyAppId": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcinpainter"
         }
       ]
     }

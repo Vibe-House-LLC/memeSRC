@@ -66,6 +66,33 @@
         },
         "setting": "private"
       }
+    },
+    "/inpaint": {
+      "name": "/inpaint",
+      "lambdaFunction": "memesrcinpainter",
+      "permissions": {
+        "setting": "private",
+        "auth": [
+          "create",
+          "read",
+          "update",
+          "delete"
+        ],
+        "groups": {
+          "admins": [
+            "create",
+            "read",
+            "update",
+            "delete"
+          ],
+          "mods": [
+            "create",
+            "read",
+            "update",
+            "delete"
+          ]
+        }
+      }
     }
   }
 }

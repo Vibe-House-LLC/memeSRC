@@ -47,6 +47,7 @@ const Controls = ({ brushWidth, handleBrushWidthChange, exportDrawing }) => (
 export default function InpaintingPage() {
   const fabricCanvasRef = React.useRef(null);
   const [brushWidth, setBrushWidth] = React.useState(50);
+  const [imageSrc, setImageSrc] = React.useState('https://memesrc.com/seinfeld/img/5/10/seinfeld-5-10-2087.jpg');
 
   const fabricCanvasInstance = React.useRef();
 
@@ -59,7 +60,7 @@ export default function InpaintingPage() {
 
     const image = new Image();
     image.crossOrigin = "anonymous";
-    image.src = 'https://memesrc.com/seinfeld/img/5/10/seinfeld-5-10-2087.jpg';
+    image.src = imageSrc;
     image.onload = function () {
       const fabricImage = new fabric.Image(image);
 
@@ -70,6 +71,7 @@ export default function InpaintingPage() {
         evented: false,
       });
 
+      canvas.clear();
       canvas.add(fabricImage);
 
       canvas.setDimensions({ width: image.width, height: image.height });
@@ -80,7 +82,7 @@ export default function InpaintingPage() {
       canvas.freeDrawingBrush.width = brushWidth; 
       canvas.freeDrawingBrush.color = 'red'; 
     };
-  }, []);
+  }, [imageSrc, brushWidth]);
 
   React.useEffect(() => {
     if (fabricCanvasInstance.current) {
@@ -124,7 +126,6 @@ export default function InpaintingPage() {
         const path = obj.toObject();
         const newPath = new fabric.Path(path.path, { ...path, fill: 'transparent', globalCompositeOperation: 'destination-out' });
         
-        // Scale and reposition the paths
         newPath.scale(scale);
         newPath.set({ left: newPath.left * scale + offsetX, top: newPath.top * scale + offsetY });
 
@@ -161,22 +162,21 @@ export default function InpaintingPage() {
 
       const dataURLBgImage = tempCanvasBgImage.toDataURL('image/png');
 
-      // Create a JSON object with the base64 image data and the prompt
       const data = {
         image: dataURLBgImage,
         mask: dataURLDrawing,
         prompt: "rainbow",
       };
 
-      // Make a POST request to the lambda function
       try {
-        const response = await API.post('inpainter', '/endpoint', {
+        const response = await API.post('publicapi', '/inpaint', {
           body: data
         });
         console.log(response);
+        setImageSrc(response.imageData);
       } catch (error) {
         console.log('Error posting to lambda function:', error);
-      }
+      }      
     }
   };
 
