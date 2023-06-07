@@ -181,13 +181,13 @@ export default function InpaintingPage() {
         const finalContext = finalCanvas.getContext('2d');
 
         responseImg.onload = function() {
-          const scale = Math.min(originalWidth / responseImg.width, originalHeight / responseImg.height);
+          const scale = Math.max(originalWidth / responseImg.width, originalHeight / responseImg.height);
           const width = responseImg.width * scale;
           const height = responseImg.height * scale;
           const x = (finalCanvas.width - width) / 2;
           const y = (finalCanvas.height - height) / 2;
-          
           finalContext.drawImage(responseImg, x, y, width, height);
+          
           const croppedDataURL = finalCanvas.toDataURL('image/png');
           setImageSrc(croppedDataURL);
         };
