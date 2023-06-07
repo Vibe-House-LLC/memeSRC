@@ -47,7 +47,7 @@ const Controls = ({ brushWidth, handleBrushWidthChange, exportDrawing }) => (
 
 export default function InpaintingPage() {
   const fabricCanvasRef = React.useRef(null);
-  const [brushWidth, setBrushWidth] = React.useState(5); // Initial brush width
+  const [brushWidth, setBrushWidth] = React.useState(50); // Initial brush width
 
   // Reference to the fabric.Canvas instance
   const fabricCanvasInstance = React.useRef();
