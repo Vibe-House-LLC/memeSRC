@@ -18,6 +18,7 @@ const AuthPage = lazy(() => import('./pages/AuthPage'));
 const GuestAuth = lazy(() => import('./sections/auth/login/GuestAuth'));
 const CheckAuth = lazy(() => import('./sections/auth/login/CheckAuth'));
 const ImageUploadPage = lazy(() => import('./pages/ImageUploadPage'));
+const AddToSeriesPage = lazy(() => import('./pages/AddToSeriesPage'));
 const HomePage = lazy(() => import('./pages/HomePage'))
 const SearchPage = lazy(() => import('./pages/SearchPage'));
 const EditorPage = lazy(() => import('./pages/EditorPage'));
@@ -57,6 +58,7 @@ export default function Router() {
         { path: 'homepagesections', element: <HomepageSectionPage /> },
         { path: 'series', element: <DashboardSeriesPage /> },
         { path: 'addseries', element: <AddSeriesPage /> },
+        { path: 'addtoseries/:seriesId', element: <AddToSeriesPage /> }
       ],
     },
     {
