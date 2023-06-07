@@ -32,6 +32,11 @@ const navConfig = [
     path: '/dashboard/homepagesections',
     icon: icon('ic_file')
   },
+  {
+    title: 'inpainting demo',
+    path: '/dashboard/inpainting',
+    icon: icon('ic_file')
+  },
   // {
   //   title: 'upload',
   //   path: '/dashboard/imageupload',
