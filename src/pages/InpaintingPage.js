@@ -61,34 +61,77 @@ export default function InpaintingPage() {
   const exportDrawing = () => {
     const originalCanvas = fabricCanvasInstance.current;
   
-    // Create a temporary canvas
-    const tempCanvas = new fabric.Canvas();
-    tempCanvas.setWidth(originalCanvas.getWidth());
-    tempCanvas.setHeight(originalCanvas.getHeight());
+    // Create a temporary canvas for drawing
+    const tempCanvasDrawing = new fabric.Canvas();
+    tempCanvasDrawing.setWidth(originalCanvas.getWidth());
+    tempCanvasDrawing.setHeight(originalCanvas.getHeight());
+  
+    let fabricImage = null; // Reference to the fabric.Image instance
+  
+    // Create a solid rectangle that covers the entire canvas
+    const solidRect = new fabric.Rect({
+      left: 0,
+      top: 0,
+      width: tempCanvasDrawing.getWidth(),
+      height: tempCanvasDrawing.getHeight(),
+      fill: 'black',
+      selectable: false,
+      evented: false,
+    });
+  
+    tempCanvasDrawing.add(solidRect);
   
     // Copy path objects (the drawings) from the original canvas to the temporary one
     originalCanvas.getObjects().forEach((obj) => {
       if (obj instanceof fabric.Path) {
         const path = obj.toObject();
-        tempCanvas.add(new fabric.Path(path.path, path));
+        // Set fill to 'transparent' and globalCompositeOperation to 'destination-out'
+        // to create the effect of an inverted mask
+        tempCanvasDrawing.add(new fabric.Path(path.path, { ...path, fill: 'transparent', globalCompositeOperation: 'destination-out' }));
+      }
+    
+      if (obj instanceof fabric.Image) {
+        fabricImage = obj;
       }
     });
   
     // Export the drawing
-    const dataURL = tempCanvas.toDataURL({
+    const dataURLDrawing = tempCanvasDrawing.toDataURL({
       format: 'png',
       left: 0,
       top: 0,
-      width: tempCanvas.getWidth(),
-      height: tempCanvas.getHeight(),
+      width: tempCanvasDrawing.getWidth(),
+      height: tempCanvasDrawing.getHeight(),
     });
-    
-    const anchor = document.createElement('a');
-    anchor.href = dataURL;
-    anchor.download = 'drawing.png';
-    anchor.click();
-  };
   
+    // Create anchor for drawing download
+    const anchorDrawing = document.createElement('a');
+    anchorDrawing.href = dataURLDrawing;
+    anchorDrawing.download = 'drawing.png';
+    anchorDrawing.click();
+  
+    if (fabricImage) {
+      // Create a temporary canvas for background image
+      const tempCanvasBgImage = document.createElement('canvas');
+      tempCanvasBgImage.width = originalCanvas.getWidth();
+      tempCanvasBgImage.height = originalCanvas.getHeight();
+  
+      // Draw the image onto the temporary canvas
+      const context = tempCanvasBgImage.getContext('2d');
+      context.drawImage(fabricImage._element, 0, 0, tempCanvasBgImage.width, tempCanvasBgImage.height);
+  
+      // Export the background image
+      const dataURLBgImage = tempCanvasBgImage.toDataURL('image/png');
+  
+      // Introduce a delay before initiating the second download
+      setTimeout(() => {
+        const anchorImage = document.createElement('a');
+        anchorImage.href = dataURLBgImage;
+        anchorImage.download = 'background.png';
+        anchorImage.click();
+      }, 1000); // 1000 ms delay
+    }
+  };    
 
   return (
     <>
@@ -98,7 +141,7 @@ export default function InpaintingPage() {
 
       <Container>
         <StyledContent sx={{ textAlign: 'center', alignItems: 'center' }}>
-          
+
           <Typography variant="h3" paragraph>
             Inpainting Masking Demo
           </Typography>
@@ -114,7 +157,7 @@ export default function InpaintingPage() {
                 width: brushWidth,
                 height: brushWidth,
                 borderRadius: '50%',
-                backgroundColor: 'black',
+                backgroundColor: 'red',
               }}
             />
           </div>
