@@ -117,7 +117,7 @@ export default function InpaintingPage() {
 
     tempCanvasDrawing.add(solidRect);
 
-    const scale = Math.min(1024 / originalWidth, 1024 / originalHeight);
+    const scale = Math.max(1024 / originalWidth, 1024 / originalHeight);
     const offsetX = (1024 - originalWidth * scale) / 2;
     const offsetY = (1024 - originalHeight * scale) / 2;
 
@@ -152,7 +152,7 @@ export default function InpaintingPage() {
 
       const context = tempCanvasBgImage.getContext('2d');
 
-      const scale = Math.min(tempCanvasBgImage.width / fabricImage.width, tempCanvasBgImage.height / fabricImage.height);
+      const scale = Math.max(tempCanvasBgImage.width / fabricImage.width, tempCanvasBgImage.height / fabricImage.height);
       const width = fabricImage.width * scale;
       const height = fabricImage.height * scale;
       const x = (tempCanvasBgImage.width - width) / 2;
@@ -172,8 +172,26 @@ export default function InpaintingPage() {
         const response = await API.post('publicapi', '/inpaint', {
           body: data
         });
-        console.log(response);
-        setImageSrc(response.imageData);
+        const responseImg = new Image();
+        responseImg.src = response.imageData;
+        
+        const finalCanvas = document.createElement('canvas');
+        finalCanvas.width = originalWidth;
+        finalCanvas.height = originalHeight;
+        const finalContext = finalCanvas.getContext('2d');
+
+        responseImg.onload = function() {
+          const scale = Math.min(originalWidth / responseImg.width, originalHeight / responseImg.height);
+          const width = responseImg.width * scale;
+          const height = responseImg.height * scale;
+          const x = (finalCanvas.width - width) / 2;
+          const y = (finalCanvas.height - height) / 2;
+          
+          finalContext.drawImage(responseImg, x, y, width, height);
+          const croppedDataURL = finalCanvas.toDataURL('image/png');
+          setImageSrc(croppedDataURL);
+        };
+
       } catch (error) {
         console.log('Error posting to lambda function:', error);
       }
