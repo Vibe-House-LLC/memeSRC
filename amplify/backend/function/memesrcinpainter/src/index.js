@@ -45,10 +45,10 @@ exports.handler = async (event) => {
     };
 
     // Send the request
-    const response = await axios.post('https://api.openai.com/v1/images/edits', formData, { headers });
-    
-    const image_url = response.data.data[0].url;
-    // const image_url = "https://memesrc.com/test-gen.png"
+    // const response = await axios.post('https://api.openai.com/v1/images/edits', formData, { headers });
+
+    // const image_url = response.data.data[0].url;
+    const image_url = "https://memesrc.com/test-gen.png"
 
     // Download the image from the URL
     const imageResponse = await axios({
