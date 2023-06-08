@@ -93,6 +93,25 @@
           ]
         }
       }
+    },
+    "/user/new": {
+      "name": "/user/new",
+      "lambdaFunction": "memesrcUserFunction",
+      "permissions": {
+        "setting": "open"
+      }
+    },
+    "/user/update": {
+      "name": "/user/update",
+      "lambdaFunction": "memesrcUserFunction",
+      "permissions": {
+        "setting": "private",
+        "auth": [
+          "create",
+          "read",
+          "update"
+        ]
+      }
     }
   }
 }

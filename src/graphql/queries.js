@@ -96,6 +96,7 @@ export const getSourceMedia = /* GraphQL */ `
         sourceMedia {
           nextToken
         }
+        status
         createdAt
         updatedAt
       }
@@ -137,6 +138,7 @@ export const listSourceMedias = /* GraphQL */ `
           sub
           email
           stripeId
+          status
           createdAt
           updatedAt
         }
@@ -177,6 +179,7 @@ export const getFile = /* GraphQL */ `
           sub
           email
           stripeId
+          status
           createdAt
           updatedAt
         }
@@ -596,6 +599,7 @@ export const getUserDetails = /* GraphQL */ `
         }
         nextToken
       }
+      status
       createdAt
       updatedAt
     }
@@ -616,6 +620,7 @@ export const listUserDetails = /* GraphQL */ `
         sourceMedia {
           nextToken
         }
+        status
         createdAt
         updatedAt
       }

@@ -80,6 +80,10 @@
           "secretsPathAmplifyAppId": "d32pnvtwxwtte5",
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
           "s3Key": "amplify-builds/memesrcinpainter-536d6b39796162616a46-build.zip"
+        },
+        "memesrcUserFunction": {
+          "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
+          "s3Key": "amplify-builds/memesrcUserFunction-597047784349772f6e47-build.zip"
         }
       },
       "storage": {

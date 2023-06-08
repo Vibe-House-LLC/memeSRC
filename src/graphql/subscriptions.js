@@ -130,6 +130,7 @@ export const onCreateSourceMedia = /* GraphQL */ `
         sourceMedia {
           nextToken
         }
+        status
         createdAt
         updatedAt
       }
@@ -183,6 +184,7 @@ export const onUpdateSourceMedia = /* GraphQL */ `
         sourceMedia {
           nextToken
         }
+        status
         createdAt
         updatedAt
       }
@@ -236,6 +238,7 @@ export const onDeleteSourceMedia = /* GraphQL */ `
         sourceMedia {
           nextToken
         }
+        status
         createdAt
         updatedAt
       }
@@ -274,6 +277,7 @@ export const onCreateFile = /* GraphQL */ `
           sub
           email
           stripeId
+          status
           createdAt
           updatedAt
         }
@@ -319,6 +323,7 @@ export const onUpdateFile = /* GraphQL */ `
           sub
           email
           stripeId
+          status
           createdAt
           updatedAt
         }
@@ -364,6 +369,7 @@ export const onDeleteFile = /* GraphQL */ `
           sub
           email
           stripeId
+          status
           createdAt
           updatedAt
         }
@@ -955,6 +961,7 @@ export const onCreateUserDetails = /* GraphQL */ `
         }
         nextToken
       }
+      status
       createdAt
       updatedAt
     }
@@ -981,6 +988,7 @@ export const onUpdateUserDetails = /* GraphQL */ `
         }
         nextToken
       }
+      status
       createdAt
       updatedAt
     }
@@ -1007,6 +1015,7 @@ export const onDeleteUserDetails = /* GraphQL */ `
         }
         nextToken
       }
+      status
       createdAt
       updatedAt
     }
