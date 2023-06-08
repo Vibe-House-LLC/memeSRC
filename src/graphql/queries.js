@@ -88,9 +88,22 @@ export const getSourceMedia = /* GraphQL */ `
         nextToken
       }
       status
+      user {
+        id
+        sub
+        email
+        stripeId
+        sourceMedia {
+          nextToken
+        }
+        createdAt
+        updatedAt
+      }
       createdAt
       updatedAt
+      userDetailsSourceMediaId
       sourceMediaSeriesId
+      sourceMediaUserId
     }
   }
 `;
@@ -119,9 +132,19 @@ export const listSourceMedias = /* GraphQL */ `
           nextToken
         }
         status
+        user {
+          id
+          sub
+          email
+          stripeId
+          createdAt
+          updatedAt
+        }
         createdAt
         updatedAt
+        userDetailsSourceMediaId
         sourceMediaSeriesId
+        sourceMediaUserId
       }
       nextToken
     }
@@ -149,9 +172,19 @@ export const getFile = /* GraphQL */ `
           nextToken
         }
         status
+        user {
+          id
+          sub
+          email
+          stripeId
+          createdAt
+          updatedAt
+        }
         createdAt
         updatedAt
+        userDetailsSourceMediaId
         sourceMediaSeriesId
+        sourceMediaUserId
       }
       key
       status
@@ -176,7 +209,9 @@ export const listFiles = /* GraphQL */ `
           status
           createdAt
           updatedAt
+          userDetailsSourceMediaId
           sourceMediaSeriesId
+          sourceMediaUserId
         }
         key
         status
@@ -535,6 +570,52 @@ export const listHomepageSections = /* GraphQL */ `
         buttonSubtext
         backgroundColor
         textColor
+        createdAt
+        updatedAt
+      }
+      nextToken
+    }
+  }
+`;
+export const getUserDetails = /* GraphQL */ `
+  query GetUserDetails($id: ID!) {
+    getUserDetails(id: $id) {
+      id
+      sub
+      email
+      stripeId
+      sourceMedia {
+        items {
+          id
+          status
+          createdAt
+          updatedAt
+          userDetailsSourceMediaId
+          sourceMediaSeriesId
+          sourceMediaUserId
+        }
+        nextToken
+      }
+      createdAt
+      updatedAt
+    }
+  }
+`;
+export const listUserDetails = /* GraphQL */ `
+  query ListUserDetails(
+    $filter: ModelUserDetailsFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listUserDetails(filter: $filter, limit: $limit, nextToken: $nextToken) {
+      items {
+        id
+        sub
+        email
+        stripeId
+        sourceMedia {
+          nextToken
+        }
         createdAt
         updatedAt
       }

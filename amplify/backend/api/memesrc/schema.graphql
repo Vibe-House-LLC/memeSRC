@@ -29,6 +29,7 @@ type SourceMedia @model @auth(
   series: Series @hasOne,
   files: [File] @hasMany,
   status: String,
+  user: UserDetails @hasOne
 }
 
 type File @model @auth(
@@ -133,4 +134,16 @@ type HomepageSection @model @auth(
   buttonSubtext: AWSJSON,
   backgroundColor: String,
   textColor: String
+}
+
+type UserDetails @model @auth(
+  rules: [
+    { allow: groups, groups: ["admins"] },
+  ]
+) {
+  id: ID!,
+  sub: String,
+  email: String,
+  stripeId: String,
+  sourceMedia: [SourceMedia] @hasMany
 }

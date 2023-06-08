@@ -132,9 +132,22 @@ export const createSourceMedia = /* GraphQL */ `
         nextToken
       }
       status
+      user {
+        id
+        sub
+        email
+        stripeId
+        sourceMedia {
+          nextToken
+        }
+        createdAt
+        updatedAt
+      }
       createdAt
       updatedAt
+      userDetailsSourceMediaId
       sourceMediaSeriesId
+      sourceMediaUserId
     }
   }
 `;
@@ -173,9 +186,22 @@ export const updateSourceMedia = /* GraphQL */ `
         nextToken
       }
       status
+      user {
+        id
+        sub
+        email
+        stripeId
+        sourceMedia {
+          nextToken
+        }
+        createdAt
+        updatedAt
+      }
       createdAt
       updatedAt
+      userDetailsSourceMediaId
       sourceMediaSeriesId
+      sourceMediaUserId
     }
   }
 `;
@@ -214,9 +240,22 @@ export const deleteSourceMedia = /* GraphQL */ `
         nextToken
       }
       status
+      user {
+        id
+        sub
+        email
+        stripeId
+        sourceMedia {
+          nextToken
+        }
+        createdAt
+        updatedAt
+      }
       createdAt
       updatedAt
+      userDetailsSourceMediaId
       sourceMediaSeriesId
+      sourceMediaUserId
     }
   }
 `;
@@ -245,9 +284,19 @@ export const createFile = /* GraphQL */ `
           nextToken
         }
         status
+        user {
+          id
+          sub
+          email
+          stripeId
+          createdAt
+          updatedAt
+        }
         createdAt
         updatedAt
+        userDetailsSourceMediaId
         sourceMediaSeriesId
+        sourceMediaUserId
       }
       key
       status
@@ -283,9 +332,19 @@ export const updateFile = /* GraphQL */ `
           nextToken
         }
         status
+        user {
+          id
+          sub
+          email
+          stripeId
+          createdAt
+          updatedAt
+        }
         createdAt
         updatedAt
+        userDetailsSourceMediaId
         sourceMediaSeriesId
+        sourceMediaUserId
       }
       key
       status
@@ -321,9 +380,19 @@ export const deleteFile = /* GraphQL */ `
           nextToken
         }
         status
+        user {
+          id
+          sub
+          email
+          stripeId
+          createdAt
+          updatedAt
+        }
         createdAt
         updatedAt
+        userDetailsSourceMediaId
         sourceMediaSeriesId
+        sourceMediaUserId
       }
       key
       status
@@ -917,6 +986,87 @@ export const deleteHomepageSection = /* GraphQL */ `
       buttonSubtext
       backgroundColor
       textColor
+      createdAt
+      updatedAt
+    }
+  }
+`;
+export const createUserDetails = /* GraphQL */ `
+  mutation CreateUserDetails(
+    $input: CreateUserDetailsInput!
+    $condition: ModelUserDetailsConditionInput
+  ) {
+    createUserDetails(input: $input, condition: $condition) {
+      id
+      sub
+      email
+      stripeId
+      sourceMedia {
+        items {
+          id
+          status
+          createdAt
+          updatedAt
+          userDetailsSourceMediaId
+          sourceMediaSeriesId
+          sourceMediaUserId
+        }
+        nextToken
+      }
+      createdAt
+      updatedAt
+    }
+  }
+`;
+export const updateUserDetails = /* GraphQL */ `
+  mutation UpdateUserDetails(
+    $input: UpdateUserDetailsInput!
+    $condition: ModelUserDetailsConditionInput
+  ) {
+    updateUserDetails(input: $input, condition: $condition) {
+      id
+      sub
+      email
+      stripeId
+      sourceMedia {
+        items {
+          id
+          status
+          createdAt
+          updatedAt
+          userDetailsSourceMediaId
+          sourceMediaSeriesId
+          sourceMediaUserId
+        }
+        nextToken
+      }
+      createdAt
+      updatedAt
+    }
+  }
+`;
+export const deleteUserDetails = /* GraphQL */ `
+  mutation DeleteUserDetails(
+    $input: DeleteUserDetailsInput!
+    $condition: ModelUserDetailsConditionInput
+  ) {
+    deleteUserDetails(input: $input, condition: $condition) {
+      id
+      sub
+      email
+      stripeId
+      sourceMedia {
+        items {
+          id
+          status
+          createdAt
+          updatedAt
+          userDetailsSourceMediaId
+          sourceMediaSeriesId
+          sourceMediaUserId
+        }
+        nextToken
+      }
       createdAt
       updatedAt
     }

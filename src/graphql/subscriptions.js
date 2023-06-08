@@ -122,9 +122,22 @@ export const onCreateSourceMedia = /* GraphQL */ `
         nextToken
       }
       status
+      user {
+        id
+        sub
+        email
+        stripeId
+        sourceMedia {
+          nextToken
+        }
+        createdAt
+        updatedAt
+      }
       createdAt
       updatedAt
+      userDetailsSourceMediaId
       sourceMediaSeriesId
+      sourceMediaUserId
     }
   }
 `;
@@ -162,9 +175,22 @@ export const onUpdateSourceMedia = /* GraphQL */ `
         nextToken
       }
       status
+      user {
+        id
+        sub
+        email
+        stripeId
+        sourceMedia {
+          nextToken
+        }
+        createdAt
+        updatedAt
+      }
       createdAt
       updatedAt
+      userDetailsSourceMediaId
       sourceMediaSeriesId
+      sourceMediaUserId
     }
   }
 `;
@@ -202,9 +228,22 @@ export const onDeleteSourceMedia = /* GraphQL */ `
         nextToken
       }
       status
+      user {
+        id
+        sub
+        email
+        stripeId
+        sourceMedia {
+          nextToken
+        }
+        createdAt
+        updatedAt
+      }
       createdAt
       updatedAt
+      userDetailsSourceMediaId
       sourceMediaSeriesId
+      sourceMediaUserId
     }
   }
 `;
@@ -230,9 +269,19 @@ export const onCreateFile = /* GraphQL */ `
           nextToken
         }
         status
+        user {
+          id
+          sub
+          email
+          stripeId
+          createdAt
+          updatedAt
+        }
         createdAt
         updatedAt
+        userDetailsSourceMediaId
         sourceMediaSeriesId
+        sourceMediaUserId
       }
       key
       status
@@ -265,9 +314,19 @@ export const onUpdateFile = /* GraphQL */ `
           nextToken
         }
         status
+        user {
+          id
+          sub
+          email
+          stripeId
+          createdAt
+          updatedAt
+        }
         createdAt
         updatedAt
+        userDetailsSourceMediaId
         sourceMediaSeriesId
+        sourceMediaUserId
       }
       key
       status
@@ -300,9 +359,19 @@ export const onDeleteFile = /* GraphQL */ `
           nextToken
         }
         status
+        user {
+          id
+          sub
+          email
+          stripeId
+          createdAt
+          updatedAt
+        }
         createdAt
         updatedAt
+        userDetailsSourceMediaId
         sourceMediaSeriesId
+        sourceMediaUserId
       }
       key
       status
@@ -860,6 +929,84 @@ export const onDeleteHomepageSection = /* GraphQL */ `
       buttonSubtext
       backgroundColor
       textColor
+      createdAt
+      updatedAt
+    }
+  }
+`;
+export const onCreateUserDetails = /* GraphQL */ `
+  subscription OnCreateUserDetails(
+    $filter: ModelSubscriptionUserDetailsFilterInput
+  ) {
+    onCreateUserDetails(filter: $filter) {
+      id
+      sub
+      email
+      stripeId
+      sourceMedia {
+        items {
+          id
+          status
+          createdAt
+          updatedAt
+          userDetailsSourceMediaId
+          sourceMediaSeriesId
+          sourceMediaUserId
+        }
+        nextToken
+      }
+      createdAt
+      updatedAt
+    }
+  }
+`;
+export const onUpdateUserDetails = /* GraphQL */ `
+  subscription OnUpdateUserDetails(
+    $filter: ModelSubscriptionUserDetailsFilterInput
+  ) {
+    onUpdateUserDetails(filter: $filter) {
+      id
+      sub
+      email
+      stripeId
+      sourceMedia {
+        items {
+          id
+          status
+          createdAt
+          updatedAt
+          userDetailsSourceMediaId
+          sourceMediaSeriesId
+          sourceMediaUserId
+        }
+        nextToken
+      }
+      createdAt
+      updatedAt
+    }
+  }
+`;
+export const onDeleteUserDetails = /* GraphQL */ `
+  subscription OnDeleteUserDetails(
+    $filter: ModelSubscriptionUserDetailsFilterInput
+  ) {
+    onDeleteUserDetails(filter: $filter) {
+      id
+      sub
+      email
+      stripeId
+      sourceMedia {
+        items {
+          id
+          status
+          createdAt
+          updatedAt
+          userDetailsSourceMediaId
+          sourceMediaSeriesId
+          sourceMediaUserId
+        }
+        nextToken
+      }
       createdAt
       updatedAt
     }
