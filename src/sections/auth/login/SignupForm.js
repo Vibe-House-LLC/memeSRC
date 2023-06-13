@@ -3,10 +3,11 @@ import { useContext, useEffect, useState } from 'react';
 // @mui
 import { Link, Stack, IconButton, InputAdornment, TextField, Checkbox, Typography } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
-import { Auth } from 'aws-amplify';
+import { API, Auth } from 'aws-amplify';
 // utils
 import { useNavigate } from 'react-router-dom';
 import PropTypes from 'prop-types';
+import { SnackbarContext } from '../../../SnackbarContext';
 // components
 import Iconify from '../../../components/iconify';
 import { UserContext } from '../../../UserContext';
@@ -16,6 +17,8 @@ import { UserContext } from '../../../UserContext';
 
 export default function SignupForm(props) {
   const navigate = useNavigate();
+
+  const { setSeverity, setMessage, setOpen } = useContext(SnackbarContext);
 
   const { user, setUser } = useContext(UserContext);
 
@@ -103,18 +106,26 @@ export default function SignupForm(props) {
           enabled: true,
         }
       }).then((result) => {
-        setSignupStatus({
-          'loading': false,
-          'disabled': true,
-          'text': 'Sign Up Complete'
-        });
-        console.log(result)
-        setUser({
-          username,
-          email,
-          userConfirmed: false,
-        })
         console.log(result);
+        API.post('publicapi', '/user/new', {
+          body: {
+            username,
+            email,
+            sub: result.userSub
+          }
+        }).then(apiResponse => {
+          setSignupStatus({
+            'loading': false,
+            'disabled': true,
+            'text': 'Sign Up Complete'
+          });
+          console.log(apiResponse)
+          setUser({
+            username,
+            email,
+            userConfirmed: false,
+          })
+        }).catch(err => console.log(err))
       }).catch((err) => {
         setSignupStatus({
           'loading': false,
@@ -124,6 +135,10 @@ export default function SignupForm(props) {
         });
         console.log(err);
       });
+    } else {
+      setMessage('Please check form for errors')
+      setSeverity('error')
+      setOpen(true)
     }
   }
 
@@ -139,7 +154,7 @@ export default function SignupForm(props) {
         Sign Up
       </Typography>
       <Typography variant='body1' gutterBottom marginBottom={8}>
-        Already have an account? <Link sx={{cursor: 'pointer'}} onClick={() => {navigate('/login')}}>Click here.</Link>
+        Already have an account? <Link sx={{ cursor: 'pointer' }} onClick={() => { navigate('/login') }}>Click here.</Link>
       </Typography>
       <Stack spacing={3}>
         <TextField

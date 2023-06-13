@@ -83,20 +83,20 @@ export const getSourceMedia = /* GraphQL */ `
           createdAt
           updatedAt
           sourceMediaFilesId
-          fileSourceMediaId
         }
         nextToken
       }
       status
       user {
         id
-        sub
+        username
         email
         stripeId
         sourceMedia {
           nextToken
         }
         status
+        credits
         createdAt
         updatedAt
       }
@@ -104,7 +104,6 @@ export const getSourceMedia = /* GraphQL */ `
       updatedAt
       userDetailsSourceMediaId
       sourceMediaSeriesId
-      sourceMediaUserId
     }
   }
 `;
@@ -135,10 +134,11 @@ export const listSourceMedias = /* GraphQL */ `
         status
         user {
           id
-          sub
+          username
           email
           stripeId
           status
+          credits
           createdAt
           updatedAt
         }
@@ -146,7 +146,6 @@ export const listSourceMedias = /* GraphQL */ `
         updatedAt
         userDetailsSourceMediaId
         sourceMediaSeriesId
-        sourceMediaUserId
       }
       nextToken
     }
@@ -176,10 +175,11 @@ export const getFile = /* GraphQL */ `
         status
         user {
           id
-          sub
+          username
           email
           stripeId
           status
+          credits
           createdAt
           updatedAt
         }
@@ -187,14 +187,12 @@ export const getFile = /* GraphQL */ `
         updatedAt
         userDetailsSourceMediaId
         sourceMediaSeriesId
-        sourceMediaUserId
       }
       key
       status
       createdAt
       updatedAt
       sourceMediaFilesId
-      fileSourceMediaId
     }
   }
 `;
@@ -214,14 +212,12 @@ export const listFiles = /* GraphQL */ `
           updatedAt
           userDetailsSourceMediaId
           sourceMediaSeriesId
-          sourceMediaUserId
         }
         key
         status
         createdAt
         updatedAt
         sourceMediaFilesId
-        fileSourceMediaId
       }
       nextToken
     }
@@ -584,7 +580,7 @@ export const getUserDetails = /* GraphQL */ `
   query GetUserDetails($id: ID!) {
     getUserDetails(id: $id) {
       id
-      sub
+      username
       email
       stripeId
       sourceMedia {
@@ -595,11 +591,11 @@ export const getUserDetails = /* GraphQL */ `
           updatedAt
           userDetailsSourceMediaId
           sourceMediaSeriesId
-          sourceMediaUserId
         }
         nextToken
       }
       status
+      credits
       createdAt
       updatedAt
     }
@@ -614,13 +610,14 @@ export const listUserDetails = /* GraphQL */ `
     listUserDetails(filter: $filter, limit: $limit, nextToken: $nextToken) {
       items {
         id
-        sub
+        username
         email
         stripeId
         sourceMedia {
           nextToken
         }
         status
+        credits
         createdAt
         updatedAt
       }

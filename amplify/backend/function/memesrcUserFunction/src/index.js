@@ -11,12 +11,94 @@ import { defaultProvider } from '@aws-sdk/credential-provider-node';
 import { SignatureV4 } from '@aws-sdk/signature-v4';
 import { HttpRequest } from '@aws-sdk/protocol-http';
 import { default as fetch, Request } from 'node-fetch';
-import createUserDetails from './functions/createUserDetails'
-import updateUserDetails from './functions/updateUserDetails';
 
 const GRAPHQL_ENDPOINT = process.env.API_MEMESRC_GRAPHQLAPIENDPOINTOUTPUT;
 const AWS_REGION = process.env.AWS_REGION || 'us-east-1';
 const { Sha256 } = crypto;
+
+function createUserDetails(params) {
+  const email = params.email ? `email: "${params.email}",` : ''
+  const username = params.username ? `username: "${params.username}",` : ''
+  const stripeId = params.email ? `stripeId: "${params.stripeId}",` : ''
+  const sub = params.sub ? `id: "${params.sub}",` : ''
+  const status = params.status ? `status: "${params.status}",` : ''
+
+  const query = `
+      mutation createUserDetails {
+          createUserDetails(input: {${email}${username}${stripeId}${sub}${status}}) {
+              id
+              email
+              createdAt
+              stripeId
+              username
+              updatedAt
+              status
+          }
+      }
+  `
+
+  return query
+}
+
+function updateUserDetails(params) {
+  const email = params.email ? `email: "${params.email}",` : ''
+  const username = params.username ? `username: "${params.username}",` : ''
+  const stripeId = params.email ? `stripeId: "${params.stripeId}",` : ''
+  const sub = params.sub ? `id: "${params.sub}",` : ''
+  const status = params.status ? `status: "${params.status}",` : ''
+
+  const query = `
+      mutation updateUserDetails {
+          updateUserDetails(input: {${email}${username}${stripeId}${sub}${status}}) {
+              createdAt
+              email
+              id
+              stripeId
+              username
+              updatedAt
+              status
+          }
+      }
+  `
+
+  return query
+}
+
+function getUserDetails(params) {
+  if (params.username) {
+      const query = `
+          query listUserDetails {
+              listUserDetails(filter: {username: {eq: "${params.username}"}}) {
+                  items {
+                      updatedAt
+                      username
+                      stripeId
+                      id
+                      email
+                      createdAt
+                      status
+                  }
+              }
+          }
+      `
+      return query
+  } else if (params.sub) {
+      const query = `
+          query getUserDetails {
+              getUserDetails(id: "${params.id}") {
+                  createdAt
+                  email
+                  id
+                  stripeId
+                  username
+                  updatedAt
+                  status
+              }
+          }
+      `
+      return query
+  }
+}
 
 async function makeRequest(query) {
     const endpoint = new URL(GRAPHQL_ENDPOINT);
@@ -88,20 +170,24 @@ export const handler = async (event) => {
   // Create the response variable
   let response;
 
-  if (path === '/user/new') {
+  if (path === `/${process.env.ENV}/public/user/new`) {
     const username = body.username
     const email = body.email
+    const sub = body.sub
     const status = 'unverified'
-    response = await makeRequest(createUserDetails({username, email, status}))
+    console.log('NEW USER')
+    response = await makeRequest(createUserDetails({username, sub, email, status}))
+    console.log(response)
   }
 
-  if (path === '/user/update/status') {
-    const username = body.username
+  if (path === `/${process.env.ENV}/public/user/update/status`) {
     const status = 'verified'
     if (userSub && userSub !== ''){
-        response = await makeRequest(updateUserDetails({username, status}))
+        response = await makeRequest(updateUserDetails({userSub, status}))
     }
   }
+
+  console.log(response)
 
   return {
     statusCode: response.statusCode,

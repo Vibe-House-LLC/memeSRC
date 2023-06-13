@@ -29,7 +29,7 @@ type SourceMedia @model @auth(
   series: Series @hasOne,
   files: [File] @hasMany,
   status: String,
-  user: UserDetails @hasOne
+  user: UserDetails @belongsTo
 }
 
 type File @model @auth(
@@ -38,7 +38,7 @@ type File @model @auth(
   ]
 ) {
   id: ID!,
-  sourceMedia: SourceMedia @hasOne,
+  sourceMedia: SourceMedia @belongsTo,
   key: String,
   status: String,
 }
@@ -142,9 +142,10 @@ type UserDetails @model @auth(
   ]
 ) {
   id: ID!,
-  sub: String,
+  username: String,
   email: String,
   stripeId: String,
   sourceMedia: [SourceMedia] @hasMany,
-  status: String
+  status: String,
+  credits: Int
 }

@@ -110,7 +110,20 @@
           "create",
           "read",
           "update"
-        ]
+        ],
+        "groups": {
+          "admins": [
+            "create",
+            "read",
+            "update",
+            "delete"
+          ],
+          "mods": [
+            "create",
+            "read",
+            "update"
+          ]
+        }
       }
     }
   }

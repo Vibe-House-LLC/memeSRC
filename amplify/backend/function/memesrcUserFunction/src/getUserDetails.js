@@ -1,11 +1,11 @@
 export default function getUserDetails(params) {
-    if (params.sub) {
+    if (params.username) {
         const query = `
             query listUserDetails {
-                listUserDetails(filter: {sub: {eq: "${params.sub}"}}) {
+                listUserDetails(filter: {username: {eq: "${params.username}"}}) {
                     items {
                         updatedAt
-                        sub
+                        username
                         stripeId
                         id
                         email
@@ -16,7 +16,7 @@ export default function getUserDetails(params) {
             }
         `
         return query
-    } else if (params.username) {
+    } else if (params.sub) {
         const query = `
             query getUserDetails {
                 getUserDetails(id: "${params.id}") {
@@ -24,7 +24,7 @@ export default function getUserDetails(params) {
                     email
                     id
                     stripeId
-                    sub
+                    username
                     updatedAt
                     status
                 }

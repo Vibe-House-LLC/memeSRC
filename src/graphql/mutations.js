@@ -127,20 +127,20 @@ export const createSourceMedia = /* GraphQL */ `
           createdAt
           updatedAt
           sourceMediaFilesId
-          fileSourceMediaId
         }
         nextToken
       }
       status
       user {
         id
-        sub
+        username
         email
         stripeId
         sourceMedia {
           nextToken
         }
         status
+        credits
         createdAt
         updatedAt
       }
@@ -148,7 +148,6 @@ export const createSourceMedia = /* GraphQL */ `
       updatedAt
       userDetailsSourceMediaId
       sourceMediaSeriesId
-      sourceMediaUserId
     }
   }
 `;
@@ -182,20 +181,20 @@ export const updateSourceMedia = /* GraphQL */ `
           createdAt
           updatedAt
           sourceMediaFilesId
-          fileSourceMediaId
         }
         nextToken
       }
       status
       user {
         id
-        sub
+        username
         email
         stripeId
         sourceMedia {
           nextToken
         }
         status
+        credits
         createdAt
         updatedAt
       }
@@ -203,7 +202,6 @@ export const updateSourceMedia = /* GraphQL */ `
       updatedAt
       userDetailsSourceMediaId
       sourceMediaSeriesId
-      sourceMediaUserId
     }
   }
 `;
@@ -237,20 +235,20 @@ export const deleteSourceMedia = /* GraphQL */ `
           createdAt
           updatedAt
           sourceMediaFilesId
-          fileSourceMediaId
         }
         nextToken
       }
       status
       user {
         id
-        sub
+        username
         email
         stripeId
         sourceMedia {
           nextToken
         }
         status
+        credits
         createdAt
         updatedAt
       }
@@ -258,7 +256,6 @@ export const deleteSourceMedia = /* GraphQL */ `
       updatedAt
       userDetailsSourceMediaId
       sourceMediaSeriesId
-      sourceMediaUserId
     }
   }
 `;
@@ -289,10 +286,11 @@ export const createFile = /* GraphQL */ `
         status
         user {
           id
-          sub
+          username
           email
           stripeId
           status
+          credits
           createdAt
           updatedAt
         }
@@ -300,14 +298,12 @@ export const createFile = /* GraphQL */ `
         updatedAt
         userDetailsSourceMediaId
         sourceMediaSeriesId
-        sourceMediaUserId
       }
       key
       status
       createdAt
       updatedAt
       sourceMediaFilesId
-      fileSourceMediaId
     }
   }
 `;
@@ -338,10 +334,11 @@ export const updateFile = /* GraphQL */ `
         status
         user {
           id
-          sub
+          username
           email
           stripeId
           status
+          credits
           createdAt
           updatedAt
         }
@@ -349,14 +346,12 @@ export const updateFile = /* GraphQL */ `
         updatedAt
         userDetailsSourceMediaId
         sourceMediaSeriesId
-        sourceMediaUserId
       }
       key
       status
       createdAt
       updatedAt
       sourceMediaFilesId
-      fileSourceMediaId
     }
   }
 `;
@@ -387,10 +382,11 @@ export const deleteFile = /* GraphQL */ `
         status
         user {
           id
-          sub
+          username
           email
           stripeId
           status
+          credits
           createdAt
           updatedAt
         }
@@ -398,14 +394,12 @@ export const deleteFile = /* GraphQL */ `
         updatedAt
         userDetailsSourceMediaId
         sourceMediaSeriesId
-        sourceMediaUserId
       }
       key
       status
       createdAt
       updatedAt
       sourceMediaFilesId
-      fileSourceMediaId
     }
   }
 `;
@@ -1004,7 +998,7 @@ export const createUserDetails = /* GraphQL */ `
   ) {
     createUserDetails(input: $input, condition: $condition) {
       id
-      sub
+      username
       email
       stripeId
       sourceMedia {
@@ -1015,11 +1009,11 @@ export const createUserDetails = /* GraphQL */ `
           updatedAt
           userDetailsSourceMediaId
           sourceMediaSeriesId
-          sourceMediaUserId
         }
         nextToken
       }
       status
+      credits
       createdAt
       updatedAt
     }
@@ -1032,7 +1026,7 @@ export const updateUserDetails = /* GraphQL */ `
   ) {
     updateUserDetails(input: $input, condition: $condition) {
       id
-      sub
+      username
       email
       stripeId
       sourceMedia {
@@ -1043,11 +1037,11 @@ export const updateUserDetails = /* GraphQL */ `
           updatedAt
           userDetailsSourceMediaId
           sourceMediaSeriesId
-          sourceMediaUserId
         }
         nextToken
       }
       status
+      credits
       createdAt
       updatedAt
     }
@@ -1060,7 +1054,7 @@ export const deleteUserDetails = /* GraphQL */ `
   ) {
     deleteUserDetails(input: $input, condition: $condition) {
       id
-      sub
+      username
       email
       stripeId
       sourceMedia {
@@ -1071,11 +1065,11 @@ export const deleteUserDetails = /* GraphQL */ `
           updatedAt
           userDetailsSourceMediaId
           sourceMediaSeriesId
-          sourceMediaUserId
         }
         nextToken
       }
       status
+      credits
       createdAt
       updatedAt
     }
