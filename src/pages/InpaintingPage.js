@@ -68,25 +68,7 @@ export default function InpaintingPage() {
     canvas.isDrawingMode = true;
     canvas.freeDrawingBrush.width = brushWidth;
     canvas.freeDrawingBrush.color = 'red';
-
-    const image = new Image();
-    image.crossOrigin = 'anonymous';
-    image.src = newImageSrc;
-    image.onload = function () {
-      const fabricImage = new fabric.Image(image);
-
-      // Scale image to fit canvas
-      const scale = Math.min(1024 / image.width, 1024 / image.height);
-      fabricImage.scale(scale).set({
-        left: (canvas.width - image.width * scale) / 2,
-        top: (canvas.height - image.height * scale) / 2,
-        selectable: false,
-        evented: false,
-      });
-
-      canvas.add(fabricImage);
-      canvas.requestRenderAll();
-    };
+    
   }, [brushWidth]);
 
   React.useEffect(() => {
