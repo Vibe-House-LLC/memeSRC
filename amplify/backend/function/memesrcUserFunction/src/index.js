@@ -18,7 +18,7 @@ const { Sha256 } = crypto;
 
 function createUserDetails(params) {
   const email = params.email ? `email: "${params.email}",` : ''
-  const username = params.username ? `username: "${params.username}",` : ''
+  const username = params.username ? `username: "${params.username.toLowerCase()}",` : ''
   const stripeId = params.email ? `stripeId: "${params.stripeId}",` : ''
   const sub = params.sub ? `id: "${params.sub}",` : ''
   const status = params.status ? `status: "${params.status}",` : ''
@@ -42,7 +42,7 @@ function createUserDetails(params) {
 
 function updateUserDetails(params) {
   const email = params.email ? `email: "${params.email}",` : ''
-  const username = params.username ? `username: "${params.username}",` : ''
+  const username = params.username ? `username: "${params.username.toLowerCase()}",` : ''
   const stripeId = params.email ? `stripeId: "${params.stripeId}",` : ''
   const sub = params.sub ? `id: "${params.sub}",` : ''
   const status = params.status ? `status: "${params.status}",` : ''
@@ -68,7 +68,7 @@ function getUserDetails(params) {
   if (params.username) {
       const query = `
           query listUserDetails {
-              listUserDetails(filter: {username: {eq: "${params.username}"}}) {
+              listUserDetails(filter: {username: {eq: "${params.username.toLowerCase()}"}}) {
                   items {
                       updatedAt
                       username
