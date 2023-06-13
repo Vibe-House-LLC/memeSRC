@@ -14,7 +14,7 @@ const StyledContent = styled('div')(({ theme }) => ({
   padding: theme.spacing(2, 0),
 }));
 
-const Controls = ({ brushWidth, handleBrushWidthChange, exportDrawing }) => (
+const Controls = ({ brushWidth, handleBrushWidthChange, exportDrawing, importImage }) => (
   <Box sx={{ marginBottom: '16px', textAlign: 'center', display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
     <Box sx={{ display: 'flex', alignItems: 'center' }}>
       <Typography id="brush-width-slider" sx={{ marginRight: '16px' }}>
@@ -36,11 +36,12 @@ const Controls = ({ brushWidth, handleBrushWidthChange, exportDrawing }) => (
       max={100}
       step={1}
       aria-labelledby="brush-width-slider"
-      sx={{ width: '50%' }} // Adjust this percentage as needed to fit your design
+      sx={{ width: '50%' }}
     />
     <Button onClick={exportDrawing} size="medium" variant="contained">
       Export Components
     </Button>
+    <input type="file" accept="image/*" onChange={importImage} />
   </Box>
 );
 
@@ -57,7 +58,10 @@ export default function InpaintingPage() {
     }
 
     const canvas = new fabric.Canvas(fabricCanvasRef.current, {
+      width: 1024,
+      height: 1024,
       selection: false,
+      backgroundColor: 'black',
     });
 
     fabricCanvasInstance.current = canvas;
@@ -71,17 +75,16 @@ export default function InpaintingPage() {
     image.onload = function () {
       const fabricImage = new fabric.Image(image);
 
-      fabricImage.set({
-        left: 0,
-        top: 0,
+      // Scale image to fit canvas
+      const scale = Math.min(1024 / image.width, 1024 / image.height);
+      fabricImage.scale(scale).set({
+        left: (canvas.width - image.width * scale) / 2,
+        top: (canvas.height - image.height * scale) / 2,
         selectable: false,
         evented: false,
       });
 
       canvas.add(fabricImage);
-      canvas.setDimensions({ width: image.width, height: image.height });
-      fabricCanvasRef.current.width = image.width;
-      fabricCanvasRef.current.height = image.height;
       canvas.requestRenderAll();
     };
   }, [brushWidth]);
@@ -94,16 +97,23 @@ export default function InpaintingPage() {
     setBrushWidth(newValue);
   };
 
+  const downloadDataURL = (dataURL, fileName) => {
+    const link = document.createElement('a');
+    link.href = dataURL;
+    link.download = fileName;
+
+    // Simulate a click to start the download
+    link.click();
+  };
+
   const exportDrawing = async () => {
     const originalCanvas = fabricCanvasInstance.current;
-    const originalWidth = originalCanvas.getWidth();
-    const originalHeight = originalCanvas.getHeight();
+
+    let fabricImage = null;
 
     const tempCanvasDrawing = new fabric.Canvas();
     tempCanvasDrawing.setWidth(1024);
     tempCanvasDrawing.setHeight(1024);
-
-    let fabricImage = null;
 
     const solidRect = new fabric.Rect({
       left: 0,
@@ -117,17 +127,10 @@ export default function InpaintingPage() {
 
     tempCanvasDrawing.add(solidRect);
 
-    const scale = Math.max(1024 / originalWidth, 1024 / originalHeight);
-    const offsetX = (1024 - originalWidth * scale) / 2;
-    const offsetY = (1024 - originalHeight * scale) / 2;
-
     originalCanvas.getObjects().forEach((obj) => {
       if (obj instanceof fabric.Path) {
         const path = obj.toObject();
         const newPath = new fabric.Path(path.path, { ...path, fill: 'transparent', globalCompositeOperation: 'destination-out' });
-
-        newPath.scale(scale);
-        newPath.set({ left: newPath.left * scale + offsetX, top: newPath.top * scale + offsetY });
 
         tempCanvasDrawing.add(newPath);
       }
@@ -146,21 +149,7 @@ export default function InpaintingPage() {
     });
 
     if (fabricImage) {
-      const tempCanvasBgImage = document.createElement('canvas');
-      tempCanvasBgImage.width = 1024;
-      tempCanvasBgImage.height = 1024;
-
-      const context = tempCanvasBgImage.getContext('2d');
-
-      const scale = Math.max(tempCanvasBgImage.width / fabricImage.width, tempCanvasBgImage.height / fabricImage.height);
-      const width = fabricImage.width * scale;
-      const height = fabricImage.height * scale;
-      const x = (tempCanvasBgImage.width - width) / 2;
-      const y = (tempCanvasBgImage.height - height) / 2;
-
-      context.drawImage(fabricImage._element, x, y, width, height);
-
-      const dataURLBgImage = tempCanvasBgImage.toDataURL('image/png');
+      const dataURLBgImage = fabricImage.toDataURL('image/png');
 
       const data = {
         image: dataURLBgImage,
@@ -168,34 +157,61 @@ export default function InpaintingPage() {
         prompt: "rainbow",
       };
 
+      // Delay the downloads using setTimeout
+      setTimeout(() => {
+        downloadDataURL(dataURLBgImage, 'background_image.png');
+      }, 500);
+
+      setTimeout(() => {
+        downloadDataURL(dataURLDrawing, 'drawing.png');
+      }, 1000);
+
       try {
         const response = await API.post('publicapi', '/inpaint', {
           body: data
         });
-        const responseImg = new Image();
-        responseImg.src = response.imageData;
-        
-        const finalCanvas = document.createElement('canvas');
-        finalCanvas.width = originalWidth;
-        finalCanvas.height = originalHeight;
-        const finalContext = finalCanvas.getContext('2d');
-
-        responseImg.onload = function() {
-          const scale = Math.max(originalWidth / responseImg.width, originalHeight / responseImg.height);
-          const width = responseImg.width * scale;
-          const height = responseImg.height * scale;
-          const x = (finalCanvas.width - width) / 2;
-          const y = (finalCanvas.height - height) / 2;
-          finalContext.drawImage(responseImg, x, y, width, height);
-          
-          const croppedDataURL = finalCanvas.toDataURL('image/png');
-          setImageSrc(croppedDataURL);
-        };
-
+        setImageSrc(response.imageData);
       } catch (error) {
         console.log('Error posting to lambda function:', error);
       }
     }
+  };
+
+  const importImage = (event) => {
+    const file = event.target.files[0];
+    const temporaryURL = URL.createObjectURL(file);
+
+    const image = new Image();
+    image.src = temporaryURL;
+    image.onload = function () {
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+
+      const size = 1024;
+      const aspectRatio = image.width / image.height;
+
+      let width = size;
+      let height = size;
+
+      if (aspectRatio < 1) {
+        width = size * aspectRatio;
+      } else {
+        height = size / aspectRatio;
+      }
+
+      const xOffset = (size - width) / 2;
+      const yOffset = (size - height) / 2;
+
+      canvas.width = size;
+      canvas.height = size;
+      context.fillStyle = 'black';
+      context.fillRect(0, 0, size, size);
+      context.drawImage(image, xOffset, yOffset, width, height);
+
+      const imageData = canvas.toDataURL();
+      initializeCanvas(imageData);
+      setImageSrc(imageData);
+    };
   };
 
   return (
@@ -212,8 +228,9 @@ export default function InpaintingPage() {
             brushWidth={brushWidth}
             handleBrushWidthChange={handleBrushWidthChange}
             exportDrawing={exportDrawing}
+            importImage={importImage}
           />
-          <canvas ref={fabricCanvasRef} />
+          <canvas ref={fabricCanvasRef} width="1024" height="1024" />
         </StyledContent>
       </Container>
     </>
