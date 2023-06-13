@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 // @mui
 import { Backdrop, CircularProgress, Link, Stack, TextField, Typography } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
-import { Auth } from 'aws-amplify';
+import { API, Auth } from 'aws-amplify';
 import { useContext, useState } from 'react';
 import { UserContext } from '../../../UserContext';
 import { SnackbarContext } from '../../../SnackbarContext';
@@ -19,45 +19,100 @@ export default function VerifyForm(props) {
   const { setSeverity, setMessage, setOpen } = useContext(SnackbarContext);
   const [code, setCode] = useState('')
   const [username, setUsername] = useState(user.username ? user.username : '');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [backdropOpen, setBackdropOpen] = useState(false);
 
-  const confirmSignUp = async () => {
+  const confirmSignUp = () => {
     setLoading(true)
-    try {
-      await Auth.confirmSignUp(username, code);
+    // try {
+    Auth.signIn(username, password).then(response => {
+      console.log(response)
       setSeverity('success');
-      setMessage(`Account Verified! ${user.username ? '' : 'Please log in.'}`);
+      setMessage(`Account already verified!`);
       setOpen(true)
+      setUser(response)
       navigate('/dashboard', { replace: true });
       setLoading(false)
-    } catch (error) {
-      console.log('error confirming sign up', error);
-      setLoading(false)
-      switch (error.name) {
-        case 'UserNotFoundException':
-          setSeverity('error');
-          setMessage(`Error: Username Not Found.`);
-          setOpen(true)
-          break;
-        case 'NotAuthorizedException':
-          if (error.message === 'User cannot be confirmed. Current status is CONFIRMED') {
-            setSeverity('success');
-            setMessage(`Account Already Verified. ${user.username ? '' : 'Please log in.'}`);
-            setOpen(true)
-            navigate('/dashboard', { replace: true });
-          } else {
-            setSeverity('error');
-            setMessage(`Error: ${error.message}`);
-            setOpen(true)
+    }).catch(err => {
+      console.log(err)
+      if (err.name === 'UserNotConfirmedException') {
+        Auth.confirmSignUp(username, code).then(response => {
+          Auth.signIn(username, password).then(userSignedIn => {
+            console.log(userSignedIn)
+            API.post('publicapi', '/user/update/status').then(response => {
+              console.log(response)
+              setSeverity('success');
+              setMessage(`Account Verified!`);
+              setOpen(true)
+              setUser(userSignedIn)
+              navigate('/dashboard', { replace: true });
+              setLoading(false)
+            })
+          }).catch(err => console.log(err))
+        }).catch(err => {
+          if (err.name === "NotAuthorizedException") {
+            Auth.signIn(username, password).then(userSignedIn => {
+              console.log(userSignedIn)
+              setSeverity('success');
+              setMessage(`Account already verified!`);
+              setOpen(true)
+              setUser(userSignedIn)
+              navigate('/dashboard', { replace: true });
+              setLoading(false)
+            }).catch(err => console.log(err))
           }
-          break;
-        default:
-          setSeverity('error');
-          setMessage(`Error: ${error.message}`);
-          setOpen(true)
+        })
       }
-    }
+    });
+
+
+    // Auth.signIn(username, password).then(response => {
+    //   console.log(response)
+
+    // }).catch(err => {
+    //   console.log(err)
+    //   if (err.name === 'UserNotConfirmedException') {
+    //     Auth.confirmSignUp(username, code).then(response => {
+    //       console.log(response)
+    //       API.post('publicapi', '/user/update/status').then(response => {
+    //         console.log(response)
+    //         setSeverity('success');
+    //         setMessage(`Account Verified! ${user.username ? '' : 'Please log in.'}`);
+    //         setOpen(true)
+    //         navigate('/dashboard', { replace: true });
+    //         setLoading(false)
+    //       })
+    //     }).catch(err => console.log(err))
+    //   }
+    // })
+    // } catch (error) {
+    //   console.log('error confirming sign up', error);
+    //   setLoading(false)
+    //   switch (error.name) {
+    //     case 'UserNotFoundException':
+    //       setSeverity('error');
+    //       setMessage(`Error: Username Not Found.`);
+    //       setOpen(true)
+    //       break;
+    //     case 'NotAuthorizedException':
+    //       if (error.message === 'User cannot be confirmed. Current status is CONFIRMED') {
+    //         setSeverity('success');
+    //         setMessage(`Account Already Verified. ${user.username ? '' : 'Please log in.'}`);
+    //         setOpen(true)
+    //         navigate('/dashboard', { replace: true });
+    //       } else {
+    //         setSeverity('error');
+    //         setMessage(`Error: ${error.message}`);
+    //         setOpen(true)
+    //       }
+    //       break;
+    //     default:
+    //       setSeverity('error');
+    //       setMessage(`Error: ${error.message}`);
+    //       setOpen(true)
+    //   }
+    // }
   }
 
   const handleResendVerification = () => {
@@ -66,22 +121,22 @@ export default function VerifyForm(props) {
       setBackdropOpen(false)
     }).catch(error => {
       console.log(error);
-      switch(error.name) {
+      switch (error.name) {
         case 'TooManyRequestsException':
           setSeverity('error');
           setMessage(`Too many requests. Please try again later.`);
           setOpen(true)
-        break;
-        case 'NotAuthorizedException': 
-        setSeverity('error');
-        setMessage(`Error: ${error.message}`);
-        setOpen(true)
-        break;
+          break;
+        case 'NotAuthorizedException':
+          setSeverity('error');
+          setMessage(`Error: ${error.message}`);
+          setOpen(true)
+          break;
         case 'InternalErrorException':
           setSeverity('error');
           setMessage(`Error: ${error.message}`);
           setOpen(true)
-        break;
+          break;
         default:
           setSeverity('error');
           setMessage(`Error: ${error.message}`);
@@ -107,6 +162,16 @@ export default function VerifyForm(props) {
           disabled={Boolean(user.username)}
           onChange={(event) => {
             setUsername(event.target.value)
+          }}
+        />
+        <TextField
+          name="text"
+          label="Password"
+          autoComplete='Password'
+          type='password'
+          value={password}
+          onChange={(event) => {
+            setPassword(event.target.value)
           }}
         />
         {/* <TextField

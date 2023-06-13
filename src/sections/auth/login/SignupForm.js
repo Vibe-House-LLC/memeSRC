@@ -103,7 +103,7 @@ export default function SignupForm(props) {
           // other custom attributes
         },
         autoSignIn: { // optional - enables auto sign in after user is confirmed
-          enabled: true,
+          enabled: false,
         }
       }).then((result) => {
         console.log(result);

@@ -183,7 +183,7 @@ export const handler = async (event) => {
   if (path === `/${process.env.ENV}/public/user/update/status`) {
     const status = 'verified'
     if (userSub && userSub !== ''){
-        response = await makeRequest(updateUserDetails({userSub, status}))
+        response = await makeRequest(updateUserDetails({sub: userSub, status}))
     }
   }
 
