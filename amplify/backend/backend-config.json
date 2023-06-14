@@ -360,12 +360,10 @@
       "dependsOn": [
         {
           "attributes": [
-            "GraphQLAPIIdOutput",
-            "GraphQLAPIEndpointOutput",
-            "GraphQLAPIKeyOutput"
+            "Name"
           ],
-          "category": "api",
-          "resourceName": "memesrc"
+          "category": "function",
+          "resourceName": "memesrcUserFunction"
         }
       ],
       "providerPlugin": "awscloudformation",

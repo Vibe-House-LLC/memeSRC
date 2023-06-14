@@ -4,10 +4,12 @@
     "openai_apikey"
   ],
   "permissions": {
-    "api": {
-      "memesrc": [
-        "Query",
-        "Mutation"
+    "function": {
+      "memesrcUserFunction": [
+        "create",
+        "read",
+        "update",
+        "delete"
       ]
     }
   }
