@@ -116,11 +116,12 @@ export default function Header({ onOpenNav }) {
             mr: 1,
             color: 'text.primary',
           }}
+          size='large'
         >
-          <Iconify icon="eva:menu-2-fill" />
+          <Iconify icon="ic:round-menu" />
         </IconButton>
 
-        <Searchbar />
+        {/* <Searchbar /> */}
         <Box sx={{ flexGrow: 1 }} />
           {location.pathname === '/'
             ?
@@ -139,7 +140,7 @@ export default function Header({ onOpenNav }) {
             xs: 0.5
           }}
         >
-          <NotificationsPopover />
+          {/* <NotificationsPopover /> */}
           <AccountPopover />
         </Stack>
       </StyledToolbar>

@@ -6,7 +6,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
 import { Accordion, AccordionDetails, AccordionSummary, Button, Card, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, TextField, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
-import { Add, AddCircleOutline, ArrowForward, ArrowForwardIos, Close, ContentCopy, Description, GpsFixed, GpsNotFixed, HighlightOffRounded, HistoryToggleOffRounded, IosShare, Menu, More, PlusOne, Share } from '@mui/icons-material';
+import { Add, AddCircleOutline, ArrowForward, ArrowForwardIos, AutoFixHighRounded, Close, ContentCopy, Description, GpsFixed, GpsNotFixed, HighlightOffRounded, HistoryToggleOffRounded, IosShare, Menu, More, PlusOne, Share } from '@mui/icons-material';
 import { API, Storage } from 'aws-amplify';
 import { Box } from '@mui/system';
 import TextEditorControls from '../components/TextEditorControls';
@@ -441,7 +441,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     const toggleDrawingMode = () => {
         if (editor) {
             editor.canvas.isDrawingMode = !drawingMode;
-            editor.canvas.freeDrawingBrush.width = 10;
+            editor.canvas.freeDrawingBrush.width = 40;
             editor.canvas.freeDrawingBrush.color = 'red';
         }
         setDrawingMode(!drawingMode)
@@ -542,7 +542,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
             const data = {
                 image: dataURLBgImage,
                 mask: dataURLDrawing,
-                prompt: "rainbow",
+                prompt: "simple photo",
             };
 
             //   // Delay the downloads using setTimeout
@@ -600,26 +600,46 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                 </Grid>
                                 <Grid item xs={12} md={5} lg={5} minWidth={{ xs: {}, md: '350px' }} order={{ xs: 3, md: 2 }}>
                                     <Grid item xs={12} marginBottom={2}>
-                                        <Button
-                                            variant='contained'
-                                            onClick={toggleDrawingMode}
-                                            fullWidth
-                                            sx={{ zIndex: '50' }}
-                                        // startIcon={<Share />}
-                                        >
-                                            Drawing Mode
-                                        </Button>
-                                    </Grid>
-                                    <Grid item xs={12} marginBottom={2}>
-                                        <Button
-                                            variant='contained'
-                                            onClick={exportDrawing}
-                                            fullWidth
-                                            sx={{ zIndex: '50' }}
-                                        // startIcon={<Share />}
-                                        >
-                                            Download Layers
-                                        </Button>
+                                        <Grid container direction='column' spacing={2}>
+                                            {drawingMode ? (
+                                                <>
+                                                    <Grid item>
+                                                        <TextField
+                                                            fullWidth
+                                                            id="prompt"
+                                                            label="Prompt"
+                                                            variant="outlined"
+                                                        />
+                                                    </Grid>
+                                                    <Grid item>
+                                                        <Button
+                                                            variant='contained'
+                                                            onClick={() => {
+                                                                exportDrawing();
+                                                                toggleDrawingMode();
+                                                            }}
+                                                            fullWidth
+                                                            sx={{ zIndex: '50' }}
+                                                            startIcon={<AutoFixHighRounded />}
+                                                        >
+                                                            Magic Brush (apply)
+                                                        </Button>
+                                                    </Grid>
+                                                </>
+                                            ) : (
+                                                <Grid item>
+                                                    <Button
+                                                        variant='contained'
+                                                        onClick={toggleDrawingMode}
+                                                        fullWidth
+                                                        sx={{ zIndex: '50' }}
+                                                        startIcon={<AutoFixHighRounded />}
+                                                    >
+                                                        Magic Brush (select)
+                                                    </Button>
+                                                </Grid>
+                                            )}
+                                        </Grid>
                                     </Grid>
                                     <Grid item xs={12} marginBottom={2}>
                                         <Button
@@ -643,6 +663,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                             Add Layer
                                         </Button>
                                     </Grid>
+
+
                                     <Grid container item xs={12} maxHeight={{ xs: {}, md: `${canvasSize.height - 104}px` }} paddingX={{ xs: 0, md: 2 }} sx={{ overflowY: 'scroll', overflow: 'auto' }} flexDirection='col-reverse'>
                                         {canvasObjects && canvasObjects.map((object, index) => (
 
