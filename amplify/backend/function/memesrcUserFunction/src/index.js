@@ -1,9 +1,9 @@
 /* Amplify Params - DO NOT EDIT
-	API_MEMESRC_GRAPHQLAPIENDPOINTOUTPUT
-	API_MEMESRC_GRAPHQLAPIIDOUTPUT
-	API_MEMESRC_GRAPHQLAPIKEYOUTPUT
-	ENV
-	REGION
+  API_MEMESRC_GRAPHQLAPIENDPOINTOUTPUT
+  API_MEMESRC_GRAPHQLAPIIDOUTPUT
+  API_MEMESRC_GRAPHQLAPIKEYOUTPUT
+  ENV
+  REGION
 Amplify Params - DO NOT EDIT */
 
 import crypto from '@aws-crypto/sha256-js';
@@ -66,7 +66,7 @@ function updateUserDetails(params) {
 
 function getUserDetails(params) {
   if (params.username) {
-      const query = `
+    const query = `
           query listUserDetails {
               listUserDetails(filter: {username: {eq: "${params.username.toLowerCase()}"}}) {
                   items {
@@ -77,13 +77,14 @@ function getUserDetails(params) {
                       email
                       createdAt
                       status
+                      credits
                   }
               }
           }
       `
-      return query
+    return query
   } else if (params.sub) {
-      const query = `
+    const query = `
           query getUserDetails {
               getUserDetails(id: "${params.id}") {
                   createdAt
@@ -93,67 +94,68 @@ function getUserDetails(params) {
                   username
                   updatedAt
                   status
+                  credits
               }
           }
       `
-      return query
+    return query
   }
 }
 
 async function makeRequest(query) {
-    const endpoint = new URL(GRAPHQL_ENDPOINT);
-  
-  
-    const signer = new SignatureV4({
-      credentials: defaultProvider(),
-      region: AWS_REGION,
-      service: 'appsync',
-      sha256: Sha256
-    });
-  
-  
-    const requestToBeSigned = new HttpRequest({
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        host: endpoint.host
-      },
-      hostname: endpoint.host,
-      body: JSON.stringify({ query }),
-      path: endpoint.pathname
-    });
-  
-  
-    const signed = await signer.sign(requestToBeSigned);
-    const request = new Request(endpoint, signed);
-  
-  
-    let statusCode = 200;
-    let body;
-    let response;
-  
-  
-    try {
-      response = await fetch(request);
-      body = await response.json();
-      if (body.errors) statusCode = 400;
-    } catch (error) {
-      statusCode = 500;
-      body = {
-        errors: [
-          {
-            message: error.message
-          }
-        ]
-      };
-    }
-  
-  
-    return {
-      statusCode,
-      body
+  const endpoint = new URL(GRAPHQL_ENDPOINT);
+
+
+  const signer = new SignatureV4({
+    credentials: defaultProvider(),
+    region: AWS_REGION,
+    service: 'appsync',
+    sha256: Sha256
+  });
+
+
+  const requestToBeSigned = new HttpRequest({
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      host: endpoint.host
+    },
+    hostname: endpoint.host,
+    body: JSON.stringify({ query }),
+    path: endpoint.pathname
+  });
+
+
+  const signed = await signer.sign(requestToBeSigned);
+  const request = new Request(endpoint, signed);
+
+
+  let statusCode = 200;
+  let body;
+  let response;
+
+
+  try {
+    response = await fetch(request);
+    body = await response.json();
+    if (body.errors) statusCode = 400;
+  } catch (error) {
+    statusCode = 500;
+    body = {
+      errors: [
+        {
+          message: error.message
+        }
+      ]
     };
   }
+
+
+  return {
+    statusCode,
+    body
+  };
+}
 
 /**
  * @type {import('@types/aws-lambda').APIGatewayProxyHandler}
@@ -176,14 +178,35 @@ export const handler = async (event) => {
     const sub = body.sub
     const status = 'unverified'
     console.log('NEW USER')
-    response = await makeRequest(createUserDetails({username, sub, email, status}))
+    response = await makeRequest(createUserDetails({ username, sub, email, status }))
     console.log(response)
   }
 
   if (path === `/${process.env.ENV}/public/user/update/status`) {
     const status = 'verified'
-    if (userSub && userSub !== ''){
-        response = await makeRequest(updateUserDetails({sub: userSub, status}))
+    if (userSub && userSub !== '') {
+      response = await makeRequest(updateUserDetails({ sub: userSub, status }))
+    }
+  }
+
+  // This is the new route handler for getting user details.
+  if (path === `/${process.env.ENV}/public/user/get`) {
+    const username = body.username;
+    const sub = body.sub;
+
+    if (username || sub) {
+      response = await makeRequest(getUserDetails({ username, sub }));
+    } else {
+      response = {
+        statusCode: 400,
+        body: {
+          errors: [
+            {
+              message: "Request must include either 'username' or 'sub' in body."
+            }
+          ]
+        }
+      }
     }
   }
 
@@ -191,7 +214,7 @@ export const handler = async (event) => {
 
   return {
     statusCode: response.statusCode,
-    //  Uncomment below to enable CORS requests
+    // Uncomment below to enable CORS requests
     headers: {
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Headers": "*",

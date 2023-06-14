@@ -83,7 +83,7 @@
         },
         "memesrcUserFunction": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcUserFunction-4d6b4d3970594d6d2b46-build.zip"
+          "s3Key": "amplify-builds/memesrcUserFunction-49367843476d49477a33-build.zip"
         }
       },
       "storage": {
