@@ -41,8 +41,11 @@ exports.handler = async (event) => {
     console.log(userDetailsString);
     const userDetails = JSON.parse(userDetailsString);
 
+    console.log(userDetails)
+
     // Check the user's credits
-    const credits = userDetails.body.data.getUserDetails.credits; // The path might be different depending on your GraphQL schema
+    const userDetailsBody = JSON.parse(userDetails.body)
+    const credits = userDetailsBody.data.getUserDetails.credits;
 
     if (credits <= 0) {
         return {

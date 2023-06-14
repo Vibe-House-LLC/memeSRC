@@ -180,8 +180,9 @@ export const handler = async (event) => {
     const email = body.email
     const sub = body.sub
     const status = 'unverified'
+    const credits = 0
     console.log('NEW USER')
-    response = await makeRequest(createUserDetails({ username, sub, email, status }))
+    response = await makeRequest(createUserDetails({ username, sub, email, status, credits }))
     console.log(response)
   }
 
