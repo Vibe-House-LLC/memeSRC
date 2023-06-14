@@ -10,6 +10,7 @@ const BlogPage = lazy(() => import('./pages/BlogPage'));
 const LoginForm = lazy(() => import('./sections/auth/login/LoginForm'));
 const SignupForm = lazy(() => import('./sections/auth/login/SignupForm'));
 const VerifyForm = lazy(() => import('./sections/auth/login/VerifyForm'));
+const ForgotPasswordForm = lazy(() => import('./sections/auth/login/ForgotPasswordForm'));
 const UserPage = lazy(() => import('./pages/UserPage'));
 const Page404 = lazy(() => import('./pages/Page404'));
 const ErrorPage = lazy(() => import('./pages/ErrorPage'));
@@ -74,6 +75,10 @@ export default function Router() {
     {
       path: '/verify',
       element: <CheckAuth><AuthPage><VerifyForm /></AuthPage></CheckAuth>,
+    },
+    {
+      path: '/forgotpassword',
+      element: <CheckAuth><AuthPage><ForgotPasswordForm /></AuthPage></CheckAuth>,
     },
     {
       path: '/section/:sectionIndex',
