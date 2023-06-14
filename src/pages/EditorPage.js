@@ -559,6 +559,11 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                     body: data
                 });
 
+                originalCanvas.getObjects().forEach((obj) => {
+                    if (obj instanceof fabric.Path) {
+                        editor.canvas.remove(obj)
+                    }
+                });
 
                 fabric.Image.fromURL(response.imageData, (returnedImage) => {
                     const originalHeight = editor.canvas.height
