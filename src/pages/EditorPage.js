@@ -98,6 +98,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
     const [loadedSeriesTitle, setLoadedSeriesTitle] = useState('_universal');
     const [drawingMode, setDrawingMode] = useState(false);
+    const [magicPrompt, setMagicPrompt] = useState('simple photo')
 
     const [subtitlesExpanded, setSubtitlesExpanded] = useState(false);
 
@@ -542,7 +543,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
             const data = {
                 image: dataURLBgImage,
                 mask: dataURLDrawing,
-                prompt: "simple photo",
+                prompt: magicPrompt,
             };
 
             //   // Delay the downloads using setTimeout
@@ -609,6 +610,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                             id="prompt"
                                                             label="Prompt"
                                                             variant="outlined"
+                                                            value={magicPrompt}
+                                                            onChange={(event) => setMagicPrompt(event.target.value)}
                                                         />
                                                     </Grid>
                                                     <Grid item>
