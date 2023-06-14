@@ -509,7 +509,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
             width: tempCanvasDrawing.getWidth(),
             height: tempCanvasDrawing.getHeight(),
         });
-        const backgroundImage = editor.canvas.backgroundImage;
+        const backgroundImage = {...editor.canvas.backgroundImage};
 
 
         const imageWidth = backgroundImage.width
@@ -580,6 +580,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
             } catch (error) {
                 console.log('Error posting to lambda function:', error);
             }
+
+            
         }
     };
 
