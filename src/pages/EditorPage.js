@@ -97,6 +97,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     const theme = useTheme();
     const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
     const [loadedSeriesTitle, setLoadedSeriesTitle] = useState('_universal');
+    const [drawingMode, setDrawingMode] = useState(false);
 
     const [subtitlesExpanded, setSubtitlesExpanded] = useState(false);
 
@@ -435,6 +436,99 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         editor?.canvas.renderAll();
     }
 
+    // ------------------------------------------------------------------------
+
+    const toggleDrawingMode = () => {
+        if (editor) {
+            editor.canvas.isDrawingMode = !drawingMode;
+            editor.canvas.freeDrawingBrush.width = 10;
+            editor.canvas.freeDrawingBrush.color = 'red';
+        }
+        setDrawingMode(!drawingMode)
+    }
+
+    const downloadDataURL = (dataURL, fileName) => {
+        const link = document.createElement('a');
+        link.href = dataURL;
+        link.download = fileName;
+    
+        // Simulate a click to start the download
+        link.click();
+      };
+
+    const exportDrawing = async () => {
+        const originalCanvas = editor.canvas;
+    
+        let fabricImage = null;
+    
+        const tempCanvasDrawing = new fabric.Canvas();
+        tempCanvasDrawing.setWidth(1024);
+        tempCanvasDrawing.setHeight(1024);
+    
+        const solidRect = new fabric.Rect({
+          left: 0,
+          top: 0,
+          width: tempCanvasDrawing.getWidth(),
+          height: tempCanvasDrawing.getHeight(),
+          fill: 'black',
+          selectable: false,
+          evented: false,
+        });
+    
+        tempCanvasDrawing.add(solidRect);
+    
+        originalCanvas.getObjects().forEach((obj) => {
+          if (obj instanceof fabric.Path) {
+            const path = obj.toObject();
+            const newPath = new fabric.Path(path.path, { ...path, fill: 'transparent', globalCompositeOperation: 'destination-out' });
+    
+            tempCanvasDrawing.add(newPath);
+          }
+    
+          if (obj instanceof fabric.Image) {
+            fabricImage = obj;
+          }
+        });
+    
+        const dataURLDrawing = tempCanvasDrawing.toDataURL({
+          format: 'png',
+          left: 0,
+          top: 0,
+          width: tempCanvasDrawing.getWidth(),
+          height: tempCanvasDrawing.getHeight(),
+        });
+    
+        if (fabricImage) {
+          const dataURLBgImage = fabricImage.toDataURL('image/png');
+    
+          const data = {
+            image: dataURLBgImage,
+            mask: dataURLDrawing,
+            prompt: "rainbow",
+          };
+    
+          // Delay the downloads using setTimeout
+          setTimeout(() => {
+            downloadDataURL(dataURLBgImage, 'background_image.png');
+          }, 500);
+    
+          setTimeout(() => {
+            downloadDataURL(dataURLDrawing, 'drawing.png');
+          }, 1000);
+    
+        //   try {
+        //     const response = await API.post('publicapi', '/inpaint', {
+        //       body: data
+        //     });
+        //     // setImageSrc(response.imageData);
+        //   } catch (error) {
+        //     console.log('Error posting to lambda function:', error);
+        //   }
+        }
+      };
+
+      // ------------------------------------------------------------------------
+
     // Outputs
     return (
         <>
@@ -450,6 +544,28 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                     </div>
                                 </Grid>
                                 <Grid item xs={12} md={5} lg={5} minWidth={{ xs: {}, md: '350px' }} order={{ xs: 3, md: 2 }}>
+                                    <Grid item xs={12} marginBottom={2}>
+                                        <Button
+                                            variant='contained'
+                                            onClick={toggleDrawingMode}
+                                            fullWidth
+                                            sx={{ zIndex: '50' }}
+                                        // startIcon={<Share />}
+                                        >
+                                            Drawing Mode
+                                        </Button>
+                                    </Grid>
+                                    <Grid item xs={12} marginBottom={2}>
+                                        <Button
+                                            variant='contained'
+                                            onClick={exportDrawing}
+                                            fullWidth
+                                            sx={{ zIndex: '50' }}
+                                        // startIcon={<Share />}
+                                        >
+                                            Download Layers
+                                        </Button>
+                                    </Grid>
                                     <Grid item xs={12} marginBottom={2}>
                                         <Button
                                             variant='contained'

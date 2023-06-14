@@ -48,7 +48,7 @@ const Controls = ({ brushWidth, handleBrushWidthChange, exportDrawing, importIma
 export default function InpaintingPage() {
   const fabricCanvasRef = React.useRef(null);
   const [brushWidth, setBrushWidth] = React.useState(50);
-  const [imageSrc, setImageSrc] = React.useState('https://memesrc.com/seinfeld/img/5/10/seinfeld-5-10-2087.jpg');
+  const [imageSrc, setImageSrc] = React.useState('');
 
   const fabricCanvasInstance = React.useRef();
 
@@ -68,6 +68,25 @@ export default function InpaintingPage() {
     canvas.isDrawingMode = true;
     canvas.freeDrawingBrush.width = brushWidth;
     canvas.freeDrawingBrush.color = 'red';
+
+    const image = new Image();
+    image.crossOrigin = 'anonymous';
+    image.src = newImageSrc;
+    image.onload = function () {
+      const fabricImage = new fabric.Image(image);
+
+      // Scale image to fit canvas
+      const scale = Math.min(1024 / image.width, 1024 / image.height);
+      fabricImage.scale(scale).set({
+        left: (canvas.width - image.width * scale) / 2,
+        top: (canvas.height - image.height * scale) / 2,
+        selectable: false,
+        evented: false,
+      });
+
+      canvas.add(fabricImage);
+      canvas.requestRenderAll();
+    };
     
   }, [brushWidth]);
 
