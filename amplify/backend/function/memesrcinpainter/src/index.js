@@ -1,10 +1,11 @@
 /* Amplify Params - DO NOT EDIT
-	ENV
-	FUNCTION_MEMESRCUSERFUNCTION_NAME
-	REGION
+ENV
+FUNCTION_MEMESRCUSERFUNCTION_NAME
+REGION
 Amplify Params - DO NOT EDIT */
 
 const { SSMClient, GetParameterCommand } = require("@aws-sdk/client-ssm");
+const { LambdaClient, InvokeCommand } = require("@aws-sdk/client-lambda");
 const axios = require('axios');
 const FormData = require('form-data');
 const { Buffer } = require('buffer');
@@ -13,6 +14,50 @@ const { Buffer } = require('buffer');
  * @type {import('@types/aws-lambda').APIGatewayProxyHandler}
  */
 exports.handler = async (event) => {
+    // Create a new Lambda client
+    const lambdaClient = new LambdaClient({ region: "us-east-1" });
+
+    // Get user sub
+    const userSub = (event.requestContext?.identity?.cognitoAuthenticationProvider) ? event.requestContext.identity.cognitoAuthenticationProvider.split(':').slice(-1) : '';
+
+    // Create the request object to invoke the user details function
+    const invokeRequest = {
+        FunctionName: process.env.FUNCTION_MEMESRCUSERFUNCTION_NAME,
+        Payload: JSON.stringify({ 
+            // username: "Some Username"
+            // or alternatively
+            subId: userSub[0],
+            path: `/${process.env.ENV}/public/user/get`
+        }),
+    };
+
+    // Invoke the user details function and wait for the result
+    const userDetailsResult = await lambdaClient.send(new InvokeCommand(invokeRequest));
+
+    // Convert the Uint8Array to a string
+    const userDetailsString = new TextDecoder().decode(userDetailsResult.Payload);
+
+    // Parse the result of the user details function
+    console.log(userDetailsString);
+    const userDetails = JSON.parse(userDetailsString);
+
+    // Check the user's credits
+    const credits = userDetails.body.data.getUserDetails.credits; // The path might be different depending on your GraphQL schema
+
+    if (credits <= 0) {
+        return {
+            statusCode: 403, // Forbidden
+            body: JSON.stringify({
+                message: "Insufficient credits"
+            }),
+            headers: {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*", // CORS requirement
+                "Access-Control-Allow-Credentials": "true", // Required for cookies, authorization headers with HTTPS
+            },
+        };
+    }
+
     // Create a new SSM client
     const ssmClient = new SSMClient({ region: "us-east-1" });
 

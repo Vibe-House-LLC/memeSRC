@@ -65,6 +65,7 @@ function updateUserDetails(params) {
 }
 
 function getUserDetails(params) {
+  console.log(`getUserDetails PARAMS: ${params}`)
   if (params.username) {
     const query = `
           query listUserDetails {
@@ -82,11 +83,12 @@ function getUserDetails(params) {
               }
           }
       `
+    console.log(query)
     return query
-  } else if (params.sub) {
+  } else if (params.subId) {
     const query = `
           query getUserDetails {
-              getUserDetails(id: "${params.id}") {
+              getUserDetails(id: "${params.subId}") {
                   createdAt
                   email
                   id
@@ -98,6 +100,7 @@ function getUserDetails(params) {
               }
           }
       `
+    console.log(query)
     return query
   }
 }
@@ -142,7 +145,7 @@ async function makeRequest(query) {
   } catch (error) {
     statusCode = 500;
     body = {
-      errors: [
+      error: [
         {
           message: error.message
         }
@@ -191,18 +194,18 @@ export const handler = async (event) => {
 
   // This is the new route handler for getting user details.
   if (path === `/${process.env.ENV}/public/user/get`) {
-    const username = body.username;
-    const sub = body.sub;
+    const username = event.username;
+    const subId = event.subId;
 
-    if (username || sub) {
-      response = await makeRequest(getUserDetails({ username, sub }));
+    if (username || subId) {
+      response = await makeRequest(getUserDetails({ username, subId }));
     } else {
       response = {
         statusCode: 400,
         body: {
           errors: [
             {
-              message: "Request must include either 'username' or 'sub' in body."
+              message: "Request must include either 'username' or 'subId' in body."
             }
           ]
         }
