@@ -40,6 +40,22 @@ function createUserDetails(params) {
   return query
 }
 
+function updateUserDetailsCredits(params) {
+  const id = params.id ? `id: "${params.id}",` : ''
+  const credits = (params.credits !== undefined) ? `credits: ${params.credits},` : ''
+
+  const mutation = `
+    mutation updateUserDetails {
+      updateUserDetails(input: {${id}${credits}}) {
+        id
+        credits
+      }
+    }
+  `
+
+  return mutation
+}
+
 function updateUserDetails(params) {
   const email = params.email ? `email: "${params.email}",` : ''
   const username = params.username ? `username: "${params.username.toLowerCase()}",` : ''
@@ -206,7 +222,7 @@ export const handler = async (event) => {
         body: {
           errors: [
             {
-              message: "Request must include either 'username' or 'subId' in body."
+              message: "Request must include either 'username' or 'subId' in Payload."
             }
           ]
         }
@@ -214,6 +230,42 @@ export const handler = async (event) => {
     }
   }
 
+  if (path === `/${process.env.ENV}/public/user/spendCredits`) {
+    const subId = event.subId;
+    const numCredits = event.numCredits;
+  
+    if (!subId || !numCredits) {
+      response = {
+        statusCode: 400,
+        body: {
+          errors: [
+            {
+              message: "Request must include 'subId' and 'numCredits' in Payload."
+            }
+          ]
+        }
+      }
+    } else {
+      // First, get the user's current credit balance.
+      const getUserResponse = await makeRequest(getUserDetails({ subId }));
+      const credits = getUserResponse.body.data.getUserDetails.credits;
+      // Check if the user has at least one credit.
+      if (credits >= numCredits) {
+        // The user has at least one credit, so spend one.
+        const updatedCredits = credits - numCredits;
+        response = await makeRequest(updateUserDetailsCredits({ id: subId, credits: updatedCredits }));
+      } else {
+        // The user does not have enough credits.
+        response = {
+          statusCode: 400,
+          body: {
+            error:  "User does not have enough credits."
+          }
+        }
+      }
+    }
+  }
+  
   console.log(response)
 
   return {

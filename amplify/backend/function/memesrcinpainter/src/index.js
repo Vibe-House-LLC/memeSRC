@@ -27,7 +27,8 @@ exports.handler = async (event) => {
             // username: "Some Username"
             // or alternatively
             subId: userSub[0],
-            path: `/${process.env.ENV}/public/user/get`
+            path: `/${process.env.ENV}/public/user/spendCredits`,
+            numCredits: 1
         }),
     };
 
@@ -44,8 +45,10 @@ exports.handler = async (event) => {
     console.log(userDetails)
 
     // Check the user's credits
+    console.log(userDetails)
     const userDetailsBody = JSON.parse(userDetails.body)
-    const credits = userDetailsBody.data.getUserDetails.credits;
+    console.log(userDetailsBody)
+    const credits = userDetailsBody.data.updateUserDetails.credits;
 
     if (credits <= 0) {
         return {
