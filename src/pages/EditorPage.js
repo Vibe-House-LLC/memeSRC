@@ -451,83 +451,133 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         const link = document.createElement('a');
         link.href = dataURL;
         link.download = fileName;
-    
         // Simulate a click to start the download
         link.click();
-      };
+    };
 
     const exportDrawing = async () => {
         const originalCanvas = editor.canvas;
-    
-        let fabricImage = null;
-    
+
+        // let fabricImage = null;
+
         const tempCanvasDrawing = new fabric.Canvas();
         tempCanvasDrawing.setWidth(1024);
         tempCanvasDrawing.setHeight(1024);
-    
-        const solidRect = new fabric.Rect({
-          left: 0,
-          top: 0,
-          width: tempCanvasDrawing.getWidth(),
-          height: tempCanvasDrawing.getHeight(),
-          fill: 'black',
-          selectable: false,
-          evented: false,
-        });
-    
-        tempCanvasDrawing.add(solidRect);
-    
-        originalCanvas.getObjects().forEach((obj) => {
-          if (obj instanceof fabric.Path) {
-            const path = obj.toObject();
-            const newPath = new fabric.Path(path.path, { ...path, fill: 'transparent', globalCompositeOperation: 'destination-out' });
-    
-            tempCanvasDrawing.add(newPath);
-          }
-    
-          if (obj instanceof fabric.Image) {
-            fabricImage = obj;
-          }
-        });
-    
-        const dataURLDrawing = tempCanvasDrawing.toDataURL({
-          format: 'png',
-          left: 0,
-          top: 0,
-          width: tempCanvasDrawing.getWidth(),
-          height: tempCanvasDrawing.getHeight(),
-        });
-    
-        if (fabricImage) {
-          const dataURLBgImage = fabricImage.toDataURL('image/png');
-    
-          const data = {
-            image: dataURLBgImage,
-            mask: dataURLDrawing,
-            prompt: "rainbow",
-          };
-    
-          // Delay the downloads using setTimeout
-          setTimeout(() => {
-            downloadDataURL(dataURLBgImage, 'background_image.png');
-          }, 500);
-    
-          setTimeout(() => {
-            downloadDataURL(dataURLDrawing, 'drawing.png');
-          }, 1000);
-    
-        //   try {
-        //     const response = await API.post('publicapi', '/inpaint', {
-        //       body: data
-        //     });
-        //     // setImageSrc(response.imageData);
-        //   } catch (error) {
-        //     console.log('Error posting to lambda function:', error);
-        //   }
-        }
-      };
 
-      // ------------------------------------------------------------------------
+        // const solidRect = new fabric.Rect({
+        //     left: 0,
+        //     top: 0,
+        //     width: tempCanvasDrawing.getWidth(),
+        //     height: tempCanvasDrawing.getHeight(),
+        //     fill: 'black',
+        //     selectable: false,
+        //     evented: false,
+        // });
+
+        tempCanvasDrawing.backgroundColor = 'black'
+
+        // tempCanvasDrawing.add(solidRect);
+
+        const originalHeight = editor.canvas.height
+        const originalWidth = editor.canvas.width
+
+        const scale = Math.min(1024 / originalWidth, 1024 / originalHeight);
+        const offsetX = (1024 - originalWidth * scale) / 2;
+        const offsetY = (1024 - originalHeight * scale) / 2;
+
+        originalCanvas.getObjects().forEach((obj) => {
+            if (obj instanceof fabric.Path) {
+                const path = obj.toObject();
+                const newPath = new fabric.Path(path.path, { ...path, fill: 'transparent', globalCompositeOperation: 'destination-out' });
+                newPath.scale(scale);
+                newPath.set({ left: newPath.left * scale + offsetX, top: newPath.top * scale + offsetY });
+                tempCanvasDrawing.add(newPath);
+            }
+
+            // if (obj instanceof fabric.Image) {
+            //     fabricImage = obj;
+            // }
+
+
+        });
+
+        const dataURLDrawing = tempCanvasDrawing.toDataURL({
+            format: 'png',
+            left: 0,
+            top: 0,
+            width: tempCanvasDrawing.getWidth(),
+            height: tempCanvasDrawing.getHeight(),
+        });
+        const backgroundImage = editor.canvas.backgroundImage;
+
+
+        const imageWidth = backgroundImage.width
+        const imageHeight = backgroundImage.height
+        const imageScale = Math.min(1024 / imageWidth, 1024 / imageHeight);
+        const imageOffsetX = (1024 - imageWidth * imageScale) / 2;
+        const imageOffsetY = (1024 - imageHeight * imageScale) / 2;
+
+        tempCanvasDrawing.clear();
+
+        tempCanvasDrawing.backgroundColor = 'black'
+
+        backgroundImage.scale(imageScale)
+        backgroundImage.set({ left: imageOffsetX, top: imageOffsetY });
+        tempCanvasDrawing.add(backgroundImage)
+        const dataURLBgImage = tempCanvasDrawing.toDataURL('image/png');
+
+
+        // Delay the downloads using setTimeout
+        // setTimeout(() => {
+        //     downloadDataURL(dataURLBgImage, 'background_image.png');
+        // }, 500);
+
+        // setTimeout(() => {
+        //     downloadDataURL(dataURLDrawing, 'drawing.png');
+        // }, 1000);
+
+        if (dataURLBgImage && dataURLDrawing) {
+            //   const dataURLBgImage = fabricImage.toDataURL('image/png');
+
+            const data = {
+                image: dataURLBgImage,
+                mask: dataURLDrawing,
+                prompt: "rainbow",
+            };
+
+            //   // Delay the downloads using setTimeout
+            //   setTimeout(() => {
+            //     downloadDataURL(dataURLBgImage, 'background_image.png');
+            //   }, 500);
+
+            //   setTimeout(() => {
+            //     downloadDataURL(dataURLDrawing, 'drawing.png');
+            //   }, 1000);
+
+            try {
+                const response = await API.post('publicapi', '/inpaint', {
+                    body: data
+                });
+
+
+                fabric.Image.fromURL(response.imageData, (returnedImage) => {
+                    const originalHeight = editor.canvas.height
+                    const originalWidth = editor.canvas.width
+
+                    const scale = Math.min(1024 / originalWidth, 1024 / originalHeight);
+                    returnedImage.scale(1 / scale)
+                    editor.canvas.setBackgroundImage(returnedImage)
+                    editor.canvas.backgroundImage.center()
+                    editor.canvas.renderAll();
+                }, { crossOrigin: "anonymous" });
+                // setImageSrc(response.imageData);
+            } catch (error) {
+                console.log('Error posting to lambda function:', error);
+            }
+        }
+    };
+
+    // ------------------------------------------------------------------------
 
     // Outputs
     return (
