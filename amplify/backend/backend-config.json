@@ -357,7 +357,17 @@
     },
     "memesrcinpainter": {
       "build": true,
-      "dependsOn": [],
+      "dependsOn": [
+        {
+          "attributes": [
+            "GraphQLAPIIdOutput",
+            "GraphQLAPIEndpointOutput",
+            "GraphQLAPIKeyOutput"
+          ],
+          "category": "api",
+          "resourceName": "memesrc"
+        }
+      ],
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     }

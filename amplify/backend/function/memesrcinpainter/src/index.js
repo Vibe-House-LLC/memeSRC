@@ -1,7 +1,53 @@
+/* Amplify Params - DO NOT EDIT
+	API_MEMESRC_GRAPHQLAPIENDPOINTOUTPUT
+	API_MEMESRC_GRAPHQLAPIIDOUTPUT
+	API_MEMESRC_GRAPHQLAPIKEYOUTPUT
+	ENV
+	REGION
+Amplify Params - DO NOT EDIT */
+
 const { SSMClient, GetParameterCommand } = require("@aws-sdk/client-ssm");
 const axios = require('axios');
 const FormData = require('form-data');
 const { Buffer } = require('buffer');
+
+function getUserDetails(params) {
+    if (params.username) {
+        const query = `
+            query listUserDetails {
+                listUserDetails(filter: {username: {eq: "${params.username.toLowerCase()}"}}) {
+                    items {
+                        updatedAt
+                        username
+                        stripeId
+                        id
+                        email
+                        createdAt
+                        status
+                        credits
+                    }
+                }
+            }
+        `
+        return query
+    } else if (params.sub) {
+        const query = `
+            query getUserDetails {
+                getUserDetails(id: "${params.sub}") {
+                    createdAt
+                    email
+                    id
+                    stripeId
+                    username
+                    updatedAt
+                    status
+                    credits
+                }
+            }
+        `
+        return query
+    }
+}
 
 /**
  * @type {import('@types/aws-lambda').APIGatewayProxyHandler}
@@ -21,8 +67,6 @@ exports.handler = async (event) => {
     const image_data = Buffer.from(body.image.split(",")[1], 'base64');
     const mask_data = Buffer.from(body.mask.split(",")[1], 'base64');
     const prompt = body.prompt;
-
-    console.log('test')
 
     // Prepare the form data
     let formData = new FormData();
@@ -48,8 +92,6 @@ exports.handler = async (event) => {
     const response = await axios.post('https://api.openai.com/v1/images/edits', formData, { headers });
 
     const image_url = response.data.data[0].url;
-    console.log(image_url);
-    // const image_url = "https://memesrc.com/test-gen.png"
 
     // Download the image from the URL
     const imageResponse = await axios({
@@ -60,6 +102,26 @@ exports.handler = async (event) => {
 
     // Convert image data to base64 string
     const base64Image = Buffer.from(imageResponse.data, 'binary').toString('base64');
+
+    // Get userSub from event
+    const userSub = (event.requestContext?.identity?.cognitoAuthenticationProvider) ? event.requestContext.identity.cognitoAuthenticationProvider.split(':').slice(-1)[0] : '';
+
+    // Get the user details from the graphql endpoint
+    const userDetailsQuery = getUserDetails({ sub: userSub });
+
+    const userResponse = await axios({
+        method: 'post',
+        url: process.env.API_MEMESRC_GRAPHQLAPIENDPOINTOUTPUT,
+        headers: {
+            'x-api-key': process.env.API_MEMESRC_GRAPHQLAPIKEYOUTPUT,
+            'Content-Type': 'application/json',
+        },
+        data: {
+            query: userDetailsQuery
+        }
+    });
+
+    console.log(userResponse.data);
 
     // Formulate response
     const res = {

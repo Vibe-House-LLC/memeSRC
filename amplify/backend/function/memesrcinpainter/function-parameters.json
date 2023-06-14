@@ -2,5 +2,13 @@
   "lambdaLayers": [],
   "secretNames": [
     "openai_apikey"
-  ]
+  ],
+  "permissions": {
+    "api": {
+      "memesrc": [
+        "Query",
+        "Mutation"
+      ]
+    }
+  }
 }
