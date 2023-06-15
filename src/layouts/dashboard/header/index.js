@@ -2,8 +2,9 @@ import PropTypes from 'prop-types';
 import { useState, useEffect, useContext, useRef, useCallback } from 'react';
 // @mui
 import { styled, useTheme } from '@mui/material/styles';
-import { Box, Stack, AppBar, Toolbar, Link, IconButton, Grid, Typography, Slide } from '@mui/material';
+import { Box, Stack, AppBar, Toolbar, Link, IconButton, Grid, Typography, Slide, Chip, Popover, Tooltip } from '@mui/material';
 import { Brightness4, Brightness7 } from '@mui/icons-material';
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 // utils
 import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import { bgBlur } from '../../../utils/cssStyles';
@@ -100,7 +101,7 @@ export default function Header({ onOpenNav }) {
       }, 200);
     }
   }, [showLogo]);
-  
+
   useEffect(() => {
     if (location.pathname === '/' && user) {
       window.addEventListener('scroll', handleScroll);
@@ -124,18 +125,18 @@ export default function Header({ onOpenNav }) {
     <>
       {showNav &&
         <StyledRoot>
-          <StyledToolbar sx={{ position: 'relative', minHeight: { xs: 56, md: '56px !important' } }} ref={containerRef}>
+          <StyledToolbar sx={{ position: 'relative', minHeight: { xs: 45, md: '45px !important' } }} ref={containerRef}>
             {location.pathname.startsWith('/dashboard/') && <IconButton
-          onClick={onOpenNav}
-          sx={{
-            mr: 1,
-            color: 'text.primary',
-          }}
-          size='large'
-        >
-          <Iconify icon="ic:round-menu" />
-        </IconButton>}
-        {user && <Box sx={{width: '145px', height: '1px'}} />}
+              onClick={onOpenNav}
+              sx={{
+                mr: 1,
+                color: 'text.primary',
+              }}
+              size='large'
+            >
+              <Iconify icon="ic:round-menu" />
+            </IconButton>}
+            {user && <Box sx={{ width: '145px', height: '1px' }} />}
 
             {/* <Searchbar /> */}
             <Box sx={{ flexGrow: 1 }} />
@@ -159,9 +160,17 @@ export default function Header({ onOpenNav }) {
               {/* <NotificationsPopover /> */}
               {user &&
                 <>
-                  <Typography variant='body1' noWrap>
-                    Credits: {user.userDetails.credits}
-                  </Typography>
+                  <Chip
+                    icon={<AccountBalanceWalletIcon />}
+                    label={user.userDetails.credits}
+                    size="small"
+                    color="success"
+                    sx={{
+                      "& .MuiChip-label": {
+                        fontWeight: 'bold',
+                      },
+                    }}
+                  />
                   <AccountPopover />
                 </>
               }
