@@ -162,7 +162,7 @@ export default function Header({ onOpenNav }) {
                 <>
                   <Chip
                     icon={<AccountBalanceWalletIcon />}
-                    label={user.userDetails.credits}
+                    label={user.userDetails.credits || 0}
                     size="small"
                     color="success"
                     sx={{
