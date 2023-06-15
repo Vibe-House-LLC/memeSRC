@@ -23,7 +23,7 @@ exports.handler = async (event) => {
     // Create the request object to invoke the user details function
     const invokeRequest = {
         FunctionName: process.env.FUNCTION_MEMESRCUSERFUNCTION_NAME,
-        Payload: JSON.stringify({ 
+        Payload: JSON.stringify({
             // username: "Some Username"
             // or alternatively
             subId: userSub[0],
@@ -48,13 +48,17 @@ exports.handler = async (event) => {
     console.log(userDetails)
     const userDetailsBody = JSON.parse(userDetails.body)
     console.log(userDetailsBody)
-    const credits = userDetailsBody.data.updateUserDetails.credits;
-
-    if (credits <= 0) {
+    const credits = userDetailsBody?.data?.updateUserDetails?.credits;
+    console.log('credits', credits)
+    if (!credits) {
+        console.log('User Does Not Have Enough Credits')
         return {
             statusCode: 403, // Forbidden
             body: JSON.stringify({
-                message: "Insufficient credits"
+                error: {
+                    name: "InsufficientCredits",
+                    message: "Insufficient credits"
+                }
             }),
             headers: {
                 "Content-Type": "application/json",
@@ -63,6 +67,7 @@ exports.handler = async (event) => {
             },
         };
     }
+    console.log('Made it past the credit check')
 
     // Create a new SSM client
     const ssmClient = new SSMClient({ region: "us-east-1" });

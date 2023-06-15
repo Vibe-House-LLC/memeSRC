@@ -1,15 +1,16 @@
-import { forwardRef, memo, useCallback, useEffect, useState } from 'react'
+import { forwardRef, memo, useCallback, useContext, useEffect, useState } from 'react'
 import { fabric } from 'fabric';
 import { FabricJSCanvas, useFabricJSEditor } from 'fabricjs-react'
 import styled from '@emotion/styled';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
-import { Accordion, AccordionDetails, AccordionSummary, Button, Card, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, TextField, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
+import { Accordion, AccordionDetails, AccordionSummary, Backdrop, Button, Card, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, TextField, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { Add, AddCircleOutline, ArrowForward, ArrowForwardIos, AutoFixHighRounded, Close, ContentCopy, Description, GpsFixed, GpsNotFixed, HighlightOffRounded, HistoryToggleOffRounded, IosShare, Menu, More, PlusOne, Share } from '@mui/icons-material';
 import { API, Storage } from 'aws-amplify';
 import { Box } from '@mui/system';
 import TextEditorControls from '../components/TextEditorControls';
+import { SnackbarContext } from '../SnackbarContext';
 
 const Alert = forwardRef((props, ref) => <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />);
 
@@ -89,7 +90,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
     const [fineTuningValue, setFineTuningValue] = useState(4);
     const [episodeDetails, setEpisodeDetails] = useState();
-    const [open, setOpen] = useState(false);
+    const [openDialog, setOpenDialog] = useState(false);
     const [imageUploading, setImageUploading] = useState();
     const [imageBlob, setImageBlob] = useState();
     const [shareImageFile, setShareImageFile] = useState();
@@ -100,6 +101,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     const [drawingMode, setDrawingMode] = useState(false);
     const [magicPrompt, setMagicPrompt] = useState('simple photo')
     const [imageLoaded, setImageLoaded] = useState(false);
+    const [loadingInpaintingResult, setLoadingInpaintingResult] = useState(false);
+    const { setSeverity, setMessage, setOpen } = useContext(SnackbarContext);
 
     const [subtitlesExpanded, setSubtitlesExpanded] = useState(false);
 
@@ -135,12 +138,12 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     const location = useLocation();
 
     const handleClickDialogOpen = () => {
-        setOpen(true);
+        setOpenDialog(true);
         saveImage();
     };
 
     const handleDialogClose = () => {
-        setOpen(false);
+        setOpenDialog(false);
     };
 
     // Canvas resizing
@@ -467,6 +470,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     };
 
     const exportDrawing = async () => {
+        setLoadingInpaintingResult(true)
         const originalCanvas = editor.canvas;
 
         // let fabricImage = null;
@@ -558,7 +562,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                 prompt: magicPrompt,
             };
 
-              // Delay the downloads using setTimeout
+            // Delay the downloads using setTimeout
             //   setTimeout(() => {
             //     downloadDataURL(dataURLBgImage, 'background_image.png');
             //   }, 500);
@@ -588,9 +592,27 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                     editor.canvas.backgroundImage.center()
                     editor.canvas.renderAll();
                 }, { crossOrigin: "anonymous" });
+
+                setLoadingInpaintingResult(false)
+                setTimeout(() => {
+                    setSeverity('success')
+                    setMessage('Image Generation Successful!')
+                    setOpen(true)
+                }, 500);
                 // setImageSrc(response.imageData);
             } catch (error) {
-                console.log('Error posting to lambda function:', error);
+                setLoadingInpaintingResult(false)
+                if (error.response?.data?.error?.name === "InsufficientCredits") {
+                    setSeverity('error')
+                    setMessage('Insufficient Credits')
+                    setOpen(true)
+                    originalCanvas.getObjects().forEach((obj) => {
+                        if (obj instanceof fabric.Path) {
+                            editor.canvas.remove(obj)
+                        }
+                    });
+                }
+                console.log(error.response.data);
             }
 
 
@@ -954,7 +976,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                 </Popover>
 
                 <Dialog
-                    open={open}
+                    open={openDialog}
                     onClose={handleDialogClose}
                     aria-labelledby="responsive-dialog-title"
                     fullWidth
@@ -1039,7 +1061,17 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                 </Alert>
             </Snackbar>
 
-
+            <Backdrop
+                sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1, width: '100vw', height: '100vh' }}
+                open={loadingInpaintingResult}
+            >
+                <Stack alignItems='center' direction='column' spacing={2}>
+                    <CircularProgress color="inherit" />
+                    <Typography variant='h5'>
+                        Generating image...
+                    </Typography>
+                </Stack>
+            </Backdrop>
 
         </>
     )
