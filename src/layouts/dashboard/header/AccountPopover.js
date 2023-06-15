@@ -71,7 +71,7 @@ export default function AccountPopover() {
             }),
           }}
         >
-          <Avatar src={account.photoURL} alt="photoURL" />
+          <Avatar src={account.photoURL} alt="photoURL" sx={{ width: 35, height: 35 }} />
         </IconButton>
       }
 
@@ -93,7 +93,7 @@ export default function AccountPopover() {
             }),
           }}
         >
-          <Avatar alt="photoURL" />
+          <Avatar alt="photoURL" sx={{ width: 35, height: 35 }}/>
         </IconButton>
       }
 
