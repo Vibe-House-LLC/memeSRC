@@ -11,6 +11,7 @@ import { API, Storage } from 'aws-amplify';
 import { Box } from '@mui/system';
 import TextEditorControls from '../components/TextEditorControls';
 import { SnackbarContext } from '../SnackbarContext';
+import { UserContext } from '../UserContext';
 
 const Alert = forwardRef((props, ref) => <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />);
 
@@ -59,6 +60,7 @@ const StyledCardMedia = styled.img`
 const EditorPage = ({ setSeriesTitle, shows }) => {
     // Get everything ready
     const { fid } = useParams();
+    const { user } = useContext(UserContext);
     const [defaultFrame, setDefaultFrame] = useState(null);
     const [pickingColor, setPickingColor] = useState(false);
     const [imageScale, setImageScale] = useState();
@@ -636,7 +638,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                     </div>
                                 </Grid>
                                 <Grid item xs={12} md={5} lg={5} minWidth={{ xs: {}, md: '350px' }} order={{ xs: 3, md: 2 }}>
-                                    <Grid item xs={12} marginBottom={2}>
+                                    {user && <Grid item xs={12} marginBottom={2}>
+
                                         <Grid container direction='column' spacing={2}>
                                             {drawingMode ? (
                                                 <>
@@ -680,6 +683,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                             )}
                                         </Grid>
                                     </Grid>
+                                    }
                                     <Grid item xs={12} marginBottom={2}>
                                         <Button
                                             variant='contained'
