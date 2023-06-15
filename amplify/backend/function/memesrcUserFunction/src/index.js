@@ -252,7 +252,8 @@ export const handler = async (event) => {
       if (credits >= numCredits) {
         // The user has at least one credit, so spend one.
         const updatedCredits = credits - numCredits;
-        response = await makeRequest(updateUserDetailsCredits({ id: subId, credits: updatedCredits }));
+        response = getUserResponse
+        await makeRequest(updateUserDetailsCredits({ id: subId, credits: updatedCredits }));
       } else {
         // The user does not have enough credits.
         response = {

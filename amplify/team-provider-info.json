@@ -79,11 +79,11 @@
         "memesrcinpainter": {
           "secretsPathAmplifyAppId": "d32pnvtwxwtte5",
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcinpainter-4d66303346486b726b51-build.zip"
+          "s3Key": "amplify-builds/memesrcinpainter-424656464c704d344252-build.zip"
         },
         "memesrcUserFunction": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcUserFunction-37466f4b5548466c7a45-build.zip"
+          "s3Key": "amplify-builds/memesrcUserFunction-44736954316566706b4a-build.zip"
         }
       },
       "storage": {

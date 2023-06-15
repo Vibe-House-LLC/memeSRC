@@ -48,7 +48,7 @@ exports.handler = async (event) => {
     console.log(userDetails)
     const userDetailsBody = JSON.parse(userDetails.body)
     console.log(userDetailsBody)
-    const credits = userDetailsBody?.data?.updateUserDetails?.credits;
+    const credits = userDetailsBody?.data?.getUserDetails?.credits;
     console.log('credits', credits)
     if (!credits) {
         console.log('User Does Not Have Enough Credits')
