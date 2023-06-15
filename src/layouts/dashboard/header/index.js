@@ -51,6 +51,8 @@ export default function Header({ onOpenNav }) {
 
   const [showLogo, setShowLogo] = useState(false);
 
+  const [showNav, setShowNav] = useState(false);
+
   const containerRef = useRef(null);
 
   const renderLogo = () => (
@@ -99,6 +101,9 @@ export default function Header({ onOpenNav }) {
   useEffect(() => {
     if (location.pathname === '/') {
       window.addEventListener('scroll', handleScroll);
+      setShowNav(false)
+    } else {
+      setShowNav(true)
     }
   
     return () => {
@@ -108,7 +113,9 @@ export default function Header({ onOpenNav }) {
 
 
   return (
-    <StyledRoot>
+    <>
+    {showNav && 
+      <StyledRoot>
       <StyledToolbar sx={{ position: 'relative', minHeight: {xs: 56, md: '56px !important'} }} ref={containerRef}>
         {/* <IconButton
           onClick={onOpenNav}
@@ -145,5 +152,7 @@ export default function Header({ onOpenNav }) {
         </Stack>
       </StyledToolbar>
     </StyledRoot>
+    }
+    </>
   );
 }
