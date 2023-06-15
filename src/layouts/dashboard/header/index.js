@@ -3,7 +3,7 @@ import { useState, useEffect, useContext, useRef, useCallback } from 'react';
 // @mui
 import { styled, useTheme } from '@mui/material/styles';
 import { Box, Stack, AppBar, Toolbar, Link, IconButton, Grid, Typography, Slide, Chip, Popover, Tooltip } from '@mui/material';
-import { Brightness4, Brightness7 } from '@mui/icons-material';
+import { AutoFixHighRounded } from '@mui/icons-material';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 // utils
 import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
@@ -161,7 +161,7 @@ export default function Header({ onOpenNav }) {
               {user &&
                 <>
                   <Chip
-                    icon={<AccountBalanceWalletIcon />}
+                    icon={<AutoFixHighRounded />}
                     label={user.userDetails.credits || 0}
                     size="small"
                     color="success"
