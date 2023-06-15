@@ -122,7 +122,7 @@ export default function LoginForm() {
         Sign In
       </Typography>
       <Typography variant='body1' gutterBottom marginBottom={8}>
-        Need an account? <Link sx={{ cursor: 'pointer' }} onClick={() => { navigate('/signup') }}>Click here.</Link>
+        Need an account? <Link sx={{ cursor: 'pointer' }} onClick={() => { navigate('/signup') }}>Create one</Link>
       </Typography>
       <form onSubmit={handleClick}>
         <Stack spacing={3}>

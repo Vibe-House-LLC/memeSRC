@@ -148,11 +148,13 @@ export default function VerifyForm(props) {
   return (
     <>
       <Typography variant="h4" gutterBottom>
-        Verify Your Account
+        Check your email
       </Typography>
-      <Typography variant='body1' gutterBottom marginBottom={8}>
-        Didn't receive your code? <Link sx={{ cursor: 'pointer' }} onClick={handleResendVerification}>Click here.</Link>
+
+      <Typography variant="body1" gutterBottom marginBottom={3}> 
+        We sent a verification code to your email
       </Typography>
+      
       <Stack spacing={3} marginBottom={3}>
         <TextField
           name="text"
@@ -189,11 +191,19 @@ export default function VerifyForm(props) {
             setCode(event.target.value)
           }}
         />
+        
       </Stack>
+
+
 
       <LoadingButton loading={loading} fullWidth size="large" type="submit" variant="contained" onClick={confirmSignUp}>
         Verify
       </LoadingButton>
+
+
+      <Typography variant='caption' gutterBottom marginY={2} textAlign="center" sx={{opacity: 0.8}}>
+        Never got it? <Link sx={{ cursor: 'pointer' }} onClick={handleResendVerification}>Resend</Link>
+      </Typography>
 
       <Backdrop
         sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }}

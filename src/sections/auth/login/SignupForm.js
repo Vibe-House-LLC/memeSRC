@@ -159,10 +159,10 @@ export default function SignupForm(props) {
   return (
     <>
       <Typography variant="h4" gutterBottom>
-        Sign Up
+        Create an account
       </Typography>
       <Typography variant='body1' gutterBottom marginBottom={8}>
-        Already have an account? <Link sx={{ cursor: 'pointer' }} onClick={() => { navigate('/login') }}>Click here.</Link>
+        Already have an account? <Link sx={{ cursor: 'pointer' }} onClick={() => { navigate('/login') }}>Sign in</Link>
       </Typography>
       <form onSubmit={createUser}>
         <Stack spacing={3}>
