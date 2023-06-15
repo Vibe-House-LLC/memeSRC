@@ -32,7 +32,7 @@ export default function VerifyForm(props) {
       setMessage(`Account already verified!`);
       setOpen(true)
       setUser(response)
-      navigate('/dashboard', { replace: true });
+      navigate('/', { replace: true });
       setLoading(false)
     }).catch(err => {
       console.log(err)
@@ -46,7 +46,7 @@ export default function VerifyForm(props) {
               setMessage(`Account Verified!`);
               setOpen(true)
               setUser(userSignedIn)
-              navigate('/dashboard', { replace: true });
+              navigate('/', { replace: true });
               setLoading(false)
             })
           }).catch(err => console.log(err))
@@ -58,7 +58,7 @@ export default function VerifyForm(props) {
               setMessage(`Account already verified!`);
               setOpen(true)
               setUser(userSignedIn)
-              navigate('/dashboard', { replace: true });
+              navigate('/', { replace: true });
               setLoading(false)
             }).catch(err => console.log(err))
           }
