@@ -23,9 +23,9 @@ import { UserContext } from '../../../UserContext';
 
 const NAV_WIDTH = 280;
 
-const HEADER_MOBILE = 48;
+const HEADER_MOBILE = 45;
 
-const HEADER_DESKTOP = 48;
+const HEADER_DESKTOP = 45;
 
 const StyledRoot = styled(AppBar)(({ theme }) => ({
   ...bgBlur({ color: theme.palette.background.default }),

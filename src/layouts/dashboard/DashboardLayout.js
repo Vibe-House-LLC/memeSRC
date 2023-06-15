@@ -15,8 +15,8 @@ import Nav from './nav';
 export default function DashboardLayout() {
   const [open, setOpen] = useState(false);
 
-  const APP_BAR_MOBILE = window.location.pathname === '/' ? 0 : 65;
-  const APP_BAR_DESKTOP = window.location.pathname === '/' ? 0 : 65;
+  const APP_BAR_MOBILE = window.location.pathname === '/' ? 0 : 45;
+  const APP_BAR_DESKTOP = window.location.pathname === '/' ? 0 : 45;
 
   const StyledRoot = styled('div')({
     display: 'flex',
