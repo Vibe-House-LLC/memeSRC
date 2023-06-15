@@ -61,7 +61,7 @@ export default function LoginForm() {
     if (username && password) {
       Auth.signIn(username, password).then((x) => {
         setUser(x)
-        navigate(dest || '/dashboard/app', { replace: true })
+        navigate(dest || '/', { replace: true })
       }).catch((error) => {
         console.log(error.name)
 
