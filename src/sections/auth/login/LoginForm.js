@@ -1,7 +1,7 @@
 import { useContext, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 // @mui
-import { Link, Stack, IconButton, InputAdornment, TextField, Checkbox, FormControlLabel, Typography } from '@mui/material';
+import { Link, Stack, IconButton, InputAdornment, TextField, Checkbox, FormControlLabel, Typography, styled } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
 // components
 import { Auth } from 'aws-amplify';
@@ -11,6 +11,16 @@ import { SnackbarContext } from '../../../SnackbarContext';
 
 
 // ----------------------------------------------------------------------
+
+const AutoFillTextField = styled(TextField)`
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active  {
+    -webkit-box-shadow: 0 0 0 60px #192633 inset !important;
+    background-color: #192633 !important;
+    background-clip: content-box !important;
+`;
 
 export default function LoginForm() {
   const navigate = useNavigate();
@@ -114,43 +124,45 @@ export default function LoginForm() {
       <Typography variant='body1' gutterBottom marginBottom={8}>
         Need an account? <Link sx={{ cursor: 'pointer' }} onClick={() => { navigate('/signup') }}>Click here.</Link>
       </Typography>
-      <Stack spacing={3}>
-        <TextField
-          name="text"
-          label="Username"
-          onInput={(x) => {
-            setUsername(x.target.value);
-            setFormErrors({
-              ...formErrors,
-              username: false
-            })
-          }}
-          error={formErrors.username}
-        />
+      <form onSubmit={handleClick}>
+        <Stack spacing={3}>
+          <AutoFillTextField
+            name="text"
+            label="Username"
+            onInput={(x) => {
+              setUsername(x.target.value);
+              setFormErrors({
+                ...formErrors,
+                username: false
+              })
+            }}
+            error={formErrors.username}
+          />
 
-        <TextField
-          name="password"
-          label="Password"
-          type={showPassword ? 'text' : 'password'}
-          error={formErrors.password}
-          InputProps={{
-            endAdornment: (
-              <InputAdornment position="end">
-                <IconButton onClick={() => setShowPassword(!showPassword)} edge="end">
-                  <Iconify icon={showPassword ? 'eva:eye-fill' : 'eva:eye-off-fill'} />
-                </IconButton>
-              </InputAdornment>
-            ),
-          }}
-          onInput={(x) => {
-            setPassword(x.target.value);
-            setFormErrors({
-              ...formErrors,
-              password: false
-            })
-          }}
-        />
-      </Stack>
+          <AutoFillTextField
+            name="password"
+            label="Password"
+            type={showPassword ? 'text' : 'password'}
+            error={formErrors.password}
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton onClick={() => setShowPassword(!showPassword)} edge="end">
+                    <Iconify icon={showPassword ? 'eva:eye-fill' : 'eva:eye-off-fill'} />
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
+            onInput={(x) => {
+              setPassword(x.target.value);
+              setFormErrors({
+                ...formErrors,
+                password: false
+              })
+            }}
+          />
+        </Stack>
+      </form>
 
       <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ my: 2 }}>
         <FormControlLabel
@@ -164,7 +176,7 @@ export default function LoginForm() {
           }
           label="Remember me"
         />
-        <Link variant="subtitle2" underline="hover">
+        <Link variant="subtitle2" underline="hover" sx={{ cursor: 'pointer' }} onClick={() => { navigate('/forgotpassword') }}>
           Forgot your password?
         </Link>
       </Stack>

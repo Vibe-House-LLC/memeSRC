@@ -1,10 +1,20 @@
 import { useNavigate } from 'react-router-dom';
-import { Backdrop, CircularProgress, Link, Stack, TextField, Typography } from '@mui/material';
+import { Backdrop, CircularProgress, Link, Stack, TextField, Typography, styled } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
 import { API, Auth } from 'aws-amplify';
 import { useContext, useState } from 'react';
 import { UserContext } from '../../../UserContext';
 import { SnackbarContext } from '../../../SnackbarContext';
+
+const AutoFillTextField = styled(TextField)`
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active  {
+    -webkit-box-shadow: 0 0 0 60px #192633 inset !important;
+    background-color: #192633 !important;
+    background-clip: content-box !important;
+`;
 
 export default function ResetPasswordForm(props) {
   const navigate = useNavigate();
@@ -15,6 +25,7 @@ export default function ResetPasswordForm(props) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [backdropOpen, setBackdropOpen] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
   const handleResetPassword = () => {
     setLoading(true)
@@ -24,6 +35,7 @@ export default function ResetPasswordForm(props) {
         setSeverity('info');
         setMessage(`Verification code sent to ${username}. Please check your email.`);
         setOpen(true);
+        setResetSent(true)
       })
       .catch(err => {
         setLoading(false);
@@ -55,38 +67,72 @@ export default function ResetPasswordForm(props) {
 
   return (
     <>
-      <Typography variant="h4" gutterBottom>
+      <Typography variant="h4" textAlign='center'>
         Reset Your Password
       </Typography>
-      <Stack spacing={3} marginBottom={3}>
-        <TextField
-          name="text"
-          label="Username"
-          autoComplete='username'
-          value={username}
-          onChange={(event) => setUsername(event.target.value)}
-        />
-        <TextField
-          name="text"
-          label="Verification Code"
-          value={code}
-          onChange={(event) => setCode(event.target.value)}
-        />
-        <TextField
-          name="text"
-          label="New Password"
-          type='password'
-          autoComplete='new-password'
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-        />
-      </Stack>
-      <LoadingButton loading={loading} fullWidth size="large" type="submit" variant="contained" onClick={handleResetPasswordSubmit}>
-        Reset Password
-      </LoadingButton>
-      <Link sx={{ cursor: 'pointer', display: 'block', textAlign: 'center', marginTop: '1rem' }} onClick={handleResetPassword}>
-        Send Verification Code
-      </Link>
+
+
+      {!resetSent &&
+        <>
+          <Typography variant='subheading' mb={5} mt={1} textAlign='center'>
+            Enter your username below to reset your password
+          </Typography>
+          <Stack spacing={3} marginBottom={3}>
+            <AutoFillTextField
+              name="text"
+              label="Username"
+              autoComplete='username'
+              value={username}
+              onChange={(event) => setUsername(event.target.value)}
+            />
+            <LoadingButton loading={loading} fullWidth size="large" type="submit" variant="contained" onClick={handleResetPassword}>
+              Send Verification Code
+            </LoadingButton>
+          </Stack>
+          <Link sx={{ cursor: 'pointer', display: 'block', textAlign: 'center', marginTop: '1rem' }} onClick={() => { setResetSent(true) }}>
+            Already have a code? Click here.
+          </Link>
+        </>
+      }
+
+      {resetSent &&
+        <>
+          <Typography variant='subheading' mb={5} mt={1} textAlign='center'>
+            Check your email for the code to enter below.
+          </Typography>
+          <form onSubmit={handleResetPasswordSubmit}>
+            <Stack spacing={3} marginBottom={3}>
+              <AutoFillTextField
+                name="text"
+                label="Username"
+                autoComplete='username'
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+              />
+              <AutoFillTextField
+                name="text"
+                label="Verification Code"
+                value={code}
+                onChange={(event) => setCode(event.target.value)}
+              />
+              <AutoFillTextField
+                name="text"
+                label="New Password"
+                type='password'
+                autoComplete='new-password'
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+              />
+              <LoadingButton loading={loading} fullWidth size="large" type="submit" variant="contained" onClick={handleResetPasswordSubmit}>
+                Reset Password
+              </LoadingButton>
+              <Link sx={{ cursor: 'pointer', display: 'block', textAlign: 'center', marginTop: '1rem' }} onClick={handleResetPassword}>
+                Click here to resend code.
+              </Link>
+            </Stack>
+          </form>
+        </>
+      }
 
       <Backdrop
         sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }}
