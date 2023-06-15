@@ -16,6 +16,7 @@ import AccountPopover from './AccountPopover';
 import LanguagePopover from './LanguagePopover';
 import NotificationsPopover from './NotificationsPopover';
 import { ColorModeContext } from '../../../theme';
+import { UserContext } from '../../../UserContext';
 
 // ----------------------------------------------------------------------
 
@@ -42,6 +43,8 @@ Header.propTypes = {
 };
 
 export default function Header({ onOpenNav }) {
+
+  const { user } = useContext(UserContext);
 
   const theme = useTheme();
 
@@ -86,7 +89,7 @@ export default function Header({ onOpenNav }) {
 
   const handleScroll = useCallback(() => {
     const currentScrollPos = window.pageYOffset;
-  
+
     // Show the logo if the user has scrolled down 1/3 of the view height, and it hasn't been shown yet
     if (currentScrollPos > window.innerHeight / 3 && !showLogo) {
       setShowLogo(true);
@@ -97,7 +100,7 @@ export default function Header({ onOpenNav }) {
       }, 200);
     }
   }, [showLogo]);
-  
+
   useEffect(() => {
     if (location.pathname === '/') {
       window.addEventListener('scroll', handleScroll);
@@ -105,7 +108,7 @@ export default function Header({ onOpenNav }) {
     } else {
       setShowNav(true)
     }
-  
+
     return () => {
       window.removeEventListener('scroll', handleScroll);
     };
@@ -114,10 +117,10 @@ export default function Header({ onOpenNav }) {
 
   return (
     <>
-    {showNav && 
-      <StyledRoot>
-      <StyledToolbar sx={{ position: 'relative', minHeight: {xs: 56, md: '56px !important'} }} ref={containerRef}>
-        {/* <IconButton
+      {showNav &&
+        <StyledRoot>
+          <StyledToolbar sx={{ position: 'relative', minHeight: { xs: 56, md: '56px !important' } }} ref={containerRef}>
+            {/* <IconButton
           onClick={onOpenNav}
           sx={{
             mr: 1,
@@ -128,31 +131,33 @@ export default function Header({ onOpenNav }) {
           <Iconify icon="ic:round-menu" />
         </IconButton> */}
 
-        {/* <Searchbar /> */}
-        <Box sx={{ flexGrow: 1 }} />
-          {location.pathname === '/'
-            ?
+            {/* <Searchbar /> */}
+            <Box sx={{ flexGrow: 1 }} />
+            {location.pathname === '/'
+              ?
 
-            <Slide direction="up" container={containerRef.current} exit in={showLogo} mountOnEnter>
+              <Slide direction="up" container={containerRef.current} exit in={showLogo} mountOnEnter>
 
-              {renderLogo()}
-            </Slide>
-            : renderLogo()
-          }
+                {renderLogo()}
+              </Slide>
+              : renderLogo()
+            }
 
-        <Stack
-          direction="row"
-          alignItems="center"
-          spacing={{
-            xs: 0.5
-          }}
-        >
-          {/* <NotificationsPopover /> */}
-          <AccountPopover />
-        </Stack>
-      </StyledToolbar>
-    </StyledRoot>
-    }
+            <Stack
+              direction="row"
+              alignItems="center"
+              spacing={{
+                xs: 0.5
+              }}
+            >
+              {/* <NotificationsPopover /> */}
+              {user &&
+                <AccountPopover />
+              }
+            </Stack>
+          </StyledToolbar>
+        </StyledRoot>
+      }
     </>
   );
 }
