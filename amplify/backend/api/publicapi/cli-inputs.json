@@ -125,6 +125,29 @@
           ]
         }
       }
+    },
+    "/user/get": {
+      "name": "/user/get",
+      "lambdaFunction": "memesrcUserFunction",
+      "permissions": {
+        "setting": "private",
+        "auth": [
+          "read"
+        ],
+        "groups": {
+          "admins": [
+            "create",
+            "read",
+            "update",
+            "delete"
+          ],
+          "mods": [
+            "create",
+            "read",
+            "update"
+          ]
+        }
+      }
     }
   }
 }

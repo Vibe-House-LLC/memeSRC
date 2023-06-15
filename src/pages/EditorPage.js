@@ -621,6 +621,10 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         }
     };
 
+    useEffect(() => {
+        console.log(user);
+    }, [user])
+
     // ------------------------------------------------------------------------
 
     // Outputs

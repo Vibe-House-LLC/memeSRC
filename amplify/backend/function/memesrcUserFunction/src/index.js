@@ -211,11 +211,10 @@ export const handler = async (event) => {
 
   // This is the new route handler for getting user details.
   if (path === `/${process.env.ENV}/public/user/get`) {
-    const username = event.username;
-    const subId = event.subId;
+    const subId = userSub;
 
-    if (username || subId) {
-      response = await makeRequest(getUserDetails({ username, subId }));
+    if (subId) {
+      response = await makeRequest(getUserDetails({ subId }));
     } else {
       response = {
         statusCode: 400,
