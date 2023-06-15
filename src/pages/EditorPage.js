@@ -60,7 +60,7 @@ const StyledCardMedia = styled.img`
 const EditorPage = ({ setSeriesTitle, shows }) => {
     // Get everything ready
     const { fid } = useParams();
-    const { user } = useContext(UserContext);
+    const { user, setUser } = useContext(UserContext);
     const [defaultFrame, setDefaultFrame] = useState(null);
     const [pickingColor, setPickingColor] = useState(false);
     const [imageScale, setImageScale] = useState();
@@ -594,11 +594,13 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                     editor.canvas.backgroundImage.center()
                     editor.canvas.renderAll();
                 }, { crossOrigin: "anonymous" });
+                const newCreditAmount = user.userDetails.credits - 1
+                setUser({...user, userDetails: { ...user.userDetails, credits: newCreditAmount }})
 
                 setLoadingInpaintingResult(false)
                 setTimeout(() => {
                     setSeverity('success')
-                    setMessage('Image Generation Successful!')
+                    setMessage(`Image Generation Successful! Remaining credits: ${newCreditAmount}`)
                     setOpen(true)
                 }, 500);
                 // setImageSrc(response.imageData);
@@ -620,10 +622,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
         }
     };
-
-    useEffect(() => {
-        console.log(user);
-    }, [user])
 
     // ------------------------------------------------------------------------
 

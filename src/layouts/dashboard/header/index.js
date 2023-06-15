@@ -114,6 +114,10 @@ export default function Header({ onOpenNav }) {
     };
   }, [location.pathname, handleScroll]);
 
+  useEffect(() => {
+    console.log(user);
+  }, [user])
+
 
   return (
     <>
@@ -130,6 +134,7 @@ export default function Header({ onOpenNav }) {
         >
           <Iconify icon="ic:round-menu" />
         </IconButton> */}
+        {user && <Box sx={{width: '145px', height: '1px'}} />}
 
             {/* <Searchbar /> */}
             <Box sx={{ flexGrow: 1 }} />
@@ -147,12 +152,17 @@ export default function Header({ onOpenNav }) {
               direction="row"
               alignItems="center"
               spacing={{
-                xs: 0.5
+                xs: 2
               }}
             >
               {/* <NotificationsPopover /> */}
               {user &&
-                <AccountPopover />
+                <>
+                  <Typography variant='body1' noWrap>
+                    Credits: {user.userDetails.credits}
+                  </Typography>
+                  <AccountPopover />
+                </>
               }
             </Stack>
           </StyledToolbar>
