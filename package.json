@@ -1,8 +1,8 @@
 {
-  "name": "@minimal/material-kit-react",
-  "author": "minimals.cc",
+  "name": "memesrc",
+  "author": "vibehouse.net",
   "licence": "MIT",
-  "version": "1.6.0",
+  "version": "2.0.0",
   "private": false,
   "scripts": {
     "start": "react-scripts start",
@@ -61,6 +61,7 @@
     "react-apexcharts": "^1.4.0",
     "react-color": "^2.19.3",
     "react-dom": "^18.2.0",
+    "react-dropzone": "^14.2.3",
     "react-helmet-async": "^1.3.0",
     "react-hook-form": "^7.37.0",
     "react-router-dom": "^6.4.2",

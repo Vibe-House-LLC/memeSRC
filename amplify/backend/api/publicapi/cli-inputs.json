@@ -45,6 +45,109 @@
         },
         "setting": "private"
       }
+    },
+    "/tvdb": {
+      "name": "/tvdb",
+      "lambdaFunction": "memesrcTVDB",
+      "permissions": {
+        "groups": {
+          "admins": [
+            "create",
+            "read",
+            "update",
+            "delete"
+          ],
+          "mods": [
+            "create",
+            "read",
+            "update",
+            "delete"
+          ]
+        },
+        "setting": "private"
+      }
+    },
+    "/inpaint": {
+      "name": "/inpaint",
+      "lambdaFunction": "memesrcinpainter",
+      "permissions": {
+        "setting": "private",
+        "auth": [
+          "create",
+          "read",
+          "update",
+          "delete"
+        ],
+        "groups": {
+          "admins": [
+            "create",
+            "read",
+            "update",
+            "delete"
+          ],
+          "mods": [
+            "create",
+            "read",
+            "update",
+            "delete"
+          ]
+        }
+      }
+    },
+    "/user/new": {
+      "name": "/user/new",
+      "lambdaFunction": "memesrcUserFunction",
+      "permissions": {
+        "setting": "open"
+      }
+    },
+    "/user/update": {
+      "name": "/user/update",
+      "lambdaFunction": "memesrcUserFunction",
+      "permissions": {
+        "setting": "private",
+        "auth": [
+          "create",
+          "read",
+          "update"
+        ],
+        "groups": {
+          "admins": [
+            "create",
+            "read",
+            "update",
+            "delete"
+          ],
+          "mods": [
+            "create",
+            "read",
+            "update"
+          ]
+        }
+      }
+    },
+    "/user/get": {
+      "name": "/user/get",
+      "lambdaFunction": "memesrcUserFunction",
+      "permissions": {
+        "setting": "private",
+        "auth": [
+          "read"
+        ],
+        "groups": {
+          "admins": [
+            "create",
+            "read",
+            "update",
+            "delete"
+          ],
+          "mods": [
+            "create",
+            "read",
+            "update"
+          ]
+        }
+      }
     }
   }
 }

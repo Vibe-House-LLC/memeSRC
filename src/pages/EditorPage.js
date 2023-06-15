@@ -1,15 +1,17 @@
-import { forwardRef, memo, useCallback, useEffect, useState } from 'react'
+import { forwardRef, memo, useCallback, useContext, useEffect, useState } from 'react'
 import { fabric } from 'fabric';
 import { FabricJSCanvas, useFabricJSEditor } from 'fabricjs-react'
 import styled from '@emotion/styled';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
-import { Accordion, AccordionDetails, AccordionSummary, Button, Card, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, TextField, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
-import { Add, AddCircleOutline, ArrowForward, ArrowForwardIos, Close, ContentCopy, Description, GpsFixed, GpsNotFixed, HighlightOffRounded, HistoryToggleOffRounded, IosShare, Menu, More, PlusOne, Share } from '@mui/icons-material';
+import { Accordion, AccordionDetails, AccordionSummary, Backdrop, Button, Card, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, TextField, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
+import { Add, AddCircleOutline, ArrowForward, ArrowForwardIos, AutoFixHighRounded, Close, ContentCopy, Description, GpsFixed, GpsNotFixed, HighlightOffRounded, HistoryToggleOffRounded, IosShare, Menu, More, PlusOne, Share } from '@mui/icons-material';
 import { API, Storage } from 'aws-amplify';
 import { Box } from '@mui/system';
 import TextEditorControls from '../components/TextEditorControls';
+import { SnackbarContext } from '../SnackbarContext';
+import { UserContext } from '../UserContext';
 
 const Alert = forwardRef((props, ref) => <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />);
 
@@ -58,13 +60,14 @@ const StyledCardMedia = styled.img`
 const EditorPage = ({ setSeriesTitle, shows }) => {
     // Get everything ready
     const { fid } = useParams();
+    const { user, setUser } = useContext(UserContext);
     const [defaultFrame, setDefaultFrame] = useState(null);
     const [pickingColor, setPickingColor] = useState(false);
     const [imageScale, setImageScale] = useState();
     const [generatedImageFilename, setGeneratedImageFilename] = useState();
     const [canvasSize, setCanvasSize] = useState({
-        width: 500,
-        height: 500
+        // width: 500,
+        // height: 500
     });
     const [fineTuningFrames, setFineTuningFrames] = useState([]);
     const [canvasObjects, setCanvasObjects] = useState();
@@ -89,7 +92,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
     const [fineTuningValue, setFineTuningValue] = useState(4);
     const [episodeDetails, setEpisodeDetails] = useState();
-    const [open, setOpen] = useState(false);
+    const [openDialog, setOpenDialog] = useState(false);
     const [imageUploading, setImageUploading] = useState();
     const [imageBlob, setImageBlob] = useState();
     const [shareImageFile, setShareImageFile] = useState();
@@ -97,6 +100,11 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     const theme = useTheme();
     const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
     const [loadedSeriesTitle, setLoadedSeriesTitle] = useState('_universal');
+    const [drawingMode, setDrawingMode] = useState(false);
+    const [magicPrompt, setMagicPrompt] = useState('simple photo')
+    const [imageLoaded, setImageLoaded] = useState(false);
+    const [loadingInpaintingResult, setLoadingInpaintingResult] = useState(false);
+    const { setSeverity, setMessage, setOpen } = useContext(SnackbarContext);
 
     const [subtitlesExpanded, setSubtitlesExpanded] = useState(false);
 
@@ -132,12 +140,12 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     const location = useLocation();
 
     const handleClickDialogOpen = () => {
-        setOpen(true);
+        setOpenDialog(true);
         saveImage();
     };
 
     const handleDialogClose = () => {
-        setOpen(false);
+        setOpenDialog(false);
     };
 
     // Canvas resizing
@@ -153,6 +161,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
     // Update the editor size
     const updateEditorSize = useCallback(() => {
+        console.log()
         const [desiredHeight, desiredWidth] = calculateEditorSize(editorAspectRatio);
         // Calculate scale factor
         const scaleFactorX = desiredWidth / canvasSize.width;
@@ -180,12 +189,13 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     }, [location, fid, editor])
 
     useEffect(() => {
-        window.addEventListener('resize', updateEditorSize)
-
+        if (imageLoaded) {
+            window.addEventListener('resize', updateEditorSize)
+        }
         return () => {
             window.removeEventListener('resize', updateEditorSize)
         }
-    }, [updateEditorSize])
+    }, [updateEditorSize, imageLoaded])
 
     const getSessionID = async () => {
         let sessionID;
@@ -268,6 +278,12 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     }, [selectedFid]) // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
+        if (editor) {
+            updateEditorSize();
+        }
+    }, [canvasSize])
+
+    useEffect(() => {
         if (defaultFrame) {
             const oImg = defaultFrame
             const imageAspectRatio = oImg.width / oImg.height;
@@ -284,6 +300,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
             resizeCanvas(desiredWidth, desiredHeight)
             editor?.canvas.setBackgroundImage(oImg);
             addText(defaultSubtitle, false);
+            setImageLoaded(true)
         }
     }, [defaultFrame, defaultSubtitle])
 
@@ -435,6 +452,179 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         editor?.canvas.renderAll();
     }
 
+    // ------------------------------------------------------------------------
+
+    const toggleDrawingMode = () => {
+        if (editor) {
+            editor.canvas.isDrawingMode = !drawingMode;
+            editor.canvas.freeDrawingBrush.width = 40;
+            editor.canvas.freeDrawingBrush.color = 'red';
+        }
+        setDrawingMode(!drawingMode)
+    }
+
+    const downloadDataURL = (dataURL, fileName) => {
+        const link = document.createElement('a');
+        link.href = dataURL;
+        link.download = fileName;
+        // Simulate a click to start the download
+        link.click();
+    };
+
+    const exportDrawing = async () => {
+        setLoadingInpaintingResult(true)
+        const originalCanvas = editor.canvas;
+
+        // let fabricImage = null;
+
+        const tempCanvasDrawing = new fabric.Canvas();
+        tempCanvasDrawing.setWidth(1024);
+        tempCanvasDrawing.setHeight(1024);
+
+        // const solidRect = new fabric.Rect({
+        //     left: 0,
+        //     top: 0,
+        //     width: tempCanvasDrawing.getWidth(),
+        //     height: tempCanvasDrawing.getHeight(),
+        //     fill: 'black',
+        //     selectable: false,
+        //     evented: false,
+        // });
+
+        tempCanvasDrawing.backgroundColor = 'black'
+
+        // tempCanvasDrawing.add(solidRect);
+
+        const originalHeight = editor.canvas.height
+        const originalWidth = editor.canvas.width
+
+        const scale = Math.min(1024 / originalWidth, 1024 / originalHeight);
+        const offsetX = (1024 - originalWidth * scale) / 2;
+        const offsetY = (1024 - originalHeight * scale) / 2;
+
+        originalCanvas.getObjects().forEach((obj) => {
+            if (obj instanceof fabric.Path) {
+                const path = obj.toObject();
+                const newPath = new fabric.Path(path.path, { ...path, fill: 'transparent', globalCompositeOperation: 'destination-out' });
+                newPath.scale(scale);
+                newPath.set({ left: newPath.left * scale + offsetX, top: newPath.top * scale + offsetY });
+                tempCanvasDrawing.add(newPath);
+            }
+
+            // if (obj instanceof fabric.Image) {
+            //     fabricImage = obj;
+            // }
+
+
+        });
+
+        const dataURLDrawing = tempCanvasDrawing.toDataURL({
+            format: 'png',
+            left: 0,
+            top: 0,
+            width: tempCanvasDrawing.getWidth(),
+            height: tempCanvasDrawing.getHeight(),
+        });
+        const backgroundImage = { ...editor.canvas.backgroundImage };
+
+        const newBackgroundImage = new fabric.Image(editor.canvas.backgroundImage.getElement())
+
+        console.log(newBackgroundImage)
+        const imageWidth = backgroundImage.width
+        const imageHeight = backgroundImage.height
+        const imageScale = Math.min(1024 / imageWidth, 1024 / imageHeight);
+        const imageOffsetX = (1024 - imageWidth * imageScale) / 2;
+        const imageOffsetY = (1024 - imageHeight * imageScale) / 2;
+
+        tempCanvasDrawing.clear();
+
+        tempCanvasDrawing.backgroundColor = 'black'
+
+        newBackgroundImage.scale(imageScale)
+        newBackgroundImage.set({ left: imageOffsetX, top: imageOffsetY });
+        tempCanvasDrawing.add(newBackgroundImage)
+        const dataURLBgImage = tempCanvasDrawing.toDataURL('image/png');
+
+
+        // Delay the downloads using setTimeout
+        // setTimeout(() => {
+        //     downloadDataURL(dataURLBgImage, 'background_image.png');
+        // }, 500);
+
+        // setTimeout(() => {
+        //     downloadDataURL(dataURLDrawing, 'drawing.png');
+        // }, 1000);
+
+        if (dataURLBgImage && dataURLDrawing) {
+            //   const dataURLBgImage = fabricImage.toDataURL('image/png');
+
+            const data = {
+                image: dataURLBgImage,
+                mask: dataURLDrawing,
+                prompt: magicPrompt,
+            };
+
+            // Delay the downloads using setTimeout
+            //   setTimeout(() => {
+            //     downloadDataURL(dataURLBgImage, 'background_image.png');
+            //   }, 500);
+
+            //   setTimeout(() => {
+            //     downloadDataURL(dataURLDrawing, 'drawing.png');
+            //   }, 1000);
+
+            try {
+                const response = await API.post('publicapi', '/inpaint', {
+                    body: data
+                });
+
+                originalCanvas.getObjects().forEach((obj) => {
+                    if (obj instanceof fabric.Path) {
+                        editor.canvas.remove(obj)
+                    }
+                });
+
+                fabric.Image.fromURL(response.imageData, (returnedImage) => {
+                    const originalHeight = editor.canvas.height
+                    const originalWidth = editor.canvas.width
+
+                    const scale = Math.min(1024 / originalWidth, 1024 / originalHeight);
+                    returnedImage.scale(1 / scale)
+                    editor.canvas.setBackgroundImage(returnedImage)
+                    editor.canvas.backgroundImage.center()
+                    editor.canvas.renderAll();
+                }, { crossOrigin: "anonymous" });
+                const newCreditAmount = user.userDetails.credits - 1
+                setUser({...user, userDetails: { ...user.userDetails, credits: newCreditAmount }})
+
+                setLoadingInpaintingResult(false)
+                setTimeout(() => {
+                    setSeverity('success')
+                    setMessage(`Image Generation Successful! Remaining credits: ${newCreditAmount}`)
+                    setOpen(true)
+                }, 500);
+                // setImageSrc(response.imageData);
+            } catch (error) {
+                setLoadingInpaintingResult(false)
+                if (error.response?.data?.error?.name === "InsufficientCredits") {
+                    setSeverity('error')
+                    setMessage('Insufficient Credits')
+                    setOpen(true)
+                    originalCanvas.getObjects().forEach((obj) => {
+                        if (obj instanceof fabric.Path) {
+                            editor.canvas.remove(obj)
+                        }
+                    });
+                }
+                console.log(error.response.data);
+            }
+
+
+        }
+    };
+
+    // ------------------------------------------------------------------------
+
     // Outputs
     return (
         <>
@@ -450,6 +640,52 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                     </div>
                                 </Grid>
                                 <Grid item xs={12} md={5} lg={5} minWidth={{ xs: {}, md: '350px' }} order={{ xs: 3, md: 2 }}>
+                                    {user && <Grid item xs={12} marginBottom={2}>
+
+                                        <Grid container direction='column' spacing={2}>
+                                            {drawingMode ? (
+                                                <>
+                                                    <Grid item>
+                                                        <TextField
+                                                            fullWidth
+                                                            id="prompt"
+                                                            label="Prompt"
+                                                            variant="outlined"
+                                                            value={magicPrompt}
+                                                            onChange={(event) => setMagicPrompt(event.target.value)}
+                                                        />
+                                                    </Grid>
+                                                    <Grid item>
+                                                        <Button
+                                                            variant='contained'
+                                                            onClick={() => {
+                                                                exportDrawing();
+                                                                toggleDrawingMode();
+                                                            }}
+                                                            fullWidth
+                                                            sx={{ zIndex: '50' }}
+                                                            startIcon={<AutoFixHighRounded />}
+                                                        >
+                                                            Magic Brush (apply)
+                                                        </Button>
+                                                    </Grid>
+                                                </>
+                                            ) : (
+                                                <Grid item>
+                                                    <Button
+                                                        variant='contained'
+                                                        onClick={toggleDrawingMode}
+                                                        fullWidth
+                                                        sx={{ zIndex: '50' }}
+                                                        startIcon={<AutoFixHighRounded />}
+                                                    >
+                                                        Magic Brush (select)
+                                                    </Button>
+                                                </Grid>
+                                            )}
+                                        </Grid>
+                                    </Grid>
+                                    }
                                     <Grid item xs={12} marginBottom={2}>
                                         <Button
                                             variant='contained'
@@ -472,6 +708,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                             Add Layer
                                         </Button>
                                     </Grid>
+
+
                                     <Grid container item xs={12} maxHeight={{ xs: {}, md: `${canvasSize.height - 104}px` }} paddingX={{ xs: 0, md: 2 }} sx={{ overflowY: 'scroll', overflow: 'auto' }} flexDirection='col-reverse'>
                                         {canvasObjects && canvasObjects.map((object, index) => (
 
@@ -655,7 +893,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                 <StyledCard
                                                     style={{ border: (fid === result?.fid) ? '3px solid orange' : '' }}
                                                 >
-                                                    {console.log(`${fid} = ${result?.fid}`)}
+                                                    {/* {console.log(`${fid} = ${result?.fid}`)} */}
                                                     <StyledCardMedia
                                                         component="img"
                                                         src={`https://memesrc.com${result?.frame_image}`}
@@ -744,7 +982,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                 </Popover>
 
                 <Dialog
-                    open={open}
+                    open={openDialog}
                     onClose={handleDialogClose}
                     aria-labelledby="responsive-dialog-title"
                     fullWidth
@@ -829,7 +1067,17 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                 </Alert>
             </Snackbar>
 
-
+            <Backdrop
+                sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1, width: '100vw', height: '100vh' }}
+                open={loadingInpaintingResult}
+            >
+                <Stack alignItems='center' direction='column' spacing={2}>
+                    <CircularProgress color="inherit" />
+                    <Typography variant='h5'>
+                        Generating image...
+                    </Typography>
+                </Stack>
+            </Backdrop>
 
         </>
     )

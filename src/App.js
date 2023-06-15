@@ -5,6 +5,7 @@ import { Backdrop, CircularProgress } from '@mui/material';
 import Router from './routes';
 // theme
 import ThemeProvider from './theme';
+import SnackBar from './utils/Snackbar';
 // components
 // import ScrollToTop from './components/scroll-to-top';
 // import { StyledChart } from './components/chart';
@@ -19,9 +20,10 @@ export default function App() {
   // Return the App
   return (
     <ThemeProvider>
-      {/* <ScrollToTop /> */}
-      {/* <StyledChart /> */}
-      
+      <SnackBar>
+        {/* <ScrollToTop /> */}
+        {/* <StyledChart /> */}
+
         <Suspense fallback={
           <Backdrop open sx={{ backgroundColor: "white" }}>
             <CircularProgress />
@@ -29,6 +31,7 @@ export default function App() {
         }>
           <Router />
         </Suspense>
+      </SnackBar>
     </ThemeProvider>
   );
 }

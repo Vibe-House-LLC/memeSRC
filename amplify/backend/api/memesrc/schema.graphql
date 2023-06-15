@@ -2,6 +2,96 @@
 # all models in this schema. Learn more about authorization rules here: https://docs.amplify.aws/cli/graphql/authorization-rules
 # input AMPLIFY { globalAuthRule: AuthRule = { allow: public } } # FOR TESTING ONLY!
 
+type Series @model @auth(
+  rules: [
+    { allow: groups, groups: ["admins", "mods"] },
+    { allow: private, operations: [read] },
+    { allow: public, operations: [read] }
+  ]
+) {
+  id: ID!,
+  tvdbid: Int!,
+  slug: String,
+  name: String,
+  year: Int,
+  image: String,
+  description: String,
+  seasons: [Season] @hasMany,
+  statusText: String,
+}
+
+type SourceMedia @model @auth(
+  rules: [
+    { allow: groups, groups: ["admins", "mods"] }
+  ]
+) {
+  id: ID!,
+  series: Series @hasOne,
+  files: [File] @hasMany,
+  status: String,
+  user: UserDetails @belongsTo
+}
+
+type File @model @auth(
+  rules: [
+    { allow: groups, groups: ["admins", "mods"] }
+  ]
+) {
+  id: ID!,
+  sourceMedia: SourceMedia @belongsTo,
+  key: String,
+  status: String,
+}
+
+type Season @model @auth(
+  rules: [
+    { allow: groups, groups: ["admins", "mods"] },
+    { allow: private, operations: [read] },
+    { allow: public, operations: [read] }
+  ]
+) {
+  id: ID!,
+  tvdbid: Int!,
+  year: Int,
+  image: String,
+  description: String,
+  series: Series @belongsTo,
+  episodes: [Episode] @hasMany
+}
+
+type Episode @model @auth(
+  rules: [
+    { allow: groups, groups: ["admins", "mods"] },
+    { allow: private, operations: [read] },
+    { allow: public, operations: [read] }
+  ]
+) {
+  id: ID!,
+  tvdbid: Int!,
+  year: Int,
+  image: String,
+  description: String,
+  season: Season @belongsTo
+  subtitles: [Subtitle] @hasMany
+}
+
+type Subtitle @model @auth(
+  rules: [
+    { allow: groups, groups: ["admins", "mods"] },
+    { allow: private, operations: [read] },
+    { allow: public, operations: [read] }
+  ]
+) {
+  id: ID!,
+  tvdbid: Int!,
+  year: Int,
+  image: String,
+  description: String,
+  start: Int,
+  end: Int,
+  episode: Episode @belongsTo
+}
+
 type AnalyticsMetrics @model @auth(
   rules: [
     { allow: groups, groups: ["admins", "mods"] }
@@ -44,4 +134,18 @@ type HomepageSection @model @auth(
   buttonSubtext: AWSJSON,
   backgroundColor: String,
   textColor: String
+}
+
+type UserDetails @model @auth(
+  rules: [
+    { allow: groups, groups: ["admins"] },
+  ]
+) {
+  id: ID!,
+  username: String,
+  email: String,
+  stripeId: String,
+  sourceMedia: [SourceMedia] @hasMany,
+  status: String,
+  credits: Int
 }
