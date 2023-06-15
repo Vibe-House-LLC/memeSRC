@@ -521,7 +521,9 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         });
         const backgroundImage = { ...editor.canvas.backgroundImage };
 
+        const newBackgroundImage = new fabric.Image(editor.canvas.backgroundImage.getElement())
 
+        console.log(newBackgroundImage)
         const imageWidth = backgroundImage.width
         const imageHeight = backgroundImage.height
         const imageScale = Math.min(1024 / imageWidth, 1024 / imageHeight);
@@ -532,9 +534,9 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
         tempCanvasDrawing.backgroundColor = 'black'
 
-        backgroundImage.scale(imageScale)
-        backgroundImage.set({ left: imageOffsetX, top: imageOffsetY });
-        tempCanvasDrawing.add(backgroundImage)
+        newBackgroundImage.scale(imageScale)
+        newBackgroundImage.set({ left: imageOffsetX, top: imageOffsetY });
+        tempCanvasDrawing.add(newBackgroundImage)
         const dataURLBgImage = tempCanvasDrawing.toDataURL('image/png');
 
 
@@ -556,7 +558,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                 prompt: magicPrompt,
             };
 
-            //   // Delay the downloads using setTimeout
+              // Delay the downloads using setTimeout
             //   setTimeout(() => {
             //     downloadDataURL(dataURLBgImage, 'background_image.png');
             //   }, 500);
@@ -863,7 +865,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                 <StyledCard
                                                     style={{ border: (fid === result?.fid) ? '3px solid orange' : '' }}
                                                 >
-                                                    {console.log(`${fid} = ${result?.fid}`)}
+                                                    {/* {console.log(`${fid} = ${result?.fid}`)} */}
                                                     <StyledCardMedia
                                                         component="img"
                                                         src={`https://memesrc.com${result?.frame_image}`}
