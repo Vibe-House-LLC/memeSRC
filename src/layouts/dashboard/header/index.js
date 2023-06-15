@@ -100,31 +100,32 @@ export default function Header({ onOpenNav }) {
       }, 200);
     }
   }, [showLogo]);
-
+  
   useEffect(() => {
-    if (location.pathname === '/') {
+    if (location.pathname === '/' && user) {
       window.addEventListener('scroll', handleScroll);
-      setShowNav(false)
+      setShowNav(true);
+    } else if (location.pathname !== '/') {
+      setShowNav(true);
     } else {
-      setShowNav(true)
+      setShowNav(false);
     }
 
     return () => {
       window.removeEventListener('scroll', handleScroll);
     };
-  }, [location.pathname, handleScroll]);
+  }, [location.pathname, handleScroll, user]);
 
-  useEffect(() => {
-    console.log(user);
-  }, [user])
-
+  // useEffect(() => {
+  //   console.log(user);
+  // }, [user])
 
   return (
     <>
       {showNav &&
         <StyledRoot>
           <StyledToolbar sx={{ position: 'relative', minHeight: { xs: 56, md: '56px !important' } }} ref={containerRef}>
-            {/* <IconButton
+            {location.pathname.startsWith('/dashboard/') && <IconButton
           onClick={onOpenNav}
           sx={{
             mr: 1,
@@ -133,7 +134,7 @@ export default function Header({ onOpenNav }) {
           size='large'
         >
           <Iconify icon="ic:round-menu" />
-        </IconButton> */}
+        </IconButton>}
         {user && <Box sx={{width: '145px', height: '1px'}} />}
 
             {/* <Searchbar /> */}
