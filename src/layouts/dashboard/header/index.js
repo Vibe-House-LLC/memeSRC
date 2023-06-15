@@ -110,7 +110,7 @@ export default function Header({ onOpenNav }) {
   return (
     <StyledRoot>
       <StyledToolbar sx={{ position: 'relative', minHeight: {xs: 56, md: '56px !important'} }} ref={containerRef}>
-        <IconButton
+        {/* <IconButton
           onClick={onOpenNav}
           sx={{
             mr: 1,
@@ -119,7 +119,7 @@ export default function Header({ onOpenNav }) {
           size='large'
         >
           <Iconify icon="ic:round-menu" />
-        </IconButton>
+        </IconButton> */}
 
         {/* <Searchbar /> */}
         <Box sx={{ flexGrow: 1 }} />
