@@ -63,8 +63,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     const [imageScale, setImageScale] = useState();
     const [generatedImageFilename, setGeneratedImageFilename] = useState();
     const [canvasSize, setCanvasSize] = useState({
-        width: 500,
-        height: 500
+        // width: 500,
+        // height: 500
     });
     const [fineTuningFrames, setFineTuningFrames] = useState([]);
     const [canvasObjects, setCanvasObjects] = useState();
@@ -99,6 +99,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     const [loadedSeriesTitle, setLoadedSeriesTitle] = useState('_universal');
     const [drawingMode, setDrawingMode] = useState(false);
     const [magicPrompt, setMagicPrompt] = useState('simple photo')
+    const [imageLoaded, setImageLoaded] = useState(false);
 
     const [subtitlesExpanded, setSubtitlesExpanded] = useState(false);
 
@@ -155,6 +156,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
     // Update the editor size
     const updateEditorSize = useCallback(() => {
+        console.log()
         const [desiredHeight, desiredWidth] = calculateEditorSize(editorAspectRatio);
         // Calculate scale factor
         const scaleFactorX = desiredWidth / canvasSize.width;
@@ -182,12 +184,13 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     }, [location, fid, editor])
 
     useEffect(() => {
-        window.addEventListener('resize', updateEditorSize)
-
+        if (imageLoaded) {
+            window.addEventListener('resize', updateEditorSize)
+        }
         return () => {
             window.removeEventListener('resize', updateEditorSize)
         }
-    }, [updateEditorSize])
+    }, [updateEditorSize, imageLoaded])
 
     const getSessionID = async () => {
         let sessionID;
@@ -270,6 +273,12 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     }, [selectedFid]) // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
+        if (editor) {
+            updateEditorSize();
+        }
+    }, [canvasSize])
+
+    useEffect(() => {
         if (defaultFrame) {
             const oImg = defaultFrame
             const imageAspectRatio = oImg.width / oImg.height;
@@ -286,6 +295,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
             resizeCanvas(desiredWidth, desiredHeight)
             editor?.canvas.setBackgroundImage(oImg);
             addText(defaultSubtitle, false);
+            setImageLoaded(true)
         }
     }, [defaultFrame, defaultSubtitle])
 
@@ -509,7 +519,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
             width: tempCanvasDrawing.getWidth(),
             height: tempCanvasDrawing.getHeight(),
         });
-        const backgroundImage = {...editor.canvas.backgroundImage};
+        const backgroundImage = { ...editor.canvas.backgroundImage };
 
 
         const imageWidth = backgroundImage.width
@@ -581,7 +591,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                 console.log('Error posting to lambda function:', error);
             }
 
-            
+
         }
     };
 
