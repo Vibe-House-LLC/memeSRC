@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { API } from 'aws-amplify';
-import { Grid, CircularProgress, Card } from '@mui/material';
+import { Grid, CircularProgress, Card, Chip } from '@mui/material';
 import styled from '@emotion/styled';
 import { useNavigate, useParams } from 'react-router-dom';
 import TopBannerSearch from '../sections/search/TopBannerSearch';
@@ -13,16 +13,9 @@ const StyledCircularProgress = styled(CircularProgress)`
 `;
 
 const StyledCard = styled(Card)`
-  
   border: 3px solid transparent;
   box-sizing: border-box;
   position: relative;
-
-  &:hover img, &:active img, &:focus img{
-    animation: bgmve 5s;
-    animation-iteration-count: infinite;
-    animation-timing-function: ease;
-    }
 
   &:hover {
     border: 3px solid orange;
@@ -31,19 +24,8 @@ const StyledCard = styled(Card)`
 
 const StyledCardMedia = styled.img`
   width: 100%;
-  height: 230px;
-  aspect-ratio: '16/9';
-  object-fit: cover;
-  object-position: 50% 0;
+  height: auto;
   background-color: black;
-
-  @keyframes bgmve {
-    0% {object-position: 50% 0; animation-timing-function: ease-out;}
-    25% {object-position: 0 0; animation-timing-function: ease-in;}
-    50% {object-position: 50% 0; animation-timing-function: ease-out;}
-    75% {object-position: 100% 0; animation-timing-function: ease-in;}
-    100% {object-position: 50% 0; animation-timing-function: ease-in;}
-  }
 `;
 
 const TopCardInfo = styled.div`
@@ -74,6 +56,20 @@ const BottomCardCaption = styled.div`
   padding: 18px 10px;
   text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
 `;
+
+const BottomCardLabel = styled.div`
+  position: absolute;
+  top: 10px; // Adjust as needed
+  left: 10px; // Adjust as needed
+  padding: 3px 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: ${props => props.theme.palette.common.white};
+  text-align: left;
+`;
+
+
 
 const SeasonEpisodeText = styled.span`
   color: #919191;
@@ -132,6 +128,7 @@ export default function SearchPage() {
           }
           API.get(apiName, path, myInit)
             .then(data => {
+              console.log(data)
               setResults(data);
               setLoading(false);
               setLoadedSearchTerm(searchTerm);
@@ -162,7 +159,7 @@ export default function SearchPage() {
         {loading ? (
           <StyledCircularProgress />
         ) : memoizedResults && memoizedResults.map(result => (
-          <Grid item xs={6} sm={6} md={3} key={result.fid}>
+          <Grid item xs={12} sm={6} md={3} key={result.fid}>
             <a href={`/editor/${result.fid}?search=${encodeURI(searchTerm)}`} style={{ textDecoration: 'none' }}>
               <StyledCard>
                 <StyledCardMedia
@@ -170,19 +167,31 @@ export default function SearchPage() {
                   src={`https://memesrc.com${result.frame_image}`}
                   alt={result.subtitle}
                   title={result.subtitle} />
-                <TopCardInfo>
-                  <SeasonEpisodeText><b>S.</b>{result.season_number} <b>E.</b>{result.episode_number}</SeasonEpisodeText> <b>{result.series_name}</b>
-                </TopCardInfo>
                 <BottomCardCaption>
                   {result.subtitle}
                 </BottomCardCaption>
-
-                {/* <StyledTypography variant="body2">
-                  Subtitle: {result.subtitle}<br />
-                  Series: {result.series_name}<br />
-                  Season: {result.season_number}<br />
-                  Episode: {result.episode_number}
-                </StyledTypography> */}
+                <BottomCardLabel>
+                <Chip
+                    size='small'
+                    label={result.series_name}
+                    style={{ backgroundColor: 'white', color: 'black', fontWeight: 'bold' }}
+                    sx={{
+                      "& .MuiChip-label": {
+                        fontWeight: 'bold',
+                      },
+                    }}
+                  />
+                  <Chip
+                    size='small'
+                    label={`S${result.season_number} E${result.episode_number}`}
+                    sx={{
+                      marginLeft: '5px', // Adjust as needed for space between chips
+                      "& .MuiChip-label": {
+                        fontWeight: 'bold',
+                      },
+                    }}
+                  />
+                </BottomCardLabel>
               </StyledCard>
             </a>
           </Grid>
