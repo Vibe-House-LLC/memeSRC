@@ -68,7 +68,8 @@ export default function FramePage() {
                     fontWeight: 'bold',
                   },
                 }}
-              /></>
+              />
+            </>
 
           </Typography>
         </Toolbar>
@@ -88,20 +89,28 @@ export default function FramePage() {
           <Grid item xs={12} md={6}>
             <CardContent style={{ marginBottom: '1rem' }}>
               <Typography variant="h4" component="div" style={{ marginBottom: '0.5rem' }}>
-                {fid.split('-')[0]}
-              </Typography>
-              <Typography variant="h5" style={{ marginBottom: '0.5rem' }}>
-                Season: {fid.split('-')[1]}
-              </Typography>
-              <Typography variant="h5" style={{ marginBottom: '0.5rem' }}>
-                Episode: {fid.split('-')[2]}
+                {fid.split('-')[0]} <Chip
+                  size='small'
+                  label={`S${fid.split('-')[1]} E${fid.split('-')[2]}`}
+                  sx={{
+                    marginLeft: '5px', // Adjust as needed for space between chips
+                    "& .MuiChip-label": {
+                      fontWeight: 'bold',
+                    },
+                  }}
+                />
               </Typography>
               <Typography variant="subtitle1" color="text.secondary" style={{ marginBottom: '1rem' }}>
                 {frameData.subtitle ? `"${frameData.subtitle}"` : <CircularProgress />}
               </Typography>
+
               <Button size="large" variant="contained" to={`/editor/${fid}`} component={RouterLink} style={{ marginBottom: '1rem' }}>
                 Add Captions & Edit Photo
               </Button>
+
+              <Typography variant="subtitle1" color="text.secondary" style={{ marginBottom: '1rem' }}>
+                TODO: add more metadata, links, content, etc. here
+              </Typography>
             </CardContent>
 
           </Grid>
