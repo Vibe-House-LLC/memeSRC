@@ -26,6 +26,7 @@ const HomePage = lazy(() => import('./pages/HomePage'))
 const SearchPage = lazy(() => import('./pages/SearchPage'));
 const EditorPage = lazy(() => import('./pages/EditorPage'));
 const EpisodePage = lazy(() => import('./pages/EpisodePage'));
+const SeriesPage = lazy(() => import('./pages/SeriesPage'));
 const MetadataPage = lazy(() => import('./pages/MetadataPage'));
 const HomepageSectionPage = lazy(() => import('./pages/HomepageSectionPage'));
 
@@ -43,6 +44,7 @@ export default function Router() {
         { path: 'search/:seriesId/:searchTerms', element: <SearchPage /> },
         { path: 'frame/:fid', element: <TopBannerSearchRevised><FramePage /></TopBannerSearchRevised> },
         { path: 'editor/:fid', element: <TopBannerSearchRevised><EditorPage /></TopBannerSearchRevised> },
+        { path: 'series/:seriesId', element: <TopBannerSearchRevised><SeriesPage /></TopBannerSearchRevised> },
       ]
     },
     {

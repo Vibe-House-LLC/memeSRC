@@ -1,7 +1,7 @@
 import { Helmet } from 'react-helmet-async';
 import { Link as RouterLink, useParams } from 'react-router-dom';
 import { styled } from '@mui/material/styles';
-import { AppBar, Toolbar, IconButton, Button, Typography, Container, Card, CardContent, CardMedia, Grid } from '@mui/material';
+import { AppBar, Toolbar, IconButton, Button, Typography, Container, Card, CardContent, CardMedia, Grid, Chip, CircularProgress } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { API } from 'aws-amplify';
 import HomeIcon from '@mui/icons-material/Home';
@@ -55,11 +55,22 @@ export default function FramePage() {
             <HomeIcon />
           </IconButton>
           <Typography variant="h6" style={{ flexGrow: 1 }}>
-            Frame Details
+            <>
+              <RouterLink to={`/series/${fid.split('-')[0]}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                {fid.split('-')[0]}
+              </RouterLink>
+              <Chip
+                size='small'
+                label={`S${fid.split('-')[1]} E${fid.split('-')[2]}`}
+                sx={{
+                  marginLeft: '5px', // Adjust as needed for space between chips
+                  "& .MuiChip-label": {
+                    fontWeight: 'bold',
+                  },
+                }}
+              /></>
+
           </Typography>
-          <Button size="large" variant="contained" to={`/editor/${fid}`} component={RouterLink}>
-            Edit Mode
-          </Button>
         </Toolbar>
       </AppBar>
 
@@ -69,23 +80,30 @@ export default function FramePage() {
             <StyledCard>
               <CardMedia
                 component="img"
-                alt={frameData.series_name}
+                alt={fid.split('-')[0]}
                 image={`https://memesrc.com/${fid.split('-')[0]}/img/${fid.split('-')[1]}/${fid.split('-')[2]}/${fid}.jpg`}
               />
             </StyledCard>
           </Grid>
           <Grid item xs={12} md={6}>
-            <CardContent>
-              <Typography variant="h4" component="div">
-                {frameData.series_name}
+            <CardContent style={{ marginBottom: '1rem' }}>
+              <Typography variant="h4" component="div" style={{ marginBottom: '0.5rem' }}>
+                {fid.split('-')[0]}
               </Typography>
-              <Typography variant="h5">
-                Season: {frameData.season_number} Episode: {frameData.episode_number}
+              <Typography variant="h5" style={{ marginBottom: '0.5rem' }}>
+                Season: {fid.split('-')[1]}
               </Typography>
-              <Typography variant="subtitle1" color="text.secondary">
-                {frameData.subtitle}
+              <Typography variant="h5" style={{ marginBottom: '0.5rem' }}>
+                Episode: {fid.split('-')[2]}
               </Typography>
+              <Typography variant="subtitle1" color="text.secondary" style={{ marginBottom: '1rem' }}>
+                {frameData.subtitle ? `"${frameData.subtitle}"` : <CircularProgress />}
+              </Typography>
+              <Button size="large" variant="contained" to={`/editor/${fid}`} component={RouterLink} style={{ marginBottom: '1rem' }}>
+                Add Captions & Edit Photo
+              </Button>
             </CardContent>
+
           </Grid>
         </Grid>
       </Container>
