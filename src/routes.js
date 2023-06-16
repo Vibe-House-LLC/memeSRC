@@ -2,6 +2,7 @@ import { Navigate, useRoutes } from 'react-router-dom';
 import { lazy } from 'react';
 import AddSeriesPage from './pages/AddSeriesPage';
 import InpaintingPage from './pages/InpaintingPage';
+import FramePage from './pages/FramePage';
 
 const TopBannerSearchRevised = lazy(() => import('./sections/search/TopBannerSeachRevised'));
 const DashboardSeriesPage = lazy(() => import('./pages/DashboardSeriesPage'));
@@ -40,7 +41,8 @@ export default function Router() {
       children: [
         { element: <HomePage />, index: true },
         { path: 'search/:seriesId/:searchTerms', element: <SearchPage /> },
-        { path: 'editor/:fid', element: <TopBannerSearchRevised><EditorPage /></TopBannerSearchRevised> }
+        { path: 'frame/:fid', element: <TopBannerSearchRevised><FramePage /></TopBannerSearchRevised> },
+        { path: 'editor/:fid', element: <TopBannerSearchRevised><EditorPage /></TopBannerSearchRevised> },
       ]
     },
     {
