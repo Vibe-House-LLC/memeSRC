@@ -3,11 +3,11 @@ import { lazy } from 'react';
 import AddSeriesPage from './pages/AddSeriesPage';
 import InpaintingPage from './pages/InpaintingPage';
 import FramePage from './pages/FramePage';
-import DashboardLayout from './layouts/dashboard';
+// import DashboardLayout from './layouts/dashboard';
 
 const TopBannerSearchRevised = lazy(() => import('./sections/search/TopBannerSeachRevised'));
 const DashboardSeriesPage = lazy(() => import('./pages/DashboardSeriesPage'));
-// const DashboardLayout = lazy(() => import('./layouts/dashboard'));
+const DashboardLayout = lazy(() => import('./layouts/dashboard'));
 const BlogPage = lazy(() => import('./pages/BlogPage'));
 const LoginForm = lazy(() => import('./sections/auth/login/LoginForm'));
 const SignupForm = lazy(() => import('./sections/auth/login/SignupForm'));
