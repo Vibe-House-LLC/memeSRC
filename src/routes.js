@@ -43,6 +43,8 @@ function Router() {
         { path: 'frame/:fid', element: <TopBannerSearchRevised><FramePage /></TopBannerSearchRevised> },
         { path: 'editor/:fid', element: <TopBannerSearchRevised><EditorPage /></TopBannerSearchRevised> },
         { path: 'series/:seriesId', element: <TopBannerSearchRevised><SeriesPage /></TopBannerSearchRevised> },
+        { path: '/episode/:seriesId/:seasonNum/:episodeNum', element: <TopBannerSearchRevised><EpisodePage /></TopBannerSearchRevised> },
+        { path: '/episode/:seriesId/:seasonNum/:episodeNum/:frameNum', element: <TopBannerSearchRevised><EpisodePage /></TopBannerSearchRevised> },
       ]
     },
     {
@@ -85,10 +87,6 @@ function Router() {
     {
       path: '/section/:sectionIndex',
       element: <HomePage />
-    },
-    {
-      path: '/episode/:seriesId/:seasonNum/:episodeNum',
-      element: <TopBannerSearchRevised><EpisodePage /></TopBannerSearchRevised>
     },
     {
       path: '/error',
