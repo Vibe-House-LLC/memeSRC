@@ -1,19 +1,12 @@
 import { Navigate, useRoutes } from 'react-router-dom';
-import { lazy, Suspense, memo } from 'react';
+import { lazy } from 'react';
 import AddSeriesPage from './pages/AddSeriesPage';
 import InpaintingPage from './pages/InpaintingPage';
 import FramePage from './pages/FramePage';
-import DashboardLayout from './layouts/dashboard';
-import CheckAuth from './sections/auth/login/CheckAuth';
-import GuestAuth from './sections/auth/login/GuestAuth';
-import TopBannerSearchRevised from './sections/search/TopBannerSeachRevised';
-import DashboardAppPage from './pages/DashboardAppPage';
-import HomePage from './pages/HomePage';
-import SearchPage from './pages/SearchPage';
-import EditorPage from './pages/EditorPage';
-import HomepageSectionPage from './pages/HomepageSectionPage';
 
+const TopBannerSearchRevised = lazy(() => import('./sections/search/TopBannerSeachRevised'));
 const DashboardSeriesPage = lazy(() => import('./pages/DashboardSeriesPage'));
+const DashboardLayout = lazy(() => import('./layouts/dashboard'));
 const BlogPage = lazy(() => import('./pages/BlogPage'));
 const LoginForm = lazy(() => import('./sections/auth/login/LoginForm'));
 const SignupForm = lazy(() => import('./sections/auth/login/SignupForm'));
@@ -23,16 +16,25 @@ const UserPage = lazy(() => import('./pages/UserPage'));
 const Page404 = lazy(() => import('./pages/Page404'));
 const ErrorPage = lazy(() => import('./pages/ErrorPage'));
 const ProductsPage = lazy(() => import('./pages/ProductsPage'));
+const DashboardAppPage = lazy(() => import('./pages/DashboardAppPage'));
 const AuthPage = lazy(() => import('./pages/AuthPage'));
+const GuestAuth = lazy(() => import('./sections/auth/login/GuestAuth'));
+const CheckAuth = lazy(() => import('./sections/auth/login/CheckAuth'));
 const ImageUploadPage = lazy(() => import('./pages/ImageUploadPage'));
 const AddToSeriesPage = lazy(() => import('./pages/AddToSeriesPage'));
+const HomePage = lazy(() => import('./pages/HomePage'))
+const SearchPage = lazy(() => import('./pages/SearchPage'));
+const EditorPage = lazy(() => import('./pages/EditorPage'));
 const EpisodePage = lazy(() => import('./pages/EpisodePage'));
 const SeriesPage = lazy(() => import('./pages/SeriesPage'));
 const MetadataPage = lazy(() => import('./pages/MetadataPage'));
+const HomepageSectionPage = lazy(() => import('./pages/HomepageSectionPage'));
+
 
 // ----------------------------------------------------------------------
 
-function Router() {
+export default function Router() {
+
   const routes = useRoutes([
     {
       path: '/',
@@ -104,5 +106,3 @@ function Router() {
 
   return routes;
 }
-
-export default memo(Router);
