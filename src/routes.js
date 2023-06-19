@@ -1,12 +1,12 @@
 import { Navigate, useRoutes } from 'react-router-dom';
-import { lazy } from 'react';
+import { lazy, Suspense, memo } from 'react';
 import AddSeriesPage from './pages/AddSeriesPage';
 import InpaintingPage from './pages/InpaintingPage';
 import FramePage from './pages/FramePage';
+import DashboardLayout from './layouts/dashboard';
 
 const TopBannerSearchRevised = lazy(() => import('./sections/search/TopBannerSeachRevised'));
 const DashboardSeriesPage = lazy(() => import('./pages/DashboardSeriesPage'));
-const DashboardLayout = lazy(() => import('./layouts/dashboard'));
 const BlogPage = lazy(() => import('./pages/BlogPage'));
 const LoginForm = lazy(() => import('./sections/auth/login/LoginForm'));
 const SignupForm = lazy(() => import('./sections/auth/login/SignupForm'));
@@ -22,7 +22,7 @@ const GuestAuth = lazy(() => import('./sections/auth/login/GuestAuth'));
 const CheckAuth = lazy(() => import('./sections/auth/login/CheckAuth'));
 const ImageUploadPage = lazy(() => import('./pages/ImageUploadPage'));
 const AddToSeriesPage = lazy(() => import('./pages/AddToSeriesPage'));
-const HomePage = lazy(() => import('./pages/HomePage'))
+const HomePage = lazy(() => import('./pages/HomePage'));
 const SearchPage = lazy(() => import('./pages/SearchPage'));
 const EditorPage = lazy(() => import('./pages/EditorPage'));
 const EpisodePage = lazy(() => import('./pages/EpisodePage'));
@@ -30,11 +30,9 @@ const SeriesPage = lazy(() => import('./pages/SeriesPage'));
 const MetadataPage = lazy(() => import('./pages/MetadataPage'));
 const HomepageSectionPage = lazy(() => import('./pages/HomepageSectionPage'));
 
-
 // ----------------------------------------------------------------------
 
-export default function Router() {
-
+function Router() {
   const routes = useRoutes([
     {
       path: '/',
@@ -108,3 +106,5 @@ export default function Router() {
 
   return routes;
 }
+
+export default memo(Router);
