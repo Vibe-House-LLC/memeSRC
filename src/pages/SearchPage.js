@@ -22,10 +22,20 @@ const StyledCard = styled(Card)`
   }
 `;
 
+const StyledCardMediaContainer = styled.div`
+  width: 100%;
+  height: 0;
+  padding-bottom: ${props => props.aspectRatio};
+  overflow: hidden;
+  position: relative;
+  background-color: black;
+`;
+
 const StyledCardMedia = styled.img`
   width: 100%;
-  height: auto;
-  background-color: black;
+  height: 100%;
+  position: absolute;
+  object-fit: contain;
 `;
 
 const TopCardInfo = styled.div`
@@ -69,8 +79,6 @@ const BottomCardLabel = styled.div`
   text-align: left;
 `;
 
-
-
 const SeasonEpisodeText = styled.span`
   color: #919191;
   font-size: 0.8em;
@@ -85,8 +93,10 @@ export default function SearchPage() {
   const [loadedSeriesTitle, setLoadedSeriesTitle] = useState(null);
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [aspectRatio, setAspectRatio] = useState('56.25%'); // Default to 16:9 aspect ratio
 
   const memoizedResults = useMemo(() => results, [results]);
+  const memoizedAspectRatio = useMemo(() => aspectRatio, [aspectRatio]);
 
   const navigate = useNavigate();
 
@@ -109,13 +119,10 @@ export default function SearchPage() {
 
   useEffect(() => {
     if (params) {
-      console.log(`'${params.seriesId}' !== '${loadedSeriesTitle}' || '${params.searchTerms}' !== '${loadedSearchTerm}'`)
       if (params.seriesId !== loadedSeriesTitle || params.searchTerms !== loadedSearchTerm) {
         setSearchTerm(params.searchTerms)
         setSeriesTitle(params.seriesId)
-        console.log(params)
         setLoading(true);
-        // TODO: switch to using amplify to access the publicapi
         getSessionID().then(sessionId => {
           const apiName = 'publicapi';
           const path = '/search';
@@ -128,11 +135,24 @@ export default function SearchPage() {
           }
           API.get(apiName, path, myInit)
             .then(data => {
-              console.log(data)
               setResults(data);
               setLoading(false);
               setLoadedSearchTerm(searchTerm);
               setLoadedSeriesTitle(seriesTitle);
+
+              let maxAspectRatio = 0;
+              data.forEach(item => {
+                const img = new Image();
+                img.src = `https://memesrc.com${item.frame_image}`;
+
+                img.onload = function(event) {
+                  const aspectRatio = event.target.width / event.target.height;
+                  if (aspectRatio > maxAspectRatio) {
+                    maxAspectRatio = aspectRatio;
+                    setAspectRatio(`${100 / maxAspectRatio}%`); // Adjust the value to the max aspect ratio.
+                  }
+                }
+              });
             })
             .catch(error => {
               console.error(error);
@@ -148,7 +168,6 @@ export default function SearchPage() {
       e.preventDefault();
     }
     const encodedSearchTerms = encodeURI(searchTerm)
-    console.log(`Navigating to: '${`/search/${seriesTitle}/${encodedSearchTerms}`}'`)
     navigate(`/search/${seriesTitle}/${encodedSearchTerms}`)
   }, [seriesTitle, searchTerm, navigate]);
 
@@ -162,11 +181,13 @@ export default function SearchPage() {
           <Grid item xs={12} sm={6} md={3} key={result.fid}>
             <a href={`/frame/${result.fid}?search=${encodeURI(searchTerm)}`} style={{ textDecoration: 'none' }}>
               <StyledCard>
-                <StyledCardMedia
-                  component="img"
-                  src={`https://memesrc.com${result.frame_image}`}
-                  alt={result.subtitle}
-                  title={result.subtitle} />
+                <StyledCardMediaContainer aspectRatio={memoizedAspectRatio}>
+                  <StyledCardMedia
+                    component="img"
+                    src={`https://memesrc.com${result.frame_image}`}
+                    alt={result.subtitle}
+                    title={result.subtitle} />
+                </StyledCardMediaContainer>
                 <BottomCardCaption>
                   {result.subtitle}
                 </BottomCardCaption>
@@ -178,17 +199,11 @@ export default function SearchPage() {
                     sx={{
                       "& .MuiChip-label": {
                         fontWeight: 'bold',
-                      },
-                    }}
-                  />
-                  <Chip
-                    size='small'
-                    label={`S${result.season_number} E${result.episode_number}`}
-                    sx={{
-                      marginLeft: '5px', // Adjust as needed for space between chips
-                      "& .MuiChip-label": {
-                        fontWeight: 'bold',
-                      },
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        maxWidth: '110px',
+                      }
                     }}
                   />
                 </BottomCardLabel>
