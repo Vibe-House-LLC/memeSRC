@@ -1,50 +1,40 @@
-import { useState } from 'react';
-import { Outlet } from 'react-router-dom';
-// @mui
+import { useState, useEffect } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
 import { styled } from '@mui/material/styles';
-//
 import Header from './header';
 import Nav from './nav';
 
-// ----------------------------------------------------------------------
+const StyledRoot = styled('div')({
+  display: 'flex',
+  minHeight: '100%',
+  overflow: 'hidden',
+});
 
-
-
-// ----------------------------------------------------------------------
+const Main = styled('div')(({ theme, isRootPath }) => ({
+  flexGrow: 1,
+  width: '100%',
+  paddingTop: isRootPath ? 0 : theme.spacing(6),
+  paddingBottom: isRootPath ? 0 : theme.spacing(10),
+  [theme.breakpoints.up('lg')]: {
+    paddingTop: isRootPath ? 0 : theme.spacing(8),
+  },
+}));
 
 export default function DashboardLayout() {
   const [open, setOpen] = useState(false);
+  const location = useLocation();
+  const isRootPath = location.pathname === '/';
 
-  const APP_BAR_MOBILE = window.location.pathname === '/' ? 0 : 45;
-  const APP_BAR_DESKTOP = window.location.pathname === '/' ? 0 : 45;
-
-  const StyledRoot = styled('div')({
-    display: 'flex',
-    minHeight: '100%',
-    overflow: 'hidden',
-  });
-
-  const Main = styled('div')(({ theme }) => ({
-    flexGrow: 1,
-    width: '100%',
-    // overflow: 'auto',
-    // minHeight: '100%',
-    paddingTop: APP_BAR_MOBILE,
-    paddingBottom: window.location.pathname === '/' ? 0 : theme.spacing(10),
-    [theme.breakpoints.up('lg')]: {
-      paddingTop: APP_BAR_DESKTOP,
-      // paddingLeft: theme.spacing(2),
-      // paddingRight: theme.spacing(2),
-    },
-  }));
+  useEffect(() => {
+    // Close navigation bar whenever the route changes
+    setOpen(false);
+  }, [location]);
 
   return (
     <StyledRoot>
       <Header onOpenNav={() => setOpen(true)} />
-
       <Nav openNav={open} onCloseNav={() => setOpen(false)} />
-
-      <Main>
+      <Main isRootPath={isRootPath}>
         <Outlet />
       </Main>
     </StyledRoot>
