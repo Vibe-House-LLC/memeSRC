@@ -5,7 +5,8 @@ import { Grid, CircularProgress, List, ListItem, ListItemText, ListItemAvatar, A
 import styled from '@emotion/styled';
 import { Stack } from '@mui/system';
 import { LoadingButton } from '@mui/lab';
-import { API } from 'aws-amplify';
+import { API, graphqlOperation } from 'aws-amplify';
+import { listContentMetadata } from '../graphql/queries';
 
 // Prop types
 EpisodePage.propTypes = {
@@ -16,6 +17,7 @@ export default function EpisodePage({ setSeriesTitle }) {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [showName, setShowName] = useState('')
 
   const memoizedResults = useMemo(() => results, [results]);
 
@@ -47,7 +49,6 @@ export default function EpisodePage({ setSeriesTitle }) {
         .then(response => response.json())
         .then(data => {
           setSeriesTitle(data[1].series_name);
-
           // Combine old and new results, and de-duplicate based on fid
           const allResultsMap = new Map([...results, ...data].map(result => [result.fid, result]));
           const allResults = [...allResultsMap.values()];
@@ -70,11 +71,14 @@ export default function EpisodePage({ setSeriesTitle }) {
     }).catch(err => console.log(`Error with sessionID: ${err}`));
   }, [seriesId, seasonNum, episodeNum, results, setSeriesTitle]);
 
-
-
-
   useEffect(() => {
     loadFrames(((Number(frameNum) + 1) / 9) - 1);
+    API.graphql({
+      ...graphqlOperation(listContentMetadata, { filter: {}, limit: 50 }),
+      authMode: "API_KEY"
+    }).then(result => {
+      setShowName(result.data.listContentMetadata.items.find(obj => obj.id === seriesId).title)
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -86,11 +90,11 @@ export default function EpisodePage({ setSeriesTitle }) {
       {/* <Typography variant='h2'>{seriesId}</Typography>
       <Typography variant='h4'>{seriesId}</Typography> */}
       <Typography gutterBottom variant="h3" component="div">
-                      <b>{seriesId}</b>
-                    </Typography>
-                    <Typography gutterBottom variant="h5" color="textSecondary">
-                      <b>S.</b>{seasonNum} <b>E.</b>{episodeNum}
-                    </Typography>
+        <b>{showName || seriesId}</b>
+      </Typography>
+      <Typography gutterBottom variant="h5" color="textSecondary">
+        <b>S.</b>{seasonNum} <b>E.</b>{episodeNum}
+      </Typography>
       <Grid container justifyContent='center' style={{ padding: '20px' }}>
         <Grid item xs={12} sm={3} md={1}>
           {!loading &&
@@ -112,7 +116,7 @@ export default function EpisodePage({ setSeriesTitle }) {
         <Grid container spacing={2}>
           {memoizedResults && memoizedResults.map(result => (
             <Grid item xs={12} sm={12} md={12} key={result.fid}>
-              <div style={{ display: 'flex', justifyContent: 'center'}}>
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
                 <Card component="a" href={`/editor/${result.fid}`} style={{ display: 'flex', textDecoration: 'none', maxWidth: '1000px' }}>
                   <CardMedia
                     component="img"
@@ -126,7 +130,7 @@ export default function EpisodePage({ setSeriesTitle }) {
                     </Typography>
                   </CardContent>
                 </Card>
-                </div>
+              </div>
             </Grid>
           ))}
         </Grid>
