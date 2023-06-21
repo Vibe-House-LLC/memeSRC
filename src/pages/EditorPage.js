@@ -911,7 +911,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                         </Grid>
                                     ))}
                                     <Grid item xs={12}>
-                                        {episodeDetails && <Button variant='contained' fullWidth href={`/episode/${episodeDetails[0]}/${episodeDetails[1]}/${episodeDetails[2]}`}>View Episode</Button>}
+                                        {episodeDetails && <Button variant='contained' fullWidth href={`/episode/${episodeDetails[0]}/${episodeDetails[1]}/${episodeDetails[2]}/${episodeDetails[3]}`}>View Episode</Button>}
                                     </Grid>
                                 </Grid>
                             </Grid>

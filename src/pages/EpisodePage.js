@@ -17,38 +17,23 @@ const StyledCircularProgress = styled(CircularProgress)`
 `;
 
 const StyledCard = styled(Card)`
-  
   border: 3px solid transparent;
   box-sizing: border-box;
   position: relative;
-
-  &:hover img, &:active img, &:focus img{
-    animation: bgmve 5s;
-    animation-iteration-count: infinite;
-    animation-timing-function: ease;
-    }
+  display: flex;
+  flex-direction: column;
 
   &:hover {
     border: 3px solid orange;
   }
 `;
 
-const StyledCardMedia = styled.img`
-  width: 100%;
-  height: 230px;
-  aspect-ratio: '16/9';
-  object-fit: cover;
-  object-position: 50% 0;
-  background-color: black;
 
-  @keyframes bgmve {
-    0% {object-position: 50% 0; animation-timing-function: ease-out;}
-    25% {object-position: 0 0; animation-timing-function: ease-in;}
-    50% {object-position: 50% 0; animation-timing-function: ease-out;}
-    75% {object-position: 100% 0; animation-timing-function: ease-in;}
-    100% {object-position: 50% 0; animation-timing-function: ease-in;}
-  }
+const StyledCardMedia = styled.img`
+  max-width: 100%;
+  height: auto;
 `;
+
 
 const TopCardInfo = styled.div`
   position: absolute;
@@ -79,6 +64,18 @@ const BottomCardCaption = styled.div`
   text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
 `;
 
+const BottomCardLabel = styled.div`
+  position: absolute;
+  top: 10px; 
+  left: 10px;
+  padding: 3px 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: ${props => props.theme.palette.common.white};
+  text-align: left;
+`;
+
 const SeasonEpisodeText = styled.span`
   color: #919191;
   font-size: 0.8em;
@@ -96,7 +93,7 @@ export default function EpisodePage({ setSeriesTitle }) {
 
   const memoizedResults = useMemo(() => results, [results]);
 
-  const { seriesId, seasonNum, episodeNum } = useParams();
+  const { seriesId, seasonNum, episodeNum, frameNum } = useParams();
 
   const getSessionID = async () => {
     let sessionID;
@@ -115,7 +112,8 @@ export default function EpisodePage({ setSeriesTitle }) {
       });
   };
 
-  const loadFrames = useCallback((start) => {
+  const loadFrames = useCallback((startInput) => {
+    const start = Math.max(Number(startInput), 0)
     const apiEpisodeLookupUrl = `https://api.memesrc.com/?series=${seriesId}&season=${seasonNum}&episode=${episodeNum}&start=${start}`
     setLoadingMore(true);
     getSessionID().then(sessionID => {
@@ -123,7 +121,35 @@ export default function EpisodePage({ setSeriesTitle }) {
         .then(response => response.json())
         .then(data => {
           setSeriesTitle(data[1].series_name)
-          setResults([...results, ...data]);
+          
+          // Using Map to filter duplicates
+          const resultFidMap = new Map(results.map(result => [result.fid, result]));
+          data.forEach(datum => {
+            if (!resultFidMap.has(datum.fid)) {
+              resultFidMap.set(datum.fid, datum);
+            }
+          });
+          const allResults = [...resultFidMap.values()];
+
+          // Binary search to find insertion position
+          const sortedResults = [];
+          allResults.forEach((result) => {
+            let low = 0;
+            let high = sortedResults.length - 1;
+            const currentFidNumber = parseInt(result.fid.split('-')[3], 10);
+            while (low <= high) {
+              const mid = Math.floor((low + high) / 2);
+              const midFidNumber = parseInt(sortedResults[mid].fid.split('-')[3], 10);
+              if (midFidNumber < currentFidNumber) {
+                low = mid + 1;
+              } else {
+                high = mid - 1;
+              }
+            }
+            sortedResults.splice(low, 0, result);
+          });
+
+          setResults(sortedResults);
           setLoading(false);
           setLoadingMore(false);
         })
@@ -135,8 +161,10 @@ export default function EpisodePage({ setSeriesTitle }) {
     }).catch(err => console.log(`Error with sessionID: ${err}`))
   }, [seriesId, seasonNum, episodeNum, results, setSeriesTitle]);
 
+
+
   useEffect(() => {
-    loadFrames('0');
+    loadFrames(((Number(frameNum)+1) / 9) - 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -146,9 +174,12 @@ export default function EpisodePage({ setSeriesTitle }) {
   return (
 
     <>
-      {/* {!memoizedResults && !loading && <FullScreenSearch searchFunction={handleSearch} setSearchTerm={setSearchTerm} setSeriesTitle={setSeriesTitle} searchTerm={searchTerm} seriesTitle={seriesTitle} />}
-      {(memoizedResults || loading) && <TopBannerSearch searchFunction={handleSearch} setSearchTerm={setSearchTerm} setSeriesTitle={setSeriesTitle} searchTerm={searchTerm} seriesTitle={seriesTitle} />} */}
       <Stack spacing={2} direction='column' padding={3}>
+      <Grid container justifyContent='center'>
+          <Grid item xs={12} sm={3} md={1}>
+            {!loading && <LoadingButton loading={loadingMore} variant='contained' fullWidth onClick={() => loadFrames(((((Number(results[0].fid.split('-')[3]))+1) / 9) - 1)-500)}>Load More</LoadingButton>}
+          </Grid>
+        </Grid>
         <Grid container spacing={2} alignItems='stretch' paddingX={{ xs: 2, md: 6 }}>
           {loading ? (
             <StyledCircularProgress />
@@ -167,13 +198,6 @@ export default function EpisodePage({ setSeriesTitle }) {
                   <BottomCardCaption>
                     {result.subtitle}
                   </BottomCardCaption>
-
-                  {/* <StyledTypography variant="body2">
-                  Subtitle: {result.subtitle}<br />
-                  Series: {result.series_name}<br />
-                  Season: {result.season_number}<br />
-                  Episode: {result.episode_number}
-                </StyledTypography> */}
                 </StyledCard>
               </a>
             </Grid>
