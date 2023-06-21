@@ -8,6 +8,11 @@ const icon = (name) => <SvgColor src={`/assets/icons/navbar/${name}.svg`} sx={{ 
 
 const navConfig = [
   {
+    title: 'dashboard',
+    path: '/dashboard/app',
+    icon: icon('ic_analytics'),
+  },
+  {
     title: 'search',
     path: '/search',
     icon: icon('ic_menu_item'),
@@ -18,20 +23,15 @@ const navConfig = [
     icon: icon('ic_file'),
   },
   {
-    title: 'series',
+    title: 'TV Shows',
     path: '/dashboard/series',
     icon: icon('ic_booking')
   },
-  // {
-  //   title: 'search',
-  //   path: '/dashboard/search',
-  //   icon: icon('ic_menu_item'),
-  // },
-  // {
-  //   title: 'editor',
-  //   path: '/dashboard/editor',
-  //   icon: icon('ic_kanban')
-  // },
+  {
+    title: 'Requests',
+    path: '/vote',
+    icon: icon('ic_kanban')
+  },
   {
     title: 'metadata',
     path: '/dashboard/metadata',
@@ -41,11 +41,6 @@ const navConfig = [
     title: 'user',
     path: '/dashboard/user',
     icon: icon('ic_user'),
-  },
-  {
-    title: 'dashboard',
-    path: '/dashboard/app',
-    icon: icon('ic_analytics'),
   },
   {
     title: 'homepage sections',
