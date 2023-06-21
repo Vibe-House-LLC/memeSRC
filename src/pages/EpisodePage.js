@@ -86,7 +86,7 @@ export default function EpisodePage({ setSeriesTitle }) {
   // const classes = useStyles();
 
   return (
-  <Container sx={{ paddingX: '16px' }}>
+    <Container sx={{ paddingX: '16px' }}>
       {/* <Typography variant='h2'>{seriesId}</Typography>
       <Typography variant='h4'>{seriesId}</Typography> */}
       <Typography gutterBottom variant="h3" component="div">
@@ -148,6 +148,6 @@ export default function EpisodePage({ setSeriesTitle }) {
           }
         </Grid>
       </Grid>
-      </Container>
+    </Container>
   );
 }

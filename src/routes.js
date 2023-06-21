@@ -1,8 +1,10 @@
 import { Navigate, useRoutes } from 'react-router-dom';
 import { lazy } from 'react';
 
+// ----------------------------------------------------------------------
 
 const AddSeriesPage = lazy(() => import('./pages/AddSeriesPage'));
+const VotingPage = lazy(() => import('./pages/VotingPage'))
 const InpaintingPage = lazy(() => import('./pages/InpaintingPage'));
 const FramePage = lazy(() => import('./pages/FramePage'));
 const TopBannerSearchRevised = lazy(() => import('./sections/search/TopBannerSeachRevised'));
@@ -31,7 +33,6 @@ const SeriesPage = lazy(() => import('./pages/SeriesPage'));
 const MetadataPage = lazy(() => import('./pages/MetadataPage'));
 const HomepageSectionPage = lazy(() => import('./pages/HomepageSectionPage'));
 
-
 // ----------------------------------------------------------------------
 
 export default function Router() {
@@ -50,6 +51,7 @@ export default function Router() {
         { path: 'series/:seriesId', element: <TopBannerSearchRevised><SeriesPage /></TopBannerSearchRevised> },
         { path: '/episode/:seriesId/:seasonNum/:episodeNum', element: <TopBannerSearchRevised><EpisodePage /></TopBannerSearchRevised> },
         { path: '/episode/:seriesId/:seasonNum/:episodeNum/:frameNum', element: <TopBannerSearchRevised><EpisodePage /></TopBannerSearchRevised> },
+        { path: '/vote', element: <TopBannerSearchRevised><VotingPage /></TopBannerSearchRevised> },
       ]
     },
     {
