@@ -206,6 +206,17 @@ export default function SearchPage() {
                       }
                     }}
                   />
+                  <Chip
+                    size='small'
+                    label={`S${result.season_number} E${result.episode_number}`}
+                    style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', color: 'white', fontWeight: 'bold' }}
+                    sx={{
+                      marginLeft: '5px',
+                      "& .MuiChip-label": {
+                        fontWeight: 'bold',
+                      },
+                    }}
+                  />
                 </BottomCardLabel>
               </StyledCard>
             </a>
