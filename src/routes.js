@@ -1,10 +1,10 @@
 import { Navigate, useRoutes } from 'react-router-dom';
 import { lazy } from 'react';
-import AddSeriesPage from './pages/AddSeriesPage';
-import InpaintingPage from './pages/InpaintingPage';
-import FramePage from './pages/FramePage';
-// import DashboardLayout from './layouts/dashboard';
 
+
+const AddSeriesPage = lazy(() => import('./pages/AddSeriesPage'));
+const InpaintingPage = lazy(() => import('./pages/InpaintingPage'));
+const FramePage = lazy(() => import('./pages/FramePage'));
 const TopBannerSearchRevised = lazy(() => import('./sections/search/TopBannerSeachRevised'));
 const DashboardSeriesPage = lazy(() => import('./pages/DashboardSeriesPage'));
 const DashboardLayout = lazy(() => import('./layouts/dashboard'));
@@ -34,7 +34,7 @@ const HomepageSectionPage = lazy(() => import('./pages/HomepageSectionPage'));
 
 // ----------------------------------------------------------------------
 
-function Router() {
+export default function Router() {
 
   const routes = useRoutes([
     {
@@ -107,5 +107,3 @@ function Router() {
 
   return routes;
 }
-
-export default memo(Router)
