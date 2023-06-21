@@ -54,6 +54,14 @@ export default function VotingPage() {
 
     return (
         <Container maxWidth="md">
+             <Box my={4}>
+                <Typography variant="h3" component="h1" gutterBottom>
+                    Vote for New Shows
+                </Typography>
+                <Typography variant="subtitle2">
+                    Help prioritize requests by voting on your favorite shows. Upvote the shows you want to see more, and downvote the shows you're not interested in.
+                </Typography>
+            </Box>
             <Grid container spacing={3}>
                 {loading ? (
                     <CircularProgress />
