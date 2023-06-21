@@ -83,6 +83,14 @@ export default function EpisodePage({ setSeriesTitle }) {
 
   return (
     <>
+      {/* <Typography variant='h2'>{seriesId}</Typography>
+      <Typography variant='h4'>{seriesId}</Typography> */}
+      <Typography gutterBottom variant="h3" component="div">
+                      <b>{seriesId}</b>
+                    </Typography>
+                    <Typography gutterBottom variant="h5" color="textSecondary">
+                      <b>S.</b>{seasonNum} <b>E.</b>{episodeNum}
+                    </Typography>
       <Grid container justifyContent='center' style={{ padding: '20px' }}>
         <Grid item xs={12} sm={3} md={1}>
           {!loading &&
@@ -92,7 +100,7 @@ export default function EpisodePage({ setSeriesTitle }) {
               onClick={() => loadFrames(((((Number(results[0].fid.split('-')[3])) + 1) / 9) - 1) - 500)}
               disabled={loadingMore}
             >
-              {loadingMore ? 'Loading...' : 'Load Previous'}
+              {loadingMore ? 'Loading...' : 'Previous Frames'}
             </LoadingButton>
           }
         </Grid>
@@ -113,14 +121,8 @@ export default function EpisodePage({ setSeriesTitle }) {
                     image={`https://memesrc.com${result.frame_image}`}
                   />
                   <CardContent>
-                    <Typography gutterBottom variant="h6" component="div">
-                      <b>{result.series_name}</b>
-                    </Typography>
-                    <Typography gutterBottom variant="body2" color="textSecondary">
-                      <b>S.</b>{result.season_number} <b>E.</b>{result.episode_number}
-                    </Typography>
-                    <Typography variant="h5" color="textSecondary" component="p">
-                      "{result.subtitle}"
+                    <Typography variant="body1" color="textPrimary" component="p">
+                      "{result.subtitle || '(...)'}"
                     </Typography>
                   </CardContent>
                 </Card>
@@ -140,7 +142,7 @@ export default function EpisodePage({ setSeriesTitle }) {
               onClick={() => loadFrames(((((Number(results[results.length - 1].fid.split('-')[3])) + 1) / 9) - 1))}
               disabled={loadingMore}
             >
-              {loadingMore ? 'Loading...' : 'Load Next'}
+              {loadingMore ? 'Loading...' : 'Next Frames'}
             </LoadingButton>
           }
         </Grid>
