@@ -5,7 +5,7 @@ import { Box, Link, Card, Grid, Avatar, Typography, CardContent, IconButton, Lis
 import { MoreHoriz, MoreVert } from '@mui/icons-material';
 import { useState } from 'react';
 // utils
-import { useNavigate } from 'react-router-dom';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { fDate } from '../../../utils/formatTime';
 import { fShortenNumber } from '../../../utils/formatNumber';
 //
@@ -71,7 +71,7 @@ SeriesCard.propTypes = {
 
 
 export default function SeriesCard({ post, isOverlay = false, isLarge = false, handleEdit, handleDelete }) {
-  const { cover, name, view, comment, share, author, createdAt, id, year, statusText } = post;
+  const { cover, name, view, comment, share, author, createdAt, id, year, slug, statusText } = post;
   const [anchorEl, setAnchorEl] = useState(null);
   const [openConfirmation, setOpenConfirmation] = useState(false);
   const navigate = useNavigate();
@@ -104,120 +104,120 @@ export default function SeriesCard({ post, isOverlay = false, isLarge = false, h
   return (
     <Grid item xs={4} sm={isLarge ? 12 : 6} md={isLarge ? 6 : 3}>
       <Card sx={{ position: 'relative' }}>
-        <StyledCardMedia
-          sx={{
-            ...((isLarge || isOverlay) && {
-              pt: 'calc(100% * 4 / 3)',
-              '&:after': {
-                top: 0,
-                content: "''",
-                width: '100%',
-                height: '100%',
-                position: 'absolute',
-                bgcolor: (theme) => alpha(theme.palette.grey[900], 0.72),
-              },
-            }),
-            ...(isLarge && {
-              pt: {
-                xs: 'calc(100% * 4 / 3)',
-                sm: 'calc(100% * 3 / 4.66)',
-              },
-            }),
-          }}
-        >
-          <SvgColor
-            color="paper"
-            src="/assets/icons/shape-avatar.svg"
-            sx={{
-              width: 80,
-              height: 36,
-              zIndex: 9,
-              bottom: -15,
-              position: 'absolute',
-              color: 'background.paper',
-              ...((isLarge || isOverlay) && { display: 'none' }),
-              display: { xs: 'none', sm: 'block' }
-
-            }}
-          />
-          <StyledAvatar
-            alt={author.name}
+          <StyledCardMedia
             sx={{
               ...((isLarge || isOverlay) && {
+                pt: 'calc(100% * 4 / 3)',
+                '&:after': {
+                  top: 0,
+                  content: "''",
+                  width: '100%',
+                  height: '100%',
+                  position: 'absolute',
+                  bgcolor: (theme) => alpha(theme.palette.grey[900], 0.72),
+                },
+              }),
+              ...(isLarge && {
+                pt: {
+                  xs: 'calc(100% * 4 / 3)',
+                  sm: 'calc(100% * 3 / 4.66)',
+                },
+              }),
+            }}
+          >
+            <SvgColor
+              color="paper"
+              src="/assets/icons/shape-avatar.svg"
+              sx={{
+                width: 80,
+                height: 36,
                 zIndex: 9,
-                top: 24,
-                left: 24,
-                width: 40,
-                height: 40,
-              }),
-              display: { xs: 'none', sm: 'flex' }
-            }}
-          >
-            {author.avatarUrl}
-          </StyledAvatar>
+                bottom: -15,
+                position: 'absolute',
+                color: 'background.paper',
+                ...((isLarge || isOverlay) && { display: 'none' }),
+                display: { xs: 'none', sm: 'block' }
 
-          <StyledCover alt={name} src={cover} />
-          <StyledIconButton onClick={(event) => handleMoreVertClick(event)} sx={{display: { xs: 'none', sm: 'flex' }}}>
-            <MoreVert />
-          </StyledIconButton>
-        </StyledCardMedia>
+              }}
+            />
+            <StyledAvatar
+              alt={author.name}
+              sx={{
+                ...((isLarge || isOverlay) && {
+                  zIndex: 9,
+                  top: 24,
+                  left: 24,
+                  width: 40,
+                  height: 40,
+                }),
+                display: { xs: 'none', sm: 'flex' }
+              }}
+            >
+              {author.avatarUrl}
+            </StyledAvatar>
 
-        <CardContent
-          sx={{
-            pt: 4,
-            ...((isLarge || isOverlay) && {
-              bottom: 0,
-              width: '100%',
-              position: 'absolute',
-            }),
-            display: { xs: 'none', sm: 'block' }
-          }}
-        >
-          <Typography gutterBottom variant="caption" sx={{ color: 'text.disabled', display: 'block' }}>
-            {fDate(createdAt)}
-          </Typography>
-
-          <StyledTitle
-            color="inherit"
-            variant="subtitle2"
-            underline="hover"
+            <StyledCover alt={name} src={cover} />
+            <StyledIconButton onClick={(event) => handleMoreVertClick(event)} sx={{ display: { xs: 'none', sm: 'flex' } }}>
+              <MoreVert />
+            </StyledIconButton>
+          </StyledCardMedia>
+        <RouterLink to={`/series/${slug}`} key={id}>
+          <CardContent
             sx={{
-              ...(isLarge && { typography: 'h5', height: 60 }),
+              pt: 4,
               ...((isLarge || isOverlay) && {
-                color: 'common.white',
+                bottom: 0,
+                width: '100%',
+                position: 'absolute',
               }),
+              display: { xs: 'none', sm: 'block' }
             }}
           >
-            {name}
-          </StyledTitle>
+            <Typography gutterBottom variant="caption" sx={{ color: 'text.disabled', display: 'block' }}>
+              {fDate(createdAt)}
+            </Typography>
+            <StyledTitle
+              color="inherit"
+              variant="subtitle2"
+              underline="hover"
+              sx={{
+                ...(isLarge && { typography: 'h5', height: 60 }),
+                ...((isLarge || isOverlay) && {
+                  color: 'common.white',
+                }),
+              }}
+            >
+              {name}
+            </StyledTitle>
 
-          <StyledInfo>
-            {POST_INFO.map((info, index) => (
-              <Box
-                key={index}
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  ml: index === 0 ? 0 : 1.5,
-                  ...((isLarge || isOverlay) && {
-                    color: 'grey.500',
-                  }),
-                }}
-              >
-                <Iconify icon={info.icon} sx={{ width: 16, height: 16, mr: 0.5 }} />
-                <Typography variant="caption">{fShortenNumber(info.number)}</Typography>
-              </Box>
-            ))}
-          </StyledInfo>
-        </CardContent>
+            <StyledInfo>
+              {POST_INFO.map((info, index) => (
+                <Box
+                  key={index}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    ml: index === 0 ? 0 : 1.5,
+                    ...((isLarge || isOverlay) && {
+                      color: 'grey.500',
+                    }),
+                  }}
+                >
+                  <Iconify icon={info.icon} sx={{ width: 16, height: 16, mr: 0.5 }} />
+                  <Typography variant="caption">{fShortenNumber(info.number)}</Typography>
+                </Box>
+              ))}
+            </StyledInfo>
+          </CardContent>
+        </RouterLink>
       </Card>
       <Stack direction='row' alignItems='center' sx={{ display: { xs: 'flex', sm: 'none' } }}>
-        <MoreVert onClick={(event) => handleMoreVertClick(event)} sx={{marginLeft: -0.8}} />
+        <MoreVert onClick={(event) => handleMoreVertClick(event)} sx={{ marginLeft: -0.8 }} />
         <Grid xs={10}>
           <Typography component='p' variant='body1' noWrap paddingTop={1}>
             {name}
           </Typography>
-          <Typography component='p' variant='caption' noWrap paddingTop={0} sx={{color: '#919191' }}>
+          <Typography component='p' variant='caption' noWrap paddingTop={0} sx={{ color: '#919191' }}>
             {year}
           </Typography>
         </Grid>
