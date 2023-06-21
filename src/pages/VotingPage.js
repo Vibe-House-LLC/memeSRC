@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { API, graphqlOperation } from 'aws-amplify';
 import { Container, Grid, Card, CardContent, Typography, IconButton, CircularProgress, Box } from '@mui/material';
 import { ArrowUpward, ArrowDownward } from '@mui/icons-material';
-import AvatarGroup from '@mui/material/AvatarGroup';
-import Avatar from '@mui/material/Avatar';
+// import AvatarGroup from '@mui/material/AvatarGroup';
+// import Avatar from '@mui/material/Avatar';
 
 import { listSeries } from '../graphql/queries';
 
@@ -38,9 +38,18 @@ export default function VotingPage() {
 
     // Add a CSS style object for the show images
     const showImageStyle = {
-        maxWidth: "200px",
-        maxHeight: "200px",
+        maxWidth: "125px",
+        maxHeight: "125px",
         objectFit: "cover"
+    };
+
+    // Add a CSS style object for the description
+    const descriptionStyle = {
+        display: '-webkit-box',
+        WebkitLineClamp: 3,
+        WebkitBoxOrient: 'vertical',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
     };
 
     return (
@@ -58,7 +67,7 @@ export default function VotingPage() {
                                             <IconButton aria-label="upvote" onClick={() => handleUpvote(idx)}>
                                                 <ArrowUpward />
                                             </IconButton>
-                                            <Typography variant="subtitle1" gutterBottom>
+                                            <Typography variant="subtitle1" gutterBottom textAlign='center'>
                                                 69
                                             </Typography>
                                             <IconButton aria-label="downvote" onClick={() => handleDownvote(idx)}>
@@ -72,20 +81,19 @@ export default function VotingPage() {
                                                     <img src={show.image} alt={show.name} style={showImageStyle} />
                                                 </Box>
                                                 <Box>
-                                                    <Typography variant="h6">{show.name}</Typography>
-                                                    <Typography variant="subtitle1">{show.year}</Typography>
-                                                    <Typography variant="body2" color="text.secondary" mt={1}>
+                                                    <Typography variant="h4">{show.name}</Typography>
+                                                    <Typography variant="subtitle2">{show.year}</Typography>
+                                                    {/* Apply the CSS style to the description */}
+                                                    <Typography variant="body2" color="text.secondary" mt={1} style={descriptionStyle}>
                                                         {show.description}
                                                     </Typography>
+                                                    {/* <AvatarGroup total={69} sx={{ height: 10, width: 10}}>
+                                                        <Avatar alt="User 1" src="/static/images/avatar/1.jpg" sx={{ height: 10, width: 10}} />
+                                                        <Avatar alt="User 2" src="/static/images/avatar/2.jpg" sx={{ height: 10, width: 10}} />
+                                                        <Avatar alt="User 3" src="/static/images/avatar/4.jpg" sx={{ height: 10, width: 10}} />
+                                                        <Avatar alt="User 4" src="/static/images/avatar/5.jpg" sx={{ height: 10, width: 10}} />
+                                                    </AvatarGroup> */}
                                                 </Box>
-                                            </Box>
-                                            <Box mt={2}>
-                                                <AvatarGroup total={69}>
-                                                    <Avatar alt="User 1" src="/static/images/avatar/1.jpg" />
-                                                    <Avatar alt="User 2" src="/static/images/avatar/2.jpg" />
-                                                    <Avatar alt="User 3" src="/static/images/avatar/4.jpg" />
-                                                    <Avatar alt="User 4" src="/static/images/avatar/5.jpg" />
-                                                </AvatarGroup>
                                             </Box>
                                         </Box>
                                     </Box>
