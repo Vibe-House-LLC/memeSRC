@@ -113,43 +113,26 @@ export default function EpisodePage({ setSeriesTitle }) {
   };
 
   const loadFrames = useCallback((startInput) => {
-    const start = Math.max(Number(startInput), 0)
-    const apiEpisodeLookupUrl = `https://api.memesrc.com/?series=${seriesId}&season=${seasonNum}&episode=${episodeNum}&start=${start}`
+    const start = Math.max(Number(startInput), 0);
+    const apiEpisodeLookupUrl = `https://api.memesrc.com/?series=${seriesId}&season=${seasonNum}&episode=${episodeNum}&start=${start}`;
     setLoadingMore(true);
     getSessionID().then(sessionID => {
       fetch(`${apiEpisodeLookupUrl}&sessionID=${sessionID}`)
         .then(response => response.json())
         .then(data => {
-          setSeriesTitle(data[1].series_name)
+          setSeriesTitle(data[1].series_name);
           
-          // Using Map to filter duplicates
-          const resultFidMap = new Map(results.map(result => [result.fid, result]));
-          data.forEach(datum => {
-            if (!resultFidMap.has(datum.fid)) {
-              resultFidMap.set(datum.fid, datum);
-            }
-          });
-          const allResults = [...resultFidMap.values()];
+          // Combine old and new results, and de-duplicate based on fid
+          const allResultsMap = new Map([...results, ...data].map(result => [result.fid, result]));
+          const allResults = [...allResultsMap.values()];
 
-          // Binary search to find insertion position
-          const sortedResults = [];
-          allResults.forEach((result) => {
-            let low = 0;
-            let high = sortedResults.length - 1;
-            const currentFidNumber = parseInt(result.fid.split('-')[3], 10);
-            while (low <= high) {
-              const mid = Math.floor((low + high) / 2);
-              const midFidNumber = parseInt(sortedResults[mid].fid.split('-')[3], 10);
-              if (midFidNumber < currentFidNumber) {
-                low = mid + 1;
-              } else {
-                high = mid - 1;
-              }
-            }
-            sortedResults.splice(low, 0, result);
+          // Sort all results based on the number part of fid
+          allResults.sort((a, b) => {
+            const numA = Number(a.fid.split('-')[3]);
+            const numB = Number(b.fid.split('-')[3]);
+            return numA - numB;
           });
-
-          setResults(sortedResults);
+          setResults(allResults);
           setLoading(false);
           setLoadingMore(false);
         })
@@ -158,8 +141,9 @@ export default function EpisodePage({ setSeriesTitle }) {
           setLoading(false);
           setLoadingMore(false);
         });
-    }).catch(err => console.log(`Error with sessionID: ${err}`))
+    }).catch(err => console.log(`Error with sessionID: ${err}`));
   }, [seriesId, seasonNum, episodeNum, results, setSeriesTitle]);
+
 
 
 
@@ -177,7 +161,7 @@ export default function EpisodePage({ setSeriesTitle }) {
       <Stack spacing={2} direction='column' padding={3}>
       <Grid container justifyContent='center'>
           <Grid item xs={12} sm={3} md={1}>
-            {!loading && <LoadingButton loading={loadingMore} variant='contained' fullWidth onClick={() => loadFrames(((((Number(results[0].fid.split('-')[3]))+1) / 9) - 1)-500)}>Load More</LoadingButton>}
+            {!loading && <LoadingButton loading={loadingMore} variant='contained' fullWidth onClick={() => loadFrames(((((Number(results[0].fid.split('-')[3]))+1) / 9) - 1)-500)}>Load Previous</LoadingButton>}
           </Grid>
         </Grid>
         <Grid container spacing={2} alignItems='stretch' paddingX={{ xs: 2, md: 6 }}>
@@ -205,7 +189,7 @@ export default function EpisodePage({ setSeriesTitle }) {
         </Grid>
         <Grid container justifyContent='center'>
           <Grid item xs={12} sm={3} md={1}>
-            {!loading && <LoadingButton loading={loadingMore} variant='contained' fullWidth onClick={() => loadFrames(results.length)}>Load More</LoadingButton>}
+            {!loading && <LoadingButton loading={loadingMore} variant='contained' fullWidth onClick={() => loadFrames(((((Number(results[results.length-1].fid.split('-')[3]))+1) / 9) - 1))}>Load Next</LoadingButton>}
           </Grid>
         </Grid>
       </Stack>
