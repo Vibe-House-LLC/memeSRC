@@ -388,15 +388,15 @@ export default function DashboardSeriesPage() {
   return (
     <>
       <Helmet>
-        <title> Metadata Settings - memeSRC Dashboard </title>
+        <title> TV Shows - memeSRC </title>
       </Helmet>
       <Container>
         <Stack direction="row" alignItems="center" justifyContent="space-between" mb={5}>
           <Typography variant="h4" gutterBottom>
-            Metadata Settings {loading ? <CircularProgress size={25} /> : `(${metadata.length})`}
+            TV Shows {loading ? <CircularProgress size={25} /> : `(${metadata.length})`}
           </Typography>
           <Button variant="contained" startIcon={<Iconify icon="eva:plus-fill" />} onClick={() => navigate('/dashboard/addseries')}>
-            New Content
+            Add Show
           </Button>
         </Stack>
         <Container sx={{ paddingX: 0 }}>

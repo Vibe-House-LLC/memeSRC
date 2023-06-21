@@ -42,6 +42,8 @@ export default function Router() {
       element: <GuestAuth><DashboardLayout /></GuestAuth>,
       children: [
         { element: <HomePage />, index: true },
+        { path: 'search', element: <Navigate to='/' /> },
+        { path: 'edit', element: <Navigate to='/' /> },
         { path: 'search/:seriesId/:searchTerms', element: <SearchPage /> },
         { path: 'frame/:fid', element: <TopBannerSearchRevised><FramePage /></TopBannerSearchRevised> },
         { path: 'editor/:fid', element: <TopBannerSearchRevised><EditorPage /></TopBannerSearchRevised> },

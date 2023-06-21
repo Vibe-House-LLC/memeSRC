@@ -8,9 +8,19 @@ const icon = (name) => <SvgColor src={`/assets/icons/navbar/${name}.svg`} sx={{ 
 
 const navConfig = [
   {
-    title: 'dashboard',
-    path: '/dashboard/app',
-    icon: icon('ic_analytics'),
+    title: 'search',
+    path: '/search',
+    icon: icon('ic_menu_item'),
+  },
+  {
+    title: 'editor',
+    path: '/editor',
+    icon: icon('ic_file'),
+  },
+  {
+    title: 'series',
+    path: '/dashboard/series',
+    icon: icon('ic_booking')
   },
   // {
   //   title: 'search',
@@ -28,35 +38,35 @@ const navConfig = [
     icon: icon('ic_booking')
   },
   {
-    title: 'homepage sections',
-    path: '/dashboard/homepagesections',
-    icon: icon('ic_file')
-  },
-  {
-    title: 'inpainting demo',
-    path: '/dashboard/inpainting',
-    icon: icon('ic_file')
-  },
-  // {
-  //   title: 'upload',
-  //   path: '/dashboard/imageupload',
-  //   icon: icon('ic_file'),
-  // },
-  {
     title: 'user',
     path: '/dashboard/user',
     icon: icon('ic_user'),
   },
   {
-    title: 'series',
-    path: '/dashboard/series',
-    icon: icon('ic_booking')
+    title: 'dashboard',
+    path: '/dashboard/app',
+    icon: icon('ic_analytics'),
   },
   {
-    title: 'add series',
-    path: '/dashboard/addseries',
-    icon: <Settings />
-  }
+    title: 'homepage sections',
+    path: '/dashboard/homepagesections',
+    icon: icon('ic_file')
+  },
+  // {
+  //   title: 'inpainting demo',
+  //   path: '/dashboard/inpainting',
+  //   icon: icon('ic_file')
+  // },
+  // {
+  //   title: 'upload',
+  //   path: '/dashboard/imageupload',
+  //   icon: icon('ic_file'),
+  // },
+  // {
+  //   title: 'add series',
+  //   path: '/dashboard/addseries',
+  //   icon: <Settings />
+  // }
   // {
   //   title: 'product',
   //   path: '/dashboard/products',
