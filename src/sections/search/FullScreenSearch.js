@@ -368,7 +368,7 @@ export default function FullScreenSearch({
         .then(response => {
           const fid = response.frame_id;
           console.log(fid)
-          navigate(`/frame/${fid}`);
+          navigate(`/editor/${fid}`);
           setLoadingRandom(false);
         })
         .catch(error => {
