@@ -1,7 +1,7 @@
 import PropTypes from 'prop-types';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { Grid, CircularProgress, List, ListItem, ListItemText, ListItemAvatar, Avatar, Card, CardActionArea, CardMedia, CardContent, Typography, Chip } from '@mui/material';
+import { Grid, CircularProgress, List, ListItem, ListItemText, ListItemAvatar, Avatar, Card, CardActionArea, CardMedia, CardContent, Typography, Chip, Container } from '@mui/material';
 import styled from '@emotion/styled';
 import { Stack } from '@mui/system';
 import { LoadingButton } from '@mui/lab';
@@ -86,7 +86,7 @@ export default function EpisodePage({ setSeriesTitle }) {
   // const classes = useStyles();
 
   return (
-    <>
+  <Container sx={{ paddingX: '16px' }}>
       {/* <Typography variant='h2'>{seriesId}</Typography>
       <Typography variant='h4'>{seriesId}</Typography> */}
       <Typography gutterBottom variant="h3" component="div">
@@ -114,7 +114,7 @@ export default function EpisodePage({ setSeriesTitle }) {
           {memoizedResults && memoizedResults.map(result => (
             <Grid item xs={12} sm={12} md={12} key={result.fid}>
               <div style={{ display: 'flex', justifyContent: 'center' }}>
-                <Card component="a" href={`/editor/${result.fid}`} style={{ display: 'flex', textDecoration: 'none', maxWidth: '1000px' }}>
+                <Card component="a" href={`/editor/${result.fid}`} style={{ display: 'flex', textDecoration: 'none' }}>
                   <CardMedia
                     component="img"
                     alt={result.subtitle}
@@ -148,6 +148,6 @@ export default function EpisodePage({ setSeriesTitle }) {
           }
         </Grid>
       </Grid>
-    </>
+      </Container>
   );
 }
