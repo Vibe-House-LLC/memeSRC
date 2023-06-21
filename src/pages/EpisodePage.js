@@ -1,7 +1,7 @@
 import PropTypes from 'prop-types';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { Grid, CircularProgress, List, ListItem, ListItemText, ListItemAvatar, Avatar, Card, CardActionArea, CardMedia, CardContent, Typography } from '@mui/material';
+import { Grid, CircularProgress, List, ListItem, ListItemText, ListItemAvatar, Avatar, Card, CardActionArea, CardMedia, CardContent, Typography, Chip } from '@mui/material';
 import styled from '@emotion/styled';
 import { Stack } from '@mui/system';
 import { LoadingButton } from '@mui/lab';
@@ -90,10 +90,7 @@ export default function EpisodePage({ setSeriesTitle }) {
       {/* <Typography variant='h2'>{seriesId}</Typography>
       <Typography variant='h4'>{seriesId}</Typography> */}
       <Typography gutterBottom variant="h3" component="div">
-        <b>{showName || seriesId}</b>
-      </Typography>
-      <Typography gutterBottom variant="h5" color="textSecondary">
-        <b>S.</b>{seasonNum} <b>E.</b>{episodeNum}
+        <b>{showName || seriesId}</b> <Chip label={`S${seasonNum} E${episodeNum}`} />
       </Typography>
       <Grid container justifyContent='center' style={{ padding: '20px' }}>
         <Grid item xs={12} sm={3} md={1}>
