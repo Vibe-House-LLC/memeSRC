@@ -104,25 +104,27 @@ export default function EpisodePage({ setSeriesTitle }) {
         <Grid container spacing={2}>
           {memoizedResults && memoizedResults.map(result => (
             <Grid item xs={12} sm={12} md={12} key={result.fid}>
-              <Card component="a" href={`/editor/${result.fid}`} style={{ display: 'flex', textDecoration: 'none' }}>
-                <CardMedia
-                  component="img"
-                  alt={result.subtitle}
-                  style={{ width: '50%', objectFit: 'cover' }}
-                  image={`https://memesrc.com${result.frame_image}`}
-                />
-                <CardContent>
-                  <Typography gutterBottom variant="h5" component="div">
-                    <b>{result.series_name}</b>
-                  </Typography>
-                  <Typography gutterBottom variant="body2" color="textSecondary">
-                    <b>S.</b>{result.season_number} <b>E.</b>{result.episode_number}
-                  </Typography>
-                  <Typography variant="h4" color="textSecondary" component="p">
-                    "{result.subtitle}"
-                  </Typography>
-                </CardContent>
-              </Card>
+              <div style={{ display: 'flex', justifyContent: 'center'}}>
+                <Card component="a" href={`/editor/${result.fid}`} style={{ display: 'flex', textDecoration: 'none', maxWidth: '1000px' }}>
+                  <CardMedia
+                    component="img"
+                    alt={result.subtitle}
+                    style={{ width: '50%', objectFit: 'cover' }}
+                    image={`https://memesrc.com${result.frame_image}`}
+                  />
+                  <CardContent>
+                    <Typography gutterBottom variant="h6" component="div">
+                      <b>{result.series_name}</b>
+                    </Typography>
+                    <Typography gutterBottom variant="body2" color="textSecondary">
+                      <b>S.</b>{result.season_number} <b>E.</b>{result.episode_number}
+                    </Typography>
+                    <Typography variant="h5" color="textSecondary" component="p">
+                      "{result.subtitle}"
+                    </Typography>
+                  </CardContent>
+                </Card>
+                </div>
             </Grid>
           ))}
         </Grid>
