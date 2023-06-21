@@ -1,8 +1,10 @@
 import { Navigate, useRoutes } from 'react-router-dom';
 import { lazy } from 'react';
-import AddSeriesPage from './pages/AddSeriesPage';
-import InpaintingPage from './pages/InpaintingPage';
 
+
+const AddSeriesPage = lazy(() => import('./pages/AddSeriesPage'));
+const InpaintingPage = lazy(() => import('./pages/InpaintingPage'));
+const FramePage = lazy(() => import('./pages/FramePage'));
 const TopBannerSearchRevised = lazy(() => import('./sections/search/TopBannerSeachRevised'));
 const DashboardSeriesPage = lazy(() => import('./pages/DashboardSeriesPage'));
 const DashboardLayout = lazy(() => import('./layouts/dashboard'));
@@ -25,6 +27,7 @@ const HomePage = lazy(() => import('./pages/HomePage'))
 const SearchPage = lazy(() => import('./pages/SearchPage'));
 const EditorPage = lazy(() => import('./pages/EditorPage'));
 const EpisodePage = lazy(() => import('./pages/EpisodePage'));
+const SeriesPage = lazy(() => import('./pages/SeriesPage'));
 const MetadataPage = lazy(() => import('./pages/MetadataPage'));
 const HomepageSectionPage = lazy(() => import('./pages/HomepageSectionPage'));
 
@@ -40,7 +43,11 @@ export default function Router() {
       children: [
         { element: <HomePage />, index: true },
         { path: 'search/:seriesId/:searchTerms', element: <SearchPage /> },
-        { path: 'editor/:fid', element: <TopBannerSearchRevised><EditorPage /></TopBannerSearchRevised> }
+        { path: 'frame/:fid', element: <TopBannerSearchRevised><FramePage /></TopBannerSearchRevised> },
+        { path: 'editor/:fid', element: <TopBannerSearchRevised><EditorPage /></TopBannerSearchRevised> },
+        { path: 'series/:seriesId', element: <TopBannerSearchRevised><SeriesPage /></TopBannerSearchRevised> },
+        { path: '/episode/:seriesId/:seasonNum/:episodeNum', element: <TopBannerSearchRevised><EpisodePage /></TopBannerSearchRevised> },
+        { path: '/episode/:seriesId/:seasonNum/:episodeNum/:frameNum', element: <TopBannerSearchRevised><EpisodePage /></TopBannerSearchRevised> },
       ]
     },
     {
@@ -83,10 +90,6 @@ export default function Router() {
     {
       path: '/section/:sectionIndex',
       element: <HomePage />
-    },
-    {
-      path: '/episode/:seriesId/:seasonNum/:episodeNum',
-      element: <TopBannerSearchRevised><EpisodePage /></TopBannerSearchRevised>
     },
     {
       path: '/error',

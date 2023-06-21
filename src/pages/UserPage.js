@@ -170,7 +170,7 @@ export default function UserPage() {
         username: user.username,
         email: user.email,
         id: user.id,
-        isVerified: user.status === 'verified', // You'd need to include these in your GraphQL query
+        isVerified: user.status === 'verified',
         status: user.status,
         enabled: true,
         credits: parseInt(user.credits, 10) || 0,
