@@ -23,8 +23,12 @@ ThemeProvider.propTypes = {
 export const ColorModeContext = createContext(({ toggleColorMode: () => { },  }));
 
 export default function ThemeProvider({ children }) {
-  const prefers = useMediaQuery('(prefers-color-scheme: dark)') ? 'dark' : 'light';
-  const themeSetting = localStorage.getItem('themeSetting') || prefers
+  // const prefers = useMediaQuery('(prefers-color-scheme: dark)') ? 'dark' : 'light';
+  // const themeSetting = localStorage.getItem('themeSetting') || prefers
+
+  // TODO: fix light mode issues and re-enable automatic dark mode preference
+  // For now, this forces dark mode
+  const themeSetting = 'dark'
   const [mode, setMode] = useState(themeSetting);
 
   const colorMode = useMemo(
