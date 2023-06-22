@@ -692,3 +692,93 @@ export const listUserDetails = /* GraphQL */ `
     }
   }
 `;
+export const getSeriesUserVote = /* GraphQL */ `
+  query GetSeriesUserVote($id: ID!) {
+    getSeriesUserVote(id: $id) {
+      id
+      user {
+        id
+        username
+        email
+        stripeId
+        sourceMedia {
+          nextToken
+          __typename
+        }
+        status
+        credits
+        createdAt
+        updatedAt
+        __typename
+      }
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        seasons {
+          nextToken
+          __typename
+        }
+        statusText
+        createdAt
+        updatedAt
+        __typename
+      }
+      boost
+      createdAt
+      updatedAt
+      seriesUserVoteUserId
+      seriesUserVoteSeriesId
+      __typename
+    }
+  }
+`;
+export const listSeriesUserVotes = /* GraphQL */ `
+  query ListSeriesUserVotes(
+    $filter: ModelSeriesUserVoteFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listSeriesUserVotes(filter: $filter, limit: $limit, nextToken: $nextToken) {
+      items {
+        id
+        user {
+          id
+          username
+          email
+          stripeId
+          status
+          credits
+          createdAt
+          updatedAt
+          __typename
+        }
+        series {
+          id
+          tvdbid
+          slug
+          name
+          year
+          image
+          description
+          statusText
+          createdAt
+          updatedAt
+          __typename
+        }
+        boost
+        createdAt
+        updatedAt
+        seriesUserVoteUserId
+        seriesUserVoteSeriesId
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;

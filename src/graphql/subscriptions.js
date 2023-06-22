@@ -1123,3 +1123,144 @@ export const onDeleteUserDetails = /* GraphQL */ `
     }
   }
 `;
+export const onCreateSeriesUserVote = /* GraphQL */ `
+  subscription OnCreateSeriesUserVote(
+    $filter: ModelSubscriptionSeriesUserVoteFilterInput
+  ) {
+    onCreateSeriesUserVote(filter: $filter) {
+      id
+      user {
+        id
+        username
+        email
+        stripeId
+        sourceMedia {
+          nextToken
+          __typename
+        }
+        status
+        credits
+        createdAt
+        updatedAt
+        __typename
+      }
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        seasons {
+          nextToken
+          __typename
+        }
+        statusText
+        createdAt
+        updatedAt
+        __typename
+      }
+      boost
+      createdAt
+      updatedAt
+      seriesUserVoteUserId
+      seriesUserVoteSeriesId
+      __typename
+    }
+  }
+`;
+export const onUpdateSeriesUserVote = /* GraphQL */ `
+  subscription OnUpdateSeriesUserVote(
+    $filter: ModelSubscriptionSeriesUserVoteFilterInput
+  ) {
+    onUpdateSeriesUserVote(filter: $filter) {
+      id
+      user {
+        id
+        username
+        email
+        stripeId
+        sourceMedia {
+          nextToken
+          __typename
+        }
+        status
+        credits
+        createdAt
+        updatedAt
+        __typename
+      }
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        seasons {
+          nextToken
+          __typename
+        }
+        statusText
+        createdAt
+        updatedAt
+        __typename
+      }
+      boost
+      createdAt
+      updatedAt
+      seriesUserVoteUserId
+      seriesUserVoteSeriesId
+      __typename
+    }
+  }
+`;
+export const onDeleteSeriesUserVote = /* GraphQL */ `
+  subscription OnDeleteSeriesUserVote(
+    $filter: ModelSubscriptionSeriesUserVoteFilterInput
+  ) {
+    onDeleteSeriesUserVote(filter: $filter) {
+      id
+      user {
+        id
+        username
+        email
+        stripeId
+        sourceMedia {
+          nextToken
+          __typename
+        }
+        status
+        credits
+        createdAt
+        updatedAt
+        __typename
+      }
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        seasons {
+          nextToken
+          __typename
+        }
+        statusText
+        createdAt
+        updatedAt
+        __typename
+      }
+      boost
+      createdAt
+      updatedAt
+      seriesUserVoteUserId
+      seriesUserVoteSeriesId
+      __typename
+    }
+  }
+`;

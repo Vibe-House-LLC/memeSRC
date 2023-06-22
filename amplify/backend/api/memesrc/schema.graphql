@@ -149,3 +149,14 @@ type UserDetails @model @auth(
   status: String,
   credits: Int
 }
+
+type SeriesUserVote @model @auth(
+  rules: [
+    { allow: groups, groups: ["admins"] },
+  ]
+) {
+  id: ID!,
+  user: UserDetails @hasOne,
+  series: Series @hasOne,
+  boost: Int
+}

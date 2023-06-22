@@ -1183,3 +1183,147 @@ export const deleteUserDetails = /* GraphQL */ `
     }
   }
 `;
+export const createSeriesUserVote = /* GraphQL */ `
+  mutation CreateSeriesUserVote(
+    $input: CreateSeriesUserVoteInput!
+    $condition: ModelSeriesUserVoteConditionInput
+  ) {
+    createSeriesUserVote(input: $input, condition: $condition) {
+      id
+      user {
+        id
+        username
+        email
+        stripeId
+        sourceMedia {
+          nextToken
+          __typename
+        }
+        status
+        credits
+        createdAt
+        updatedAt
+        __typename
+      }
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        seasons {
+          nextToken
+          __typename
+        }
+        statusText
+        createdAt
+        updatedAt
+        __typename
+      }
+      boost
+      createdAt
+      updatedAt
+      seriesUserVoteUserId
+      seriesUserVoteSeriesId
+      __typename
+    }
+  }
+`;
+export const updateSeriesUserVote = /* GraphQL */ `
+  mutation UpdateSeriesUserVote(
+    $input: UpdateSeriesUserVoteInput!
+    $condition: ModelSeriesUserVoteConditionInput
+  ) {
+    updateSeriesUserVote(input: $input, condition: $condition) {
+      id
+      user {
+        id
+        username
+        email
+        stripeId
+        sourceMedia {
+          nextToken
+          __typename
+        }
+        status
+        credits
+        createdAt
+        updatedAt
+        __typename
+      }
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        seasons {
+          nextToken
+          __typename
+        }
+        statusText
+        createdAt
+        updatedAt
+        __typename
+      }
+      boost
+      createdAt
+      updatedAt
+      seriesUserVoteUserId
+      seriesUserVoteSeriesId
+      __typename
+    }
+  }
+`;
+export const deleteSeriesUserVote = /* GraphQL */ `
+  mutation DeleteSeriesUserVote(
+    $input: DeleteSeriesUserVoteInput!
+    $condition: ModelSeriesUserVoteConditionInput
+  ) {
+    deleteSeriesUserVote(input: $input, condition: $condition) {
+      id
+      user {
+        id
+        username
+        email
+        stripeId
+        sourceMedia {
+          nextToken
+          __typename
+        }
+        status
+        credits
+        createdAt
+        updatedAt
+        __typename
+      }
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        seasons {
+          nextToken
+          __typename
+        }
+        statusText
+        createdAt
+        updatedAt
+        __typename
+      }
+      boost
+      createdAt
+      updatedAt
+      seriesUserVoteUserId
+      seriesUserVoteSeriesId
+      __typename
+    }
+  }
+`;
