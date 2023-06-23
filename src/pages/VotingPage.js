@@ -1,49 +1,86 @@
 import React, { useEffect, useState } from 'react';
 import { API, graphqlOperation } from 'aws-amplify';
-import { Container, Grid, Card, CardContent, Typography, IconButton, CircularProgress, Box } from '@mui/material';
+import { Container, Grid, Card, CardContent, Typography, IconButton, CircularProgress, Box, Fade } from '@mui/material';
 import { ArrowUpward, ArrowDownward } from '@mui/icons-material';
-// import AvatarGroup from '@mui/material/AvatarGroup';
-// import Avatar from '@mui/material/Avatar';
+import { CSSTransition, TransitionGroup } from 'react-transition-group';
 
-import { listSeries } from '../graphql/queries';
+import { listSeries, listSeriesUserVotes } from '../graphql/queries';
+import { createSeriesUserVote } from '../graphql/mutations';
 
 export default function VotingPage() {
     const [shows, setShows] = useState([]);
+    const [votes, setVotes] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchShows = async () => {
-            try {
-                const result = await API.graphql(graphqlOperation(listSeries));
-                setShows(result.data.listSeries.items);
-                setLoading(false);
-            } catch (error) {
-                console.error('Error fetching series data:', error);
-                setLoading(false);
-            }
-        };
-
-        fetchShows();
+        fetchShowsAndVotes();
     }, []);
 
+    const fetchShowsAndVotes = async () => {
+        setLoading(true);
+        try {
+            const result = await API.graphql(graphqlOperation(listSeries));
+            const votesData = await API.graphql(graphqlOperation(listSeriesUserVotes));
+            const votesCount = votesData.data.listSeriesUserVotes.items.reduce((acc, vote) => {
+                acc[vote.seriesUserVoteSeriesId] = (acc[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
+                return acc;
+            }, {});
+
+            const sortedShows = result.data.listSeries.items.sort((a, b) => (votesCount[b.id] || 0) - (votesCount[a.id] || 0));
+
+            setShows(sortedShows);
+            setVotes(votesCount);
+        } catch (error) {
+            console.error('Error fetching series data:', error);
+        }
+        setLoading(false);
+    };
+
+    const handleVote = async (idx, boost) => {
+        try {
+            const seriesId = shows[idx].id;
+            const result = await API.graphql(graphqlOperation(createSeriesUserVote, {
+                input: {
+                    seriesUserVoteUserId: 'YourUserIdHere', // Add logic to get the user ID
+                    seriesUserVoteSeriesId: seriesId,
+                    boost
+                }
+            }));
+    
+            // After a successful vote, update the local votes count
+            setVotes(prevVotes => {
+                const newVotes = { ...prevVotes }; // Copy the previous votes state
+                newVotes[seriesId] = (newVotes[seriesId] || 0) + boost; // Update the vote count for the given series
+    
+                // Re-sort the shows based on the new votes count
+                const sortedShows = [...shows].sort((a, b) => (newVotes[b.id] || 0) - (newVotes[a.id] || 0));
+                setShows(sortedShows);
+    
+                return newVotes; // Return the updated votes state
+            });
+    
+            console.log(result);
+        } catch (error) {
+            console.error('Error on voting:', error);
+        }
+    };
+    
+    
+
     const handleUpvote = (idx) => {
-        // Handle your upvoting logic
-        console.log('Upvote for show:', shows[idx].name);
+        handleVote(idx, 1);
     };
 
     const handleDownvote = (idx) => {
-        // Handle your downvoting logic
-        console.log('Downvote for show:', shows[idx].name);
+        handleVote(idx, -1);
     };
 
-    // Add a CSS style object for the show images
     const showImageStyle = {
         maxWidth: "125px",
         maxHeight: "125px",
         objectFit: "cover"
     };
 
-    // Add a CSS style object for the description
     const descriptionStyle = {
         display: '-webkit-box',
         WebkitLineClamp: 3,
@@ -54,7 +91,7 @@ export default function VotingPage() {
 
     return (
         <Container maxWidth="md">
-             <Box my={4}>
+            <Box my={4}>
                 <Typography variant="h3" component="h1" gutterBottom>
                     Vote for New Shows
                 </Typography>
@@ -66,49 +103,45 @@ export default function VotingPage() {
                 {loading ? (
                     <CircularProgress />
                 ) : (
-                    shows.map((show, idx) => (
-                        <Grid item xs={12} key={show.id}>
-                            <Card>
-                                <CardContent>
-                                    <Box display="flex" alignItems="center">
-                                        <Box mr={2}>
-                                            <IconButton aria-label="upvote" onClick={() => handleUpvote(idx)}>
-                                                <ArrowUpward />
-                                            </IconButton>
-                                            <Typography variant="subtitle1" gutterBottom textAlign='center'>
-                                                69
-                                            </Typography>
-                                            <IconButton aria-label="downvote" onClick={() => handleDownvote(idx)}>
-                                                <ArrowDownward />
-                                            </IconButton>
-                                        </Box>
-                                        <Box flexGrow={1}>
+                    <TransitionGroup component={null}>
+                        {shows.map((show, idx) => (
+                            <CSSTransition key={show.id} timeout={500} classNames="item">
+                                <Grid item xs={12}>
+                                    <Card>
+                                        <CardContent>
                                             <Box display="flex" alignItems="center">
                                                 <Box mr={2}>
-                                                    {/* Apply the CSS style to the show images */}
-                                                    <img src={show.image} alt={show.name} style={showImageStyle} />
-                                                </Box>
-                                                <Box>
-                                                    <Typography variant="h4">{show.name}</Typography>
-                                                    <Typography variant="subtitle2">{show.year}</Typography>
-                                                    {/* Apply the CSS style to the description */}
-                                                    <Typography variant="body2" color="text.secondary" mt={1} style={descriptionStyle}>
-                                                        {show.description}
+                                                    <IconButton aria-label="upvote" onClick={() => handleUpvote(idx)}>
+                                                        <ArrowUpward />
+                                                    </IconButton>
+                                                    <Typography variant="subtitle1" gutterBottom textAlign='center'>
+                                                        {votes[show.id] || 0}
                                                     </Typography>
-                                                    {/* <AvatarGroup total={69} sx={{ height: 10, width: 10}}>
-                                                        <Avatar alt="User 1" src="/static/images/avatar/1.jpg" sx={{ height: 10, width: 10}} />
-                                                        <Avatar alt="User 2" src="/static/images/avatar/2.jpg" sx={{ height: 10, width: 10}} />
-                                                        <Avatar alt="User 3" src="/static/images/avatar/4.jpg" sx={{ height: 10, width: 10}} />
-                                                        <Avatar alt="User 4" src="/static/images/avatar/5.jpg" sx={{ height: 10, width: 10}} />
-                                                    </AvatarGroup> */}
+                                                    <IconButton aria-label="downvote" onClick={() => handleDownvote(idx)}>
+                                                        <ArrowDownward />
+                                                    </IconButton>
+                                                </Box>
+                                                <Box flexGrow={1}>
+                                                    <Box display="flex" alignItems="center">
+                                                        <Box mr={2}>
+                                                            <img src={show.image} alt={show.name} style={showImageStyle} />
+                                                        </Box>
+                                                        <Box>
+                                                            <Typography variant="h4">{show.name}</Typography>
+                                                            <Typography variant="subtitle2">{show.year}</Typography>
+                                                            <Typography variant="body2" color="text.secondary" mt={1} style={descriptionStyle}>
+                                                                {show.description}
+                                                            </Typography>
+                                                        </Box>
+                                                    </Box>
                                                 </Box>
                                             </Box>
-                                        </Box>
-                                    </Box>
-                                </CardContent>
-                            </Card>
-                        </Grid>
-                    ))
+                                        </CardContent>
+                                    </Card>
+                                </Grid>
+                            </CSSTransition>
+                        ))}
+                    </TransitionGroup>
                 )}
             </Grid>
         </Container>
