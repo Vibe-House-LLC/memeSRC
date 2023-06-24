@@ -11,6 +11,7 @@ export default function VotingPage() {
     const [shows, setShows] = useState([]);
     const [votes, setVotes] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [votingStatus, setVotingStatus] = useState({});
 
     useEffect(() => {
         fetchShowsAndVotes();
@@ -54,8 +55,10 @@ export default function VotingPage() {
     };
 
     const handleVote = async (idx, boost) => {
+        const seriesId = shows[idx].id;
+        setVotingStatus((prevStatus) => ({...prevStatus, [seriesId]: true}));
+
         try {
-            const seriesId = shows[idx].id;
             const result = await API.graphql(graphqlOperation(createSeriesUserVote, {
                 input: {
                     seriesUserVoteUserId: 'YourUserIdHere', // Add logic to get the user ID
@@ -76,8 +79,10 @@ export default function VotingPage() {
                 return newVotes;
             });
 
+            setVotingStatus((prevStatus) => ({...prevStatus, [seriesId]: false}));
             console.log(result);
         } catch (error) {
+            setVotingStatus((prevStatus) => ({...prevStatus, [seriesId]: false}));
             console.error('Error on voting:', error);
         }
     };
@@ -125,13 +130,13 @@ export default function VotingPage() {
                                     <CardContent>
                                         <Box display="flex" alignItems="center">
                                             <Box mr={2}>
-                                                <IconButton aria-label="upvote" onClick={() => handleUpvote(idx)}>
+                                                <IconButton aria-label="upvote" onClick={() => handleUpvote(idx)} disabled={votingStatus[show.id]}>
                                                     <ArrowUpward />
                                                 </IconButton>
                                                 <Typography variant="subtitle1" gutterBottom textAlign='center'>
                                                     {votes[show.id] || 0}
                                                 </Typography>
-                                                <IconButton aria-label="downvote" onClick={() => handleDownvote(idx)}>
+                                                <IconButton aria-label="downvote" onClick={() => handleDownvote(idx)} disabled={votingStatus[show.id]}>
                                                     <ArrowDownward />
                                                 </IconButton>
                                             </Box>
