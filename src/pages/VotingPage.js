@@ -20,16 +20,31 @@ export default function VotingPage() {
         setLoading(true);
         try {
             const result = await API.graphql(graphqlOperation(listSeries));
-            const votesData = await API.graphql(graphqlOperation(listSeriesUserVotes));
-            const votesCount = votesData.data.listSeriesUserVotes.items.reduce((acc, vote) => {
+            
+            const fetchAllVotes = async (nextToken) => {
+                const response = await API.graphql(graphqlOperation(listSeriesUserVotes, {
+                    nextToken,
+                    limit: 1000 // Fetch up to 1000 items per request, adjust as needed
+                }));
+                const { items, nextToken: newNextToken } = response.data.listSeriesUserVotes;
+                if (newNextToken) {
+                    return [...items, ...(await fetchAllVotes(newNextToken))];
+                }
+                return items;
+            };
+    
+            // Fetch all votes using pagination and recursion
+            const votesData = await fetchAllVotes();
+    
+            const votesCount = votesData.reduce((acc, vote) => {
                 acc[vote.seriesUserVoteSeriesId] = (acc[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
                 return acc;
             }, {});
-
+    
             const sortedShows = result.data.listSeries.items.sort((a, b) => (
-              votesCount[b.id] || 0
+                votesCount[b.id] || 0
             ) - (votesCount[a.id] || 0));
-
+    
             setShows(sortedShows);
             setVotes(votesCount);
         } catch (error) {
