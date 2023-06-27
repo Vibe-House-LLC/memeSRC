@@ -3,7 +3,9 @@ import { NavLink as RouterLink } from 'react-router-dom';
 // @mui
 import { Box, List, ListItemText } from '@mui/material';
 //
+import { useContext, useEffect } from 'react';
 import { StyledNavItem, StyledNavItemIcon } from './styles';
+import { UserContext } from '../../UserContext';
 
 // ----------------------------------------------------------------------
 
@@ -12,14 +14,31 @@ NavSection.propTypes = {
 };
 
 export default function NavSection({ data = [], ...other }) {
+  const { user } = useContext(UserContext)
+  useEffect(() => {
+    console.log(user)
+  }, [user])
   return (
-    <Box {...other}>
-      <List disablePadding sx={{ p: 1 }}>
-        {data.map((item) => (
-          <NavItem key={item.title} item={item} />
-        ))}
-      </List>
-    </Box>
+    <>
+      {
+        user && !user['cognito:groups']?.includes('admins') && <Box {...other}>
+          <List disablePadding sx={{ p: 1 }}>
+            {data.filter(item => (item.title === "search" || item.title === "Requests")).map((item) => (
+              <NavItem key={item.title} item={item} />
+            ))}
+          </List>
+        </Box>
+      }
+      {
+        user && user['cognito:groups']?.includes('admins') && <Box {...other}>
+          <List disablePadding sx={{ p: 1 }}>
+            {data.map((item) => (
+              <NavItem key={item.title} item={item} />
+            ))}
+          </List>
+        </Box>
+      }
+    </>
   );
 }
 
