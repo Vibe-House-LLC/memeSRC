@@ -1,5 +1,5 @@
 // component
-import { CardGiftcard, Favorite, MapsUgc, Settings } from '@mui/icons-material';
+import { Article, CardGiftcard, Favorite, MapsUgc, Settings, Shield } from '@mui/icons-material';
 import SvgColor from '../../../components/svg-color';
 
 // ----------------------------------------------------------------------
@@ -82,7 +82,24 @@ const navConfig = [
       },
     ]
   },
-  
+  {
+    sectionTitle: 'Legal',
+    adminOnly: false,
+    items: [
+      {
+        title: 'Terms of Service',
+        path: '/termsofservice',
+        externalLink: false,
+        icon: <Article />,
+      },
+      {
+        title: 'Privacy Policy',
+        path: '/privacypolicy',
+        externalLink: false,
+        icon: <Shield />,
+      },
+    ]
+  },
 
   
   // {

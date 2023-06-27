@@ -16,6 +16,8 @@ const SignupForm = lazy(() => import('./sections/auth/login/SignupForm'));
 const VerifyForm = lazy(() => import('./sections/auth/login/VerifyForm'));
 const ForgotPasswordForm = lazy(() => import('./sections/auth/login/ForgotPasswordForm'));
 const UserPage = lazy(() => import('./pages/UserPage'));
+const PrivacyPolicy = lazy(() => import('./sections/legal/PrivacyPolicy'));
+const TermsOfService = lazy(() => import('./sections/legal/TermsOfService'));
 const Page404 = lazy(() => import('./pages/Page404'));
 const ErrorPage = lazy(() => import('./pages/ErrorPage'));
 const ProductsPage = lazy(() => import('./pages/ProductsPage'));
@@ -94,6 +96,14 @@ export default function Router() {
     {
       path: '/section/:sectionIndex',
       element: <HomePage />
+    },
+    {
+      path: '/privacypolicy',
+      element: <PrivacyPolicy />
+    },
+    {
+      path: '/termsofservice',
+      element: <TermsOfService />
     },
     {
       path: '/error',
