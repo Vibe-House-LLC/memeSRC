@@ -19,7 +19,7 @@ export default function GuestAuth(props) {
         // Set up the user context
         Auth.currentAuthenticatedUser().then((x) => {
             API.get('publicapi', '/user/get').then(userDetails => {
-                setUser({ ...x, userDetails: userDetails?.data?.getUserDetails })  // if an authenticated user is found, set it into the context
+                setUser({ ...x, ...x.signInUserSession.accessToken.payload, userDetails: userDetails?.data?.getUserDetails })  // if an authenticated user is found, set it into the context
                 console.log(x)
                 console.log("Updating Amplify config to use AMAZON_COGNITO_USER_POOLS")
                 // Amplify.configure({
