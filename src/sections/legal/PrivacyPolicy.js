@@ -1,5 +1,6 @@
 import { Container, styled } from "@mui/material";
 import { Helmet } from "react-helmet-async";
+import { Link } from "react-router-dom";
 import Logo from "../../components/logo/Logo";
 
 
@@ -27,13 +28,15 @@ export default function PrivacyPolicy() {
       </Helmet>
 
       <StyledRoot>
-        <Logo
-          sx={{
-            position: 'fixed',
-            top: { xs: 16, sm: 24, md: 40 },
-            left: { xs: 16, sm: 24, md: 40 },
-          }}
-        />
+        <Link to='/'>
+          <Logo
+            sx={{
+              position: 'fixed',
+              top: { xs: 16, sm: 24, md: 40 },
+              left: { xs: 16, sm: 24, md: 40 },
+            }}
+          />
+        </Link>
 
         <Container maxWidth="md">
           <StyledContent>

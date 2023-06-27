@@ -1,8 +1,9 @@
 import { Helmet } from 'react-helmet-async';
 import { useContext } from 'react';
 import { styled } from '@mui/material/styles';
-import { Container, Link, Typography } from '@mui/material';
+import { Container, Typography } from '@mui/material';
 import PropTypes from 'prop-types';
+import { Link } from 'react-router-dom';
 import { LoginForm } from '../sections/auth/login';
 import Logo from '../components/logo';
 import VerifyForm from '../sections/auth/login/VerifyForm';
@@ -31,12 +32,12 @@ const StyledContent = styled('div')(({ theme }) => ({
 
 export default function AuthPage(props) {
   // Set up the user context
-  const {user, setUser} = useContext(UserContext)
+  const { user, setUser } = useContext(UserContext)
 
   // Prep the auth page content depending on the situation
   // TODO: fix issue where you can get "stuck" verifying 
   // TODO: add auto-login functionality after confirmation
-  let formType = props.method === "signin" ? <LoginForm /> : <SignupForm setUser={setUser}/>
+  let formType = props.method === "signin" ? <LoginForm /> : <SignupForm setUser={setUser} />
   let formTitle = props.method === "signup" ? "Create Account" : "Sign in"
   if (user && user.userConfirmed === false) {
     formType = <VerifyForm username={user.username} />
@@ -51,13 +52,15 @@ export default function AuthPage(props) {
       </Helmet>
 
       <StyledRoot>
-        <Logo
-          sx={{
-            position: 'fixed',
-            top: { xs: 16, sm: 24, md: 40 },
-            left: { xs: 16, sm: 24, md: 40 },
-          }}
-        />
+        <Link to='/'>
+          <Logo
+            sx={{
+              position: 'fixed',
+              top: { xs: 16, sm: 24, md: 40 },
+              left: { xs: 16, sm: 24, md: 40 },
+            }}
+          />
+        </Link>
 
         <Container maxWidth="sm">
           <StyledContent>

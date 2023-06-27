@@ -67,8 +67,7 @@ export default function Header({ onOpenNav }) {
       alignItems="center"
     >
       <Link
-        to="/"
-        component={RouterLink}
+        href="/"
         sx={{
           display: 'flex',
           alignItems: 'center',
