@@ -9,41 +9,49 @@ const icon = (name) => <SvgColor src={`/assets/icons/navbar/${name}.svg`} sx={{ 
 const navConfig = [
   {
     title: 'dashboard',
+    adminOnly: true,
     path: '/dashboard/app',
     icon: icon('ic_analytics'),
   },
   {
     title: 'search',
+    adminOnly: false,
     path: '/search',
     icon: icon('ic_menu_item'),
   },
   {
     title: 'editor',
+    adminOnly: true,
     path: '/editor',
     icon: icon('ic_file'),
   },
   {
     title: 'TV Shows',
+    adminOnly: true,
     path: '/dashboard/series',
     icon: icon('ic_booking')
   },
   {
     title: 'Requests',
+    adminOnly: false,
     path: '/vote',
     icon: icon('ic_kanban')
   },
   {
     title: 'metadata',
+    adminOnly: true,
     path: '/dashboard/metadata',
     icon: icon('ic_booking')
   },
   {
     title: 'user',
+    adminOnly: true,
     path: '/dashboard/user',
     icon: icon('ic_user'),
   },
   {
     title: 'homepage sections',
+    adminOnly: true,
     path: '/dashboard/homepagesections',
     icon: icon('ic_file')
   },

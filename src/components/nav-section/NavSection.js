@@ -21,9 +21,9 @@ export default function NavSection({ data = [], ...other }) {
   return (
     <>
       {
-        user && !user['cognito:groups']?.includes('admins') && <Box {...other}>
+        !user?.['cognito:groups']?.includes('admins') && <Box {...other}>
           <List disablePadding sx={{ p: 1 }}>
-            {data.filter(item => (item.title === "search" || item.title === "Requests")).map((item) => (
+            {data.filter(item => item.adminOnly === false).map((item) => (
               <NavItem key={item.title} item={item} />
             ))}
           </List>
