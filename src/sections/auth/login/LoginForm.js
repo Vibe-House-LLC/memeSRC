@@ -124,7 +124,11 @@ export default function LoginForm() {
       <Typography variant='body1' gutterBottom marginBottom={8}>
         Need an account? <Link sx={{ cursor: 'pointer' }} onClick={() => { navigate('/signup') }}>Create one</Link>
       </Typography>
-      <form onSubmit={handleClick}>
+      <form onSubmit={(e) => {
+        e.preventDefault();
+        handleClick();
+        return false
+        }}>
         <Stack spacing={3}>
           <AutoFillTextField
             name="text"

@@ -164,7 +164,11 @@ export default function SignupForm(props) {
       <Typography variant='body1' gutterBottom marginBottom={8}>
         Already have an account? <Link sx={{ cursor: 'pointer' }} onClick={() => { navigate('/login') }}>Sign in</Link>
       </Typography>
-      <form onSubmit={createUser}>
+      <form onSubmit={(e) => {
+        e.preventDefault();
+        createUser();
+        return false
+        }}>
         <Stack spacing={3}>
           <AutoFillTextField
             name="username"
