@@ -48,6 +48,7 @@ export default function VotingPage() {
     
             setShows(sortedShows);
             setVotes(votesCount);
+            console.log(votesCount)
         } catch (error) {
             console.error('Error fetching series data:', error);
         }
@@ -59,13 +60,19 @@ export default function VotingPage() {
         setVotingStatus((prevStatus) => ({...prevStatus, [seriesId]: true}));
 
         try {
-            const result = await API.graphql(graphqlOperation(createSeriesUserVote, {
-                input: {
-                    seriesUserVoteUserId: 'YourUserIdHere', // Add logic to get the user ID
-                    seriesUserVoteSeriesId: seriesId,
-                    boost
+            // const result = await API.graphql(graphqlOperation(createSeriesUserVote, {
+            //     input: {
+            //         seriesUserVoteUserId: 'YourUserIdHere', // Add logic to get the user ID
+            //         seriesUserVoteSeriesId: seriesId,
+            //         boost
+            //     }
+            // }));
+
+            const result = await API.post('publicapi', '/vote', {
+                body: {
+                    seriesId
                 }
-            }));
+            })
 
             setVotes(prevVotes => {
                 const newVotes = { ...prevVotes };
@@ -84,6 +91,7 @@ export default function VotingPage() {
         } catch (error) {
             setVotingStatus((prevStatus) => ({...prevStatus, [seriesId]: false}));
             console.error('Error on voting:', error);
+            console.log(error.response)
         }
     };
 

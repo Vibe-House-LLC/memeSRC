@@ -148,6 +148,32 @@
           ]
         }
       }
+    },
+    "/vote": {
+      "name": "/vote",
+      "lambdaFunction": "memesrcVote",
+      "permissions": {
+        "setting": "private",
+        "auth": [
+          "create",
+          "read",
+          "update"
+        ],
+        "groups": {
+          "admins": [
+            "create",
+            "read",
+            "update",
+            "delete"
+          ],
+          "mods": [
+            "create",
+            "read",
+            "update",
+            "delete"
+          ]
+        }
+      }
     }
   }
 }

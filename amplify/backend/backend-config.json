@@ -144,6 +144,14 @@
           ],
           "category": "function",
           "resourceName": "memesrcUserFunction"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcVote"
         }
       ],
       "providerPlugin": "awscloudformation",
@@ -340,6 +348,22 @@
       "service": "Lambda"
     },
     "memesrcUserFunction": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "GraphQLAPIIdOutput",
+            "GraphQLAPIEndpointOutput",
+            "GraphQLAPIKeyOutput"
+          ],
+          "category": "api",
+          "resourceName": "memesrc"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "memesrcVote": {
       "build": true,
       "dependsOn": [
         {
@@ -598,6 +622,22 @@
         {
           "category": "function",
           "resourceName": "memesrcUserFunction"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcVote_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcVote"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcVote_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcVote"
         }
       ]
     },

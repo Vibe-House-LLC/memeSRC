@@ -24,15 +24,12 @@ export const createSeries = /* GraphQL */ `
           createdAt
           updatedAt
           seriesSeasonsId
-          __typename
         }
         nextToken
-        __typename
       }
       statusText
       createdAt
       updatedAt
-      __typename
     }
   }
 `;
@@ -59,15 +56,12 @@ export const updateSeries = /* GraphQL */ `
           createdAt
           updatedAt
           seriesSeasonsId
-          __typename
         }
         nextToken
-        __typename
       }
       statusText
       createdAt
       updatedAt
-      __typename
     }
   }
 `;
@@ -94,15 +88,12 @@ export const deleteSeries = /* GraphQL */ `
           createdAt
           updatedAt
           seriesSeasonsId
-          __typename
         }
         nextToken
-        __typename
       }
       statusText
       createdAt
       updatedAt
-      __typename
     }
   }
 `;
@@ -123,12 +114,10 @@ export const createSourceMedia = /* GraphQL */ `
         description
         seasons {
           nextToken
-          __typename
         }
         statusText
         createdAt
         updatedAt
-        __typename
       }
       files {
         items {
@@ -138,10 +127,8 @@ export const createSourceMedia = /* GraphQL */ `
           createdAt
           updatedAt
           sourceMediaFilesId
-          __typename
         }
         nextToken
-        __typename
       }
       status
       user {
@@ -151,19 +138,19 @@ export const createSourceMedia = /* GraphQL */ `
         stripeId
         sourceMedia {
           nextToken
-          __typename
         }
         status
+        votes {
+          nextToken
+        }
         credits
         createdAt
         updatedAt
-        __typename
       }
       createdAt
       updatedAt
       userDetailsSourceMediaId
       sourceMediaSeriesId
-      __typename
     }
   }
 `;
@@ -184,12 +171,10 @@ export const updateSourceMedia = /* GraphQL */ `
         description
         seasons {
           nextToken
-          __typename
         }
         statusText
         createdAt
         updatedAt
-        __typename
       }
       files {
         items {
@@ -199,10 +184,8 @@ export const updateSourceMedia = /* GraphQL */ `
           createdAt
           updatedAt
           sourceMediaFilesId
-          __typename
         }
         nextToken
-        __typename
       }
       status
       user {
@@ -212,19 +195,19 @@ export const updateSourceMedia = /* GraphQL */ `
         stripeId
         sourceMedia {
           nextToken
-          __typename
         }
         status
+        votes {
+          nextToken
+        }
         credits
         createdAt
         updatedAt
-        __typename
       }
       createdAt
       updatedAt
       userDetailsSourceMediaId
       sourceMediaSeriesId
-      __typename
     }
   }
 `;
@@ -245,12 +228,10 @@ export const deleteSourceMedia = /* GraphQL */ `
         description
         seasons {
           nextToken
-          __typename
         }
         statusText
         createdAt
         updatedAt
-        __typename
       }
       files {
         items {
@@ -260,10 +241,8 @@ export const deleteSourceMedia = /* GraphQL */ `
           createdAt
           updatedAt
           sourceMediaFilesId
-          __typename
         }
         nextToken
-        __typename
       }
       status
       user {
@@ -273,19 +252,19 @@ export const deleteSourceMedia = /* GraphQL */ `
         stripeId
         sourceMedia {
           nextToken
-          __typename
         }
         status
+        votes {
+          nextToken
+        }
         credits
         createdAt
         updatedAt
-        __typename
       }
       createdAt
       updatedAt
       userDetailsSourceMediaId
       sourceMediaSeriesId
-      __typename
     }
   }
 `;
@@ -309,11 +288,9 @@ export const createFile = /* GraphQL */ `
           statusText
           createdAt
           updatedAt
-          __typename
         }
         files {
           nextToken
-          __typename
         }
         status
         user {
@@ -325,20 +302,17 @@ export const createFile = /* GraphQL */ `
           credits
           createdAt
           updatedAt
-          __typename
         }
         createdAt
         updatedAt
         userDetailsSourceMediaId
         sourceMediaSeriesId
-        __typename
       }
       key
       status
       createdAt
       updatedAt
       sourceMediaFilesId
-      __typename
     }
   }
 `;
@@ -362,11 +336,9 @@ export const updateFile = /* GraphQL */ `
           statusText
           createdAt
           updatedAt
-          __typename
         }
         files {
           nextToken
-          __typename
         }
         status
         user {
@@ -378,20 +350,17 @@ export const updateFile = /* GraphQL */ `
           credits
           createdAt
           updatedAt
-          __typename
         }
         createdAt
         updatedAt
         userDetailsSourceMediaId
         sourceMediaSeriesId
-        __typename
       }
       key
       status
       createdAt
       updatedAt
       sourceMediaFilesId
-      __typename
     }
   }
 `;
@@ -415,11 +384,9 @@ export const deleteFile = /* GraphQL */ `
           statusText
           createdAt
           updatedAt
-          __typename
         }
         files {
           nextToken
-          __typename
         }
         status
         user {
@@ -431,20 +398,17 @@ export const deleteFile = /* GraphQL */ `
           credits
           createdAt
           updatedAt
-          __typename
         }
         createdAt
         updatedAt
         userDetailsSourceMediaId
         sourceMediaSeriesId
-        __typename
       }
       key
       status
       createdAt
       updatedAt
       sourceMediaFilesId
-      __typename
     }
   }
 `;
@@ -469,12 +433,10 @@ export const createSeason = /* GraphQL */ `
         description
         seasons {
           nextToken
-          __typename
         }
         statusText
         createdAt
         updatedAt
-        __typename
       }
       episodes {
         items {
@@ -486,15 +448,12 @@ export const createSeason = /* GraphQL */ `
           createdAt
           updatedAt
           seasonEpisodesId
-          __typename
         }
         nextToken
-        __typename
       }
       createdAt
       updatedAt
       seriesSeasonsId
-      __typename
     }
   }
 `;
@@ -519,12 +478,10 @@ export const updateSeason = /* GraphQL */ `
         description
         seasons {
           nextToken
-          __typename
         }
         statusText
         createdAt
         updatedAt
-        __typename
       }
       episodes {
         items {
@@ -536,15 +493,12 @@ export const updateSeason = /* GraphQL */ `
           createdAt
           updatedAt
           seasonEpisodesId
-          __typename
         }
         nextToken
-        __typename
       }
       createdAt
       updatedAt
       seriesSeasonsId
-      __typename
     }
   }
 `;
@@ -569,12 +523,10 @@ export const deleteSeason = /* GraphQL */ `
         description
         seasons {
           nextToken
-          __typename
         }
         statusText
         createdAt
         updatedAt
-        __typename
       }
       episodes {
         items {
@@ -586,15 +538,12 @@ export const deleteSeason = /* GraphQL */ `
           createdAt
           updatedAt
           seasonEpisodesId
-          __typename
         }
         nextToken
-        __typename
       }
       createdAt
       updatedAt
       seriesSeasonsId
-      __typename
     }
   }
 `;
@@ -626,16 +575,13 @@ export const createEpisode = /* GraphQL */ `
           statusText
           createdAt
           updatedAt
-          __typename
         }
         episodes {
           nextToken
-          __typename
         }
         createdAt
         updatedAt
         seriesSeasonsId
-        __typename
       }
       subtitles {
         items {
@@ -649,15 +595,12 @@ export const createEpisode = /* GraphQL */ `
           createdAt
           updatedAt
           episodeSubtitlesId
-          __typename
         }
         nextToken
-        __typename
       }
       createdAt
       updatedAt
       seasonEpisodesId
-      __typename
     }
   }
 `;
@@ -689,16 +632,13 @@ export const updateEpisode = /* GraphQL */ `
           statusText
           createdAt
           updatedAt
-          __typename
         }
         episodes {
           nextToken
-          __typename
         }
         createdAt
         updatedAt
         seriesSeasonsId
-        __typename
       }
       subtitles {
         items {
@@ -712,15 +652,12 @@ export const updateEpisode = /* GraphQL */ `
           createdAt
           updatedAt
           episodeSubtitlesId
-          __typename
         }
         nextToken
-        __typename
       }
       createdAt
       updatedAt
       seasonEpisodesId
-      __typename
     }
   }
 `;
@@ -752,16 +689,13 @@ export const deleteEpisode = /* GraphQL */ `
           statusText
           createdAt
           updatedAt
-          __typename
         }
         episodes {
           nextToken
-          __typename
         }
         createdAt
         updatedAt
         seriesSeasonsId
-        __typename
       }
       subtitles {
         items {
@@ -775,15 +709,12 @@ export const deleteEpisode = /* GraphQL */ `
           createdAt
           updatedAt
           episodeSubtitlesId
-          __typename
         }
         nextToken
-        __typename
       }
       createdAt
       updatedAt
       seasonEpisodesId
-      __typename
     }
   }
 `;
@@ -815,21 +746,17 @@ export const createSubtitle = /* GraphQL */ `
           createdAt
           updatedAt
           seriesSeasonsId
-          __typename
         }
         subtitles {
           nextToken
-          __typename
         }
         createdAt
         updatedAt
         seasonEpisodesId
-        __typename
       }
       createdAt
       updatedAt
       episodeSubtitlesId
-      __typename
     }
   }
 `;
@@ -861,21 +788,17 @@ export const updateSubtitle = /* GraphQL */ `
           createdAt
           updatedAt
           seriesSeasonsId
-          __typename
         }
         subtitles {
           nextToken
-          __typename
         }
         createdAt
         updatedAt
         seasonEpisodesId
-        __typename
       }
       createdAt
       updatedAt
       episodeSubtitlesId
-      __typename
     }
   }
 `;
@@ -907,21 +830,17 @@ export const deleteSubtitle = /* GraphQL */ `
           createdAt
           updatedAt
           seriesSeasonsId
-          __typename
         }
         subtitles {
           nextToken
-          __typename
         }
         createdAt
         updatedAt
         seasonEpisodesId
-        __typename
       }
       createdAt
       updatedAt
       episodeSubtitlesId
-      __typename
     }
   }
 `;
@@ -935,7 +854,6 @@ export const createAnalyticsMetrics = /* GraphQL */ `
       value
       createdAt
       updatedAt
-      __typename
     }
   }
 `;
@@ -949,7 +867,6 @@ export const updateAnalyticsMetrics = /* GraphQL */ `
       value
       createdAt
       updatedAt
-      __typename
     }
   }
 `;
@@ -963,7 +880,6 @@ export const deleteAnalyticsMetrics = /* GraphQL */ `
       value
       createdAt
       updatedAt
-      __typename
     }
   }
 `;
@@ -983,7 +899,6 @@ export const createContentMetadata = /* GraphQL */ `
       status
       createdAt
       updatedAt
-      __typename
     }
   }
 `;
@@ -1003,7 +918,6 @@ export const updateContentMetadata = /* GraphQL */ `
       status
       createdAt
       updatedAt
-      __typename
     }
   }
 `;
@@ -1023,7 +937,6 @@ export const deleteContentMetadata = /* GraphQL */ `
       status
       createdAt
       updatedAt
-      __typename
     }
   }
 `;
@@ -1044,7 +957,6 @@ export const createHomepageSection = /* GraphQL */ `
       textColor
       createdAt
       updatedAt
-      __typename
     }
   }
 `;
@@ -1065,7 +977,6 @@ export const updateHomepageSection = /* GraphQL */ `
       textColor
       createdAt
       updatedAt
-      __typename
     }
   }
 `;
@@ -1086,7 +997,6 @@ export const deleteHomepageSection = /* GraphQL */ `
       textColor
       createdAt
       updatedAt
-      __typename
     }
   }
 `;
@@ -1108,16 +1018,24 @@ export const createUserDetails = /* GraphQL */ `
           updatedAt
           userDetailsSourceMediaId
           sourceMediaSeriesId
-          __typename
         }
         nextToken
-        __typename
       }
       status
+      votes {
+        items {
+          id
+          boost
+          createdAt
+          updatedAt
+          userDetailsVotesId
+          seriesUserVoteSeriesId
+        }
+        nextToken
+      }
       credits
       createdAt
       updatedAt
-      __typename
     }
   }
 `;
@@ -1139,16 +1057,24 @@ export const updateUserDetails = /* GraphQL */ `
           updatedAt
           userDetailsSourceMediaId
           sourceMediaSeriesId
-          __typename
         }
         nextToken
-        __typename
       }
       status
+      votes {
+        items {
+          id
+          boost
+          createdAt
+          updatedAt
+          userDetailsVotesId
+          seriesUserVoteSeriesId
+        }
+        nextToken
+      }
       credits
       createdAt
       updatedAt
-      __typename
     }
   }
 `;
@@ -1170,16 +1096,24 @@ export const deleteUserDetails = /* GraphQL */ `
           updatedAt
           userDetailsSourceMediaId
           sourceMediaSeriesId
-          __typename
         }
         nextToken
-        __typename
       }
       status
+      votes {
+        items {
+          id
+          boost
+          createdAt
+          updatedAt
+          userDetailsVotesId
+          seriesUserVoteSeriesId
+        }
+        nextToken
+      }
       credits
       createdAt
       updatedAt
-      __typename
     }
   }
 `;
@@ -1197,13 +1131,14 @@ export const createSeriesUserVote = /* GraphQL */ `
         stripeId
         sourceMedia {
           nextToken
-          __typename
         }
         status
+        votes {
+          nextToken
+        }
         credits
         createdAt
         updatedAt
-        __typename
       }
       series {
         id
@@ -1215,19 +1150,16 @@ export const createSeriesUserVote = /* GraphQL */ `
         description
         seasons {
           nextToken
-          __typename
         }
         statusText
         createdAt
         updatedAt
-        __typename
       }
       boost
       createdAt
       updatedAt
-      seriesUserVoteUserId
+      userDetailsVotesId
       seriesUserVoteSeriesId
-      __typename
     }
   }
 `;
@@ -1245,13 +1177,14 @@ export const updateSeriesUserVote = /* GraphQL */ `
         stripeId
         sourceMedia {
           nextToken
-          __typename
         }
         status
+        votes {
+          nextToken
+        }
         credits
         createdAt
         updatedAt
-        __typename
       }
       series {
         id
@@ -1263,19 +1196,16 @@ export const updateSeriesUserVote = /* GraphQL */ `
         description
         seasons {
           nextToken
-          __typename
         }
         statusText
         createdAt
         updatedAt
-        __typename
       }
       boost
       createdAt
       updatedAt
-      seriesUserVoteUserId
+      userDetailsVotesId
       seriesUserVoteSeriesId
-      __typename
     }
   }
 `;
@@ -1293,13 +1223,14 @@ export const deleteSeriesUserVote = /* GraphQL */ `
         stripeId
         sourceMedia {
           nextToken
-          __typename
         }
         status
+        votes {
+          nextToken
+        }
         credits
         createdAt
         updatedAt
-        __typename
       }
       series {
         id
@@ -1311,19 +1242,16 @@ export const deleteSeriesUserVote = /* GraphQL */ `
         description
         seasons {
           nextToken
-          __typename
         }
         statusText
         createdAt
         updatedAt
-        __typename
       }
       boost
       createdAt
       updatedAt
-      seriesUserVoteUserId
+      userDetailsVotesId
       seriesUserVoteSeriesId
-      __typename
     }
   }
 `;
