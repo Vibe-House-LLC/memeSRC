@@ -157,7 +157,7 @@ export const handler = async (event) => {
         console.log(usersVotes)
 
         console.log('CHECK IF VOTE EXIST FOR SERIES ID')
-        const voteExist = usersVotes.some(item => item.series.id === seriesId);
+        const voteExist = usersVotes?.some(item => item.series.id === seriesId);
         console.log(voteExist)
 
         if (!voteExist) {
