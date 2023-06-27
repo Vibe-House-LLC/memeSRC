@@ -84,7 +84,8 @@ export default function VotingPage() {
 
             const result = await API.post('publicapi', '/vote', {
                 body: {
-                    seriesId
+                    seriesId,
+                    boost
                 }
             })
 

@@ -283,6 +283,7 @@ export const handler = async (event) => {
   if (path === `/${process.env.ENV}/public/vote`) {
     console.log('GET SERIES ID FROM BODY')
     const seriesId = body.seriesId
+    const boost = body.boost
     console.log(seriesId)
 
     console.log('LOAD USER')
@@ -304,7 +305,7 @@ export const handler = async (event) => {
       console.log('CREATE VOTE QUERY')
       const createVote = `
             mutation createSeriesUserVote {
-                createSeriesUserVote(input: {userDetailsVotesId: "${userSub}", seriesUserVoteSeriesId: "${seriesId}", boost: 1}) {
+                createSeriesUserVote(input: {userDetailsVotesId: "${userSub}", seriesUserVoteSeriesId: "${seriesId}", boost: ${boost > 0 ? 1 : -1}}) {
                   id
                 }
             }
