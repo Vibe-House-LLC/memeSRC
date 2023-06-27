@@ -23,9 +23,9 @@ export default function NavSection({ data = [], ...other }) {
       {
         !user?.['cognito:groups']?.includes('admins') && <Box {...other}>
           <List disablePadding sx={{ p: 1 }}>
-            {data.filter(item => item.adminOnly === false).map((section) => (
+            {data.filter(item => item.adminOnly === false).map((section, index) => (
               <>
-                <Typography variant='body2' fontWeight={700} pl={2} mb={2}>
+                <Typography variant='body2' fontWeight={700} pl={2} mb={2} mt={index > 0 ? 5 : 0}>
                   {section.sectionTitle}
                 </Typography>
                 {
