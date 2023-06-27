@@ -10,7 +10,6 @@ const StyledRoot = styled('div')(({ theme }) => ({
 }));
 
 const StyledContent = styled('div')(({ theme }) => ({
-  maxWidth: 480,
   margin: 'auto',
   minHeight: '100vh',
   display: 'flex',
@@ -36,7 +35,7 @@ export default function TermsOfService() {
           }}
         />
 
-        <Container maxWidth="sm">
+        <Container maxWidth="md">
           <StyledContent>
             <h2>Terms of Service</h2>
             <p>Please read these terms of service ("terms", "terms of service") carefully before using <a href="http://memesrc.com">http://memesrc.com</a> website (the "service") operated by Vibe House LLC ("us", "we", "our").</p>

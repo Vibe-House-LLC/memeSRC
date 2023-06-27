@@ -10,7 +10,6 @@ const StyledRoot = styled('div')(({ theme }) => ({
 }));
 
 const StyledContent = styled('div')(({ theme }) => ({
-  maxWidth: 480,
   margin: 'auto',
   minHeight: '100vh',
   display: 'flex',
@@ -36,7 +35,7 @@ export default function PrivacyPolicy() {
           }}
         />
 
-        <Container maxWidth="sm">
+        <Container maxWidth="md">
           <StyledContent>
             <h1>Privacy Policy of Vibe House LLC</h1>
             <p>Vibe House LLC operates the memeSRC.com website, which provides the SERVICE.</p>
