@@ -103,7 +103,7 @@ export default function Header({ onOpenNav }) {
   }, [showLogo]);
 
   useEffect(() => {
-    if (location.pathname === '/' && user) {
+    if (location.pathname === '/') {
       window.addEventListener('scroll', handleScroll);
       setShowNav(true);
     } else if (location.pathname !== '/') {
@@ -123,10 +123,9 @@ export default function Header({ onOpenNav }) {
 
   return (
     <>
-      {showNav &&
         <StyledRoot>
           <StyledToolbar sx={{ position: 'relative', minHeight: { xs: 45, md: '45px !important' } }} ref={containerRef}>
-            {location.pathname.startsWith('/dashboard/') && <IconButton
+            <IconButton
               onClick={onOpenNav}
               sx={{
                 mr: 1,
@@ -135,7 +134,7 @@ export default function Header({ onOpenNav }) {
               size='large'
             >
               <Iconify icon="ic:round-menu" />
-            </IconButton>}
+            </IconButton>
             {user && <Box sx={{ width: '145px', height: '1px' }} />}
 
             {/* <Searchbar /> */}
@@ -177,7 +176,7 @@ export default function Header({ onOpenNav }) {
             </Stack>
           </StyledToolbar>
         </StyledRoot>
-      }
+      
     </>
   );
 }
