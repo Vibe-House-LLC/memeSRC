@@ -123,60 +123,58 @@ export default function Header({ onOpenNav }) {
 
   return (
     <>
-        <StyledRoot>
-          <StyledToolbar sx={{ position: 'relative', minHeight: { xs: 45, md: '45px !important' } }} ref={containerRef}>
-            <IconButton
-              onClick={onOpenNav}
-              sx={{
-                mr: 1,
-                color: 'text.primary',
-              }}
-              size='large'
-            >
-              <Iconify icon="ic:round-menu" />
-            </IconButton>
-            {user && <Box sx={{ width: '145px', height: '1px' }} />}
+      <StyledRoot>
+        <StyledToolbar sx={{ position: 'relative', minHeight: { xs: 45, md: '45px !important' } }} ref={containerRef}>
+          <IconButton
+            onClick={onOpenNav}
+            sx={{
+              color: 'text.primary',
+            }}
+            size='large'
+          >
+            <Iconify icon="ic:round-menu" />
+          </IconButton>
 
-            {/* <Searchbar /> */}
-            <Box sx={{ flexGrow: 1 }} />
-            {location.pathname === '/'
-              ?
+          {/* <Searchbar /> */}
+          <Box sx={{ flexGrow: 1 }} />
+          {location.pathname === '/'
+            ?
 
-              <Slide direction="up" container={containerRef.current} exit in={showLogo} mountOnEnter>
+            <Slide direction="up" container={containerRef.current} exit in={showLogo} mountOnEnter>
 
-                {renderLogo()}
-              </Slide>
-              : renderLogo()
-            }
+              {renderLogo()}
+            </Slide>
+            : renderLogo()
+          }
 
-            <Stack
-              direction="row"
-              alignItems="center"
-              spacing={{
-                xs: 2
-              }}
-            >
-              {/* <NotificationsPopover /> */}
-              {user &&
-                <>
-                  <Chip
-                    icon={<AutoFixHighRounded />}
-                    label={user.userDetails.credits || 0}
-                    size="small"
-                    color="success"
-                    sx={{
-                      "& .MuiChip-label": {
-                        fontWeight: 'bold',
-                      },
-                    }}
-                  />
-                  <AccountPopover />
-                </>
-              }
-            </Stack>
-          </StyledToolbar>
-        </StyledRoot>
-      
+          <Stack
+            direction="row"
+            alignItems="center"
+            spacing={{
+              xs: 2
+            }}
+          >
+            {/* <NotificationsPopover /> */}
+            <>
+              {user && user.userDetails.credits > 0 &&
+                <Chip
+                  icon={<AutoFixHighRounded />}
+                  label={user.userDetails.credits || 0}
+                  size="small"
+                  color="success"
+                  sx={{
+                    "& .MuiChip-label": {
+                      fontWeight: 'bold',
+                    },
+                  }}
+                />
+                }
+              <AccountPopover />
+            </>
+          </Stack>
+        </StyledToolbar>
+      </StyledRoot>
+
     </>
   );
 }

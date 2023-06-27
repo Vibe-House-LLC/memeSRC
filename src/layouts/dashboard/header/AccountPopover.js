@@ -45,7 +45,7 @@ export default function AccountPopover() {
   const logout = () => {
     Auth.signOut().then(() => {
       userDetails?.setUser(null);
-      navigate('/', { replace: true })
+      navigate('/login')
     }).catch((err) => {
       alert(err)
     })

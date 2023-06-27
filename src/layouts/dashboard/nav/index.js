@@ -57,23 +57,8 @@ export default function Nav({ openNav, onCloseNav }) {
 
       <Box sx={{ mb: 5, mx: 2.5 }}>
         <Link underline="none">
-          <StyledAccount>
-            {userDetails.user &&
-              <>
-                <Avatar src={account.photoURL} alt="photoURL" />
-
-                <Box sx={{ ml: 2 }}>
-                  <Typography variant="subtitle2" sx={{ color: 'text.primary' }}>
-                    {userDetails?.user?.attributes?.email}
-                  </Typography>
-
-                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    {account.role}
-                  </Typography>
-                </Box>
-              </>
-            }
-            {!userDetails.user &&
+          {!userDetails.user &&
+            <StyledAccount>
               <>
                 <Box width='100%'>
                   <Link href='/signup' underline='none'>
@@ -81,7 +66,7 @@ export default function Nav({ openNav, onCloseNav }) {
                       Create Account
                     </Typography>
                   </Link>
-                  <Divider sx={{my: 2}} />
+                  <Divider sx={{ my: 2 }} />
                   <Link href='/login' underline='none'>
                     <Typography variant="subtitle1" textAlign='center' sx={{ color: 'text.primary' }}>
                       Sign In
@@ -89,8 +74,8 @@ export default function Nav({ openNav, onCloseNav }) {
                   </Link>
                 </Box>
               </>
-            }
-          </StyledAccount>
+            </StyledAccount>
+          }
         </Link>
       </Box>
 
