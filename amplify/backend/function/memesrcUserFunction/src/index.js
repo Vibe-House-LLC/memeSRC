@@ -94,6 +94,13 @@ function getUserDetails(params) {
                       email
                       createdAt
                       status
+                      votes {
+                        items {
+                            series {
+                                id
+                            }
+                        }
+                      }
                       credits
                   }
               }
@@ -112,6 +119,13 @@ function getUserDetails(params) {
                   username
                   updatedAt
                   status
+                  votes {
+                    items {
+                        series {
+                            id
+                        }
+                    }
+                  }
                   credits
               }
           }
@@ -232,7 +246,7 @@ export const handler = async (event) => {
   if (path === `/${process.env.ENV}/public/user/spendCredits`) {
     const subId = event.subId;
     const numCredits = event.numCredits;
-  
+
     if (!subId || !numCredits) {
       response = {
         statusCode: 400,
@@ -259,13 +273,60 @@ export const handler = async (event) => {
         response = {
           statusCode: 400,
           body: {
-            error:  "User does not have enough credits."
+            error: "User does not have enough credits."
           }
         }
       }
     }
   }
-  
+
+  if (path === `/${process.env.ENV}/public/vote`) {
+    console.log('GET SERIES ID FROM BODY')
+    const seriesId = body.seriesId
+    console.log(seriesId)
+
+    console.log('LOAD USER')
+    const userDetails = await makeRequest(getUserDetails({ subId: userSub }))
+    console.log(userDetails)
+
+    console.log('SEPERATE USER VOTES')
+    const usersVotes = userDetails.body.data.getUserDetails.votes.items
+    console.log(usersVotes)
+
+    console.log('CHECK IF VOTE EXIST FOR SERIES ID')
+    const voteExist = usersVotes?.some(item => item.series.id === seriesId);
+    console.log(voteExist)
+
+    if (!voteExist) {
+      // They have not voted for this series yet
+
+      // Build query to cast vote
+      console.log('CREATE VOTE QUERY')
+      const createVote = `
+            mutation createSeriesUserVote {
+                createSeriesUserVote(input: {userDetailsVotesId: "${userSub}", seriesUserVoteSeriesId: "${seriesId}", boost: 1}) {
+                  id
+                }
+            }
+        `;
+      console.log(createVote)
+
+      // Hit GraphQL to place vote
+      response = await makeRequest(createVote)
+      console.log(response)
+
+    } else {
+      // The user has already voted. Return a Forbidden error with details
+      response = {
+        statusCode: 403,
+        body: {
+          name: 'MaxVotesReached',
+          message: 'You have reached the maximum number of votes for this series.'
+        }
+      }
+    }
+  }
+
   console.log(response)
 
   return {

@@ -151,7 +151,7 @@
     },
     "/vote": {
       "name": "/vote",
-      "lambdaFunction": "memesrcVote",
+      "lambdaFunction": "memesrcUserFunction",
       "permissions": {
         "setting": "private",
         "auth": [
