@@ -154,6 +154,8 @@ type UserDetails @model @auth(
 type SeriesUserVote @model @auth(
   rules: [
     { allow: groups, groups: ["admins"] },
+    { allow: private, operations: [read] },
+    { allow: public, operations: [read]}
   ]
 ) {
   id: ID!,
