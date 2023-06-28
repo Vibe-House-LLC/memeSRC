@@ -18,13 +18,18 @@ const navConfig = [
         externalLink: false,
         icon: icon('ic_menu_item'),
       },
-
       {
-        title: 'Requests',
+        title: 'Request',
         path: '/vote',
         externalLink: false,
         icon: icon('ic_kanban')
-      },
+      }
+    ]
+  },
+  {
+    sectionTitle: 'Support',
+    adminOnly: false,
+    items: [
       {
         title: 'Feedback',
         path: 'https://forms.gle/8CETtVbwYoUmxqbi7',
@@ -89,13 +94,13 @@ const navConfig = [
       {
         title: 'Terms of Service',
         path: '/termsofservice',
-        externalLink: false,
+        externalLink: true,
         icon: <Article />,
       },
       {
         title: 'Privacy Policy',
         path: '/privacypolicy',
-        externalLink: false,
+        externalLink: true,
         icon: <Shield />,
       },
     ]
