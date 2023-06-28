@@ -72,37 +72,29 @@ export default function VotingPage() {
     const handleVote = async (idx, boost) => {
         const seriesId = shows[idx].id;
         setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: true }));
-
+    
         try {
-            // const result = await API.graphql(graphqlOperation(createSeriesUserVote, {
-            //     input: {
-            //         seriesUserVoteUserId: 'YourUserIdHere', // Add logic to get the user ID
-            //         seriesUserVoteSeriesId: seriesId,
-            //         boost
-            //     }
-            // }));
-
             const result = await API.post('publicapi', '/vote', {
                 body: {
                     seriesId,
                     boost
                 }
             })
-
-            setUserVotes(prevUserVotes => ({ ...prevUserVotes, [seriesId]: true }));
-
+    
+            setUserVotes(prevUserVotes => ({ ...prevUserVotes, [seriesId]: boost }));
+    
             setVotes(prevVotes => {
                 const newVotes = { ...prevVotes };
                 newVotes[seriesId] = (newVotes[seriesId] || 0) + boost;
-
+    
                 const sortedShows = [...shows].sort((a, b) => (
                     newVotes[b.id] || 0
                 ) - (newVotes[a.id] || 0));
                 setShows(sortedShows);
-
+    
                 return newVotes;
             });
-
+    
             setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: false }));
             console.log(result);
         } catch (error) {
@@ -111,6 +103,7 @@ export default function VotingPage() {
             console.log(error.response)
         }
     };
+    
 
     const handleUpvote = (idx) => {
         handleVote(idx, 1);
