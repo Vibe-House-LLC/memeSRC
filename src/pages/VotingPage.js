@@ -23,21 +23,13 @@ export default function VotingPage() {
     const fetchShowsAndVotes = async () => {
         setLoading(true);
         try {
-            const result = await API.graphql({
-                ...graphqlOperation(listSeries),
-                authMode: "API_KEY"
-              })
+            const result = await API.graphql(graphqlOperation(listSeries));
 
             const fetchAllVotes = async (nextToken) => {
-                const response = await API.graphql({
-                    ...graphqlOperation(listSeriesUserVotes, {
-                        nextToken,
-                        limit: 1000 // Fetch up to 1000 items per request
-                    }),
-                    authMode: "API_KEY"
-                  });
-
-
+                const response = await API.graphql(graphqlOperation(listSeriesUserVotes, {
+                    nextToken,
+                    limit: 1000 // Fetch up to 1000 items per request
+                }));
                 const { items, nextToken: newNextToken } = response.data.listSeriesUserVotes;
                 if (newNextToken) {
                     return [...items, ...(await fetchAllVotes(newNextToken))];
