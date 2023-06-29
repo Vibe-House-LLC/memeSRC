@@ -46,31 +46,7 @@ async function getAllVotes(userSub, nextToken) {
       listSeriesUserVotes(limit: 1000${nextToken ? `, nextToken: "${nextToken}"` : ""}) {
         items {
           id
-          user {
-            id
-            username
-            email
-            stripeId
-            status
-            credits
-            createdAt
-            updatedAt
-          }
-          series {
-            id
-            tvdbid
-            slug
-            name
-            year
-            image
-            description
-            statusText
-            createdAt
-            updatedAt
-          }
           boost
-          createdAt
-          updatedAt
           userDetailsVotesId
           seriesUserVoteSeriesId
         }
@@ -98,7 +74,10 @@ async function getAllVotes(userSub, nextToken) {
   const currentUserVotes = {};
   allItems.forEach(vote => {
     votesCount[vote.seriesUserVoteSeriesId] = (votesCount[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
-    if (vote.user?.id === userSub) {
+    console.log("CHECKING IF THE VOTE MATCHES THE USER:")
+    console.log(`vote.user?.id: ${vote.user?.id}`)
+    console.log(`userSub: ${userSub}`)
+    if (vote.userDetailsVotesId === userSub) {
         currentUserVotes[vote.seriesUserVoteSeriesId] = vote.boost;
     }
   });
