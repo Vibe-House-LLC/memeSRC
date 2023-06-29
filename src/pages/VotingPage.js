@@ -26,10 +26,10 @@ export default function VotingPage() {
             const result = await API.graphql(graphqlOperation(listSeries));
 
             const fetchAllVotes = async (nextToken) => {
-                const response = await API.graphql(graphqlOperation(listSeriesUserVotes, {
+                const response = await API.get('publicapi', '/vote/list', {
                     nextToken,
                     limit: 1000 // Fetch up to 1000 items per request
-                }));
+                })
                 const { items, nextToken: newNextToken } = response.data.listSeriesUserVotes;
                 if (newNextToken) {
                     return [...items, ...(await fetchAllVotes(newNextToken))];
