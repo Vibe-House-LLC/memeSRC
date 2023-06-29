@@ -96,6 +96,15 @@ export default function VerifyForm(props) {
               })
               setOpen(true)
               setLoading(false)
+            } else if (err.name === "ExpiredCodeException") {
+              setSeverity('error');
+              setMessage(err.message);
+              setFormErrors({
+                ...formErrors,
+                code: true
+              })
+              setOpen(true)
+              setLoading(false)
             }
           })
         }
