@@ -4,12 +4,12 @@ import { Container, Grid, Card, CardContent, Typography, IconButton, CircularPro
 import { ArrowUpward, ArrowDownward } from '@mui/icons-material';
 import FlipMove from 'react-flip-move';
 
-import { listSeries, listSeriesUserVotes } from '../graphql/queries';
+import { listSeries } from '../graphql/queries';
 import { UserContext } from '../UserContext';
 
 export default function VotingPage() {
     const [shows, setShows] = useState([]);
-    const [votes, setVotes] = useState([]);
+    const [votes, setVotes] = useState({});
     const [loading, setLoading] = useState(true);
     const [votingStatus, setVotingStatus] = useState({});
     const [userVotes, setUserVotes] = useState({});
@@ -23,46 +23,14 @@ export default function VotingPage() {
     const fetchShowsAndVotes = async () => {
         setLoading(true);
         try {
-            const result = await API.graphql(graphqlOperation(listSeries));
-
-            const fetchAllVotes = async (nextToken) => {
-                const response = await API.get('publicapi', '/vote/list', {
-                    nextToken,
-                    limit: 1000 // Fetch up to 1000 items per request
-                })
-                const { items, nextToken: newNextToken } = response.data.listSeriesUserVotes;
-                if (newNextToken) {
-                    return [...items, ...(await fetchAllVotes(newNextToken))];
-                }
-                return items;
-            };
-
-            // Fetch all votes using pagination and recursion
-            const votesData = await fetchAllVotes();
-
-            const votesCount = votesData.reduce((acc, vote) => {
-                acc[vote.seriesUserVoteSeriesId] = (acc[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
-                return acc;
-            }, {});
-
-            // Record the shows the current user has voted on
-            const currentUserVotes = votesData.reduce((acc, vote) => {
-                if (user) {
-                    if (vote.user?.id === user.userDetails.id) {
-                        acc[vote.seriesUserVoteSeriesId] = vote.boost; // 1 for upvote or -1 for downvote
-                    }
-                }
-                return acc;
-            }, {});
-
-            const sortedShows = result.data.listSeries.items.sort((a, b) => (
-                votesCount[b.id] || 0
-            ) - (votesCount[a.id] || 0));
-
+            const seriesData = await API.graphql(graphqlOperation(listSeries));
+            const voteData = await API.get('publicapi', '/vote/list');
+            const sortedShows = seriesData.data.listSeries.items.sort((a, b) => (
+                voteData.votes[b.id] || 0
+            ) - (voteData.votes[a.id] || 0));
             setShows(sortedShows);
-            setVotes(votesCount);
-            setUserVotes(currentUserVotes);
-            console.log(votesCount)
+            setVotes(voteData.votes);
+            setUserVotes(voteData.userVotes);
         } catch (error) {
             console.error('Error fetching series data:', error);
         }
@@ -96,7 +64,6 @@ export default function VotingPage() {
             });
     
             setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: false }));
-            console.log(result);
         } catch (error) {
             setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: false }));
             console.error('Error on voting:', error);
@@ -104,7 +71,6 @@ export default function VotingPage() {
         }
     };
     
-
     const handleUpvote = (idx) => {
         handleVote(idx, 1);
     };
