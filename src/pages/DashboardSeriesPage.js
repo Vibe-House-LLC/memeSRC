@@ -159,7 +159,7 @@ export default function DashboardSeriesPage() {
     setSeriesSeasons('');
     setMetadataLoaded(false);
     setTvdbResults([]);
-    if (sub) {sub.unsubscribe();}
+    if (sub) { sub.unsubscribe(); }
     setStatusText('');
     setFileLocation('');
   };
@@ -246,7 +246,7 @@ export default function DashboardSeriesPage() {
     if (mode === FormMode.CREATE) {
       createNewSeries(seriesData);
     } else {
-      updateExistingSeries({...seriesData, id});
+      updateExistingSeries({ ...seriesData, id });
     }
     clearForm();
     setShowForm(false);
@@ -524,7 +524,7 @@ export default function DashboardSeriesPage() {
               </Grid> */}
 
               <Grid item xs={12}>
-              <TextField
+                <TextField
                   label="ID"
                   fullWidth
                   value={id}
@@ -645,6 +645,24 @@ export default function DashboardSeriesPage() {
                       onChange={(event) => setSeriesDescription(event.target.value)} />
                   </Grid>
                   <Grid item xs={12}>
+                    <FormControl fullWidth>
+                      <InputLabel id="status-select-label">Status</InputLabel>
+                      <Select
+                        labelId="status-select-label"
+                        id="status-select"
+                        value={statusText}
+                        label="Status"
+                        onChange={(event) => {
+                          setStatusText(event.target.value)
+                        }}
+                      >
+                        <MenuItem value='active'>Active</MenuItem>
+                        <MenuItem value='inactive'>Inactive</MenuItem>
+                        <MenuItem value='requested'>Requested</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  {/* <Grid item xs={12}>
                     <Button variant="contained" fullWidth component="label">
                       Upload
                       <input
@@ -657,18 +675,23 @@ export default function DashboardSeriesPage() {
                     <Typography component='p' variant='body1'>
                       {fileLocation}
                     </Typography>
-                  </Grid>
-                  <Grid item xs={12}>
-                  {uploading && <LinearProgress variant="determinate" value={uploadProgress} />}
-                  </Grid>
-                  <Grid item xs={12}>
-                    <TextField
-                      label="Status"
-                      fullWidth
-                      value={statusText}
-                      disabled
-                      onChange={(event) => setStatusText(event.target.value)} />
-                  </Grid>
+                  </Grid> */}
+
+                  {uploading &&
+                    <>
+                      <Grid item xs={12}>
+                        <LinearProgress variant="determinate" value={uploadProgress} />
+                      </Grid>
+                      <Grid item xs={12}>
+                        <TextField
+                          label="Status"
+                          fullWidth
+                          value={statusText}
+                          disabled
+                          onChange={(event) => setStatusText(event.target.value)} />
+                      </Grid>
+                    </>
+                  }
                   {seriesSeasons && seriesSeasons.map((season) =>
                     (season.type.id === 1) ?
                       <Grid item xs={6} md={4}>

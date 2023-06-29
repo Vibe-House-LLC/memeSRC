@@ -595,7 +595,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                     editor.canvas.renderAll();
                 }, { crossOrigin: "anonymous" });
                 const newCreditAmount = user.userDetails.credits - 1
-                setUser({...user, userDetails: { ...user.userDetails, credits: newCreditAmount }})
+                setUser({ ...user, userDetails: { ...user.userDetails, credits: newCreditAmount } })
 
                 setLoadingInpaintingResult(false)
                 setTimeout(() => {
@@ -640,51 +640,51 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                     </div>
                                 </Grid>
                                 <Grid item xs={12} md={5} lg={5} minWidth={{ xs: {}, md: '350px' }} order={{ xs: 3, md: 2 }}>
-                                    {user && <Grid item xs={12} marginBottom={2}>
-
-                                        <Grid container direction='column' spacing={2}>
-                                            {drawingMode ? (
-                                                <>
-                                                    <Grid item>
-                                                        <TextField
-                                                            fullWidth
-                                                            id="prompt"
-                                                            label="Prompt"
-                                                            variant="outlined"
-                                                            value={magicPrompt}
-                                                            onChange={(event) => setMagicPrompt(event.target.value)}
-                                                        />
-                                                    </Grid>
+                                    {user && user.userDetails?.credits > 0 &&
+                                        <Grid item xs={12} marginBottom={2}>
+                                            <Grid container direction='column' spacing={2}>
+                                                {drawingMode ? (
+                                                    <>
+                                                        <Grid item>
+                                                            <TextField
+                                                                fullWidth
+                                                                id="prompt"
+                                                                label="Prompt"
+                                                                variant="outlined"
+                                                                value={magicPrompt}
+                                                                onChange={(event) => setMagicPrompt(event.target.value)}
+                                                            />
+                                                        </Grid>
+                                                        <Grid item>
+                                                            <Button
+                                                                variant='contained'
+                                                                onClick={() => {
+                                                                    exportDrawing();
+                                                                    toggleDrawingMode();
+                                                                }}
+                                                                fullWidth
+                                                                sx={{ zIndex: '50' }}
+                                                                startIcon={<AutoFixHighRounded />}
+                                                            >
+                                                                Magic Brush (apply)
+                                                            </Button>
+                                                        </Grid>
+                                                    </>
+                                                ) : (
                                                     <Grid item>
                                                         <Button
                                                             variant='contained'
-                                                            onClick={() => {
-                                                                exportDrawing();
-                                                                toggleDrawingMode();
-                                                            }}
+                                                            onClick={toggleDrawingMode}
                                                             fullWidth
                                                             sx={{ zIndex: '50' }}
                                                             startIcon={<AutoFixHighRounded />}
                                                         >
-                                                            Magic Brush (apply)
+                                                            Magic Brush (select)
                                                         </Button>
                                                     </Grid>
-                                                </>
-                                            ) : (
-                                                <Grid item>
-                                                    <Button
-                                                        variant='contained'
-                                                        onClick={toggleDrawingMode}
-                                                        fullWidth
-                                                        sx={{ zIndex: '50' }}
-                                                        startIcon={<AutoFixHighRounded />}
-                                                    >
-                                                        Magic Brush (select)
-                                                    </Button>
-                                                </Grid>
-                                            )}
+                                                )}
+                                            </Grid>
                                         </Grid>
-                                    </Grid>
                                     }
                                     <Grid item xs={12} marginBottom={2}>
                                         <Button
