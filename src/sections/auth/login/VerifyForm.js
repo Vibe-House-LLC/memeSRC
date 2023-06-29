@@ -19,96 +19,57 @@ export default function VerifyForm(props) {
   const { setSeverity, setMessage, setOpen } = useContext(SnackbarContext);
   const [code, setCode] = useState('')
   const [username, setUsername] = useState(user.username ? user.username : '');
-  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [backdropOpen, setBackdropOpen] = useState(false);
   const [formErrors, setFormErrors] = useState({
     username: false,
-    password: false,
     code: false
   });
 
   const checkForm = () => {
     setFormErrors({
       username: (!username),
-      password: (!password),
       code: (!code)
     })
-    return !(!username || !password || !code)
+    return !(!username || !code)
   }
 
   const confirmSignUp = () => {
     if (checkForm()) {
       setLoading(true)
-      // try {
-      Auth.signIn(username, password).then(response => {
-        console.log(response)
+      Auth.confirmSignUp(username, code).then(response => {
         setSeverity('success');
-        setMessage(`Account already verified!`);
+        setMessage(`Account verified! Please log in.`);
         setOpen(true)
-        setUser(response)
-        navigate('/', { replace: true });
-        setLoading(false)
+        navigate('/login', { replace: true })
       }).catch(err => {
         console.log(err)
-        if (err.name === 'UserNotConfirmedException') {
-          Auth.confirmSignUp(username, code).then(response => {
-            Auth.signIn(username, password).then(userSignedIn => {
-              console.log(userSignedIn)
-              API.post('publicapi', '/user/update/status').then(response => {
-                console.log(response)
-                setSeverity('success');
-                setMessage(`Account Verified!`);
-                setOpen(true)
-                setUser(userSignedIn)
-                navigate('/', { replace: true });
-                setLoading(false)
-              })
-            }).catch(err => {
-              if (err.name === 'InvalidPasswordException') {
-                setSeverity('error');
-                setMessage(`Invalid Password.`);
-                setOpen(true)
-                setFormErrors({
-                  ...formErrors,
-                  password: true
-                })
-              }
-            })
-          }).catch(err => {
-            console.log(err)
-            if (err.name === "NotAuthorizedException") {
-              Auth.signIn(username, password).then(userSignedIn => {
-                console.log(userSignedIn)
-                setSeverity('success');
-                setMessage(`Account already verified!`);
-                setOpen(true)
-                setUser(userSignedIn)
-                navigate('/', { replace: true });
-                setLoading(false)
-              }).catch(err => console.log(err))
-            } else if (err.name === "CodeMismatchException") {
-              setSeverity('error');
-              setMessage(err.message);
-              setFormErrors({
-                ...formErrors,
-                code: true
-              })
-              setOpen(true)
-              setLoading(false)
-            } else if (err.name === "ExpiredCodeException") {
-              setSeverity('error');
-              setMessage(err.message);
-              setFormErrors({
-                ...formErrors,
-                code: true
-              })
-              setOpen(true)
-              setLoading(false)
-            }
+        if (err.name === "NotAuthorizedException") {
+            setSeverity('success');
+            setMessage(`Account already verified!`);
+            setOpen(true)
+            navigate('/login', { replace: true });
+            setLoading(false)
+        } else if (err.name === "CodeMismatchException") {
+          setSeverity('error');
+          setMessage(err.message);
+          setFormErrors({
+            ...formErrors,
+            code: true
           })
+          setOpen(true)
+          setLoading(false)
+        } else if (err.name === "ExpiredCodeException") {
+          setSeverity('error');
+          setMessage(err.message);
+          setFormErrors({
+            ...formErrors,
+            code: true
+          })
+          setOpen(true)
+          setLoading(false)
         }
-      });
+      })
     } else {
       setSeverity('error');
       setMessage(`Please complete form to verify.`);
@@ -178,7 +139,7 @@ export default function VerifyForm(props) {
             }
           }}
         />
-        <TextField
+        {/* <TextField
           name="text"
           label="Password"
           autoComplete='Password'
@@ -198,7 +159,7 @@ export default function VerifyForm(props) {
               confirmSignUp();
             }
           }}
-        />
+        /> */}
         {/* <TextField
           name="text"
           label="Email Address"

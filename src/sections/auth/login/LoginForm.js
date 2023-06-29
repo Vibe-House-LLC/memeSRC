@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Link, Stack, IconButton, InputAdornment, TextField, Checkbox, FormControlLabel, Typography, styled } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
 // components
-import { Auth } from 'aws-amplify';
+import { API, Auth } from 'aws-amplify';
 import Iconify from '../../../components/iconify';
 import { UserContext } from '../../../UserContext';
 import { SnackbarContext } from '../../../SnackbarContext';
@@ -72,8 +72,10 @@ export default function LoginForm() {
 
     if (username && password) {
       Auth.signIn(username, password).then((x) => {
-        setUser(x)
-        navigate(dest || '/', { replace: true })
+        API.post('publicapi', '/user/update/status').then(response => {
+          setUser(x)
+          navigate(dest || '/', { replace: true })
+        })
       }).catch((error) => {
         console.log(error.name)
 
@@ -130,7 +132,7 @@ export default function LoginForm() {
         e.preventDefault();
         handleClick();
         return false
-        }}>
+      }}>
         <Stack spacing={3}>
           <AutoFillTextField
             name="text"
