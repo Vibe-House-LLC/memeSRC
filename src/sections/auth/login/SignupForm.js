@@ -1,7 +1,7 @@
 import { useContext, useEffect, useState } from 'react';
 // import { useNavigate } from 'react-router-dom';
 // @mui
-import { Link, Stack, IconButton, InputAdornment, TextField, Checkbox, Typography, styled } from '@mui/material';
+import { Link, Stack, IconButton, InputAdornment, TextField, Checkbox, Typography, styled, FormControlLabel, FormGroup } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
 import { API, Auth } from 'aws-amplify';
 // utils
@@ -47,13 +47,16 @@ export default function SignupForm(props) {
 
   const [confirmPassword, setConfirmPassword] = useState('');
 
+  const [agree, setAgree] = useState(false);
+
   const [formErrors, setFormErrors] = useState({
     username: false,
     email: false,
     password: false,
     confirmPassword: false,
     passwordMismatch: false,
-    passwordLength: false
+    passwordLength: false,
+    agree: false
   });
 
   const checkForErrors = () => {
@@ -88,9 +91,10 @@ export default function SignupForm(props) {
       confirmPassword: _confirmPassword,
       passwordMismatch: _passwordMismatch,
       passwordLength: _passwordLength,
+      agree: (!agree)
     });
 
-    return (_username || _email || _password || _confirmPassword || _passwordMismatch || _passwordLength)
+    return (_username || _email || _password || _confirmPassword || _passwordMismatch || _passwordLength || !agree)
   }
 
   const createUser = async () => {
@@ -158,6 +162,12 @@ export default function SignupForm(props) {
       navigate('/verify');
     }
   }, [user])
+
+  const handleLinkClick = (event, url) => {
+    event.preventDefault();
+    event.stopPropagation();
+    window.open(url, '_blank');
+  };
 
   return (
     <>
@@ -264,6 +274,43 @@ export default function SignupForm(props) {
             }}
             helperText={formErrors.confirmPassword ? '' : `${formErrors.passwordLength ? 'Password is not long enough' : ''}${(formErrors.passwordLength && formErrors.passwordMismatch) ? ' & ' : ''}${formErrors.passwordMismatch ? 'Passwords do not match' : ''}`}
           />
+          <FormGroup>
+            <FormControlLabel
+              required
+              control={
+                <Checkbox
+                  checked={agree}
+                  onChange={
+                    (event) => {
+                      setAgree(event.target.checked)
+                      setFormErrors({
+                        ...formErrors,
+                        agree: false
+                      })
+                    }
+                  }
+                />
+              }
+              label={
+                <span style={{color: formErrors.agree ? 'red' : ''}}>
+                  I agree to the{' '}
+                  <Link
+                    sx={{ cursor: 'pointer' }}
+                    onClick={(event) => handleLinkClick(event, '/termsofservice')}
+                  >
+                    Terms of Service
+                  </Link>{' '}
+                  &{' '}
+                  <Link
+                    sx={{ cursor: 'pointer' }}
+                    onClick={(event) => handleLinkClick(event, '/privacypolicy')}
+                  >
+                    Privacy Policy
+                  </Link>
+                </span>
+              }
+            />
+          </FormGroup>
           <LoadingButton sx={{ my: 3 }} fullWidth size="large" type="submit" variant="contained" loading={signupStatus.loading} onClick={createUser} id="signup-btn" disabled={signupStatus.disabled}>
             {signupStatus.text}
           </LoadingButton>
