@@ -23,7 +23,10 @@ export default function VotingPage() {
     const fetchShowsAndVotes = async () => {
         setLoading(true);
         try {
-            const seriesData = await API.graphql(graphqlOperation(listSeries));
+            const seriesData = await API.graphql({
+                ...graphqlOperation(listSeries),
+                authMode: "API_KEY"
+              })
             const voteData = await API.get('publicapi', '/vote/list');
             const sortedShows = seriesData.data.listSeries.items.sort((a, b) => (
                 voteData.votes[b.id] || 0
