@@ -73,7 +73,7 @@ export default function SignupForm(props) {
     if (!confirmPassword) {
       _confirmPassword = true
     }
-    if (!email) {
+    if (!email || !(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) {
       _email = true
     }
 
@@ -138,10 +138,13 @@ export default function SignupForm(props) {
         setSignupStatus({
           'loading': false,
           'disabled': false,
-          'error': err,
+          'error': err.message,
           'text': 'Sign Up'
         });
-        console.log(err);
+        setMessage(err.message)
+        setSeverity('error')
+        setOpen(true)
+        console.log(err.message);
       });
     } else {
       setMessage('Please check form for errors')
@@ -168,14 +171,16 @@ export default function SignupForm(props) {
         e.preventDefault();
         createUser();
         return false
-        }}>
+      }}>
         <Stack spacing={3}>
           <AutoFillTextField
             name="username"
             label="Username"
             error={formErrors.username}
+            value={username}
             onChange={(x) => {
-              setUsername(x.target.value)
+              const sanitizedValue = x.target.value.replace(/[^\w\s]/gi, '').replace(/\s/g, '').toLowerCase();
+              setUsername(sanitizedValue);
               setFormErrors({
                 ...formErrors,
                 username: false
@@ -195,6 +200,12 @@ export default function SignupForm(props) {
                 email: false
               })
             }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                createUser();
+              }
+            }}
           />
 
           <AutoFillTextField
@@ -211,6 +222,12 @@ export default function SignupForm(props) {
                 passwordMismatch: false,
                 passwordLength: false
               })
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                createUser();
+              }
             }}
             helperText={formErrors.password ? '' : `${formErrors.passwordLength ? 'Password is not long enough' : ''}${(formErrors.passwordLength && formErrors.passwordMismatch) ? ' & ' : ''}${formErrors.passwordMismatch ? 'Passwords do not match' : ''}`}
             InputProps={{
@@ -238,6 +255,12 @@ export default function SignupForm(props) {
                 passwordMismatch: false,
                 passwordLength: false
               })
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                createUser();
+              }
             }}
             helperText={formErrors.confirmPassword ? '' : `${formErrors.passwordLength ? 'Password is not long enough' : ''}${(formErrors.passwordLength && formErrors.passwordMismatch) ? ' & ' : ''}${formErrors.passwordMismatch ? 'Passwords do not match' : ''}`}
           />

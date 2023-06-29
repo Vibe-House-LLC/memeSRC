@@ -22,97 +22,89 @@ export default function VerifyForm(props) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [backdropOpen, setBackdropOpen] = useState(false);
+  const [formErrors, setFormErrors] = useState({
+    username: false,
+    password: false,
+    code: false
+  });
+
+  const checkForm = () => {
+    setFormErrors({
+      username: (!username),
+      password: (!password),
+      code: (!code)
+    })
+    return !(!username || !password || !code)
+  }
 
   const confirmSignUp = () => {
-    setLoading(true)
-    // try {
-    Auth.signIn(username, password).then(response => {
-      console.log(response)
-      setSeverity('success');
-      setMessage(`Account already verified!`);
-      setOpen(true)
-      setUser(response)
-      navigate('/', { replace: true });
-      setLoading(false)
-    }).catch(err => {
-      console.log(err)
-      if (err.name === 'UserNotConfirmedException') {
-        Auth.confirmSignUp(username, code).then(response => {
-          Auth.signIn(username, password).then(userSignedIn => {
-            console.log(userSignedIn)
-            API.post('publicapi', '/user/update/status').then(response => {
-              console.log(response)
-              setSeverity('success');
-              setMessage(`Account Verified!`);
-              setOpen(true)
-              setUser(userSignedIn)
-              navigate('/', { replace: true });
-              setLoading(false)
-            })
-          }).catch(err => console.log(err))
-        }).catch(err => {
-          if (err.name === "NotAuthorizedException") {
+    if (checkForm()) {
+      setLoading(true)
+      // try {
+      Auth.signIn(username, password).then(response => {
+        console.log(response)
+        setSeverity('success');
+        setMessage(`Account already verified!`);
+        setOpen(true)
+        setUser(response)
+        navigate('/', { replace: true });
+        setLoading(false)
+      }).catch(err => {
+        console.log(err)
+        if (err.name === 'UserNotConfirmedException') {
+          Auth.confirmSignUp(username, code).then(response => {
             Auth.signIn(username, password).then(userSignedIn => {
               console.log(userSignedIn)
-              setSeverity('success');
-              setMessage(`Account already verified!`);
+              API.post('publicapi', '/user/update/status').then(response => {
+                console.log(response)
+                setSeverity('success');
+                setMessage(`Account Verified!`);
+                setOpen(true)
+                setUser(userSignedIn)
+                navigate('/', { replace: true });
+                setLoading(false)
+              })
+            }).catch(err => {
+              if (err.name === 'InvalidPasswordException') {
+                setSeverity('error');
+                setMessage(`Invalid Password.`);
+                setOpen(true)
+                setFormErrors({
+                  ...formErrors,
+                  password: true
+                })
+              }
+            })
+          }).catch(err => {
+            console.log(err)
+            if (err.name === "NotAuthorizedException") {
+              Auth.signIn(username, password).then(userSignedIn => {
+                console.log(userSignedIn)
+                setSeverity('success');
+                setMessage(`Account already verified!`);
+                setOpen(true)
+                setUser(userSignedIn)
+                navigate('/', { replace: true });
+                setLoading(false)
+              }).catch(err => console.log(err))
+            } else if (err.name === "CodeMismatchException") {
+              setSeverity('error');
+              setMessage(err.message);
+              setFormErrors({
+                ...formErrors,
+                code: true
+              })
               setOpen(true)
-              setUser(userSignedIn)
-              navigate('/', { replace: true });
               setLoading(false)
-            }).catch(err => console.log(err))
-          }
-        })
-      }
-    });
-
-
-    // Auth.signIn(username, password).then(response => {
-    //   console.log(response)
-
-    // }).catch(err => {
-    //   console.log(err)
-    //   if (err.name === 'UserNotConfirmedException') {
-    //     Auth.confirmSignUp(username, code).then(response => {
-    //       console.log(response)
-    //       API.post('publicapi', '/user/update/status').then(response => {
-    //         console.log(response)
-    //         setSeverity('success');
-    //         setMessage(`Account Verified! ${user.username ? '' : 'Please log in.'}`);
-    //         setOpen(true)
-    //         navigate('/dashboard', { replace: true });
-    //         setLoading(false)
-    //       })
-    //     }).catch(err => console.log(err))
-    //   }
-    // })
-    // } catch (error) {
-    //   console.log('error confirming sign up', error);
-    //   setLoading(false)
-    //   switch (error.name) {
-    //     case 'UserNotFoundException':
-    //       setSeverity('error');
-    //       setMessage(`Error: Username Not Found.`);
-    //       setOpen(true)
-    //       break;
-    //     case 'NotAuthorizedException':
-    //       if (error.message === 'User cannot be confirmed. Current status is CONFIRMED') {
-    //         setSeverity('success');
-    //         setMessage(`Account Already Verified. ${user.username ? '' : 'Please log in.'}`);
-    //         setOpen(true)
-    //         navigate('/dashboard', { replace: true });
-    //       } else {
-    //         setSeverity('error');
-    //         setMessage(`Error: ${error.message}`);
-    //         setOpen(true)
-    //       }
-    //       break;
-    //     default:
-    //       setSeverity('error');
-    //       setMessage(`Error: ${error.message}`);
-    //       setOpen(true)
-    //   }
-    // }
+            }
+          })
+        }
+      });
+    } else {
+      setSeverity('error');
+      setMessage(`Please complete form to verify.`);
+      setOpen(true)
+    }
   }
 
   const handleResendVerification = () => {
@@ -151,19 +143,30 @@ export default function VerifyForm(props) {
         Check your email
       </Typography>
 
-      <Typography variant="body1" gutterBottom marginBottom={3}> 
+      <Typography variant="body1" gutterBottom marginBottom={3}>
         We sent a verification code to your email
       </Typography>
-      
+
       <Stack spacing={3} marginBottom={3}>
         <TextField
           name="text"
           label="Username"
           autoComplete='username'
           value={username}
+          error={formErrors.username}
           disabled={Boolean(user.username)}
           onChange={(event) => {
             setUsername(event.target.value)
+            setFormErrors({
+              ...formErrors,
+              username: false
+            })
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              confirmSignUp();
+            }
           }}
         />
         <TextField
@@ -172,8 +175,19 @@ export default function VerifyForm(props) {
           autoComplete='Password'
           type='password'
           value={password}
+          error={formErrors.password}
           onChange={(event) => {
             setPassword(event.target.value)
+            setFormErrors({
+              ...formErrors,
+              password: false
+            })
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              confirmSignUp();
+            }
           }}
         />
         {/* <TextField
@@ -187,11 +201,22 @@ export default function VerifyForm(props) {
           name="text"
           label="Verification Code"
           value={code}
+          error={formErrors.code}
           onChange={(event) => {
-            setCode(event.target.value)
+            setCode(event.target.value.replace(/[^0-9]/g, ''))
+            setFormErrors({
+              ...formErrors,
+              code: false
+            })
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              confirmSignUp();
+            }
           }}
         />
-        
+
       </Stack>
 
 
@@ -201,7 +226,7 @@ export default function VerifyForm(props) {
       </LoadingButton>
 
 
-      <Typography variant='caption' gutterBottom marginY={2} textAlign="center" sx={{opacity: 0.8}}>
+      <Typography variant='caption' gutterBottom marginY={2} textAlign="center" sx={{ opacity: 0.8 }}>
         Never got it? <Link sx={{ cursor: 'pointer' }} onClick={handleResendVerification}>Resend</Link>
       </Typography>
 

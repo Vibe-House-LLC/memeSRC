@@ -1,4 +1,4 @@
-import { useContext, useState } from 'react';
+import { useContext, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 // @mui
 import { Link, Stack, IconButton, InputAdornment, TextField, Checkbox, FormControlLabel, Typography, styled } from '@mui/material';
@@ -41,6 +41,8 @@ export default function LoginForm() {
     username: false,
     password: false
   });
+
+  const loginForm = useRef();
 
   const { setUser } = useContext(UserContext)
 
@@ -140,6 +142,12 @@ export default function LoginForm() {
                 username: false
               })
             }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleClick();
+              }
+            }}
             error={formErrors.username}
           />
 
@@ -156,6 +164,12 @@ export default function LoginForm() {
                   </IconButton>
                 </InputAdornment>
               ),
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleClick();
+              }
             }}
             onInput={(x) => {
               setPassword(x.target.value);
