@@ -43,7 +43,7 @@ function createUserDetails(params) {
 async function getAllVotes(userSub, nextToken) {
   let query = `
     query ListSeriesUserVotes {
-      listSeriesUserVotes(limit: 1000${nextToken ? `, nextToken: "${nextToken}"` : ""}) {
+      listSeriesUserVotes(limit: 1000${nextToken ? `, nextToken: "${nextToken}"` : ''}) {
         items {
           id
           boost
@@ -54,39 +54,47 @@ async function getAllVotes(userSub, nextToken) {
       }
     }
   `;
-  console.log("GETTING VOTES")
-  console.log(query)  
+  console.log('GETTING VOTES');
+  console.log(query);
   const response = await makeRequest(query);
-  if(response.statusCode !== 200) {
-    throw new Error(`Failed to fetch votes. Status code: ${response.statusCode}. Errors: ${JSON.stringify(response.body.errors)}`);
+  if (response.statusCode !== 200) {
+    throw new Error(
+      `Failed to fetch votes. Status code: ${response.statusCode}. Errors: ${JSON.stringify(response.body.errors)}`
+    );
   }
-  console.log("RESPONSE FOR FIRST PAGE OF VOTES")
-  console.log(response)
-  console.log(JSON.stringify(response))
+  console.log('RESPONSE FOR FIRST PAGE OF VOTES');
+  console.log(response);
+  console.log(JSON.stringify(response));
   let allItems = response.body.data.listSeriesUserVotes.items;
   if (response.body.data.listSeriesUserVotes.nextToken) {
     let newItems = await getAllVotes(response.body.data.listSeriesUserVotes.nextToken);
     allItems = allItems.concat(newItems);
-    console.log('loaded another page')
+    console.log('loaded another page');
   }
 
   const votesCount = {};
   const currentUserVotes = {};
-  allItems.forEach(vote => {
+  console.log("CHECKING IF USER VOTES")
+  allItems.forEach((vote) => {
     votesCount[vote.seriesUserVoteSeriesId] = (votesCount[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
-    console.log("CHECKING IF THE VOTE MATCHES THE USER:")
-    console.log(`vote.user?.id: ${vote.user?.id}`)
-    console.log(`userSub: ${userSub}`)
-    if (vote.userDetailsVotesId === userSub) {
+    console.log(`${vote.userDetailsVotesId} === ${userSub}`)
+    if (vote.userDetailsVotesId) {
+      typeof vote.userDetailsVotesId
+      typeof userSub
+      if (vote.userDetailsVotesId.normalize() === userSub.normalize()) {
+        console.log('MATCHED!!!');
+        console.log(`vote.userDetailsVotesId: ${vote.userDetailsVotesId}`);
+        console.log(`userSub: ${userSub}`);
         currentUserVotes[vote.seriesUserVoteSeriesId] = vote.boost;
+      }
     }
   });
 
-  console.log("Vote Loading Results:")
+  console.log('Vote Loading Results:');
 
-  console.log(allItems)
-  console.log(votesCount)
-  console.log(currentUserVotes)
+  console.log(allItems);
+  console.log(votesCount);
+  console.log(currentUserVotes);
 
   return { allItems, votesCount, currentUserVotes };
 }
@@ -243,7 +251,7 @@ export const handler = async (event) => {
   console.log(`EVENT: ${JSON.stringify(event)}`);
   // Get the users sub (if it exist)
   const userSub = event.requestContext?.identity?.cognitoAuthenticationProvider
-    ? event.requestContext.identity.cognitoAuthenticationProvider.split(':').slice(-1)
+    ? event.requestContext.identity.cognitoAuthenticationProvider.split(':').pop()
     : '';
   // Grab the request body (if it exist)
   const body = event.body ? JSON.parse(event.body) : '';
@@ -378,24 +386,24 @@ export const handler = async (event) => {
 
   if (path === `/${process.env.ENV}/public/vote/list`) {
     try {
-      console.log("VOTES:")
+      console.log('VOTES:');
       const { allVotes, votesCount, currentUserVotes } = await getAllVotes(userSub);
-      console.log(allVotes)
-      
+      console.log(allVotes);
+
       const result = {
         votes: votesCount,
-        userVotes: currentUserVotes
-      }
+        userVotes: currentUserVotes,
+      };
 
       response = {
         statusCode: 200,
-        body: result
-      }
+        body: result,
+      };
     } catch (error) {
       console.log(`Failed to get votes: ${error.message}`);
       response = {
         statusCode: 500,
-        body: `Failed to get votes: ${error.message}`
+        body: `Failed to get votes: ${error.message}`,
       };
     }
   }
