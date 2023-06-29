@@ -153,8 +153,13 @@
       "name": "/vote",
       "lambdaFunction": "memesrcUserFunction",
       "permissions": {
-        "setting": "private",
+        "setting": "protected",
         "auth": [
+          "create",
+          "read",
+          "update"
+        ],
+        "guest": [
           "create",
           "read",
           "update"
