@@ -6,7 +6,7 @@ import { Box, Stack, AppBar, Toolbar, Link, IconButton, Grid, Typography, Slide,
 import { AutoFixHighRounded } from '@mui/icons-material';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 // utils
-import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { bgBlur } from '../../../utils/cssStyles';
 // components
 import Iconify from '../../../components/iconify';
@@ -45,6 +45,8 @@ Header.propTypes = {
 
 export default function Header({ onOpenNav }) {
 
+  const navigate = useNavigate();
+
   const { user } = useContext(UserContext);
 
   const theme = useTheme();
@@ -63,16 +65,20 @@ export default function Header({ onOpenNav }) {
     <Grid
       container
       direction="row"
-      justifyContent="center"
+      justifyContent="left"
       alignItems="center"
     >
       <Link
-        href="/"
+        onClick={() => {
+          navigate('/')
+        }}
         sx={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           textDecoration: 'none',
+          ml: 1,
+          cursor: 'pointer',
           color: 'inherit',
           '&:hover': {
             textDecoration: 'none',

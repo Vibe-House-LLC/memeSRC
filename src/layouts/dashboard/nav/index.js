@@ -1,6 +1,6 @@
 import PropTypes from 'prop-types';
 import { useEffect, useContext } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 // @mui
 import { styled, alpha } from '@mui/material/styles';
 import { Box, Link, Button, Drawer, Typography, Avatar, Stack, Chip, Divider } from '@mui/material';
@@ -32,6 +32,7 @@ Nav.propTypes = {
 
 export default function Nav({ openNav, onCloseNav }) {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const userDetails = useContext(UserContext)
 
   // useEffect(() => {
@@ -50,7 +51,9 @@ export default function Nav({ openNav, onCloseNav }) {
     >
       <Box sx={{ px: 2.5, py: 3, display: 'inline-flex' }}>
         <Stack direction='horizontal'>
-          <Logo />
+          <Link onClick={() => { navigate('/') }}>
+            <Logo />
+          </Link>
           <Chip label={process.env.REACT_APP_USER_BRANCH === 'prod' ? `v${process.env.REACT_APP_VERSION}` : `v${process.env.REACT_APP_VERSION}-${process.env.REACT_APP_USER_BRANCH}`} variant="outlined" />
         </Stack>
       </Box>
@@ -79,7 +82,7 @@ export default function Nav({ openNav, onCloseNav }) {
         </Link>
       </Box>
 
-      <NavSection sx={{paddingBottom: 8}} data={navConfig} />
+      <NavSection sx={{ paddingBottom: 8 }} data={navConfig} />
 
       <Box sx={{ flexGrow: 1 }} />
 
