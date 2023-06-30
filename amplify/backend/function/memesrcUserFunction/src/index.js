@@ -54,6 +54,7 @@ async function getAllVotes(userSub, nextToken) {
       }
     }
   `;
+
   console.log('GETTING VOTES');
   console.log(query);
   const response = await makeRequest(query);
@@ -74,30 +75,59 @@ async function getAllVotes(userSub, nextToken) {
 
   const votesCount = {};
   const currentUserVotes = {};
-  console.log("CHECKING IF USER VOTES")
+  const votesCountUp = {};
+  const votesCountDown = {};
+  const currentUserVotesUp = {};
+  const currentUserVotesDown = {};
+
+  console.log('CHECKING IF USER VOTES');
   allItems.forEach((vote) => {
+    if (vote.boost > 0) {
+      votesCountUp[vote.seriesUserVoteSeriesId] = (votesCountUp[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
+      if (vote.userDetailsVotesId && vote.userDetailsVotesId.normalize() === userSub.normalize()) {
+        currentUserVotesUp[vote.seriesUserVoteSeriesId] =
+          (currentUserVotesUp[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
+      }
+    } else if (vote.boost < 0) {
+      votesCountDown[vote.seriesUserVoteSeriesId] = (votesCountDown[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
+      if (vote.userDetailsVotesId && vote.userDetailsVotesId.normalize() === userSub.normalize()) {
+        currentUserVotesDown[vote.seriesUserVoteSeriesId] =
+          (currentUserVotesDown[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
+      }
+    }
+
     votesCount[vote.seriesUserVoteSeriesId] = (votesCount[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
-    console.log(`${vote.userDetailsVotesId} === ${userSub}`)
+
     if (vote.userDetailsVotesId) {
-      typeof vote.userDetailsVotesId
-      typeof userSub
+      typeof vote.userDetailsVotesId;
+      typeof userSub;
       if (vote.userDetailsVotesId.normalize() === userSub.normalize()) {
-        console.log('MATCHED!!!');
-        console.log(`vote.userDetailsVotesId: ${vote.userDetailsVotesId}`);
-        console.log(`userSub: ${userSub}`);
-        currentUserVotes[vote.seriesUserVoteSeriesId] = vote.boost;
+        currentUserVotes[vote.seriesUserVoteSeriesId] =
+          (currentUserVotes[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
       }
     }
   });
 
   console.log('Vote Loading Results:');
-
   console.log(allItems);
   console.log(votesCount);
   console.log(currentUserVotes);
+  console.log(votesCountUp);
+  console.log(votesCountDown);
+  console.log(currentUserVotesUp);
+  console.log(currentUserVotesDown);
 
-  return { allItems, votesCount, currentUserVotes };
+  return {
+    allItems,
+    votesCount,
+    currentUserVotes,
+    votesCountUp,
+    votesCountDown,
+    currentUserVotesUp,
+    currentUserVotesDown,
+  };
 }
+
 
 function updateUserDetailsCredits(params) {
   const id = params.id ? `id: "${params.id}",` : '';
@@ -387,14 +417,18 @@ export const handler = async (event) => {
   if (path === `/${process.env.ENV}/public/vote/list`) {
     try {
       console.log('VOTES:');
-      const { allVotes, votesCount, currentUserVotes } = await getAllVotes(userSub);
+      const { allVotes, votesCount, currentUserVotes, votesCountUp, votesCountDown, currentUserVotesUp, currentUserVotesDown } = await getAllVotes(userSub);
       console.log(allVotes);
-
+  
       const result = {
         votes: votesCount,
         userVotes: currentUserVotes,
+        votesUp: votesCountUp,
+        votesDown: votesCountDown,
+        userVotesUp: currentUserVotesUp,
+        userVotesDown: currentUserVotesDown
       };
-
+  
       response = {
         statusCode: 200,
         body: result,
@@ -407,7 +441,7 @@ export const handler = async (event) => {
       };
     }
   }
-
+  
   console.log(response);
 
   return {

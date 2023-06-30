@@ -52,13 +52,10 @@ export default function VotingPage() {
       setShows(sortedShows);
       setVotes(voteData.votes);
       setUserVotes(voteData.userVotes);
-
-      // TODO: Use placeholders for upvotes and downvotes for now
-      const placeholderUpvotes = seriesData.data.listSeries.items.reduce((obj, item) => ({ ...obj, [item.id]: 420 }), {});
-      const placeholderDownvotes = seriesData.data.listSeries.items.reduce((obj, item) => ({ ...obj, [item.id]: 69 }), {});
-
-      setUpvotes(placeholderUpvotes);
-      setDownvotes(placeholderDownvotes);
+  
+      // Set upvotes and downvotes using response data
+      setUpvotes(voteData.votesUp);
+      setDownvotes(voteData.votesDown);
     } catch (error) {
       console.error('Error fetching series data:', error);
     }
@@ -67,7 +64,7 @@ export default function VotingPage() {
 
   const handleVote = async (seriesId, boost) => {
     setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: boost }));
-
+  
     try {
       const result = await API.post('publicapi', '/vote', {
         body: {
@@ -75,19 +72,33 @@ export default function VotingPage() {
           boost,
         },
       });
-
+  
       setUserVotes((prevUserVotes) => ({ ...prevUserVotes, [seriesId]: boost }));
-
+  
       setVotes((prevVotes) => {
         const newVotes = { ...prevVotes };
         newVotes[seriesId] = (newVotes[seriesId] || 0) + boost;
-
+  
         const sortedShows = [...shows].sort((a, b) => (newVotes[b.id] || 0) - (newVotes[a.id] || 0));
         setShows(sortedShows);
-
+  
         return newVotes;
       });
-
+  
+      if(boost === 1) {
+        setUpvotes((prevUpvotes) => {
+          const newUpvotes = { ...prevUpvotes };
+          newUpvotes[seriesId] = (newUpvotes[seriesId] || 0) + 1;
+          return newUpvotes;
+        });
+      } else if (boost === -1) {
+        setDownvotes((prevDownvotes) => {
+          const newDownvotes = { ...prevDownvotes };
+          newDownvotes[seriesId] = (newDownvotes[seriesId] || 0) - 1; // subtract 1 for a downvote
+          return newDownvotes;
+        });
+      }
+  
       setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: false }));
     } catch (error) {
       setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: false }));
@@ -95,6 +106,7 @@ export default function VotingPage() {
       console.log(error.response);
     }
   };
+  
 
   const handleUpvote = (seriesId) => {
     handleVote(seriesId, 1);
