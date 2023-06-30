@@ -12,8 +12,9 @@ import {
   InputAdornment,
   TextField,
   Button,
+  Badge,
 } from '@mui/material';
-import { ArrowUpward, ArrowDownward, Search, Close } from '@mui/icons-material';
+import { ArrowUpward, ArrowDownward, Search, Close, LockOpen, Lock } from '@mui/icons-material';
 import FlipMove from 'react-flip-move';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { listSeries } from '../graphql/queries';
@@ -49,6 +50,11 @@ export default function VotingPage() {
       const sortedShows = seriesData.data.listSeries.items
         .filter((show) => show.statusText === 'requested') // filtering shows based on statusText
         .sort((a, b) => (voteData.votes[b.id] || 0) - (voteData.votes[a.id] || 0));
+
+      sortedShows.forEach((show, index) => {
+        show.rank = index + 1; // add a rank to each show
+      });
+
       setShows(sortedShows);
       setVotes(voteData.votes);
       setUserVotes(voteData.userVotes);
@@ -183,54 +189,22 @@ export default function VotingPage() {
                 <Card>
                   <CardContent>
                     <Box display="flex" alignItems="center">
-                      <Box mr={2}>
-                        <Box>
-                          {votingStatus[show.id] === 1 ? (
-                            <CircularProgress size={20} sx={{ ml: 1.2, mb: 1.5 }} />
-                          ) : (
-                            <IconButton
-                              aria-label="upvote"
-                              onClick={() =>
-                                user
-                                  ? handleUpvote(show.id)
-                                  : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
-                              }
-                              disabled={userVotes[show.id] || votingStatus[show.id]}
-                            >
-                              <ArrowUpward sx={{ color: userVotes[show.id] === 1 ? 'success.main' : 'inherit' }} />
-                            </IconButton>
-                          )}
-                        </Box>
-                        <Box>
-                          <Typography variant="h5" gutterBottom textAlign="center" paddingTop={0.5}>
-                            {votes[show.id] || 0}
-                          </Typography>
-                        </Box>
-                        <Box>
-                          {votingStatus[show.id] === -1 ? (
-                            <CircularProgress size={20} sx={{ ml: 1.2, mt: 1.5 }} />
-                          ) : (
-                            <IconButton
-                              aria-label="downvote"
-                              onClick={() =>
-                                user
-                                  ? handleDownvote(show.id)
-                                  : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
-                              }
-                              disabled={userVotes[show.id] || votingStatus[show.id]}
-                            >
-                              <ArrowDownward sx={{ color: userVotes[show.id] === -1 ? 'error.main' : 'inherit' }} />
-                            </IconButton>
-                          )}
-                        </Box>
-                      </Box>
                       <Box flexGrow={1}>
                         <Box display="flex" alignItems="center">
                           <Box mr={2}>
-                            <img src={show.image} alt={show.name} style={showImageStyle} />
+                            <Badge
+                              badgeContent={`#${show.rank}`}
+                              color="secondary"
+                              anchorOrigin={{
+                                vertical: 'top',
+                                horizontal: 'left',
+                              }}
+                            >
+                              <img src={show.image} alt={show.name} style={showImageStyle} />
+                            </Badge>
                           </Box>
                           <Box>
-                            <Typography variant="h4">{show.name}</Typography>
+                            <Typography variant="h5">{show.name}</Typography>
                             <Box display="flex" alignItems="center">
                               <Typography
                                 variant="subtitle2"
@@ -254,6 +228,47 @@ export default function VotingPage() {
                               {show.description}
                             </Typography>
                           </Box>
+                        </Box>
+                      </Box>
+                      <Box mr={0}>
+                        <Box>
+                          {votingStatus[show.id] === 1 ? (
+                            <CircularProgress size={20} sx={{ ml: 1.2, mb: 1.5 }} />
+                          ) : (
+                            <IconButton
+                              aria-label="upvote"
+                              onClick={() =>
+                                user
+                                  ? handleUpvote(show.id)
+                                  : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
+                              }
+                              disabled={userVotes[show.id] || votingStatus[show.id]}
+                            >
+                              <ArrowUpward sx={{ color: userVotes[show.id] === 1 ? 'success.main' : 'inherit' }} />
+                            </IconButton>
+                          )}
+                        </Box>
+                        <Box>
+                          <Typography variant="h5" gutterBottom textAlign="center" >
+                            {votes[show.id] || 0}
+                          </Typography>
+                        </Box>
+                        <Box>
+                          {votingStatus[show.id] === -1 ? (
+                            <CircularProgress size={20} sx={{ ml: 1.2, mt: 1.5 }} />
+                          ) : (
+                            <IconButton
+                              aria-label="downvote"
+                              onClick={() =>
+                                user
+                                  ? handleDownvote(show.id)
+                                  : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
+                              }
+                              disabled={userVotes[show.id] || votingStatus[show.id]}
+                            >
+                              <ArrowDownward sx={{ color: userVotes[show.id] === -1 ? 'error.main' : 'inherit' }} />
+                            </IconButton>
+                          )}
                         </Box>
                       </Box>
                     </Box>
