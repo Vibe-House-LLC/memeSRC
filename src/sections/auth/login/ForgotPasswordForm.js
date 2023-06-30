@@ -68,14 +68,14 @@ export default function ResetPasswordForm(props) {
   return (
     <>
       <Typography variant="h4" textAlign='center'>
-        Reset Your Password
+        Reset memeSRC password
       </Typography>
 
 
       {!resetSent &&
         <>
           <Typography variant='subheading' mb={5} mt={1} textAlign='center'>
-            Enter your username below to reset your password
+            Enter your memeSRC username below to reset your password
           </Typography>
           <Stack spacing={3} marginBottom={3}>
             <AutoFillTextField

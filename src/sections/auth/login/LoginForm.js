@@ -123,7 +123,7 @@ export default function LoginForm() {
   return (
     <>
       <Typography variant="h4" gutterBottom>
-        Sign In
+        Sign In to memeSRC
       </Typography>
       <Typography variant='body1' gutterBottom marginBottom={8}>
         Need an account? <Link sx={{ cursor: 'pointer' }} onClick={() => { navigate('/signup') }}>Create one</Link>
