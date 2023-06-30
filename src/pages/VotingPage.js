@@ -13,7 +13,7 @@ import {
   TextField,
   Button,
 } from '@mui/material';
-import { ArrowUpward, ArrowDownward, Search, Close } from '@mui/icons-material';
+import { ArrowUpward, ArrowDownward, Search, Close, LockOpen } from '@mui/icons-material';
 import FlipMove from 'react-flip-move';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { listSeries } from '../graphql/queries';
@@ -183,6 +183,41 @@ export default function VotingPage() {
                 <Card>
                   <CardContent>
                     <Box display="flex" alignItems="center">
+                      <Box flexGrow={1}>
+                        <Box display="flex" alignItems="center">
+                          <Box mr={2}>
+                            <img src={show.image} alt={show.name} style={showImageStyle} />
+                          </Box>
+                          <Box>
+                            <Typography variant="h4">{show.name}</Typography>
+                            <Box display="flex" alignItems="center">
+                              <Typography
+                                variant="subtitle2"
+                                color="success.main"
+                                sx={{ fontSize: '0.7rem', opacity: 0.6 }}
+                              >
+                                <ArrowUpward fontSize="small" sx={{ verticalAlign: 'middle' }} />
+                                <b>{upvotes[show.id] || 0}</b>
+                              </Typography>
+                              <Typography
+                                variant="subtitle2"
+                                color="error.main"
+                                ml={1}
+                                sx={{ fontSize: '0.7rem', opacity: 0.6 }}
+                              >
+                                <ArrowDownward fontSize="small" sx={{ verticalAlign: 'middle' }} />
+                                <b>{downvotes[show.id] || 0}</b>
+                              </Typography>
+                            </Box>
+                            <Typography variant="body2" color="text.secondary" mt={1} style={descriptionStyle}>
+                              {show.description}
+                            </Typography>
+                          </Box>
+                          <Box mr={2}>
+                            {user && <LockOpen sx={{ fontSize: 'small', color: 'success.main', ml: 1 }} />}
+                          </Box>
+                        </Box>
+                      </Box>
                       <Box mr={2}>
                         <Box>
                           {votingStatus[show.id] === 1 ? (
@@ -222,38 +257,6 @@ export default function VotingPage() {
                               <ArrowDownward sx={{ color: userVotes[show.id] === -1 ? 'error.main' : 'inherit' }} />
                             </IconButton>
                           )}
-                        </Box>
-                      </Box>
-                      <Box flexGrow={1}>
-                        <Box display="flex" alignItems="center">
-                          <Box mr={2}>
-                            <img src={show.image} alt={show.name} style={showImageStyle} />
-                          </Box>
-                          <Box>
-                            <Typography variant="h4">{show.name}</Typography>
-                            <Box display="flex" alignItems="center">
-                              <Typography
-                                variant="subtitle2"
-                                color="success.main"
-                                sx={{ fontSize: '0.7rem', opacity: 0.6 }}
-                              >
-                                <ArrowUpward fontSize="small" sx={{ verticalAlign: 'middle' }} />
-                                <b>{upvotes[show.id] || 0}</b>
-                              </Typography>
-                              <Typography
-                                variant="subtitle2"
-                                color="error.main"
-                                ml={1}
-                                sx={{ fontSize: '0.7rem', opacity: 0.6 }}
-                              >
-                                <ArrowDownward fontSize="small" sx={{ verticalAlign: 'middle' }} />
-                                <b>{downvotes[show.id] || 0}</b>
-                              </Typography>
-                            </Box>
-                            <Typography variant="body2" color="text.secondary" mt={1} style={descriptionStyle}>
-                              {show.description}
-                            </Typography>
-                          </Box>
                         </Box>
                       </Box>
                     </Box>
