@@ -43,9 +43,9 @@ export default function VotingPage() {
         authMode: 'API_KEY',
       });
       const voteData = await API.get('publicapi', '/vote/list');
-      const sortedShows = seriesData.data.listSeries.items.sort(
-        (a, b) => (voteData.votes[b.id] || 0) - (voteData.votes[a.id] || 0)
-      );
+      const sortedShows = seriesData.data.listSeries.items
+        .filter(show => show.statusText === 'requested') // filtering shows based on statusText
+        .sort((a, b) => (voteData.votes[b.id] || 0) - (voteData.votes[a.id] || 0));
       setShows(sortedShows);
       setVotes(voteData.votes);
       setUserVotes(voteData.userVotes);
@@ -113,7 +113,9 @@ export default function VotingPage() {
     setSearchText(event.target.value);
   };
 
-  const filteredShows = shows.filter((show) => show.name.toLowerCase().includes(searchText.toLowerCase()));
+  const filteredShows = shows
+  .filter(show => show.statusText === 'requested') // added filtering here as well to ensure only requested shows are shown
+  .filter(show => show.name.toLowerCase().includes(searchText.toLowerCase()));
 
   return (
     <Container maxWidth="md">
