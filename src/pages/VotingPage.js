@@ -114,7 +114,7 @@ export default function VotingPage() {
   };
 
   const filteredShows = shows
-  .filter(show => show.statusText === 'requested') // added filtering here as well to ensure only requested shows are shown
+  .filter(show => show.statusText === 'requested')
   .filter(show => show.name.toLowerCase().includes(searchText.toLowerCase()));
 
   return (

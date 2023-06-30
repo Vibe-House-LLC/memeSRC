@@ -397,42 +397,42 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
                 </Box>
                 {currentThemeTitleText}
               </Typography>
-              {!localStorage.getItem("alertDismissed") && ( 
-  <Alert
-    severity="success"
-    action={
-      <>
-        <Button
-          component={Link}
-          to="/vote"
-          variant="outlined"
-          color="inherit"
-          size="small"
-          style={{ marginRight: '5px' }}
-        >
-          Vote Now
-        </Button>
-        <IconButton
-          color="inherit"
-          size="small"
-          onClick={() => {
-            localStorage.setItem("alertDismissed", "true");
-            setAlertOpen(false);
-          }}
-        >
-          <CloseIcon fontSize="inherit" />
-        </IconButton>
-      </>
-    }
-    sx={{
-      marginTop: 2,
-      marginBottom: -3,
-      opacity: 0.9,
-    }}
-  >
-    You can now vote on new shows!
-  </Alert>
-)}
+              {!localStorage.getItem('alertDismissed') && (
+                <Alert
+                  severity="success"
+                  action={
+                    <>
+                      <Button
+                        component={Link}
+                        to="/vote"
+                        variant="outlined"
+                        color="inherit"
+                        size="small"
+                        style={{ marginRight: '5px' }}
+                      >
+                        Vote
+                      </Button>
+                      <IconButton
+                        color="inherit"
+                        size="small"
+                        onClick={() => {
+                          localStorage.setItem('alertDismissed', 'true');
+                          setAlertOpen(false);
+                        }}
+                      >
+                        <CloseIcon fontSize="inherit" />
+                      </IconButton>
+                    </>
+                  }
+                  sx={{
+                    marginTop: 2,
+                    marginBottom: -3,
+                    opacity: 0.9,
+                  }}
+                >
+                  <b>Update:</b> New show voting!
+                </Alert>
+              )}
             </Grid>
           </Grid>
           <StyledSearchForm onSubmit={(e) => searchFunction(e)}>
