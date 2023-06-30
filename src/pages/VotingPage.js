@@ -192,8 +192,9 @@ export default function VotingPage() {
                       <Box flexGrow={1}>
                         <Box display="flex" alignItems="center">
                           <Box mr={2}>
-                            <Badge 
-                              badgeContent={`#${show.rank}`} color="secondary"
+                            <Badge
+                              badgeContent={`#${show.rank}`}
+                              color="secondary"
                               anchorOrigin={{
                                 vertical: 'top',
                                 horizontal: 'left',
@@ -229,7 +230,7 @@ export default function VotingPage() {
                           </Box>
                         </Box>
                       </Box>
-                      <Box mr={2}>
+                      <Box mr={0}>
                         <Box>
                           {votingStatus[show.id] === 1 ? (
                             <CircularProgress size={20} sx={{ ml: 1.2, mb: 1.5 }} />
@@ -243,16 +244,12 @@ export default function VotingPage() {
                               }
                               disabled={userVotes[show.id] || votingStatus[show.id]}
                             >
-                              {userVotes[show.id] === 1 ? (
-                                <Lock sx={{ color: 'success.main' }} />
-                              ) : (
-                                <ArrowUpward sx={{ color: userVotes[show.id] === 1 ? 'success.main' : 'inherit' }} />
-                              )}
+                              <ArrowUpward sx={{ color: userVotes[show.id] === 1 ? 'success.main' : 'inherit' }} />
                             </IconButton>
                           )}
                         </Box>
                         <Box>
-                          <Typography variant="h5" gutterBottom textAlign="center" paddingTop={0.5}>
+                          <Typography variant="h5" gutterBottom textAlign="center" >
                             {votes[show.id] || 0}
                           </Typography>
                         </Box>
@@ -269,11 +266,7 @@ export default function VotingPage() {
                               }
                               disabled={userVotes[show.id] || votingStatus[show.id]}
                             >
-                              {userVotes[show.id] === -1 ? (
-                                <Lock sx={{ color: 'error.main' }} />
-                              ) : (
-                                <ArrowDownward sx={{ color: userVotes[show.id] === -1 ? 'error.main' : 'inherit' }} />
-                              )}
+                              <ArrowDownward sx={{ color: userVotes[show.id] === -1 ? 'error.main' : 'inherit' }} />
                             </IconButton>
                           )}
                         </Box>
