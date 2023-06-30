@@ -100,7 +100,11 @@ export default function ResetPasswordForm(props) {
           <Typography variant='subheading' mb={5} mt={1} textAlign='center'>
             Check your email for the code to enter below.
           </Typography>
-          <form onSubmit={handleResetPasswordSubmit}>
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            handleResetPasswordSubmit();
+            return false
+          }}>
             <Stack spacing={3} marginBottom={3}>
               <AutoFillTextField
                 name="text"

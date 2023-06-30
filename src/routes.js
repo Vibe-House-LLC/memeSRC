@@ -1,8 +1,10 @@
 import { Navigate, useRoutes } from 'react-router-dom';
 import { lazy } from 'react';
 
+// ----------------------------------------------------------------------
 
 const AddSeriesPage = lazy(() => import('./pages/AddSeriesPage'));
+const VotingPage = lazy(() => import('./pages/VotingPage'))
 const InpaintingPage = lazy(() => import('./pages/InpaintingPage'));
 const FramePage = lazy(() => import('./pages/FramePage'));
 const TopBannerSearchRevised = lazy(() => import('./sections/search/TopBannerSeachRevised'));
@@ -14,6 +16,8 @@ const SignupForm = lazy(() => import('./sections/auth/login/SignupForm'));
 const VerifyForm = lazy(() => import('./sections/auth/login/VerifyForm'));
 const ForgotPasswordForm = lazy(() => import('./sections/auth/login/ForgotPasswordForm'));
 const UserPage = lazy(() => import('./pages/UserPage'));
+const PrivacyPolicy = lazy(() => import('./sections/legal/PrivacyPolicy'));
+const TermsOfService = lazy(() => import('./sections/legal/TermsOfService'));
 const Page404 = lazy(() => import('./pages/Page404'));
 const ErrorPage = lazy(() => import('./pages/ErrorPage'));
 const ProductsPage = lazy(() => import('./pages/ProductsPage'));
@@ -30,7 +34,6 @@ const EpisodePage = lazy(() => import('./pages/EpisodePage'));
 const SeriesPage = lazy(() => import('./pages/SeriesPage'));
 const MetadataPage = lazy(() => import('./pages/MetadataPage'));
 const HomepageSectionPage = lazy(() => import('./pages/HomepageSectionPage'));
-
 
 // ----------------------------------------------------------------------
 
@@ -50,6 +53,7 @@ export default function Router() {
         { path: 'series/:seriesId', element: <TopBannerSearchRevised><SeriesPage /></TopBannerSearchRevised> },
         { path: '/episode/:seriesId/:seasonNum/:episodeNum', element: <TopBannerSearchRevised><EpisodePage /></TopBannerSearchRevised> },
         { path: '/episode/:seriesId/:seasonNum/:episodeNum/:frameNum', element: <TopBannerSearchRevised><EpisodePage /></TopBannerSearchRevised> },
+        { path: '/vote', element: <TopBannerSearchRevised><VotingPage /></TopBannerSearchRevised> },
       ]
     },
     {
@@ -92,6 +96,14 @@ export default function Router() {
     {
       path: '/section/:sectionIndex',
       element: <HomePage />
+    },
+    {
+      path: '/privacypolicy',
+      element: <PrivacyPolicy />
+    },
+    {
+      path: '/termsofservice',
+      element: <TermsOfService />
     },
     {
       path: '/error',

@@ -1,6 +1,6 @@
 import PropTypes from 'prop-types';
 import { useEffect, useContext } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 // @mui
 import { styled, alpha } from '@mui/material/styles';
 import { Box, Link, Button, Drawer, Typography, Avatar, Stack, Chip, Divider } from '@mui/material';
@@ -32,6 +32,7 @@ Nav.propTypes = {
 
 export default function Nav({ openNav, onCloseNav }) {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const userDetails = useContext(UserContext)
 
   // useEffect(() => {
@@ -50,30 +51,17 @@ export default function Nav({ openNav, onCloseNav }) {
     >
       <Box sx={{ px: 2.5, py: 3, display: 'inline-flex' }}>
         <Stack direction='horizontal'>
-          <Logo />
+          <Link onClick={() => { navigate('/') }}>
+            <Logo />
+          </Link>
           <Chip label={process.env.REACT_APP_USER_BRANCH === 'prod' ? `v${process.env.REACT_APP_VERSION}` : `v${process.env.REACT_APP_VERSION}-${process.env.REACT_APP_USER_BRANCH}`} variant="outlined" />
         </Stack>
       </Box>
 
       <Box sx={{ mb: 5, mx: 2.5 }}>
         <Link underline="none">
-          <StyledAccount>
-            {userDetails.user &&
-              <>
-                <Avatar src={account.photoURL} alt="photoURL" />
-
-                <Box sx={{ ml: 2 }}>
-                  <Typography variant="subtitle2" sx={{ color: 'text.primary' }}>
-                    {userDetails?.user?.attributes?.email}
-                  </Typography>
-
-                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    {account.role}
-                  </Typography>
-                </Box>
-              </>
-            }
-            {!userDetails.user &&
+          {!userDetails.user &&
+            <StyledAccount>
               <>
                 <Box width='100%'>
                   <Link href='/signup' underline='none'>
@@ -81,7 +69,7 @@ export default function Nav({ openNav, onCloseNav }) {
                       Create Account
                     </Typography>
                   </Link>
-                  <Divider sx={{my: 2}} />
+                  <Divider sx={{ my: 2 }} />
                   <Link href='/login' underline='none'>
                     <Typography variant="subtitle1" textAlign='center' sx={{ color: 'text.primary' }}>
                       Sign In
@@ -89,12 +77,12 @@ export default function Nav({ openNav, onCloseNav }) {
                   </Link>
                 </Box>
               </>
-            }
-          </StyledAccount>
+            </StyledAccount>
+          }
         </Link>
       </Box>
 
-      <NavSection data={navConfig} />
+      <NavSection sx={{ paddingBottom: 8 }} data={navConfig} />
 
       <Box sx={{ flexGrow: 1 }} />
 

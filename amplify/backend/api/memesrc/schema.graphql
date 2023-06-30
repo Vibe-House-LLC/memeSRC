@@ -147,5 +147,19 @@ type UserDetails @model @auth(
   stripeId: String,
   sourceMedia: [SourceMedia] @hasMany,
   status: String,
+  votes: [SeriesUserVote] @hasMany,
   credits: Int
+}
+
+type SeriesUserVote @model @auth(
+  rules: [
+    { allow: groups, groups: ["admins"] },
+    { allow: private, operations: [read] },
+    { allow: public, operations: [read]}
+  ]
+) {
+  id: ID!,
+  user: UserDetails @belongsTo,
+  series: Series @hasOne,
+  boost: Int
 }

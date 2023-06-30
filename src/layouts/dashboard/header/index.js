@@ -6,7 +6,7 @@ import { Box, Stack, AppBar, Toolbar, Link, IconButton, Grid, Typography, Slide,
 import { AutoFixHighRounded } from '@mui/icons-material';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 // utils
-import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { bgBlur } from '../../../utils/cssStyles';
 // components
 import Iconify from '../../../components/iconify';
@@ -45,6 +45,8 @@ Header.propTypes = {
 
 export default function Header({ onOpenNav }) {
 
+  const navigate = useNavigate();
+
   const { user } = useContext(UserContext);
 
   const theme = useTheme();
@@ -63,17 +65,20 @@ export default function Header({ onOpenNav }) {
     <Grid
       container
       direction="row"
-      justifyContent="center"
+      justifyContent="left"
       alignItems="center"
     >
       <Link
-        to="/"
-        component={RouterLink}
+        onClick={() => {
+          navigate('/')
+        }}
         sx={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           textDecoration: 'none',
+          ml: 1,
+          cursor: 'pointer',
           color: 'inherit',
           '&:hover': {
             textDecoration: 'none',
@@ -103,7 +108,7 @@ export default function Header({ onOpenNav }) {
   }, [showLogo]);
 
   useEffect(() => {
-    if (location.pathname === '/' && user) {
+    if (location.pathname === '/') {
       window.addEventListener('scroll', handleScroll);
       setShowNav(true);
     } else if (location.pathname !== '/') {
@@ -123,61 +128,58 @@ export default function Header({ onOpenNav }) {
 
   return (
     <>
-      {showNav &&
-        <StyledRoot>
-          <StyledToolbar sx={{ position: 'relative', minHeight: { xs: 45, md: '45px !important' } }} ref={containerRef}>
-            {location.pathname.startsWith('/dashboard/') && <IconButton
-              onClick={onOpenNav}
-              sx={{
-                mr: 1,
-                color: 'text.primary',
-              }}
-              size='large'
-            >
-              <Iconify icon="ic:round-menu" />
-            </IconButton>}
-            {user && <Box sx={{ width: '145px', height: '1px' }} />}
+      <StyledRoot>
+        <StyledToolbar sx={{ position: 'relative', minHeight: { xs: 45, md: '45px !important' } }} ref={containerRef}>
+          <IconButton
+            onClick={onOpenNav}
+            sx={{
+              color: 'text.primary',
+            }}
+            size='large'
+          >
+            <Iconify icon="ic:round-menu" />
+          </IconButton>
 
-            {/* <Searchbar /> */}
-            <Box sx={{ flexGrow: 1 }} />
-            {location.pathname === '/'
-              ?
+          {/* <Searchbar /> */}
+          <Box sx={{ flexGrow: 1 }} />
+          {location.pathname === '/'
+            ?
 
-              <Slide direction="up" container={containerRef.current} exit in={showLogo} mountOnEnter>
+            <Slide direction="up" container={containerRef.current} exit in={showLogo} mountOnEnter>
 
-                {renderLogo()}
-              </Slide>
-              : renderLogo()
-            }
+              {renderLogo()}
+            </Slide>
+            : renderLogo()
+          }
 
-            <Stack
-              direction="row"
-              alignItems="center"
-              spacing={{
-                xs: 2
-              }}
-            >
-              {/* <NotificationsPopover /> */}
-              {user &&
-                <>
-                  <Chip
-                    icon={<AutoFixHighRounded />}
-                    label={user.userDetails.credits || 0}
-                    size="small"
-                    color="success"
-                    sx={{
-                      "& .MuiChip-label": {
-                        fontWeight: 'bold',
-                      },
-                    }}
-                  />
-                  <AccountPopover />
-                </>
-              }
-            </Stack>
-          </StyledToolbar>
-        </StyledRoot>
-      }
+          <Stack
+            direction="row"
+            alignItems="center"
+            spacing={{
+              xs: 2
+            }}
+          >
+            {/* <NotificationsPopover /> */}
+            <>
+              {user && user.userDetails.credits > 0 &&
+                <Chip
+                  icon={<AutoFixHighRounded />}
+                  label={user.userDetails.credits || 0}
+                  size="small"
+                  color="success"
+                  sx={{
+                    "& .MuiChip-label": {
+                      fontWeight: 'bold',
+                    },
+                  }}
+                />
+                }
+              <AccountPopover />
+            </>
+          </Stack>
+        </StyledToolbar>
+      </StyledRoot>
+
     </>
   );
 }

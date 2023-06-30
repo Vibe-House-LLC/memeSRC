@@ -16,20 +16,25 @@ const GRAPHQL_ENDPOINT = process.env.API_MEMESRC_GRAPHQLAPIENDPOINTOUTPUT;
 const AWS_REGION = process.env.AWS_REGION || 'us-east-1';
 const { Sha256 } = crypto;
 
-const updateProgressQuery = (id, progress) => `
-  mutation {
-    updateSeries(input: {id: "${id}", statusText: "Processing: ${progress}"}) {
-      id
-      createdAt
-      description
-      image
-      name
-      slug
-      tvdbid
-      updatedAt
-      year
-      statusText
-    }
+const userDetailsQuery = `
+  query getUserDetails {
+      getUserDetails(id: "889a369c-158f-45aa-aa0c-e1479b2075dd") {
+          createdAt
+          email
+          id
+          stripeId
+          username
+          updatedAt
+          status
+          votes {
+            items {
+                series {
+                    id
+                }
+            }
+          }
+          credits
+      }
   }
 `;
 
@@ -71,74 +76,16 @@ export const handler = async (event) => {
   let body;
   let response;
 
-  async function runIterations() {
-    return new Promise((resolve, reject) => {
-      let i = 0;
-
-      const intervalId = setInterval(async () => {
-        const value = (i+1) * 10; // simulate progress depending on the iteration
-        let statusMessage = 'Preparing'
-        if (value > 10 && value <= 30) {
-          statusMessage = 'extracting subtitles'
-        } else if (value > 30 && value <= 70) {
-          statusMessage = 'extracting frames'
-        } else if (value > 70 && value < 100) {
-          statusMessage = 'cleaning up'
-        } else if (value >= 100) {
-          statusMessage = 'done'
-        }
-        const request = await createSignedQueryRequest(updateProgressQuery('2959d743-aba8-49a9-a2db-2d1968c24a79', `${value.toString()}% (${statusMessage})`));
-
-        try {
-          const response = await fetch(request);
-          const body = await response.json();
-          if (body.errors) statusCode = 400;
-        } catch (error) {
-          statusCode = 500;
-          const body = {
-            errors: [
-              {
-                message: error.message
-              }
-            ]
-          };
-          reject(body);
-          clearInterval(intervalId);
-          return;
-        }
-
-        i++;
-        if (i >= 10) {
-          clearInterval(intervalId);
-          resolve();
-        }
-      }, 1000);
-    });
-  }
-
   try {
-    await runIterations();
-    console.log('Iterations completed successfully');
+    // await runIterations();
+    const request = await createSignedQueryRequest(userDetailsQuery);
+    const response = await fetch(request);
+    const body = await response.json();
+    console.log(body)
   } catch (error) {
     console.error('Iterations failed', error);
   }
 
-  // const request = await createSignedQueryRequest(updateProgressQuery('2959d743-aba8-49a9-a2db-2d1968c24a79', '69'))
-
-  // try {
-  //   response = await fetch(request);
-  //   body = await response.json();
-  //   if (body.errors) statusCode = 400;
-  // } catch (error) {
-  //   statusCode = 500;
-  //   body = {
-  //     errors: [
-  //       {
-  //         message: error.message
-  //       }
-  //     ]
-  //   };
-  // }
 
   return {
     statusCode,

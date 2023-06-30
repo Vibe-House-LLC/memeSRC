@@ -1,7 +1,7 @@
 import { useContext, useEffect, useState } from 'react';
 // import { useNavigate } from 'react-router-dom';
 // @mui
-import { Link, Stack, IconButton, InputAdornment, TextField, Checkbox, Typography, styled } from '@mui/material';
+import { Link, Stack, IconButton, InputAdornment, TextField, Checkbox, Typography, styled, FormControlLabel, FormGroup } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
 import { API, Auth } from 'aws-amplify';
 // utils
@@ -47,13 +47,16 @@ export default function SignupForm(props) {
 
   const [confirmPassword, setConfirmPassword] = useState('');
 
+  const [agree, setAgree] = useState(false);
+
   const [formErrors, setFormErrors] = useState({
     username: false,
     email: false,
     password: false,
     confirmPassword: false,
     passwordMismatch: false,
-    passwordLength: false
+    passwordLength: false,
+    agree: false
   });
 
   const checkForErrors = () => {
@@ -73,7 +76,7 @@ export default function SignupForm(props) {
     if (!confirmPassword) {
       _confirmPassword = true
     }
-    if (!email) {
+    if (!email || !(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) {
       _email = true
     }
 
@@ -88,9 +91,10 @@ export default function SignupForm(props) {
       confirmPassword: _confirmPassword,
       passwordMismatch: _passwordMismatch,
       passwordLength: _passwordLength,
+      agree: (!agree)
     });
 
-    return (_username || _email || _password || _confirmPassword || _passwordMismatch || _passwordLength)
+    return (_username || _email || _password || _confirmPassword || _passwordMismatch || _passwordLength || !agree)
   }
 
   const createUser = async () => {
@@ -138,10 +142,13 @@ export default function SignupForm(props) {
         setSignupStatus({
           'loading': false,
           'disabled': false,
-          'error': err,
+          'error': err.message,
           'text': 'Sign Up'
         });
-        console.log(err);
+        setMessage(err.message)
+        setSeverity('error')
+        setOpen(true)
+        console.log(err.message);
       });
     } else {
       setMessage('Please check form for errors')
@@ -156,6 +163,12 @@ export default function SignupForm(props) {
     }
   }, [user])
 
+  const handleLinkClick = (event, url) => {
+    event.preventDefault();
+    event.stopPropagation();
+    window.open(url, '_blank');
+  };
+
   return (
     <>
       <Typography variant="h4" gutterBottom>
@@ -164,14 +177,20 @@ export default function SignupForm(props) {
       <Typography variant='body1' gutterBottom marginBottom={8}>
         Already have an account? <Link sx={{ cursor: 'pointer' }} onClick={() => { navigate('/login') }}>Sign in</Link>
       </Typography>
-      <form onSubmit={createUser}>
+      <form onSubmit={(e) => {
+        e.preventDefault();
+        createUser();
+        return false
+      }}>
         <Stack spacing={3}>
           <AutoFillTextField
             name="username"
             label="Username"
             error={formErrors.username}
+            value={username}
             onChange={(x) => {
-              setUsername(x.target.value)
+              const sanitizedValue = x.target.value.replace(/[^\w\s]/gi, '').replace(/\s/g, '').toLowerCase();
+              setUsername(sanitizedValue);
               setFormErrors({
                 ...formErrors,
                 username: false
@@ -191,6 +210,12 @@ export default function SignupForm(props) {
                 email: false
               })
             }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                createUser();
+              }
+            }}
           />
 
           <AutoFillTextField
@@ -207,6 +232,12 @@ export default function SignupForm(props) {
                 passwordMismatch: false,
                 passwordLength: false
               })
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                createUser();
+              }
             }}
             helperText={formErrors.password ? '' : `${formErrors.passwordLength ? 'Password is not long enough' : ''}${(formErrors.passwordLength && formErrors.passwordMismatch) ? ' & ' : ''}${formErrors.passwordMismatch ? 'Passwords do not match' : ''}`}
             InputProps={{
@@ -235,8 +266,51 @@ export default function SignupForm(props) {
                 passwordLength: false
               })
             }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                createUser();
+              }
+            }}
             helperText={formErrors.confirmPassword ? '' : `${formErrors.passwordLength ? 'Password is not long enough' : ''}${(formErrors.passwordLength && formErrors.passwordMismatch) ? ' & ' : ''}${formErrors.passwordMismatch ? 'Passwords do not match' : ''}`}
           />
+          <FormGroup>
+            <FormControlLabel
+              required
+              control={
+                <Checkbox
+                  checked={agree}
+                  onChange={
+                    (event) => {
+                      setAgree(event.target.checked)
+                      setFormErrors({
+                        ...formErrors,
+                        agree: false
+                      })
+                    }
+                  }
+                />
+              }
+              label={
+                <span style={{color: formErrors.agree ? 'red' : ''}}>
+                  I agree to the{' '}
+                  <Link
+                    sx={{ cursor: 'pointer' }}
+                    onClick={(event) => handleLinkClick(event, '/termsofservice')}
+                  >
+                    Terms of Service
+                  </Link>{' '}
+                  &{' '}
+                  <Link
+                    sx={{ cursor: 'pointer' }}
+                    onClick={(event) => handleLinkClick(event, '/privacypolicy')}
+                  >
+                    Privacy Policy
+                  </Link>
+                </span>
+              }
+            />
+          </FormGroup>
           <LoadingButton sx={{ my: 3 }} fullWidth size="large" type="submit" variant="contained" loading={signupStatus.loading} onClick={createUser} id="signup-btn" disabled={signupStatus.disabled}>
             {signupStatus.text}
           </LoadingButton>

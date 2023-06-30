@@ -1,5 +1,5 @@
 // component
-import { Settings } from '@mui/icons-material';
+import { Article, CardGiftcard, Favorite, MapsUgc, Settings, Shield } from '@mui/icons-material';
 import SvgColor from '../../../components/svg-color';
 
 // ----------------------------------------------------------------------
@@ -8,50 +8,105 @@ const icon = (name) => <SvgColor src={`/assets/icons/navbar/${name}.svg`} sx={{ 
 
 const navConfig = [
   {
-    title: 'search',
-    path: '/search',
-    icon: icon('ic_menu_item'),
+    sectionTitle: 'General',
+    adminOnly: false,
+    items: [
+
+      {
+        title: 'search',
+        path: '/search',
+        externalLink: false,
+        icon: icon('ic_menu_item'),
+      },
+      {
+        title: 'Request',
+        path: '/vote',
+        externalLink: false,
+        icon: icon('ic_kanban')
+      }
+    ]
   },
   {
-    title: 'editor',
-    path: '/editor',
-    icon: icon('ic_file'),
+    sectionTitle: 'Support',
+    adminOnly: false,
+    items: [
+      {
+        title: 'Feedback',
+        path: 'https://forms.gle/8CETtVbwYoUmxqbi7',
+        externalLink: true,
+        icon: <MapsUgc />
+      },
+      {
+        title: 'Donate',
+        path: 'https://memesrc.com/donate',
+        externalLink: true,
+        icon: <Favorite />
+      }
+    ]
+  },
+
+  {
+    sectionTitle: 'Admin',
+    adminOnly: true,
+    items: [
+      {
+        title: 'dashboard',
+        path: '/dashboard/app',
+        externalLink: false,
+        icon: icon('ic_analytics'),
+      },
+      {
+        title: 'editor',
+        path: '/editor',
+        externalLink: false,
+        icon: icon('ic_file'),
+      },
+      {
+        title: 'TV Shows',
+        path: '/dashboard/series',
+        externalLink: false,
+        icon: icon('ic_booking')
+      },
+      {
+        title: 'metadata',
+        path: '/dashboard/metadata',
+        externalLink: false,
+        icon: icon('ic_booking')
+      },
+      {
+        title: 'user',
+        path: '/dashboard/user',
+        externalLink: false,
+        icon: icon('ic_user'),
+      },
+      {
+        title: 'homepage sections',
+        path: '/dashboard/homepagesections',
+        externalLink: false,
+        icon: icon('ic_file')
+      },
+    ]
   },
   {
-    title: 'series',
-    path: '/dashboard/series',
-    icon: icon('ic_booking')
+    sectionTitle: 'Legal',
+    adminOnly: false,
+    items: [
+      {
+        title: 'Terms of Service',
+        path: '/termsofservice',
+        externalLink: true,
+        icon: <Article />,
+      },
+      {
+        title: 'Privacy Policy',
+        path: '/privacypolicy',
+        externalLink: true,
+        icon: <Shield />,
+      },
+    ]
   },
-  // {
-  //   title: 'search',
-  //   path: '/dashboard/search',
-  //   icon: icon('ic_menu_item'),
-  // },
-  // {
-  //   title: 'editor',
-  //   path: '/dashboard/editor',
-  //   icon: icon('ic_kanban')
-  // },
-  {
-    title: 'metadata',
-    path: '/dashboard/metadata',
-    icon: icon('ic_booking')
-  },
-  {
-    title: 'user',
-    path: '/dashboard/user',
-    icon: icon('ic_user'),
-  },
-  {
-    title: 'dashboard',
-    path: '/dashboard/app',
-    icon: icon('ic_analytics'),
-  },
-  {
-    title: 'homepage sections',
-    path: '/dashboard/homepagesections',
-    icon: icon('ic_file')
-  },
+
+  
   // {
   //   title: 'inpainting demo',
   //   path: '/dashboard/inpainting',

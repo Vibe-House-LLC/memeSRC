@@ -148,6 +148,37 @@
           ]
         }
       }
+    },
+    "/vote": {
+      "name": "/vote",
+      "lambdaFunction": "memesrcUserFunction",
+      "permissions": {
+        "setting": "protected",
+        "auth": [
+          "create",
+          "read",
+          "update"
+        ],
+        "guest": [
+          "create",
+          "read",
+          "update"
+        ],
+        "groups": {
+          "admins": [
+            "create",
+            "read",
+            "update",
+            "delete"
+          ],
+          "mods": [
+            "create",
+            "read",
+            "update",
+            "delete"
+          ]
+        }
+      }
     }
   }
 }

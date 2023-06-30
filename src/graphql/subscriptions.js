@@ -144,6 +144,10 @@ export const onCreateSourceMedia = /* GraphQL */ `
           __typename
         }
         status
+        votes {
+          nextToken
+          __typename
+        }
         credits
         createdAt
         updatedAt
@@ -204,6 +208,10 @@ export const onUpdateSourceMedia = /* GraphQL */ `
           __typename
         }
         status
+        votes {
+          nextToken
+          __typename
+        }
         credits
         createdAt
         updatedAt
@@ -264,6 +272,10 @@ export const onDeleteSourceMedia = /* GraphQL */ `
           __typename
         }
         status
+        votes {
+          nextToken
+          __typename
+        }
         credits
         createdAt
         updatedAt
@@ -1056,6 +1068,19 @@ export const onCreateUserDetails = /* GraphQL */ `
         __typename
       }
       status
+      votes {
+        items {
+          id
+          boost
+          createdAt
+          updatedAt
+          userDetailsVotesId
+          seriesUserVoteSeriesId
+          __typename
+        }
+        nextToken
+        __typename
+      }
       credits
       createdAt
       updatedAt
@@ -1086,6 +1111,19 @@ export const onUpdateUserDetails = /* GraphQL */ `
         __typename
       }
       status
+      votes {
+        items {
+          id
+          boost
+          createdAt
+          updatedAt
+          userDetailsVotesId
+          seriesUserVoteSeriesId
+          __typename
+        }
+        nextToken
+        __typename
+      }
       credits
       createdAt
       updatedAt
@@ -1116,9 +1154,175 @@ export const onDeleteUserDetails = /* GraphQL */ `
         __typename
       }
       status
+      votes {
+        items {
+          id
+          boost
+          createdAt
+          updatedAt
+          userDetailsVotesId
+          seriesUserVoteSeriesId
+          __typename
+        }
+        nextToken
+        __typename
+      }
       credits
       createdAt
       updatedAt
+      __typename
+    }
+  }
+`;
+export const onCreateSeriesUserVote = /* GraphQL */ `
+  subscription OnCreateSeriesUserVote(
+    $filter: ModelSubscriptionSeriesUserVoteFilterInput
+  ) {
+    onCreateSeriesUserVote(filter: $filter) {
+      id
+      user {
+        id
+        username
+        email
+        stripeId
+        sourceMedia {
+          nextToken
+          __typename
+        }
+        status
+        votes {
+          nextToken
+          __typename
+        }
+        credits
+        createdAt
+        updatedAt
+        __typename
+      }
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        seasons {
+          nextToken
+          __typename
+        }
+        statusText
+        createdAt
+        updatedAt
+        __typename
+      }
+      boost
+      createdAt
+      updatedAt
+      userDetailsVotesId
+      seriesUserVoteSeriesId
+      __typename
+    }
+  }
+`;
+export const onUpdateSeriesUserVote = /* GraphQL */ `
+  subscription OnUpdateSeriesUserVote(
+    $filter: ModelSubscriptionSeriesUserVoteFilterInput
+  ) {
+    onUpdateSeriesUserVote(filter: $filter) {
+      id
+      user {
+        id
+        username
+        email
+        stripeId
+        sourceMedia {
+          nextToken
+          __typename
+        }
+        status
+        votes {
+          nextToken
+          __typename
+        }
+        credits
+        createdAt
+        updatedAt
+        __typename
+      }
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        seasons {
+          nextToken
+          __typename
+        }
+        statusText
+        createdAt
+        updatedAt
+        __typename
+      }
+      boost
+      createdAt
+      updatedAt
+      userDetailsVotesId
+      seriesUserVoteSeriesId
+      __typename
+    }
+  }
+`;
+export const onDeleteSeriesUserVote = /* GraphQL */ `
+  subscription OnDeleteSeriesUserVote(
+    $filter: ModelSubscriptionSeriesUserVoteFilterInput
+  ) {
+    onDeleteSeriesUserVote(filter: $filter) {
+      id
+      user {
+        id
+        username
+        email
+        stripeId
+        sourceMedia {
+          nextToken
+          __typename
+        }
+        status
+        votes {
+          nextToken
+          __typename
+        }
+        credits
+        createdAt
+        updatedAt
+        __typename
+      }
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        seasons {
+          nextToken
+          __typename
+        }
+        statusText
+        createdAt
+        updatedAt
+        __typename
+      }
+      boost
+      createdAt
+      updatedAt
+      userDetailsVotesId
+      seriesUserVoteSeriesId
       __typename
     }
   }

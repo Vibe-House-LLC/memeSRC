@@ -154,6 +154,10 @@ export const createSourceMedia = /* GraphQL */ `
           __typename
         }
         status
+        votes {
+          nextToken
+          __typename
+        }
         credits
         createdAt
         updatedAt
@@ -215,6 +219,10 @@ export const updateSourceMedia = /* GraphQL */ `
           __typename
         }
         status
+        votes {
+          nextToken
+          __typename
+        }
         credits
         createdAt
         updatedAt
@@ -276,6 +284,10 @@ export const deleteSourceMedia = /* GraphQL */ `
           __typename
         }
         status
+        votes {
+          nextToken
+          __typename
+        }
         credits
         createdAt
         updatedAt
@@ -1114,6 +1126,19 @@ export const createUserDetails = /* GraphQL */ `
         __typename
       }
       status
+      votes {
+        items {
+          id
+          boost
+          createdAt
+          updatedAt
+          userDetailsVotesId
+          seriesUserVoteSeriesId
+          __typename
+        }
+        nextToken
+        __typename
+      }
       credits
       createdAt
       updatedAt
@@ -1145,6 +1170,19 @@ export const updateUserDetails = /* GraphQL */ `
         __typename
       }
       status
+      votes {
+        items {
+          id
+          boost
+          createdAt
+          updatedAt
+          userDetailsVotesId
+          seriesUserVoteSeriesId
+          __typename
+        }
+        nextToken
+        __typename
+      }
       credits
       createdAt
       updatedAt
@@ -1176,9 +1214,178 @@ export const deleteUserDetails = /* GraphQL */ `
         __typename
       }
       status
+      votes {
+        items {
+          id
+          boost
+          createdAt
+          updatedAt
+          userDetailsVotesId
+          seriesUserVoteSeriesId
+          __typename
+        }
+        nextToken
+        __typename
+      }
       credits
       createdAt
       updatedAt
+      __typename
+    }
+  }
+`;
+export const createSeriesUserVote = /* GraphQL */ `
+  mutation CreateSeriesUserVote(
+    $input: CreateSeriesUserVoteInput!
+    $condition: ModelSeriesUserVoteConditionInput
+  ) {
+    createSeriesUserVote(input: $input, condition: $condition) {
+      id
+      user {
+        id
+        username
+        email
+        stripeId
+        sourceMedia {
+          nextToken
+          __typename
+        }
+        status
+        votes {
+          nextToken
+          __typename
+        }
+        credits
+        createdAt
+        updatedAt
+        __typename
+      }
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        seasons {
+          nextToken
+          __typename
+        }
+        statusText
+        createdAt
+        updatedAt
+        __typename
+      }
+      boost
+      createdAt
+      updatedAt
+      userDetailsVotesId
+      seriesUserVoteSeriesId
+      __typename
+    }
+  }
+`;
+export const updateSeriesUserVote = /* GraphQL */ `
+  mutation UpdateSeriesUserVote(
+    $input: UpdateSeriesUserVoteInput!
+    $condition: ModelSeriesUserVoteConditionInput
+  ) {
+    updateSeriesUserVote(input: $input, condition: $condition) {
+      id
+      user {
+        id
+        username
+        email
+        stripeId
+        sourceMedia {
+          nextToken
+          __typename
+        }
+        status
+        votes {
+          nextToken
+          __typename
+        }
+        credits
+        createdAt
+        updatedAt
+        __typename
+      }
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        seasons {
+          nextToken
+          __typename
+        }
+        statusText
+        createdAt
+        updatedAt
+        __typename
+      }
+      boost
+      createdAt
+      updatedAt
+      userDetailsVotesId
+      seriesUserVoteSeriesId
+      __typename
+    }
+  }
+`;
+export const deleteSeriesUserVote = /* GraphQL */ `
+  mutation DeleteSeriesUserVote(
+    $input: DeleteSeriesUserVoteInput!
+    $condition: ModelSeriesUserVoteConditionInput
+  ) {
+    deleteSeriesUserVote(input: $input, condition: $condition) {
+      id
+      user {
+        id
+        username
+        email
+        stripeId
+        sourceMedia {
+          nextToken
+          __typename
+        }
+        status
+        votes {
+          nextToken
+          __typename
+        }
+        credits
+        createdAt
+        updatedAt
+        __typename
+      }
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        seasons {
+          nextToken
+          __typename
+        }
+        statusText
+        createdAt
+        updatedAt
+        __typename
+      }
+      boost
+      createdAt
+      updatedAt
+      userDetailsVotesId
+      seriesUserVoteSeriesId
       __typename
     }
   }

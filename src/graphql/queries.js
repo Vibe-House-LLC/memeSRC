@@ -107,6 +107,10 @@ export const getSourceMedia = /* GraphQL */ `
           __typename
         }
         status
+        votes {
+          nextToken
+          __typename
+        }
         credits
         createdAt
         updatedAt
@@ -658,6 +662,19 @@ export const getUserDetails = /* GraphQL */ `
         __typename
       }
       status
+      votes {
+        items {
+          id
+          boost
+          createdAt
+          updatedAt
+          userDetailsVotesId
+          seriesUserVoteSeriesId
+          __typename
+        }
+        nextToken
+        __typename
+      }
       credits
       createdAt
       updatedAt
@@ -682,9 +699,107 @@ export const listUserDetails = /* GraphQL */ `
           __typename
         }
         status
+        votes {
+          nextToken
+          __typename
+        }
         credits
         createdAt
         updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const getSeriesUserVote = /* GraphQL */ `
+  query GetSeriesUserVote($id: ID!) {
+    getSeriesUserVote(id: $id) {
+      id
+      user {
+        id
+        username
+        email
+        stripeId
+        sourceMedia {
+          nextToken
+          __typename
+        }
+        status
+        votes {
+          nextToken
+          __typename
+        }
+        credits
+        createdAt
+        updatedAt
+        __typename
+      }
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        seasons {
+          nextToken
+          __typename
+        }
+        statusText
+        createdAt
+        updatedAt
+        __typename
+      }
+      boost
+      createdAt
+      updatedAt
+      userDetailsVotesId
+      seriesUserVoteSeriesId
+      __typename
+    }
+  }
+`;
+export const listSeriesUserVotes = /* GraphQL */ `
+  query ListSeriesUserVotes(
+    $filter: ModelSeriesUserVoteFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listSeriesUserVotes(filter: $filter, limit: $limit, nextToken: $nextToken) {
+      items {
+        id
+        user {
+          id
+          username
+          email
+          stripeId
+          status
+          credits
+          createdAt
+          updatedAt
+          __typename
+        }
+        series {
+          id
+          tvdbid
+          slug
+          name
+          year
+          image
+          description
+          statusText
+          createdAt
+          updatedAt
+          __typename
+        }
+        boost
+        createdAt
+        updatedAt
+        userDetailsVotesId
+        seriesUserVoteSeriesId
         __typename
       }
       nextToken

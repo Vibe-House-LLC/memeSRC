@@ -1,9 +1,11 @@
 import PropTypes from 'prop-types';
-import { NavLink as RouterLink } from 'react-router-dom';
+import { Link, NavLink as RouterLink } from 'react-router-dom';
 // @mui
-import { Box, List, ListItemText } from '@mui/material';
+import { Box, List, ListItemText, Typography } from '@mui/material';
 //
+import { useContext, useEffect } from 'react';
 import { StyledNavItem, StyledNavItemIcon } from './styles';
+import { UserContext } from '../../UserContext';
 
 // ----------------------------------------------------------------------
 
@@ -12,14 +14,49 @@ NavSection.propTypes = {
 };
 
 export default function NavSection({ data = [], ...other }) {
+  const { user } = useContext(UserContext)
+  useEffect(() => {
+    console.log(user)
+  }, [user])
   return (
-    <Box {...other}>
-      <List disablePadding sx={{ p: 1 }}>
-        {data.map((item) => (
-          <NavItem key={item.title} item={item} />
-        ))}
-      </List>
-    </Box>
+    <>
+      {
+        !user?.['cognito:groups']?.includes('admins') && <Box {...other}>
+          <List disablePadding sx={{ p: 1 }}>
+            {data.filter(item => item.adminOnly === false).map((section, index) => (
+              <>
+                <Typography variant='body2' fontWeight={700} pl={2} mb={2} mt={index > 0 ? 5 : 0}>
+                  {section.sectionTitle}
+                </Typography>
+                {
+                  section.items.map(item =>
+                    <NavItem externalLink={item.externalLink} key={item.title} item={item} />
+                  )
+                }
+              </>
+            ))}
+          </List>
+        </Box>
+      }
+      {
+        user && user['cognito:groups']?.includes('admins') && <Box {...other}>
+          <List disablePadding sx={{ p: 1 }}>
+            {data.map((section, index) => (
+              <>
+                <Typography variant='body2' fontWeight={700} pl={2} mb={2} mt={index > 0 ? 5 : 0}>
+                  {section.sectionTitle}
+                </Typography>
+                {
+                  section.items.map(item =>
+                    <NavItem externalLink={item.externalLink} key={item.title} item={item} />
+                  )
+                }
+              </>
+            ))}
+          </List>
+        </Box>
+      }
+    </>
   );
 }
 
@@ -33,22 +70,46 @@ function NavItem({ item }) {
   const { title, path, icon, info } = item;
 
   return (
-    <StyledNavItem
-      component={RouterLink}
-      to={path}
-      sx={{
-        '&.active': {
-          color: 'text.primary',
-          bgcolor: 'action.selected',
-          fontWeight: 'fontWeightBold',
-        },
-      }}
-    >
-      <StyledNavItemIcon>{icon && icon}</StyledNavItemIcon>
+    <>
+      {item.externalLink === false &&
+        <StyledNavItem
+          component={RouterLink}
+          to={path}
+          sx={{
+            '&.active': {
+              color: 'text.primary',
+              bgcolor: 'action.selected',
+              fontWeight: 'fontWeightBold',
+            },
+          }}
+        >
+          <StyledNavItemIcon>{icon && icon}</StyledNavItemIcon>
 
-      <ListItemText disableTypography primary={title} />
+          <ListItemText disableTypography primary={title} />
 
-      {info && info}
-    </StyledNavItem>
+          {info && info}
+        </StyledNavItem>
+      }
+      {item.externalLink === true &&
+        <StyledNavItem
+          onClick={() => {window.open(path, '_blank');}}
+          target='_blank'
+          rel="noopener noreferrer"
+          sx={{
+            '&.active': {
+              color: 'text.primary',
+              bgcolor: 'action.selected',
+              fontWeight: 'fontWeightBold',
+            },
+          }}
+        >
+          <StyledNavItemIcon>{icon && icon}</StyledNavItemIcon>
+
+          <ListItemText disableTypography primary={title} />
+
+          {info && info}
+        </StyledNavItem>
+      }
+    </>
   );
 }
