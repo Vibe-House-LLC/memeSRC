@@ -44,7 +44,7 @@ export default function VotingPage() {
       });
       const voteData = await API.get('publicapi', '/vote/list');
       const sortedShows = seriesData.data.listSeries.items
-        .filter(show => show.statusText === 'requested') // filtering shows based on statusText
+        .filter((show) => show.statusText === 'requested') // filtering shows based on statusText
         .sort((a, b) => (voteData.votes[b.id] || 0) - (voteData.votes[a.id] || 0));
       setShows(sortedShows);
       setVotes(voteData.votes);
@@ -55,8 +55,7 @@ export default function VotingPage() {
     setLoading(false);
   };
 
-  const handleVote = async (idx, boost) => {
-    const seriesId = shows[idx].id;
+  const handleVote = async (seriesId, boost) => {
     setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: boost }));
 
     try {
@@ -87,12 +86,12 @@ export default function VotingPage() {
     }
   };
 
-  const handleUpvote = (idx) => {
-    handleVote(idx, 1);
+  const handleUpvote = (seriesId) => {
+    handleVote(seriesId, 1);
   };
 
-  const handleDownvote = (idx) => {
-    handleVote(idx, -1);
+  const handleDownvote = (seriesId) => {
+    handleVote(seriesId, -1);
   };
 
   const showImageStyle = {
@@ -114,8 +113,8 @@ export default function VotingPage() {
   };
 
   const filteredShows = shows
-  .filter(show => show.statusText === 'requested')
-  .filter(show => show.name.toLowerCase().includes(searchText.toLowerCase()));
+    .filter((show) => show.statusText === 'requested')
+    .filter((show) => show.name.toLowerCase().includes(searchText.toLowerCase()));
 
   return (
     <Container maxWidth="md">
@@ -153,11 +152,11 @@ export default function VotingPage() {
           }}
         />
       </Box>
-      <Grid container style={{minWidth: '100%'}}>
+      <Grid container style={{ minWidth: '100%' }}>
         {loading ? (
           <CircularProgress />
         ) : (
-          <FlipMove style={{minWidth: '100%'}}>
+          <FlipMove style={{ minWidth: '100%' }}>
             {filteredShows.map((show, idx) => (
               <Grid item xs={12} key={show.id} style={{ marginBottom: 15 }}>
                 <Card>
@@ -171,7 +170,7 @@ export default function VotingPage() {
                             aria-label="upvote"
                             onClick={() =>
                               user
-                                ? handleUpvote(idx)
+                                ? handleUpvote(show.id) 
                                 : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
                             }
                             disabled={userVotes[show.id] || votingStatus[show.id]}
@@ -189,7 +188,7 @@ export default function VotingPage() {
                             aria-label="downvote"
                             onClick={() =>
                               user
-                                ? handleDownvote(idx)
+                                ? handleDownvote(show.id) 
                                 : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
                             }
                             disabled={userVotes[show.id] || votingStatus[show.id]}
