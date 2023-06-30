@@ -12,6 +12,7 @@ import {
   InputAdornment,
   TextField,
   Button,
+  Badge,
 } from '@mui/material';
 import { ArrowUpward, ArrowDownward, Search, Close, LockOpen, Lock } from '@mui/icons-material';
 import FlipMove from 'react-flip-move';
@@ -142,146 +143,149 @@ export default function VotingPage() {
     .filter((show) => show.statusText === 'requested')
     .filter((show) => show.name.toLowerCase().includes(searchText.toLowerCase()));
 
-    return (
-      <Container maxWidth="md">
-        <Box my={4}>
-          <Typography variant="h3" component="h1" gutterBottom>
-            Vote for New Shows
-          </Typography>
-          <Typography variant="subtitle2">
-            Help prioritize requests by voting on your favorite shows. Upvote the shows you want to see more, and downvote
-            the shows you're not interested in.
-          </Typography>
-        </Box>
-        <Box my={2}>
-          <TextField
-            fullWidth
-            variant="outlined"
-            value={searchText}
-            onChange={handleSearchChange}
-            placeholder="Search requested shows..."
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <IconButton>
-                    <Search />
-                  </IconButton>
-                </InputAdornment>
-              ),
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton edge="end" onClick={() => setSearchText('')} disabled={!searchText}>
-                    <Close />
-                  </IconButton>
-                </InputAdornment>
-              ),
-            }}
-          />
-        </Box>
-        <Grid container style={{ minWidth: '100%' }}>
-          {loading ? (
-            <CircularProgress />
-          ) : (
-            <FlipMove style={{ minWidth: '100%' }}>
-              {filteredShows.map((show, idx) => (
-                <Grid item xs={12} key={show.id} style={{ marginBottom: 15 }}>
-                  <Card>
-                    <CardContent>
-                      <Box display="flex" alignItems="center">
-                        <Box flexGrow={1}>
-                          <Box display="flex" alignItems="center">
-                            <Box mr={2}>
-                              <Typography variant="subtitle1" color="text.secondary" style={{ opacity: 0.3 }}>
-                                #{show.rank} {/* Display the rank here */}
-                              </Typography>
-                            </Box>
-                            <Box mr={2}>
+  return (
+    <Container maxWidth="md">
+      <Box my={4}>
+        <Typography variant="h3" component="h1" gutterBottom>
+          Vote for New Shows
+        </Typography>
+        <Typography variant="subtitle2">
+          Help prioritize requests by voting on your favorite shows. Upvote the shows you want to see more, and downvote
+          the shows you're not interested in.
+        </Typography>
+      </Box>
+      <Box my={2}>
+        <TextField
+          fullWidth
+          variant="outlined"
+          value={searchText}
+          onChange={handleSearchChange}
+          placeholder="Search requested shows..."
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <IconButton>
+                  <Search />
+                </IconButton>
+              </InputAdornment>
+            ),
+            endAdornment: (
+              <InputAdornment position="end">
+                <IconButton edge="end" onClick={() => setSearchText('')} disabled={!searchText}>
+                  <Close />
+                </IconButton>
+              </InputAdornment>
+            ),
+          }}
+        />
+      </Box>
+      <Grid container style={{ minWidth: '100%' }}>
+        {loading ? (
+          <CircularProgress />
+        ) : (
+          <FlipMove style={{ minWidth: '100%' }}>
+            {filteredShows.map((show, idx) => (
+              <Grid item xs={12} key={show.id} style={{ marginBottom: 15 }}>
+                <Card>
+                  <CardContent>
+                    <Box display="flex" alignItems="center">
+                      <Box flexGrow={1}>
+                        <Box display="flex" alignItems="center">
+                          <Box mr={2}>
+                            <Badge 
+                              badgeContent={`#${show.rank}`} color="secondary"
+                              anchorOrigin={{
+                                vertical: 'top',
+                                horizontal: 'left',
+                              }}
+                            >
                               <img src={show.image} alt={show.name} style={showImageStyle} />
-                            </Box>
-                            <Box>
-                              <Typography variant="h4">{show.name}</Typography>
-                              <Box display="flex" alignItems="center">
-                                <Typography
-                                  variant="subtitle2"
-                                  color="success.main"
-                                  sx={{ fontSize: '0.7rem', opacity: 0.6 }}
-                                >
-                                  <ArrowUpward fontSize="small" sx={{ verticalAlign: 'middle' }} />
-                                  <b>{upvotes[show.id] || 0}</b>
-                                </Typography>
-                                <Typography
-                                  variant="subtitle2"
-                                  color="error.main"
-                                  ml={1}
-                                  sx={{ fontSize: '0.7rem', opacity: 0.6 }}
-                                >
-                                  <ArrowDownward fontSize="small" sx={{ verticalAlign: 'middle' }} />
-                                  <b>{downvotes[show.id] || 0}</b>
-                                </Typography>
-                              </Box>
-                              <Typography variant="body2" color="text.secondary" mt={1} style={descriptionStyle}>
-                                {show.description}
+                            </Badge>
+                          </Box>
+                          <Box>
+                            <Typography variant="h5">{show.name}</Typography>
+                            <Box display="flex" alignItems="center">
+                              <Typography
+                                variant="subtitle2"
+                                color="success.main"
+                                sx={{ fontSize: '0.7rem', opacity: 0.6 }}
+                              >
+                                <ArrowUpward fontSize="small" sx={{ verticalAlign: 'middle' }} />
+                                <b>{upvotes[show.id] || 0}</b>
+                              </Typography>
+                              <Typography
+                                variant="subtitle2"
+                                color="error.main"
+                                ml={1}
+                                sx={{ fontSize: '0.7rem', opacity: 0.6 }}
+                              >
+                                <ArrowDownward fontSize="small" sx={{ verticalAlign: 'middle' }} />
+                                <b>{downvotes[show.id] || 0}</b>
                               </Typography>
                             </Box>
-                          </Box>
-                        </Box>
-                        <Box mr={2}>
-                          <Box>
-                            {votingStatus[show.id] === 1 ? (
-                              <CircularProgress size={20} sx={{ ml: 1.2, mb: 1.5 }} />
-                            ) : (
-                              <IconButton
-                                aria-label="upvote"
-                                onClick={() =>
-                                  user
-                                    ? handleUpvote(show.id)
-                                    : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
-                                }
-                                disabled={userVotes[show.id] || votingStatus[show.id]}
-                              >
-                                {userVotes[show.id] === 1 ? (
-                                  <Lock sx={{ color: 'success.main' }} />
-                                ) : (
-                                  <ArrowUpward sx={{ color: userVotes[show.id] === 1 ? 'success.main' : 'inherit' }} />
-                                )}
-                              </IconButton>
-                            )}
-                          </Box>
-                          <Box>
-                            <Typography variant="h5" gutterBottom textAlign="center" paddingTop={0.5}>
-                              {votes[show.id] || 0}
+                            <Typography variant="body2" color="text.secondary" mt={1} style={descriptionStyle}>
+                              {show.description}
                             </Typography>
-                          </Box>
-                          <Box>
-                            {votingStatus[show.id] === -1 ? (
-                              <CircularProgress size={20} sx={{ ml: 1.2, mt: 1.5 }} />
-                            ) : (
-                              <IconButton
-                                aria-label="downvote"
-                                onClick={() =>
-                                  user
-                                    ? handleDownvote(show.id)
-                                    : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
-                                }
-                                disabled={userVotes[show.id] || votingStatus[show.id]}
-                              >
-                                {userVotes[show.id] === -1 ? (
-                                  <Lock sx={{ color: 'error.main' }} />
-                                ) : (
-                                  <ArrowDownward sx={{ color: userVotes[show.id] === -1 ? 'error.main' : 'inherit' }} />
-                                )}
-                              </IconButton>
-                            )}
                           </Box>
                         </Box>
                       </Box>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              ))}
-            </FlipMove>
-          )}
-        </Grid>
-      </Container>
-    );
+                      <Box mr={2}>
+                        <Box>
+                          {votingStatus[show.id] === 1 ? (
+                            <CircularProgress size={20} sx={{ ml: 1.2, mb: 1.5 }} />
+                          ) : (
+                            <IconButton
+                              aria-label="upvote"
+                              onClick={() =>
+                                user
+                                  ? handleUpvote(show.id)
+                                  : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
+                              }
+                              disabled={userVotes[show.id] || votingStatus[show.id]}
+                            >
+                              {userVotes[show.id] === 1 ? (
+                                <Lock sx={{ color: 'success.main' }} />
+                              ) : (
+                                <ArrowUpward sx={{ color: userVotes[show.id] === 1 ? 'success.main' : 'inherit' }} />
+                              )}
+                            </IconButton>
+                          )}
+                        </Box>
+                        <Box>
+                          <Typography variant="h5" gutterBottom textAlign="center" paddingTop={0.5}>
+                            {votes[show.id] || 0}
+                          </Typography>
+                        </Box>
+                        <Box>
+                          {votingStatus[show.id] === -1 ? (
+                            <CircularProgress size={20} sx={{ ml: 1.2, mt: 1.5 }} />
+                          ) : (
+                            <IconButton
+                              aria-label="downvote"
+                              onClick={() =>
+                                user
+                                  ? handleDownvote(show.id)
+                                  : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
+                              }
+                              disabled={userVotes[show.id] || votingStatus[show.id]}
+                            >
+                              {userVotes[show.id] === -1 ? (
+                                <Lock sx={{ color: 'error.main' }} />
+                              ) : (
+                                <ArrowDownward sx={{ color: userVotes[show.id] === -1 ? 'error.main' : 'inherit' }} />
+                              )}
+                            </IconButton>
+                          )}
+                        </Box>
+                      </Box>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          </FlipMove>
+        )}
+      </Grid>
+    </Container>
+  );
 }
