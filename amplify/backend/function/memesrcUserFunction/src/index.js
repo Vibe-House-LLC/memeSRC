@@ -55,7 +55,6 @@ async function getAllVotes(userSub, nextToken) {
     }
   `;
 
-  // console.log('GETTING VOTES');
   console.log(query);
   const response = await makeRequest(query);
   if (response.statusCode !== 200) {
@@ -63,9 +62,7 @@ async function getAllVotes(userSub, nextToken) {
       `Failed to fetch votes. Status code: ${response.statusCode}. Errors: ${JSON.stringify(response.body.errors)}`
     );
   }
-  // console.log('RESPONSE FOR FIRST PAGE OF VOTES');
-  // console.log(response);
-  // console.log(JSON.stringify(response));
+
   let allItems = response.body.data.listSeriesUserVotes.items;
   if (response.body.data.listSeriesUserVotes.nextToken) {
     console.log('loading another page...');
@@ -75,6 +72,10 @@ async function getAllVotes(userSub, nextToken) {
     console.log('loaded another page');
   }
 
+  return allItems;
+}
+
+async function processVotes(allItems, userSub) {
   const votesCount = {};
   const currentUserVotes = {};
   const votesCountUp = {};
@@ -111,7 +112,6 @@ async function getAllVotes(userSub, nextToken) {
   });
 
   // console.log('Vote Loading Results:');
-  // console.log(allItems);
   // console.log(votesCount);
   // console.log(currentUserVotes);
   // console.log(votesCountUp);
@@ -129,7 +129,6 @@ async function getAllVotes(userSub, nextToken) {
     currentUserVotesDown,
   };
 }
-
 
 function updateUserDetailsCredits(params) {
   const id = params.id ? `id: "${params.id}",` : '';
@@ -418,10 +417,10 @@ export const handler = async (event) => {
 
   if (path === `/${process.env.ENV}/public/vote/list`) {
     try {
-      // console.log('VOTES:');
-      const { allVotes, votesCount, currentUserVotes, votesCountUp, votesCountDown, currentUserVotesUp, currentUserVotesDown } = await getAllVotes(userSub);
-      // console.log(allVotes);
-  
+      // Pull and process the votes from GraphQL
+      const rawVotes = await getAllVotes(userSub);
+      const { allVotes, votesCount, currentUserVotes, votesCountUp, votesCountDown, currentUserVotesUp, currentUserVotesDown } = await processVotes(rawVotes, userSub);
+
       const result = {
         votes: votesCount,
         userVotes: currentUserVotes,
