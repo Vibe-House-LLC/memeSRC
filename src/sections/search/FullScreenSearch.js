@@ -410,7 +410,7 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
                         size="small"
                         style={{ marginRight: '5px' }}
                       >
-                        Try
+                        Vote
                       </Button>
                       <IconButton
                         color="inherit"
@@ -430,7 +430,7 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
                     opacity: 0.9,
                   }}
                 >
-                  <b>New:</b> Vote again every 24h!
+                  <b>Update:</b> New show voting!
                 </Alert>
               )}
             </Grid>
