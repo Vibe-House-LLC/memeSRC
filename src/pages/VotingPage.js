@@ -42,23 +42,38 @@ export default function VotingPage() {
   const fetchShowsAndVotes = async () => {
     setLoading(true);
     try {
-      const seriesData = await API.graphql({
-        ...graphqlOperation(listSeries),
-        authMode: 'API_KEY',
-      });
+      // Recursive function to handle pagination
+      const fetchSeries = async (nextToken = null) => {
+        const result = await API.graphql({
+          ...graphqlOperation(listSeries, { nextToken }), // Pass the nextToken to the listSeries operation
+          authMode: 'API_KEY',
+        });
+  
+        let items = result.data.listSeries.items;
+  
+        if (result.data.listSeries.nextToken) {
+          items = items.concat(await fetchSeries(result.data.listSeries.nextToken)); // Call fetchSeries recursively if there's a nextToken
+        }
+  
+        return items;
+      };
+  
+      // Fetch all series data
+      const seriesData = await fetchSeries();
+  
       const voteData = await API.get('publicapi', '/vote/list');
-      const sortedShows = seriesData.data.listSeries.items
+      const sortedShows = seriesData
         .filter((show) => show.statusText === 'requested') // filtering shows based on statusText
         .sort((a, b) => (voteData.votes[b.id] || 0) - (voteData.votes[a.id] || 0));
-
+  
       sortedShows.forEach((show, index) => {
         show.rank = index + 1; // add a rank to each show
       });
-
+  
       setShows(sortedShows);
       setVotes(voteData.votes);
       setUserVotes(voteData.userVotes);
-
+  
       // Set upvotes and downvotes using response data
       setUpvotes(voteData.votesUp);
       setDownvotes(voteData.votesDown);
@@ -67,6 +82,7 @@ export default function VotingPage() {
     }
     setLoading(false);
   };
+  
 
   const handleVote = async (seriesId, boost) => {
     setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: boost }));
