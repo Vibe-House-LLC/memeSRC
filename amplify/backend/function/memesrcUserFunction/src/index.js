@@ -55,7 +55,7 @@ async function getAllVotes(userSub, nextToken) {
     }
   `;
 
-  console.log('GETTING VOTES');
+  // console.log('GETTING VOTES');
   console.log(query);
   const response = await makeRequest(query);
   if (response.statusCode !== 200) {
@@ -63,12 +63,14 @@ async function getAllVotes(userSub, nextToken) {
       `Failed to fetch votes. Status code: ${response.statusCode}. Errors: ${JSON.stringify(response.body.errors)}`
     );
   }
-  console.log('RESPONSE FOR FIRST PAGE OF VOTES');
-  console.log(response);
-  console.log(JSON.stringify(response));
+  // console.log('RESPONSE FOR FIRST PAGE OF VOTES');
+  // console.log(response);
+  // console.log(JSON.stringify(response));
   let allItems = response.body.data.listSeriesUserVotes.items;
   if (response.body.data.listSeriesUserVotes.nextToken) {
-    let newItems = await getAllVotes(response.body.data.listSeriesUserVotes.nextToken);
+    console.log('loading another page...');
+    console.log(`nextToken: ${response.body.data.listSeriesUserVotes.nextToken}`)
+    let newItems = await getAllVotes(userSub, response.body.data.listSeriesUserVotes.nextToken);
     allItems = allItems.concat(newItems);
     console.log('loaded another page');
   }
@@ -80,7 +82,7 @@ async function getAllVotes(userSub, nextToken) {
   const currentUserVotesUp = {};
   const currentUserVotesDown = {};
 
-  console.log('CHECKING IF USER VOTES');
+  // console.log('CHECKING IF USER VOTES');
   allItems.forEach((vote) => {
     if (vote.boost > 0) {
       votesCountUp[vote.seriesUserVoteSeriesId] = (votesCountUp[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
@@ -108,14 +110,14 @@ async function getAllVotes(userSub, nextToken) {
     }
   });
 
-  console.log('Vote Loading Results:');
-  console.log(allItems);
-  console.log(votesCount);
-  console.log(currentUserVotes);
-  console.log(votesCountUp);
-  console.log(votesCountDown);
-  console.log(currentUserVotesUp);
-  console.log(currentUserVotesDown);
+  // console.log('Vote Loading Results:');
+  // console.log(allItems);
+  // console.log(votesCount);
+  // console.log(currentUserVotes);
+  // console.log(votesCountUp);
+  // console.log(votesCountDown);
+  // console.log(currentUserVotesUp);
+  // console.log(currentUserVotesDown);
 
   return {
     allItems,
@@ -170,7 +172,7 @@ function updateUserDetails(params) {
 }
 
 function getUserDetails(params) {
-  console.log(`getUserDetails PARAMS: ${params}`);
+  // console.log(`getUserDetails PARAMS: ${params}`);
   if (params.username) {
     const query = `
           query listUserDetails {
@@ -195,7 +197,7 @@ function getUserDetails(params) {
               }
           }
       `;
-    console.log(query);
+    // console.log(query);
     return query;
   } else if (params.subId) {
     const query = `
@@ -219,7 +221,7 @@ function getUserDetails(params) {
               }
           }
       `;
-    console.log(query);
+    // console.log(query);
     return query;
   }
 }
@@ -366,22 +368,22 @@ export const handler = async (event) => {
   }
 
   if (path === `/${process.env.ENV}/public/vote`) {
-    console.log('GET SERIES ID FROM BODY');
+    // console.log('GET SERIES ID FROM BODY');
     const seriesId = body.seriesId;
     const boost = body.boost;
-    console.log(seriesId);
+    // console.log(seriesId);
 
     console.log('LOAD USER');
     const userDetails = await makeRequest(getUserDetails({ subId: userSub }));
     console.log(userDetails);
 
-    console.log('SEPERATE USER VOTES');
+    // console.log('SEPERATE USER VOTES');
     const usersVotes = userDetails.body.data.getUserDetails.votes.items;
-    console.log(usersVotes);
+    // console.log(usersVotes);
 
-    console.log('CHECK IF VOTE EXIST FOR SERIES ID');
+    // console.log('CHECK IF VOTE EXIST FOR SERIES ID');
     const voteExist = usersVotes?.some((item) => item.series?.id === seriesId);
-    console.log(voteExist);
+    // console.log(voteExist);
 
     if (!voteExist) {
       // They have not voted for this series yet
@@ -416,9 +418,9 @@ export const handler = async (event) => {
 
   if (path === `/${process.env.ENV}/public/vote/list`) {
     try {
-      console.log('VOTES:');
+      // console.log('VOTES:');
       const { allVotes, votesCount, currentUserVotes, votesCountUp, votesCountDown, currentUserVotesUp, currentUserVotesDown } = await getAllVotes(userSub);
-      console.log(allVotes);
+      // console.log(allVotes);
   
       const result = {
         votes: votesCount,
@@ -442,7 +444,7 @@ export const handler = async (event) => {
     }
   }
   
-  console.log(response);
+  // console.log(response);
 
   return {
     statusCode: response.statusCode,
