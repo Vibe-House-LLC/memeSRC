@@ -13,12 +13,23 @@ import {
   TextField,
   Button,
   Badge,
+  styled,
+  Fab,
 } from '@mui/material';
 import { ArrowUpward, ArrowDownward, Search, Close, LockOpen, Lock } from '@mui/icons-material';
 import FlipMove from 'react-flip-move';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { listSeries } from '../graphql/queries';
 import { UserContext } from '../UserContext';
+
+const StyledBadge = styled(Badge)(() => ({
+  '& .MuiBadge-badge': {
+    padding: '0 3px',
+    backgroundColor: 'rgba(0, 0, 0, 1)',
+    fontWeight: 'bold',
+    fontSize: '7pt',
+  },
+}));
 
 export default function VotingPage() {
   const navigate = useNavigate();
@@ -48,32 +59,32 @@ export default function VotingPage() {
           ...graphqlOperation(listSeries, { nextToken }), // Pass the nextToken to the listSeries operation
           authMode: 'API_KEY',
         });
-  
+
         let items = result.data.listSeries.items;
-  
+
         if (result.data.listSeries.nextToken) {
           items = items.concat(await fetchSeries(result.data.listSeries.nextToken)); // Call fetchSeries recursively if there's a nextToken
         }
-  
+
         return items;
       };
-  
+
       // Fetch all series data
       const seriesData = await fetchSeries();
-  
+
       const voteData = await API.get('publicapi', '/vote/list');
       const sortedShows = seriesData
         .filter((show) => show.statusText === 'requested') // filtering shows based on statusText
         .sort((a, b) => (voteData.votes[b.id] || 0) - (voteData.votes[a.id] || 0));
-  
+
       sortedShows.forEach((show, index) => {
         show.rank = index + 1; // add a rank to each show
       });
-  
+
       setShows(sortedShows);
       setVotes(voteData.votes);
       setUserVotes(voteData.userVotes);
-  
+
       // Set upvotes and downvotes using response data
       setUpvotes(voteData.votesUp);
       setDownvotes(voteData.votesDown);
@@ -82,7 +93,6 @@ export default function VotingPage() {
     }
     setLoading(false);
   };
-  
 
   const handleVote = async (seriesId, boost) => {
     setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: boost }));
@@ -247,11 +257,21 @@ export default function VotingPage() {
                         </Box>
                       </Box>
                       <Box mr={0}>
-                        <Box>
+                        <Box display="flex" flexDirection="column" justifyContent="space-between" height="100%">
                           {votingStatus[show.id] === 1 ? (
-                            <CircularProgress size={20} sx={{ ml: 1.2, mb: 1.5 }} />
+                            <CircularProgress size={25} sx={{ ml: 1.2, mb: 1.5 }} />
                           ) : (
-                            <IconButton
+                            <StyledBadge
+                                anchorOrigin={{
+                                  vertical: 'top',
+                                  horizontal: 'right',
+                                }}
+                                badgeContent={'+10'}
+                                sx={{
+                                  color: userVotes[show.id] === 1 ? 'success.main' : 'inherit',
+                                }}
+                              >
+                            <Fab
                               aria-label="upvote"
                               onClick={() =>
                                 user
@@ -259,32 +279,45 @@ export default function VotingPage() {
                                   : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
                               }
                               disabled={userVotes[show.id] || votingStatus[show.id]}
+                              size='small'
                             >
-                              <ArrowUpward sx={{ color: userVotes[show.id] === 1 ? 'success.main' : 'inherit' }} />
-                            </IconButton>
+                              
+                                <ArrowUpward sx={{ color: userVotes[show.id] === 1 ? 'success.main' : 'inherit' }} />
+                            </Fab>
+                            </StyledBadge>
                           )}
                         </Box>
-                        <Box>
-                          <Typography variant="h5" gutterBottom textAlign="center" >
+                        <Box alignItems="center" height="100%">
+                          <Typography variant="h5" textAlign="center">
                             {votes[show.id] || 0}
                           </Typography>
                         </Box>
                         <Box>
-                          {votingStatus[show.id] === -1 ? (
-                            <CircularProgress size={20} sx={{ ml: 1.2, mt: 1.5 }} />
-                          ) : (
-                            <IconButton
-                              aria-label="downvote"
-                              onClick={() =>
-                                user
-                                  ? handleDownvote(show.id)
-                                  : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
-                              }
-                              disabled={userVotes[show.id] || votingStatus[show.id]}
+                        <StyledBadge
+                              anchorOrigin={{
+                                vertical: 'bottom',
+                                horizontal: 'right',
+                              }}
+                              badgeContent={'+10'}
+                              color="primary"
                             >
-                              <ArrowDownward sx={{ color: userVotes[show.id] === -1 ? 'error.main' : 'inherit' }} />
-                            </IconButton>
+                          {votingStatus[show.id] === -1 ? (
+                            <CircularProgress size={25} sx={{ ml: 1.3, mt: 1.6 }} />
+                          ) : (
+                              <Fab
+                                aria-label="downvote"
+                                onClick={() =>
+                                  user
+                                    ? handleDownvote(show.id)
+                                    : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
+                                }
+                                disabled={userVotes[show.id] || votingStatus[show.id]}
+                                size="small"
+                              >
+                                <ArrowDownward sx={{ color: userVotes[show.id] === -1 ? 'error.main' : 'inherit' }} />
+                              </Fab>
                           )}
+                          </StyledBadge>
                         </Box>
                       </Box>
                     </Box>
@@ -305,7 +338,7 @@ export default function VotingPage() {
               }}
             >
               <Typography variant="h6" gutterBottom>
-                Looking for one not in the list? 
+                Looking for one not in the list?
               </Typography>
               <Button
                 variant="contained"
@@ -313,7 +346,7 @@ export default function VotingPage() {
                 onClick={() => window.open('https://forms.gle/8CETtVbwYoUmxqbi7', '_blank')}
                 style={{
                   marginTop: 10,
-                  marginBottom: 15
+                  marginBottom: 15,
                 }}
               >
                 Make a request
