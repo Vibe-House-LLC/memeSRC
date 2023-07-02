@@ -139,7 +139,7 @@ export default function VotingPage() {
       } else if (boost === -1) {
         setDownvotes((prevDownvotes) => {
           const newDownvotes = { ...prevDownvotes };
-          newDownvotes[seriesId] = (newDownvotes[seriesId] || 0) - 1; // subtract 1 for a downvote
+          newDownvotes[seriesId] = (newDownvotes[seriesId] || 0) + 1;
           return newDownvotes;
         });
         setUserVotesDown((prevUserVotesDown) => {
