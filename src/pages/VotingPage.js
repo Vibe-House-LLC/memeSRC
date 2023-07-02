@@ -49,6 +49,8 @@ export default function VotingPage() {
   const [searchText, setSearchText] = useState('');
   const [upvotes, setUpvotes] = useState({});
   const [downvotes, setDownvotes] = useState({});
+  const [ableToVote, setAbleToVote] = useState({});
+
 
   const location = useLocation();
 
@@ -96,6 +98,7 @@ export default function VotingPage() {
       setUserVotesDown(voteData.userVotesDown);
       setUpvotes(voteData.votesUp);
       setDownvotes(voteData.votesDown);
+      setAbleToVote(voteData.ableToVote);
     } catch (error) {
       console.error('Error fetching series data:', error);
     }
@@ -296,10 +299,10 @@ export default function VotingPage() {
                                     ? handleUpvote(show.id)
                                     : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
                                 }
-                                disabled={userVotes[show.id] || votingStatus[show.id]}
+                                disabled={ableToVote[show.id] !== true || votingStatus[show.id]}
                                 size="small"
                               >
-                                <ArrowUpward sx={{ color: userVotes[show.id] === 1 ? 'success.main' : 'inherit' }} />
+                                <ArrowUpward sx={{ color: ableToVote[show.id] !== true ? 'success.main' : 'inherit' }} />
                               </StyledFab>
                             </StyledBadge>
                           )}
@@ -330,10 +333,10 @@ export default function VotingPage() {
                                     ? handleDownvote(show.id)
                                     : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
                                 }
-                                disabled={userVotes[show.id] || votingStatus[show.id]}
+                                disabled={ableToVote[show.id] !== true || votingStatus[show.id]}
                                 size="small"
                               >
-                                <ArrowDownward sx={{ color: userVotes[show.id] < 0 ? 'error.main' : 'inherit' }} />
+                                <ArrowDownward sx={{ color: ableToVote[show.id] !== true ? 'error.main' : 'inherit' }} />
                               </StyledFab>
                             )}
                           </StyledBadge>
