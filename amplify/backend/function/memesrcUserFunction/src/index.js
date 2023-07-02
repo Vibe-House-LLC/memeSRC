@@ -123,10 +123,11 @@ async function processVotes(allItems, userSub) {
 
   // Compare the timestamp of the latest vote for each series with the current time
   const isLastVoteOlderThanFiveMinutes = {};
-  const currentTime = new Date();
+  const currentTime = new Date().getTime(); // Get the current timestamp in milliseconds
   for (const seriesId in lastUserVoteTimestamps) {
-    const diffInMinutes = (currentTime - lastUserVoteTimestamps[seriesId]) / 1000 / 60;
-    isLastVoteOlderThanFiveMinutes[seriesId] = diffInMinutes > 5;
+    const voteTime = lastUserVoteTimestamps[seriesId].getTime(); // Get the vote timestamp in milliseconds
+    const diffInMinutes = (currentTime - voteTime) / (1000 * 60); // Calculate the difference in minutes
+    isLastVoteOlderThanFiveMinutes[seriesId] = diffInMinutes > 5; // Compare if the difference is greater than 5 minutes
   }
 
   // console.log('Vote Loading Results:');
@@ -208,6 +209,7 @@ function getUserDetails(params) {
                             series {
                                 id
                             }
+                            createdAt
                         }
                       }
                       credits
@@ -233,13 +235,14 @@ function getUserDetails(params) {
                         series {
                             id
                         }
+                        createdAt
                     }
                   }
                   credits
               }
           }
       `;
-    // console.log(query);
+    console.log(query);
     return query;
   }
 }
@@ -386,54 +389,66 @@ export const handler = async (event) => {
   }
 
   if (path === `/${process.env.ENV}/public/vote`) {
-    // console.log('GET SERIES ID FROM BODY');
     const seriesId = body.seriesId;
     const boost = body.boost;
-    // console.log(seriesId);
-
+  
     console.log('LOAD USER');
     const userDetails = await makeRequest(getUserDetails({ subId: userSub }));
-    console.log(userDetails);
-
-    // console.log('SEPERATE USER VOTES');
+    console.log('User Details:', userDetails);
+  
+    console.log('SEPARATE USER VOTES');
     const usersVotes = userDetails.body.data.getUserDetails.votes.items;
-    // console.log(usersVotes);
-
-    // console.log('CHECK IF VOTE EXIST FOR SERIES ID');
-    const voteExist = usersVotes?.some((item) => item.series?.id === seriesId);
-    // console.log(voteExist);
-
-    if (!voteExist) {
-      // They have not voted for this series yet
-
-      // Build query to cast vote
+    console.log('User Votes:', usersVotes);
+  
+    console.log('CHECK IF VOTE EXISTS FOR SERIES ID');
+    const lastVote = usersVotes
+      ?.filter((item) => item.series?.id === seriesId)
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+    console.log('Last Vote:', lastVote);
+  
+    // Check if the last vote was more than 5 minutes ago
+    let canVote = false;
+    if (lastVote) {
+      const voteTime = new Date(lastVote.createdAt);
+      console.log(`Last Vote Time: ${voteTime}`)
+      const diffInMinutes = (new Date() - voteTime) / 1000 / 60;
+      console.log(`diffInMinutes: ${diffInMinutes}`)
+      canVote = diffInMinutes > 5;
+    } else {
+      canVote = true;
+    }
+  
+    console.log('Can Vote:', canVote);
+  
+    if (canVote) {
       console.log('CREATE VOTE QUERY');
       const createVote = `
-            mutation createSeriesUserVote {
-                createSeriesUserVote(input: {userDetailsVotesId: "${userSub}", seriesUserVoteSeriesId: "${seriesId}", boost: ${
+        mutation createSeriesUserVote {
+            createSeriesUserVote(input: {userDetailsVotesId: "${userSub}", seriesUserVoteSeriesId: "${seriesId}", boost: ${
         boost > 0 ? 1 : -1
       }}) {
-                  id
-                }
+              id
             }
-        `;
-      console.log(createVote);
-
+        }
+      `;
+      console.log('Create Vote Query:', createVote);
+  
       // Hit GraphQL to place vote
       response = await makeRequest(createVote);
-      console.log(response);
+      console.log('Vote Response:', response);
     } else {
-      // The user has already voted. Return a Forbidden error with details
+      // The user has already voted recently. Return a Forbidden error with details
       response = {
         statusCode: 403,
         body: {
-          name: 'MaxVotesReached',
-          message: 'You have reached the maximum number of votes for this series.',
+          name: 'VoteTooRecent',
+          message: 'You can only vote once every 5 minutes.',
         },
       };
+      console.log('Forbidden Error:', response);
     }
   }
-
+  
   if (path === `/${process.env.ENV}/public/vote/list`) {
     try {
       const rawVotes = await getAllVotes(userSub);
@@ -469,8 +484,8 @@ export const handler = async (event) => {
         body: `Failed to get votes: ${error.message}`,
       };
     }
-  }  
-  
+  }
+
   // console.log(response);
 
   return {

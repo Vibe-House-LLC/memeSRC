@@ -128,29 +128,36 @@ export default function VotingPage() {
         return newVotes;
       });
 
-      if (boost === 1) {
-        setUpvotes((prevUpvotes) => {
-          const newUpvotes = { ...prevUpvotes };
-          newUpvotes[seriesId] = (newUpvotes[seriesId] || 0) + 1;
-          return newUpvotes;
-        });
-        setUserVotesUp((prevUserVotesUp) => {
-          const newUserVotesUp = { ...prevUserVotesUp };
-          newUserVotesUp[seriesId] = (newUserVotesUp[seriesId] || 0) + 1;
-          return newUserVotesUp;
-        });
-      } else if (boost === -1) {
-        setDownvotes((prevDownvotes) => {
-          const newDownvotes = { ...prevDownvotes };
-          newDownvotes[seriesId] = (newDownvotes[seriesId] || 0) + 1;
-          return newDownvotes;
-        });
-        setUserVotesDown((prevUserVotesDown) => {
-          const newUserVotesDown = { ...prevUserVotesDown };
-          newUserVotesDown[seriesId] = (newUserVotesDown[seriesId] || 0) + 1;
-          return newUserVotesDown;
-        });
-      }
+      // Deduct a vote from ableToVote for that series
+      setAbleToVote((prevAbleToVote) => {
+        const newAbleToVote = { ...prevAbleToVote };
+        newAbleToVote[seriesId] = newAbleToVote[seriesId] ? newAbleToVote[seriesId] - 1 : 0;
+        return newAbleToVote;
+      });
+
+    if (boost === 1) {
+      setUpvotes((prevUpvotes) => {
+        const newUpvotes = { ...prevUpvotes };
+        newUpvotes[seriesId] = (newUpvotes[seriesId] || 0) + 1;
+        return newUpvotes;
+      });
+      setUserVotesUp((prevUserVotesUp) => {
+        const newUserVotesUp = { ...prevUserVotesUp };
+        newUserVotesUp[seriesId] = (newUserVotesUp[seriesId] || 0) + 1;
+        return newUserVotesUp;
+      });
+    } else if (boost === -1) {
+      setDownvotes((prevDownvotes) => {
+        const newDownvotes = { ...prevDownvotes };
+        newDownvotes[seriesId] = (newDownvotes[seriesId] || 0) + 1;
+        return newDownvotes;
+      });
+      setUserVotesDown((prevUserVotesDown) => {
+        const newUserVotesDown = { ...prevUserVotesDown };
+        newUserVotesDown[seriesId] = (newUserVotesDown[seriesId] || 0) + 1;
+        return newUserVotesDown;
+      });
+    }
 
       setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: false }));
     } catch (error) {
@@ -250,9 +257,13 @@ export default function VotingPage() {
                               <img src={show.image} alt={show.name} style={showImageStyle} />
                             </Badge>
                           </Box>
-                          <Stack direction='column'>
+                          <Stack direction="column">
                             <Typography variant="h5">{show.name}</Typography>
-                            <Box display="flex" alignItems="center"  sx={{ marginTop: '0.1rem', marginBottom: '-0.5rem' }}>
+                            <Box
+                              display="flex"
+                              alignItems="center"
+                              sx={{ marginTop: '0.1rem', marginBottom: '-0.5rem' }}
+                            >
                               <Typography
                                 variant="subtitle2"
                                 color="success.main"
@@ -272,7 +283,7 @@ export default function VotingPage() {
                               </Typography>
                             </Box>
                             <Typography variant="body2" color="text.secondary" mt={1} style={descriptionStyle}>
-                              {show.description}
+                              {`${show.id} -- user: ${user.sub} --- ${show.description} `}
                             </Typography>
                           </Stack>
                         </Box>
@@ -289,7 +300,7 @@ export default function VotingPage() {
                               }}
                               badgeContent={userVotesUp[show.id] ? `+${userVotesUp[show.id] || 0}` : null}
                               sx={{
-                                color: userVotes[show.id] === 1 ? 'success.main' : 'inherit',
+                                color: 'success.main',
                               }}
                             >
                               <StyledFab
@@ -302,7 +313,14 @@ export default function VotingPage() {
                                 disabled={ableToVote[show.id] !== true || votingStatus[show.id]}
                                 size="small"
                               >
-                                <ArrowUpward sx={{ color: ableToVote[show.id] !== true ? 'success.main' : 'inherit' }} />
+                                <ArrowUpward
+                                  sx={{
+                                    color:
+                                      userVotesUp[show.id] && ableToVote[show.id] !== true > 0
+                                        ? 'success.main'
+                                        : 'inherit',
+                                  }}
+                                />
                               </StyledFab>
                             </StyledBadge>
                           )}
@@ -320,7 +338,7 @@ export default function VotingPage() {
                             }}
                             badgeContent={userVotesDown[show.id] || 0}
                             sx={{
-                              color: userVotes[show.id] < 0 ? 'error.main' : 'inherit',
+                              color: 'error.main'
                             }}
                           >
                             {votingStatus[show.id] === -1 ? (
@@ -336,7 +354,14 @@ export default function VotingPage() {
                                 disabled={ableToVote[show.id] !== true || votingStatus[show.id]}
                                 size="small"
                               >
-                                <ArrowDownward sx={{ color: ableToVote[show.id] !== true ? 'error.main' : 'inherit' }} />
+                                <ArrowDownward
+                                  sx={{
+                                    color:
+                                      userVotesDown[show.id] < 0 && ableToVote[show.id] !== true
+                                        ? 'error.main'
+                                        : 'inherit',
+                                  }}
+                                />
                               </StyledFab>
                             )}
                           </StyledBadge>
