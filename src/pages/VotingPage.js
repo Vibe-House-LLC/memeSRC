@@ -15,6 +15,7 @@ import {
   Badge,
   styled,
   Fab,
+  Stack,
 } from '@mui/material';
 import { ArrowUpward, ArrowDownward, Search, Close, LockOpen, Lock } from '@mui/icons-material';
 import FlipMove from 'react-flip-move';
@@ -155,14 +156,14 @@ export default function VotingPage() {
   };
 
   const showImageStyle = {
-    maxWidth: '125px',
-    maxHeight: '125px',
+    maxWidth: '100px',
+    maxHeight: '100px',
     objectFit: 'cover',
   };
 
   const descriptionStyle = {
     display: '-webkit-box',
-    WebkitLineClamp: 3,
+    WebkitLineClamp: 2,
     WebkitBoxOrient: 'vertical',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
@@ -236,9 +237,9 @@ export default function VotingPage() {
                               <img src={show.image} alt={show.name} style={showImageStyle} />
                             </Badge>
                           </Box>
-                          <Box>
+                          <Stack direction='column'>
                             <Typography variant="h5">{show.name}</Typography>
-                            <Box display="flex" alignItems="center">
+                            <Box display="flex" alignItems="center"  sx={{ marginTop: '0.1rem', marginBottom: '-0.5rem' }}>
                               <Typography
                                 variant="subtitle2"
                                 color="success.main"
@@ -260,7 +261,7 @@ export default function VotingPage() {
                             <Typography variant="body2" color="text.secondary" mt={1} style={descriptionStyle}>
                               {show.description}
                             </Typography>
-                          </Box>
+                          </Stack>
                         </Box>
                       </Box>
                       <Box mr={0}>
