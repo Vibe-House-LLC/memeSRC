@@ -31,6 +31,11 @@ const StyledBadge = styled(Badge)(() => ({
   },
 }));
 
+const StyledFab = styled(Fab)(() => ({
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    zIndex: 0
+}));
+
 export default function VotingPage() {
   const navigate = useNavigate();
   const [shows, setShows] = useState([]);
@@ -217,7 +222,7 @@ export default function VotingPage() {
                 <Card>
                   <CardContent>
                     <Box display="flex" alignItems="center">
-                      <Box flexGrow={1}>
+                      <Box flexGrow={1} marginRight={2}>
                         <Box display="flex" alignItems="center">
                           <Box mr={2}>
                             <Badge
@@ -268,12 +273,12 @@ export default function VotingPage() {
                                 vertical: 'top',
                                 horizontal: 'right',
                               }}
-                              badgeContent={userVotesUp[show.id] || 0}
+                              badgeContent={userVotesUp[show.id] ? `+${userVotesUp[show.id] || 0}` : null}
                               sx={{
                                 color: userVotes[show.id] === 1 ? 'success.main' : 'inherit',
                               }}
                             >
-                              <Fab
+                              <StyledFab
                                 aria-label="upvote"
                                 onClick={() =>
                                   user
@@ -284,7 +289,7 @@ export default function VotingPage() {
                                 size="small"
                               >
                                 <ArrowUpward sx={{ color: userVotes[show.id] === 1 ? 'success.main' : 'inherit' }} />
-                              </Fab>
+                              </StyledFab>
                             </StyledBadge>
                           )}
                         </Box>
@@ -307,7 +312,7 @@ export default function VotingPage() {
                             {votingStatus[show.id] === -1 ? (
                               <CircularProgress size={25} sx={{ ml: 1.3, mt: 1.6 }} />
                             ) : (
-                              <Fab
+                              <StyledFab
                                 aria-label="downvote"
                                 onClick={() =>
                                   user
@@ -318,7 +323,7 @@ export default function VotingPage() {
                                 size="small"
                               >
                                 <ArrowDownward sx={{ color: userVotes[show.id] < 0 ? 'error.main' : 'inherit' }} />
-                              </Fab>
+                              </StyledFab>
                             )}
                           </StyledBadge>
                         </Box>
