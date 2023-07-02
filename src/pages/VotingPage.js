@@ -38,6 +38,8 @@ export default function VotingPage() {
   const [loading, setLoading] = useState(true);
   const [votingStatus, setVotingStatus] = useState({});
   const [userVotes, setUserVotes] = useState({});
+  const [userVotesUp, setUserVotesUp] = useState({});
+  const [userVotesDown, setUserVotesDown] = useState({});
   const [searchText, setSearchText] = useState('');
   const [upvotes, setUpvotes] = useState({});
   const [downvotes, setDownvotes] = useState({});
@@ -84,8 +86,8 @@ export default function VotingPage() {
       setShows(sortedShows);
       setVotes(voteData.votes);
       setUserVotes(voteData.userVotes);
-
-      // Set upvotes and downvotes using response data
+      setUserVotesUp(voteData.userVotesUp);
+      setUserVotesDown(voteData.userVotesDown);
       setUpvotes(voteData.votesUp);
       setDownvotes(voteData.votesDown);
     } catch (error) {
@@ -262,28 +264,27 @@ export default function VotingPage() {
                             <CircularProgress size={25} sx={{ ml: 1.2, mb: 1.5 }} />
                           ) : (
                             <StyledBadge
-                                anchorOrigin={{
-                                  vertical: 'top',
-                                  horizontal: 'right',
-                                }}
-                                badgeContent={'+10'}
-                                sx={{
-                                  color: userVotes[show.id] === 1 ? 'success.main' : 'inherit',
-                                }}
-                              >
-                            <Fab
-                              aria-label="upvote"
-                              onClick={() =>
-                                user
-                                  ? handleUpvote(show.id)
-                                  : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
-                              }
-                              disabled={userVotes[show.id] || votingStatus[show.id]}
-                              size='small'
+                              anchorOrigin={{
+                                vertical: 'top',
+                                horizontal: 'right',
+                              }}
+                              badgeContent={userVotesUp[show.id] || 0}
+                              sx={{
+                                color: userVotes[show.id] === 1 ? 'success.main' : 'inherit',
+                              }}
                             >
-                              
+                              <Fab
+                                aria-label="upvote"
+                                onClick={() =>
+                                  user
+                                    ? handleUpvote(show.id)
+                                    : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
+                                }
+                                disabled={userVotes[show.id] || votingStatus[show.id]}
+                                size="small"
+                              >
                                 <ArrowUpward sx={{ color: userVotes[show.id] === 1 ? 'success.main' : 'inherit' }} />
-                            </Fab>
+                              </Fab>
                             </StyledBadge>
                           )}
                         </Box>
@@ -293,17 +294,19 @@ export default function VotingPage() {
                           </Typography>
                         </Box>
                         <Box>
-                        <StyledBadge
-                              anchorOrigin={{
-                                vertical: 'bottom',
-                                horizontal: 'right',
-                              }}
-                              badgeContent={'+10'}
-                              color="primary"
-                            >
-                          {votingStatus[show.id] === -1 ? (
-                            <CircularProgress size={25} sx={{ ml: 1.3, mt: 1.6 }} />
-                          ) : (
+                          <StyledBadge
+                            anchorOrigin={{
+                              vertical: 'bottom',
+                              horizontal: 'right',
+                            }}
+                            badgeContent={userVotesDown[show.id] || 0}
+                            sx={{
+                              color: userVotes[show.id] < 0 ? 'error.main' : 'inherit',
+                            }}
+                          >
+                            {votingStatus[show.id] === -1 ? (
+                              <CircularProgress size={25} sx={{ ml: 1.3, mt: 1.6 }} />
+                            ) : (
                               <Fab
                                 aria-label="downvote"
                                 onClick={() =>
@@ -314,9 +317,9 @@ export default function VotingPage() {
                                 disabled={userVotes[show.id] || votingStatus[show.id]}
                                 size="small"
                               >
-                                <ArrowDownward sx={{ color: userVotes[show.id] === -1 ? 'error.main' : 'inherit' }} />
+                                <ArrowDownward sx={{ color: userVotes[show.id] < 0 ? 'error.main' : 'inherit' }} />
                               </Fab>
-                          )}
+                            )}
                           </StyledBadge>
                         </Box>
                       </Box>
