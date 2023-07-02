@@ -33,7 +33,7 @@ const StyledBadge = styled(Badge)(() => ({
 }));
 
 const StyledFab = styled(Fab)(() => ({
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    backgroundColor: 'rgba(255, 255, 255, 0.35)',
     zIndex: 0
 }));
 
@@ -131,11 +131,21 @@ export default function VotingPage() {
           newUpvotes[seriesId] = (newUpvotes[seriesId] || 0) + 1;
           return newUpvotes;
         });
+        setUserVotesUp((prevUserVotesUp) => {
+          const newUserVotesUp = { ...prevUserVotesUp };
+          newUserVotesUp[seriesId] = (newUserVotesUp[seriesId] || 0) + 1;
+          return newUserVotesUp;
+        });
       } else if (boost === -1) {
         setDownvotes((prevDownvotes) => {
           const newDownvotes = { ...prevDownvotes };
           newDownvotes[seriesId] = (newDownvotes[seriesId] || 0) - 1; // subtract 1 for a downvote
           return newDownvotes;
+        });
+        setUserVotesDown((prevUserVotesDown) => {
+          const newUserVotesDown = { ...prevUserVotesDown };
+          newUserVotesDown[seriesId] = (newUserVotesDown[seriesId] || 0) + 1;
+          return newUserVotesDown;
         });
       }
 
