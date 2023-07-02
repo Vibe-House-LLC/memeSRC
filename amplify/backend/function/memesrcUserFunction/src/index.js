@@ -49,6 +49,7 @@ async function getAllVotes(userSub, nextToken) {
           boost
           userDetailsVotesId
           seriesUserVoteSeriesId
+          createdAt
         }
         nextToken
       }
@@ -66,7 +67,7 @@ async function getAllVotes(userSub, nextToken) {
   let allItems = response.body.data.listSeriesUserVotes.items;
   if (response.body.data.listSeriesUserVotes.nextToken) {
     console.log('loading another page...');
-    console.log(`nextToken: ${response.body.data.listSeriesUserVotes.nextToken}`)
+    console.log(`nextToken: ${response.body.data.listSeriesUserVotes.nextToken}`);
     let newItems = await getAllVotes(userSub, response.body.data.listSeriesUserVotes.nextToken);
     allItems = allItems.concat(newItems);
     console.log('loaded another page');
@@ -82,6 +83,7 @@ async function processVotes(allItems, userSub) {
   const votesCountDown = {};
   const currentUserVotesUp = {};
   const currentUserVotesDown = {};
+  const lastUserVoteTimestamps = {};
 
   // console.log('CHECKING IF USER VOTES');
   allItems.forEach((vote) => {
@@ -108,8 +110,24 @@ async function processVotes(allItems, userSub) {
         currentUserVotes[vote.seriesUserVoteSeriesId] =
           (currentUserVotes[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
       }
+      // Store the timestamp of the most recent vote for each series
+      const voteTime = new Date(vote.createdAt); // assuming createdAt is the timestamp of the vote
+      if (
+        !lastUserVoteTimestamps[vote.seriesUserVoteSeriesId] ||
+        voteTime > lastUserVoteTimestamps[vote.seriesUserVoteSeriesId]
+      ) {
+        lastUserVoteTimestamps[vote.seriesUserVoteSeriesId] = voteTime;
+      }
     }
   });
+
+  // Compare the timestamp of the latest vote for each series with the current time
+  const isLastVoteOlderThanFiveMinutes = {};
+  const currentTime = new Date();
+  for (const seriesId in lastUserVoteTimestamps) {
+    const diffInMinutes = (currentTime - lastUserVoteTimestamps[seriesId]) / 1000 / 60;
+    isLastVoteOlderThanFiveMinutes[seriesId] = diffInMinutes > 5;
+  }
 
   // console.log('Vote Loading Results:');
   // console.log(votesCount);
@@ -127,6 +145,7 @@ async function processVotes(allItems, userSub) {
     votesCountDown,
     currentUserVotesUp,
     currentUserVotesDown,
+    isLastVoteOlderThanFiveMinutes,
   };
 }
 
@@ -417,9 +436,17 @@ export const handler = async (event) => {
 
   if (path === `/${process.env.ENV}/public/vote/list`) {
     try {
-      // Pull and process the votes from GraphQL
       const rawVotes = await getAllVotes(userSub);
-      const { allVotes, votesCount, currentUserVotes, votesCountUp, votesCountDown, currentUserVotesUp, currentUserVotesDown } = await processVotes(rawVotes, userSub);
+      const {
+        allVotes,
+        votesCount,
+        currentUserVotes,
+        votesCountUp,
+        votesCountDown,
+        currentUserVotesUp,
+        currentUserVotesDown,
+        isLastVoteOlderThanFiveMinutes,
+      } = await processVotes(rawVotes, userSub);
 
       const result = {
         votes: votesCount,
@@ -427,9 +454,10 @@ export const handler = async (event) => {
         votesUp: votesCountUp,
         votesDown: votesCountDown,
         userVotesUp: currentUserVotesUp,
-        userVotesDown: currentUserVotesDown
+        userVotesDown: currentUserVotesDown,
+        ableToVote: isLastVoteOlderThanFiveMinutes,
       };
-  
+
       response = {
         statusCode: 200,
         body: result,
@@ -441,7 +469,7 @@ export const handler = async (event) => {
         body: `Failed to get votes: ${error.message}`,
       };
     }
-  }
+  }  
   
   // console.log(response);
 
