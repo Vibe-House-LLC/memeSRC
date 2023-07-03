@@ -149,12 +149,12 @@ export default function VotingPage() {
     } else if (boost === -1) {
       setDownvotes((prevDownvotes) => {
         const newDownvotes = { ...prevDownvotes };
-        newDownvotes[seriesId] = (newDownvotes[seriesId] || 0) + 1;
+        newDownvotes[seriesId] = (newDownvotes[seriesId] || 0) - 1;
         return newDownvotes;
       });
       setUserVotesDown((prevUserVotesDown) => {
         const newUserVotesDown = { ...prevUserVotesDown };
-        newUserVotesDown[seriesId] = (newUserVotesDown[seriesId] || 0) + 1;
+        newUserVotesDown[seriesId] = (newUserVotesDown[seriesId] || 0) - 1;
         return newUserVotesDown;
       });
     }
