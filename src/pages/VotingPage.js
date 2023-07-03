@@ -283,7 +283,7 @@ export default function VotingPage() {
                               </Typography>
                             </Box>
                             <Typography variant="body2" color="text.secondary" mt={1} style={descriptionStyle}>
-                              {`${show.id} -- user: ${user.sub} --- ${show.description} `}
+                              {show.description}
                             </Typography>
                           </Stack>
                         </Box>
