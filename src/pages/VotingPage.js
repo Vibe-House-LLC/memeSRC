@@ -16,8 +16,28 @@ import {
   styled,
   Fab,
   Stack,
+  FormControl,
+  Select,
+  InputLabel,
+  MenuItem,
+  Tabs,
+  Tab,
+  Alert,
+  AlertTitle,
 } from '@mui/material';
-import { ArrowUpward, ArrowDownward, Search, Close, LockOpen, Lock } from '@mui/icons-material';
+import CloseIcon from '@mui/icons-material/Close';
+import {
+  ArrowUpward,
+  ArrowDownward,
+  Search,
+  Close,
+  LockOpen,
+  Lock,
+  ThumbUp,
+  Whatshot,
+  ThumbUpAlt,
+  SyncProblem,
+} from '@mui/icons-material';
 import FlipMove from 'react-flip-move';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { listSeries } from '../graphql/queries';
@@ -33,8 +53,8 @@ const StyledBadge = styled(Badge)(() => ({
 }));
 
 const StyledFab = styled(Fab)(() => ({
-    backgroundColor: 'rgba(255, 255, 255, 0.35)',
-    zIndex: 0
+  backgroundColor: 'rgba(255, 255, 255, 0.35)',
+  zIndex: 0,
 }));
 
 export default function VotingPage() {
@@ -50,7 +70,8 @@ export default function VotingPage() {
   const [upvotes, setUpvotes] = useState({});
   const [downvotes, setDownvotes] = useState({});
   const [ableToVote, setAbleToVote] = useState({});
-
+  const [rankMethod, setRankMethod] = useState('upvotes');
+  const [alertOpen, setAlertOpen] = useState(true);
 
   const location = useLocation();
 
@@ -58,7 +79,7 @@ export default function VotingPage() {
 
   useEffect(() => {
     fetchShowsAndVotes();
-  }, [user]);
+  }, [user, rankMethod]);
 
   const fetchShowsAndVotes = async () => {
     setLoading(true);
@@ -83,9 +104,25 @@ export default function VotingPage() {
       const seriesData = await fetchSeries();
 
       const voteData = await API.get('publicapi', '/vote/list');
-      const sortedShows = seriesData
-        .filter((show) => show.statusText === 'requested') // filtering shows based on statusText
-        .sort((a, b) => (voteData.votes[b.id] || 0) - (voteData.votes[a.id] || 0));
+
+      let sortedShows;
+
+      switch (rankMethod) {
+        case 'combined':
+          sortedShows = seriesData
+            .filter((show) => show.statusText === 'requested')
+            .sort((a, b) => (voteData.votes[b.id] || 0) - (voteData.votes[a.id] || 0));
+          break;
+        case 'downvotes':
+          sortedShows = seriesData
+            .filter((show) => show.statusText === 'requested')
+            .sort((a, b) => (voteData.votesDown[a.id] || 0) - (voteData.votesDown[b.id] || 0));
+          break;
+        default: // Upvotes
+          sortedShows = seriesData
+            .filter((show) => show.statusText === 'requested')
+            .sort((a, b) => (voteData.votesUp[b.id] || 0) - (voteData.votesUp[a.id] || 0));
+      }
 
       sortedShows.forEach((show, index) => {
         show.rank = index + 1; // add a rank to each show
@@ -135,29 +172,29 @@ export default function VotingPage() {
         return newAbleToVote;
       });
 
-    if (boost === 1) {
-      setUpvotes((prevUpvotes) => {
-        const newUpvotes = { ...prevUpvotes };
-        newUpvotes[seriesId] = (newUpvotes[seriesId] || 0) + 1;
-        return newUpvotes;
-      });
-      setUserVotesUp((prevUserVotesUp) => {
-        const newUserVotesUp = { ...prevUserVotesUp };
-        newUserVotesUp[seriesId] = (newUserVotesUp[seriesId] || 0) + 1;
-        return newUserVotesUp;
-      });
-    } else if (boost === -1) {
-      setDownvotes((prevDownvotes) => {
-        const newDownvotes = { ...prevDownvotes };
-        newDownvotes[seriesId] = (newDownvotes[seriesId] || 0) - 1;
-        return newDownvotes;
-      });
-      setUserVotesDown((prevUserVotesDown) => {
-        const newUserVotesDown = { ...prevUserVotesDown };
-        newUserVotesDown[seriesId] = (newUserVotesDown[seriesId] || 0) - 1;
-        return newUserVotesDown;
-      });
-    }
+      if (boost === 1) {
+        setUpvotes((prevUpvotes) => {
+          const newUpvotes = { ...prevUpvotes };
+          newUpvotes[seriesId] = (newUpvotes[seriesId] || 0) + 1;
+          return newUpvotes;
+        });
+        setUserVotesUp((prevUserVotesUp) => {
+          const newUserVotesUp = { ...prevUserVotesUp };
+          newUserVotesUp[seriesId] = (newUserVotesUp[seriesId] || 0) + 1;
+          return newUserVotesUp;
+        });
+      } else if (boost === -1) {
+        setDownvotes((prevDownvotes) => {
+          const newDownvotes = { ...prevDownvotes };
+          newDownvotes[seriesId] = (newDownvotes[seriesId] || 0) - 1;
+          return newDownvotes;
+        });
+        setUserVotesDown((prevUserVotesDown) => {
+          const newUserVotesDown = { ...prevUserVotesDown };
+          newUserVotesDown[seriesId] = (newUserVotesDown[seriesId] || 0) - 1;
+          return newUserVotesDown;
+        });
+      }
 
       setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: false }));
     } catch (error) {
@@ -193,20 +230,92 @@ export default function VotingPage() {
     setSearchText(event.target.value);
   };
 
+  const handleRankMethodChange = (event, newValue) => {
+    setRankMethod(newValue);
+  };
+
   const filteredShows = shows
     .filter((show) => show.statusText === 'requested')
     .filter((show) => show.name.toLowerCase().includes(searchText.toLowerCase()));
 
+  const votesCount = (show) => {
+    switch (rankMethod) {
+      case 'upvotes':
+        return `+${upvotes[show.id] || 0}`;
+      case 'downvotes':
+        return downvotes[show.id] || 0;
+      case 'combined':
+      default:
+        return votes[show.id] || 0;
+    }
+  };
+
+  const voteColor = () => {
+    switch (rankMethod) {
+      case 'upvotes':
+        return 'success.main';
+      case 'downvotes':
+        return 'error.main';
+      case 'combined':
+      default:
+        return 'white';
+    }
+  };
+
   return (
     <Container maxWidth="md">
-      <Box my={4}>
+      <Box my={2}>
         <Typography variant="h3" component="h1" gutterBottom>
-          Vote for New Shows
+          Vote for Requested Shows
         </Typography>
         <Typography variant="subtitle2">
           Help prioritize requests by voting on your favorite shows. Upvote the shows you want to see more, and downvote
           the shows you're not interested in.
         </Typography>
+      </Box>
+      {!localStorage.getItem('alertDismissedVotePage999') && user && (
+          <Alert
+            severity="info"
+            action={
+              <IconButton
+                color="inherit"
+                size="small"
+                onClick={() => {
+                  localStorage.setItem('alertDismissedVotePage999', 'true');
+                  setAlertOpen(false);
+                }}
+              >
+                <CloseIcon fontSize="inherit" />
+              </IconButton>
+            }
+            sx={{
+              opacity: 0.9,
+            }}
+          >
+            <strong>Updated:</strong> You can now submit new votes every 24h, plus change the rank method.
+          </Alert>
+        )}
+      <Box my={2}>
+        <Tabs value={rankMethod} onChange={handleRankMethodChange} indicatorColor="secondary" textColor="inherit">
+          <Tab
+            label={
+              <Box display="flex" alignItems="center">
+                <ThumbUp color="success" sx={{ mr: 1 }} />
+                Most Upvoted
+              </Box>
+            }
+            value="upvotes"
+          />
+          <Tab
+            label={
+              <Box display="flex" alignItems="center">
+                <Whatshot color="error" sx={{ mr: 1 }} />
+                Battleground
+              </Box>
+            }
+            value="combined"
+          />
+        </Tabs>
       </Box>
       <Box my={2}>
         <TextField
@@ -326,8 +435,8 @@ export default function VotingPage() {
                           )}
                         </Box>
                         <Box alignItems="center" height="100%">
-                          <Typography variant="h5" textAlign="center">
-                            {votes[show.id] || 0}
+                          <Typography variant="h5" textAlign="center" color={voteColor()}>
+                            {votesCount(show) || 0}
                           </Typography>
                         </Box>
                         <Box>
@@ -338,7 +447,7 @@ export default function VotingPage() {
                             }}
                             badgeContent={userVotesDown[show.id] || 0}
                             sx={{
-                              color: 'error.main'
+                              color: 'error.main',
                             }}
                           >
                             {votingStatus[show.id] === -1 ? (

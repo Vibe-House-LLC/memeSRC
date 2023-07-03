@@ -85,7 +85,10 @@ async function processVotes(allItems, userSub) {
   const currentUserVotesDown = {};
   const lastUserVoteTimestamps = {};
 
-  // console.log('CHECKING IF USER VOTES');
+  const seriesIds = new Set(allItems.map(item => item.seriesUserVoteSeriesId));
+  const isLastUserVoteOlderThanFiveMinutes = {};
+  seriesIds.forEach(id => isLastUserVoteOlderThanFiveMinutes[id] = true);
+
   allItems.forEach((vote) => {
     if (vote.boost > 0) {
       votesCountUp[vote.seriesUserVoteSeriesId] = (votesCountUp[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
@@ -103,40 +106,18 @@ async function processVotes(allItems, userSub) {
 
     votesCount[vote.seriesUserVoteSeriesId] = (votesCount[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
 
-    if (vote.userDetailsVotesId) {
-      typeof vote.userDetailsVotesId;
-      typeof userSub;
-      if (vote.userDetailsVotesId.normalize() === userSub.normalize()) {
-        currentUserVotes[vote.seriesUserVoteSeriesId] =
-          (currentUserVotes[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
-      }
-      // Store the timestamp of the most recent vote for each series
-      const voteTime = new Date(vote.createdAt); // assuming createdAt is the timestamp of the vote
-      if (
-        !lastUserVoteTimestamps[vote.seriesUserVoteSeriesId] ||
-        voteTime > lastUserVoteTimestamps[vote.seriesUserVoteSeriesId]
-      ) {
+    if (vote.userDetailsVotesId && vote.userDetailsVotesId.normalize() === userSub.normalize()) {
+      currentUserVotes[vote.seriesUserVoteSeriesId] = (currentUserVotes[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
+
+      const voteTime = new Date(vote.createdAt);
+      if (!lastUserVoteTimestamps[vote.seriesUserVoteSeriesId] || voteTime > lastUserVoteTimestamps[vote.seriesUserVoteSeriesId]) {
         lastUserVoteTimestamps[vote.seriesUserVoteSeriesId] = voteTime;
+        const currentTime = new Date().getTime();
+        const diffInMinutes = (currentTime - voteTime.getTime()) / (1000 * 60);
+        isLastUserVoteOlderThanFiveMinutes[vote.seriesUserVoteSeriesId] = diffInMinutes > 5;
       }
     }
   });
-
-  // Compare the timestamp of the latest vote for each series with the current time
-  const isLastVoteOlderThanFiveMinutes = {};
-  const currentTime = new Date().getTime(); // Get the current timestamp in milliseconds
-  for (const seriesId in lastUserVoteTimestamps) {
-    const voteTime = lastUserVoteTimestamps[seriesId].getTime(); // Get the vote timestamp in milliseconds
-    const diffInMinutes = (currentTime - voteTime) / (1000 * 60); // Calculate the difference in minutes
-    isLastVoteOlderThanFiveMinutes[seriesId] = diffInMinutes > 5; // Compare if the difference is greater than 5 minutes
-  }
-
-  // console.log('Vote Loading Results:');
-  // console.log(votesCount);
-  // console.log(currentUserVotes);
-  // console.log(votesCountUp);
-  // console.log(votesCountDown);
-  // console.log(currentUserVotesUp);
-  // console.log(currentUserVotesDown);
 
   return {
     allItems,
@@ -146,25 +127,10 @@ async function processVotes(allItems, userSub) {
     votesCountDown,
     currentUserVotesUp,
     currentUserVotesDown,
-    isLastVoteOlderThanFiveMinutes,
+    isLastUserVoteOlderThanFiveMinutes,
   };
 }
 
-function updateUserDetailsCredits(params) {
-  const id = params.id ? `id: "${params.id}",` : '';
-  const credits = params.credits !== undefined ? `credits: ${params.credits},` : '';
-
-  const mutation = `
-    mutation updateUserDetails {
-      updateUserDetails(input: {${id}${credits}}) {
-        id
-        credits
-      }
-    }
-  `;
-
-  return mutation;
-}
 
 function updateUserDetails(params) {
   const email = params.email ? `email: "${params.email}",` : '';
@@ -209,6 +175,7 @@ function getUserDetails(params) {
                             series {
                                 id
                             }
+                            boost
                             createdAt
                         }
                       }
@@ -235,6 +202,7 @@ function getUserDetails(params) {
                         series {
                             id
                         }
+                        boost
                         createdAt
                     }
                   }
@@ -460,7 +428,7 @@ export const handler = async (event) => {
         votesCountDown,
         currentUserVotesUp,
         currentUserVotesDown,
-        isLastVoteOlderThanFiveMinutes,
+        isLastUserVoteOlderThanFiveMinutes,
       } = await processVotes(rawVotes, userSub);
 
       const result = {
@@ -470,7 +438,7 @@ export const handler = async (event) => {
         votesDown: votesCountDown,
         userVotesUp: currentUserVotesUp,
         userVotesDown: currentUserVotesDown,
-        ableToVote: isLastVoteOlderThanFiveMinutes,
+        ableToVote: isLastUserVoteOlderThanFiveMinutes,
       };
 
       response = {
