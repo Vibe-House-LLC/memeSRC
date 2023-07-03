@@ -292,7 +292,7 @@ export default function VotingPage() {
               opacity: 0.9,
             }}
           >
-            <strong>Updated:</strong> You can now submit new votes every 24h, plus change the rank method.
+            <strong>Updated:</strong> You can now vote again every 24h, plus change the rank method.
           </Alert>
         )}
       <Box my={2}>
