@@ -16,30 +16,16 @@ import {
   styled,
   Fab,
   Stack,
-  FormControl,
-  Select,
-  InputLabel,
-  MenuItem,
   Tabs,
   Tab,
   Alert,
   AlertTitle,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
-import {
-  ArrowUpward,
-  ArrowDownward,
-  Search,
-  Close,
-  LockOpen,
-  Lock,
-  ThumbUp,
-  Whatshot,
-  ThumbUpAlt,
-  SyncProblem,
-} from '@mui/icons-material';
+import { ArrowUpward, ArrowDownward, Search, Close, ThumbUp, Whatshot } from '@mui/icons-material';
 import FlipMove from 'react-flip-move';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { listSeries } from '../graphql/queries';
 import { UserContext } from '../UserContext';
 
@@ -263,17 +249,18 @@ export default function VotingPage() {
   };
 
   return (
-    <Container maxWidth="md">
-      <Box my={2}>
-        <Typography variant="h3" component="h1" gutterBottom>
-          Vote for Requested Shows
-        </Typography>
-        <Typography variant="subtitle2">
-          Help prioritize requests by voting on your favorite shows. Upvote the shows you want to see more, and downvote
-          the shows you're not interested in.
-        </Typography>
-      </Box>
-      {!localStorage.getItem('alertDismissedVotePage999') && user && (
+    <>
+      <Helmet>
+        <title> Voting • TV Shows • memeSRC </title>
+      </Helmet>
+      <Container maxWidth="md">
+        <Box my={2}>
+          <Typography variant="h3" component="h1" gutterBottom>
+            Requested Shows
+          </Typography>
+          <Typography variant="subtitle2">Upvote the shows you wish were on memeSRC</Typography>
+        </Box>
+        {!localStorage.getItem('alertDismissedVotePage999') && user && (
           <Alert
             severity="info"
             action={
@@ -295,222 +282,223 @@ export default function VotingPage() {
             <strong>Updated:</strong> You can now vote again every 24h, plus change the rank method.
           </Alert>
         )}
-      <Box my={2}>
-        <Tabs value={rankMethod} onChange={handleRankMethodChange} indicatorColor="secondary" textColor="inherit">
-          <Tab
-            label={
-              <Box display="flex" alignItems="center">
-                <ThumbUp color="success" sx={{ mr: 1 }} />
-                Most Upvoted
-              </Box>
-            }
-            value="upvotes"
+        <Box my={2}>
+          <Tabs value={rankMethod} onChange={handleRankMethodChange} indicatorColor="secondary" textColor="inherit">
+            <Tab
+              label={
+                <Box display="flex" alignItems="center">
+                  <ThumbUp color="success" sx={{ mr: 1 }} />
+                  Most Upvoted
+                </Box>
+              }
+              value="upvotes"
+            />
+            <Tab
+              label={
+                <Box display="flex" alignItems="center">
+                  <Whatshot color="error" sx={{ mr: 1 }} />
+                  Battleground
+                </Box>
+              }
+              value="combined"
+            />
+          </Tabs>
+        </Box>
+        <Box my={2}>
+          <TextField
+            fullWidth
+            variant="outlined"
+            value={searchText}
+            onChange={handleSearchChange}
+            placeholder="Search requested shows..."
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <IconButton>
+                    <Search />
+                  </IconButton>
+                </InputAdornment>
+              ),
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton edge="end" onClick={() => setSearchText('')} disabled={!searchText}>
+                    <Close />
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
           />
-          <Tab
-            label={
-              <Box display="flex" alignItems="center">
-                <Whatshot color="error" sx={{ mr: 1 }} />
-                Battleground
-              </Box>
-            }
-            value="combined"
-          />
-        </Tabs>
-      </Box>
-      <Box my={2}>
-        <TextField
-          fullWidth
-          variant="outlined"
-          value={searchText}
-          onChange={handleSearchChange}
-          placeholder="Search requested shows..."
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <IconButton>
-                  <Search />
-                </IconButton>
-              </InputAdornment>
-            ),
-            endAdornment: (
-              <InputAdornment position="end">
-                <IconButton edge="end" onClick={() => setSearchText('')} disabled={!searchText}>
-                  <Close />
-                </IconButton>
-              </InputAdornment>
-            ),
-          }}
-        />
-      </Box>
-      <Grid container style={{ minWidth: '100%' }}>
-        {loading ? (
-          <CircularProgress />
-        ) : (
-          <FlipMove style={{ minWidth: '100%' }}>
-            {filteredShows.map((show, idx) => (
-              <Grid item xs={12} key={show.id} style={{ marginBottom: 15 }}>
-                <Card>
-                  <CardContent>
-                    <Box display="flex" alignItems="center">
-                      <Box flexGrow={1} marginRight={2}>
-                        <Box display="flex" alignItems="center">
-                          <Box mr={2}>
-                            <Badge
-                              badgeContent={`#${show.rank}`}
-                              color="secondary"
-                              anchorOrigin={{
-                                vertical: 'top',
-                                horizontal: 'left',
-                              }}
-                            >
-                              <img src={show.image} alt={show.name} style={showImageStyle} />
-                            </Badge>
-                          </Box>
-                          <Stack direction="column">
-                            <Typography variant="h5">{show.name}</Typography>
-                            <Box
-                              display="flex"
-                              alignItems="center"
-                              sx={{ marginTop: '0.1rem', marginBottom: '-0.5rem' }}
-                            >
-                              <Typography
-                                variant="subtitle2"
-                                color="success.main"
-                                sx={{ fontSize: '0.7rem', opacity: 0.6 }}
+        </Box>
+        <Grid container style={{ minWidth: '100%' }}>
+          {loading ? (
+            <CircularProgress />
+          ) : (
+            <FlipMove style={{ minWidth: '100%' }}>
+              {filteredShows.map((show, idx) => (
+                <Grid item xs={12} key={show.id} style={{ marginBottom: 15 }}>
+                  <Card>
+                    <CardContent>
+                      <Box display="flex" alignItems="center">
+                        <Box flexGrow={1} marginRight={2}>
+                          <Box display="flex" alignItems="center">
+                            <Box mr={2}>
+                              <Badge
+                                badgeContent={`#${show.rank}`}
+                                color="secondary"
+                                anchorOrigin={{
+                                  vertical: 'top',
+                                  horizontal: 'left',
+                                }}
                               >
-                                <ArrowUpward fontSize="small" sx={{ verticalAlign: 'middle' }} />
-                                <b>{upvotes[show.id] || 0}</b>
-                              </Typography>
-                              <Typography
-                                variant="subtitle2"
-                                color="error.main"
-                                ml={1}
-                                sx={{ fontSize: '0.7rem', opacity: 0.6 }}
-                              >
-                                <ArrowDownward fontSize="small" sx={{ verticalAlign: 'middle' }} />
-                                <b>{downvotes[show.id] || 0}</b>
-                              </Typography>
+                                <img src={show.image} alt={show.name} style={showImageStyle} />
+                              </Badge>
                             </Box>
-                            <Typography variant="body2" color="text.secondary" mt={1} style={descriptionStyle}>
-                              {show.description}
-                            </Typography>
-                          </Stack>
+                            <Stack direction="column">
+                              <Typography variant="h5">{show.name}</Typography>
+                              <Box
+                                display="flex"
+                                alignItems="center"
+                                sx={{ marginTop: '0.1rem', marginBottom: '-0.5rem' }}
+                              >
+                                <Typography
+                                  variant="subtitle2"
+                                  color="success.main"
+                                  sx={{ fontSize: '0.7rem', opacity: 0.6 }}
+                                >
+                                  <ArrowUpward fontSize="small" sx={{ verticalAlign: 'middle' }} />
+                                  <b>{upvotes[show.id] || 0}</b>
+                                </Typography>
+                                <Typography
+                                  variant="subtitle2"
+                                  color="error.main"
+                                  ml={1}
+                                  sx={{ fontSize: '0.7rem', opacity: 0.6 }}
+                                >
+                                  <ArrowDownward fontSize="small" sx={{ verticalAlign: 'middle' }} />
+                                  <b>{downvotes[show.id] || 0}</b>
+                                </Typography>
+                              </Box>
+                              <Typography variant="body2" color="text.secondary" mt={1} style={descriptionStyle}>
+                                {show.description}
+                              </Typography>
+                            </Stack>
+                          </Box>
                         </Box>
-                      </Box>
-                      <Box mr={0}>
-                        <Box display="flex" flexDirection="column" justifyContent="space-between" height="100%">
-                          {votingStatus[show.id] === 1 ? (
-                            <CircularProgress size={25} sx={{ ml: 1.2, mb: 1.5 }} />
-                          ) : (
+                        <Box mr={0}>
+                          <Box display="flex" flexDirection="column" justifyContent="space-between" height="100%">
+                            {votingStatus[show.id] === 1 ? (
+                              <CircularProgress size={25} sx={{ ml: 1.2, mb: 1.5 }} />
+                            ) : (
+                              <StyledBadge
+                                anchorOrigin={{
+                                  vertical: 'top',
+                                  horizontal: 'right',
+                                }}
+                                badgeContent={userVotesUp[show.id] ? `+${userVotesUp[show.id] || 0}` : null}
+                                sx={{
+                                  color: 'success.main',
+                                }}
+                              >
+                                <StyledFab
+                                  aria-label="upvote"
+                                  onClick={() =>
+                                    user
+                                      ? handleUpvote(show.id)
+                                      : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
+                                  }
+                                  disabled={ableToVote[show.id] !== true || votingStatus[show.id]}
+                                  size="small"
+                                >
+                                  <ArrowUpward
+                                    sx={{
+                                      color:
+                                        userVotesUp[show.id] && ableToVote[show.id] !== true > 0
+                                          ? 'success.main'
+                                          : 'inherit',
+                                    }}
+                                  />
+                                </StyledFab>
+                              </StyledBadge>
+                            )}
+                          </Box>
+                          <Box alignItems="center" height="100%">
+                            <Typography variant="h5" textAlign="center" color={voteColor()}>
+                              {votesCount(show) || 0}
+                            </Typography>
+                          </Box>
+                          <Box>
                             <StyledBadge
                               anchorOrigin={{
-                                vertical: 'top',
+                                vertical: 'bottom',
                                 horizontal: 'right',
                               }}
-                              badgeContent={userVotesUp[show.id] ? `+${userVotesUp[show.id] || 0}` : null}
+                              badgeContent={userVotesDown[show.id] || 0}
                               sx={{
-                                color: 'success.main',
+                                color: 'error.main',
                               }}
                             >
-                              <StyledFab
-                                aria-label="upvote"
-                                onClick={() =>
-                                  user
-                                    ? handleUpvote(show.id)
-                                    : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
-                                }
-                                disabled={ableToVote[show.id] !== true || votingStatus[show.id]}
-                                size="small"
-                              >
-                                <ArrowUpward
-                                  sx={{
-                                    color:
-                                      userVotesUp[show.id] && ableToVote[show.id] !== true > 0
-                                        ? 'success.main'
-                                        : 'inherit',
-                                  }}
-                                />
-                              </StyledFab>
+                              {votingStatus[show.id] === -1 ? (
+                                <CircularProgress size={25} sx={{ ml: 1.3, mt: 1.6 }} />
+                              ) : (
+                                <StyledFab
+                                  aria-label="downvote"
+                                  onClick={() =>
+                                    user
+                                      ? handleDownvote(show.id)
+                                      : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
+                                  }
+                                  disabled={ableToVote[show.id] !== true || votingStatus[show.id]}
+                                  size="small"
+                                >
+                                  <ArrowDownward
+                                    sx={{
+                                      color:
+                                        userVotesDown[show.id] < 0 && ableToVote[show.id] !== true
+                                          ? 'error.main'
+                                          : 'inherit',
+                                    }}
+                                  />
+                                </StyledFab>
+                              )}
                             </StyledBadge>
-                          )}
-                        </Box>
-                        <Box alignItems="center" height="100%">
-                          <Typography variant="h5" textAlign="center" color={voteColor()}>
-                            {votesCount(show) || 0}
-                          </Typography>
-                        </Box>
-                        <Box>
-                          <StyledBadge
-                            anchorOrigin={{
-                              vertical: 'bottom',
-                              horizontal: 'right',
-                            }}
-                            badgeContent={userVotesDown[show.id] || 0}
-                            sx={{
-                              color: 'error.main',
-                            }}
-                          >
-                            {votingStatus[show.id] === -1 ? (
-                              <CircularProgress size={25} sx={{ ml: 1.3, mt: 1.6 }} />
-                            ) : (
-                              <StyledFab
-                                aria-label="downvote"
-                                onClick={() =>
-                                  user
-                                    ? handleDownvote(show.id)
-                                    : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
-                                }
-                                disabled={ableToVote[show.id] !== true || votingStatus[show.id]}
-                                size="small"
-                              >
-                                <ArrowDownward
-                                  sx={{
-                                    color:
-                                      userVotesDown[show.id] < 0 && ableToVote[show.id] !== true
-                                        ? 'error.main'
-                                        : 'inherit',
-                                  }}
-                                />
-                              </StyledFab>
-                            )}
-                          </StyledBadge>
+                          </Box>
                         </Box>
                       </Box>
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-            <Grid
-              item
-              xs={12}
-              style={{
-                marginTop: 75,
-                marginBottom: 40,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                padding: '0 20px',
-              }}
-            >
-              <Typography variant="h6" gutterBottom>
-                Looking for one not in the list?
-              </Typography>
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={() => window.open('https://forms.gle/8CETtVbwYoUmxqbi7', '_blank')}
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+              <Grid
+                item
+                xs={12}
                 style={{
-                  marginTop: 10,
-                  marginBottom: 15,
+                  marginTop: 75,
+                  marginBottom: 40,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  padding: '0 20px',
                 }}
               >
-                Make a request
-              </Button>
-            </Grid>
-          </FlipMove>
-        )}
-      </Grid>
-    </Container>
+                <Typography variant="h6" gutterBottom>
+                  Looking for one not in the list?
+                </Typography>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={() => window.open('https://forms.gle/8CETtVbwYoUmxqbi7', '_blank')}
+                  style={{
+                    marginTop: 10,
+                    marginBottom: 15,
+                  }}
+                >
+                  Make a request
+                </Button>
+              </Grid>
+            </FlipMove>
+          )}
+        </Grid>
+      </Container>
+    </>
   );
 }
