@@ -260,7 +260,7 @@ export default function VotingPage() {
           </Typography>
           <Typography variant="subtitle2">Upvote the shows you wish were on memeSRC</Typography>
         </Box>
-        {!localStorage.getItem('alertDismissedVotePage999') && user && (
+        {!localStorage.getItem('alertDismissedVotePage99') && user && (
           <Alert
             severity="info"
             action={
@@ -279,7 +279,12 @@ export default function VotingPage() {
               opacity: 0.9,
             }}
           >
-            <strong>Updated:</strong> You can now vote again every 24h, plus change the rank method.
+            <AlertTitle>New Features</AlertTitle>
+            <ul>
+              <li> • <strong>Vote Again:</strong> every 24 hours</li>
+              <li> • <strong>Most Upvoted:</strong> excludes downvotes</li>
+              <li> • <strong>Battleground:</strong> includes downvotes</li>
+            </ul>
           </Alert>
         )}
         <Box my={2}>
