@@ -260,7 +260,7 @@ export default function VotingPage() {
           </Typography>
           <Typography variant="subtitle2">Upvote the shows you wish were on memeSRC</Typography>
         </Box>
-        {!localStorage.getItem('alertDismissedVotePage99') && user && (
+        {!localStorage.getItem('alertDismissedVotePage999') && user && (
           <Alert
             severity="info"
             action={
