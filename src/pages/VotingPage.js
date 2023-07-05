@@ -417,7 +417,7 @@ export default function VotingPage() {
                               </Badge>
                             </Box>
                             <Stack direction="column">
-                              <Typography variant="h5">{show.id}</Typography>
+                              <Typography variant="h5">{show.name}</Typography>
                               <Box
                                 display="flex"
                                 alignItems="center"
@@ -431,15 +431,17 @@ export default function VotingPage() {
                                   <ArrowUpward fontSize="small" sx={{ verticalAlign: 'middle' }} />
                                   <b>{upvotes[show.id] || 0}</b>
                                 </Typography>
-                                <Typography
-                                  variant="subtitle2"
-                                  color="error.main"
-                                  ml={1}
-                                  sx={{ fontSize: '0.7rem', opacity: 0.6 }}
-                                >
-                                  <ArrowDownward fontSize="small" sx={{ verticalAlign: 'middle' }} />
-                                  <b>{downvotes[show.id] || 0}</b>
-                                </Typography>
+                                {rankMethod === 'combined' &&
+                                  <Typography
+                                    variant="subtitle2"
+                                    color="error.main"
+                                    ml={1}
+                                    sx={{ fontSize: '0.7rem', opacity: 0.6 }}
+                                  >
+                                    <ArrowDownward fontSize="small" sx={{ verticalAlign: 'middle' }} />
+                                    <b>{downvotes[show.id] || 0}</b>
+                                  </Typography>
+                                }
                               </Box>
                               <Typography variant="body2" color="text.secondary" mt={1} style={descriptionStyle}>
                                 {show.description}
@@ -448,77 +450,122 @@ export default function VotingPage() {
                           </Box>
                         </Box>
                         <Box mr={0}>
-                          <Box display="flex" flexDirection="column" justifyContent="space-between" height="100%">
-                            {votingStatus[show.id] === 1 ? (
-                              <CircularProgress size={25} sx={{ ml: 1.2, mb: 1.5 }} />
-                            ) : (
-                              <StyledBadge
-                                anchorOrigin={{
-                                  vertical: 'top',
-                                  horizontal: 'right',
-                                }}
-                                badgeContent={userVotesUp[show.id] ? `+${userVotesUp[show.id] || 0}` : null}
-                                sx={{
-                                  color: 'success.main',
-                                }}
-                              >
-                                <StyledFab
-                                  aria-label="upvote"
-                                  onClick={() =>
-                                    user
-                                      ? handleUpvote(show.id)
-                                      : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
-                                  }
-                                  disabled={ableToVote[show.id] !== true || votingStatus[show.id]}
-                                  size="small"
-                                >
-                                  <ArrowUpward
-                                    sx={{
-                                      color: lastBoost[show.id] === 1 && ableToVote[show.id] !== true ? 'success.main' : 'inherit',
+                          {rankMethod === 'combined' ?
+                            <>
+                              <Box display="flex" flexDirection="column" justifyContent="space-between" height="100%">
+                                {votingStatus[show.id] === 1 ? (
+                                  <CircularProgress size={25} sx={{ ml: 1.2, mb: 1.5 }} />
+                                ) : (
+                                  <StyledBadge
+                                    anchorOrigin={{
+                                      vertical: 'top',
+                                      horizontal: 'right',
                                     }}
-                                  />
-                                </StyledFab>
-                              </StyledBadge>
-                            )}
-                          </Box>
-                          <Box alignItems="center" height="100%">
-                            <Typography variant="h5" textAlign="center" color={votesCount(show) < 0 && 'error.main'}>
-                              {votesCount(show) || 0}
-                            </Typography>
-                          </Box>
-                          <Box>
-                            <StyledBadge
-                              anchorOrigin={{
-                                vertical: 'bottom',
-                                horizontal: 'right',
-                              }}
-                              badgeContent={userVotesDown[show.id] || 0}
-                              sx={{
-                                color: 'error.main',
-                              }}
-                            >
-                              {votingStatus[show.id] === -1 ? (
-                                <CircularProgress size={25} sx={{ ml: 1.3, mt: 1.6 }} />
-                              ) : (
-                                <StyledFab
-                                  aria-label="downvote"
-                                  onClick={() =>
-                                    user
-                                      ? handleDownvote(show.id)
-                                      : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
-                                  }
-                                  disabled={ableToVote[show.id] !== true || votingStatus[show.id]}
-                                  size="small"
-                                >
-                                  <ArrowDownward
+                                    badgeContent={userVotesUp[show.id] ? `+${userVotesUp[show.id] || 0}` : null}
                                     sx={{
-                                      color: lastBoost[show.id] === -1 && ableToVote[show.id] !== true ? 'error.main' : 'inherit',
+                                      color: 'success.main',
                                     }}
-                                  />
-                                </StyledFab>
-                              )}
-                            </StyledBadge>
-                          </Box>
+                                  >
+                                    <StyledFab
+                                      aria-label="upvote"
+                                      onClick={() =>
+                                        user
+                                          ? handleUpvote(show.id)
+                                          : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
+                                      }
+                                      disabled={ableToVote[show.id] !== true || votingStatus[show.id]}
+                                      size="small"
+                                    >
+                                      <ArrowUpward
+                                        sx={{
+                                          color: lastBoost[show.id] === 1 && ableToVote[show.id] !== true ? 'success.main' : 'inherit',
+                                        }}
+                                      />
+                                    </StyledFab>
+                                  </StyledBadge>
+                                )}
+                              </Box>
+
+                              <Box alignItems="center" height="100%">
+                                <Typography variant="h5" textAlign="center" color={votesCount(show) < 0 && 'error.main'}>
+                                  {votesCount(show) || 0}
+                                </Typography>
+                              </Box>
+                              <Box>
+                                <StyledBadge
+                                  anchorOrigin={{
+                                    vertical: 'bottom',
+                                    horizontal: 'right',
+                                  }}
+                                  badgeContent={userVotesDown[show.id] || 0}
+                                  sx={{
+                                    color: 'error.main',
+                                  }}
+                                >
+                                  {votingStatus[show.id] === -1 ? (
+                                    <CircularProgress size={25} sx={{ ml: 1.3, mt: 1.6 }} />
+                                  ) : (
+                                    <StyledFab
+                                      aria-label="downvote"
+                                      onClick={() =>
+                                        user
+                                          ? handleDownvote(show.id)
+                                          : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
+                                      }
+                                      disabled={ableToVote[show.id] !== true || votingStatus[show.id]}
+                                      size="small"
+                                    >
+                                      <ArrowDownward
+                                        sx={{
+                                          color: lastBoost[show.id] === -1 && ableToVote[show.id] !== true ? 'error.main' : 'inherit',
+                                        }}
+                                      />
+                                    </StyledFab>
+                                  )}
+                                </StyledBadge>
+                              </Box>
+                            </>
+                            :
+                            <Stack alignItems='center' spacing={2.8} direction='column' height='100%'>
+                              <Box display="flex" flexDirection="column" justifyContent="space-between" height="100%">
+                                {votingStatus[show.id] === 1 ? (
+                                  <CircularProgress size={25} sx={{ ml: 1.2, mb: 1.5 }} />
+                                ) : (
+                                  <StyledBadge
+                                    anchorOrigin={{
+                                      vertical: 'top',
+                                      horizontal: 'right',
+                                    }}
+                                    badgeContent={userVotesUp[show.id] ? `+${userVotesUp[show.id] || 0}` : null}
+                                    sx={{
+                                      color: 'success.main',
+                                    }}
+                                  >
+                                    <StyledFab
+                                      aria-label="upvote"
+                                      onClick={() =>
+                                        user
+                                          ? handleUpvote(show.id)
+                                          : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
+                                      }
+                                      disabled={ableToVote[show.id] !== true || votingStatus[show.id]}
+                                      size="small"
+                                      sx={{ backgroundColor: 'rgb(84 214 44)' }}
+                                    >
+                                      <ThumbUp
+                                        sx={{
+                                          color: lastBoost[show.id] === 1 && ableToVote[show.id] !== true ? 'black' : 'black',
+                                        }}
+                                      />
+                                    </StyledFab>
+                                  </StyledBadge>
+                                )}
+                              </Box>
+                              <Typography variant="h5" textAlign="center" color={votesCount(show) < 0 && 'error.main'}>
+                                {upvotes[show.id] || 0}
+                              </Typography>
+                            </Stack>
+                          }
                         </Box>
                       </Box>
                     </CardContent>
