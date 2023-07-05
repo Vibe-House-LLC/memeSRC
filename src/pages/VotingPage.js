@@ -526,7 +526,7 @@ export default function VotingPage() {
                               </Box>
                             </>
                             :
-                            <Stack alignItems='center' spacing={2.8} direction='column' height='100%'>
+                            <Stack alignItems='center' spacing={0.7} direction='column' height='100%'>
                               <Box display="flex" flexDirection="column" justifyContent="space-between" height="100%">
                                 {votingStatus[show.id] === 1 ? (
                                   <CircularProgress size={25} sx={{ ml: 1.2, mb: 1.5 }} />
@@ -537,9 +537,6 @@ export default function VotingPage() {
                                       horizontal: 'right',
                                     }}
                                     badgeContent={userVotesUp[show.id] ? `+${userVotesUp[show.id] || 0}` : null}
-                                    sx={{
-                                      color: 'success.main',
-                                    }}
                                   >
                                     <StyledFab
                                       aria-label="upvote"
@@ -550,11 +547,10 @@ export default function VotingPage() {
                                       }
                                       disabled={ableToVote[show.id] !== true || votingStatus[show.id]}
                                       size="small"
-                                      sx={{ backgroundColor: 'rgb(84 214 44)' }}
                                     >
                                       <ThumbUp
                                         sx={{
-                                          color: lastBoost[show.id] === 1 && ableToVote[show.id] !== true ? 'black' : 'black',
+                                          color: lastBoost[show.id] === 1 && ableToVote[show.id] !== true ? 'success.main' : 'inherit',
                                         }}
                                       />
                                     </StyledFab>
