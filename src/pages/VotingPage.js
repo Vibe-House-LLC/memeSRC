@@ -124,8 +124,9 @@ export default function VotingPage() {
       setAbleToVote(voteData.ableToVote);
     } catch (error) {
       console.error('Error fetching series data:', error);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleVote = async (seriesId, boost) => {
@@ -141,11 +142,51 @@ export default function VotingPage() {
 
       setUserVotes((prevUserVotes) => ({ ...prevUserVotes, [seriesId]: boost }));
 
+      const newUpvotes = { ...upvotes };
+      const newDownvotes = { ...downvotes };
+
+      if (boost === 1) {
+        newUpvotes[seriesId] = (upvotes[seriesId] || 0) + 1;
+        setUpvotes(newUpvotes);
+
+        setUserVotesUp((prevUserVotesUp) => {
+          const newUserVotesUp = { ...prevUserVotesUp };
+          newUserVotesUp[seriesId] = (newUserVotesUp[seriesId] || 0) + 1;
+          return newUserVotesUp;
+        });
+      } else if (boost === -1) {
+        newDownvotes[seriesId] = (downvotes[seriesId] || 0) + 1; // Changed from minus to plus
+        setDownvotes(newDownvotes);
+
+        setUserVotesDown((prevUserVotesDown) => {
+          const newUserVotesDown = { ...prevUserVotesDown };
+          newUserVotesDown[seriesId] = (newUserVotesDown[seriesId] || 0) + 1; // Changed from minus to plus
+          return newUserVotesDown;
+        });
+      }
+
+      // update votes after updating upvotes and downvotes
       setVotes((prevVotes) => {
         const newVotes = { ...prevVotes };
         newVotes[seriesId] = (newVotes[seriesId] || 0) + boost;
 
-        const sortedShows = [...shows].sort((a, b) => (newVotes[b.id] || 0) - (newVotes[a.id] || 0));
+        let sortedShows;
+
+        switch (rankMethod) {
+          case 'combined':
+            sortedShows = [...shows].sort((a, b) => (newVotes[b.id] || 0) - (newVotes[a.id] || 0));
+            break;
+          case 'downvotes':
+            sortedShows = [...shows].sort((a, b) => (newDownvotes[a.id] || 0) - (newDownvotes[b.id] || 0));
+            break;
+          default: // Upvotes
+            sortedShows = [...shows].sort((a, b) => (newUpvotes[b.id] || 0) - (newUpvotes[a.id] || 0));
+        }
+
+        sortedShows.forEach((show, index) => {
+          show.rank = index + 1; // add a rank to each show
+        });
+
         setShows(sortedShows);
 
         return newVotes;
@@ -157,30 +198,6 @@ export default function VotingPage() {
         newAbleToVote[seriesId] = newAbleToVote[seriesId] ? newAbleToVote[seriesId] - 1 : 0;
         return newAbleToVote;
       });
-
-      if (boost === 1) {
-        setUpvotes((prevUpvotes) => {
-          const newUpvotes = { ...prevUpvotes };
-          newUpvotes[seriesId] = (newUpvotes[seriesId] || 0) + 1;
-          return newUpvotes;
-        });
-        setUserVotesUp((prevUserVotesUp) => {
-          const newUserVotesUp = { ...prevUserVotesUp };
-          newUserVotesUp[seriesId] = (newUserVotesUp[seriesId] || 0) + 1;
-          return newUserVotesUp;
-        });
-      } else if (boost === -1) {
-        setDownvotes((prevDownvotes) => {
-          const newDownvotes = { ...prevDownvotes };
-          newDownvotes[seriesId] = (newDownvotes[seriesId] || 0) - 1;
-          return newDownvotes;
-        });
-        setUserVotesDown((prevUserVotesDown) => {
-          const newUserVotesDown = { ...prevUserVotesDown };
-          newUserVotesDown[seriesId] = (newUserVotesDown[seriesId] || 0) - 1;
-          return newUserVotesDown;
-        });
-      }
 
       setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: false }));
     } catch (error) {
@@ -227,24 +244,12 @@ export default function VotingPage() {
   const votesCount = (show) => {
     switch (rankMethod) {
       case 'upvotes':
-        return `+${upvotes[show.id] || 0}`;
+        return upvotes[show.id] || 0;
       case 'downvotes':
         return downvotes[show.id] || 0;
       case 'combined':
       default:
         return votes[show.id] || 0;
-    }
-  };
-
-  const voteColor = () => {
-    switch (rankMethod) {
-      case 'upvotes':
-        return 'success.main';
-      case 'downvotes':
-        return 'error.main';
-      case 'combined':
-      default:
-        return 'white';
     }
   };
 
@@ -281,9 +286,18 @@ export default function VotingPage() {
           >
             <AlertTitle>New Features</AlertTitle>
             <ul>
-              <li> • <strong>Vote Again:</strong> every 24 hours</li>
-              <li> • <strong>Most Upvoted:</strong> excludes downvotes</li>
-              <li> • <strong>Battleground:</strong> includes downvotes</li>
+              <li>
+                {' '}
+                • <strong>Vote Again:</strong> every 24 hours
+              </li>
+              <li>
+                {' '}
+                • <strong>Most Upvoted:</strong> excludes downvotes
+              </li>
+              <li>
+                {' '}
+                • <strong>Battleground:</strong> includes downvotes
+              </li>
             </ul>
           </Alert>
         )}
@@ -427,7 +441,7 @@ export default function VotingPage() {
                             )}
                           </Box>
                           <Box alignItems="center" height="100%">
-                            <Typography variant="h5" textAlign="center" color={voteColor()}>
+                            <Typography variant="h5" textAlign="center" color={votesCount(show) < 0 && 'error.main'}>
                               {votesCount(show) || 0}
                             </Typography>
                           </Box>
