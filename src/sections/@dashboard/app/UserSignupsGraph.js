@@ -15,15 +15,18 @@ const getDateRange = (start, end) => {
 };
 
 const groupByDate = (userList) => {
-  // Return empty array if userList is undefined or empty
   if (!userList || userList.length === 0) {
     return [];
   }
 
-  // Get the first and last date in userList for date range
-  const start = new Date(userList[0].createdAt);
-  const end = new Date();
+  // Sort userList by createdAt
+  const sortedUserList = userList.sort(
+    (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+  );
 
+  const start = new Date(sortedUserList[0].createdAt);
+  const end = new Date();
+  
   const dateRange = getDateRange(start, end);
   const formattedDates = dateRange.map(
     (date) =>
@@ -66,7 +69,7 @@ const UserCountChart = ({ userList }) => {
   const dateArray = sortedGroupedUsers.map(([date]) => new Date(date).toLocaleDateString());
   const userCounts = sortedGroupedUsers.map(([_, count]) => count);
 
-  console.log(userList);
+  console.log(userCounts);
 
   const options = {
     chart: {
