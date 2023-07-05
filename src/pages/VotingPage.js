@@ -69,33 +69,41 @@ export default function VotingPage() {
 
   useEffect(() => {
     let sortedShows;
-  
+
     switch (rankMethod) {
       case 'combined':
-        sortedShows = [...shows].sort((a, b) => (votes[b.id] || 0) - (votes[a.id] || 0));
+        sortedShows = [...shows].sort((a, b) => {
+          const voteDiff = (votes[b.id] || 0) - (votes[a.id] || 0);
+          return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
+        });
         break;
       case 'downvotes':
-        sortedShows = [...shows].sort((a, b) => (downvotes[a.id] || 0) - (downvotes[b.id] || 0));
+        sortedShows = [...shows].sort((a, b) => {
+          const voteDiff = (downvotes[a.id] || 0) - (downvotes[b.id] || 0);
+          return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
+        });
         break;
       default: // Upvotes
-        sortedShows = [...shows].sort((a, b) => (upvotes[b.id] || 0) - (upvotes[a.id] || 0));
+        sortedShows = [...shows].sort((a, b) => {
+          const voteDiff = (upvotes[b.id] || 0) - (upvotes[a.id] || 0);
+          return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
+        });
     }
-  
+
     sortedShows.forEach((show, index) => {
       show.rank = index + 1; // add a rank to each show
     });
-  
+
     setShows(sortedShows);
-  
-  }, [upvotes, downvotes, votes, rankMethod]); 
-  
+  }, [upvotes, downvotes, votes, rankMethod]);
+
   const fetchShowsAndVotes = async () => {
     setLoading(true);
     try {
       // Recursive function to handle pagination
       const fetchSeries = async (nextToken = null) => {
         const result = await API.graphql({
-          ...graphqlOperation(listSeries, { nextToken }), 
+          ...graphqlOperation(listSeries, { nextToken }),
           authMode: 'API_KEY',
         });
 
@@ -119,17 +127,26 @@ export default function VotingPage() {
         case 'combined':
           sortedShows = seriesData
             .filter((show) => show.statusText === 'requested')
-            .sort((a, b) => (voteData.votes[b.id] || 0) - (voteData.votes[a.id] || 0));
+            .sort((a, b) => {
+              const voteDiff = (voteData.votes[b.id] || 0) - (voteData.votes[a.id] || 0);
+              return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
+            });
           break;
         case 'downvotes':
           sortedShows = seriesData
             .filter((show) => show.statusText === 'requested')
-            .sort((a, b) => (voteData.votesDown[a.id] || 0) - (voteData.votesDown[b.id] || 0));
+            .sort((a, b) => {
+              const voteDiff = (voteData.votesDown[a.id] || 0) - (voteData.votesDown[b.id] || 0);
+              return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
+            });
           break;
         default: // Upvotes
           sortedShows = seriesData
             .filter((show) => show.statusText === 'requested')
-            .sort((a, b) => (voteData.votesUp[b.id] || 0) - (voteData.votesUp[a.id] || 0));
+            .sort((a, b) => {
+              const voteDiff = (voteData.votesUp[b.id] || 0) - (voteData.votesUp[a.id] || 0);
+              return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
+            });
       }
 
       sortedShows.forEach((show, index) => {
