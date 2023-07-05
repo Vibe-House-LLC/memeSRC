@@ -113,13 +113,11 @@ async function processVotes(allItems, userSub) {
       const voteTime = new Date(vote.createdAt);
       if (!lastUserVoteTimestamps[vote.seriesUserVoteSeriesId] || voteTime > lastUserVoteTimestamps[vote.seriesUserVoteSeriesId]) {
         lastUserVoteTimestamps[vote.seriesUserVoteSeriesId] = voteTime;
+        lastBoostValue[vote.seriesUserVoteSeriesId] = vote.boost; // Moved this line here
         const currentTime = new Date().getTime();
         const diffInMinutes = (currentTime - voteTime.getTime()) / (1000 * 60);
         isLastUserVoteOlderThanFiveMinutes[vote.seriesUserVoteSeriesId] = diffInMinutes > 5;
-      }
-      if (!lastBoostValue[vote.seriesUserVoteSeriesId] || voteTime > lastUserVoteTimestamps[vote.seriesUserVoteSeriesId]) {
-        lastBoostValue[vote.seriesUserVoteSeriesId] = vote.boost;
-      }
+      }      
     }
   });
 
@@ -421,7 +419,7 @@ export const handler = async (event) => {
       console.log('Forbidden Error:', response);
     }
   }
-  
+    
   if (path === `/${process.env.ENV}/public/vote/list`) {
     try {
       const rawVotes = await getAllVotes(userSub);

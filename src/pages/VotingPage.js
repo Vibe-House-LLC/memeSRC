@@ -58,6 +58,7 @@ export default function VotingPage() {
   const [ableToVote, setAbleToVote] = useState({});
   const [rankMethod, setRankMethod] = useState('upvotes');
   const [alertOpen, setAlertOpen] = useState(true);
+  const [lastBoost, setLastBoost] = useState({});
 
   const location = useLocation();
 
@@ -161,6 +162,7 @@ export default function VotingPage() {
       setUpvotes(voteData.votesUp);
       setDownvotes(voteData.votesDown);
       setAbleToVote(voteData.ableToVote);
+      setLastBoost(voteData.lastBoost);
     } catch (error) {
       console.error('Error fetching series data:', error);
     } finally {
@@ -185,21 +187,21 @@ export default function VotingPage() {
       const newDownvotes = { ...downvotes };
 
       if (boost === 1) {
-        newUpvotes[seriesId] = (upvotes[seriesId] || 0) + 1;
+        newUpvotes[seriesId] = (upvotes[seriesId] || 0) + boost;
         setUpvotes(newUpvotes);
 
         setUserVotesUp((prevUserVotesUp) => {
           const newUserVotesUp = { ...prevUserVotesUp };
-          newUserVotesUp[seriesId] = (newUserVotesUp[seriesId] || 0) + 1;
+          newUserVotesUp[seriesId] = (newUserVotesUp[seriesId] || 0) + boost;
           return newUserVotesUp;
         });
       } else if (boost === -1) {
-        newDownvotes[seriesId] = (downvotes[seriesId] || 0) + 1; 
+        newDownvotes[seriesId] = (downvotes[seriesId] || 0) + boost;
         setDownvotes(newDownvotes);
 
         setUserVotesDown((prevUserVotesDown) => {
           const newUserVotesDown = { ...prevUserVotesDown };
-          newUserVotesDown[seriesId] = (newUserVotesDown[seriesId] || 0) + 1;
+          newUserVotesDown[seriesId] = (newUserVotesDown[seriesId] || 0) + boost;
           return newUserVotesDown;
         });
       }
@@ -239,6 +241,8 @@ export default function VotingPage() {
       });
 
       setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: false }));
+
+      setLastBoost((prevLastBoost) => ({ ...prevLastBoost, [seriesId]: boost }));
     } catch (error) {
       setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: false }));
       console.error('Error on voting:', error);
@@ -321,7 +325,7 @@ export default function VotingPage() {
             }
             sx={{
               opacity: 0.9,
-              backgroundColor: 'rgb(14, 37, 50)'
+              backgroundColor: 'rgb(14, 37, 50)',
             }}
           >
             <AlertTitle>New Features</AlertTitle>
@@ -413,7 +417,7 @@ export default function VotingPage() {
                               </Badge>
                             </Box>
                             <Stack direction="column">
-                              <Typography variant="h5">{show.name}</Typography>
+                              <Typography variant="h5">{show.id}</Typography>
                               <Box
                                 display="flex"
                                 alignItems="center"
@@ -470,10 +474,7 @@ export default function VotingPage() {
                                 >
                                   <ArrowUpward
                                     sx={{
-                                      color:
-                                        userVotesUp[show.id] && ableToVote[show.id] !== true > 0
-                                          ? 'success.main'
-                                          : 'inherit',
+                                      color: lastBoost[show.id] === 1 && ableToVote[show.id] !== true ? 'success.main' : 'inherit',
                                     }}
                                   />
                                 </StyledFab>
@@ -511,10 +512,7 @@ export default function VotingPage() {
                                 >
                                   <ArrowDownward
                                     sx={{
-                                      color:
-                                        userVotesDown[show.id] < 0 && ableToVote[show.id] !== true
-                                          ? 'error.main'
-                                          : 'inherit',
+                                      color: lastBoost[show.id] === -1 && ableToVote[show.id] !== true ? 'error.main' : 'inherit',
                                     }}
                                   />
                                 </StyledFab>
