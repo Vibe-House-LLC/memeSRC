@@ -56,7 +56,7 @@ export default function VotingPage() {
   const [upvotes, setUpvotes] = useState({});
   const [downvotes, setDownvotes] = useState({});
   const [ableToVote, setAbleToVote] = useState({});
-  const [rankMethod, setRankMethod] = useState('upvotes');
+  const [rankMethod, setRankMethod] = useState('combined');
   const [alertOpen, setAlertOpen] = useState(true);
   const [lastBoost, setLastBoost] = useState({});
 
