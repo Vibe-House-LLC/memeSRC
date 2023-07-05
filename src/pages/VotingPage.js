@@ -321,6 +321,7 @@ export default function VotingPage() {
             }
             sx={{
               opacity: 0.9,
+              backgroundColor: 'rgb(14, 37, 50)'
             }}
           >
             <AlertTitle>New Features</AlertTitle>
