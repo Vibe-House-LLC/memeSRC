@@ -394,7 +394,23 @@ export default function VotingPage() {
         </Box>
         <Grid container style={{ minWidth: '100%' }}>
           {loading ? (
-            <CircularProgress />
+            <Grid
+              item
+              xs={12}
+              style={{
+                marginTop: 75,
+                marginBottom: 40,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                padding: '0 20px',
+              }}
+            >
+              <Typography variant="h6" gutterBottom>
+                Hang tight while we tally votes
+              </Typography>
+              <CircularProgress />
+            </Grid>
           ) : (
             <FlipMove style={{ minWidth: '100%' }}>
               {filteredShows.map((show, idx) => (
