@@ -430,7 +430,7 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
                     opacity: 0.9,
                   }}
                 >
-                  <b>New:</b> Vote again every 24h!
+                  <b>New:</b> Vote every 24h!
                 </Alert>
               )}
             </Grid>
