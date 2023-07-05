@@ -84,6 +84,7 @@ async function processVotes(allItems, userSub) {
   const currentUserVotesUp = {};
   const currentUserVotesDown = {};
   const lastUserVoteTimestamps = {};
+  const lastBoostValue = {};
 
   const seriesIds = new Set(allItems.map(item => item.seriesUserVoteSeriesId));
   const isLastUserVoteOlderThanFiveMinutes = {};
@@ -116,6 +117,9 @@ async function processVotes(allItems, userSub) {
         const diffInMinutes = (currentTime - voteTime.getTime()) / (1000 * 60);
         isLastUserVoteOlderThanFiveMinutes[vote.seriesUserVoteSeriesId] = diffInMinutes > 5;
       }
+      if (!lastBoostValue[vote.seriesUserVoteSeriesId] || voteTime > lastUserVoteTimestamps[vote.seriesUserVoteSeriesId]) {
+        lastBoostValue[vote.seriesUserVoteSeriesId] = vote.boost;
+      }
     }
   });
 
@@ -128,6 +132,7 @@ async function processVotes(allItems, userSub) {
     currentUserVotesUp,
     currentUserVotesDown,
     isLastUserVoteOlderThanFiveMinutes,
+    lastBoostValue
   };
 }
 
@@ -429,6 +434,7 @@ export const handler = async (event) => {
         currentUserVotesUp,
         currentUserVotesDown,
         isLastUserVoteOlderThanFiveMinutes,
+        lastBoostValue
       } = await processVotes(rawVotes, userSub);
 
       const result = {
@@ -439,6 +445,7 @@ export const handler = async (event) => {
         userVotesUp: currentUserVotesUp,
         userVotesDown: currentUserVotesDown,
         ableToVote: isLastUserVoteOlderThanFiveMinutes,
+        lastBoost: lastBoostValue
       };
 
       response = {
