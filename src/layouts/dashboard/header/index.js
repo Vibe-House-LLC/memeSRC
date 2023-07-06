@@ -264,7 +264,7 @@ export default function Header({ onOpenNav }) {
             <Stack justifyContent="center" spacing={3}>
               <Stack direction="row" color="#54d62c" alignItems="center" justifyContent="left" spacing={1}>
                 <AutoFixHighRounded fontSize="large" />
-                <Typography variant="h4">Magic Tools</Typography>
+                <Typography variant="h3">Magic Tools</Typography>
               </Stack>
 
               <Typography variant="h3">
