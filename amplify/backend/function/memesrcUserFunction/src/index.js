@@ -87,8 +87,8 @@ async function processVotes(allItems, userSub) {
   const lastBoostValue = {};
 
   const seriesIds = new Set(allItems.map(item => item.seriesUserVoteSeriesId));
-  const isLastUserVoteOlderThanFiveMinutes = {};
-  seriesIds.forEach(id => isLastUserVoteOlderThanFiveMinutes[id] = true);
+  const isLastUserVoteOlderThan24Hours = {};
+  seriesIds.forEach(id => isLastUserVoteOlderThan24Hours[id] = true);
 
   allItems.forEach((vote) => {
     if (vote.boost > 0) {
@@ -113,10 +113,10 @@ async function processVotes(allItems, userSub) {
       const voteTime = new Date(vote.createdAt);
       if (!lastUserVoteTimestamps[vote.seriesUserVoteSeriesId] || voteTime > lastUserVoteTimestamps[vote.seriesUserVoteSeriesId]) {
         lastUserVoteTimestamps[vote.seriesUserVoteSeriesId] = voteTime;
-        lastBoostValue[vote.seriesUserVoteSeriesId] = vote.boost; // Moved this line here
+        lastBoostValue[vote.seriesUserVoteSeriesId] = vote.boost;
         const currentTime = new Date().getTime();
-        const diffInMinutes = (currentTime - voteTime.getTime()) / (1000 * 60);
-        isLastUserVoteOlderThanFiveMinutes[vote.seriesUserVoteSeriesId] = diffInMinutes > 5;
+        const diffInHours = (currentTime - voteTime.getTime()) / (1000 * 60 * 60);
+        isLastUserVoteOlderThan24Hours[vote.seriesUserVoteSeriesId] = diffInHours > 24;
       }
     }
   });
@@ -129,7 +129,7 @@ async function processVotes(allItems, userSub) {
     votesCountDown,
     currentUserVotesUp,
     currentUserVotesDown,
-    isLastUserVoteOlderThanFiveMinutes,
+    isLastUserVoteOlderThan24Hours,
     lastBoostValue
   };
 }
@@ -447,7 +447,7 @@ export const handler = async (event) => {
         votesCountDown,
         currentUserVotesUp,
         currentUserVotesDown,
-        isLastUserVoteOlderThanFiveMinutes,
+        isLastUserVoteOlderThan24Hours,
         lastBoostValue
       } = await processVotes(rawVotes, userSub);
 
@@ -458,7 +458,7 @@ export const handler = async (event) => {
         votesDown: votesCountDown,
         userVotesUp: currentUserVotesUp,
         userVotesDown: currentUserVotesDown,
-        ableToVote: isLastUserVoteOlderThanFiveMinutes,
+        ableToVote: isLastUserVoteOlderThan24Hours,
         lastBoost: lastBoostValue
       };
 
