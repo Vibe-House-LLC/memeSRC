@@ -7,6 +7,7 @@ import { AutoFixHighRounded } from '@mui/icons-material';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 // utils
 import { useLocation, useNavigate } from "react-router-dom";
+import { LoadingButton } from '@mui/lab';
 import { bgBlur } from '../../../utils/cssStyles';
 // components
 import Iconify from '../../../components/iconify';
@@ -210,20 +211,21 @@ export default function Header({ onOpenNav }) {
               </Typography>
             </Stack>
 
-            <Typography variant='body1' fontWeight='bold' lineHeight={2} textAlign='left'>
+            <Typography variant='body1' fontWeight='bold' lineHeight={2} textAlign='left' px={2}>
               <ul>
                 <li>Magic Eraser Tool</li>
                 <li>More to be announced</li>
               </ul>
             </Typography>
-            
-          </Stack>
-          
-        </Box>
 
-        <Button variant='contained'  size='large' sx={{mx: 2, mb: 2, mt: 1, backgroundColor: '#54d62c', color: 'black', '&:hover': { backgroundColor: '#96f176', color: 'black' }}}>
-              Join Waiting List
-            </Button>
+          </Stack>
+
+        </Box>
+        <Box width='100%' px={2} pb={2} pt={1}>
+          <LoadingButton variant='contained' size='large' fullWidth sx={{ fontSize: 18, backgroundColor: '#54d62c', color: 'black', '&:hover': { backgroundColor: '#96f176', color: 'black' } }}>
+            Join Waiting List
+          </LoadingButton>
+        </Box>
       </Popover>
     </>
   );
