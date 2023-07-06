@@ -22,7 +22,7 @@ import {
   AlertTitle,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
-import { ArrowUpward, ArrowDownward, Search, Close, ThumbUp, Whatshot } from '@mui/icons-material';
+import { ArrowUpward, ArrowDownward, Search, Close, ThumbUp, Whatshot, Lock } from '@mui/icons-material';
 import FlipMove from 'react-flip-move';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -63,6 +63,13 @@ export default function VotingPage() {
   const location = useLocation();
 
   const { user, setUser } = useContext(UserContext);
+
+  useEffect(() => {
+    const savedRankMethod = localStorage.getItem('rankMethod');
+    if(savedRankMethod){
+      setRankMethod(savedRankMethod);
+    }
+  }, [])
 
   useEffect(() => {
     fetchShowsAndVotes();
@@ -277,6 +284,7 @@ export default function VotingPage() {
   };
 
   const handleRankMethodChange = (event, newValue) => {
+    localStorage.setItem('rankMethod', newValue);
     setRankMethod(newValue);
   };
 
@@ -308,7 +316,7 @@ export default function VotingPage() {
           </Typography>
           <Typography variant="subtitle2">Upvote the shows you wish were on memeSRC</Typography>
         </Box>
-        {!localStorage.getItem('alertDismissedVotePage999') && user && (
+        {!localStorage.getItem('alertDismissedVotePage999') && (
           <Alert
             severity="info"
             action={
@@ -336,11 +344,11 @@ export default function VotingPage() {
               </li>
               <li>
                 {' '}
-                • <strong>Most Upvoted:</strong> excludes downvotes
+                • <strong>Most Upvoted:</strong> only count upvotes
               </li>
               <li>
                 {' '}
-                • <strong>Battleground:</strong> includes downvotes
+                • <strong>Battleground:</strong> include the downvotes
               </li>
             </ul>
           </Alert>
@@ -350,20 +358,20 @@ export default function VotingPage() {
             <Tab
               label={
                 <Box display="flex" alignItems="center">
-                  <ThumbUp color="success" sx={{ mr: 1 }} />
-                  Most Upvoted
-                </Box>
-              }
-              value="upvotes"
-            />
-            <Tab
-              label={
-                <Box display="flex" alignItems="center">
                   <Whatshot color="error" sx={{ mr: 1 }} />
                   Battleground
                 </Box>
               }
               value="combined"
+            />
+            <Tab
+              label={
+                <Box display="flex" alignItems="center">
+                  <ThumbUp color="success" sx={{ mr: 1 }} />
+                  Most Upvoted
+                </Box>
+              }
+              value="upvotes"
             />
           </Tabs>
         </Box>
@@ -447,7 +455,7 @@ export default function VotingPage() {
                                   <ArrowUpward fontSize="small" sx={{ verticalAlign: 'middle' }} />
                                   <b>{upvotes[show.id] || 0}</b>
                                 </Typography>
-                                {rankMethod === 'combined' &&
+                                {rankMethod === 'combined' && (
                                   <Typography
                                     variant="subtitle2"
                                     color="error.main"
@@ -457,7 +465,7 @@ export default function VotingPage() {
                                     <ArrowDownward fontSize="small" sx={{ verticalAlign: 'middle' }} />
                                     <b>{downvotes[show.id] || 0}</b>
                                   </Typography>
-                                }
+                                )}
                               </Box>
                               <Typography variant="body2" color="text.secondary" mt={1} style={descriptionStyle}>
                                 {show.description}
@@ -466,7 +474,7 @@ export default function VotingPage() {
                           </Box>
                         </Box>
                         <Box mr={0}>
-                          {rankMethod === 'combined' ?
+                          {rankMethod === 'combined' ? (
                             <>
                               <Box display="flex" flexDirection="column" justifyContent="space-between" height="100%">
                                 {votingStatus[show.id] === 1 ? (
@@ -492,18 +500,36 @@ export default function VotingPage() {
                                       disabled={ableToVote[show.id] !== true || votingStatus[show.id]}
                                       size="small"
                                     >
-                                      <ArrowUpward
+                                      {lastBoost[show.id] === -1 &&
+                                      ableToVote[show.id] !== true &&
+                                      rankMethod === 'upvotes' ? (
+                                        <Lock />
+                                      ) : (
+                                        <ArrowUpward
+                                          sx={{
+                                            color:
+                                              lastBoost[show.id] === 1 && ableToVote[show.id] !== true
+                                                ? 'success.main'
+                                                : 'inherit',
+                                          }}
+                                        />
+                                      )}
+                                      {/* <ArrowUpward
                                         sx={{
                                           color: lastBoost[show.id] === 1 && ableToVote[show.id] !== true ? 'success.main' : 'inherit',
                                         }}
-                                      />
+                                      /> */}
                                     </StyledFab>
                                   </StyledBadge>
                                 )}
                               </Box>
 
                               <Box alignItems="center" height="100%">
-                                <Typography variant="h5" textAlign="center" color={votesCount(show) < 0 && 'error.main'}>
+                                <Typography
+                                  variant="h5"
+                                  textAlign="center"
+                                  // color={votesCount(show) < 0 && 'error.main'}
+                                >
                                   {votesCount(show) || 0}
                                 </Typography>
                               </Box>
@@ -533,7 +559,10 @@ export default function VotingPage() {
                                     >
                                       <ArrowDownward
                                         sx={{
-                                          color: lastBoost[show.id] === -1 && ableToVote[show.id] !== true ? 'error.main' : 'inherit',
+                                          color:
+                                            lastBoost[show.id] === -1 && ableToVote[show.id] !== true
+                                              ? 'error.main'
+                                              : 'inherit',
                                         }}
                                       />
                                     </StyledFab>
@@ -541,8 +570,8 @@ export default function VotingPage() {
                                 </StyledBadge>
                               </Box>
                             </>
-                            :
-                            <Stack alignItems='center' spacing={0.7} direction='column' height='100%'>
+                          ) : (
+                            <Stack alignItems="center" spacing={0.7} direction="column" height="100%">
                               <Box display="flex" flexDirection="column" justifyContent="space-between" height="100%">
                                 {votingStatus[show.id] === 1 ? (
                                   <CircularProgress size={25} sx={{ ml: 1.2, mb: 1.5 }} />
@@ -564,11 +593,20 @@ export default function VotingPage() {
                                       disabled={ableToVote[show.id] !== true || votingStatus[show.id]}
                                       size="small"
                                     >
-                                      <ThumbUp
-                                        sx={{
-                                          color: lastBoost[show.id] === 1 && ableToVote[show.id] !== true ? 'success.main' : 'inherit',
-                                        }}
-                                      />
+                                      {lastBoost[show.id] === -1 &&
+                                      ableToVote[show.id] !== true &&
+                                      rankMethod === 'upvotes' ? (
+                                        <Lock />
+                                      ) : (
+                                        <ThumbUp
+                                          sx={{
+                                            color:
+                                              lastBoost[show.id] === 1 && ableToVote[show.id] !== true
+                                                ? 'success.main'
+                                                : 'inherit',
+                                          }}
+                                        />
+                                      )}
                                     </StyledFab>
                                   </StyledBadge>
                                 )}
@@ -577,7 +615,7 @@ export default function VotingPage() {
                                 {upvotes[show.id] || 0}
                               </Typography>
                             </Stack>
-                          }
+                          )}
                         </Box>
                       </Box>
                     </CardContent>
