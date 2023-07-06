@@ -2,7 +2,7 @@ import PropTypes from 'prop-types';
 import { useState, useEffect, useContext, useRef, useCallback } from 'react';
 // @mui
 import { styled, useTheme } from '@mui/material/styles';
-import { Box, Stack, AppBar, Toolbar, Link, IconButton, Grid, Typography, Slide, Chip, Popover, Tooltip } from '@mui/material';
+import { Box, Stack, AppBar, Toolbar, Link, IconButton, Grid, Typography, Slide, Chip, Popover, Tooltip, Button } from '@mui/material';
 import { AutoFixHighRounded } from '@mui/icons-material';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 // utils
@@ -60,6 +60,8 @@ export default function Header({ onOpenNav }) {
   const [showNav, setShowNav] = useState(false);
 
   const containerRef = useRef(null);
+
+  const [anchorEl, setAnchorEl] = useState(null);
 
   const renderLogo = () => (
     <Grid
@@ -161,10 +163,15 @@ export default function Header({ onOpenNav }) {
           >
             {/* <NotificationsPopover /> */}
             <>
-              {user && user.userDetails.credits > 0 &&
+              {user &&
                 <Chip
+                  onClick={!user.userDetails.earlyAccessStatus ? (event) => {
+                    setAnchorEl(event.currentTarget)
+                  } : null}
                   icon={<AutoFixHighRounded />}
-                  label={user.userDetails.credits || 0}
+                  // We should probably handle this a little better, but I left this so that we can later make changes. Currently a credit balance of 0 will show Early Access.
+                  // However, everyone starts with 0 I believe, so this will likely just change to showing credits if early access is turned on.
+                  label={user.userDetails.earlyAccessStatus ? user.userDetails.credits ? user.userDetails.credits : 'Early Access' : 'Early Access'}
                   size="small"
                   color="success"
                   sx={{
@@ -173,13 +180,51 @@ export default function Header({ onOpenNav }) {
                     },
                   }}
                 />
-                }
+              }
               <AccountPopover />
             </>
           </Stack>
         </StyledToolbar>
       </StyledRoot>
+      <Popover
+        open={Boolean(anchorEl)}
+        anchorEl={anchorEl}
+        onClose={() => {
+          setAnchorEl(null);
+        }}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'center', // Change 'left' to 'center'
+        }}
+        transformOrigin={{
+          vertical: 'top', // Add this line to position the top corner at the bottom center
+          horizontal: 'right', // Add this line to position the top corner at the bottom center
+        }}
+      >
+        <Box m={3} mx={5}>
+          <Stack justifyContent='center' spacing={3}>
+            <Stack direction='row' color='#54d62c' alignItems='center' justifyContent='center' spacing={1}>
+              <AutoFixHighRounded fontSize='large' />
+              <Typography variant='h5'>
+                Magic Tools
+              </Typography>
+            </Stack>
 
+            <Typography variant='body1' fontWeight='bold' lineHeight={2} textAlign='left'>
+              <ul>
+                <li>Magic Eraser Tool</li>
+                <li>More to be announced</li>
+              </ul>
+            </Typography>
+            
+          </Stack>
+          
+        </Box>
+
+        <Button variant='contained'  size='large' sx={{mx: 2, mb: 2, mt: 1, backgroundColor: '#54d62c', color: 'black', '&:hover': { backgroundColor: '#96f176', color: 'black' }}}>
+              Join Waiting List
+            </Button>
+      </Popover>
     </>
   );
 }
