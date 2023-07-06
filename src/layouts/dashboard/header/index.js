@@ -21,6 +21,7 @@ import {
 } from '@mui/material';
 import { AutoFixHighRounded, Close } from '@mui/icons-material';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
+import SupervisedUserCircleIcon from '@mui/icons-material/SupervisedUserCircle';
 // utils
 import { useLocation, useNavigate } from "react-router-dom";
 import { LoadingButton } from '@mui/lab';
@@ -245,9 +246,9 @@ export default function Header({ onOpenNav }) {
             position: 'absolute',
             top: theme.spacing(1),
             right: theme.spacing(1),
-            backgroundColor: '#222', 
+            backgroundColor: '#222',
             '&:hover': {
-              backgroundColor: '#333', 
+              backgroundColor: '#333',
             },
           }}
         >
@@ -312,6 +313,7 @@ export default function Header({ onOpenNav }) {
               loading={earlyAccessLoading}
               disabled={user?.userDetails?.earlyAccessStatus || earlyAccessLoading || earlyAccessComplete}
               variant="contained"
+              startIcon={<SupervisedUserCircleIcon />}
               size="large"
               fullWidth
               sx={{
@@ -326,11 +328,19 @@ export default function Header({ onOpenNav }) {
               ) : (
                 <>
                   {user?.userDetails?.earlyAccessStatus && user?.userDetails?.earlyAccessStatus !== null
-                    ? `✅ You're on the list!`
-                    : 'Join Waiting List'}
+                    ? `You're on the list!`
+                    : 'Request Access'}
                 </>
               )}
             </LoadingButton>
+            <Typography
+              variant="caption"
+              align="center"
+              sx={{ display: 'block', marginTop: theme.spacing(1), cursor: 'pointer', color: '#999' }}
+              onClick={() => setAnchorEl(null)}
+            >
+              Dismiss
+            </Typography>
           </Box>
         </Card>
       </Popover>
