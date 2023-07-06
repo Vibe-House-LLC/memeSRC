@@ -8,6 +8,7 @@ import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 // utils
 import { useLocation, useNavigate } from "react-router-dom";
 import { LoadingButton } from '@mui/lab';
+import { API } from 'aws-amplify';
 import { bgBlur } from '../../../utils/cssStyles';
 // components
 import Iconify from '../../../components/iconify';
@@ -59,6 +60,10 @@ export default function Header({ onOpenNav }) {
   const [showLogo, setShowLogo] = useState(false);
 
   const [showNav, setShowNav] = useState(false);
+
+  const [earlyAccessLoading, setEarlyAccessLoading] = useState(false);
+
+  const [earlyAccessComplete, setEarlyAccessComplete] = useState(false);
 
   const containerRef = useRef(null);
 
@@ -129,6 +134,16 @@ export default function Header({ onOpenNav }) {
   //   console.log(user);
   // }, [user])
 
+  const earlyAccessSubmit = () => {
+    console.log('submitting')
+    setEarlyAccessLoading(true);
+    API.get('publicapi', '/user/update/earlyAccess').then(response => {
+      console.log(response)
+      setEarlyAccessComplete(true);
+      setEarlyAccessLoading(false);
+    }).catch(err => console.log(err))
+  }
+
   return (
     <>
       <StyledRoot>
@@ -166,9 +181,9 @@ export default function Header({ onOpenNav }) {
             <>
               {user &&
                 <Chip
-                  onClick={!user.userDetails.earlyAccessStatus ? (event) => {
+                  onClick={(event) => {
                     setAnchorEl(event.currentTarget)
-                  } : null}
+                  }}
                   icon={<AutoFixHighRounded />}
                   // We should probably handle this a little better, but I left this so that we can later make changes. Currently a credit balance of 0 will show Early Access.
                   // However, everyone starts with 0 I believe, so this will likely just change to showing credits if early access is turned on.
@@ -222,8 +237,8 @@ export default function Header({ onOpenNav }) {
 
         </Box>
         <Box width='100%' px={2} pb={2} pt={1}>
-          <LoadingButton variant='contained' size='large' fullWidth sx={{ fontSize: 18, backgroundColor: '#54d62c', color: 'black', '&:hover': { backgroundColor: '#96f176', color: 'black' } }}>
-            Join Waiting List
+          <LoadingButton onClick={() => { earlyAccessSubmit() }} loading={earlyAccessLoading} disabled={user?.userDetails?.earlyAccessStatus || earlyAccessLoading || earlyAccessComplete} variant='contained' size='large' fullWidth sx={{ fontSize: 18, backgroundColor: '#54d62c', color: 'black', '&:hover': { backgroundColor: '#96f176', color: 'black' } }}>
+            {earlyAccessComplete ? `You're on the list!` : <>{(user?.userDetails?.earlyAccessStatus && user?.userDetails?.earlyAccessStatus !== null) ? `You're on the list!` : 'Join Waiting List'}</>}
           </LoadingButton>
         </Box>
       </Popover>

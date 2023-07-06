@@ -117,7 +117,7 @@ async function processVotes(allItems, userSub) {
         const currentTime = new Date().getTime();
         const diffInMinutes = (currentTime - voteTime.getTime()) / (1000 * 60);
         isLastUserVoteOlderThanFiveMinutes[vote.seriesUserVoteSeriesId] = diffInMinutes > 5;
-      }      
+      }
     }
   });
 
@@ -361,24 +361,39 @@ export const handler = async (event) => {
     }
   }
 
+  if (path === `/${process.env.ENV}/public/user/update/earlyAccess`) {
+    const query = `
+      mutation updateUserDetails {
+          updateUserDetails(input: { id: "${userSub}", earlyAccessStatus: "requested" }) {
+              id
+              earlyAccessStatus
+          }
+        }
+      `;
+
+      console.log(query)
+
+      response = await makeRequest(query);
+  }
+
   if (path === `/${process.env.ENV}/public/vote`) {
     const seriesId = body.seriesId;
     const boost = body.boost;
-  
+
     console.log('LOAD USER');
     const userDetails = await makeRequest(getUserDetails({ subId: userSub }));
     console.log('User Details:', userDetails);
-  
+
     console.log('SEPARATE USER VOTES');
     const usersVotes = userDetails.body.data.getUserDetails.votes.items;
     console.log('User Votes:', usersVotes);
-  
+
     console.log('CHECK IF VOTE EXISTS FOR SERIES ID');
     const lastVote = usersVotes
       ?.filter((item) => item.series?.id === seriesId)
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
     console.log('Last Vote:', lastVote);
-  
+
     // Check if the last vote was more than 5 minutes ago
     let canVote = false;
     if (lastVote) {
@@ -390,22 +405,21 @@ export const handler = async (event) => {
     } else {
       canVote = true;
     }
-  
+
     console.log('Can Vote:', canVote);
-  
+
     if (canVote) {
       console.log('CREATE VOTE QUERY');
       const createVote = `
         mutation createSeriesUserVote {
-            createSeriesUserVote(input: {userDetailsVotesId: "${userSub}", seriesUserVoteSeriesId: "${seriesId}", boost: ${
-        boost > 0 ? 1 : -1
-      }}) {
+            createSeriesUserVote(input: {userDetailsVotesId: "${userSub}", seriesUserVoteSeriesId: "${seriesId}", boost: ${boost > 0 ? 1 : -1
+        }}) {
               id
             }
         }
       `;
       console.log('Create Vote Query:', createVote);
-  
+
       // Hit GraphQL to place vote
       response = await makeRequest(createVote);
       console.log('Vote Response:', response);
@@ -421,7 +435,7 @@ export const handler = async (event) => {
       console.log('Forbidden Error:', response);
     }
   }
-    
+
   if (path === `/${process.env.ENV}/public/vote/list`) {
     try {
       const rawVotes = await getAllVotes(userSub);
