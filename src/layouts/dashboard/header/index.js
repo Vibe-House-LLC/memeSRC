@@ -187,7 +187,7 @@ export default function Header({ onOpenNav }) {
                   icon={<AutoFixHighRounded />}
                   // We should probably handle this a little better, but I left this so that we can later make changes. Currently a credit balance of 0 will show Early Access.
                   // However, everyone starts with 0 I believe, so this will likely just change to showing credits if early access is turned on.
-                  label={user.userDetails.earlyAccessStatus ? user.userDetails.credits ? user.userDetails.credits : 'Early Access' : 'Early Access'}
+                  label={(user.userDetails.earlyAccessStatus || user.userDetails.credits > 0) ? user.userDetails.credits ? user.userDetails.credits : 'Early Access' : 'Early Access'}
                   size="small"
                   color="success"
                   sx={{
