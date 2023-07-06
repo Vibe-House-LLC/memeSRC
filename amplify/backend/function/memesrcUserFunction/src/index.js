@@ -173,6 +173,7 @@ function getUserDetails(params) {
                       email
                       createdAt
                       status
+                      earlyAccessStatus
                       votes {
                         items {
                             series {
@@ -200,6 +201,7 @@ function getUserDetails(params) {
                   username
                   updatedAt
                   status
+                  earlyAccessStatus
                   votes {
                     items {
                         series {
