@@ -2,7 +2,7 @@ import PropTypes from 'prop-types';
 import { useState, useEffect, useContext, useRef, useCallback } from 'react';
 // @mui
 import { styled, useTheme } from '@mui/material/styles';
-import { Box, Stack, AppBar, Toolbar, Link, IconButton, Grid, Typography, Slide, Chip, Popover, Tooltip, Button } from '@mui/material';
+import { Box, Stack, AppBar, Toolbar, Link, IconButton, Grid, Typography, Slide, Chip, Popover, Tooltip, Button, Card } from '@mui/material';
 import { AutoFixHighRounded } from '@mui/icons-material';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 // utils
@@ -153,50 +153,54 @@ export default function Header({ onOpenNav }) {
             sx={{
               color: 'text.primary',
             }}
-            size='large'
+            size="large"
           >
             <Iconify icon="ic:round-menu" />
           </IconButton>
 
           {/* <Searchbar /> */}
           <Box sx={{ flexGrow: 1 }} />
-          {location.pathname === '/'
-            ?
-
+          {location.pathname === '/' ? (
             <Slide direction="up" container={containerRef.current} exit in={showLogo} mountOnEnter>
-
               {renderLogo()}
             </Slide>
-            : renderLogo()
-          }
+          ) : (
+            renderLogo()
+          )}
 
           <Stack
             direction="row"
             alignItems="center"
             spacing={{
-              xs: 2
+              xs: 2,
             }}
           >
             {/* <NotificationsPopover /> */}
             <>
-              {user &&
+              {user && (
                 <Chip
                   onClick={(event) => {
-                    setAnchorEl(event.currentTarget)
+                    setAnchorEl(event.currentTarget);
                   }}
                   icon={<AutoFixHighRounded />}
                   // We should probably handle this a little better, but I left this so that we can later make changes. Currently a credit balance of 0 will show Early Access.
                   // However, everyone starts with 0 I believe, so this will likely just change to showing credits if early access is turned on.
-                  label={(user.userDetails.earlyAccessStatus || user.userDetails.credits > 0) ? user.userDetails.credits ? user.userDetails.credits : 'Early Access' : 'Early Access'}
+                  label={
+                    user.userDetails.earlyAccessStatus || user.userDetails.credits > 0
+                      ? user.userDetails.credits
+                        ? user.userDetails.credits
+                        : 'Magic'
+                      : 'Magic'
+                  }
                   size="small"
                   color="success"
                   sx={{
-                    "& .MuiChip-label": {
+                    '& .MuiChip-label': {
                       fontWeight: 'bold',
                     },
                   }}
                 />
-              }
+              )}
               <AccountPopover />
             </>
           </Stack>
@@ -214,33 +218,62 @@ export default function Header({ onOpenNav }) {
         }}
         transformOrigin={{
           vertical: 'top', // Add this line to position the top corner at the bottom center
-          horizontal: 'right', // Add this line to position the top corner at the bottom center
+          horizontal: 'center', // Add this line to position the top corner at the bottom center
         }}
       >
-        <Box m={3} mx={5}>
-          <Stack justifyContent='center' spacing={3}>
-            <Stack direction='row' color='#54d62c' alignItems='center' justifyContent='center' spacing={1}>
-              <AutoFixHighRounded fontSize='large' />
-              <Typography variant='h5'>
-                Magic Tools
-              </Typography>
+        <Card sx={{ backgroundColor: "black", borderRadius: '15px', padding: '7px' }}>
+        <Box m={3} mx={5} sx={{ 
+          maxWidth: '400px'
+        }}>
+          <Stack justifyContent="center" spacing={3}>
+            <Stack direction="row" color="#54d62c" alignItems="center" justifyContent="left" spacing={1}>
+              <AutoFixHighRounded fontSize="large" />
+              <Typography variant="h4">Magic Tools</Typography>
             </Stack>
 
-            <Typography variant='body1' fontWeight='bold' lineHeight={2} textAlign='left' px={2}>
+            <Typography variant="h3">A new suite of generative editing tools and features are coming soon!</Typography>
+
+            <Typography variant="subtitle1" fontWeight="bold" lineHeight={2} textAlign="left" px={2}>
               <ul>
-                <li>Magic Eraser Tool</li>
-                <li>More to be announced</li>
+                <li>Magic Eraser <Chip color='success' size='small' label='Early Access' sx={{ marginLeft: '5px', opacity: 0.7 }} /></li>
+                <li>Magic Fill <Chip size='small' label='Planned' sx={{ marginLeft: '5px', opacity: 0.5 }} /></li>
+                <li>Magic Expander <Chip size='small' label='Planned' sx={{ marginLeft: '5px', opacity: 0.5 }} /></li>
+                <li>Magic Isolator <Chip size='small' label='Planned' sx={{ marginLeft: '5px', opacity: 0.5 }} /></li>
               </ul>
             </Typography>
 
+            <Typography variant="body1">We're opening an Early Access program for users who would like to help us test these features as they're developed.</Typography>
           </Stack>
-
         </Box>
-        <Box width='100%' px={2} pb={2} pt={1}>
-          <LoadingButton onClick={() => { earlyAccessSubmit() }} loading={earlyAccessLoading} disabled={user?.userDetails?.earlyAccessStatus || earlyAccessLoading || earlyAccessComplete} variant='contained' size='large' fullWidth sx={{ fontSize: 18, backgroundColor: '#54d62c', color: 'black', '&:hover': { backgroundColor: '#96f176', color: 'black' } }}>
-            {earlyAccessComplete ? `You're on the list!` : <>{(user?.userDetails?.earlyAccessStatus && user?.userDetails?.earlyAccessStatus !== null) ? `You're on the list!` : 'Join Waiting List'}</>}
+        <Box width="100%" px={2} pb={2} pt={1}>
+          <LoadingButton
+            onClick={() => {
+              earlyAccessSubmit();
+            }}
+            loading={earlyAccessLoading}
+            disabled={user?.userDetails?.earlyAccessStatus || earlyAccessLoading || earlyAccessComplete}
+            variant="contained"
+            size="large"
+            fullWidth
+            sx={{
+              fontSize: 18,
+              backgroundColor: '#54d62c',
+              color: 'black',
+              '&:hover': { backgroundColor: '#96f176', color: 'black' },
+            }}
+          >
+            {earlyAccessComplete ? (
+              `You're on the list!`
+            ) : (
+              <>
+                {user?.userDetails?.earlyAccessStatus && user?.userDetails?.earlyAccessStatus !== null
+                  ? `✅ You're on the list!`
+                  : 'Join Waiting List'}
+              </>
+            )}
           </LoadingButton>
         </Box>
+        </Card>
       </Popover>
     </>
   );
