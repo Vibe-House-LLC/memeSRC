@@ -333,14 +333,14 @@ export default function Header({ onOpenNav }) {
                 </>
               )}
             </LoadingButton>
-            <Typography
+            {/* <Typography
               variant="caption"
               align="center"
               sx={{ display: 'block', marginTop: theme.spacing(1), cursor: 'pointer', color: '#999' }}
               onClick={() => setAnchorEl(null)}
             >
               Dismiss
-            </Typography>
+            </Typography> */}
           </Box>
         </Card>
       </Popover>
