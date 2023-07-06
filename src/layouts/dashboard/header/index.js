@@ -2,8 +2,24 @@ import PropTypes from 'prop-types';
 import { useState, useEffect, useContext, useRef, useCallback } from 'react';
 // @mui
 import { styled, useTheme } from '@mui/material/styles';
-import { Box, Stack, AppBar, Toolbar, Link, IconButton, Grid, Typography, Slide, Chip, Popover, Tooltip, Button, Card } from '@mui/material';
-import { AutoFixHighRounded } from '@mui/icons-material';
+import {
+  Box,
+  Stack,
+  AppBar,
+  Toolbar,
+  Link,
+  IconButton,
+  Grid,
+  Typography,
+  Slide,
+  Chip,
+  Popover,
+  Tooltip,
+  Button,
+  Card,
+  Fab,
+} from '@mui/material';
+import { AutoFixHighRounded, Close } from '@mui/icons-material';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 // utils
 import { useLocation, useNavigate } from "react-router-dom";
@@ -221,58 +237,101 @@ export default function Header({ onOpenNav }) {
           horizontal: 'center', // Add this line to position the top corner at the bottom center
         }}
       >
-        <Card sx={{ backgroundColor: "black", borderRadius: '15px', padding: '7px' }}>
-        <Box m={3} mx={5} sx={{ 
-          maxWidth: '400px'
-        }}>
-          <Stack justifyContent="center" spacing={3}>
-            <Stack direction="row" color="#54d62c" alignItems="center" justifyContent="left" spacing={1}>
-              <AutoFixHighRounded fontSize="large" />
-              <Typography variant="h4">Magic Tools</Typography>
-            </Stack>
-
-            <Typography variant="h3">A new suite of generative editing tools and features are coming soon!</Typography>
-
-            <Typography variant="subtitle1" fontWeight="bold" lineHeight={2} textAlign="left" px={2}>
-              <ul>
-                <li>Magic Eraser <Chip color='success' size='small' label='Early Access' sx={{ marginLeft: '5px', opacity: 0.7 }} variant="outlined" /></li>
-                <li>Magic Fill <Chip size='small' label='Planned' sx={{ marginLeft: '5px', opacity: 0.5 }} variant="outlined" /></li>
-                <li>Magic Expander <Chip size='small' label='Planned' sx={{ marginLeft: '5px', opacity: 0.5 }} variant="outlined" /></li>
-                <li>Magic Isolator <Chip size='small' label='Planned' sx={{ marginLeft: '5px', opacity: 0.5 }} variant="outlined" /></li>
-              </ul>
-            </Typography>
-
-            <Typography variant="body1">We're opening an Early Access program for users who would like to help us test these features as they're developed.</Typography>
-          </Stack>
-        </Box>
-        <Box width="100%" px={2} pb={2} pt={1}>
-          <LoadingButton
-            onClick={() => {
-              earlyAccessSubmit();
-            }}
-            loading={earlyAccessLoading}
-            disabled={user?.userDetails?.earlyAccessStatus || earlyAccessLoading || earlyAccessComplete}
-            variant="contained"
-            size="large"
-            fullWidth
+        <Fab
+          color="secondary"
+          aria-label="close"
+          onClick={() => setAnchorEl(null)}
+          sx={{
+            position: 'absolute',
+            top: theme.spacing(1),
+            right: theme.spacing(1),
+            backgroundColor: '#222', 
+            '&:hover': {
+              backgroundColor: '#333', 
+            },
+          }}
+        >
+          <Close />
+        </Fab>
+        <Card sx={{ backgroundColor: 'black', borderRadius: '15px', padding: '7px' }}>
+          <Box
+            m={3}
+            mx={5}
             sx={{
-              fontSize: 18,
-              backgroundColor: '#54d62c',
-              color: 'black',
-              '&:hover': { backgroundColor: '#96f176', color: 'black' },
+              maxWidth: '400px',
             }}
           >
-            {earlyAccessComplete ? (
-              `You're on the list!`
-            ) : (
-              <>
-                {user?.userDetails?.earlyAccessStatus && user?.userDetails?.earlyAccessStatus !== null
-                  ? `✅ You're on the list!`
-                  : 'Join Waiting List'}
-              </>
-            )}
-          </LoadingButton>
-        </Box>
+            <Stack justifyContent="center" spacing={3}>
+              <Stack direction="row" color="#54d62c" alignItems="center" justifyContent="left" spacing={1}>
+                <AutoFixHighRounded fontSize="large" />
+                <Typography variant="h4">Magic Tools</Typography>
+              </Stack>
+
+              <Typography variant="h3">
+                A new suite of generative editing tools and features are coming soon!
+              </Typography>
+
+              <Typography variant="subtitle1" fontWeight="bold" lineHeight={2} textAlign="left" px={2}>
+                <ul>
+                  <li>
+                    Magic Eraser{' '}
+                    <Chip
+                      color="success"
+                      size="small"
+                      label="Early Access"
+                      sx={{ marginLeft: '5px', opacity: 0.7 }}
+                      variant="outlined"
+                    />
+                  </li>
+                  <li>
+                    Magic Fill{' '}
+                    <Chip size="small" label="Planned" sx={{ marginLeft: '5px', opacity: 0.5 }} variant="outlined" />
+                  </li>
+                  <li>
+                    Magic Expander{' '}
+                    <Chip size="small" label="Planned" sx={{ marginLeft: '5px', opacity: 0.5 }} variant="outlined" />
+                  </li>
+                  <li>
+                    Magic Isolator{' '}
+                    <Chip size="small" label="Planned" sx={{ marginLeft: '5px', opacity: 0.5 }} variant="outlined" />
+                  </li>
+                </ul>
+              </Typography>
+
+              <Typography variant="body1">
+                We're opening an Early Access program for users who would like to help us test these features as they're
+                developed.
+              </Typography>
+            </Stack>
+          </Box>
+          <Box width="100%" px={2} pb={2} pt={1}>
+            <LoadingButton
+              onClick={() => {
+                earlyAccessSubmit();
+              }}
+              loading={earlyAccessLoading}
+              disabled={user?.userDetails?.earlyAccessStatus || earlyAccessLoading || earlyAccessComplete}
+              variant="contained"
+              size="large"
+              fullWidth
+              sx={{
+                fontSize: 18,
+                backgroundColor: '#54d62c',
+                color: 'black',
+                '&:hover': { backgroundColor: '#96f176', color: 'black' },
+              }}
+            >
+              {earlyAccessComplete ? (
+                `You're on the list!`
+              ) : (
+                <>
+                  {user?.userDetails?.earlyAccessStatus && user?.userDetails?.earlyAccessStatus !== null
+                    ? `✅ You're on the list!`
+                    : 'Join Waiting List'}
+                </>
+              )}
+            </LoadingButton>
+          </Box>
         </Card>
       </Popover>
     </>
