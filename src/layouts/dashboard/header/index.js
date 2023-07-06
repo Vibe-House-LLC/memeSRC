@@ -235,10 +235,10 @@ export default function Header({ onOpenNav }) {
 
             <Typography variant="subtitle1" fontWeight="bold" lineHeight={2} textAlign="left" px={2}>
               <ul>
-                <li>Magic Eraser <Chip color='success' size='small' label='Early Access' sx={{ marginLeft: '5px', opacity: 0.7 }} /></li>
-                <li>Magic Fill <Chip size='small' label='Planned' sx={{ marginLeft: '5px', opacity: 0.5 }} /></li>
-                <li>Magic Expander <Chip size='small' label='Planned' sx={{ marginLeft: '5px', opacity: 0.5 }} /></li>
-                <li>Magic Isolator <Chip size='small' label='Planned' sx={{ marginLeft: '5px', opacity: 0.5 }} /></li>
+                <li>Magic Eraser <Chip color='success' size='small' label='Early Access' sx={{ marginLeft: '5px', opacity: 0.7 }} variant="outlined" /></li>
+                <li>Magic Fill <Chip size='small' label='Planned' sx={{ marginLeft: '5px', opacity: 0.5 }} variant="outlined" /></li>
+                <li>Magic Expander <Chip size='small' label='Planned' sx={{ marginLeft: '5px', opacity: 0.5 }} variant="outlined" /></li>
+                <li>Magic Isolator <Chip size='small' label='Planned' sx={{ marginLeft: '5px', opacity: 0.5 }} variant="outlined" /></li>
               </ul>
             </Typography>
 
