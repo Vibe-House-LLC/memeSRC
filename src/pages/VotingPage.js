@@ -20,6 +20,7 @@ import {
   Tab,
   Alert,
   AlertTitle,
+  Chip,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { ArrowUpward, ArrowDownward, Search, Close, ThumbUp, Whatshot, Lock } from '@mui/icons-material';
@@ -56,7 +57,7 @@ export default function VotingPage() {
   const [upvotes, setUpvotes] = useState({});
   const [downvotes, setDownvotes] = useState({});
   const [ableToVote, setAbleToVote] = useState({});
-  const [rankMethod, setRankMethod] = useState('combined');
+  const [rankMethod, setRankMethod] = useState('upvotes');
   const [alertOpen, setAlertOpen] = useState(true);
   const [lastBoost, setLastBoost] = useState({});
 
@@ -74,6 +75,16 @@ export default function VotingPage() {
   useEffect(() => {
     fetchShowsAndVotes();
   }, [user]);
+
+  useEffect(() => {
+    // Switch to the "Battleground" tab for users who signed up before 2023-07-07 and have voted (until they manually select a tab)
+    // TODO: remove this in the future after this 'migration' period for the vote sorting options
+    const savedRankMethod = localStorage.getItem('rankMethod');
+    console.log(user)
+    if (!savedRankMethod && Object.keys(userVotes).length > 0 && user.userDetails.createdAt < "2023-07-08") {
+      setRankMethod('combined');
+    }
+  }, [userVotes]);
 
   useEffect(() => {
     let sortedShows;
@@ -348,7 +359,7 @@ export default function VotingPage() {
               </li>
               <li>
                 {' '}
-                • <strong>Battleground:</strong> include the downvotes
+                • <strong>Battleground:</strong> also count downvotes
               </li>
             </ul>
           </Alert>
@@ -358,20 +369,20 @@ export default function VotingPage() {
             <Tab
               label={
                 <Box display="flex" alignItems="center">
-                  <Whatshot color="error" sx={{ mr: 1 }} />
-                  Battleground
-                </Box>
-              }
-              value="combined"
-            />
-            <Tab
-              label={
-                <Box display="flex" alignItems="center">
                   <ThumbUp color="success" sx={{ mr: 1 }} />
                   Most Upvoted
                 </Box>
               }
               value="upvotes"
+            />
+            <Tab
+              label={
+                <Box display="flex" alignItems="center">
+                  <Whatshot color="error" sx={{ mr: 1 }} />
+                  Battleground
+                </Box>
+              }
+              value="combined"
             />
           </Tabs>
         </Box>
