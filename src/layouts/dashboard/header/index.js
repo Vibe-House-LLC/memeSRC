@@ -1,7 +1,7 @@
 import PropTypes from 'prop-types';
 import { useState, useEffect, useContext, useRef, useCallback } from 'react';
 // @mui
-import { styled, useTheme } from '@mui/material/styles';
+import { css, styled, useTheme } from '@mui/material/styles';
 import {
   Box,
   Stack,
@@ -66,6 +66,8 @@ export default function Header({ onOpenNav }) {
 
   const navigate = useNavigate();
 
+  const buttonRef = useRef(null);
+
   const { user } = useContext(UserContext);
 
   const theme = useTheme();
@@ -81,6 +83,7 @@ export default function Header({ onOpenNav }) {
   const [earlyAccessLoading, setEarlyAccessLoading] = useState(false);
 
   const [earlyAccessComplete, setEarlyAccessComplete] = useState(false);
+  const [earlyAccessDisabled, setEarlyAccessDisabled] = useState(false);
 
   const containerRef = useRef(null);
 
@@ -152,12 +155,14 @@ export default function Header({ onOpenNav }) {
   // }, [user])
 
   const earlyAccessSubmit = () => {
-    console.log('submitting')
+    buttonRef.current.blur();
     setEarlyAccessLoading(true);
+    console.log('submitting')
     API.get('publicapi', '/user/update/earlyAccess').then(response => {
       console.log(response)
       setEarlyAccessComplete(true);
       setEarlyAccessLoading(false);
+      setEarlyAccessDisabled(true);
     }).catch(err => console.log(err))
   }
 
@@ -314,21 +319,33 @@ export default function Header({ onOpenNav }) {
         </Box>
         <Box width="100%" px={2} pb={2} pt={1}>
           <LoadingButton
-            onClick={() => {
+            onClick={(event) => {
               earlyAccessSubmit();
             }}
             loading={earlyAccessLoading}
-            disabled={user?.userDetails?.earlyAccessStatus || earlyAccessLoading || earlyAccessComplete}
+            disabled={user?.userDetails?.earlyAccessStatus || earlyAccessDisabled || earlyAccessComplete}
             variant="contained"
             startIcon={<SupervisedUserCircleIcon />}
             size="large"
             fullWidth
-            sx={{
-              fontSize: 18,
-              backgroundColor: '#54d62c',
-              color: 'black',
-              '&:hover': { backgroundColor: '#96f176', color: 'black' },
+            sx={css`
+            font-size: 18px;
+            background-color: #54d62c;
+            color: black;
+    
+            @media (hover: hover) and (pointer: fine) {
+              /* Apply hover style only on non-mobile devices */
+              &:hover {
+                background-color: #96f176;
+                color: black;
+              }
+            }
+          `}
+            onBlur={() => {
+              // Blur the button when it loses focus
+              buttonRef.current.blur();
             }}
+            ref={buttonRef}
           >
             {earlyAccessComplete ? (
               `You're on the list!`
