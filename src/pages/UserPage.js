@@ -41,7 +41,7 @@ const TABLE_HEAD = [
   { id: 'username', label: 'Name', alignRight: false },
   { id: 'email', label: 'Email', alignRight: false },
   { id: 'id', label: 'id', alignRight: false },
-  { id: 'isVerified', label: 'Verified', alignRight: false },
+  { id: 'earlyAccessStatus', label: 'Early Access', alignRight: false },
   { id: 'status', label: 'Status', alignRight: false },
   { id: 'enabled', label: 'Enabled', alignRight: false },
   { id: 'credits', label: 'Credits', alignRight: false },
@@ -171,7 +171,7 @@ export default function UserPage() {
         username: user.username,
         email: user.email,
         id: user.id,
-        isVerified: user.status === 'verified',
+        earlyAccessStatus: Boolean(user.earlyAccessStatus),
         status: user.status,
         enabled: true,
         credits: parseInt(user.credits, 10) || 0,
@@ -292,7 +292,7 @@ export default function UserPage() {
                 />
                 <TableBody>
                   {filteredUsers.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row, index) => {
-                    const { username, email, id, isVerified, status, enabled, credits, createdAt } = row;
+                    const { username, email, id, earlyAccessStatus, status, enabled, credits, createdAt } = row;
                     const selectedUser = selected.indexOf(username) !== -1;
 
                     return (
@@ -314,7 +314,7 @@ export default function UserPage() {
 
                         <TableCell align="left">{id}</TableCell>
 
-                        <TableCell align="left">{(isVerified === "true") ? 'Yes' : 'No'}</TableCell>
+                        <TableCell align="left">{(earlyAccessStatus) ? 'Requested' : 'No Response'}</TableCell>
 
                         <TableCell align="left">
                           <Label color={(status === "UNCONFIRMED") ? 'error' : 'success'}>{sentenceCase(status)}</Label>
@@ -412,7 +412,7 @@ export default function UserPage() {
                     username: user.username,
                     email: user.email,
                     id: user.id,
-                    isVerified: user.status === 'verified', // You'd need to include these in your GraphQL query
+                    earlyAccessStatus: Boolean(user.earlyAccessStatus), // You'd need to include these in your GraphQL query
                     status: user.status,
                     enabled: true,
                     credits: parseInt(user.credits, 10) || 0,
