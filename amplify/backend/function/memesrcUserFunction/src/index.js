@@ -85,6 +85,7 @@ async function processVotes(allItems, userSub) {
   const currentUserVotesDown = {};
   const lastUserVoteTimestamps = {};
   const lastBoostValue = {};
+  const nextVoteTime = {};
 
   const seriesIds = new Set(allItems.map(item => item.seriesUserVoteSeriesId));
   const isLastUserVoteOlderThan24Hours = {};
@@ -109,7 +110,7 @@ async function processVotes(allItems, userSub) {
 
     if (vote.userDetailsVotesId && vote.userDetailsVotesId.normalize() === userSub.normalize()) {
       currentUserVotes[vote.seriesUserVoteSeriesId] = (currentUserVotes[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
-
+    
       const voteTime = new Date(vote.createdAt);
       if (!lastUserVoteTimestamps[vote.seriesUserVoteSeriesId] || voteTime > lastUserVoteTimestamps[vote.seriesUserVoteSeriesId]) {
         lastUserVoteTimestamps[vote.seriesUserVoteSeriesId] = voteTime;
@@ -117,8 +118,15 @@ async function processVotes(allItems, userSub) {
         const currentTime = new Date().getTime();
         const diffInHours = (currentTime - voteTime.getTime()) / (1000 * 60 * 60);
         isLastUserVoteOlderThan24Hours[vote.seriesUserVoteSeriesId] = diffInHours > 24;
+    
+        // calculate next vote time
+        if (diffInHours < 24) {
+          nextVoteTime[vote.seriesUserVoteSeriesId] = new Date(voteTime.getTime() + 24*60*60*1000).toISOString();
+        } else {
+          nextVoteTime[vote.seriesUserVoteSeriesId] = null;
+        }
       }
-    }
+    }    
   });
 
   return {
@@ -129,8 +137,10 @@ async function processVotes(allItems, userSub) {
     votesCountDown,
     currentUserVotesUp,
     currentUserVotesDown,
+    lastUserVoteTimestamps,
     isLastUserVoteOlderThan24Hours,
-    lastBoostValue
+    lastBoostValue,
+    nextVoteTime
   };
 }
 
@@ -448,9 +458,11 @@ export const handler = async (event) => {
         currentUserVotesUp,
         currentUserVotesDown,
         isLastUserVoteOlderThan24Hours,
-        lastBoostValue
+        lastBoostValue,
+        nextVoteTime,
+        lastUserVoteTimestamps
       } = await processVotes(rawVotes, userSub);
-
+  
       const result = {
         votes: votesCount,
         userVotes: currentUserVotes,
@@ -459,9 +471,11 @@ export const handler = async (event) => {
         userVotesUp: currentUserVotesUp,
         userVotesDown: currentUserVotesDown,
         ableToVote: isLastUserVoteOlderThan24Hours,
-        lastBoost: lastBoostValue
+        lastBoost: lastBoostValue,
+        nextVoteTime: nextVoteTime,
+        lastVoteTime: lastUserVoteTimestamps
       };
-
+  
       response = {
         statusCode: 200,
         body: result,
