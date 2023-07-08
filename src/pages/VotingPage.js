@@ -530,9 +530,19 @@ export default function VotingPage() {
                                       // This is where we show two different options depending on vote status
                                       // TODO: Show how much time remains until the next vote
                                       ableToVote[show.id] !== true || votingStatus[show.id]
-                                        ? `Vote again in ${timeRemaining}`
+                                        ? `⏲ Vote again in ${timeRemaining}`
                                         : 'Upvote'
                                     }
+                                    componentsProps={{
+                                      tooltip: {
+                                        sx: {
+                                          bgcolor: 'common.black',
+                                          '& .MuiTooltip-arrow': {
+                                            color: 'common.black',
+                                          },
+                                        },
+                                      },
+                                    }}
                                   >
                                     <StyledBadge
                                       anchorOrigin={{
@@ -600,9 +610,19 @@ export default function VotingPage() {
                                     }}
                                     title={
                                       ableToVote[show.id] !== true || votingStatus[show.id]
-                                        ? `Vote again in ${timeRemaining}`
-                                        : 'Upvote'
+                                        ? `⏲ Vote again in ${timeRemaining}`
+                                        : 'Downvote'
                                     }
+                                    componentsProps={{
+                                      tooltip: {
+                                        sx: {
+                                          bgcolor: 'common.black',
+                                          '& .MuiTooltip-arrow': {
+                                            color: 'common.black',
+                                          },
+                                        },
+                                      },
+                                    }}
                                   >
                                     <StyledBadge
                                       anchorOrigin={{
@@ -657,9 +677,19 @@ export default function VotingPage() {
                                       // This is where we show two different options depending on vote status
                                       // TODO: Show how much time remains until the next vote
                                       ableToVote[show.id] !== true || votingStatus[show.id]
-                                        ? `Vote again in ${timeRemaining}`
+                                        ? `⏲ Vote again in ${timeRemaining}`
                                         : 'Upvote'
                                     }
+                                    componentsProps={{
+                                      tooltip: {
+                                        sx: {
+                                          bgcolor: 'common.black',
+                                          '& .MuiTooltip-arrow': {
+                                            color: 'common.black',
+                                          },
+                                        },
+                                      },
+                                    }}
                                   >
                                     <StyledBadge
                                       anchorOrigin={{
