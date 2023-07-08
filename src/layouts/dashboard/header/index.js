@@ -237,6 +237,14 @@ export default function Header({ onOpenNav }) {
           vertical: 'top', // Add this line to position the top corner at the bottom center
           horizontal: 'center', // Add this line to position the top corner at the bottom center
         }}
+        // This is how you can change the background of the popover
+        PaperProps={{
+          sx: {
+            backgroundColor: 'black',
+            borderRadius: '15px',
+            padding: '7px'
+          }
+        }}
       >
         <Fab
           color="secondary"
@@ -254,86 +262,85 @@ export default function Header({ onOpenNav }) {
         >
           <Close />
         </Fab>
-        <Card sx={{ backgroundColor: 'black', borderRadius: '15px', padding: '7px' }}>
-          <Box
-            m={3}
-            mx={5}
+        <Box
+          m={3}
+          mx={5}
+          sx={{
+            maxWidth: '400px',
+          }}
+        >
+          <Stack justifyContent="center" spacing={3}>
+            <Stack direction="row" color="#54d62c" alignItems="center" justifyContent="left" spacing={1}>
+              <AutoFixHighRounded fontSize="large" />
+              <Typography variant="h3">Magic Tools</Typography>
+            </Stack>
+
+            <Typography variant="h3">
+              A new suite of generative editing tools and features are coming soon!
+            </Typography>
+
+            <Typography variant="subtitle1" fontWeight="bold" lineHeight={2} textAlign="left" px={2}>
+              <ul>
+                <li>
+                  Magic Eraser{' '}
+                  <Chip
+                    color="success"
+                    size="small"
+                    label="Early Access"
+                    sx={{ marginLeft: '5px', opacity: 0.7 }}
+                    variant="outlined"
+                  />
+                </li>
+                <li>
+                  Magic Fill{' '}
+                  <Chip size="small" label="Planned" sx={{ marginLeft: '5px', opacity: 0.5 }} variant="outlined" />
+                </li>
+                <li>
+                  Magic Expander{' '}
+                  <Chip size="small" label="Planned" sx={{ marginLeft: '5px', opacity: 0.5 }} variant="outlined" />
+                </li>
+                <li>
+                  Magic Isolator{' '}
+                  <Chip size="small" label="Planned" sx={{ marginLeft: '5px', opacity: 0.5 }} variant="outlined" />
+                </li>
+              </ul>
+            </Typography>
+
+            <Typography variant="body1">
+              We're opening an Early Access program for users who would like to help us test these features as they're
+              developed.
+            </Typography>
+          </Stack>
+        </Box>
+        <Box width="100%" px={2} pb={2} pt={1}>
+          <LoadingButton
+            onClick={() => {
+              earlyAccessSubmit();
+            }}
+            loading={earlyAccessLoading}
+            disabled={user?.userDetails?.earlyAccessStatus || earlyAccessLoading || earlyAccessComplete}
+            variant="contained"
+            startIcon={<SupervisedUserCircleIcon />}
+            size="large"
+            fullWidth
             sx={{
-              maxWidth: '400px',
+              fontSize: 18,
+              backgroundColor: '#54d62c',
+              color: 'black',
+              '&:hover': { backgroundColor: '#96f176', color: 'black' },
             }}
           >
-            <Stack justifyContent="center" spacing={3}>
-              <Stack direction="row" color="#54d62c" alignItems="center" justifyContent="left" spacing={1}>
-                <AutoFixHighRounded fontSize="large" />
-                <Typography variant="h3">Magic Tools</Typography>
-              </Stack>
-
-              <Typography variant="h3">
-                A new suite of generative editing tools and features are coming soon!
-              </Typography>
-
-              <Typography variant="subtitle1" fontWeight="bold" lineHeight={2} textAlign="left" px={2}>
-                <ul>
-                  <li>
-                    Magic Eraser{' '}
-                    <Chip
-                      color="success"
-                      size="small"
-                      label="Early Access"
-                      sx={{ marginLeft: '5px', opacity: 0.7 }}
-                      variant="outlined"
-                    />
-                  </li>
-                  <li>
-                    Magic Fill{' '}
-                    <Chip size="small" label="Planned" sx={{ marginLeft: '5px', opacity: 0.5 }} variant="outlined" />
-                  </li>
-                  <li>
-                    Magic Expander{' '}
-                    <Chip size="small" label="Planned" sx={{ marginLeft: '5px', opacity: 0.5 }} variant="outlined" />
-                  </li>
-                  <li>
-                    Magic Isolator{' '}
-                    <Chip size="small" label="Planned" sx={{ marginLeft: '5px', opacity: 0.5 }} variant="outlined" />
-                  </li>
-                </ul>
-              </Typography>
-
-              <Typography variant="body1">
-                We're opening an Early Access program for users who would like to help us test these features as they're
-                developed.
-              </Typography>
-            </Stack>
-          </Box>
-          <Box width="100%" px={2} pb={2} pt={1}>
-            <LoadingButton
-              onClick={() => {
-                earlyAccessSubmit();
-              }}
-              loading={earlyAccessLoading}
-              disabled={user?.userDetails?.earlyAccessStatus || earlyAccessLoading || earlyAccessComplete}
-              variant="contained"
-              startIcon={<SupervisedUserCircleIcon />}
-              size="large"
-              fullWidth
-              sx={{
-                fontSize: 18,
-                backgroundColor: '#54d62c',
-                color: 'black',
-                '&:hover': { backgroundColor: '#96f176', color: 'black' },
-              }}
-            >
-              {earlyAccessComplete ? (
-                `You're on the list!`
-              ) : (
-                <>
-                  {user?.userDetails?.earlyAccessStatus && user?.userDetails?.earlyAccessStatus !== null
-                    ? `You're on the list!`
-                    : 'Request Access'}
-                </>
-              )}
-            </LoadingButton>
-            {/* <Typography
+            {earlyAccessComplete ? (
+              `You're on the list!`
+            ) : (
+              <>
+                {user?.userDetails?.earlyAccessStatus && user?.userDetails?.earlyAccessStatus !== null
+                  ? `You're on the list!`
+                  : 'Request Access'}
+              </>
+            )}
+          </LoadingButton>
+          {/* <Typography
               variant="caption"
               align="center"
               sx={{ display: 'block', marginTop: theme.spacing(1), cursor: 'pointer', color: '#999' }}
@@ -341,8 +348,7 @@ export default function Header({ onOpenNav }) {
             >
               Dismiss
             </Typography> */}
-          </Box>
-        </Card>
+        </Box>
       </Popover>
     </>
   );
