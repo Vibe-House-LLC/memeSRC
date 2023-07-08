@@ -268,6 +268,14 @@ export default function VotingPage() {
         return newAbleToVote;
       });
 
+      setNextVoteTimes((prevNextVoteTimes) => {
+        const newNextVoteTimes = { ...prevNextVoteTimes };
+        const now = new Date();
+        now.setHours(now.getHours() + 24);
+        newNextVoteTimes[seriesId] = now;
+        return newNextVoteTimes;
+      });
+
       setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: false }));
 
       setLastBoost((prevLastBoost) => ({ ...prevLastBoost, [seriesId]: boost }));
@@ -478,7 +486,7 @@ export default function VotingPage() {
                               </Badge>
                             </Box>
                             <Stack direction="column">
-                              <Typography variant="h5">{show.id}</Typography>
+                              <Typography variant="h5">{show.name}</Typography>
                               <Box
                                 display="flex"
                                 alignItems="center"
@@ -530,7 +538,7 @@ export default function VotingPage() {
                                       // This is where we show two different options depending on vote status
                                       // TODO: Show how much time remains until the next vote
                                       ableToVote[show.id] !== true || votingStatus[show.id]
-                                        ? `⏲ Vote again in ${timeRemaining}`
+                                        ? `🔒 ${timeRemaining}`
                                         : 'Upvote'
                                     }
                                     componentsProps={{
@@ -610,7 +618,7 @@ export default function VotingPage() {
                                     }}
                                     title={
                                       ableToVote[show.id] !== true || votingStatus[show.id]
-                                        ? `⏲ Vote again in ${timeRemaining}`
+                                        ? `🔒 ${timeRemaining}`
                                         : 'Downvote'
                                     }
                                     componentsProps={{
@@ -677,7 +685,7 @@ export default function VotingPage() {
                                       // This is where we show two different options depending on vote status
                                       // TODO: Show how much time remains until the next vote
                                       ableToVote[show.id] !== true || votingStatus[show.id]
-                                        ? `⏲ Vote again in ${timeRemaining}`
+                                        ? `🔒 ${timeRemaining}`
                                         : 'Upvote'
                                     }
                                     componentsProps={{
