@@ -199,7 +199,6 @@ export default function Header({ onOpenNav }) {
           >
             {/* <NotificationsPopover /> */}
             <>
-              {user && (
                 <Chip
                   onClick={(event) => {
                     setAnchorEl(event.currentTarget);
@@ -208,9 +207,9 @@ export default function Header({ onOpenNav }) {
                   // We should probably handle this a little better, but I left this so that we can later make changes. Currently a credit balance of 0 will show Early Access.
                   // However, everyone starts with 0 I believe, so this will likely just change to showing credits if early access is turned on.
                   label={
-                    user.userDetails.earlyAccessStatus || user.userDetails.credits > 0
-                      ? user.userDetails.credits
-                        ? user.userDetails.credits
+                    user?.userDetails?.earlyAccessStatus || user?.userDetails?.credits > 0
+                      ? user?.userDetails?.credits
+                        ? user?.userDetails?.credits
                         : 'Magic'
                       : 'Magic'
                   }
@@ -222,7 +221,6 @@ export default function Header({ onOpenNav }) {
                     },
                   }}
                 />
-              )}
               <AccountPopover />
             </>
           </Stack>
@@ -320,10 +318,14 @@ export default function Header({ onOpenNav }) {
         <Box width="100%" px={2} pb={2} pt={1}>
           <LoadingButton
             onClick={(event) => {
-              earlyAccessSubmit();
+              if(user) {
+                earlyAccessSubmit();
+              } else {
+                navigate('/signup')
+              }
             }}
             loading={earlyAccessLoading}
-            disabled={user?.userDetails?.earlyAccessStatus || earlyAccessDisabled || earlyAccessComplete}
+            disabled={user?.userDetails?.earlyAccessStatus || earlyAccessLoading || earlyAccessDisabled || earlyAccessComplete}
             variant="contained"
             startIcon={<SupervisedUserCircleIcon />}
             size="large"
@@ -333,13 +335,13 @@ export default function Header({ onOpenNav }) {
             background-color: #54d62c;
             color: black;
     
-            @media (hover: hover) and (pointer: fine) {
+            ${!(earlyAccessLoading || earlyAccessDisabled) ? `@media (hover: hover) and (pointer: fine) {
               /* Apply hover style only on non-mobile devices */
               &:hover {
                 background-color: #96f176;
                 color: black;
               }
-            }
+            }` : ''}
           `}
             onBlur={() => {
               // Blur the button when it loses focus
