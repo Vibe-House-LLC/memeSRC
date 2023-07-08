@@ -399,7 +399,7 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
               </Typography>
               {!localStorage.getItem('alertDismissed') && (
                 <Alert
-                  severity="success"
+                  severity="info"
                   action={
                     <>
                       <Button
