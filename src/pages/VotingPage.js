@@ -61,6 +61,7 @@ export default function VotingPage() {
   const [rankMethod, setRankMethod] = useState('upvotes');
   const [alertOpen, setAlertOpen] = useState(true);
   const [lastBoost, setLastBoost] = useState({});
+  const [nextVoteTimes, setNextVoteTimes] = useState({});
   const [timeRemaining, setTimeRemaining] = useState('');
 
   const location = useLocation();
@@ -72,7 +73,7 @@ export default function VotingPage() {
     if (savedRankMethod) {
       setRankMethod(savedRankMethod);
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
     fetchShowsAndVotes();
@@ -82,8 +83,8 @@ export default function VotingPage() {
     // Switch to the "Battleground" tab for users who signed up before 2023-07-07 and have voted (until they manually select a tab)
     // TODO: remove this in the future after this 'migration' period for the vote sorting options
     const savedRankMethod = localStorage.getItem('rankMethod');
-    console.log(user)
-    if (!savedRankMethod && Object.keys(userVotes).length > 0 && user.userDetails.createdAt < "2023-07-08") {
+    console.log(user);
+    if (!savedRankMethod && Object.keys(userVotes).length > 0 && user.userDetails.createdAt < '2023-07-08') {
       setRankMethod('combined');
     }
   }, [userVotes]);
@@ -183,6 +184,13 @@ export default function VotingPage() {
       setDownvotes(voteData.votesDown);
       setAbleToVote(voteData.ableToVote);
       setLastBoost(voteData.lastBoost);
+
+      const nextVoteTimes = {};
+      Object.keys(voteData.nextVoteTime).forEach((seriesId) => {
+        nextVoteTimes[seriesId] = voteData.nextVoteTime[seriesId];
+      });
+      setNextVoteTimes(nextVoteTimes);  // assuming you have a state variable called nextVoteTimes
+
     } catch (error) {
       console.error('Error fetching series data:', error);
     } finally {
@@ -329,14 +337,14 @@ export default function VotingPage() {
 
     const hours = Math.floor(remainingTime / (1000 * 60 * 60));
     const minutes = Math.floor((remainingTime % (1000 * 60 * 60)) / (1000 * 60));
-    const formattedTime = `${hours}:${minutes.toString().padStart(2, '0')}`;
+    const formattedTime = `${hours}h ${minutes.toString().padStart(2, '0')}m`;
     setTimeRemaining(formattedTime);
   };
 
   return (
     <>
       <Helmet>
-        <title> Voting • TV Shows • memeSRC </title>
+        <title> Vote and Requests • TV Shows • memeSRC </title>
       </Helmet>
       <Container maxWidth="md">
         <Box my={2}>
@@ -470,7 +478,7 @@ export default function VotingPage() {
                               </Badge>
                             </Box>
                             <Stack direction="column">
-                              <Typography variant="h5">{show.name}</Typography>
+                              <Typography variant="h5">{show.id}</Typography>
                               <Box
                                 display="flex"
                                 alignItems="center"
@@ -516,12 +524,14 @@ export default function VotingPage() {
                                       // TODO: Add the ISO 8601 string response here
                                       // Here's info about that: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString
                                       // It's always UTC, so it shouldn't matter what their timezone is, it should show right.
-                                      calculateTimeRemaining('2023-07-09T07:30:00Z')
+                                      calculateTimeRemaining(nextVoteTimes[show.id]);
                                     }}
                                     title={
                                       // This is where we show two different options depending on vote status
                                       // TODO: Show how much time remains until the next vote
-                                      (ableToVote[show.id] !== true || votingStatus[show.id]) ? `Vote again in ${timeRemaining}` : 'Upvote'
+                                      ableToVote[show.id] !== true || votingStatus[show.id]
+                                        ? `Vote again in ${timeRemaining}`
+                                        : 'Upvote'
                                     }
                                   >
                                     <StyledBadge
@@ -545,8 +555,8 @@ export default function VotingPage() {
                                         size="small"
                                       >
                                         {lastBoost[show.id] === -1 &&
-                                          ableToVote[show.id] !== true &&
-                                          rankMethod === 'upvotes' ? (
+                                        ableToVote[show.id] !== true &&
+                                        rankMethod === 'upvotes' ? (
                                           <Lock />
                                         ) : (
                                           <ArrowUpward
@@ -573,13 +583,12 @@ export default function VotingPage() {
                                 <Typography
                                   variant="h5"
                                   textAlign="center"
-                                // color={votesCount(show) < 0 && 'error.main'}
+                                  // color={votesCount(show) < 0 && 'error.main'}
                                 >
                                   {votesCount(show) || 0}
                                 </Typography>
                               </Box>
                               <Box>
-
                                 {votingStatus[show.id] === -1 ? (
                                   <CircularProgress size={25} sx={{ ml: 1.3, mt: 1.6 }} />
                                 ) : (
@@ -587,15 +596,12 @@ export default function VotingPage() {
                                     disableFocusListener
                                     enterTouchDelay={0}
                                     onOpen={() => {
-                                      // TODO: Add the ISO 8601 string response here
-                                      // Here's info about that: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString
-                                      // It's always UTC, so it shouldn't matter what their timezone is, it should show right.
-                                      calculateTimeRemaining('2023-07-09T08:30:00Z')
+                                      calculateTimeRemaining(nextVoteTimes[show.id]);
                                     }}
                                     title={
-                                      // This is where we show two different options depending on vote status
-                                      // TODO: Show how much time remains until the next vote
-                                      (ableToVote[show.id] !== true || votingStatus[show.id]) ? `Vote again in ${timeRemaining}` : 'Downvote'
+                                      ableToVote[show.id] !== true || votingStatus[show.id]
+                                        ? `Vote again in ${timeRemaining}`
+                                        : 'Upvote'
                                     }
                                   >
                                     <StyledBadge
@@ -645,12 +651,14 @@ export default function VotingPage() {
                                       // TODO: Add the ISO 8601 string response here
                                       // Here's info about that: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString
                                       // It's always UTC, so it shouldn't matter what their timezone is, it should show right.
-                                      calculateTimeRemaining('2023-07-09T08:30:00Z')
+                                      calculateTimeRemaining(nextVoteTimes[show.id]);
                                     }}
                                     title={
                                       // This is where we show two different options depending on vote status
                                       // TODO: Show how much time remains until the next vote
-                                      (ableToVote[show.id] !== true || votingStatus[show.id]) ? `Vote again in ${timeRemaining}` : 'Upvote'
+                                      ableToVote[show.id] !== true || votingStatus[show.id]
+                                        ? `Vote again in ${timeRemaining}`
+                                        : 'Upvote'
                                     }
                                   >
                                     <StyledBadge
@@ -671,8 +679,8 @@ export default function VotingPage() {
                                         size="small"
                                       >
                                         {lastBoost[show.id] === -1 &&
-                                          ableToVote[show.id] !== true &&
-                                          rankMethod === 'upvotes' ? (
+                                        ableToVote[show.id] !== true &&
+                                        rankMethod === 'upvotes' ? (
                                           <Lock />
                                         ) : (
                                           <ThumbUp
