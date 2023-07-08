@@ -21,6 +21,7 @@ import {
   Alert,
   AlertTitle,
   Chip,
+  Tooltip,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { ArrowUpward, ArrowDownward, Search, Close, ThumbUp, Whatshot, Lock } from '@mui/icons-material';
@@ -67,7 +68,7 @@ export default function VotingPage() {
 
   useEffect(() => {
     const savedRankMethod = localStorage.getItem('rankMethod');
-    if(savedRankMethod){
+    if (savedRankMethod) {
       setRankMethod(savedRankMethod);
     }
   }, [])
@@ -491,47 +492,53 @@ export default function VotingPage() {
                                 {votingStatus[show.id] === 1 ? (
                                   <CircularProgress size={25} sx={{ ml: 1.2, mb: 1.5 }} />
                                 ) : (
-                                  <StyledBadge
-                                    anchorOrigin={{
-                                      vertical: 'top',
-                                      horizontal: 'right',
-                                    }}
-                                    badgeContent={userVotesUp[show.id] ? `+${userVotesUp[show.id] || 0}` : null}
-                                    sx={{
-                                      color: 'success.main',
-                                    }}
-                                  >
-                                    <StyledFab
-                                      aria-label="upvote"
-                                      onClick={() =>
-                                        user
-                                          ? handleUpvote(show.id)
-                                          : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
-                                      }
-                                      disabled={ableToVote[show.id] !== true || votingStatus[show.id]}
-                                      size="small"
+                                  <Tooltip disableFocusListener enterTouchDelay={0} title={
+                                    // This is where we show two different options depending on vote status
+                                    // TODO: Show how much time remains until the next vote
+                                    (ableToVote[show.id] !== true || votingStatus[show.id]) ? `Vote again in ${'23:59'}` : 'Upvote'
+                                  }>
+                                    <StyledBadge
+                                      anchorOrigin={{
+                                        vertical: 'top',
+                                        horizontal: 'right',
+                                      }}
+                                      badgeContent={userVotesUp[show.id] ? `+${userVotesUp[show.id] || 0}` : null}
+                                      sx={{
+                                        color: 'success.main',
+                                      }}
                                     >
-                                      {lastBoost[show.id] === -1 &&
-                                      ableToVote[show.id] !== true &&
-                                      rankMethod === 'upvotes' ? (
-                                        <Lock />
-                                      ) : (
-                                        <ArrowUpward
-                                          sx={{
-                                            color:
-                                              lastBoost[show.id] === 1 && ableToVote[show.id] !== true
-                                                ? 'success.main'
-                                                : 'inherit',
-                                          }}
-                                        />
-                                      )}
-                                      {/* <ArrowUpward
+                                      <StyledFab
+                                        aria-label="upvote"
+                                        onClick={() =>
+                                          user
+                                            ? handleUpvote(show.id)
+                                            : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
+                                        }
+                                        disabled={ableToVote[show.id] !== true || votingStatus[show.id]}
+                                        size="small"
+                                      >
+                                        {lastBoost[show.id] === -1 &&
+                                          ableToVote[show.id] !== true &&
+                                          rankMethod === 'upvotes' ? (
+                                          <Lock />
+                                        ) : (
+                                          <ArrowUpward
+                                            sx={{
+                                              color:
+                                                lastBoost[show.id] === 1 && ableToVote[show.id] !== true
+                                                  ? 'success.main'
+                                                  : 'inherit',
+                                            }}
+                                          />
+                                        )}
+                                        {/* <ArrowUpward
                                         sx={{
                                           color: lastBoost[show.id] === 1 && ableToVote[show.id] !== true ? 'success.main' : 'inherit',
                                         }}
                                       /> */}
-                                    </StyledFab>
-                                  </StyledBadge>
+                                      </StyledFab>
+                                    </StyledBadge>
+                                  </Tooltip>
                                 )}
                               </Box>
 
@@ -539,46 +546,53 @@ export default function VotingPage() {
                                 <Typography
                                   variant="h5"
                                   textAlign="center"
-                                  // color={votesCount(show) < 0 && 'error.main'}
+                                // color={votesCount(show) < 0 && 'error.main'}
                                 >
                                   {votesCount(show) || 0}
                                 </Typography>
                               </Box>
                               <Box>
-                                <StyledBadge
-                                  anchorOrigin={{
-                                    vertical: 'bottom',
-                                    horizontal: 'right',
-                                  }}
-                                  badgeContent={userVotesDown[show.id] || 0}
-                                  sx={{
-                                    color: 'error.main',
-                                  }}
-                                >
-                                  {votingStatus[show.id] === -1 ? (
-                                    <CircularProgress size={25} sx={{ ml: 1.3, mt: 1.6 }} />
-                                  ) : (
-                                    <StyledFab
-                                      aria-label="downvote"
-                                      onClick={() =>
-                                        user
-                                          ? handleDownvote(show.id)
-                                          : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
-                                      }
-                                      disabled={ableToVote[show.id] !== true || votingStatus[show.id]}
-                                      size="small"
+
+                                {votingStatus[show.id] === -1 ? (
+                                  <CircularProgress size={25} sx={{ ml: 1.3, mt: 1.6 }} />
+                                ) : (
+                                  <Tooltip disableFocusListener enterTouchDelay={0} title={
+                                    // This is where we show two different options depending on vote status
+                                    // TODO: Show how much time remains until the next vote
+                                    (ableToVote[show.id] !== true || votingStatus[show.id]) ? `Vote again in ${'23:59'}` : 'Downvote'
+                                  }>
+                                    <StyledBadge
+                                      anchorOrigin={{
+                                        vertical: 'bottom',
+                                        horizontal: 'right',
+                                      }}
+                                      badgeContent={userVotesDown[show.id] || 0}
+                                      sx={{
+                                        color: 'error.main',
+                                      }}
                                     >
-                                      <ArrowDownward
-                                        sx={{
-                                          color:
-                                            lastBoost[show.id] === -1 && ableToVote[show.id] !== true
-                                              ? 'error.main'
-                                              : 'inherit',
-                                        }}
-                                      />
-                                    </StyledFab>
-                                  )}
-                                </StyledBadge>
+                                      <StyledFab
+                                        aria-label="downvote"
+                                        onClick={() =>
+                                          user
+                                            ? handleDownvote(show.id)
+                                            : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
+                                        }
+                                        disabled={ableToVote[show.id] !== true || votingStatus[show.id]}
+                                        size="small"
+                                      >
+                                        <ArrowDownward
+                                          sx={{
+                                            color:
+                                              lastBoost[show.id] === -1 && ableToVote[show.id] !== true
+                                                ? 'error.main'
+                                                : 'inherit',
+                                          }}
+                                        />
+                                      </StyledFab>
+                                    </StyledBadge>
+                                  </Tooltip>
+                                )}
                               </Box>
                             </>
                           ) : (
@@ -587,39 +601,45 @@ export default function VotingPage() {
                                 {votingStatus[show.id] === 1 ? (
                                   <CircularProgress size={25} sx={{ ml: 1.2, mb: 1.5 }} />
                                 ) : (
-                                  <StyledBadge
-                                    anchorOrigin={{
-                                      vertical: 'top',
-                                      horizontal: 'right',
-                                    }}
-                                    badgeContent={userVotesUp[show.id] ? `+${userVotesUp[show.id] || 0}` : null}
-                                  >
-                                    <StyledFab
-                                      aria-label="upvote"
-                                      onClick={() =>
-                                        user
-                                          ? handleUpvote(show.id)
-                                          : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
-                                      }
-                                      disabled={ableToVote[show.id] !== true || votingStatus[show.id]}
-                                      size="small"
+                                  <Tooltip disableFocusListener enterTouchDelay={0} title={
+                                    // This is where we show two different options depending on vote status
+                                    // TODO: Show how much time remains until the next vote
+                                    (ableToVote[show.id] !== true || votingStatus[show.id]) ? `Vote again in ${'23:59'}` : 'Upvote'
+                                  }>
+                                    <StyledBadge
+                                      anchorOrigin={{
+                                        vertical: 'top',
+                                        horizontal: 'right',
+                                      }}
+                                      badgeContent={userVotesUp[show.id] ? `+${userVotesUp[show.id] || 0}` : null}
                                     >
-                                      {lastBoost[show.id] === -1 &&
-                                      ableToVote[show.id] !== true &&
-                                      rankMethod === 'upvotes' ? (
-                                        <Lock />
-                                      ) : (
-                                        <ThumbUp
-                                          sx={{
-                                            color:
-                                              lastBoost[show.id] === 1 && ableToVote[show.id] !== true
-                                                ? 'success.main'
-                                                : 'inherit',
-                                          }}
-                                        />
-                                      )}
-                                    </StyledFab>
-                                  </StyledBadge>
+                                      <StyledFab
+                                        aria-label="upvote"
+                                        onClick={() =>
+                                          user
+                                            ? handleUpvote(show.id)
+                                            : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
+                                        }
+                                        disabled={ableToVote[show.id] !== true || votingStatus[show.id]}
+                                        size="small"
+                                      >
+                                        {lastBoost[show.id] === -1 &&
+                                          ableToVote[show.id] !== true &&
+                                          rankMethod === 'upvotes' ? (
+                                          <Lock />
+                                        ) : (
+                                          <ThumbUp
+                                            sx={{
+                                              color:
+                                                lastBoost[show.id] === 1 && ableToVote[show.id] !== true
+                                                  ? 'success.main'
+                                                  : 'inherit',
+                                            }}
+                                          />
+                                        )}
+                                      </StyledFab>
+                                    </StyledBadge>
+                                  </Tooltip>
                                 )}
                               </Box>
                               <Typography variant="h5" textAlign="center" color={votesCount(show) < 0 && 'error.main'}>
