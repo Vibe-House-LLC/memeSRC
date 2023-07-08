@@ -61,6 +61,7 @@ export default function VotingPage() {
   const [rankMethod, setRankMethod] = useState('upvotes');
   const [alertOpen, setAlertOpen] = useState(true);
   const [lastBoost, setLastBoost] = useState({});
+  const [timeRemaining, setTimeRemaining] = useState('');
 
   const location = useLocation();
 
@@ -316,6 +317,22 @@ export default function VotingPage() {
     }
   };
 
+  const calculateTimeRemaining = (targetDateTime) => {
+    const targetTime = new Date(targetDateTime);
+    const now = new Date();
+    const remainingTime = targetTime - now;
+
+    if (remainingTime <= 0) {
+      setTimeRemaining('0:00');
+      return;
+    }
+
+    const hours = Math.floor(remainingTime / (1000 * 60 * 60));
+    const minutes = Math.floor((remainingTime % (1000 * 60 * 60)) / (1000 * 60));
+    const formattedTime = `${hours}:${minutes.toString().padStart(2, '0')}`;
+    setTimeRemaining(formattedTime);
+  };
+
   return (
     <>
       <Helmet>
@@ -492,11 +509,21 @@ export default function VotingPage() {
                                 {votingStatus[show.id] === 1 ? (
                                   <CircularProgress size={25} sx={{ ml: 1.2, mb: 1.5 }} />
                                 ) : (
-                                  <Tooltip disableFocusListener enterTouchDelay={0} title={
-                                    // This is where we show two different options depending on vote status
-                                    // TODO: Show how much time remains until the next vote
-                                    (ableToVote[show.id] !== true || votingStatus[show.id]) ? `Vote again in ${'23:59'}` : 'Upvote'
-                                  }>
+                                  <Tooltip
+                                    disableFocusListener
+                                    enterTouchDelay={0}
+                                    onOpen={() => {
+                                      // TODO: Add the ISO 8601 string response here
+                                      // Here's info about that: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString
+                                      // It's always UTC, so it shouldn't matter what their timezone is, it should show right.
+                                      calculateTimeRemaining('2023-07-09T07:30:00Z')
+                                    }}
+                                    title={
+                                      // This is where we show two different options depending on vote status
+                                      // TODO: Show how much time remains until the next vote
+                                      (ableToVote[show.id] !== true || votingStatus[show.id]) ? `Vote again in ${timeRemaining}` : 'Upvote'
+                                    }
+                                  >
                                     <StyledBadge
                                       anchorOrigin={{
                                         vertical: 'top',
@@ -556,11 +583,21 @@ export default function VotingPage() {
                                 {votingStatus[show.id] === -1 ? (
                                   <CircularProgress size={25} sx={{ ml: 1.3, mt: 1.6 }} />
                                 ) : (
-                                  <Tooltip disableFocusListener enterTouchDelay={0} title={
-                                    // This is where we show two different options depending on vote status
-                                    // TODO: Show how much time remains until the next vote
-                                    (ableToVote[show.id] !== true || votingStatus[show.id]) ? `Vote again in ${'23:59'}` : 'Downvote'
-                                  }>
+                                  <Tooltip
+                                    disableFocusListener
+                                    enterTouchDelay={0}
+                                    onOpen={() => {
+                                      // TODO: Add the ISO 8601 string response here
+                                      // Here's info about that: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString
+                                      // It's always UTC, so it shouldn't matter what their timezone is, it should show right.
+                                      calculateTimeRemaining('2023-07-09T08:30:00Z')
+                                    }}
+                                    title={
+                                      // This is where we show two different options depending on vote status
+                                      // TODO: Show how much time remains until the next vote
+                                      (ableToVote[show.id] !== true || votingStatus[show.id]) ? `Vote again in ${timeRemaining}` : 'Downvote'
+                                    }
+                                  >
                                     <StyledBadge
                                       anchorOrigin={{
                                         vertical: 'bottom',
@@ -601,11 +638,21 @@ export default function VotingPage() {
                                 {votingStatus[show.id] === 1 ? (
                                   <CircularProgress size={25} sx={{ ml: 1.2, mb: 1.5 }} />
                                 ) : (
-                                  <Tooltip disableFocusListener enterTouchDelay={0} title={
-                                    // This is where we show two different options depending on vote status
-                                    // TODO: Show how much time remains until the next vote
-                                    (ableToVote[show.id] !== true || votingStatus[show.id]) ? `Vote again in ${'23:59'}` : 'Upvote'
-                                  }>
+                                  <Tooltip
+                                    disableFocusListener
+                                    enterTouchDelay={0}
+                                    onOpen={() => {
+                                      // TODO: Add the ISO 8601 string response here
+                                      // Here's info about that: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString
+                                      // It's always UTC, so it shouldn't matter what their timezone is, it should show right.
+                                      calculateTimeRemaining('2023-07-09T08:30:00Z')
+                                    }}
+                                    title={
+                                      // This is where we show two different options depending on vote status
+                                      // TODO: Show how much time remains until the next vote
+                                      (ableToVote[show.id] !== true || votingStatus[show.id]) ? `Vote again in ${timeRemaining}` : 'Upvote'
+                                    }
+                                  >
                                     <StyledBadge
                                       anchorOrigin={{
                                         vertical: 'top',
