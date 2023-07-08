@@ -49,6 +49,7 @@ async function getAllVotes(userSub, nextToken) {
           boost
           userDetailsVotesId
           seriesUserVoteSeriesId
+          createdAt
         }
         nextToken
       }
@@ -66,7 +67,7 @@ async function getAllVotes(userSub, nextToken) {
   let allItems = response.body.data.listSeriesUserVotes.items;
   if (response.body.data.listSeriesUserVotes.nextToken) {
     console.log('loading another page...');
-    console.log(`nextToken: ${response.body.data.listSeriesUserVotes.nextToken}`)
+    console.log(`nextToken: ${response.body.data.listSeriesUserVotes.nextToken}`);
     let newItems = await getAllVotes(userSub, response.body.data.listSeriesUserVotes.nextToken);
     allItems = allItems.concat(newItems);
     console.log('loaded another page');
@@ -82,8 +83,14 @@ async function processVotes(allItems, userSub) {
   const votesCountDown = {};
   const currentUserVotesUp = {};
   const currentUserVotesDown = {};
+  const lastUserVoteTimestamps = {};
+  const lastBoostValue = {};
+  const nextVoteTime = {};
 
-  // console.log('CHECKING IF USER VOTES');
+  const seriesIds = new Set(allItems.map(item => item.seriesUserVoteSeriesId));
+  const isLastUserVoteOlderThan24Hours = {};
+  seriesIds.forEach(id => isLastUserVoteOlderThan24Hours[id] = true);
+
   allItems.forEach((vote) => {
     if (vote.boost > 0) {
       votesCountUp[vote.seriesUserVoteSeriesId] = (votesCountUp[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
@@ -101,23 +108,26 @@ async function processVotes(allItems, userSub) {
 
     votesCount[vote.seriesUserVoteSeriesId] = (votesCount[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
 
-    if (vote.userDetailsVotesId) {
-      typeof vote.userDetailsVotesId;
-      typeof userSub;
-      if (vote.userDetailsVotesId.normalize() === userSub.normalize()) {
-        currentUserVotes[vote.seriesUserVoteSeriesId] =
-          (currentUserVotes[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
+    if (vote.userDetailsVotesId && vote.userDetailsVotesId.normalize() === userSub.normalize()) {
+      currentUserVotes[vote.seriesUserVoteSeriesId] = (currentUserVotes[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
+    
+      const voteTime = new Date(vote.createdAt);
+      if (!lastUserVoteTimestamps[vote.seriesUserVoteSeriesId] || voteTime > lastUserVoteTimestamps[vote.seriesUserVoteSeriesId]) {
+        lastUserVoteTimestamps[vote.seriesUserVoteSeriesId] = voteTime;
+        lastBoostValue[vote.seriesUserVoteSeriesId] = vote.boost;
+        const currentTime = new Date().getTime();
+        const diffInHours = (currentTime - voteTime.getTime()) / (1000 * 60 * 60);
+        isLastUserVoteOlderThan24Hours[vote.seriesUserVoteSeriesId] = diffInHours > 24;
+    
+        // calculate next vote time
+        if (diffInHours < 24) {
+          nextVoteTime[vote.seriesUserVoteSeriesId] = new Date(voteTime.getTime() + 24*60*60*1000).toISOString();
+        } else {
+          nextVoteTime[vote.seriesUserVoteSeriesId] = null;
+        }
       }
-    }
+    }    
   });
-
-  // console.log('Vote Loading Results:');
-  // console.log(votesCount);
-  // console.log(currentUserVotes);
-  // console.log(votesCountUp);
-  // console.log(votesCountDown);
-  // console.log(currentUserVotesUp);
-  // console.log(currentUserVotesDown);
 
   return {
     allItems,
@@ -127,24 +137,13 @@ async function processVotes(allItems, userSub) {
     votesCountDown,
     currentUserVotesUp,
     currentUserVotesDown,
+    lastUserVoteTimestamps,
+    isLastUserVoteOlderThan24Hours,
+    lastBoostValue,
+    nextVoteTime
   };
 }
 
-function updateUserDetailsCredits(params) {
-  const id = params.id ? `id: "${params.id}",` : '';
-  const credits = params.credits !== undefined ? `credits: ${params.credits},` : '';
-
-  const mutation = `
-    mutation updateUserDetails {
-      updateUserDetails(input: {${id}${credits}}) {
-        id
-        credits
-      }
-    }
-  `;
-
-  return mutation;
-}
 
 function updateUserDetails(params) {
   const email = params.email ? `email: "${params.email}",` : '';
@@ -184,11 +183,14 @@ function getUserDetails(params) {
                       email
                       createdAt
                       status
+                      earlyAccessStatus
                       votes {
                         items {
                             series {
                                 id
                             }
+                            boost
+                            createdAt
                         }
                       }
                       credits
@@ -209,18 +211,21 @@ function getUserDetails(params) {
                   username
                   updatedAt
                   status
+                  earlyAccessStatus
                   votes {
                     items {
                         series {
                             id
                         }
+                        boost
+                        createdAt
                     }
                   }
                   credits
               }
           }
       `;
-    // console.log(query);
+    console.log(query);
     return query;
   }
 }
@@ -366,68 +371,109 @@ export const handler = async (event) => {
     }
   }
 
+  if (path === `/${process.env.ENV}/public/user/update/earlyAccess`) {
+    const query = `
+      mutation updateUserDetails {
+          updateUserDetails(input: { id: "${userSub}", earlyAccessStatus: "requested" }) {
+              id
+              earlyAccessStatus
+          }
+        }
+      `;
+
+      console.log(query)
+
+      response = await makeRequest(query);
+  }
+
   if (path === `/${process.env.ENV}/public/vote`) {
-    // console.log('GET SERIES ID FROM BODY');
     const seriesId = body.seriesId;
     const boost = body.boost;
-    // console.log(seriesId);
 
     console.log('LOAD USER');
     const userDetails = await makeRequest(getUserDetails({ subId: userSub }));
-    console.log(userDetails);
+    console.log('User Details:', userDetails);
 
-    // console.log('SEPERATE USER VOTES');
+    console.log('SEPARATE USER VOTES');
     const usersVotes = userDetails.body.data.getUserDetails.votes.items;
-    // console.log(usersVotes);
+    console.log('User Votes:', usersVotes);
 
-    // console.log('CHECK IF VOTE EXIST FOR SERIES ID');
-    const voteExist = usersVotes?.some((item) => item.series?.id === seriesId);
-    // console.log(voteExist);
+    console.log('CHECK IF VOTE EXISTS FOR SERIES ID');
+    const lastVote = usersVotes
+      ?.filter((item) => item.series?.id === seriesId)
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+    console.log('Last Vote:', lastVote);
 
-    if (!voteExist) {
-      // They have not voted for this series yet
+    // Check if the last vote was more than 5 minutes ago
+    let canVote = false;
+    if (lastVote) {
+      const voteTime = new Date(lastVote.createdAt);
+      console.log(`Last Vote Time: ${voteTime}`)
+      const diffInMinutes = (new Date() - voteTime) / 1000 / 60;
+      console.log(`diffInMinutes: ${diffInMinutes}`)
+      canVote = diffInMinutes > 5;
+    } else {
+      canVote = true;
+    }
 
-      // Build query to cast vote
+    console.log('Can Vote:', canVote);
+
+    if (canVote) {
       console.log('CREATE VOTE QUERY');
       const createVote = `
-            mutation createSeriesUserVote {
-                createSeriesUserVote(input: {userDetailsVotesId: "${userSub}", seriesUserVoteSeriesId: "${seriesId}", boost: ${
-        boost > 0 ? 1 : -1
-      }}) {
-                  id
-                }
+        mutation createSeriesUserVote {
+            createSeriesUserVote(input: {userDetailsVotesId: "${userSub}", seriesUserVoteSeriesId: "${seriesId}", boost: ${boost > 0 ? 1 : -1
+        }}) {
+              id
             }
-        `;
-      console.log(createVote);
+        }
+      `;
+      console.log('Create Vote Query:', createVote);
 
       // Hit GraphQL to place vote
       response = await makeRequest(createVote);
-      console.log(response);
+      console.log('Vote Response:', response);
     } else {
-      // The user has already voted. Return a Forbidden error with details
+      // The user has already voted recently. Return a Forbidden error with details
       response = {
         statusCode: 403,
         body: {
-          name: 'MaxVotesReached',
-          message: 'You have reached the maximum number of votes for this series.',
+          name: 'VoteTooRecent',
+          message: 'You can only vote once every 5 minutes.',
         },
       };
+      console.log('Forbidden Error:', response);
     }
   }
 
   if (path === `/${process.env.ENV}/public/vote/list`) {
     try {
-      // Pull and process the votes from GraphQL
       const rawVotes = await getAllVotes(userSub);
-      const { allVotes, votesCount, currentUserVotes, votesCountUp, votesCountDown, currentUserVotesUp, currentUserVotesDown } = await processVotes(rawVotes, userSub);
-
+      const {
+        allVotes,
+        votesCount,
+        currentUserVotes,
+        votesCountUp,
+        votesCountDown,
+        currentUserVotesUp,
+        currentUserVotesDown,
+        isLastUserVoteOlderThan24Hours,
+        lastBoostValue,
+        nextVoteTime,
+        lastUserVoteTimestamps
+      } = await processVotes(rawVotes, userSub);
+  
       const result = {
         votes: votesCount,
         userVotes: currentUserVotes,
         votesUp: votesCountUp,
         votesDown: votesCountDown,
         userVotesUp: currentUserVotesUp,
-        userVotesDown: currentUserVotesDown
+        userVotesDown: currentUserVotesDown,
+        ableToVote: isLastUserVoteOlderThan24Hours,
+        lastBoost: lastBoostValue,
+        nextVoteTime: nextVoteTime,
+        lastVoteTime: lastUserVoteTimestamps
       };
   
       response = {
@@ -442,7 +488,7 @@ export const handler = async (event) => {
       };
     }
   }
-  
+
   // console.log(response);
 
   return {

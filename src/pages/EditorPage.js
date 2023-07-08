@@ -9,6 +9,7 @@ import { Accordion, AccordionDetails, AccordionSummary, Backdrop, Button, Card, 
 import { Add, AddCircleOutline, ArrowForward, ArrowForwardIos, AutoFixHighRounded, Close, ContentCopy, Description, GpsFixed, GpsNotFixed, HighlightOffRounded, HistoryToggleOffRounded, IosShare, Menu, More, PlusOne, Share } from '@mui/icons-material';
 import { API, Storage } from 'aws-amplify';
 import { Box } from '@mui/system';
+import { Helmet } from 'react-helmet-async';
 import TextEditorControls from '../components/TextEditorControls';
 import { SnackbarContext } from '../SnackbarContext';
 import { UserContext } from '../UserContext';
@@ -627,104 +628,151 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
     // Outputs
     return (
-        <>
-            <ParentContainer id="parent-container">
-                <Grid container justifyContent='center'>
-                    <Grid container item xs={12} md={8} minWidth={{ xs: {}, md: '98vw', lg: '1200px' }} justifyContent='center' marginBottom={8.3}>
-                        <Card sx={{ padding: '20px' }}>
-                            <Grid container item spacing={2} justifyContent='center'>
-                                <Grid item xs={12} md={7} lg={7} order='1'>
+      <>
+        <Helmet>
+          <title>Edit • memeSRC</title>
+        </Helmet>
+        <ParentContainer id="parent-container">
+          <Grid container justifyContent="center">
+            <Grid
+              container
+              item
+              xs={12}
+              md={8}
+              minWidth={{ xs: {}, md: '98vw', lg: '1200px' }}
+              justifyContent="center"
+              marginBottom={8.3}
+            >
+              <Card sx={{ padding: '20px' }}>
+                <Grid container item spacing={2} justifyContent="center">
+                  <Grid item xs={12} md={7} lg={7} order="1">
+                    <div style={{ width: '100%', height: '100%' }} id="canvas-container">
+                      <FabricJSCanvas onReady={onReady} />
+                    </div>
+                  </Grid>
+                  <Grid item xs={12} md={5} lg={5} minWidth={{ xs: {}, md: '350px' }} order={{ xs: 3, md: 2 }}>
+                    {user && user.userDetails?.credits > 0 && (
+                      <Grid item xs={12} marginBottom={2}>
+                        <Grid container direction="column" spacing={2}>
+                          {drawingMode ? (
+                            <>
+                              <Grid item>
+                                <TextField
+                                  fullWidth
+                                  id="prompt"
+                                  label="Prompt"
+                                  variant="outlined"
+                                  value={magicPrompt}
+                                  onChange={(event) => setMagicPrompt(event.target.value)}
+                                />
+                              </Grid>
+                              <Grid item>
+                                <Button
+                                  variant="contained"
+                                  onClick={() => {
+                                    exportDrawing();
+                                    toggleDrawingMode();
+                                  }}
+                                  fullWidth
+                                  sx={{ zIndex: '50' }}
+                                  startIcon={<AutoFixHighRounded />}
+                                >
+                                  Magic Brush (apply)
+                                </Button>
+                              </Grid>
+                            </>
+                          ) : (
+                            <Grid item>
+                              <Button
+                                variant="contained"
+                                onClick={toggleDrawingMode}
+                                fullWidth
+                                sx={{ zIndex: '50' }}
+                                startIcon={<AutoFixHighRounded />}
+                              >
+                                Magic Brush (select)
+                              </Button>
+                            </Grid>
+                          )}
+                        </Grid>
+                      </Grid>
+                    )}
+                    <Grid item xs={12} marginBottom={2}>
+                      <Button
+                        variant="contained"
+                        onClick={handleClickDialogOpen}
+                        fullWidth
+                        sx={{ zIndex: '50' }}
+                        startIcon={<Share />}
+                      >
+                        Save/Copy/Share
+                      </Button>
+                    </Grid>
+                    <Grid item xs={12} marginBottom={2}>
+                      <Button
+                        variant="contained"
+                        onClick={() => addText('text', true)}
+                        fullWidth
+                        sx={{ zIndex: '50' }}
+                        startIcon={<AddCircleOutline />}
+                      >
+                        Add Layer
+                      </Button>
+                    </Grid>
 
-                                    <div style={{ width: '100%', height: '100%' }} id='canvas-container'>
-                                        <FabricJSCanvas onReady={onReady} />
-                                    </div>
-                                </Grid>
-                                <Grid item xs={12} md={5} lg={5} minWidth={{ xs: {}, md: '350px' }} order={{ xs: 3, md: 2 }}>
-                                    {user && user.userDetails?.credits > 0 &&
-                                        <Grid item xs={12} marginBottom={2}>
-                                            <Grid container direction='column' spacing={2}>
-                                                {drawingMode ? (
-                                                    <>
-                                                        <Grid item>
-                                                            <TextField
-                                                                fullWidth
-                                                                id="prompt"
-                                                                label="Prompt"
-                                                                variant="outlined"
-                                                                value={magicPrompt}
-                                                                onChange={(event) => setMagicPrompt(event.target.value)}
-                                                            />
-                                                        </Grid>
-                                                        <Grid item>
-                                                            <Button
-                                                                variant='contained'
-                                                                onClick={() => {
-                                                                    exportDrawing();
-                                                                    toggleDrawingMode();
-                                                                }}
-                                                                fullWidth
-                                                                sx={{ zIndex: '50' }}
-                                                                startIcon={<AutoFixHighRounded />}
-                                                            >
-                                                                Magic Brush (apply)
-                                                            </Button>
-                                                        </Grid>
-                                                    </>
-                                                ) : (
-                                                    <Grid item>
-                                                        <Button
-                                                            variant='contained'
-                                                            onClick={toggleDrawingMode}
-                                                            fullWidth
-                                                            sx={{ zIndex: '50' }}
-                                                            startIcon={<AutoFixHighRounded />}
-                                                        >
-                                                            Magic Brush (select)
-                                                        </Button>
-                                                    </Grid>
-                                                )}
-                                            </Grid>
-                                        </Grid>
-                                    }
-                                    <Grid item xs={12} marginBottom={2}>
-                                        <Button
-                                            variant='contained'
-                                            onClick={handleClickDialogOpen}
-                                            fullWidth
-                                            sx={{ zIndex: '50' }}
-                                            startIcon={<Share />}
-                                        >
-                                            Save/Copy/Share
-                                        </Button>
-                                    </Grid>
-                                    <Grid item xs={12} marginBottom={2}>
-                                        <Button
-                                            variant='contained'
-                                            onClick={() => addText('text', true)}
-                                            fullWidth
-                                            sx={{ zIndex: '50' }}
-                                            startIcon={<AddCircleOutline />}
-                                        >
-                                            Add Layer
-                                        </Button>
-                                    </Grid>
-
-
-                                    <Grid container item xs={12} maxHeight={{ xs: {}, md: `${canvasSize.height - 104}px` }} paddingX={{ xs: 0, md: 2 }} sx={{ overflowY: 'scroll', overflow: 'auto' }} flexDirection='col-reverse'>
-                                        {canvasObjects && canvasObjects.map((object, index) => (
-
-                                            ('text' in object) &&
-                                            <Grid item xs={12} order={`-${index}`} key={`grid${index}`}>
-                                                <Card sx={{ marginBottom: '20px', padding: '10px' }} key={`card${index}`}>
-                                                    <div style={{ display: 'inline', position: 'relative' }} key={`div${index}`}>
-                                                        {/* <button type='button' key={`button${index}`} onClick={(event) => showColorPicker(event, index)}>Change Color</button> */}
-                                                        <TextEditorControls showColorPicker={(event) => showColorPicker(event, index)} colorPickerShowing={colorPickerShowing} index={index} showFontSizePicker={(event) => showFontSizePicker(event, index)} fontSizePickerShowing={fontSizePickerShowing} key={`togglebuttons${index}`} handleStyle={handleStyle} />
-                                                    </div>
-                                                    <Fab size="small" aria-label="add" sx={{ position: 'absolute', backgroundColor: theme.palette.background.paper, boxShadow: 'none', top: '11px', right: '9px' }} onClick={() => deleteLayer(index)} key={`fab${index}`}>
-                                                        <HighlightOffRounded color="error" />
-                                                    </Fab>
-                                                    <TextField size='small' key={`textfield${index}`} multiline type='text' value={canvasObjects[index].text} fullWidth onFocus={() => handleFocus(index)} onChange={(event) => handleEdit(event, index)} />
-                                                    {/* <Typography gutterBottom >
+                    <Grid
+                      container
+                      item
+                      xs={12}
+                      maxHeight={{ xs: {}, md: `${canvasSize.height - 104}px` }}
+                      paddingX={{ xs: 0, md: 2 }}
+                      sx={{ overflowY: 'scroll', overflow: 'auto' }}
+                      flexDirection="col-reverse"
+                    >
+                      {canvasObjects &&
+                        canvasObjects.map(
+                          (object, index) =>
+                            'text' in object && (
+                              <Grid item xs={12} order={`-${index}`} key={`grid${index}`}>
+                                <Card sx={{ marginBottom: '20px', padding: '10px' }} key={`card${index}`}>
+                                  <div style={{ display: 'inline', position: 'relative' }} key={`div${index}`}>
+                                    {/* <button type='button' key={`button${index}`} onClick={(event) => showColorPicker(event, index)}>Change Color</button> */}
+                                    <TextEditorControls
+                                      showColorPicker={(event) => showColorPicker(event, index)}
+                                      colorPickerShowing={colorPickerShowing}
+                                      index={index}
+                                      showFontSizePicker={(event) => showFontSizePicker(event, index)}
+                                      fontSizePickerShowing={fontSizePickerShowing}
+                                      key={`togglebuttons${index}`}
+                                      handleStyle={handleStyle}
+                                    />
+                                  </div>
+                                  <Fab
+                                    size="small"
+                                    aria-label="add"
+                                    sx={{
+                                      position: 'absolute',
+                                      backgroundColor: theme.palette.background.paper,
+                                      boxShadow: 'none',
+                                      top: '11px',
+                                      right: '9px',
+                                    }}
+                                    onClick={() => deleteLayer(index)}
+                                    key={`fab${index}`}
+                                  >
+                                    <HighlightOffRounded color="error" />
+                                  </Fab>
+                                  <TextField
+                                    size="small"
+                                    key={`textfield${index}`}
+                                    multiline
+                                    type="text"
+                                    value={canvasObjects[index].text}
+                                    fullWidth
+                                    onFocus={() => handleFocus(index)}
+                                    onChange={(event) => handleEdit(event, index)}
+                                  />
+                                  {/* <Typography gutterBottom >
                                                         Font Size
                                                     </Typography>
                                                     <Slider
@@ -738,101 +786,139 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                         onFocus={() => handleFocus(index)}
                                                         key={`slider${index}`}
                                                     /> */}
-                                                </Card>
-                                            </Grid>
-                                        )
+                                </Card>
+                              </Grid>
+                            )
+                        )}
+                    </Grid>
+                  </Grid>
+                  <Grid
+                    item
+                    xs={12}
+                    md={7}
+                    lg={7}
+                    marginRight={{ xs: '', md: 'auto' }}
+                    marginTop={{ xs: -2.5, md: -1.5 }}
+                    order={{ xs: 4, md: 4 }}
+                  >
+                    <Card>
+                      <Accordion expanded={subtitlesExpanded} disableGutters>
+                        <AccordionSummary sx={{ paddingX: 1.55 }} onClick={handleSubtitlesExpand} textAlign="center">
+                          <Typography marginRight="auto" fontWeight="bold" color="#CACACA" fontSize={14.8}>
+                            {subtitlesExpanded ? (
+                              <Close style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
+                            ) : (
+                              <Menu style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
+                            )}
+                            {subtitlesExpanded ? 'Hide' : 'View'} Nearby Subtitles
+                          </Typography>
+                          <Chip size="small" label="New!" color="success" />
+                        </AccordionSummary>
+                        <AccordionDetails sx={{ paddingY: 0, paddingX: 0 }}>
+                          <List sx={{ padding: '.5em 0' }}>
+                            {surroundingFrames &&
+                              surroundingFrames
+                                .filter(
+                                  (result, index, array) =>
+                                    result?.subtitle &&
+                                    (index === 0 ||
+                                      result?.subtitle.replace(/\n/g, ' ') !==
+                                        array[index - 1].subtitle.replace(/\n/g, ' '))
+                                )
+                                .map((result) => (
+                                  <ListItem key={result?.id} disablePadding sx={{ padding: '0 0 .6em 0' }}>
+                                    <ListItemIcon sx={{ paddingLeft: '0' }}>
+                                      <Fab
+                                        size="small"
+                                        sx={{
+                                          backgroundColor: theme.palette.background.paper,
+                                          boxShadow: 'none',
+                                          marginLeft: '5px',
+                                          '&:hover': {
+                                            xs: { backgroundColor: 'inherit' },
+                                            md: {
+                                              backgroundColor:
+                                                result?.subtitle.replace(/\n/g, ' ') ===
+                                                defaultSubtitle?.replace(/\n/g, ' ')
+                                                  ? 'rgba(0, 0, 0, 0)'
+                                                  : 'ButtonHighlight',
+                                            },
+                                          },
+                                        }}
+                                        onClick={() => navigate(`/editor/${result?.fid}`)}
+                                      >
+                                        {loading ? (
+                                          <CircularProgress size={20} sx={{ color: '#565656' }} />
+                                        ) : result?.subtitle.replace(/\n/g, ' ') ===
+                                          defaultSubtitle.replace(/\n/g, ' ') ? (
+                                          <GpsFixed
+                                            sx={{
+                                              color:
+                                                result?.subtitle.replace(/\n/g, ' ') ===
+                                                defaultSubtitle?.replace(/\n/g, ' ')
+                                                  ? 'rgb(202, 202, 202)'
+                                                  : 'rgb(89, 89, 89)',
+                                              cursor: 'pointer',
+                                            }}
+                                          />
+                                        ) : (
+                                          <GpsNotFixed sx={{ color: 'rgb(89, 89, 89)', cursor: 'pointer' }} />
                                         )}
-                                    </Grid>
-                                </Grid>
-                                <Grid item xs={12} md={7} lg={7} marginRight={{ xs: '', md: 'auto' }} marginTop={{ xs: -2.5, md: -1.5 }} order={{ xs: 4, md: 4 }}>
-                                    <Card>
-                                        <Accordion expanded={subtitlesExpanded} disableGutters>
-                                            <AccordionSummary sx={{ paddingX: 1.55 }} onClick={handleSubtitlesExpand} textAlign="center">
-                                                <Typography
-                                                    marginRight="auto"
-                                                    fontWeight="bold"
-                                                    color="#CACACA"
-                                                    fontSize={14.8}
-                                                >
-                                                    {subtitlesExpanded ? (
-                                                        <Close
-                                                            style={{ verticalAlign: "middle", marginTop: "-3px", marginRight: "10px" }}
-                                                        />
-                                                    ) : (
-                                                        <Menu
-                                                            style={{ verticalAlign: "middle", marginTop: "-3px", marginRight: "10px" }}
-                                                        />
-                                                    )}
-                                                    {subtitlesExpanded ? "Hide" : "View"} Nearby Subtitles
-                                                </Typography>
-                                                <Chip size="small" label="New!" color="success" />
-                                            </AccordionSummary>
-                                            <AccordionDetails sx={{ paddingY: 0, paddingX: 0 }}>
-                                                <List sx={{ padding: '.5em 0' }}>
-                                                    {surroundingFrames &&
-                                                        surroundingFrames
-                                                            .filter(
-                                                                (result, index, array) =>
-                                                                    result?.subtitle &&
-                                                                    (index === 0 ||
-                                                                        result?.subtitle.replace(/\n/g, " ") !==
-                                                                        array[index - 1].subtitle.replace(/\n/g, " "))
-                                                            )
-                                                            .map((result) => (
-                                                                <ListItem key={result?.id} disablePadding sx={{ padding: '0 0 .6em 0' }}>
-                                                                    <ListItemIcon sx={{ paddingLeft: "0" }}>
-
-                                                                        <Fab
-                                                                            size="small"
-                                                                            sx={{
-                                                                                backgroundColor: theme.palette.background.paper,
-                                                                                boxShadow: "none",
-                                                                                marginLeft: '5px',
-                                                                                '&:hover': { xs: { backgroundColor: 'inherit' }, md: { backgroundColor: (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 'rgba(0, 0, 0, 0)' : 'ButtonHighlight' } }
-                                                                            }}
-                                                                            onClick={() => navigate(`/editor/${result?.fid}`)}
-                                                                        >
-                                                                            {loading ? (
-                                                                                <CircularProgress size={20} sx={{ color: "#565656" }} />
-                                                                            ) : (
-                                                                                (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle.replace(/\n/g, " ")) ? <GpsFixed sx={{ color: (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 'rgb(202, 202, 202)' : 'rgb(89, 89, 89)', cursor: "pointer" }} /> : <GpsNotFixed sx={{ color: "rgb(89, 89, 89)", cursor: "pointer" }} />
-                                                                            )}
-                                                                        </Fab>
-                                                                    </ListItemIcon>
-                                                                    <ListItemText sx={{ color: 'rgb(173, 173, 173)', fontSize: '4em' }}>
-                                                                        <Typography component='p' variant='body2' color={(result?.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 'rgb(202, 202, 202)' : ''} fontWeight={(result?.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 700 : 400}>
-                                                                            {result?.subtitle.replace(/\n/g, " ")}
-                                                                        </Typography>
-                                                                    </ListItemText>
-                                                                    <ListItemIcon sx={{ paddingRight: "0", marginLeft: 'auto' }}>
-                                                                        <Fab
-                                                                            size="small"
-                                                                            sx={{
-                                                                                backgroundColor: theme.palette.background.paper,
-                                                                                boxShadow: "none",
-                                                                                marginRight: '2px',
-                                                                                '&:hover': { xs: { backgroundColor: 'inherit' }, md: { backgroundColor: 'ButtonHighlight' } }
-                                                                            }}
-                                                                            onClick={() => {
-                                                                                navigator.clipboard.writeText(result?.subtitle.replace(/\n/g, " "));
-                                                                                handleSnackbarOpen();
-                                                                            }}
-                                                                        >
-                                                                            <ContentCopy sx={{ color: "rgb(89, 89, 89)" }} />
-                                                                        </Fab>
-                                                                        <Fab
-                                                                            size="small"
-                                                                            sx={{
-                                                                                backgroundColor: theme.palette.background.paper,
-                                                                                boxShadow: "none",
-                                                                                marginLeft: 'auto',
-                                                                                '&:hover': { xs: { backgroundColor: 'inherit' }, md: { backgroundColor: 'ButtonHighlight' } }
-                                                                            }}
-                                                                            onClick={() => addText(result?.subtitle.replace(/\n/g, " "), true)}
-                                                                        >
-                                                                            <Add sx={{ color: 'rgb(89, 89, 89)', cursor: "pointer" }} />
-                                                                        </Fab>
-                                                                        {/* <Fab
+                                      </Fab>
+                                    </ListItemIcon>
+                                    <ListItemText sx={{ color: 'rgb(173, 173, 173)', fontSize: '4em' }}>
+                                      <Typography
+                                        component="p"
+                                        variant="body2"
+                                        color={
+                                          result?.subtitle.replace(/\n/g, ' ') === defaultSubtitle?.replace(/\n/g, ' ')
+                                            ? 'rgb(202, 202, 202)'
+                                            : ''
+                                        }
+                                        fontWeight={
+                                          result?.subtitle.replace(/\n/g, ' ') === defaultSubtitle?.replace(/\n/g, ' ')
+                                            ? 700
+                                            : 400
+                                        }
+                                      >
+                                        {result?.subtitle.replace(/\n/g, ' ')}
+                                      </Typography>
+                                    </ListItemText>
+                                    <ListItemIcon sx={{ paddingRight: '0', marginLeft: 'auto' }}>
+                                      <Fab
+                                        size="small"
+                                        sx={{
+                                          backgroundColor: theme.palette.background.paper,
+                                          boxShadow: 'none',
+                                          marginRight: '2px',
+                                          '&:hover': {
+                                            xs: { backgroundColor: 'inherit' },
+                                            md: { backgroundColor: 'ButtonHighlight' },
+                                          },
+                                        }}
+                                        onClick={() => {
+                                          navigator.clipboard.writeText(result?.subtitle.replace(/\n/g, ' '));
+                                          handleSnackbarOpen();
+                                        }}
+                                      >
+                                        <ContentCopy sx={{ color: 'rgb(89, 89, 89)' }} />
+                                      </Fab>
+                                      <Fab
+                                        size="small"
+                                        sx={{
+                                          backgroundColor: theme.palette.background.paper,
+                                          boxShadow: 'none',
+                                          marginLeft: 'auto',
+                                          '&:hover': {
+                                            xs: { backgroundColor: 'inherit' },
+                                            md: { backgroundColor: 'ButtonHighlight' },
+                                          },
+                                        }}
+                                        onClick={() => addText(result?.subtitle.replace(/\n/g, ' '), true)}
+                                      >
+                                        <Add sx={{ color: 'rgb(89, 89, 89)', cursor: 'pointer' }} />
+                                      </Fab>
+                                      {/* <Fab
                                                                             size="small"
                                                                             sx={{
                                                                                 backgroundColor: theme.palette.background.paper,
@@ -848,239 +934,266 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                                             (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle.replace(/\n/g, " ")) ? <GpsFixed sx={{ color: (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 'rgb(50, 50, 50)' : 'rgb(89, 89, 89)', cursor: "pointer"}} /> : <ArrowForward sx={{ color: "rgb(89, 89, 89)", cursor: "pointer"}} /> 
                                                                         )}
                                                                         </Fab> */}
-                                                                    </ListItemIcon>
-                                                                </ListItem>
-                                                            ))}
-                                                </List>
-                                            </AccordionDetails>
-                                        </Accordion>
-                                    </Card>
-                                </Grid>
-                                <Grid item xs={12} md={7} lg={7} marginRight={{ xs: '', md: 'auto' }} order={{ xs: 2, md: 3 }}>
-                                    <Stack spacing={2} direction='row' alignItems={'center'}>
-                                        <Tooltip title="Fine Tuning">
-                                            <IconButton>
-                                                <HistoryToggleOffRounded alt='Fine Tuning' />
-                                            </IconButton>
-                                        </Tooltip>
-                                        <Slider
-                                            size="small"
-                                            defaultValue={4}
-                                            min={0}
-                                            max={8}
-                                            value={fineTuningValue}
-                                            aria-label="Small"
-                                            valueLabelDisplay="auto"
-                                            onChange={(event) => {
-                                                handleFineTuning(event);
-                                                setFineTuningValue(event.target.value);
-                                            }}
-                                            valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
-                                            marks
-                                            track={false}
-                                        />
-                                    </Stack>
-                                    {/* <button type='button' onClick={addImage}>Add Image</button>
+                                    </ListItemIcon>
+                                  </ListItem>
+                                ))}
+                          </List>
+                        </AccordionDetails>
+                      </Accordion>
+                    </Card>
+                  </Grid>
+                  <Grid item xs={12} md={7} lg={7} marginRight={{ xs: '', md: 'auto' }} order={{ xs: 2, md: 3 }}>
+                    <Stack spacing={2} direction="row" alignItems={'center'}>
+                      <Tooltip title="Fine Tuning">
+                        <IconButton>
+                          <HistoryToggleOffRounded alt="Fine Tuning" />
+                        </IconButton>
+                      </Tooltip>
+                      <Slider
+                        size="small"
+                        defaultValue={4}
+                        min={0}
+                        max={8}
+                        value={fineTuningValue}
+                        aria-label="Small"
+                        valueLabelDisplay="auto"
+                        onChange={(event) => {
+                          handleFineTuning(event);
+                          setFineTuningValue(event.target.value);
+                        }}
+                        valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
+                        marks
+                        track={false}
+                      />
+                    </Stack>
+                    {/* <button type='button' onClick={addImage}>Add Image</button>
                                     <button type='button' onClick={saveProject}>Save Project</button>
                                     <button type='button' onClick={loadProject}>Load Project</button>
                                     <button type='button' onClick={handleClickDialogOpen}>Save Image</button> */}
-
-                                </Grid>
-                                <Grid container item spacing={1} order='5'>
-                                    {surroundingFrames && surroundingFrames.map(result => (
-                                        <Grid item xs={4} sm={4} md={12 / 9} key={result?.fid}>
-                                            <a style={{ textDecoration: 'none' }}>
-                                                <StyledCard
-                                                    style={{ border: (fid === result?.fid) ? '3px solid orange' : '' }}
-                                                >
-                                                    {/* {console.log(`${fid} = ${result?.fid}`)} */}
-                                                    <StyledCardMedia
-                                                        component="img"
-                                                        src={`https://memesrc.com${result?.frame_image}`}
-                                                        alt={result?.subtitle}
-                                                        title={result?.subtitle}
-                                                        onClick={() => {
-                                                            editor.canvas._objects = [];
-                                                            setSelectedFid(result?.fid);
-                                                            navigate(`/editor/${result?.fid}`)
-                                                            setFineTuningValue(4)
-                                                        }}
-                                                    />
-                                                </StyledCard>
-                                            </a>
-                                        </Grid>
-                                    ))}
-                                    <Grid item xs={12}>
-                                        {episodeDetails && <Button variant='contained' fullWidth href={`/episode/${episodeDetails[0]}/${episodeDetails[1]}/${episodeDetails[2]}/${episodeDetails[3]}`}>View Episode</Button>}
-                                    </Grid>
-                                </Grid>
-                            </Grid>
-                        </Card>
-
-
-                    </Grid>
-                </Grid>
-
-                <Popover
-                    open={
-                        (colorPickerShowing !== false)
-                    }
-                    anchorEl={colorPickerAnchor}
-                    onClose={() => setColorPickerShowing(false)}
-                    id="colorPicker"
-                    anchorOrigin={{
-                        vertical: 'bottom',
-                        horizontal: 'center',
-                    }}
-                    transformOrigin={{
-                        vertical: 'top',
-                        horizontal: 'center',
-                    }}
-                >
-                    <ColorPickerPopover>
-                        <TwitterPickerWrapper
-                            onChangeComplete={(color) => changeColor(color, pickingColor)}
-                            color={colorPickerColor}
-                            colors={['#FFFFFF', 'yellow', 'black', 'orange', '#8ED1FC', '#0693E3', '#ABB8C3', '#EB144C', '#F78DA7', '#9900EF']}
-                            width='280px'
-                        // TODO: Fix background color to match other cards
-                        />
-                    </ColorPickerPopover>
-                </Popover>
-
-                <Popover
-                    open={
-                        (fontSizePickerShowing !== false)
-                    }
-                    anchorEl={fontSizePickerAnchor}
-                    onClose={() => setFontSizePickerShowing(false)}
-                    id="colorPicker"
-                    anchorOrigin={{
-                        vertical: 'bottom',
-                        horizontal: 'center',
-                    }}
-                    transformOrigin={{
-                        vertical: 'top',
-                        horizontal: 'center',
-                    }}
-                >
-                    <StyledLayerControlCard>
-                        <Typography variant='body1'>
-                            Font Size
-                        </Typography>
-                        <Slider
-                            size="small"
-                            defaultValue={selectedFontSize}
-                            min={1}
-                            max={400}
-                            aria-label="Small"
-                            valueLabelDisplay="auto"
-                            onChange={(event) => handleFontSize(event, fontSizePickerShowing)}
-                            onFocus={() => handleFocus(fontSizePickerShowing)}
-                        />
-                    </StyledLayerControlCard>
-                </Popover>
-
-                <Dialog
-                    open={openDialog}
-                    onClose={handleDialogClose}
-                    aria-labelledby="responsive-dialog-title"
-                    fullWidth
-                    PaperProps={{ sx: { xs: { minWidth: '85vw' }, sm: { minWidth: '85vw' }, md: { minWidth: '85vw' }, } }}
-                    BackdropProps={{ style: { backgroundColor: 'rgb(33, 33, 33, 0.9)' } }}
-                >
-                    <DialogTitle id="responsive-dialog-title" >
-                        Save Image
-                    </DialogTitle>
-                    <DialogContent sx={{ flex: 'none', marginTop: 'auto', overflow: 'hidden', overflowY: 'hidden', paddingBottom: 2, paddingLeft: '12px', paddingRight: '12px' }}>
-                        <DialogContentText sx={{ marginTop: 'auto', marginBottom: 'auto' }}>
-                            {!imageUploading && <img src={`https://i${(process.env.REACT_APP_USER_BRANCH) === 'prod' ? 'prod' : `-${process.env.REACT_APP_USER_BRANCH}`}.memesrc.com/${generatedImageFilename}`} alt="generated meme" />}
-                            {imageUploading && <center><CircularProgress sx={{ margin: '30%' }} /></center>}
-                        </DialogContentText>
-                    </DialogContent>
-                    <DialogContentText sx={{ paddingX: 4, marginTop: 'auto', paddingBottom: 2 }}>
-                        <center>
-                            <p>☝️ <b>{('ontouchstart' in window) ? 'Tap and hold' : 'Right click'} the image to save</b>, or use a quick action:</p>
-                        </center>
-                    </DialogContentText>
-                    <DialogActions sx={{ marginBottom: 'auto', display: 'inline-flex', padding: '0 23px' }}>
-                        <Box display='grid' width='100%'>
-                            {navigator.canShare &&
-                                <Button
-                                    variant='contained'
-                                    fullWidth
-                                    sx={{ marginBottom: 2, padding: '12px 16px' }}
-                                    disabled={imageUploading}
-                                    onClick={() => {
-                                        navigator.share({
-                                            title: 'memeSRC.com',
-                                            text: 'Check out this meme I made on memeSRC.com',
-                                            files: [shareImageFile],
-                                        })
-                                    }}
-                                    startIcon={<IosShare />}
-                                >
-                                    Share
-                                </Button>}
-                            <Button
-                                variant='contained'
-                                fullWidth
-                                sx={{ marginBottom: 2, padding: '12px 16px' }}
-                                disabled={imageUploading}
-                                autoFocus
+                  </Grid>
+                  <Grid container item spacing={1} order="5">
+                    {surroundingFrames &&
+                      surroundingFrames.map((result) => (
+                        <Grid item xs={4} sm={4} md={12 / 9} key={result?.fid}>
+                          <a style={{ textDecoration: 'none' }}>
+                            <StyledCard style={{ border: fid === result?.fid ? '3px solid orange' : '' }}>
+                              {/* {console.log(`${fid} = ${result?.fid}`)} */}
+                              <StyledCardMedia
+                                component="img"
+                                src={`https://memesrc.com${result?.frame_image}`}
+                                alt={result?.subtitle}
+                                title={result?.subtitle}
                                 onClick={() => {
-                                    const { ClipboardItem } = window;
-                                    navigator.clipboard.write([new ClipboardItem({ 'image/png': imageBlob })]);
-                                    handleSnackbarOpen();
+                                  editor.canvas._objects = [];
+                                  setSelectedFid(result?.fid);
+                                  navigate(`/editor/${result?.fid}`);
+                                  setFineTuningValue(4);
                                 }}
-                                startIcon={<ContentCopy />}
-                            >
-                                Copy
-                            </Button>
-                            <Button
-                                variant='contained'
-                                color='error'
-                                fullWidth
-                                sx={{ marginBottom: 2, padding: '12px 16px' }}
-                                autoFocus
-                                onClick={handleDialogClose}
-                                startIcon={<Close />}
-                            >
-                                Close
-                            </Button>
-                        </Box>
-                    </DialogActions>
-                </Dialog>
+                              />
+                            </StyledCard>
+                          </a>
+                        </Grid>
+                      ))}
+                    <Grid item xs={12}>
+                      {episodeDetails && (
+                        <Button
+                          variant="contained"
+                          fullWidth
+                          href={`/episode/${episodeDetails[0]}/${episodeDetails[1]}/${episodeDetails[2]}/${episodeDetails[3]}`}
+                        >
+                          View Episode
+                        </Button>
+                      )}
+                    </Grid>
+                  </Grid>
+                </Grid>
+              </Card>
+            </Grid>
+          </Grid>
 
+          <Popover
+            open={colorPickerShowing !== false}
+            anchorEl={colorPickerAnchor}
+            onClose={() => setColorPickerShowing(false)}
+            id="colorPicker"
+            anchorOrigin={{
+              vertical: 'bottom',
+              horizontal: 'center',
+            }}
+            transformOrigin={{
+              vertical: 'top',
+              horizontal: 'center',
+            }}
+          >
+            <ColorPickerPopover>
+              <TwitterPickerWrapper
+                onChangeComplete={(color) => changeColor(color, pickingColor)}
+                color={colorPickerColor}
+                colors={[
+                  '#FFFFFF',
+                  'yellow',
+                  'black',
+                  'orange',
+                  '#8ED1FC',
+                  '#0693E3',
+                  '#ABB8C3',
+                  '#EB144C',
+                  '#F78DA7',
+                  '#9900EF',
+                ]}
+                width="280px"
+                // TODO: Fix background color to match other cards
+              />
+            </ColorPickerPopover>
+          </Popover>
 
-            </ParentContainer>
+          <Popover
+            open={fontSizePickerShowing !== false}
+            anchorEl={fontSizePickerAnchor}
+            onClose={() => setFontSizePickerShowing(false)}
+            id="colorPicker"
+            anchorOrigin={{
+              vertical: 'bottom',
+              horizontal: 'center',
+            }}
+            transformOrigin={{
+              vertical: 'top',
+              horizontal: 'center',
+            }}
+          >
+            <StyledLayerControlCard>
+              <Typography variant="body1">Font Size</Typography>
+              <Slider
+                size="small"
+                defaultValue={selectedFontSize}
+                min={1}
+                max={400}
+                aria-label="Small"
+                valueLabelDisplay="auto"
+                onChange={(event) => handleFontSize(event, fontSizePickerShowing)}
+                onFocus={() => handleFocus(fontSizePickerShowing)}
+              />
+            </StyledLayerControlCard>
+          </Popover>
 
-            <Snackbar
-                open={snackbarOpen}
-                autoHideDuration={1000}
-                severity="success"
-                onClose={handleSnackbarClose}
-                message="Copied to clipboard!"
+          <Dialog
+            open={openDialog}
+            onClose={handleDialogClose}
+            aria-labelledby="responsive-dialog-title"
+            fullWidth
+            PaperProps={{ sx: { xs: { minWidth: '85vw' }, sm: { minWidth: '85vw' }, md: { minWidth: '85vw' } } }}
+            BackdropProps={{ style: { backgroundColor: 'rgb(33, 33, 33, 0.9)' } }}
+          >
+            <DialogTitle id="responsive-dialog-title">Save Image</DialogTitle>
+            <DialogContent
+              sx={{
+                flex: 'none',
+                marginTop: 'auto',
+                overflow: 'hidden',
+                overflowY: 'hidden',
+                paddingBottom: 2,
+                paddingLeft: '12px',
+                paddingRight: '12px',
+              }}
             >
-                <Alert onClose={handleSnackbarClose} severity="success" sx={{ width: '100%' }}>
-                    Copied to clipboard!
-                </Alert>
-            </Snackbar>
+              <DialogContentText sx={{ marginTop: 'auto', marginBottom: 'auto' }}>
+                {!imageUploading && (
+                  <img
+                    src={`https://i${
+                      process.env.REACT_APP_USER_BRANCH === 'prod' ? 'prod' : `-${process.env.REACT_APP_USER_BRANCH}`
+                    }.memesrc.com/${generatedImageFilename}`}
+                    alt="generated meme"
+                  />
+                )}
+                {imageUploading && (
+                  <center>
+                    <CircularProgress sx={{ margin: '30%' }} />
+                  </center>
+                )}
+              </DialogContentText>
+            </DialogContent>
+            <DialogContentText sx={{ paddingX: 4, marginTop: 'auto', paddingBottom: 2 }}>
+              <center>
+                <p>
+                  ☝️ <b>{'ontouchstart' in window ? 'Tap and hold' : 'Right click'} the image to save</b>, or use a
+                  quick action:
+                </p>
+              </center>
+            </DialogContentText>
+            <DialogActions sx={{ marginBottom: 'auto', display: 'inline-flex', padding: '0 23px' }}>
+              <Box display="grid" width="100%">
+                {navigator.canShare && (
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    sx={{ marginBottom: 2, padding: '12px 16px' }}
+                    disabled={imageUploading}
+                    onClick={() => {
+                      navigator.share({
+                        title: 'memeSRC.com',
+                        text: 'Check out this meme I made on memeSRC.com',
+                        files: [shareImageFile],
+                      });
+                    }}
+                    startIcon={<IosShare />}
+                  >
+                    Share
+                  </Button>
+                )}
+                <Button
+                  variant="contained"
+                  fullWidth
+                  sx={{ marginBottom: 2, padding: '12px 16px' }}
+                  disabled={imageUploading}
+                  autoFocus
+                  onClick={() => {
+                    const { ClipboardItem } = window;
+                    navigator.clipboard.write([new ClipboardItem({ 'image/png': imageBlob })]);
+                    handleSnackbarOpen();
+                  }}
+                  startIcon={<ContentCopy />}
+                >
+                  Copy
+                </Button>
+                <Button
+                  variant="contained"
+                  color="error"
+                  fullWidth
+                  sx={{ marginBottom: 2, padding: '12px 16px' }}
+                  autoFocus
+                  onClick={handleDialogClose}
+                  startIcon={<Close />}
+                >
+                  Close
+                </Button>
+              </Box>
+            </DialogActions>
+          </Dialog>
+        </ParentContainer>
 
-            <Backdrop
-                sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1, width: '100vw', height: '100vh' }}
-                open={loadingInpaintingResult}
-            >
-                <Stack alignItems='center' direction='column' spacing={2}>
-                    <CircularProgress color="inherit" />
-                    <Typography variant='h5'>
-                        Generating image...
-                    </Typography>
-                </Stack>
-            </Backdrop>
+        <Snackbar
+          open={snackbarOpen}
+          autoHideDuration={1000}
+          severity="success"
+          onClose={handleSnackbarClose}
+          message="Copied to clipboard!"
+        >
+          <Alert onClose={handleSnackbarClose} severity="success" sx={{ width: '100%' }}>
+            Copied to clipboard!
+          </Alert>
+        </Snackbar>
 
-        </>
-    )
+        <Backdrop
+          sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1, width: '100vw', height: '100vh' }}
+          open={loadingInpaintingResult}
+        >
+          <Stack alignItems="center" direction="column" spacing={2}>
+            <CircularProgress color="inherit" />
+            <Typography variant="h5">Generating image...</Typography>
+          </Stack>
+        </Backdrop>
+      </>
+    );
 }
 
 export default EditorPage

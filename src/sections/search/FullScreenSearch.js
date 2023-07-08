@@ -399,7 +399,7 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
               </Typography>
               {!localStorage.getItem('alertDismissed') && (
                 <Alert
-                  severity="success"
+                  severity="info"
                   action={
                     <>
                       <Button
@@ -410,7 +410,7 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
                         size="small"
                         style={{ marginRight: '5px' }}
                       >
-                        Vote
+                        Try
                       </Button>
                       <IconButton
                         color="inherit"
@@ -430,7 +430,7 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
                     opacity: 0.9,
                   }}
                 >
-                  <b>Update:</b> New show voting!
+                  <b>New:</b> Vote every 24h!
                 </Alert>
               )}
             </Grid>
