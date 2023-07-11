@@ -2,7 +2,7 @@ import { Autocomplete, CircularProgress, Grid, TextField } from "@mui/material";
 import { API } from "aws-amplify";
 import { useRef, useState } from "react";
 
-export default function TvdbSearch({onSelect = () => {}}) {
+export default function TvdbSearch({onSelect = () => {}, onClear = () => {}}) {
     const [open, setOpen] = useState(false);
     const [options, setOptions] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -45,8 +45,6 @@ export default function TvdbSearch({onSelect = () => {}}) {
     };
 
     return (
-        <Grid container spacing={3}>
-            <Grid item xs={12}>
                 <Autocomplete
                     id="my-autocomplete"
                     open={open}
@@ -83,6 +81,8 @@ export default function TvdbSearch({onSelect = () => {}}) {
                             label="Search"
                             variant="outlined"
                             onChange={handleInputChange}
+                            fullWidth
+                            sx={{marginTop: 0.75}}
                             InputProps={{
                                 ...params.InputProps,
                                 endAdornment: (
@@ -98,13 +98,12 @@ export default function TvdbSearch({onSelect = () => {}}) {
                                 clearIndicator: {
                                     onClick: () => {
                                         setOptions([]);
+                                        onClear();
                                     }
                                 }
                             }}
                         />
                     )}
                 />
-            </Grid>
-        </Grid>
     );
 }
