@@ -63,11 +63,19 @@ export default function TvdbSearch({onSelect = () => {}}) {
                     getOptionLabel={(option) => option.label}
                     renderOption={(props, option) => {
                         return (
-                            <li {...props} key={option.id}>
-                                {option.label}
-                            </li>
+                          <li {...props} key={option.id} style={{ display: 'flex', alignItems: 'center' }}>
+                            <img
+                              src={option.fullResult.image_url}
+                              alt={option.label}
+                              style={{ height: '100px', marginRight: '10px' }}
+                            />
+                            <div style={{paddingLeft: 8}}>
+                              <span style={{fontWeight: 700}}>{option.label}</span>
+                              <p style={{margin: 0, padding: 0, fontSize: 14}}>{option.fullResult.overview}</p>
+                            </div>
+                          </li>
                         );
-                    }}
+                      }}
                     renderInput={(params) => (
                         <TextField
                             {...params}
