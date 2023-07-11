@@ -2,7 +2,7 @@ import { Autocomplete, CircularProgress, Grid, TextField } from "@mui/material";
 import { API } from "aws-amplify";
 import { useRef, useState } from "react";
 
-export default function TvdbSearch({onSelect = () => {}, onClear = () => {}}) {
+export default function TvdbSearch({onSelect = () => {}, onClear = () => {}, typeFilter}) {
     const [open, setOpen] = useState(false);
     const [options, setOptions] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -29,12 +29,18 @@ export default function TvdbSearch({onSelect = () => {}, onClear = () => {}}) {
 
             if (event.target.value === searchField.current.value) {
                 if (searchResults?.length > 0) {
-                    const mappedResults = searchResults.map((result) => ({
+                    let filteredResults = searchResults;
+
+                    if (typeFilter) {
+                        filteredResults = filteredResults.filter(obj => obj.type === typeFilter)
+                    }
+
+                    const mappedResults = filteredResults.map((result) => ({
                         id: result.tvdb_id,
                         label: result.name,
                         fullResult: result
                     }));
-                    setTvdbResponse(searchResults);
+                    setTvdbResponse(filteredResults);
                     setOptions(mappedResults);
                 }
                 setLoading(false);
