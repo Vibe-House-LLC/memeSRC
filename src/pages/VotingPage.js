@@ -804,9 +804,13 @@ export default function VotingPage() {
         </Grid>
       </Container>
       <Dialog maxWidth='md' fullWidth onClose={toggleOpenAddRequest} open={openAddRequest}>
-        <DialogTitle>Request Series</DialogTitle>
+        <DialogTitle>
+          <Typography variant='h4' textAlign='center'>
+            Request Series
+          </Typography>
+        </DialogTitle>
         <DialogContent sx={{ paddingTop: 2 }}>
-          <TvdbSearch onClear={(value) => { setSelectedRequest() }} onSelect={(value) => { setSelectedRequest(value) }} />
+          <TvdbSearch typeFilter='series' onClear={(value) => { setSelectedRequest() }} onSelect={(value) => { setSelectedRequest(value) }} />
           {selectedRequest &&
 
             <Grid container spacing={2} alignItems='center' mt={2}>
@@ -832,6 +836,7 @@ export default function VotingPage() {
               <Grid item xs>
                 <Typography variant='h4'>
                   {selectedRequest.name}
+                  <Chip size='small' sx={{ml: 1}} label={selectedRequest.type} />
                 </Typography>
                 <Typography variant='body2'>
                   {selectedRequest.year}
