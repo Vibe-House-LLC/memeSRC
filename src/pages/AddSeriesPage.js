@@ -8,6 +8,7 @@ import { LoadingButton } from '@mui/lab';
 import { API } from 'aws-amplify';
 import { Helmet } from 'react-helmet-async';
 import AddSeries from '../sections/@dashboard/series/AddSeries';
+import TvdbSearch from '../components/TvdbSearch/TvdbSearch';
 // import FullScreenSearch from '../sections/search/FullScreenSearch';
 // import TopBannerSearch from '../sections/search/TopBannerSearch';
 
@@ -29,7 +30,8 @@ export default function AddSeriesPage() {
             Add New Series
           </Typography>
 
-          <AddSeries />
+          {/* <AddSeries /> */}
+          <TvdbSearch onSelect={(result) => alert(result.name)} />
         </Container>
     </>
   );
