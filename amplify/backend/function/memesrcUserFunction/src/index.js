@@ -489,6 +489,46 @@ export const handler = async (event) => {
     }
   }
 
+  if (path === `/${process.env.ENV}/public/requests/add`) {
+    const listTvdbResultsQuery = `
+      query seriesByTvdbid {
+        seriesByTvdbid(tvdbid: "${body.tvdb_id}") {
+          items {
+            name
+            id
+          }
+        }
+      }
+    `
+    console.log(listTvdbResultsQuery)
+
+    // Attempt to load the TVDB ID from GraphQL
+    const listTvdbResults = await makeRequest(listTvdbResultsQuery)
+    console.log(listTvdbResults)
+
+    // Check to see if there are any results
+    console.log('ITEM LENGTH', listTvdbResults.body?.data?.seriesByTvdbid?.items.length)
+    if (listTvdbResults.body?.data?.seriesByTvdbid?.items.length > 0) {
+      // Send a response saying the series already exists
+      response = {
+        statusCode: 409,
+        body: {
+          name: 'SeriesAlreadyExist',
+          message: 'This series has already been requested!'
+        }
+      }
+    } else {
+      // Send a response saying the series has been added to the quests
+      response = {
+        statusCode: 200,
+        body: {
+          name: 'SeriesAdded',
+          message: 'Your request has been submitted!'
+        }
+      }
+    }
+  }
+
   // console.log(response);
 
   return {
