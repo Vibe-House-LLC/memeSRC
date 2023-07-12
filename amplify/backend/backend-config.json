@@ -207,6 +207,20 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "S3Trigger016e2873": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "memesrcUserFunction"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "SearchFunction": {
       "build": true,
       "dependsOn": [
@@ -406,6 +420,22 @@
         {
           "category": "function",
           "resourceName": "AdminQueries9e1cafc6"
+        }
+      ]
+    },
+    "AMPLIFY_function_S3Trigger016e2873_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "S3Trigger016e2873"
+        }
+      ]
+    },
+    "AMPLIFY_function_S3Trigger016e2873_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "S3Trigger016e2873"
         }
       ]
     },
@@ -661,6 +691,15 @@
   "storage": {
     "memesrcGeneratedImages": {
       "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "LambdaExecutionRole"
+          ],
+          "category": "function",
+          "resourceName": "S3Trigger016e2873"
+        },
         {
           "attributes": [
             "UserPoolId"
