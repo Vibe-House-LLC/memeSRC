@@ -74,6 +74,7 @@ export default function VotingPage() {
   const [timeRemaining, setTimeRemaining] = useState('');
   const [openAddRequest, setOpenAddRequest] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState();
+  const [submittingRequest, setSubmittingRequest] = useState(false);
 
   const location = useLocation();
 
@@ -371,6 +372,20 @@ export default function VotingPage() {
       console.log('THE SELECTED SHOW', selectedRequest.name)
     }
   }, [selectedRequest])
+
+  const submitRequest = () => {
+    setSubmittingRequest(true)
+    API.post('publicapi', '/requests/add', {
+      body: selectedRequest
+    }).then(response => {
+      console.log(response)
+      setSubmittingRequest(false)
+    }).catch(error => {
+      console.log(error)
+      console.log(error.response)
+      setSubmittingRequest(false)
+    })
+  }
 
   return (
     <>
@@ -855,7 +870,7 @@ export default function VotingPage() {
           }
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
-          <LoadingButton variant='contained'>
+          <LoadingButton onClick={submitRequest} loading={submittingRequest} disabled={submittingRequest} variant='contained'>
             Submit Request
           </LoadingButton>
         </DialogActions>
