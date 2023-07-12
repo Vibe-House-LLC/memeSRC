@@ -1,6 +1,6 @@
 import { Helmet } from 'react-helmet-async';
 // @mui
-import { Dialog, DialogTitle, DialogContent, FormControl, InputLabel, Select, MenuItem, DialogActions, TextField, List, CardHeader, Avatar, ListItem, ListItemText, Button, Container, Grid, Stack, Typography, Card, CardContent, CircularProgress, IconButton, Collapse, Autocomplete, LinearProgress } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, FormControl, InputLabel, Select, MenuItem, DialogActions, TextField, List, CardHeader, Avatar, ListItem, ListItemText, Button, Container, Grid, Stack, Typography, Card, CardContent, CircularProgress, IconButton, Collapse, Autocomplete, LinearProgress, Tabs, Tab, Box } from '@mui/material';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import ShareIcon from '@mui/icons-material/Share';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -15,6 +15,7 @@ import { API, Auth, graphqlOperation, Storage } from 'aws-amplify';
 import { faker } from '@faker-js/faker';
 import { LoadingButton } from '@mui/lab';
 import { useNavigate } from 'react-router-dom';
+import { CheckCircle, Pending, Poll, RequestPage } from '@mui/icons-material';
 import Iconify from '../components/iconify';
 import { createSeries, updateSeries, deleteSeries } from '../graphql/mutations';
 import { listSeries } from '../graphql/queries';
@@ -99,6 +100,7 @@ let sub;
 export default function DashboardSeriesPage() {
   const navigate = useNavigate();
   const [metadata, setMetadata] = useState([]);
+  const [filteredMetadata, setFilteredMetadata] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [id, setId] = useState(null);
@@ -123,6 +125,7 @@ export default function DashboardSeriesPage() {
   const [uploadProgress, setUploadProgress] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [fileLocation, setFileLocation] = useState('');
+  const [sortMethod, setSortMethod] = useState('live');
 
   const [selectedIndex, setSelectedIndex] = useState(null)
 
@@ -313,6 +316,7 @@ export default function DashboardSeriesPage() {
     async function getData() {
       const data = await fetchMetadata();
       setMetadata(data);
+      setFilteredMetadata(data);
       setLoading(false);
     }
     getData();
@@ -383,6 +387,23 @@ export default function DashboardSeriesPage() {
     }
   }, [tvdbid]);
 
+  const filterResults = (event, value) => {
+    setSortMethod(value)
+    switch(value) {
+      case 'live':
+        setFilteredMetadata(metadata.filter(obj => !obj.statusText));
+      break;
+      case 'vote':
+        setFilteredMetadata(metadata.filter(obj => obj.statusText === "requested"));
+      break;
+      case 'requested':
+        setFilteredMetadata(metadata.filter(obj => obj.statusText === "submittedRequest"));
+      break;
+      default:
+        setFilteredMetadata(metadata);
+    }
+  }
+
 
 
   return (
@@ -393,15 +414,44 @@ export default function DashboardSeriesPage() {
       <Container>
         <Stack direction="row" alignItems="center" justifyContent="space-between" mb={5}>
           <Typography variant="h4" gutterBottom>
-            TV Shows {loading ? <CircularProgress size={25} /> : `(${metadata.length})`}
+            TV Shows {loading ? <CircularProgress size={25} /> : `(${filteredMetadata.length})`}
           </Typography>
           <Button variant="contained" startIcon={<Iconify icon="eva:plus-fill" />} onClick={() => navigate('/dashboard/addseries')}>
             Add Show
           </Button>
         </Stack>
         <Container sx={{ paddingX: 0 }}>
+        <Tabs value={sortMethod} onChange={filterResults} indicatorColor="secondary" textColor="inherit" sx={{mb: 3}}>
+            <Tab
+              label={
+                <Box display="flex" alignItems="center">
+                  <CheckCircle color="success" sx={{ mr: 1 }} />
+                  Live
+                </Box>
+              }
+              value="live"
+            />
+            <Tab
+              label={
+                <Box display="flex" alignItems="center">
+                  <Poll color="warning" sx={{ mr: 1 }} />
+                  Votable
+                </Box>
+              }
+              value="vote"
+            />
+            <Tab
+              label={
+                <Box display="flex" alignItems="center">
+                  <Pending color='action' sx={{ mr: 1 }} />
+                  Requested
+                </Box>
+              }
+              value="requested"
+            />
+          </Tabs>
           <Grid container spacing={2}>
-            {(loading) ? "Loading" : metadata.map((seriesItem, index) => (
+            {(loading) ? "Loading" : filteredMetadata.map((seriesItem, index) => (
               <SeriesCard
                 key={index}
                 post={{
