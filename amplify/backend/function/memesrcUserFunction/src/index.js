@@ -500,10 +500,12 @@ export const handler = async (event) => {
         }
       }
     `
+    console.log('listTvdbResultsQuery')
     console.log(listTvdbResultsQuery)
 
     // Attempt to load the TVDB ID from GraphQL
     const listTvdbResults = await makeRequest(listTvdbResultsQuery)
+    console.log('listTvdbResults')
     console.log(listTvdbResults)
 
     // Check to see if there are any results
@@ -518,12 +520,28 @@ export const handler = async (event) => {
         }
       }
     } else {
+      const { tvdb_id, year, overview, slug, name, image_url } = body
+      // Create the series
+      const createSeriesQuery = `
+        mutation createSeries {
+          createSeries(input: {year: ${year}, tvdbid: "${tvdb_id}", statusText: "submittedRequest", slug: "${slug}", name: "${name}", image: "${image_url}", description: "${overview}"}) {
+            id
+          }
+        }
+      `
+      console.log('createSeriesQuery')
+      console.log(createSeriesQuery)
+
+      const createSeries = await makeRequest(createSeriesQuery)
+      console.log('createSeries')
+      console.log(createSeries)
       // Send a response saying the series has been added to the quests
       response = {
         statusCode: 200,
         body: {
           name: 'SeriesAdded',
-          message: 'Your request has been submitted!'
+          message: 'Your request has been submitted!',
+          id: createSeries.body.data.createSeries.id
         }
       }
     }

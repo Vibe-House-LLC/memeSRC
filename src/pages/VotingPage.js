@@ -37,6 +37,7 @@ import { LoadingButton } from '@mui/lab';
 import { listSeries } from '../graphql/queries';
 import { UserContext } from '../UserContext';
 import TvdbSearch from '../components/TvdbSearch/TvdbSearch';
+import { SnackbarContext } from '../SnackbarContext';
 
 const StyledBadge = styled(Badge)(() => ({
   '& .MuiBadge-badge': {
@@ -75,6 +76,7 @@ export default function VotingPage() {
   const [openAddRequest, setOpenAddRequest] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState();
   const [submittingRequest, setSubmittingRequest] = useState(false);
+  const { setMessage, setOpen, setSeverity } = useContext(SnackbarContext)
 
   const location = useLocation();
 
@@ -379,10 +381,18 @@ export default function VotingPage() {
       body: selectedRequest
     }).then(response => {
       console.log(response)
+      setOpenAddRequest(false)
+      setSelectedRequest(false)
+      setMessage(response.message)
+      setSeverity('success')
+      setOpen(true)
       setSubmittingRequest(false)
     }).catch(error => {
       console.log(error)
       console.log(error.response)
+      setMessage(error.response.data.message)
+      setSeverity('error')
+      setOpen(true)
       setSubmittingRequest(false)
     })
   }
@@ -804,7 +814,11 @@ export default function VotingPage() {
                   color="primary"
                   onClick={() => {
                     // window.open('https://forms.gle/8CETtVbwYoUmxqbi7', '_blank')
-                    toggleOpenAddRequest();
+                    if (user) {
+                      toggleOpenAddRequest();
+                    } else {
+                      navigate('/signup')
+                    }
                   }}
                   style={{
                     marginTop: 10,
@@ -851,7 +865,7 @@ export default function VotingPage() {
               <Grid item xs>
                 <Typography variant='h4'>
                   {selectedRequest.name}
-                  <Chip size='small' sx={{ml: 1}} label={selectedRequest.type} />
+                  <Chip size='small' sx={{ ml: 1 }} label={selectedRequest.type} />
                 </Typography>
                 <Typography variant='body2'>
                   {selectedRequest.year}
