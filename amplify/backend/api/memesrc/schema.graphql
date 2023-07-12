@@ -10,7 +10,7 @@ type Series @model @auth(
   ]
 ) {
   id: ID!,
-  tvdbid: Int!,
+  tvdbid: ID! @index,
   slug: String,
   name: String,
   year: Int,
