@@ -316,7 +316,7 @@ export default function DashboardSeriesPage() {
     async function getData() {
       const data = await fetchMetadata();
       setMetadata(data);
-      setFilteredMetadata(data);
+      setFilteredMetadata(data.filter(obj => !obj.statusText));
       setLoading(false);
     }
     getData();
