@@ -547,6 +547,34 @@ export const handler = async (event) => {
     }
   }
 
+  // This is what works with the S3 Trigger to take note of uploaded files
+  if (path === `/trigger/addFile`) {
+    console.log('ADD FILE')
+    console.log(event.userSub)
+    console.log(event.key)
+
+    const { sourceMediaId, key } = event;
+
+    const createFileQuery = `
+      mutation createFile {
+        createFile(input: {sourceMediaFilesId: "${sourceMediaId}", key: "${key}", status: "uploaded"}) {
+          id
+        }
+      }
+    `
+
+    const createFile = await makeRequest(createFileQuery)
+
+    response = {
+      statusCode: 200,
+      body: {
+        success: true,
+        message: `${key} has been uploaded to ${sourceMediaId}`,
+        details: createFile.body
+      }
+    }
+  }
+
   // console.log(response);
 
   return {
