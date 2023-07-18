@@ -504,6 +504,92 @@ export const handler = async (event) => {
     }
   }
 
+  if (path === `/${process.env.ENV}/public/requests/add`) {
+    const listTvdbResultsQuery = `
+      query seriesByTvdbid {
+        seriesByTvdbid(tvdbid: "${body.tvdb_id}") {
+          items {
+            name
+            id
+          }
+        }
+      }
+    `
+    console.log('listTvdbResultsQuery')
+    console.log(listTvdbResultsQuery)
+
+    // Attempt to load the TVDB ID from GraphQL
+    const listTvdbResults = await makeRequest(listTvdbResultsQuery)
+    console.log('listTvdbResults')
+    console.log(listTvdbResults)
+
+    // Check to see if there are any results
+    console.log('ITEM LENGTH', listTvdbResults.body?.data?.seriesByTvdbid?.items.length)
+    if (listTvdbResults.body?.data?.seriesByTvdbid?.items.length > 0) {
+      // Send a response saying the series already exists
+      response = {
+        statusCode: 409,
+        body: {
+          name: 'SeriesAlreadyExist',
+          message: 'This series has already been requested!'
+        }
+      }
+    } else {
+      const { tvdb_id, year, overview, slug, name, image_url } = body
+      // Create the series
+      const createSeriesQuery = `
+        mutation createSeries {
+          createSeries(input: {year: ${year}, tvdbid: "${tvdb_id}", statusText: "submittedRequest", slug: "${slug}", name: "${name}", image: "${image_url}", description: "${overview}"}) {
+            id
+          }
+        }
+      `
+      console.log('createSeriesQuery')
+      console.log(createSeriesQuery)
+
+      const createSeries = await makeRequest(createSeriesQuery)
+      console.log('createSeries')
+      console.log(createSeries)
+      // Send a response saying the series has been added to the quests
+      response = {
+        statusCode: 200,
+        body: {
+          name: 'SeriesAdded',
+          message: 'Your request has been submitted!',
+          id: createSeries.body.data.createSeries.id
+        }
+      }
+    }
+  }
+
+  // This is what works with the S3 Trigger to take note of uploaded files
+  if (path === `/trigger/addFile`) {
+    console.log('ADD FILE')
+    console.log(event.userSub)
+    console.log(event.key)
+
+    const { sourceMediaId, key } = event;
+
+    const createFileQuery = `
+      mutation createFile {
+        createFile(input: {sourceMediaFilesId: "${sourceMediaId}", key: "${key}", status: "uploaded"}) {
+          id
+        }
+      }
+    `
+
+    const createFile = await makeRequest(createFileQuery)
+
+    response = {
+      statusCode: 200,
+      body: {
+        success: true,
+        message: `${key} has been uploaded to ${sourceMediaId}`,
+        details: createFile.body
+      }
+    }
+  }
+
   // console.log(response);
 
   return {

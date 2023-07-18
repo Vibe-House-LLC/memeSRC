@@ -22,14 +22,22 @@ import {
   AlertTitle,
   Chip,
   Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  useTheme,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { ArrowUpward, ArrowDownward, Search, Close, ThumbUp, Whatshot, Lock } from '@mui/icons-material';
 import FlipMove from 'react-flip-move';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { LoadingButton } from '@mui/lab';
 import { listSeries } from '../graphql/queries';
 import { UserContext } from '../UserContext';
+import TvdbSearch from '../components/TvdbSearch/TvdbSearch';
+import { SnackbarContext } from '../SnackbarContext';
 
 const StyledBadge = styled(Badge)(() => ({
   '& .MuiBadge-badge': {
@@ -44,6 +52,8 @@ const StyledFab = styled(Fab)(() => ({
   backgroundColor: 'rgba(255, 255, 255, 0.35)',
   zIndex: 0,
 }));
+
+const StyledImg = styled('img')``;
 
 export default function VotingPage() {
   const navigate = useNavigate();
@@ -63,10 +73,20 @@ export default function VotingPage() {
   const [lastBoost, setLastBoost] = useState({});
   const [nextVoteTimes, setNextVoteTimes] = useState({});
   const [timeRemaining, setTimeRemaining] = useState('');
+  const [openAddRequest, setOpenAddRequest] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState();
+  const [submittingRequest, setSubmittingRequest] = useState(false);
+  const { setMessage, setOpen, setSeverity } = useContext(SnackbarContext)
 
   const location = useLocation();
 
+  const theme = useTheme();
+
   const { user, setUser } = useContext(UserContext);
+
+  const toggleOpenAddRequest = () => {
+    setOpenAddRequest(!openAddRequest)
+  }
 
   useEffect(() => {
     const savedRankMethod = localStorage.getItem('rankMethod');
@@ -349,6 +369,34 @@ export default function VotingPage() {
     setTimeRemaining(formattedTime);
   };
 
+  useEffect(() => {
+    if (selectedRequest) {
+      console.log('THE SELECTED SHOW', selectedRequest.name)
+    }
+  }, [selectedRequest])
+
+  const submitRequest = () => {
+    setSubmittingRequest(true)
+    API.post('publicapi', '/requests/add', {
+      body: selectedRequest
+    }).then(response => {
+      console.log(response)
+      setOpenAddRequest(false)
+      setSelectedRequest(false)
+      setMessage(response.message)
+      setSeverity('success')
+      setOpen(true)
+      setSubmittingRequest(false)
+    }).catch(error => {
+      console.log(error)
+      console.log(error.response)
+      setMessage(error.response.data.message)
+      setSeverity('error')
+      setOpen(true)
+      setSubmittingRequest(false)
+    })
+  }
+
   return (
     <>
       <Helmet>
@@ -573,8 +621,8 @@ export default function VotingPage() {
                                         size="small"
                                       >
                                         {lastBoost[show.id] === -1 &&
-                                        ableToVote[show.id] !== true &&
-                                        rankMethod === 'upvotes' ? (
+                                          ableToVote[show.id] !== true &&
+                                          rankMethod === 'upvotes' ? (
                                           <Lock />
                                         ) : (
                                           <ArrowUpward
@@ -601,7 +649,7 @@ export default function VotingPage() {
                                 <Typography
                                   variant="h5"
                                   textAlign="center"
-                                  // color={votesCount(show) < 0 && 'error.main'}
+                                // color={votesCount(show) < 0 && 'error.main'}
                                 >
                                   {votesCount(show) || 0}
                                 </Typography>
@@ -717,8 +765,8 @@ export default function VotingPage() {
                                         size="small"
                                       >
                                         {lastBoost[show.id] === -1 &&
-                                        ableToVote[show.id] !== true &&
-                                        rankMethod === 'upvotes' ? (
+                                          ableToVote[show.id] !== true &&
+                                          rankMethod === 'upvotes' ? (
                                           <Lock />
                                         ) : (
                                           <ThumbUp
@@ -764,7 +812,14 @@ export default function VotingPage() {
                 <Button
                   variant="contained"
                   color="primary"
-                  onClick={() => window.open('https://forms.gle/8CETtVbwYoUmxqbi7', '_blank')}
+                  onClick={() => {
+                    // window.open('https://forms.gle/8CETtVbwYoUmxqbi7', '_blank')
+                    if (user) {
+                      toggleOpenAddRequest();
+                    } else {
+                      navigate('/signup')
+                    }
+                  }}
                   style={{
                     marginTop: 10,
                     marginBottom: 15,
@@ -777,6 +832,63 @@ export default function VotingPage() {
           )}
         </Grid>
       </Container>
+      <Dialog maxWidth='md' fullWidth onClose={toggleOpenAddRequest} open={openAddRequest}>
+        <DialogTitle>
+          <Typography variant='h4' textAlign='center'>
+            Request Series
+          </Typography>
+        </DialogTitle>
+        <DialogContent sx={{ paddingTop: 2 }}>
+          <TvdbSearch typeFilter='series' onClear={(value) => { setSelectedRequest() }} onSelect={(value) => { setSelectedRequest(value) }} />
+          {selectedRequest &&
+
+            <Grid container spacing={2} alignItems='center' mt={2}>
+              {console.log(selectedRequest)}
+              <Grid item>
+                <StyledImg
+                  src={selectedRequest.image_url}
+                  alt={selectedRequest.name}
+                  sx={{
+                    maxWidth: '115px',
+                    maxHeight: '115px',
+                    objectFit: 'cover',
+                    [theme.breakpoints.up('sm')]: {
+                      maxWidth: '150px',
+                      maxHeight: '150px',
+                    },
+                    [theme.breakpoints.up('md')]: {
+                      maxWidth: '200px',
+                      maxHeight: '200px',
+                    },
+                  }} />
+              </Grid>
+              <Grid item xs>
+                <Typography variant='h4'>
+                  {selectedRequest.name}
+                  <Chip size='small' sx={{ ml: 1 }} label={selectedRequest.type} />
+                </Typography>
+                <Typography variant='body2'>
+                  {selectedRequest.year}
+                </Typography>
+                <Typography variant='body1' mt={2} sx={{
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}>
+                  {selectedRequest.overview}
+                </Typography>
+              </Grid>
+            </Grid>
+          }
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <LoadingButton onClick={submitRequest} loading={submittingRequest} disabled={submittingRequest} variant='contained'>
+            Submit Request
+          </LoadingButton>
+        </DialogActions>
+      </Dialog>
     </>
   );
 }

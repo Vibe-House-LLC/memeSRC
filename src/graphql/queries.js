@@ -56,6 +56,40 @@ export const listSeries = /* GraphQL */ `
     }
   }
 `;
+export const seriesByTvdbid = /* GraphQL */ `
+  query SeriesByTvdbid(
+    $tvdbid: ID!
+    $sortDirection: ModelSortDirection
+    $filter: ModelSeriesFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    seriesByTvdbid(
+      tvdbid: $tvdbid
+      sortDirection: $sortDirection
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        seasons {
+          nextToken
+        }
+        statusText
+        createdAt
+        updatedAt
+      }
+      nextToken
+    }
+  }
+`;
 export const getSourceMedia = /* GraphQL */ `
   query GetSourceMedia($id: ID!) {
     getSourceMedia(id: $id) {

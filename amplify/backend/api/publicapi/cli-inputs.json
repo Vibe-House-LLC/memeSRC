@@ -179,6 +179,30 @@
           ]
         }
       }
+    },
+    "/requests": {
+      "name": "/requests",
+      "lambdaFunction": "memesrcUserFunction",
+      "permissions": {
+        "setting": "private",
+        "auth": [
+          "create",
+          "read"
+        ],
+        "groups": {
+          "admins": [
+            "create",
+            "read",
+            "update",
+            "delete"
+          ],
+          "mods": [
+            "create",
+            "read",
+            "update"
+          ]
+        }
+      }
     }
   }
 }
