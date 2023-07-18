@@ -1,6 +1,6 @@
 import { Helmet } from 'react-helmet-async';
 // @mui
-import { Dialog, DialogTitle, DialogContent, FormControl, InputLabel, Select, MenuItem, DialogActions, TextField, List, CardHeader, Avatar, ListItem, ListItemText, Button, Container, Grid, Stack, Typography, Card, CardContent, CircularProgress, IconButton, Collapse, Autocomplete, LinearProgress, Tabs, Tab, Box } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, FormControl, InputLabel, Select, MenuItem, DialogActions, TextField, List, CardHeader, Avatar, ListItem, ListItemText, Button, Container, Grid, Stack, Typography, Card, CardContent, CircularProgress, IconButton, Collapse, Autocomplete, LinearProgress, Tabs, Tab, Box, Menu, Backdrop } from '@mui/material';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import ShareIcon from '@mui/icons-material/Share';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -10,17 +10,19 @@ import { grey } from '@mui/material/colors';
 import CardActions from '@mui/material/CardActions';
 import { styled } from '@mui/material/styles';
 // components
-import { useState, useEffect, Fragment } from 'react';
+import { useState, useEffect, Fragment, useContext } from 'react';
 import { API, Auth, graphqlOperation, Storage } from 'aws-amplify';
 import { faker } from '@faker-js/faker';
 import { LoadingButton } from '@mui/lab';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle, Pending, Poll, RequestPage } from '@mui/icons-material';
+import { ArrowDropDown, CheckCircle, Pending, Poll, RequestPage, StorageOutlined } from '@mui/icons-material';
+import { migrateSeriesData, updateSeriesData } from '../utils/migrateSeriesData';
 import Iconify from '../components/iconify';
 import { createSeries, updateSeries, deleteSeries } from '../graphql/mutations';
 import { listSeries } from '../graphql/queries';
 import { onUpdateSeries } from '../graphql/subscriptions';
 import SeriesCard from '../sections/@dashboard/series/SeriesCard';
+import { SnackbarContext } from '../SnackbarContext';
 
 // ----------------------------------------------------------------------
 
@@ -126,8 +128,19 @@ export default function DashboardSeriesPage() {
   const [uploading, setUploading] = useState(false);
   const [fileLocation, setFileLocation] = useState('');
   const [sortMethod, setSortMethod] = useState('live');
-
   const [selectedIndex, setSelectedIndex] = useState(null)
+  const [migrationLoading, setMigrationLoading] = useState(false);
+  const { setMessage, setSeverity, setOpen } = useContext(SnackbarContext);
+
+  // Options Menu
+  const [optionsMenuAnchor, setOptionsMenuAnchor] = useState(null);
+  const isOptionsMenuOpen = Boolean(optionsMenuAnchor);
+  const handleOptionsMenuClick = (event) => {
+    setOptionsMenuAnchor(event.currentTarget);
+  };
+  const handleOptionsMenuClose = () => {
+    setOptionsMenuAnchor(null);
+  };
 
   const handleExpandClick = () => {
     setExpanded(!expanded);
@@ -389,19 +402,45 @@ export default function DashboardSeriesPage() {
 
   const filterResults = (event, value) => {
     setSortMethod(value)
-    switch(value) {
+    switch (value) {
       case 'live':
         setFilteredMetadata(metadata.filter(obj => !obj.statusText));
-      break;
+        break;
       case 'vote':
         setFilteredMetadata(metadata.filter(obj => obj.statusText === "requested"));
-      break;
+        break;
       case 'requested':
         setFilteredMetadata(metadata.filter(obj => obj.statusText === "submittedRequest"));
-      break;
+        break;
       default:
         setFilteredMetadata(metadata);
     }
+  }
+
+  const tvdbIdMigration = () => {
+    setMigrationLoading(true)
+    migrateSeriesData().then(results => {
+      console.log(results);
+      updateSeriesData(results).then(() => {
+        console.log('COMPLETE!')
+        setMigrationLoading(false)
+        setMessage('Migration Complete!')
+        setSeverity('success')
+        setOpen(true);
+      }).catch(error => {
+        console.log(error)
+        setMigrationLoading(false)
+        setMessage('Error during migration.')
+        setSeverity('error')
+        setOpen(true);
+      })
+    }).catch(error => {
+      console.log(error)
+      setMigrationLoading(false)
+      setMessage('Error loading series data')
+      setSeverity('error')
+      setOpen(true);
+    })
   }
 
 
@@ -416,12 +455,42 @@ export default function DashboardSeriesPage() {
           <Typography variant="h4" gutterBottom>
             TV Shows {loading ? <CircularProgress size={25} /> : `(${filteredMetadata.length})`}
           </Typography>
-          <Button variant="contained" startIcon={<Iconify icon="eva:plus-fill" />} onClick={() => navigate('/dashboard/addseries')}>
-            Add Show
+          <Button
+            aria-controls="options-menu"
+            aria-haspopup="true"
+            onClick={handleOptionsMenuClick}
+            variant='contained'
+            startIcon={<ArrowDropDown />}
+          >
+            Options
           </Button>
+          <Menu
+            id="options-menu"
+            anchorEl={optionsMenuAnchor}
+            keepMounted
+            open={isOptionsMenuOpen}
+            onClose={handleOptionsMenuClose}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+          >
+            <MenuItem onClick={() => {
+              navigate('/dashboard/addseries');
+              handleOptionsMenuClose();
+            }}
+            >
+              <Button fullWidth variant="contained" startIcon={<Iconify icon="eva:plus-fill" />}>
+                Add Show
+              </Button>
+            </MenuItem>
+            <MenuItem onClick={handleOptionsMenuClose}>
+              <Button fullWidth variant="contained" startIcon={<StorageOutlined />} onClick={tvdbIdMigration}>
+                Migrate Data
+              </Button>
+            </MenuItem>
+          </Menu>
         </Stack>
         <Container sx={{ paddingX: 0 }}>
-        <Tabs value={sortMethod} onChange={filterResults} indicatorColor="secondary" textColor="inherit" sx={{mb: 3}}>
+          <Tabs value={sortMethod} onChange={filterResults} indicatorColor="secondary" textColor="inherit" sx={{ mb: 3 }}>
             <Tab
               label={
                 <Box display="flex" alignItems="center">
@@ -764,6 +833,22 @@ export default function DashboardSeriesPage() {
           {metadataLoaded && <LoadingButton variant='contained' type='submit' onClick={metadataLoaded ? handleSubmit : handleGetMetadata} loading={dialogButtonLoading}>{dialogButtonText}</LoadingButton>}
         </DialogActions>
       </Dialog>
+      <Backdrop
+        sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }}
+        open={migrationLoading}
+      >
+        <Box
+          display="flex"
+          flexDirection="column"
+          justifyContent="center"
+          alignItems="center"
+        >
+          <CircularProgress color="inherit" />
+          <Typography variant='h5' sx={{ mt: 2 }}>
+            Migrating TVDB ID's...
+          </Typography>
+        </Box>
+      </Backdrop>
     </>
   );
 }
