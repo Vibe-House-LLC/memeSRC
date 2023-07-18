@@ -16,7 +16,7 @@ import { faker } from '@faker-js/faker';
 import { LoadingButton } from '@mui/lab';
 import { useNavigate } from 'react-router-dom';
 import { ArrowDropDown, CheckCircle, Pending, Poll, RequestPage, StorageOutlined } from '@mui/icons-material';
-import { migrateSeriesData, updateSeriesData } from '../utils/migrateSeriesData';
+import { listSeriesData, updateSeriesData } from '../utils/migrateSeriesData';
 import Iconify from '../components/iconify';
 import { createSeries, updateSeries, deleteSeries } from '../graphql/mutations';
 import { listSeries } from '../graphql/queries';
@@ -419,7 +419,7 @@ export default function DashboardSeriesPage() {
 
   const tvdbIdMigration = () => {
     setMigrationLoading(true)
-    migrateSeriesData().then(results => {
+    listSeriesData().then(results => {
       console.log(results);
       updateSeriesData(results).then(() => {
         console.log('COMPLETE!')

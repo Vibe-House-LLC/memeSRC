@@ -22,7 +22,7 @@ export async function updateSeriesData(series) {
     }, Promise.resolve()); // Initial promise
 }
 
-export function migrateSeriesData() {
+export function listSeriesData() {
     return getAllSeries().catch(error => {
         console.error("Error retrieving series", error);
         throw error;
