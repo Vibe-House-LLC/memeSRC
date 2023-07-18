@@ -175,7 +175,7 @@ export default function TopBannerSearchRevised(props) {
     <>
       <StyledHeader>
         <Grid container marginY={3} paddingX={2}>
-          <Grid item marginX={{ xs: 'auto', md: 0 }} marginY='auto'>
+          {/* <Grid item marginX={{ xs: 'auto', md: 0 }} marginY='auto'>
             <Grid display='flex' xs={12} marginBottom={{ xs: 3, md: 0 }}>
               <Link to="/" component={RouterLink} sx={{ display: 'contents' }}>
                 <Logo style={{ float: 'left' }} />
@@ -184,12 +184,9 @@ export default function TopBannerSearchRevised(props) {
                 </Typography>
               </Link>
             </Grid>
-            {/* <Fab onClick={toggleDrawer} variant="text" style={{ color: "white", textDecoration: 'none', backgroundColor: 'rgb(0,0,0,0)', boxShadow: 'none' }}>
-          <Search />
-        </Fab> */}
 
 
-          </Grid>
+          </Grid> */}
           <Grid item xs={12} md={6} paddingLeft={{ xs: 0, md: 2 }}>
             <form onSubmit={e => searchFunction(e)}>
               <StyledSearchInput
@@ -229,7 +226,7 @@ export default function TopBannerSearchRevised(props) {
             </FormControl>
           </Grid>
           <Grid item marginLeft={{ xs: 3 }} marginY='auto' display='flex' style={{ whiteSpace: 'nowrap' }}>
-            <Typography fontSize={13}><a href="https://forms.gle/8CETtVbwYoUmxqbi7" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>Request a show</a></Typography>
+            <Typography fontSize={13}><a href="/vote" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>Request a show</a></Typography>
           </Grid>
           <Grid item marginLeft={{ xs: 3 }} marginY='auto' display='flex' style={{ whiteSpace: 'nowrap' }}>
             <Typography fontSize={13}><a href="https://forms.gle/8CETtVbwYoUmxqbi7" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>Report issues</a></Typography>

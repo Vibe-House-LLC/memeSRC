@@ -28,6 +28,10 @@ import Iconify from '../components/iconify';
 import Scrollbar from '../components/scrollbar';
 // sections
 import { UserListHead, UserListToolbar } from '../sections/@dashboard/user';
+import UserCountChart from '../sections/@dashboard/app/UserSignupsGraph';
+// graphql
+import { listUserDetails } from '../graphql/queries';
+import { updateUserDetails } from '../graphql/mutations';
 // mock
 // import USERLIST from '../_mock/user';
 
@@ -37,23 +41,37 @@ const TABLE_HEAD = [
   { id: 'username', label: 'Name', alignRight: false },
   { id: 'email', label: 'Email', alignRight: false },
   { id: 'id', label: 'id', alignRight: false },
-  { id: 'isVerified', label: 'Verified', alignRight: false },
+  { id: 'earlyAccessStatus', label: 'Early Access', alignRight: false },
   { id: 'status', label: 'Status', alignRight: false },
   { id: 'enabled', label: 'Enabled', alignRight: false },
+  { id: 'credits', label: 'Credits', alignRight: false },
+  { id: 'createdAt', label: 'Created', alignRight: false },
   { id: '' },
 ];
 
 // ----------------------------------------------------------------------
 
 function descendingComparator(a, b, orderBy) {
-  if (b[orderBy] < a[orderBy]) {
-    return -1;
-  }
-  if (b[orderBy] > a[orderBy]) {
-    return 1;
+  if(orderBy === 'created') {
+    const dateA = new Date(a[orderBy]);
+    const dateB = new Date(b[orderBy]);
+    if (dateB < dateA) {
+      return -1;
+    }
+    if (dateB > dateA) {
+      return 1;
+    }
+  } else {
+    if (b[orderBy] < a[orderBy]) {
+      return -1;
+    }
+    if (b[orderBy] > a[orderBy]) {
+      return 1;
+    }
   }
   return 0;
 }
+
 
 function getComparator(order, orderBy) {
   return order === 'desc'
@@ -74,73 +92,102 @@ function applySortFilter(array, comparator, query) {
   return stabilizedThis.map((el) => el[0]);
 }
 
-async function disableUser(username) { 
+async function listUserDetailsGraphQL(limit, nextToken = null, result = []) {
+  const userDetailsQuery = { limit, nextToken };
+
+  const response = await API.graphql({
+    query: listUserDetails,
+    variables: userDetailsQuery,
+    authMode: 'AMAZON_COGNITO_USER_POOLS',
+  });
+
+  const items = response.data.listUserDetails.items;
+  result.push(...items);
+
+  if (response.data.listUserDetails.nextToken) {
+    return listUserDetailsGraphQL(limit, response.data.listUserDetails.nextToken, result);
+    // eslint-disable-next-line no-else-return
+  } else {
+    return result;
+  }
+}
+
+async function disableUser(username) {
   const apiName = 'AdminQueries';
   const path = '/disableUser';
   const myInit = {
-      body: {
-        "username" : username
-      }, 
-      headers: {
-        'Content-Type' : 'application/json',
-        Authorization: `${(await Auth.currentSession()).getAccessToken().getJwtToken()}`
-      } 
+    body: {
+      "username": username
+    },
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `${(await Auth.currentSession()).getAccessToken().getJwtToken()}`
+    }
   }
   return API.post(apiName, path, myInit);
 }
 
+async function updateUserCredits(id, username, credits) {
+  try {
+    const userDetailsUpdate = {
+      id,
+      username,
+      credits
+    };
+
+    const response = await API.graphql({
+      query: updateUserDetails,
+      variables: { input: userDetailsUpdate },
+      authMode: 'AMAZON_COGNITO_USER_POOLS',
+    });
+
+    return response;
+
+  } catch (error) {
+    console.error("An error occurred while updating user credits:", error);
+    return error; // return statement added here
+  }
+}
+
+
+
+
+
 export default function UserPage() {
   const [open, setOpen] = useState(null);
-
   const [selectedIndex, setSelectedIndex] = useState(null);
-
   const [page, setPage] = useState(0);
-
   const [order, setOrder] = useState('asc');
-
   const [selected, setSelected] = useState([]);
-
   const [orderBy, setOrderBy] = useState('name');
-
   const [filterName, setFilterName] = useState('');
-
   const [rowsPerPage, setRowsPerPage] = useState(5);
-
   const [userList, setUserList] = useState([]);
+  const [credits, setCredits] = useState(0);
 
   useEffect(() => {
-    let nextToken;
-    async function listUsers(limit){
-      const apiName = 'AdminQueries';
-      const path = '/listUsers';
-      const myInit = { 
-          queryStringParameters: {
-            "limit": limit,
-            "token": nextToken
-          },
-          headers: {
-            'Content-Type' : 'application/json',
-            Authorization: `${(await Auth.currentSession()).getAccessToken().getJwtToken()}`
-          }
-      }
-      const { NextToken, ...rest } =  await API.get(apiName, path, myInit);
-      nextToken = NextToken;
-      return rest;
-    }
-
-    listUsers(50).then((users) => {
-      setUserList(users.Users.map(user => ({
-        username: user.Username,
-        email: user.Attributes.find(attr => attr.Name === 'email').Value,
-        id: user.Attributes.find(attr => attr.Name === 'sub').Value,
-        isVerified: user.Attributes.find(attr => attr.Name === 'email_verified').Value,
-        status: user.UserStatus,
-        enabled: user.Enabled
+    listUserDetailsGraphQL(50).then((users) => {
+      setUserList(users.map(user => ({
+        username: user.username,
+        email: user.email,
+        id: user.id,
+        earlyAccessStatus: Boolean(user.earlyAccessStatus),
+        status: user.status,
+        enabled: true,
+        credits: parseInt(user.credits, 10) || 0,
+        createdAt: new Date(user.createdAt).toLocaleString('en-US', {
+          month: '2-digit',
+          day: '2-digit',
+          year: '2-digit',
+          hour: 'numeric',
+          minute: 'numeric',
+          hour12: true,
+        }).replace(',', ''),
       })))
     }).catch((err) => {
-      console.log(err)
-      setUserList([])
-    })
+      console.log(err);
+      setUserList([]);
+    });
 
     // setUserList(listUsers(20));
 
@@ -153,7 +200,7 @@ export default function UserPage() {
 
   useEffect(() => {
     console.log(selectedIndex)
-  },[selectedIndex])
+  }, [selectedIndex])
 
   const handleCloseMenu = () => {
     setOpen(null);
@@ -225,6 +272,8 @@ export default function UserPage() {
             New User
           </Button>
         </Stack>
+        
+        <UserCountChart userList={userList} /> 
 
         <Card>
           <UserListToolbar numSelected={selected.length} filterName={filterName} onFilterName={handleFilterByName} />
@@ -243,7 +292,7 @@ export default function UserPage() {
                 />
                 <TableBody>
                   {filteredUsers.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row, index) => {
-                    const { username, email, id, isVerified, status, enabled } = row;
+                    const { username, email, id, earlyAccessStatus, status, enabled, credits, createdAt } = row;
                     const selectedUser = selected.indexOf(username) !== -1;
 
                     return (
@@ -265,7 +314,7 @@ export default function UserPage() {
 
                         <TableCell align="left">{id}</TableCell>
 
-                        <TableCell align="left">{(isVerified === "true") ? 'Yes' : 'No'}</TableCell>
+                        <TableCell align="left">{(earlyAccessStatus) ? 'Requested' : 'No Response'}</TableCell>
 
                         <TableCell align="left">
                           <Label color={(status === "UNCONFIRMED") ? 'error' : 'success'}>{sentenceCase(status)}</Label>
@@ -274,6 +323,10 @@ export default function UserPage() {
                         <TableCell align="left">
                           <Label color={enabled ? 'success' : 'error'}>{sentenceCase(enabled ? 'Enabled' : 'Disabled')}</Label>
                         </TableCell>
+
+                        <TableCell align="left">{credits}</TableCell>
+
+                        <TableCell align="left">{createdAt}</TableCell>
 
                         <TableCell align="right">
                           <IconButton size="large" color="inherit" onClick={(event) => handleOpenMenu(event, index)}>
@@ -315,6 +368,7 @@ export default function UserPage() {
                 )}
               </Table>
             </TableContainer>
+
           </Scrollbar>
 
           <TablePagination
@@ -347,14 +401,51 @@ export default function UserPage() {
           },
         }}
       >
-        <MenuItem>
+
+        <MenuItem
+          onClick={() => {
+            const credits = prompt('New credit amount?') || 0;
+            updateUserCredits(filteredUsers[selectedIndex].id, filteredUsers[selectedIndex].username, Number(credits))
+              .then(() => {
+                listUserDetailsGraphQL().then((users) => {
+                  setUserList(users.map(user => ({
+                    username: user.username,
+                    email: user.email,
+                    id: user.id,
+                    earlyAccessStatus: Boolean(user.earlyAccessStatus), // You'd need to include these in your GraphQL query
+                    status: user.status,
+                    enabled: true,
+                    credits: parseInt(user.credits, 10) || 0,
+                    createdAt: new Date(user.createdAt).toLocaleString('en-US', {
+                      month: '2-digit',
+                      day: '2-digit',
+                      year: '2-digit',
+                      hour: 'numeric',
+                      minute: 'numeric',
+                      hour12: true,
+                    }).replace(',', '')
+                  })))
+                }).catch((err) => {
+                  console.log(err);
+                  setUserList([]);
+                });
+                setOpen(null); // Close the popover after updating credits
+              })
+              .catch((err) => {
+                console.log(err);
+              });
+          }}
+
+        >
           <Iconify icon={'eva:edit-fill'} sx={{ mr: 2 }} />
-          Edit
+          Credits
         </MenuItem>
+
+
 
         {/* TODO: Make user list adapt to changes */}
         <MenuItem sx={{ color: 'error.main' }} onClick={() => disableUser(filteredUsers[selectedIndex].username)}>
-          <Iconify icon={'eva:trash-2-outline'} sx={{ mr: 2 }}/>
+          <Iconify icon={'eva:trash-2-outline'} sx={{ mr: 2 }} />
           Disable
         </MenuItem>
       </Popover>

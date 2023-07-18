@@ -1,6 +1,855 @@
 /* eslint-disable */
 // this is an auto generated file. This will be overwritten
 
+export const createSeries = /* GraphQL */ `
+  mutation CreateSeries(
+    $input: CreateSeriesInput!
+    $condition: ModelSeriesConditionInput
+  ) {
+    createSeries(input: $input, condition: $condition) {
+      id
+      tvdbid
+      slug
+      name
+      year
+      image
+      description
+      seasons {
+        items {
+          id
+          tvdbid
+          year
+          image
+          description
+          createdAt
+          updatedAt
+          seriesSeasonsId
+        }
+        nextToken
+      }
+      statusText
+      createdAt
+      updatedAt
+    }
+  }
+`;
+export const updateSeries = /* GraphQL */ `
+  mutation UpdateSeries(
+    $input: UpdateSeriesInput!
+    $condition: ModelSeriesConditionInput
+  ) {
+    updateSeries(input: $input, condition: $condition) {
+      id
+      tvdbid
+      slug
+      name
+      year
+      image
+      description
+      seasons {
+        items {
+          id
+          tvdbid
+          year
+          image
+          description
+          createdAt
+          updatedAt
+          seriesSeasonsId
+        }
+        nextToken
+      }
+      statusText
+      createdAt
+      updatedAt
+    }
+  }
+`;
+export const deleteSeries = /* GraphQL */ `
+  mutation DeleteSeries(
+    $input: DeleteSeriesInput!
+    $condition: ModelSeriesConditionInput
+  ) {
+    deleteSeries(input: $input, condition: $condition) {
+      id
+      tvdbid
+      slug
+      name
+      year
+      image
+      description
+      seasons {
+        items {
+          id
+          tvdbid
+          year
+          image
+          description
+          createdAt
+          updatedAt
+          seriesSeasonsId
+        }
+        nextToken
+      }
+      statusText
+      createdAt
+      updatedAt
+    }
+  }
+`;
+export const createSourceMedia = /* GraphQL */ `
+  mutation CreateSourceMedia(
+    $input: CreateSourceMediaInput!
+    $condition: ModelSourceMediaConditionInput
+  ) {
+    createSourceMedia(input: $input, condition: $condition) {
+      id
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        seasons {
+          nextToken
+        }
+        statusText
+        createdAt
+        updatedAt
+      }
+      files {
+        items {
+          id
+          key
+          status
+          createdAt
+          updatedAt
+          sourceMediaFilesId
+        }
+        nextToken
+      }
+      status
+      user {
+        id
+        username
+        email
+        earlyAccessStatus
+        stripeId
+        sourceMedia {
+          nextToken
+        }
+        status
+        votes {
+          nextToken
+        }
+        credits
+        createdAt
+        updatedAt
+      }
+      createdAt
+      updatedAt
+      userDetailsSourceMediaId
+      sourceMediaSeriesId
+    }
+  }
+`;
+export const updateSourceMedia = /* GraphQL */ `
+  mutation UpdateSourceMedia(
+    $input: UpdateSourceMediaInput!
+    $condition: ModelSourceMediaConditionInput
+  ) {
+    updateSourceMedia(input: $input, condition: $condition) {
+      id
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        seasons {
+          nextToken
+        }
+        statusText
+        createdAt
+        updatedAt
+      }
+      files {
+        items {
+          id
+          key
+          status
+          createdAt
+          updatedAt
+          sourceMediaFilesId
+        }
+        nextToken
+      }
+      status
+      user {
+        id
+        username
+        email
+        earlyAccessStatus
+        stripeId
+        sourceMedia {
+          nextToken
+        }
+        status
+        votes {
+          nextToken
+        }
+        credits
+        createdAt
+        updatedAt
+      }
+      createdAt
+      updatedAt
+      userDetailsSourceMediaId
+      sourceMediaSeriesId
+    }
+  }
+`;
+export const deleteSourceMedia = /* GraphQL */ `
+  mutation DeleteSourceMedia(
+    $input: DeleteSourceMediaInput!
+    $condition: ModelSourceMediaConditionInput
+  ) {
+    deleteSourceMedia(input: $input, condition: $condition) {
+      id
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        seasons {
+          nextToken
+        }
+        statusText
+        createdAt
+        updatedAt
+      }
+      files {
+        items {
+          id
+          key
+          status
+          createdAt
+          updatedAt
+          sourceMediaFilesId
+        }
+        nextToken
+      }
+      status
+      user {
+        id
+        username
+        email
+        earlyAccessStatus
+        stripeId
+        sourceMedia {
+          nextToken
+        }
+        status
+        votes {
+          nextToken
+        }
+        credits
+        createdAt
+        updatedAt
+      }
+      createdAt
+      updatedAt
+      userDetailsSourceMediaId
+      sourceMediaSeriesId
+    }
+  }
+`;
+export const createFile = /* GraphQL */ `
+  mutation CreateFile(
+    $input: CreateFileInput!
+    $condition: ModelFileConditionInput
+  ) {
+    createFile(input: $input, condition: $condition) {
+      id
+      sourceMedia {
+        id
+        series {
+          id
+          tvdbid
+          slug
+          name
+          year
+          image
+          description
+          statusText
+          createdAt
+          updatedAt
+        }
+        files {
+          nextToken
+        }
+        status
+        user {
+          id
+          username
+          email
+          earlyAccessStatus
+          stripeId
+          status
+          credits
+          createdAt
+          updatedAt
+        }
+        createdAt
+        updatedAt
+        userDetailsSourceMediaId
+        sourceMediaSeriesId
+      }
+      key
+      status
+      createdAt
+      updatedAt
+      sourceMediaFilesId
+    }
+  }
+`;
+export const updateFile = /* GraphQL */ `
+  mutation UpdateFile(
+    $input: UpdateFileInput!
+    $condition: ModelFileConditionInput
+  ) {
+    updateFile(input: $input, condition: $condition) {
+      id
+      sourceMedia {
+        id
+        series {
+          id
+          tvdbid
+          slug
+          name
+          year
+          image
+          description
+          statusText
+          createdAt
+          updatedAt
+        }
+        files {
+          nextToken
+        }
+        status
+        user {
+          id
+          username
+          email
+          earlyAccessStatus
+          stripeId
+          status
+          credits
+          createdAt
+          updatedAt
+        }
+        createdAt
+        updatedAt
+        userDetailsSourceMediaId
+        sourceMediaSeriesId
+      }
+      key
+      status
+      createdAt
+      updatedAt
+      sourceMediaFilesId
+    }
+  }
+`;
+export const deleteFile = /* GraphQL */ `
+  mutation DeleteFile(
+    $input: DeleteFileInput!
+    $condition: ModelFileConditionInput
+  ) {
+    deleteFile(input: $input, condition: $condition) {
+      id
+      sourceMedia {
+        id
+        series {
+          id
+          tvdbid
+          slug
+          name
+          year
+          image
+          description
+          statusText
+          createdAt
+          updatedAt
+        }
+        files {
+          nextToken
+        }
+        status
+        user {
+          id
+          username
+          email
+          earlyAccessStatus
+          stripeId
+          status
+          credits
+          createdAt
+          updatedAt
+        }
+        createdAt
+        updatedAt
+        userDetailsSourceMediaId
+        sourceMediaSeriesId
+      }
+      key
+      status
+      createdAt
+      updatedAt
+      sourceMediaFilesId
+    }
+  }
+`;
+export const createSeason = /* GraphQL */ `
+  mutation CreateSeason(
+    $input: CreateSeasonInput!
+    $condition: ModelSeasonConditionInput
+  ) {
+    createSeason(input: $input, condition: $condition) {
+      id
+      tvdbid
+      year
+      image
+      description
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        seasons {
+          nextToken
+        }
+        statusText
+        createdAt
+        updatedAt
+      }
+      episodes {
+        items {
+          id
+          tvdbid
+          year
+          image
+          description
+          createdAt
+          updatedAt
+          seasonEpisodesId
+        }
+        nextToken
+      }
+      createdAt
+      updatedAt
+      seriesSeasonsId
+    }
+  }
+`;
+export const updateSeason = /* GraphQL */ `
+  mutation UpdateSeason(
+    $input: UpdateSeasonInput!
+    $condition: ModelSeasonConditionInput
+  ) {
+    updateSeason(input: $input, condition: $condition) {
+      id
+      tvdbid
+      year
+      image
+      description
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        seasons {
+          nextToken
+        }
+        statusText
+        createdAt
+        updatedAt
+      }
+      episodes {
+        items {
+          id
+          tvdbid
+          year
+          image
+          description
+          createdAt
+          updatedAt
+          seasonEpisodesId
+        }
+        nextToken
+      }
+      createdAt
+      updatedAt
+      seriesSeasonsId
+    }
+  }
+`;
+export const deleteSeason = /* GraphQL */ `
+  mutation DeleteSeason(
+    $input: DeleteSeasonInput!
+    $condition: ModelSeasonConditionInput
+  ) {
+    deleteSeason(input: $input, condition: $condition) {
+      id
+      tvdbid
+      year
+      image
+      description
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        seasons {
+          nextToken
+        }
+        statusText
+        createdAt
+        updatedAt
+      }
+      episodes {
+        items {
+          id
+          tvdbid
+          year
+          image
+          description
+          createdAt
+          updatedAt
+          seasonEpisodesId
+        }
+        nextToken
+      }
+      createdAt
+      updatedAt
+      seriesSeasonsId
+    }
+  }
+`;
+export const createEpisode = /* GraphQL */ `
+  mutation CreateEpisode(
+    $input: CreateEpisodeInput!
+    $condition: ModelEpisodeConditionInput
+  ) {
+    createEpisode(input: $input, condition: $condition) {
+      id
+      tvdbid
+      year
+      image
+      description
+      season {
+        id
+        tvdbid
+        year
+        image
+        description
+        series {
+          id
+          tvdbid
+          slug
+          name
+          year
+          image
+          description
+          statusText
+          createdAt
+          updatedAt
+        }
+        episodes {
+          nextToken
+        }
+        createdAt
+        updatedAt
+        seriesSeasonsId
+      }
+      subtitles {
+        items {
+          id
+          tvdbid
+          year
+          image
+          description
+          start
+          end
+          createdAt
+          updatedAt
+          episodeSubtitlesId
+        }
+        nextToken
+      }
+      createdAt
+      updatedAt
+      seasonEpisodesId
+    }
+  }
+`;
+export const updateEpisode = /* GraphQL */ `
+  mutation UpdateEpisode(
+    $input: UpdateEpisodeInput!
+    $condition: ModelEpisodeConditionInput
+  ) {
+    updateEpisode(input: $input, condition: $condition) {
+      id
+      tvdbid
+      year
+      image
+      description
+      season {
+        id
+        tvdbid
+        year
+        image
+        description
+        series {
+          id
+          tvdbid
+          slug
+          name
+          year
+          image
+          description
+          statusText
+          createdAt
+          updatedAt
+        }
+        episodes {
+          nextToken
+        }
+        createdAt
+        updatedAt
+        seriesSeasonsId
+      }
+      subtitles {
+        items {
+          id
+          tvdbid
+          year
+          image
+          description
+          start
+          end
+          createdAt
+          updatedAt
+          episodeSubtitlesId
+        }
+        nextToken
+      }
+      createdAt
+      updatedAt
+      seasonEpisodesId
+    }
+  }
+`;
+export const deleteEpisode = /* GraphQL */ `
+  mutation DeleteEpisode(
+    $input: DeleteEpisodeInput!
+    $condition: ModelEpisodeConditionInput
+  ) {
+    deleteEpisode(input: $input, condition: $condition) {
+      id
+      tvdbid
+      year
+      image
+      description
+      season {
+        id
+        tvdbid
+        year
+        image
+        description
+        series {
+          id
+          tvdbid
+          slug
+          name
+          year
+          image
+          description
+          statusText
+          createdAt
+          updatedAt
+        }
+        episodes {
+          nextToken
+        }
+        createdAt
+        updatedAt
+        seriesSeasonsId
+      }
+      subtitles {
+        items {
+          id
+          tvdbid
+          year
+          image
+          description
+          start
+          end
+          createdAt
+          updatedAt
+          episodeSubtitlesId
+        }
+        nextToken
+      }
+      createdAt
+      updatedAt
+      seasonEpisodesId
+    }
+  }
+`;
+export const createSubtitle = /* GraphQL */ `
+  mutation CreateSubtitle(
+    $input: CreateSubtitleInput!
+    $condition: ModelSubtitleConditionInput
+  ) {
+    createSubtitle(input: $input, condition: $condition) {
+      id
+      tvdbid
+      year
+      image
+      description
+      start
+      end
+      episode {
+        id
+        tvdbid
+        year
+        image
+        description
+        season {
+          id
+          tvdbid
+          year
+          image
+          description
+          createdAt
+          updatedAt
+          seriesSeasonsId
+        }
+        subtitles {
+          nextToken
+        }
+        createdAt
+        updatedAt
+        seasonEpisodesId
+      }
+      createdAt
+      updatedAt
+      episodeSubtitlesId
+    }
+  }
+`;
+export const updateSubtitle = /* GraphQL */ `
+  mutation UpdateSubtitle(
+    $input: UpdateSubtitleInput!
+    $condition: ModelSubtitleConditionInput
+  ) {
+    updateSubtitle(input: $input, condition: $condition) {
+      id
+      tvdbid
+      year
+      image
+      description
+      start
+      end
+      episode {
+        id
+        tvdbid
+        year
+        image
+        description
+        season {
+          id
+          tvdbid
+          year
+          image
+          description
+          createdAt
+          updatedAt
+          seriesSeasonsId
+        }
+        subtitles {
+          nextToken
+        }
+        createdAt
+        updatedAt
+        seasonEpisodesId
+      }
+      createdAt
+      updatedAt
+      episodeSubtitlesId
+    }
+  }
+`;
+export const deleteSubtitle = /* GraphQL */ `
+  mutation DeleteSubtitle(
+    $input: DeleteSubtitleInput!
+    $condition: ModelSubtitleConditionInput
+  ) {
+    deleteSubtitle(input: $input, condition: $condition) {
+      id
+      tvdbid
+      year
+      image
+      description
+      start
+      end
+      episode {
+        id
+        tvdbid
+        year
+        image
+        description
+        season {
+          id
+          tvdbid
+          year
+          image
+          description
+          createdAt
+          updatedAt
+          seriesSeasonsId
+        }
+        subtitles {
+          nextToken
+        }
+        createdAt
+        updatedAt
+        seasonEpisodesId
+      }
+      createdAt
+      updatedAt
+      episodeSubtitlesId
+    }
+  }
+`;
 export const createAnalyticsMetrics = /* GraphQL */ `
   mutation CreateAnalyticsMetrics(
     $input: CreateAnalyticsMetricsInput!
@@ -154,6 +1003,267 @@ export const deleteHomepageSection = /* GraphQL */ `
       textColor
       createdAt
       updatedAt
+    }
+  }
+`;
+export const createUserDetails = /* GraphQL */ `
+  mutation CreateUserDetails(
+    $input: CreateUserDetailsInput!
+    $condition: ModelUserDetailsConditionInput
+  ) {
+    createUserDetails(input: $input, condition: $condition) {
+      id
+      username
+      email
+      earlyAccessStatus
+      stripeId
+      sourceMedia {
+        items {
+          id
+          status
+          createdAt
+          updatedAt
+          userDetailsSourceMediaId
+          sourceMediaSeriesId
+        }
+        nextToken
+      }
+      status
+      votes {
+        items {
+          id
+          boost
+          createdAt
+          updatedAt
+          userDetailsVotesId
+          seriesUserVoteSeriesId
+        }
+        nextToken
+      }
+      credits
+      createdAt
+      updatedAt
+    }
+  }
+`;
+export const updateUserDetails = /* GraphQL */ `
+  mutation UpdateUserDetails(
+    $input: UpdateUserDetailsInput!
+    $condition: ModelUserDetailsConditionInput
+  ) {
+    updateUserDetails(input: $input, condition: $condition) {
+      id
+      username
+      email
+      earlyAccessStatus
+      stripeId
+      sourceMedia {
+        items {
+          id
+          status
+          createdAt
+          updatedAt
+          userDetailsSourceMediaId
+          sourceMediaSeriesId
+        }
+        nextToken
+      }
+      status
+      votes {
+        items {
+          id
+          boost
+          createdAt
+          updatedAt
+          userDetailsVotesId
+          seriesUserVoteSeriesId
+        }
+        nextToken
+      }
+      credits
+      createdAt
+      updatedAt
+    }
+  }
+`;
+export const deleteUserDetails = /* GraphQL */ `
+  mutation DeleteUserDetails(
+    $input: DeleteUserDetailsInput!
+    $condition: ModelUserDetailsConditionInput
+  ) {
+    deleteUserDetails(input: $input, condition: $condition) {
+      id
+      username
+      email
+      earlyAccessStatus
+      stripeId
+      sourceMedia {
+        items {
+          id
+          status
+          createdAt
+          updatedAt
+          userDetailsSourceMediaId
+          sourceMediaSeriesId
+        }
+        nextToken
+      }
+      status
+      votes {
+        items {
+          id
+          boost
+          createdAt
+          updatedAt
+          userDetailsVotesId
+          seriesUserVoteSeriesId
+        }
+        nextToken
+      }
+      credits
+      createdAt
+      updatedAt
+    }
+  }
+`;
+export const createSeriesUserVote = /* GraphQL */ `
+  mutation CreateSeriesUserVote(
+    $input: CreateSeriesUserVoteInput!
+    $condition: ModelSeriesUserVoteConditionInput
+  ) {
+    createSeriesUserVote(input: $input, condition: $condition) {
+      id
+      user {
+        id
+        username
+        email
+        earlyAccessStatus
+        stripeId
+        sourceMedia {
+          nextToken
+        }
+        status
+        votes {
+          nextToken
+        }
+        credits
+        createdAt
+        updatedAt
+      }
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        seasons {
+          nextToken
+        }
+        statusText
+        createdAt
+        updatedAt
+      }
+      boost
+      createdAt
+      updatedAt
+      userDetailsVotesId
+      seriesUserVoteSeriesId
+    }
+  }
+`;
+export const updateSeriesUserVote = /* GraphQL */ `
+  mutation UpdateSeriesUserVote(
+    $input: UpdateSeriesUserVoteInput!
+    $condition: ModelSeriesUserVoteConditionInput
+  ) {
+    updateSeriesUserVote(input: $input, condition: $condition) {
+      id
+      user {
+        id
+        username
+        email
+        earlyAccessStatus
+        stripeId
+        sourceMedia {
+          nextToken
+        }
+        status
+        votes {
+          nextToken
+        }
+        credits
+        createdAt
+        updatedAt
+      }
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        seasons {
+          nextToken
+        }
+        statusText
+        createdAt
+        updatedAt
+      }
+      boost
+      createdAt
+      updatedAt
+      userDetailsVotesId
+      seriesUserVoteSeriesId
+    }
+  }
+`;
+export const deleteSeriesUserVote = /* GraphQL */ `
+  mutation DeleteSeriesUserVote(
+    $input: DeleteSeriesUserVoteInput!
+    $condition: ModelSeriesUserVoteConditionInput
+  ) {
+    deleteSeriesUserVote(input: $input, condition: $condition) {
+      id
+      user {
+        id
+        username
+        email
+        earlyAccessStatus
+        stripeId
+        sourceMedia {
+          nextToken
+        }
+        status
+        votes {
+          nextToken
+        }
+        credits
+        createdAt
+        updatedAt
+      }
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        seasons {
+          nextToken
+        }
+        statusText
+        createdAt
+        updatedAt
+      }
+      boost
+      createdAt
+      updatedAt
+      userDetailsVotesId
+      seriesUserVoteSeriesId
     }
   }
 `;

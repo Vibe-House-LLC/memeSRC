@@ -1,6 +1,7 @@
 import { API } from 'aws-amplify';
 import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import FullScreenSearch from '../sections/search/FullScreenSearch';
 
 const prepSessionID = async () => {
@@ -42,6 +43,17 @@ export default function SearchPage() {
   }, [seriesTitle, searchTerm, navigate]);
 
   return (
-    <FullScreenSearch searchFunction={handleSearch} setSearchTerm={setSearchTerm} setSeriesTitle={setSeriesTitle} searchTerm={searchTerm} seriesTitle={seriesTitle} />  
+    <>
+      <Helmet>
+        <title>memeSRC</title>
+      </Helmet>
+      <FullScreenSearch
+        searchFunction={handleSearch}
+        setSearchTerm={setSearchTerm}
+        setSeriesTitle={setSeriesTitle}
+        searchTerm={searchTerm}
+        seriesTitle={seriesTitle}
+      />
+    </>
   );
 }

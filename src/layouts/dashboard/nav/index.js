@@ -1,13 +1,11 @@
 import PropTypes from 'prop-types';
 import { useEffect, useContext } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 // @mui
 import { styled, alpha } from '@mui/material/styles';
-import { Box, Link, Button, Drawer, Typography, Avatar, Stack } from '@mui/material';
+import { Box, Link, Button, Drawer, Typography, Avatar, Stack, Chip, Divider } from '@mui/material';
 // mock
 import account from '../../../_mock/account';
-// hooks
-import useResponsive from '../../../hooks/useResponsive';
 // components
 import Logo from '../../../components/logo';
 import Scrollbar from '../../../components/scrollbar';
@@ -16,8 +14,6 @@ import NavSection from '../../../components/nav-section';
 import navConfig from './config';
 
 import { UserContext } from '../../../UserContext';
-
-// ----------------------------------------------------------------------
 
 const NAV_WIDTH = 280;
 
@@ -29,8 +25,6 @@ const StyledAccount = styled('div')(({ theme }) => ({
   backgroundColor: alpha(theme.palette.grey[500], 0.12),
 }));
 
-// ----------------------------------------------------------------------
-
 Nav.propTypes = {
   openNav: PropTypes.bool,
   onCloseNav: PropTypes.func,
@@ -38,15 +32,15 @@ Nav.propTypes = {
 
 export default function Nav({ openNav, onCloseNav }) {
   const { pathname } = useLocation();
-  const isDesktop = useResponsive('up', 'lg');
-  const { user } = useContext(UserContext)
+  const navigate = useNavigate();
+  const userDetails = useContext(UserContext)
 
-  useEffect(() => {
-    if (openNav) {
-      onCloseNav();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname]);
+  // useEffect(() => {
+  //   if (openNav) {
+  //     onCloseNav();
+  //   }
+  //   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, [openNav]);
 
   const renderContent = (
     <Scrollbar
@@ -56,32 +50,43 @@ export default function Nav({ openNav, onCloseNav }) {
       }}
     >
       <Box sx={{ px: 2.5, py: 3, display: 'inline-flex' }}>
-        <Logo />
+        <Stack direction='horizontal'>
+          <Link onClick={() => { navigate('/') }}>
+            <Logo />
+          </Link>
+          <Chip label={process.env.REACT_APP_USER_BRANCH === 'prod' ? `v${process.env.REACT_APP_VERSION}` : `v${process.env.REACT_APP_VERSION}-${process.env.REACT_APP_USER_BRANCH}`} variant="outlined" />
+        </Stack>
       </Box>
 
       <Box sx={{ mb: 5, mx: 2.5 }}>
         <Link underline="none">
-          <StyledAccount>
-            <Avatar src={account.photoURL} alt="photoURL" />
-
-            <Box sx={{ ml: 2 }}>
-              <Typography variant="subtitle2" sx={{ color: 'text.primary' }}>
-                {user?.attributes?.email}
-              </Typography>
-
-              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                {account.role}
-              </Typography>
-            </Box>
-          </StyledAccount>
+          {!userDetails.user &&
+            <StyledAccount>
+              <>
+                <Box width='100%'>
+                  <Link href='/signup' underline='none'>
+                    <Typography variant="subtitle1" textAlign='center' sx={{ color: 'text.primary' }}>
+                      Create Account
+                    </Typography>
+                  </Link>
+                  <Divider sx={{ my: 2 }} />
+                  <Link href='/login' underline='none'>
+                    <Typography variant="subtitle1" textAlign='center' sx={{ color: 'text.primary' }}>
+                      Sign In
+                    </Typography>
+                  </Link>
+                </Box>
+              </>
+            </StyledAccount>
+          }
         </Link>
       </Box>
 
-      <NavSection data={navConfig} />
+      <NavSection sx={{ paddingBottom: 8 }} data={navConfig} />
 
       <Box sx={{ flexGrow: 1 }} />
 
-      <Box sx={{ px: 2.5, pb: 3, mt: 10 }}>
+      {/* <Box sx={{ px: 2.5, pb: 3, mt: 10 }}>
         <Stack alignItems="center" spacing={3} sx={{ pt: 5, borderRadius: 2, position: 'relative' }}>
           <Box
             component="img"
@@ -103,7 +108,7 @@ export default function Nav({ openNav, onCloseNav }) {
             Upgrade to Pro
           </Button>
         </Stack>
-      </Box>
+      </Box> */}
     </Scrollbar>
   );
 
@@ -112,37 +117,22 @@ export default function Nav({ openNav, onCloseNav }) {
       component="nav"
       sx={{
         flexShrink: { lg: 0 },
-        width: { lg: NAV_WIDTH },
       }}
     >
-      {isDesktop ? (
-        <Drawer
-          open
-          variant="permanent"
-          PaperProps={{
-            sx: {
-              width: NAV_WIDTH,
-              bgcolor: 'background.default',
-              borderRightStyle: 'dashed',
-            },
-          }}
-        >
-          {renderContent}
-        </Drawer>
-      ) : (
-        <Drawer
-          open={openNav}
-          onClose={onCloseNav}
-          ModalProps={{
-            keepMounted: true,
-          }}
-          PaperProps={{
-            sx: { width: NAV_WIDTH },
-          }}
-        >
-          {renderContent}
-        </Drawer>
-      )}
+      <Drawer
+        open={openNav}
+        onClose={onCloseNav}
+        variant="temporary"
+        ModalProps={{
+          keepMounted: true,
+        }}
+        PaperProps={{
+          sx: { width: NAV_WIDTH },
+        }}
+      >
+        {renderContent}
+      </Drawer>
     </Box>
   );
+
 }

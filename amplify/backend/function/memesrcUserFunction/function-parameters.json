@@ -1,0 +1,11 @@
+{
+  "lambdaLayers": [],
+  "permissions": {
+    "api": {
+      "memesrc": [
+        "Query",
+        "Mutation"
+      ]
+    }
+  }
+}

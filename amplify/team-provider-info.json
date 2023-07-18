@@ -9,7 +9,8 @@
       "UnauthRoleName": "amplify-memesrc-dev-191629-unauthRole",
       "StackName": "amplify-memesrc-dev-191629",
       "StackId": "arn:aws:cloudformation:us-east-1:458585755494:stack/amplify-memesrc-dev-191629/3d2f23e0-7044-11ed-b56c-0ef4d44c02c3",
-      "AmplifyAppId": "d32pnvtwxwtte5"
+      "AmplifyAppId": "d32pnvtwxwtte5",
+      "APIGatewayAuthURL": "https://s3.amazonaws.com/amplify-memesrc-dev-191629-deployment/amplify-cfn-templates/api/APIGatewayAuthStack.json"
     },
     "categories": {
       "auth": {
@@ -65,6 +66,28 @@
         "memesrcAnalyticsAddDailyPartition": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
           "s3Key": "amplify-builds/memesrcAnalyticsAddDailyPartition-7649774674546e587079-build.zip"
+        },
+        "memesrcTVDB": {
+          "secretsPathAmplifyAppId": "d32pnvtwxwtte5",
+          "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
+          "s3Key": "amplify-builds/memesrcTVDB-6774476952327632322b-build.zip"
+        },
+        "memesrcGraphQL": {
+          "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
+          "s3Key": "amplify-builds/memesrcGraphQL-72684a772b38346e502f-build.zip"
+        },
+        "memesrcinpainter": {
+          "secretsPathAmplifyAppId": "d32pnvtwxwtte5",
+          "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
+          "s3Key": "amplify-builds/memesrcinpainter-4a4b7468556a74543536-build.zip"
+        },
+        "memesrcUserFunction": {
+          "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
+          "s3Key": "amplify-builds/memesrcUserFunction-5474397a4c7032465857-build.zip"
+        },
+        "memesrcVote": {
+          "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
+          "s3Key": "amplify-builds/memesrcVote-72344c6832376b624c59-build.zip"
         }
       },
       "storage": {
@@ -82,7 +105,8 @@
       "UnauthRoleName": "amplify-memesrc-beta-190209-unauthRole",
       "StackName": "amplify-memesrc-beta-190209",
       "StackId": "arn:aws:cloudformation:us-east-1:458585755494:stack/amplify-memesrc-beta-190209/d6f2f040-a28c-11ed-a77a-0e515c4a2bf9",
-      "AmplifyAppId": "d32pnvtwxwtte5"
+      "AmplifyAppId": "d32pnvtwxwtte5",
+      "APIGatewayAuthURL": "https://s3.amazonaws.com/amplify-memesrc-beta-190209-deployment/amplify-cfn-templates/api/APIGatewayAuthStack.json"
     },
     "categories": {
       "auth": {
@@ -98,7 +122,7 @@
         "SearchFunction": {
           "secretsPathAmplifyAppId": "d32pnvtwxwtte5",
           "deploymentBucketName": "amplify-memesrc-beta-190209-deployment",
-          "s3Key": "amplify-builds/SearchFunction-6c6143596d716376596d-build.zip"
+          "s3Key": "amplify-builds/SearchFunction-5557724857706439756f-build.zip"
         },
         "memesrcFrameFunction": {
           "secretsPathAmplifyAppId": "d32pnvtwxwtte5",
@@ -108,7 +132,7 @@
         "memesrcRandom": {
           "secretsPathAmplifyAppId": "d32pnvtwxwtte5",
           "deploymentBucketName": "amplify-memesrc-beta-190209-deployment",
-          "s3Key": "amplify-builds/memesrcRandom-41497752685675656450-build.zip"
+          "s3Key": "amplify-builds/memesrcRandom-4152797459364f446235-build.zip"
         },
         "memesrcUUID": {
           "deploymentBucketName": "amplify-memesrc-beta-190209-deployment",
@@ -120,11 +144,33 @@
         },
         "memesrcAnalyticsReporting": {
           "deploymentBucketName": "amplify-memesrc-beta-190209-deployment",
-          "s3Key": "amplify-builds/memesrcAnalyticsReporting-51526431545a6c705455-build.zip"
+          "s3Key": "amplify-builds/memesrcAnalyticsReporting-50352b4a343272536267-build.zip"
         },
         "memesrcAnalyticsInitDBs": {
           "deploymentBucketName": "amplify-memesrc-beta-190209-deployment",
           "s3Key": "amplify-builds/memesrcAnalyticsInitDBs-416f743437546959442f-build.zip"
+        },
+        "memesrcAnalyticsAddDailyPartition": {
+          "deploymentBucketName": "amplify-memesrc-beta-190209-deployment",
+          "s3Key": "amplify-builds/memesrcAnalyticsAddDailyPartition-7649774674546e587079-build.zip"
+        },
+        "memesrcGraphQL": {
+          "deploymentBucketName": "amplify-memesrc-beta-190209-deployment",
+          "s3Key": "amplify-builds/memesrcGraphQL-6a52456e6e42344c5677-build.zip"
+        },
+        "memesrcTVDB": {
+          "secretsPathAmplifyAppId": "d32pnvtwxwtte5",
+          "deploymentBucketName": "amplify-memesrc-beta-190209-deployment",
+          "s3Key": "amplify-builds/memesrcTVDB-6774476952327632322b-build.zip"
+        },
+        "memesrcUserFunction": {
+          "deploymentBucketName": "amplify-memesrc-beta-190209-deployment",
+          "s3Key": "amplify-builds/memesrcUserFunction-44736954316566706b4a-build.zip"
+        },
+        "memesrcinpainter": {
+          "secretsPathAmplifyAppId": "d32pnvtwxwtte5",
+          "deploymentBucketName": "amplify-memesrc-beta-190209-deployment",
+          "s3Key": "amplify-builds/memesrcinpainter-4a4b7468556a74543536-build.zip"
         }
       },
       "api": {

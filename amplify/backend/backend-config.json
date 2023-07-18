@@ -37,11 +37,14 @@
           "additionalAuthenticationProviders": [
             {
               "apiKeyConfig": {
-                "apiKeyExpirationDate": "2024-01-28T18:42:24.381Z",
+                "apiKeyExpirationDate": "2024-03-29T21:56:08.578Z",
                 "apiKeyExpirationDays": 365,
                 "description": "Public API Key for unauthenticated users"
               },
               "authenticationType": "API_KEY"
+            },
+            {
+              "authenticationType": "AWS_IAM"
             }
           ],
           "defaultAuthentication": {
@@ -117,6 +120,30 @@
           ],
           "category": "auth",
           "resourceName": "userPoolGroups"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcTVDB"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcinpainter"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcUserFunction"
         }
       ],
       "providerPlugin": "awscloudformation",
@@ -271,6 +298,22 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "memesrcGraphQL": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "GraphQLAPIIdOutput",
+            "GraphQLAPIEndpointOutput",
+            "GraphQLAPIKeyOutput"
+          ],
+          "category": "api",
+          "resourceName": "memesrc"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "memesrcRandom": {
       "build": true,
       "dependsOn": [
@@ -285,8 +328,60 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "memesrcTVDB": {
+      "build": true,
+      "dependsOn": [],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "memesrcUUID": {
       "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "memesrcUserFunction": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "GraphQLAPIIdOutput",
+            "GraphQLAPIEndpointOutput",
+            "GraphQLAPIKeyOutput"
+          ],
+          "category": "api",
+          "resourceName": "memesrc"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "memesrcVote": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "GraphQLAPIIdOutput",
+            "GraphQLAPIEndpointOutput",
+            "GraphQLAPIKeyOutput"
+          ],
+          "category": "api",
+          "resourceName": "memesrc"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "memesrcinpainter": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "memesrcUserFunction"
+        }
+      ],
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     }
@@ -426,6 +521,22 @@
         }
       ]
     },
+    "AMPLIFY_function_memesrcGraphQL_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcGraphQL"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcGraphQL_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcGraphQL"
+        }
+      ]
+    },
     "AMPLIFY_function_memesrcRandom_deploymentBucketName": {
       "usedBy": [
         {
@@ -450,6 +561,30 @@
         }
       ]
     },
+    "AMPLIFY_function_memesrcTVDB_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcTVDB"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcTVDB_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcTVDB"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcTVDB_secretsPathAmplifyAppId": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcTVDB"
+        }
+      ]
+    },
     "AMPLIFY_function_memesrcUUID_deploymentBucketName": {
       "usedBy": [
         {
@@ -463,6 +598,62 @@
         {
           "category": "function",
           "resourceName": "memesrcUUID"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcUserFunction_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcUserFunction"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcUserFunction_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcUserFunction"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcVote_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcVote"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcVote_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcVote"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcinpainter_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcinpainter"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcinpainter_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcinpainter"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcinpainter_secretsPathAmplifyAppId": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcinpainter"
         }
       ]
     }
