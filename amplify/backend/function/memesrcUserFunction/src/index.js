@@ -144,6 +144,21 @@ async function processVotes(allItems, userSub) {
   };
 }
 
+function updateUserDetailsCredits(params) {
+  const id = params.id ? `id: "${params.id}",` : '';
+  const credits = params.credits !== undefined ? `credits: ${params.credits},` : '';
+
+  const mutation = `
+    mutation updateUserDetails {
+      updateUserDetails(input: {${id}${credits}}) {
+        id
+        credits
+      }
+    }
+  `;
+
+  return mutation;
+}
 
 function updateUserDetails(params) {
   const email = params.email ? `email: "${params.email}",` : '';
