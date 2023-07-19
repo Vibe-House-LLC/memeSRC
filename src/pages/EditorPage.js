@@ -779,7 +779,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
               <Grid container item spacing={2} justifyContent="center">
                 <Grid item xs={12} md={7} lg={7} order="1">
                   <Grid container item spacing={2}>
-                    <Grid item xs={12} mb={2}>
+                    <Grid item xs={12}>
                       <Stack direction='row' width='100%' justifyContent='space-between'>
                         <IconButton disabled={(editorStates.length <= 1)} onClick={undo}>
                           <History />
@@ -790,7 +790,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                       </Stack>
                     </Grid>
                   </Grid>
-                  <div style={{ width: '100%', height: '100%' }} id="canvas-container">
+                  <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }} id="canvas-container">
                     <FabricJSCanvas onReady={onReady} />
                     {showBrushSize && <div style={{ width: brushToolSize, height: brushToolSize, borderRadius: '50%', background: 'red', position: 'absolute' }} />}
                   </div>
