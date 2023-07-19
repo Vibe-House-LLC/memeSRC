@@ -109,6 +109,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const [editorTool, setEditorTool] = useState('');
   const [brushToolSize, setBrushToolSize] = useState(50);
   const [showBrushSize, setShowBrushSize] = useState(false);
+  const [editorLoaded, setEditorLoaded] = useState(false);
+  const [editorStates, setEditorStates] = useState([]);
 
   const [subtitlesExpanded, setSubtitlesExpanded] = useState(false);
 
@@ -661,25 +663,26 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   //   );
   // }
 
-  function ValueLabelComponent(props) {
-    const { children, open, value } = props;
-
-    return (
-      <Tooltip open={open} enterDelay={0} enterTouchDelay={0} placement="top" title={
-        <Box
-          sx={{
-            width: value,
-            height: value,
-            borderRadius: '50%',
-            backgroundColor: 'red'
-          }}
-        />
-      }>
-
-        {children}
-      </Tooltip>
-    );
+  const addToHistory = () => {
+    console.log('there was a change')
+    console.log('test', editorStates)
+    const serializedCanvas = JSON.stringify(editor.canvas);
+    setEditorStates(prevHistory => [...prevHistory, serializedCanvas])
   }
+
+useEffect(() => {
+  console.log('there was a change to Canvas')
+  if (editor && !editorLoaded) {
+    setEditorLoaded(true)
+    editor.canvas.on('after:render', () => {
+      addToHistory()
+    })
+  }
+}, [editor])
+
+useEffect(() => {
+  console.log(editorStates)
+}, [editorStates])
 
   // ------------------------------------------------------------------------
 
