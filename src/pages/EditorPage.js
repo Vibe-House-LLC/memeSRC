@@ -6,7 +6,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
 import { Accordion, AccordionDetails, AccordionSummary, Backdrop, Button, Card, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, TextField, ToggleButton, ToggleButtonGroup, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
-import { Add, AddCircleOutline, ArrowForward, ArrowForwardIos, AutoFixHighRounded, Close, ContentCopy, Description, FormatAlignCenter, FormatAlignLeft, FormatAlignRight, GpsFixed, GpsNotFixed, HighlightOffRounded, HistoryToggleOffRounded, IosShare, Menu, More, PlusOne, Share } from '@mui/icons-material';
+import { Add, AddCircleOutline, ArrowForward, ArrowForwardIos, AutoFixHighRounded, Close, ContentCopy, Description, FormatAlignCenter, FormatAlignLeft, FormatAlignRight, GpsFixed, GpsNotFixed, HighlightOffRounded, History, HistoryToggleOffRounded, IosShare, Menu, More, PlusOne, Redo, Share, Undo, Update } from '@mui/icons-material';
 import { API, Storage } from 'aws-amplify';
 import { Box } from '@mui/system';
 import { Helmet } from 'react-helmet-async';
@@ -111,6 +111,10 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const [showBrushSize, setShowBrushSize] = useState(false);
   const [editorLoaded, setEditorLoaded] = useState(false);
   const [editorStates, setEditorStates] = useState([]);
+  const [futureStates, setFutureStates] = useState([]);
+  const [bgEditorStates, setBgEditorStates] = useState([]);
+  const [bgFutureStates, setBgFutureStates] = useState([]);
+  const [loadingFineTuningFrames, setLoadingFineTuningFrames] = useState(true);
 
   const [subtitlesExpanded, setSubtitlesExpanded] = useState(false);
 
@@ -241,10 +245,12 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     if (editor) {
       if (append) {
         editor?.canvas.add(text);
+        addToHistory();
         setCanvasObjects([...editor.canvas._objects]);
       } else {
         editor.canvas._objects = [];
         editor?.canvas.add(text);
+        addToHistory();
         setCanvasObjects([...editor.canvas._objects]);
       }
     }
@@ -665,24 +671,90 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
   const addToHistory = () => {
     console.log('there was a change')
-    console.log('test', editorStates)
+
     const serializedCanvas = JSON.stringify(editor.canvas);
-    setEditorStates(prevHistory => [...prevHistory, serializedCanvas])
+    const backgroundImage = editor.canvas.backgroundImage;
+
+    // Clear future states as the path has now changed due to new action
+    setFutureStates([]);
+    setBgFutureStates([]);
+
+    setEditorStates(prevHistory => [...prevHistory, serializedCanvas]);
+    setBgEditorStates(prevHistory => [...prevHistory, backgroundImage]);
   }
 
-useEffect(() => {
-  console.log('there was a change to Canvas')
-  if (editor && !editorLoaded) {
-    setEditorLoaded(true)
-    editor.canvas.on('after:render', () => {
-      addToHistory()
-    })
-  }
-}, [editor])
+  const undo = () => {
+    if (editorStates.length <= 1) return; // Ensure there's at least one state to go back to
 
-useEffect(() => {
-  console.log(editorStates)
-}, [editorStates])
+    // Move the latest action to futureStates before going back
+    setFutureStates(prevFuture => [editorStates[editorStates.length - 1], ...prevFuture]);
+    setBgFutureStates(prevFuture => [bgEditorStates[bgEditorStates.length-1], ...prevFuture]);
+
+    // Go back in history
+    setEditorStates(prevHistory => prevHistory.slice(0, prevHistory.length - 1));
+    setBgEditorStates(prevHistory => prevHistory.slice(0, prevHistory.length-1));
+
+    // Load the previous state into the canvas
+    editor.canvas.loadFromJSON(editorStates[editorStates.length - 2], () => {
+      // After loading the state, set the background image
+      editor.canvas.setBackgroundImage(bgEditorStates[bgEditorStates.length - 2], () => {
+        editor.canvas.renderAll.bind(editor.canvas)()
+        setCanvasObjects([...editor.canvas._objects]);
+      });
+    });
+  }
+
+  const redo = () => {
+    if (futureStates.length === 0) return; // Ensure there's at least one state to go forward to
+
+    // Move the first future state back to editorStates
+    setEditorStates(prevHistory => [...prevHistory, futureStates[0]]);
+    setBgEditorStates(prevHistory => [...prevHistory, bgFutureStates[0]]);
+
+    // Remove the state we've just moved from futureStates
+    setFutureStates(prevFuture => prevFuture.slice(1));
+    setBgFutureStates(prevFuture => prevFuture.slice(1));
+
+    // Load the restored state into the canvas
+    editor.canvas.loadFromJSON(futureStates[0], () => {
+      // After loading the state, set the background image
+      editor.canvas.setBackgroundImage(bgFutureStates[0], () => {
+        editor.canvas.renderAll.bind(editor.canvas)()
+        setCanvasObjects([...editor.canvas._objects]);
+      });
+    });
+  }
+
+  useEffect(() => {
+    console.log('there was a change to Canvas')
+    if (editor && !editorLoaded) {
+      setEditorLoaded(true)
+      editor.canvas.on('object:modified', () => {
+        addToHistory()
+      })
+      setBgEditorStates(prevHistory => [...prevHistory, editor.canvas.backgroundImage]);
+    }
+    console.log('there was a change to Canvas')
+    if (editor && !editorLoaded) {
+      setEditorLoaded(true)
+      editor.canvas.on('path:created', () => {
+        addToHistory()
+      })
+      setBgEditorStates(prevHistory => [...prevHistory, editor.canvas.backgroundImage]);
+    }
+  }, [editor])
+
+  useEffect(() => {
+    console.log(editorStates)
+  }, [editorStates])
+
+  const loadFineTuningFrames = () => {
+    if (loadingFineTuningFrames) {
+      setTimeout(() => {
+        setLoadingFineTuningFrames(false)
+      }, [1000])
+    }
+  }
 
   // ------------------------------------------------------------------------
 
@@ -706,7 +778,19 @@ useEffect(() => {
             <Card sx={{ padding: '20px' }}>
               <Grid container item spacing={2} justifyContent="center">
                 <Grid item xs={12} md={7} lg={7} order="1">
-                  <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }} id="canvas-container">
+                  <Grid container item spacing={2}>
+                    <Grid item xs={12} mb={2}>
+                      <Stack direction='row' width='100%' justifyContent='space-between'>
+                        <IconButton disabled={(editorStates.length <= 1)} onClick={undo}>
+                          <History />
+                        </IconButton>
+                        <IconButton disabled={(futureStates.length === 0)} onClick={redo}>
+                          <Update />
+                        </IconButton>
+                      </Stack>
+                    </Grid>
+                  </Grid>
+                  <div style={{ width: '100%', height: '100%' }} id="canvas-container">
                     <FabricJSCanvas onReady={onReady} />
                     {showBrushSize && <div style={{ width: brushToolSize, height: brushToolSize, borderRadius: '50%', background: 'red', position: 'absolute' }} />}
                   </div>
@@ -1042,7 +1126,7 @@ useEffect(() => {
                         size='small'
                         sx={{ mx: { xs: 'auto', md: 'unset' } }}
                       >
-                        <ToggleButton value="fineTuning" aria-label="centered">
+                        <ToggleButton onClick={loadFineTuningFrames} value="fineTuning" aria-label="centered">
                           <Stack direction='row' spacing={1} alignItems='center'>
                             <HistoryToggleOffRounded alt="Fine Tuning" />
                             <Typography variant='body1'>
@@ -1061,24 +1145,34 @@ useEffect(() => {
                       </ToggleButtonGroup>
                     </Stack>
                     {editorTool === 'fineTuning' &&
-                      <Slider
-                        size="small"
-                        defaultValue={4}
-                        min={0}
-                        max={8}
-                        value={fineTuningValue}
-                        aria-label="Small"
-                        valueLabelDisplay="auto"
-                        onChange={(event) => {
-                          handleFineTuning(event);
-                          setFineTuningValue(event.target.value);
-                        }}
-                        valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
-                        marks
-                        track={false}
-                        sx={{ mt: 2 }}
-                      />
-
+                      <>
+                        {loadingFineTuningFrames ?
+                          <Stack direction='row' justifyContent='center' alignItems='center' spacing={2} sx={{ mt: 2 }}>
+                            <CircularProgress size={30} />
+                            <Typography variant='body1'>
+                              Loading frames...
+                            </Typography>
+                          </Stack>
+                          :
+                          <Slider
+                            size="small"
+                            defaultValue={4}
+                            min={0}
+                            max={8}
+                            value={fineTuningValue}
+                            aria-label="Small"
+                            valueLabelDisplay="auto"
+                            onChange={(event) => {
+                              handleFineTuning(event);
+                              setFineTuningValue(event.target.value);
+                            }}
+                            valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
+                            marks
+                            track={false}
+                            sx={{ mt: 2 }}
+                          />
+                        }
+                      </>
                     }
                     {editorTool === 'magicEraser' &&
                       <Stack direction='row' alignItems='center' spacing={2} sx={{ mt: 2 }}>
