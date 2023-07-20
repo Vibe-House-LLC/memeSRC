@@ -46,27 +46,6 @@
         "setting": "private"
       }
     },
-    "/tvdb": {
-      "name": "/tvdb",
-      "lambdaFunction": "memesrcTVDB",
-      "permissions": {
-        "groups": {
-          "admins": [
-            "create",
-            "read",
-            "update",
-            "delete"
-          ],
-          "mods": [
-            "create",
-            "read",
-            "update",
-            "delete"
-          ]
-        },
-        "setting": "private"
-      }
-    },
     "/inpaint": {
       "name": "/inpaint",
       "lambdaFunction": "memesrcinpainter",
@@ -200,6 +179,32 @@
             "create",
             "read",
             "update"
+          ]
+        }
+      }
+    },
+    "/tvdb": {
+      "name": "/tvdb",
+      "lambdaFunction": "memesrcTVDB",
+      "permissions": {
+        "setting": "private",
+        "auth": [
+          "create",
+          "read",
+          "update"
+        ],
+        "groups": {
+          "admins": [
+            "create",
+            "read",
+            "update",
+            "delete"
+          ],
+          "mods": [
+            "create",
+            "read",
+            "update",
+            "delete"
           ]
         }
       }

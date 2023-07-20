@@ -539,7 +539,7 @@ export const handler = async (event) => {
       // Create the series
       const createSeriesQuery = `
         mutation createSeries {
-          createSeries(input: {year: ${year}, tvdbid: "${tvdb_id}", statusText: "submittedRequest", slug: "${slug}", name: "${name}", image: "${image_url}", description: "${overview}"}) {
+          createSeries(input: {year: ${year}, tvdbid: "${tvdb_id}", statusText: "submittedRequest", slug: "${slug}", name: "${name}", image: "${image_url}", description: ${JSON.stringify(overview)}}) {
             id
           }
         }

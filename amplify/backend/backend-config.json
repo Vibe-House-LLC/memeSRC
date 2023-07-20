@@ -127,14 +127,6 @@
             "Arn"
           ],
           "category": "function",
-          "resourceName": "memesrcTVDB"
-        },
-        {
-          "attributes": [
-            "Name",
-            "Arn"
-          ],
-          "category": "function",
           "resourceName": "memesrcinpainter"
         },
         {
@@ -144,6 +136,14 @@
           ],
           "category": "function",
           "resourceName": "memesrcUserFunction"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcTVDB"
         }
       ],
       "providerPlugin": "awscloudformation",
