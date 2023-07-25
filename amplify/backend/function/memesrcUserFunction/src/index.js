@@ -199,6 +199,7 @@ function getUserDetails(params) {
                       createdAt
                       status
                       earlyAccessStatus
+                      contributorAccessStatus
                       votes {
                         items {
                             series {
@@ -227,6 +228,7 @@ function getUserDetails(params) {
                   updatedAt
                   status
                   earlyAccessStatus
+                  contributorAccessStatus
                   votes {
                     items {
                         series {
@@ -586,6 +588,32 @@ export const handler = async (event) => {
         success: true,
         message: `${key} has been uploaded to ${sourceMediaId}`,
         details: createFile.body
+      }
+    }
+  }
+
+  // This sets a users Contributor status to "requested"
+  if (path === `/${process.env.ENV}/public/user/update/contributorStatus`) {
+    
+    const query = `
+      mutation updateUserDetails {
+          updateUserDetails(input: { id: "${userSub}", contributorAccessStatus: "requested" }) {
+              id
+              contributorAccessStatus
+          }
+        }
+      `;
+    console.log(query)
+
+    const becomeContributor = await makeRequest(query)
+    console.log(becomeContributor)
+
+    response = {
+      statusCode: 200,
+      body: {
+        success: true,
+        message: `You have been added to the waiting list!`,
+        details: becomeContributor
       }
     }
   }

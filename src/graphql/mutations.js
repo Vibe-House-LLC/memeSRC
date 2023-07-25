@@ -136,6 +136,7 @@ export const createSourceMedia = /* GraphQL */ `
         username
         email
         earlyAccessStatus
+        contributorAccessStatus
         stripeId
         sourceMedia {
           nextToken
@@ -194,6 +195,7 @@ export const updateSourceMedia = /* GraphQL */ `
         username
         email
         earlyAccessStatus
+        contributorAccessStatus
         stripeId
         sourceMedia {
           nextToken
@@ -252,6 +254,7 @@ export const deleteSourceMedia = /* GraphQL */ `
         username
         email
         earlyAccessStatus
+        contributorAccessStatus
         stripeId
         sourceMedia {
           nextToken
@@ -301,6 +304,7 @@ export const createFile = /* GraphQL */ `
           username
           email
           earlyAccessStatus
+          contributorAccessStatus
           stripeId
           status
           credits
@@ -350,6 +354,7 @@ export const updateFile = /* GraphQL */ `
           username
           email
           earlyAccessStatus
+          contributorAccessStatus
           stripeId
           status
           credits
@@ -399,6 +404,7 @@ export const deleteFile = /* GraphQL */ `
           username
           email
           earlyAccessStatus
+          contributorAccessStatus
           stripeId
           status
           credits
@@ -1016,6 +1022,7 @@ export const createUserDetails = /* GraphQL */ `
       username
       email
       earlyAccessStatus
+      contributorAccessStatus
       stripeId
       sourceMedia {
         items {
@@ -1056,6 +1063,7 @@ export const updateUserDetails = /* GraphQL */ `
       username
       email
       earlyAccessStatus
+      contributorAccessStatus
       stripeId
       sourceMedia {
         items {
@@ -1096,6 +1104,7 @@ export const deleteUserDetails = /* GraphQL */ `
       username
       email
       earlyAccessStatus
+      contributorAccessStatus
       stripeId
       sourceMedia {
         items {
@@ -1138,6 +1147,7 @@ export const createSeriesUserVote = /* GraphQL */ `
         username
         email
         earlyAccessStatus
+        contributorAccessStatus
         stripeId
         sourceMedia {
           nextToken
@@ -1185,6 +1195,7 @@ export const updateSeriesUserVote = /* GraphQL */ `
         username
         email
         earlyAccessStatus
+        contributorAccessStatus
         stripeId
         sourceMedia {
           nextToken
@@ -1232,6 +1243,7 @@ export const deleteSeriesUserVote = /* GraphQL */ `
         username
         email
         earlyAccessStatus
+        contributorAccessStatus
         stripeId
         sourceMedia {
           nextToken

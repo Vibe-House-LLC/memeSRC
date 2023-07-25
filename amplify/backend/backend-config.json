@@ -720,6 +720,13 @@
           ],
           "category": "auth",
           "resourceName": "userPoolGroups"
+        },
+        {
+          "attributes": [
+            "contributorsGroupRole"
+          ],
+          "category": "auth",
+          "resourceName": "userPoolGroups"
         }
       ],
       "providerPlugin": "awscloudformation",

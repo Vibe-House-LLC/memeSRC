@@ -1,5 +1,5 @@
 // component
-import { Article, CardGiftcard, Favorite, MapsUgc, Settings, Shield } from '@mui/icons-material';
+import { Article, CardGiftcard, Favorite, FolderShared, MapsUgc, Settings, Shield } from '@mui/icons-material';
 import SvgColor from '../../../components/svg-color';
 
 // ----------------------------------------------------------------------
@@ -23,6 +23,12 @@ const navConfig = [
         path: '/vote',
         externalLink: false,
         icon: icon('ic_kanban')
+      },
+      {
+        title: 'Become a Contributor',
+        path: '/contributor',
+        externalLink: false,
+        icon: <FolderShared />
       }
     ]
   },

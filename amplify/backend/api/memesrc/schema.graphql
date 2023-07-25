@@ -145,6 +145,7 @@ type UserDetails @model @auth(
   username: String,
   email: String,
   earlyAccessStatus: String
+  contributorAccessStatus: String
   stripeId: String,
   sourceMedia: [SourceMedia] @hasMany,
   status: String,

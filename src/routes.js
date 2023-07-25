@@ -36,6 +36,7 @@ const SourceMediaList = lazy(() => import('./pages/SourceMediaList'));
 const SourceMediaFileList = lazy(() => import('./pages/SourceMediaFileList'));
 const MetadataPage = lazy(() => import('./pages/MetadataPage'));
 const HomepageSectionPage = lazy(() => import('./pages/HomepageSectionPage'));
+const ContributorRequest = lazy(() => import('./pages/ContributorRequest'));
 
 // ----------------------------------------------------------------------
 
@@ -56,6 +57,7 @@ export default function Router() {
         { path: '/episode/:seriesId/:seasonNum/:episodeNum', element: <TopBannerSearchRevised><EpisodePage /></TopBannerSearchRevised> },
         { path: '/episode/:seriesId/:seasonNum/:episodeNum/:frameNum', element: <TopBannerSearchRevised><EpisodePage /></TopBannerSearchRevised> },
         { path: '/vote', element: <TopBannerSearchRevised><VotingPage /></TopBannerSearchRevised> },
+        { path: '/contributor', element: <ContributorRequest /> },
       ]
     },
     {

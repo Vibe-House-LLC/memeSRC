@@ -126,6 +126,7 @@ export const getSourceMedia = /* GraphQL */ `
         username
         email
         earlyAccessStatus
+        contributorAccessStatus
         stripeId
         sourceMedia {
           nextToken
@@ -175,6 +176,7 @@ export const listSourceMedias = /* GraphQL */ `
           username
           email
           earlyAccessStatus
+          contributorAccessStatus
           stripeId
           status
           credits
@@ -217,6 +219,7 @@ export const getFile = /* GraphQL */ `
           username
           email
           earlyAccessStatus
+          contributorAccessStatus
           stripeId
           status
           credits
@@ -623,6 +626,7 @@ export const getUserDetails = /* GraphQL */ `
       username
       email
       earlyAccessStatus
+      contributorAccessStatus
       stripeId
       sourceMedia {
         items {
@@ -665,6 +669,7 @@ export const listUserDetails = /* GraphQL */ `
         username
         email
         earlyAccessStatus
+        contributorAccessStatus
         stripeId
         sourceMedia {
           nextToken
@@ -690,6 +695,7 @@ export const getSeriesUserVote = /* GraphQL */ `
         username
         email
         earlyAccessStatus
+        contributorAccessStatus
         stripeId
         sourceMedia {
           nextToken
@@ -739,6 +745,7 @@ export const listSeriesUserVotes = /* GraphQL */ `
           username
           email
           earlyAccessStatus
+          contributorAccessStatus
           stripeId
           status
           credits
