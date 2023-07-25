@@ -32,6 +32,8 @@ const SearchPage = lazy(() => import('./pages/SearchPage'));
 const EditorPage = lazy(() => import('./pages/EditorPage'));
 const EpisodePage = lazy(() => import('./pages/EpisodePage'));
 const SeriesPage = lazy(() => import('./pages/SeriesPage'));
+const SourceMediaList = lazy(() => import('./pages/SourceMediaList'));
+const SourceMediaFileList = lazy(() => import('./pages/SourceMediaFileList'));
 const MetadataPage = lazy(() => import('./pages/MetadataPage'));
 const HomepageSectionPage = lazy(() => import('./pages/HomepageSectionPage'));
 
@@ -72,6 +74,8 @@ export default function Router() {
         { path: 'metadata', element: <MetadataPage /> },
         { path: 'homepagesections', element: <HomepageSectionPage /> },
         { path: 'series', element: <DashboardSeriesPage /> },
+        { path: 'sourcemedia', element: <SourceMediaList /> },
+        { path: 'sourcemedia/files/:sourceMediaId', element: <SourceMediaFileList /> },
         { path: 'addseries', element: <AddSeriesPage /> },
         { path: 'inpainting', element: <InpaintingPage /> },
         { path: 'addtoseries/:seriesId', element: <AddToSeriesPage /> }

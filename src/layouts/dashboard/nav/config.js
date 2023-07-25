@@ -56,6 +56,12 @@ const navConfig = [
         icon: icon('ic_analytics'),
       },
       {
+        title: 'Source Media',
+        path: '/dashboard/sourcemedia',
+        externalLink: false,
+        icon: icon('ic_analytics'),
+      },
+      {
         title: 'editor',
         path: '/editor',
         externalLink: false,
