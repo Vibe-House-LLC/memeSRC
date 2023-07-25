@@ -42,6 +42,7 @@ const TABLE_HEAD = [
   { id: 'email', label: 'Email', alignRight: false },
   { id: 'id', label: 'id', alignRight: false },
   { id: 'earlyAccessStatus', label: 'Early Access', alignRight: false },
+  { id: 'earlyAccessStatus', label: 'Early Access', alignRight: false },
   { id: 'status', label: 'Status', alignRight: false },
   { id: 'enabled', label: 'Enabled', alignRight: false },
   { id: 'credits', label: 'Credits', alignRight: false },
