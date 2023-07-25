@@ -3,7 +3,7 @@ import { Helmet } from 'react-helmet-async';
 import { Typography, Container, Grid, Stack, } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
 import { API } from 'aws-amplify';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { UserContext } from '../UserContext';
 import { SnackbarContext } from '../SnackbarContext';
 
@@ -53,17 +53,21 @@ export default function ContributorRequest() {
           <Grid item>
             <Stack spacing={3} justifyContent='center'>
               <Typography variant='h3' textAlign='center'>
-                Want to become a contributor?
+                Upload Something New
               </Typography>
-              <Typography variant='h6' textAlign='center'>
-                We are giving very limited access for <br /> users to contribute to the content on <b>memeSRC</b>.
+              <Typography variant='body' textAlign='center'>
+                We're testing new tools to make it easier for <br /> everyone to contribute new content.
               </Typography>
             </Stack>
             <center>
               <LoadingButton loading={loadingContributorStatus} disabled={buttonText || loadingContributorStatus} onClick={becomeContributor} variant='contained' size='large' sx={{ mt: 5, fontSize: 17 }}>
-                {buttonText || 'Request Contributor Access'}
+                {buttonText || 'Request Access'}
               </LoadingButton>
             </center>
+            <Typography variant='body2' textAlign='center' style={{opacity: 0.7}}>
+              <br /><br />
+                Don't forget you can also <Link to='/vote' style={{color: 'white'}}>vote</Link> on requests, <br />or <a href='https://memesrc.com/donate' style={{color: 'white'}} target='_blank' rel="noreferrer">donate</a> to support <b>memeSRC</b>'s development.
+              </Typography>
           </Grid>
         </Grid>
       </Container>
