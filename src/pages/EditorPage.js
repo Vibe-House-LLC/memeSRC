@@ -618,6 +618,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
           body: data
         });
 
+        addToHistory();
+
         originalCanvas.getObjects().forEach((obj) => {
           if (obj instanceof fabric.Path) {
             editor.canvas.remove(obj)
@@ -644,6 +646,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
           setOpen(true)
         }, 500);
         // setImageSrc(response.imageData);
+        addToHistory();
       } catch (error) {
         setLoadingInpaintingResult(false)
         if (error.response?.data?.error?.name === "InsufficientCredits") {
@@ -797,7 +800,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
             <Card sx={{ padding: '20px' }}>
               <Grid container item spacing={2} justifyContent="center">
                 <Grid item xs={12} md={7} lg={7} order="1">
-                  <Grid container item spacing={2}>
+                  {/* <Grid container item spacing={2}>
                     <Grid item xs={12}>
                       <Stack direction='row' width='100%' justifyContent='space-between'>
                         <IconButton disabled={(editorStates.length <= 1)} onClick={undo}>
@@ -808,7 +811,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                         </IconButton>
                       </Stack>
                     </Grid>
-                  </Grid>
+                  </Grid> */}
                   <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }} id="canvas-container">
                     <FabricJSCanvas onReady={onReady} />
                     {showBrushSize && <div style={{ width: brushToolSize, height: brushToolSize, borderRadius: '50%', background: 'red', position: 'absolute', borderColor: 'black', borderStyle: 'solid', borderWidth: '1px', boxShadow: '0 7px 10px rgba(0, 0, 0, 0.75)' }} />}
