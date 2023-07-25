@@ -25,7 +25,7 @@ const navConfig = [
         icon: icon('ic_kanban')
       },
       {
-        title: 'Become a Contributor',
+        title: 'Upload',
         path: '/contributor',
         externalLink: false,
         icon: <FolderShared />
