@@ -811,7 +811,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                   </Grid>
                   <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }} id="canvas-container">
                     <FabricJSCanvas onReady={onReady} />
-                    {showBrushSize && <div style={{ width: brushToolSize, height: brushToolSize, borderRadius: '50%', background: 'red', position: 'absolute' }} />}
+                    {showBrushSize && <div style={{ width: brushToolSize, height: brushToolSize, borderRadius: '50%', background: 'red', position: 'absolute', borderColor: 'black', borderStyle: 'solid', borderWidth: '1px', boxShadow: '0 7px 10px rgba(0, 0, 0, 0.75)' }} />}
                   </div>
                 </Grid>
                 <Grid item xs={12} md={5} lg={5} minWidth={{ xs: {}, md: '350px' }} order={{ xs: 3, md: 2 }}>
