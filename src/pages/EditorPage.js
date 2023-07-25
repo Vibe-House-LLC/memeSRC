@@ -1,27 +1,28 @@
-import { forwardRef, memo, useCallback, useContext, useEffect, useState } from 'react'
+import { forwardRef, memo, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { fabric } from 'fabric';
 import { FabricJSCanvas, useFabricJSEditor } from 'fabricjs-react'
-import styled from '@emotion/styled';
+import { css, styled } from '@mui/material/styles';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
 import { Accordion, AccordionDetails, AccordionSummary, Backdrop, Button, Card, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, TextField, ToggleButton, ToggleButtonGroup, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
-import { Add, AddCircleOutline, ArrowForward, ArrowForwardIos, AutoFixHighRounded, Close, ContentCopy, Description, FormatAlignCenter, FormatAlignLeft, FormatAlignRight, GpsFixed, GpsNotFixed, HighlightOffRounded, History, HistoryToggleOffRounded, IosShare, Menu, More, PlusOne, Redo, Share, Undo, Update } from '@mui/icons-material';
+import { Add, AddCircleOutline, ArrowForward, ArrowForwardIos, AutoFixHighRounded, Close, ContentCopy, Description, FormatAlignCenter, FormatAlignLeft, FormatAlignRight, GpsFixed, GpsNotFixed, HighlightOffRounded, History, HistoryToggleOffRounded, IosShare, Menu, More, PlusOne, Redo, Share, SupervisedUserCircle, Undo, Update } from '@mui/icons-material';
 import { API, Storage } from 'aws-amplify';
 import { Box } from '@mui/system';
 import { Helmet } from 'react-helmet-async';
+import { LoadingButton } from '@mui/lab';
 import TextEditorControls from '../components/TextEditorControls';
 import { SnackbarContext } from '../SnackbarContext';
 import { UserContext } from '../UserContext';
 
 const Alert = forwardRef((props, ref) => <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />);
 
-const ParentContainer = styled.div`
+const ParentContainer = styled('div')`
     height: 100%;
     padding: 20px;
 `;
 
-const ColorPickerPopover = styled.div({
+const ColorPickerPopover = styled('div')({
 })
 
 const oImgBuild = path =>
@@ -50,7 +51,7 @@ const StyledLayerControlCard = styled(Card)`
   padding: 10px 15px;
 `;
 
-const StyledCardMedia = styled.img`
+const StyledCardMedia = styled('img')`
   width: 100%;
   height: auto;
   background-color: black;
@@ -115,8 +116,26 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const [bgEditorStates, setBgEditorStates] = useState([]);
   const [bgFutureStates, setBgFutureStates] = useState([]);
   const [loadingFineTuningFrames, setLoadingFineTuningFrames] = useState(true);
+  const [earlyAccessLoading, setEarlyAccessLoading] = useState(false);
+
+  const [earlyAccessComplete, setEarlyAccessComplete] = useState(false);
+  const [earlyAccessDisabled, setEarlyAccessDisabled] = useState(false);
 
   const [subtitlesExpanded, setSubtitlesExpanded] = useState(false);
+  const buttonRef = useRef(null);
+
+  const [anchorEl, setAnchorEl] = useState(null);
+  const earlyAccessSubmit = () => {
+    buttonRef.current.blur();
+    setEarlyAccessLoading(true);
+    console.log('submitting')
+    API.get('publicapi', '/user/update/earlyAccess').then(response => {
+      console.log(response)
+      setEarlyAccessComplete(true);
+      setEarlyAccessLoading(false);
+      setEarlyAccessDisabled(true);
+    }).catch(err => console.log(err))
+  }
 
   const handleSubtitlesExpand = () => {
     setSubtitlesExpanded(!subtitlesExpanded);
@@ -468,7 +487,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
   const toggleDrawingMode = (tool) => {
     if (editor) {
-      if (user && user.userDetails?.credits > 0) {
+      if (user && user?.userDetails?.credits > 0) {
         editor.canvas.isDrawingMode = (tool === 'magicEraser');
         editor.canvas.freeDrawingBrush.width = brushToolSize;
         editor.canvas.freeDrawingBrush.color = 'red';
@@ -615,8 +634,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
           editor.canvas.backgroundImage.center()
           editor.canvas.renderAll();
         }, { crossOrigin: "anonymous" });
-        const newCreditAmount = user.userDetails.credits - 1
-        setUser({ ...user, userDetails: { ...user.userDetails, credits: newCreditAmount } })
+        const newCreditAmount = user?.userDetails.credits - 1
+        setUser({ ...user, userDetails: { ...user?.userDetails, credits: newCreditAmount } })
 
         setLoadingInpaintingResult(false)
         setTimeout(() => {
@@ -688,11 +707,11 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
     // Move the latest action to futureStates before going back
     setFutureStates(prevFuture => [editorStates[editorStates.length - 1], ...prevFuture]);
-    setBgFutureStates(prevFuture => [bgEditorStates[bgEditorStates.length-1], ...prevFuture]);
+    setBgFutureStates(prevFuture => [bgEditorStates[bgEditorStates.length - 1], ...prevFuture]);
 
     // Go back in history
     setEditorStates(prevHistory => prevHistory.slice(0, prevHistory.length - 1));
-    setBgEditorStates(prevHistory => prevHistory.slice(0, prevHistory.length-1));
+    setBgEditorStates(prevHistory => prevHistory.slice(0, prevHistory.length - 1));
 
     // Load the previous state into the canvas
     editor.canvas.loadFromJSON(editorStates[editorStates.length - 2], () => {
@@ -1134,7 +1153,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                             </Typography>
                           </Stack>
                         </ToggleButton>
-                        <ToggleButton disabled={!(user && user.userDetails?.credits > 0)} value="magicEraser" aria-label="right aligned">
+                        <ToggleButton onClick={(event) => { if (!user || user?.userDetails?.credits <= 0) { setAnchorEl(event.currentTarget); setEditorTool('') } } } value={(user && user?.userDetails?.credits > 0) ? "magicEraser" : "none"} aria-label="right aligned">
                           <Stack direction='row' spacing={1} alignItems='center'>
                             <AutoFixHighRounded alt="Magic Eraser" />
                             <Typography variant='body1'>
@@ -1442,6 +1461,149 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
           <Typography variant="h5">Generating image...</Typography>
         </Stack>
       </Backdrop>
+      <Popover
+        open={Boolean(anchorEl)}
+        anchorEl={anchorEl}
+        onClose={() => {
+          setAnchorEl(null);
+        }}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'center', // Change 'left' to 'center'
+        }}
+        transformOrigin={{
+          vertical: 'top', // Add this line to position the top corner at the bottom center
+          horizontal: 'center', // Add this line to position the top corner at the bottom center
+        }}
+        // This is how you can change the background of the popover
+        PaperProps={{
+          sx: {
+            backgroundColor: 'black',
+            borderRadius: '15px',
+            padding: '7px'
+          }
+        }}
+      >
+        <Fab
+          color="secondary"
+          aria-label="close"
+          onClick={() => setAnchorEl(null)}
+          sx={{
+            position: 'absolute',
+            top: theme.spacing(1),
+            right: theme.spacing(1),
+            backgroundColor: '#222',
+            '&:hover': {
+              backgroundColor: '#333',
+            },
+          }}
+        >
+          <Close />
+        </Fab>
+        <Box
+          m={3}
+          mx={5}
+          sx={{
+            maxWidth: '400px',
+          }}
+        >
+          <Stack justifyContent="center" spacing={3}>
+            <Stack direction="row" color="#54d62c" alignItems="center" justifyContent="left" spacing={1}>
+              <AutoFixHighRounded fontSize="large" />
+              <Typography variant="h3">Magic Tools</Typography>
+            </Stack>
+
+            <Typography variant="h3">
+              A new suite of generative editing tools and features are coming soon!
+            </Typography>
+
+            <Typography variant="subtitle1" fontWeight="bold" lineHeight={2} textAlign="left" px={2}>
+              <ul>
+                <li>
+                  Magic Eraser{' '}
+                  <Chip
+                    color="success"
+                    size="small"
+                    label="Early Access"
+                    sx={{ marginLeft: '5px', opacity: 0.7 }}
+                    variant="outlined"
+                  />
+                </li>
+                <li>
+                  Magic Fill{' '}
+                  <Chip size="small" label="Planned" sx={{ marginLeft: '5px', opacity: 0.5 }} variant="outlined" />
+                </li>
+                <li>
+                  Magic Expander{' '}
+                  <Chip size="small" label="Planned" sx={{ marginLeft: '5px', opacity: 0.5 }} variant="outlined" />
+                </li>
+                <li>
+                  Magic Isolator{' '}
+                  <Chip size="small" label="Planned" sx={{ marginLeft: '5px', opacity: 0.5 }} variant="outlined" />
+                </li>
+              </ul>
+            </Typography>
+
+            <Typography variant="body1">
+              We're opening an Early Access program for users who would like to help us test these features as they're
+              developed.
+            </Typography>
+          </Stack>
+        </Box>
+        <Box width="100%" px={2} pb={2} pt={1}>
+          <LoadingButton
+            onClick={(event) => {
+              if (user) {
+                earlyAccessSubmit();
+              } else {
+                navigate('/signup')
+              }
+            }}
+            loading={earlyAccessLoading}
+            disabled={user?.userDetails?.earlyAccessStatus || earlyAccessLoading || earlyAccessDisabled || earlyAccessComplete}
+            variant="contained"
+            startIcon={<SupervisedUserCircle />}
+            size="large"
+            fullWidth
+            sx={css`
+            font-size: 18px;
+            background-color: #54d62c;
+            color: black;
+    
+            ${!(earlyAccessLoading || earlyAccessDisabled) ? `@media (hover: hover) and (pointer: fine) {
+              /* Apply hover style only on non-mobile devices */
+              &:hover {
+                background-color: #96f176;
+                color: black;
+              }
+            }` : ''}
+          `}
+            onBlur={() => {
+              // Blur the button when it loses focus
+              buttonRef.current.blur();
+            }}
+            ref={buttonRef}
+          >
+            {earlyAccessComplete ? (
+              `You're on the list!`
+            ) : (
+              <>
+                {user?.userDetails?.earlyAccessStatus && user?.userDetails?.earlyAccessStatus !== null
+                  ? `You're on the list!`
+                  : 'Request Access'}
+              </>
+            )}
+          </LoadingButton>
+          {/* <Typography
+              variant="caption"
+              align="center"
+              sx={{ display: 'block', marginTop: theme.spacing(1), cursor: 'pointer', color: '#999' }}
+              onClick={() => setAnchorEl(null)}
+            >
+              Dismiss
+            </Typography> */}
+        </Box>
+      </Popover>
     </>
   );
 }
