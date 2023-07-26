@@ -811,7 +811,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                       </Stack>
                     </Grid>
                   </Grid>
-                  <div style={{ width: '100%', height: '100%', position: 'relative' }} id="canvas-container">
+                  <div style={{ width: '100%', padding: 0, margin: 0, boxSizing: 'border-box', position: 'relative' }} id="canvas-container">
                     <FabricJSCanvas onReady={onReady} />
                     {showBrushSize &&
                       <div style={{
