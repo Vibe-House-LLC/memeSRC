@@ -459,6 +459,12 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     oImg.scaleToWidth(editor.canvas.getWidth());
     editor?.canvas?.setBackgroundImage(oImg);
     editor?.canvas.renderAll();
+    const serializedCanvas = JSON.stringify(editor.canvas);
+    setFutureStates([]);
+    setBgFutureStates([]);
+
+    setEditorStates(prevHistory => [...prevHistory, serializedCanvas]);
+    setBgEditorStates(prevHistory => [...prevHistory, oImg]);
   }
 
   const handleStyle = (index, customStyles) => {
@@ -785,7 +791,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       <Helmet>
         <title>Edit • memeSRC</title>
       </Helmet>
-      <ParentContainer sx={{padding: {xs: 1.5, md: 2}}} id="parent-container">
+      <ParentContainer sx={{ padding: { xs: 1.5, md: 2 } }} id="parent-container">
         <Grid container justifyContent="center">
           <Grid
             container
@@ -796,7 +802,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
             justifyContent="center"
             marginBottom={8.3}
           >
-            <Card sx={{ padding: {xs: 1.5, md: 2} }}>
+            <Card sx={{ padding: { xs: 1.5, md: 2 } }}>
               <Grid container item spacing={2} justifyContent="center">
                 <Grid item xs={12} md={7} lg={7} order="1">
                   <Grid container item mb={1.5}>
@@ -951,6 +957,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                   value={canvasObjects[index].text}
                                   fullWidth
                                   onFocus={() => handleFocus(index)}
+                                  onBlur={addToHistory}
                                   onChange={(event) => handleEdit(event, index)}
                                 />
                                 {/* <Typography gutterBottom >
