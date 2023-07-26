@@ -56,6 +56,40 @@ export const listSeries = /* GraphQL */ `
     }
   }
 `;
+export const seriesByTvdbid = /* GraphQL */ `
+  query SeriesByTvdbid(
+    $tvdbid: ID!
+    $sortDirection: ModelSortDirection
+    $filter: ModelSeriesFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    seriesByTvdbid(
+      tvdbid: $tvdbid
+      sortDirection: $sortDirection
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        seasons {
+          nextToken
+        }
+        statusText
+        createdAt
+        updatedAt
+      }
+      nextToken
+    }
+  }
+`;
 export const getSourceMedia = /* GraphQL */ `
   query GetSourceMedia($id: ID!) {
     getSourceMedia(id: $id) {
@@ -92,6 +126,7 @@ export const getSourceMedia = /* GraphQL */ `
         username
         email
         earlyAccessStatus
+        contributorAccessStatus
         stripeId
         sourceMedia {
           nextToken
@@ -141,6 +176,7 @@ export const listSourceMedias = /* GraphQL */ `
           username
           email
           earlyAccessStatus
+          contributorAccessStatus
           stripeId
           status
           credits
@@ -183,6 +219,7 @@ export const getFile = /* GraphQL */ `
           username
           email
           earlyAccessStatus
+          contributorAccessStatus
           stripeId
           status
           credits
@@ -589,6 +626,7 @@ export const getUserDetails = /* GraphQL */ `
       username
       email
       earlyAccessStatus
+      contributorAccessStatus
       stripeId
       sourceMedia {
         items {
@@ -631,6 +669,7 @@ export const listUserDetails = /* GraphQL */ `
         username
         email
         earlyAccessStatus
+        contributorAccessStatus
         stripeId
         sourceMedia {
           nextToken
@@ -656,6 +695,7 @@ export const getSeriesUserVote = /* GraphQL */ `
         username
         email
         earlyAccessStatus
+        contributorAccessStatus
         stripeId
         sourceMedia {
           nextToken
@@ -705,6 +745,7 @@ export const listSeriesUserVotes = /* GraphQL */ `
           username
           email
           earlyAccessStatus
+          contributorAccessStatus
           stripeId
           status
           credits

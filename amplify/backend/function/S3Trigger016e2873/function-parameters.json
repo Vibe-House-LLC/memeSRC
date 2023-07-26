@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "function": {
+      "memesrcUserFunction": [
+        "create",
+        "read",
+        "update",
+        "delete"
+      ]
+    }
+  }
+}

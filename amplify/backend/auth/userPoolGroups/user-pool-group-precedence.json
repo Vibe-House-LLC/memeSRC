@@ -6,5 +6,9 @@
   {
     "groupName": "mods",
     "precedence": 2
+  },
+  {
+    "groupName": "contributors",
+    "precedence": 3
   }
 ]

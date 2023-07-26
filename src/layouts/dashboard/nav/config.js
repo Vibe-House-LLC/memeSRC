@@ -1,5 +1,5 @@
 // component
-import { Article, CardGiftcard, Favorite, MapsUgc, Settings, Shield } from '@mui/icons-material';
+import { Article, CardGiftcard, Favorite, FolderShared, MapsUgc, Settings, Shield } from '@mui/icons-material';
 import SvgColor from '../../../components/svg-color';
 
 // ----------------------------------------------------------------------
@@ -23,6 +23,12 @@ const navConfig = [
         path: '/vote',
         externalLink: false,
         icon: icon('ic_kanban')
+      },
+      {
+        title: 'Upload',
+        path: '/contributor',
+        externalLink: false,
+        icon: <FolderShared />
       }
     ]
   },
@@ -52,6 +58,12 @@ const navConfig = [
       {
         title: 'dashboard',
         path: '/dashboard/app',
+        externalLink: false,
+        icon: icon('ic_analytics'),
+      },
+      {
+        title: 'Source Media',
+        path: '/dashboard/sourcemedia',
         externalLink: false,
         icon: icon('ic_analytics'),
       },

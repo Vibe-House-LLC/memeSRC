@@ -39,7 +39,8 @@
     "useDefault": "default",
     "userPoolGroupList": [
       "admins",
-      "mods"
+      "mods",
+      "contributors"
     ],
     "serviceName": "Cognito",
     "usernameCaseSensitive": false,

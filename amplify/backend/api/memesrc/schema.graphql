@@ -10,7 +10,7 @@ type Series @model @auth(
   ]
 ) {
   id: ID!,
-  tvdbid: Int!,
+  tvdbid: ID! @index,
   slug: String,
   name: String,
   year: Int,
@@ -145,6 +145,7 @@ type UserDetails @model @auth(
   username: String,
   email: String,
   earlyAccessStatus: String
+  contributorAccessStatus: String
   stripeId: String,
   sourceMedia: [SourceMedia] @hasMany,
   status: String,

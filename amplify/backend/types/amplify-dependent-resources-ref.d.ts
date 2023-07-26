@@ -28,11 +28,19 @@ export type AmplifyDependentResourcesAttributes = {
     },
     "userPoolGroups": {
       "adminsGroupRole": "string",
+      "contributorsGroupRole": "string",
       "modsGroupRole": "string"
     }
   },
   "function": {
     "AdminQueries9e1cafc6": {
+      "Arn": "string",
+      "LambdaExecutionRole": "string",
+      "LambdaExecutionRoleArn": "string",
+      "Name": "string",
+      "Region": "string"
+    },
+    "S3Trigger016e2873": {
       "Arn": "string",
       "LambdaExecutionRole": "string",
       "LambdaExecutionRoleArn": "string",
