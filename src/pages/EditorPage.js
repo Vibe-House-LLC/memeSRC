@@ -19,7 +19,6 @@ const Alert = forwardRef((props, ref) => <MuiAlert elevation={6} ref={ref} varia
 
 const ParentContainer = styled('div')`
     height: 100%;
-    padding: 20px;
 `;
 
 const ColorPickerPopover = styled('div')({
@@ -460,6 +459,12 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     oImg.scaleToWidth(editor.canvas.getWidth());
     editor?.canvas?.setBackgroundImage(oImg);
     editor?.canvas.renderAll();
+    const serializedCanvas = JSON.stringify(editor.canvas);
+    setFutureStates([]);
+    setBgFutureStates([]);
+
+    setEditorStates(prevHistory => [...prevHistory, serializedCanvas]);
+    setBgEditorStates(prevHistory => [...prevHistory, oImg]);
   }
 
   const handleStyle = (index, customStyles) => {
@@ -481,6 +486,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     editor.canvas.remove(editor.canvas.item(index));
     setCanvasObjects([...editor.canvas._objects]);
     editor?.canvas.renderAll();
+    addToHistory();
   }
 
   // ------------------------------------------------------------------------
@@ -617,9 +623,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         const response = await API.post('publicapi', '/inpaint', {
           body: data
         });
-
         addToHistory();
-
         originalCanvas.getObjects().forEach((obj) => {
           if (obj instanceof fabric.Path) {
             editor.canvas.remove(obj)
@@ -633,6 +637,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
           const scale = Math.min(1024 / originalWidth, 1024 / originalHeight);
           returnedImage.scale(1 / scale)
           editor.canvas.setBackgroundImage(returnedImage)
+          setBgEditorStates(prevHistory => [...prevHistory, returnedImage]);
           editor.canvas.backgroundImage.center()
           editor.canvas.renderAll();
         }, { crossOrigin: "anonymous" });
@@ -644,9 +649,9 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
           setSeverity('success')
           setMessage(`Image Generation Successful! Remaining credits: ${newCreditAmount}`)
           setOpen(true)
+          setEditorTool();
         }, 500);
         // setImageSrc(response.imageData);
-        addToHistory();
       } catch (error) {
         setLoadingInpaintingResult(false)
         if (error.response?.data?.error?.name === "InsufficientCredits") {
@@ -786,7 +791,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       <Helmet>
         <title>Edit • memeSRC</title>
       </Helmet>
-      <ParentContainer id="parent-container">
+      <ParentContainer sx={{ padding: { xs: 1.5, md: 2 } }} id="parent-container">
         <Grid container justifyContent="center">
           <Grid
             container
@@ -797,24 +802,39 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
             justifyContent="center"
             marginBottom={8.3}
           >
-            <Card sx={{ padding: '20px' }}>
+            <Card sx={{ padding: { xs: 1.5, md: 2 } }}>
               <Grid container item spacing={2} justifyContent="center">
                 <Grid item xs={12} md={7} lg={7} order="1">
-                  {/* <Grid container item spacing={2}>
+                  <Grid container item mb={1.5}>
                     <Grid item xs={12}>
                       <Stack direction='row' width='100%' justifyContent='space-between'>
-                        <IconButton disabled={(editorStates.length <= 1)} onClick={undo}>
+                        <IconButton size='small' disabled={(editorStates.length <= 1)} onClick={undo}>
                           <History />
                         </IconButton>
-                        <IconButton disabled={(futureStates.length === 0)} onClick={redo}>
+                        <IconButton size='small' disabled={(futureStates.length === 0)} onClick={redo}>
                           <Update />
                         </IconButton>
                       </Stack>
                     </Grid>
-                  </Grid> */}
-                  <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }} id="canvas-container">
+                  </Grid>
+                  <div style={{ width: '100%', padding: 0, margin: 0, boxSizing: 'border-box', position: 'relative' }} id="canvas-container">
                     <FabricJSCanvas onReady={onReady} />
-                    {showBrushSize && <div style={{ width: brushToolSize, height: brushToolSize, borderRadius: '50%', background: 'red', position: 'absolute', borderColor: 'black', borderStyle: 'solid', borderWidth: '1px', boxShadow: '0 7px 10px rgba(0, 0, 0, 0.75)' }} />}
+                    {showBrushSize &&
+                      <div style={{
+                        width: brushToolSize,
+                        height: brushToolSize,
+                        position: 'absolute',
+                        left: '50%',
+                        top: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        borderRadius: '50%',
+                        background: 'red',
+                        borderColor: 'black',
+                        borderStyle: 'solid',
+                        borderWidth: '1px',
+                        boxShadow: '0 7px 10px rgba(0, 0, 0, 0.75)'
+                      }} />
+                    }
                   </div>
                 </Grid>
                 <Grid item xs={12} md={5} lg={5} minWidth={{ xs: {}, md: '350px' }} order={{ xs: 3, md: 2 }}>
@@ -937,6 +957,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                   value={canvasObjects[index].text}
                                   fullWidth
                                   onFocus={() => handleFocus(index)}
+                                  onBlur={addToHistory}
                                   onChange={(event) => handleEdit(event, index)}
                                 />
                                 {/* <Typography gutterBottom >
@@ -1135,7 +1156,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                       />
                     </Stack> */}
 
-                  <Card sx={{ width: '100%', px: 2, py: 2 }}>
+                  <Card sx={{ width: '100%', px: 1, py: 1 }}>
                     <Stack width='100%' display='flex'>
                       <ToggleButtonGroup
                         value={editorTool}
@@ -1148,18 +1169,18 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                         size='small'
                         sx={{ mx: { xs: 'auto', md: 'unset' } }}
                       >
-                        <ToggleButton onClick={loadFineTuningFrames} value="fineTuning" aria-label="centered">
+                        <ToggleButton size='small' onClick={loadFineTuningFrames} value="fineTuning" aria-label="centered">
                           <Stack direction='row' spacing={1} alignItems='center'>
-                            <HistoryToggleOffRounded alt="Fine Tuning" />
-                            <Typography variant='body1'>
+                            <HistoryToggleOffRounded alt="Fine Tuning" fontSize='small' />
+                            <Typography variant='body2'>
                               Fine Tuning
                             </Typography>
                           </Stack>
                         </ToggleButton>
-                        <ToggleButton onClick={(event) => { if (!user || user?.userDetails?.credits <= 0) { setAnchorEl(event.currentTarget); setEditorTool('') } } } value={(user && user?.userDetails?.credits > 0) ? "magicEraser" : "none"} aria-label="right aligned">
+                        <ToggleButton size='small' onClick={(event) => { if (!user || user?.userDetails?.credits <= 0) { setAnchorEl(event.currentTarget); setEditorTool('') } }} value={(user && user?.userDetails?.credits > 0) ? "magicEraser" : "none"} aria-label="right aligned">
                           <Stack direction='row' spacing={1} alignItems='center'>
-                            <AutoFixHighRounded alt="Magic Eraser" />
-                            <Typography variant='body1'>
+                            <AutoFixHighRounded alt="Magic Eraser" fontSize='small' />
+                            <Typography variant='body2'>
                               Magic Eraser
                             </Typography>
                           </Stack>
@@ -1228,7 +1249,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                         <Button variant='contained' onClick={
                           () => {
                             exportDrawing();
-                            setEditorTool()
                             toggleDrawingMode('fineTuning');
                           }
                         }>
