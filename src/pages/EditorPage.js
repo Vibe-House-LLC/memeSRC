@@ -19,7 +19,6 @@ const Alert = forwardRef((props, ref) => <MuiAlert elevation={6} ref={ref} varia
 
 const ParentContainer = styled('div')`
     height: 100%;
-    padding: 20px;
 `;
 
 const ColorPickerPopover = styled('div')({
@@ -481,6 +480,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     editor.canvas.remove(editor.canvas.item(index));
     setCanvasObjects([...editor.canvas._objects]);
     editor?.canvas.renderAll();
+    addToHistory();
   }
 
   // ------------------------------------------------------------------------
@@ -785,7 +785,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       <Helmet>
         <title>Edit • memeSRC</title>
       </Helmet>
-      <ParentContainer id="parent-container">
+      <ParentContainer sx={{padding: {xs: 1.5, md: 2}}} id="parent-container">
         <Grid container justifyContent="center">
           <Grid
             container
@@ -796,16 +796,16 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
             justifyContent="center"
             marginBottom={8.3}
           >
-            <Card sx={{ padding: '20px' }}>
+            <Card sx={{ padding: {xs: 1.5, md: 2} }}>
               <Grid container item spacing={2} justifyContent="center">
                 <Grid item xs={12} md={7} lg={7} order="1">
                   <Grid container item mb={1.5}>
                     <Grid item xs={12}>
                       <Stack direction='row' width='100%' justifyContent='space-between'>
-                        <IconButton disabled={(editorStates.length <= 1)} onClick={undo}>
+                        <IconButton size='small' disabled={(editorStates.length <= 1)} onClick={undo}>
                           <History />
                         </IconButton>
-                        <IconButton disabled={(futureStates.length === 0)} onClick={redo}>
+                        <IconButton size='small' disabled={(futureStates.length === 0)} onClick={redo}>
                           <Update />
                         </IconButton>
                       </Stack>
@@ -1149,7 +1149,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                       />
                     </Stack> */}
 
-                  <Card sx={{ width: '100%', px: 2, py: 2 }}>
+                  <Card sx={{ width: '100%', px: 1, py: 1 }}>
                     <Stack width='100%' display='flex'>
                       <ToggleButtonGroup
                         value={editorTool}
@@ -1162,18 +1162,18 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                         size='small'
                         sx={{ mx: { xs: 'auto', md: 'unset' } }}
                       >
-                        <ToggleButton onClick={loadFineTuningFrames} value="fineTuning" aria-label="centered">
+                        <ToggleButton size='small' onClick={loadFineTuningFrames} value="fineTuning" aria-label="centered">
                           <Stack direction='row' spacing={1} alignItems='center'>
-                            <HistoryToggleOffRounded alt="Fine Tuning" />
-                            <Typography variant='body1'>
+                            <HistoryToggleOffRounded alt="Fine Tuning" fontSize='small' />
+                            <Typography variant='body2'>
                               Fine Tuning
                             </Typography>
                           </Stack>
                         </ToggleButton>
-                        <ToggleButton onClick={(event) => { if (!user || user?.userDetails?.credits <= 0) { setAnchorEl(event.currentTarget); setEditorTool('') } }} value={(user && user?.userDetails?.credits > 0) ? "magicEraser" : "none"} aria-label="right aligned">
+                        <ToggleButton size='small' onClick={(event) => { if (!user || user?.userDetails?.credits <= 0) { setAnchorEl(event.currentTarget); setEditorTool('') } }} value={(user && user?.userDetails?.credits > 0) ? "magicEraser" : "none"} aria-label="right aligned">
                           <Stack direction='row' spacing={1} alignItems='center'>
-                            <AutoFixHighRounded alt="Magic Eraser" />
-                            <Typography variant='body1'>
+                            <AutoFixHighRounded alt="Magic Eraser" fontSize='small' />
+                            <Typography variant='body2'>
                               Magic Eraser
                             </Typography>
                           </Stack>
