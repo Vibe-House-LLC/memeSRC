@@ -617,9 +617,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         const response = await API.post('publicapi', '/inpaint', {
           body: data
         });
-
         addToHistory();
-
         originalCanvas.getObjects().forEach((obj) => {
           if (obj instanceof fabric.Path) {
             editor.canvas.remove(obj)
@@ -633,6 +631,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
           const scale = Math.min(1024 / originalWidth, 1024 / originalHeight);
           returnedImage.scale(1 / scale)
           editor.canvas.setBackgroundImage(returnedImage)
+          setBgEditorStates(prevHistory => [...prevHistory, returnedImage]);
           editor.canvas.backgroundImage.center()
           editor.canvas.renderAll();
         }, { crossOrigin: "anonymous" });
@@ -644,9 +643,9 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
           setSeverity('success')
           setMessage(`Image Generation Successful! Remaining credits: ${newCreditAmount}`)
           setOpen(true)
+          setEditorTool();
         }, 500);
         // setImageSrc(response.imageData);
-        addToHistory();
       } catch (error) {
         setLoadingInpaintingResult(false)
         if (error.response?.data?.error?.name === "InsufficientCredits") {
@@ -800,7 +799,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
             <Card sx={{ padding: '20px' }}>
               <Grid container item spacing={2} justifyContent="center">
                 <Grid item xs={12} md={7} lg={7} order="1">
-                  {/* <Grid container item spacing={2}>
+                  <Grid container item mb={1.5}>
                     <Grid item xs={12}>
                       <Stack direction='row' width='100%' justifyContent='space-between'>
                         <IconButton disabled={(editorStates.length <= 1)} onClick={undo}>
@@ -811,10 +810,25 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                         </IconButton>
                       </Stack>
                     </Grid>
-                  </Grid> */}
-                  <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }} id="canvas-container">
+                  </Grid>
+                  <div style={{ width: '100%', height: '100%', position: 'relative' }} id="canvas-container">
                     <FabricJSCanvas onReady={onReady} />
-                    {showBrushSize && <div style={{ width: brushToolSize, height: brushToolSize, borderRadius: '50%', background: 'red', position: 'absolute', borderColor: 'black', borderStyle: 'solid', borderWidth: '1px', boxShadow: '0 7px 10px rgba(0, 0, 0, 0.75)' }} />}
+                    {showBrushSize &&
+                      <div style={{
+                        width: brushToolSize,
+                        height: brushToolSize,
+                        position: 'absolute',
+                        left: '50%',
+                        top: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        borderRadius: '50%',
+                        background: 'red',
+                        borderColor: 'black',
+                        borderStyle: 'solid',
+                        borderWidth: '1px',
+                        boxShadow: '0 7px 10px rgba(0, 0, 0, 0.75)'
+                      }} />
+                    }
                   </div>
                 </Grid>
                 <Grid item xs={12} md={5} lg={5} minWidth={{ xs: {}, md: '350px' }} order={{ xs: 3, md: 2 }}>
@@ -1156,7 +1170,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                             </Typography>
                           </Stack>
                         </ToggleButton>
-                        <ToggleButton onClick={(event) => { if (!user || user?.userDetails?.credits <= 0) { setAnchorEl(event.currentTarget); setEditorTool('') } } } value={(user && user?.userDetails?.credits > 0) ? "magicEraser" : "none"} aria-label="right aligned">
+                        <ToggleButton onClick={(event) => { if (!user || user?.userDetails?.credits <= 0) { setAnchorEl(event.currentTarget); setEditorTool('') } }} value={(user && user?.userDetails?.credits > 0) ? "magicEraser" : "none"} aria-label="right aligned">
                           <Stack direction='row' spacing={1} alignItems='center'>
                             <AutoFixHighRounded alt="Magic Eraser" />
                             <Typography variant='body1'>
@@ -1228,7 +1242,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                         <Button variant='contained' onClick={
                           () => {
                             exportDrawing();
-                            setEditorTool()
                             toggleDrawingMode('fineTuning');
                           }
                         }>
