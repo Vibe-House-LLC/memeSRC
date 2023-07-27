@@ -142,7 +142,7 @@ export default function ContributorRequest() {
   return (
     <>
       <Helmet>
-        <title> Contributor Request | memeSRC 2.0 </title>
+        <title> Upload • memeSRC </title>
       </Helmet>
       <Container maxWidth="xl" sx={{ height: '100%' }}>
         {!authorized ? (
