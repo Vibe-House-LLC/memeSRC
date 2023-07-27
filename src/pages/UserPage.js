@@ -1,7 +1,7 @@
 import { Helmet } from 'react-helmet-async';
 import { filter } from 'lodash';
 import { sentenceCase } from 'change-case';
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 // @mui
 import {
   Card,
@@ -21,8 +21,9 @@ import {
   TableContainer,
   TablePagination,
 } from '@mui/material';
-import { Auth, API } from 'aws-amplify';
+import { Auth, API, graphqlOperation } from 'aws-amplify';
 // components
+import { Delete, Edit, Upload } from '@mui/icons-material';
 import Label from '../components/label';
 import Iconify from '../components/iconify';
 import Scrollbar from '../components/scrollbar';
@@ -32,6 +33,7 @@ import UserCountChart from '../sections/@dashboard/app/UserSignupsGraph';
 // graphql
 import { listUserDetails } from '../graphql/queries';
 import { updateUserDetails } from '../graphql/mutations';
+import { SnackbarContext } from '../SnackbarContext';
 // mock
 // import USERLIST from '../_mock/user';
 
@@ -42,9 +44,8 @@ const TABLE_HEAD = [
   { id: 'email', label: 'Email', alignRight: false },
   { id: 'id', label: 'id', alignRight: false },
   { id: 'earlyAccessStatus', label: 'Early Access', alignRight: false },
-  { id: 'earlyAccessStatus', label: 'Early Access', alignRight: false },
+  { id: 'contributorAccessStatus', label: 'Contributor Access', alignRight: false },
   { id: 'status', label: 'Status', alignRight: false },
-  { id: 'enabled', label: 'Enabled', alignRight: false },
   { id: 'credits', label: 'Credits', alignRight: false },
   { id: 'createdAt', label: 'Created', alignRight: false },
   { id: '' },
@@ -53,7 +54,7 @@ const TABLE_HEAD = [
 // ----------------------------------------------------------------------
 
 function descendingComparator(a, b, orderBy) {
-  if(orderBy === 'created') {
+  if (orderBy === 'created') {
     const dateA = new Date(a[orderBy]);
     const dateB = new Date(b[orderBy]);
     if (dateB < dateA) {
@@ -155,7 +156,7 @@ async function updateUserCredits(id, username, credits) {
 
 
 export default function UserPage() {
-  const [open, setOpen] = useState(null);
+  const [menuOpen, setMenuOpen] = useState(null);
   const [selectedIndex, setSelectedIndex] = useState(null);
   const [page, setPage] = useState(0);
   const [order, setOrder] = useState('asc');
@@ -164,7 +165,9 @@ export default function UserPage() {
   const [filterName, setFilterName] = useState('');
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [userList, setUserList] = useState([]);
+  const [chosenUser, setChosenUser] = useState(null);
   const [credits, setCredits] = useState(0);
+  const { setOpen, setMessage, setSeverity } = useContext(SnackbarContext)
 
   useEffect(() => {
     listUserDetailsGraphQL(50).then((users) => {
@@ -173,6 +176,7 @@ export default function UserPage() {
         email: user.email,
         id: user.id,
         earlyAccessStatus: Boolean(user.earlyAccessStatus),
+        contributorAccessStatus: user.contributorAccessStatus,
         status: user.status,
         enabled: true,
         credits: parseInt(user.credits, 10) || 0,
@@ -196,7 +200,7 @@ export default function UserPage() {
 
   const handleOpenMenu = (event, index) => {
     setSelectedIndex(index);
-    setOpen(event.currentTarget);
+    setMenuOpen(event.currentTarget);
   };
 
   useEffect(() => {
@@ -204,7 +208,7 @@ export default function UserPage() {
   }, [selectedIndex])
 
   const handleCloseMenu = () => {
-    setOpen(null);
+    setMenuOpen(null);
   };
 
   const handleRequestSort = (event, property) => {
@@ -212,6 +216,10 @@ export default function UserPage() {
     setOrder(isAsc ? 'desc' : 'asc');
     setOrderBy(property);
   };
+
+  useEffect(() => {
+    handleRequestSort('', 'name')
+  }, [userList])
 
   const handleSelectAllClick = (event) => {
     if (event.target.checked) {
@@ -258,6 +266,39 @@ export default function UserPage() {
 
   const isNotFound = !filteredUsers.length && !!filterName;
 
+  const makeContributor = async (userObj) => {
+    console.log(userObj)
+    handleCloseMenu();
+    const apiName = 'AdminQueries';
+    const path = '/addUserToGroup';
+    const myInit = {
+      body: {
+        "username": userObj.username,
+        "groupname": "contributors"
+      },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `${(await Auth.currentSession()).getAccessToken().getJwtToken()}`
+      }
+    }
+    try {
+      await API.post(apiName, path, myInit);
+      await API.graphql(
+        graphqlOperation(updateUserDetails, { input: { id: userObj.id, contributorAccessStatus: 'approved' }})
+      )
+      setMessage(`${userObj.username} has been made a contributor!`)
+      setSeverity('success');
+      setOpen(true)
+      setChosenUser(null)
+    } catch {
+      console.error('Something went wrong.')
+      setMessage('Something went wrong.')
+      setSeverity('error');
+      setOpen(true)
+      setChosenUser(null)
+    }
+  }
+
   return (
     <>
       <Helmet>
@@ -273,8 +314,8 @@ export default function UserPage() {
             New User
           </Button>
         </Stack>
-        
-        <UserCountChart userList={userList} /> 
+
+        <UserCountChart userList={userList} />
 
         <Card>
           <UserListToolbar numSelected={selected.length} filterName={filterName} onFilterName={handleFilterByName} />
@@ -293,7 +334,7 @@ export default function UserPage() {
                 />
                 <TableBody>
                   {filteredUsers.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row, index) => {
-                    const { username, email, id, earlyAccessStatus, status, enabled, credits, createdAt } = row;
+                    const { username, email, id, earlyAccessStatus, contributorAccessStatus, status, enabled, credits, createdAt } = row;
                     const selectedUser = selected.indexOf(username) !== -1;
 
                     return (
@@ -318,19 +359,38 @@ export default function UserPage() {
                         <TableCell align="left">{(earlyAccessStatus) ? 'Requested' : 'No Response'}</TableCell>
 
                         <TableCell align="left">
-                          <Label color={(status === "UNCONFIRMED") ? 'error' : 'success'}>{sentenceCase(status)}</Label>
+                          <Label color={
+                            contributorAccessStatus === 'approved'
+                              ? 'success'
+                              : contributorAccessStatus === 'requested'
+                                ? 'warning'
+                                : 'default'
+                          }>
+                            {contributorAccessStatus === 'approved'
+                              ? 'Approved'
+                              : contributorAccessStatus === 'requested'
+                                ? 'Requested'
+                                : 'No Response'}
+                          </Label>
                         </TableCell>
 
                         <TableCell align="left">
-                          <Label color={enabled ? 'success' : 'error'}>{sentenceCase(enabled ? 'Enabled' : 'Disabled')}</Label>
+                          <Label color={(status === "unverified") ? 'error' : 'success'}>{sentenceCase(status)}</Label>
                         </TableCell>
+
+                        {/* <TableCell align="left">
+                          <Label color={enabled ? 'success' : 'error'}>{sentenceCase(enabled ? 'Enabled' : 'Disabled')}</Label>
+                        </TableCell> */}
 
                         <TableCell align="left">{credits}</TableCell>
 
                         <TableCell align="left">{createdAt}</TableCell>
 
                         <TableCell align="right">
-                          <IconButton size="large" color="inherit" onClick={(event) => handleOpenMenu(event, index)}>
+                          <IconButton size="large" color="inherit" onClick={(event) => {
+                            setChosenUser(row)
+                            handleOpenMenu(event, index)
+                            }}>
                             <Iconify icon={'eva:more-vertical-fill'} />
                           </IconButton>
                         </TableCell>
@@ -385,15 +445,14 @@ export default function UserPage() {
       </Container>
 
       <Popover
-        open={Boolean(open)}
-        anchorEl={open}
+        open={Boolean(menuOpen)}
+        anchorEl={menuOpen}
         onClose={handleCloseMenu}
         anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         PaperProps={{
           sx: {
             p: 1,
-            width: 140,
             '& .MuiMenuItem-root': {
               px: 1,
               typography: 'body2',
@@ -430,7 +489,7 @@ export default function UserPage() {
                   console.log(err);
                   setUserList([]);
                 });
-                setOpen(null); // Close the popover after updating credits
+                setMenuOpen(null); // Close the popover after updating credits
               })
               .catch((err) => {
                 console.log(err);
@@ -438,15 +497,18 @@ export default function UserPage() {
           }}
 
         >
-          <Iconify icon={'eva:edit-fill'} sx={{ mr: 2 }} />
+          <Edit sx={{ mr: 1.5 }} />
           Credits
         </MenuItem>
 
-
+        <MenuItem onClick={() => makeContributor(chosenUser)}>
+          <Upload sx={{ mr: 1.5 }} />
+          Make Contributor
+        </MenuItem>
 
         {/* TODO: Make user list adapt to changes */}
         <MenuItem sx={{ color: 'error.main' }} onClick={() => disableUser(filteredUsers[selectedIndex].username)}>
-          <Iconify icon={'eva:trash-2-outline'} sx={{ mr: 2 }} />
+          <Delete sx={{ mr: 1.5 }} />
           Disable
         </MenuItem>
       </Popover>
