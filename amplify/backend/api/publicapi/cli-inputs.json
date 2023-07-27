@@ -46,16 +46,20 @@
         "setting": "private"
       }
     },
-    "/inpaint": {
-      "name": "/inpaint",
-      "lambdaFunction": "memesrcinpainter",
+    "/user/new": {
+      "name": "/user/new",
+      "lambdaFunction": "memesrcUserFunction",
+      "permissions": {
+        "setting": "open"
+      }
+    },
+    "/user/get": {
+      "name": "/user/get",
+      "lambdaFunction": "memesrcUserFunction",
       "permissions": {
         "setting": "private",
         "auth": [
-          "create",
-          "read",
-          "update",
-          "delete"
+          "read"
         ],
         "groups": {
           "admins": [
@@ -67,17 +71,14 @@
           "mods": [
             "create",
             "read",
-            "update",
-            "delete"
+            "update"
+          ],
+          "contributors": [
+            "create",
+            "read",
+            "update"
           ]
         }
-      }
-    },
-    "/user/new": {
-      "name": "/user/new",
-      "lambdaFunction": "memesrcUserFunction",
-      "permissions": {
-        "setting": "open"
       }
     },
     "/user/update": {
@@ -100,30 +101,14 @@
           "mods": [
             "create",
             "read",
-            "update"
-          ]
-        }
-      }
-    },
-    "/user/get": {
-      "name": "/user/get",
-      "lambdaFunction": "memesrcUserFunction",
-      "permissions": {
-        "setting": "private",
-        "auth": [
-          "read"
-        ],
-        "groups": {
-          "admins": [
+            "update",
+            "delete"
+          ],
+          "contributors": [
             "create",
             "read",
             "update",
             "delete"
-          ],
-          "mods": [
-            "create",
-            "read",
-            "update"
           ]
         }
       }
@@ -147,26 +132,31 @@
           "admins": [
             "create",
             "read",
-            "update",
-            "delete"
+            "update"
           ],
           "mods": [
             "create",
             "read",
-            "update",
-            "delete"
+            "update"
+          ],
+          "contributors": [
+            "create",
+            "read",
+            "update"
           ]
         }
       }
     },
-    "/requests": {
-      "name": "/requests",
-      "lambdaFunction": "memesrcUserFunction",
+    "/inpaint": {
+      "name": "/inpaint",
+      "lambdaFunction": "memesrcinpainter",
       "permissions": {
         "setting": "private",
         "auth": [
           "create",
-          "read"
+          "read",
+          "update",
+          "delete"
         ],
         "groups": {
           "admins": [
@@ -176,6 +166,12 @@
             "delete"
           ],
           "mods": [
+            "create",
+            "read",
+            "update",
+            "delete"
+          ],
+          "contributors": [
             "create",
             "read",
             "update"
@@ -205,6 +201,41 @@
             "read",
             "update",
             "delete"
+          ],
+          "contributors": [
+            "create",
+            "read",
+            "update"
+          ]
+        }
+      }
+    },
+    "/requests": {
+      "name": "/requests",
+      "lambdaFunction": "memesrcUserFunction",
+      "permissions": {
+        "setting": "private",
+        "auth": [
+          "create",
+          "read"
+        ],
+        "groups": {
+          "admins": [
+            "create",
+            "read",
+            "update",
+            "delete"
+          ],
+          "mods": [
+            "create",
+            "read",
+            "update",
+            "delete"
+          ],
+          "contributors": [
+            "create",
+            "read",
+            "update"
           ]
         }
       }
