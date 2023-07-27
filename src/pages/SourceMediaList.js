@@ -260,7 +260,7 @@ export default function SourceMediaList() {
 
                         <TableCell sx={{cursor: 'pointer'}} onClick={() => {navigate(`files/${id}`)}} align="left">{id}</TableCell>
 
-                        <TableCell sx={{cursor: 'pointer'}} onClick={() => {navigate(`files/${id}`)}} align="left">{user.username}</TableCell>
+                        <TableCell sx={{cursor: 'pointer'}} onClick={() => {navigate(`files/${id}`)}} align="left">{user && user.username}</TableCell>
 
                         <TableCell sx={{cursor: 'pointer'}} onClick={() => {navigate(`files/${id}`)}} align="left">
                           <Label color={(status === "uploaded") ? 'warning' : 'success'}>{sentenceCase(status)}</Label>
