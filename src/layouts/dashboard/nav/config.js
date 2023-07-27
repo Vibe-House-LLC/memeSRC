@@ -26,7 +26,7 @@ const navConfig = [
       },
       {
         title: 'Upload',
-        path: '/contributor',
+        path: '/upload',
         externalLink: false,
         icon: <FolderShared />
       }
