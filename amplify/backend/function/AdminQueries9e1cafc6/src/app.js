@@ -70,7 +70,7 @@ const checkGroup = function (req, res, next) {
 
 app.all('*', checkGroup);
 
-app.post('/addUserToGroup', async (req, res, next) => {
+app.post(`/${process.env.ENV}/admin/addUserToGroup`, async (req, res, next) => {
   if (!req.body.username || !req.body.groupname) {
     const err = new Error('username and groupname are required');
     err.statusCode = 400;

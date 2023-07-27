@@ -57,7 +57,7 @@ export default function Router() {
         { path: '/episode/:seriesId/:seasonNum/:episodeNum', element: <TopBannerSearchRevised><EpisodePage /></TopBannerSearchRevised> },
         { path: '/episode/:seriesId/:seasonNum/:episodeNum/:frameNum', element: <TopBannerSearchRevised><EpisodePage /></TopBannerSearchRevised> },
         { path: '/vote', element: <TopBannerSearchRevised><VotingPage /></TopBannerSearchRevised> },
-        { path: '/contributor', element: <ContributorRequest /> },
+        { path: '/upload', element: <ContributorRequest /> },
       ]
     },
     {
