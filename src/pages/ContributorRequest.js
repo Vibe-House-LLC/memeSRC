@@ -21,7 +21,7 @@ export default function ContributorRequest() {
   const navigate = useNavigate()
 
   const authorized = user?.['cognito:groups']?.some((element) => {
-    return element === 'admins' || element === 'mods' || element === 'contributors';
+    return element === 'admins' || element === 'contributors';
   })
 
   const becomeContributor = () => {

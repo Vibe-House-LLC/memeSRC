@@ -7,7 +7,6 @@ import { UploadFile } from '@mui/icons-material';
 import Dropzone from 'react-dropzone';
 import { LoadingButton } from '@mui/lab';
 import { getSeries } from '../../../graphql/queries';
-import { createSourceMedia, createFile } from '../../../graphql/mutations';
 import { UserContext } from '../../../UserContext';
 import { SnackbarContext } from '../../../SnackbarContext';
 
@@ -50,6 +49,16 @@ export default function UploadToSeriesPage({ seriesId }) {
           status: 'uploaded',
           userDetailsSourceMediaId: user.sub,
         };
+        const createSourceMedia = `
+          mutation CreateSourceMedia(
+            $input: CreateSourceMediaInput!
+            $condition: ModelSourceMediaConditionInput
+          ) {
+            createSourceMedia(input: $input, condition: $condition) {
+              id
+            }
+          }
+        `;
         const sourceMedia = await API.graphql(graphqlOperation(createSourceMedia, { input: sourceMediaInput }));
         const sourceMediaId = sourceMedia.data.createSourceMedia.id;
 

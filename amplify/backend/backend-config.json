@@ -127,7 +127,14 @@
             "Arn"
           ],
           "category": "function",
-          "resourceName": "memesrcinpainter"
+          "resourceName": "memesrcUserFunction"
+        },
+        {
+          "attributes": [
+            "contributorsGroupRole"
+          ],
+          "category": "auth",
+          "resourceName": "userPoolGroups"
         },
         {
           "attributes": [
@@ -135,7 +142,7 @@
             "Arn"
           ],
           "category": "function",
-          "resourceName": "memesrcUserFunction"
+          "resourceName": "memesrcinpainter"
         },
         {
           "attributes": [

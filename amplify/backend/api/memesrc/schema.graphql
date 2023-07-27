@@ -22,7 +22,7 @@ type Series @model @auth(
 
 type SourceMedia @model @auth(
   rules: [
-    { allow: groups, groups: ["admins", "mods"] }
+    { allow: groups, groups: ["admins", "mods", "contributors"] }
   ]
 ) {
   id: ID!,
