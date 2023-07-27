@@ -17,7 +17,7 @@ const headerMarkdownContent = `
   
   ## Getting started
   
-  You're in! You've been accepted to test an extremely early version of this feature, so expect a bit of confusion and beware of bugs. In order to index your data for search, memeSRC requires it be prepared in a particular way. These instructions will get you started, and feel free to reach out if you have quetsions.
+  You're in! You've been accepted to test an **extremely early version** of this feature, so expect a bit of confusion and beware of bugs. In order to index your data for search, memeSRC requires it be prepared in a particular way. These instructions will get you started, and feel free to reach out if you have quetsions.
 
   ## #1: Prepare your data
 
@@ -55,12 +55,12 @@ const headerMarkdownContent = `
 
   ## #3: Select an index
 
-  Pick an index for your show. Generally, an index corresponds to a show, movie, or some other collection of searchable content.
+  Pick an index for your show. Generally, an index corresponds to a show, movie, or some other collection of searchable content. If your desired index does not yet exist, [submit a request](/vote).
   
 `;
 
 const bodyMarkdownContent = `
-  ## #3: Upload your data
+  ## #4: Upload your data
 
   Once you've selected your series, upload your zip file bundle. Your submission will be reviewed for data structure or innappropriate content. If approved, it will be processed and indexed to search and you'll recieve a notification.
 
