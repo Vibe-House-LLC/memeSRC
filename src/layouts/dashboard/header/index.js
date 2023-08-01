@@ -19,7 +19,7 @@ import {
   Card,
   Fab,
 } from '@mui/material';
-import { AutoFixHighRounded, Close } from '@mui/icons-material';
+import { AutoFixHighRounded, Close, Verified } from '@mui/icons-material';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import SupervisedUserCircleIcon from '@mui/icons-material/SupervisedUserCircle';
 // utils
@@ -199,28 +199,28 @@ export default function Header({ onOpenNav }) {
           >
             {/* <NotificationsPopover /> */}
             <>
-                <Chip
-                  onClick={(event) => {
-                    setAnchorEl(event.currentTarget);
-                  }}
-                  icon={<AutoFixHighRounded />}
-                  // We should probably handle this a little better, but I left this so that we can later make changes. Currently a credit balance of 0 will show Early Access.
-                  // However, everyone starts with 0 I believe, so this will likely just change to showing credits if early access is turned on.
-                  label={
-                    user?.userDetails?.earlyAccessStatus || user?.userDetails?.credits > 0
+              <Chip
+                onClick={(event) => {
+                  setAnchorEl(event.currentTarget);
+                }}
+                icon={<AutoFixHighRounded />}
+                // We should probably handle this a little better, but I left this so that we can later make changes. Currently a credit balance of 0 will show Early Access.
+                // However, everyone starts with 0 I believe, so this will likely just change to showing credits if early access is turned on.
+                label={
+                  user?.userDetails?.earlyAccessStatus || user?.userDetails?.credits > 0
+                    ? user?.userDetails?.credits
                       ? user?.userDetails?.credits
-                        ? user?.userDetails?.credits
-                        : 'Magic'
                       : 'Magic'
-                  }
-                  size="small"
-                  color="success"
-                  sx={{
-                    '& .MuiChip-label': {
-                      fontWeight: 'bold',
-                    },
-                  }}
-                />
+                    : 'Magic'
+                }
+                size="small"
+                color="success"
+                sx={{
+                  '& .MuiChip-label': {
+                    fontWeight: 'bold',
+                  },
+                }}
+              />
               <AccountPopover />
             </>
           </Stack>
@@ -308,29 +308,42 @@ export default function Header({ onOpenNav }) {
                 </li>
               </ul>
             </Typography>
-
-            <Typography variant="body1">
-              We're opening an Early Access program for users who would like to help us test these features as they're
-              developed.
-            </Typography>
+            {(user?.userDetails?.earlyAccessStatus === 'approved' || true) ?
+              <Stack direction='row' alignItems='center'>
+                <Verified sx={{ mr: 1 }} color='success' />
+                <Typography variant="h6" sx={{ color: theme => theme.palette.success.main }}>
+                  You have been approved for early access!
+                </Typography>
+              </Stack>
+              :
+              <Typography variant="body1"> We're opening an Early Access program for users who would like to help us test these features as they're
+                developed.
+              </Typography>
+            }
           </Stack>
         </Box>
         <Box width="100%" px={2} pb={2} pt={1}>
-          <LoadingButton
-            onClick={(event) => {
-              if(user) {
-                earlyAccessSubmit();
-              } else {
-                navigate('/signup')
-              }
-            }}
-            loading={earlyAccessLoading}
-            disabled={user?.userDetails?.earlyAccessStatus || earlyAccessLoading || earlyAccessDisabled || earlyAccessComplete}
-            variant="contained"
-            startIcon={<SupervisedUserCircleIcon />}
-            size="large"
-            fullWidth
-            sx={css`
+          {/* TODO: Remove the " || true" from here. Just here for visualizing purposes. */}
+          {(user?.userDetails?.earlyAccessStatus === 'approved' || true) ?
+            <Button onClick={() => { setAnchorEl(null); setTimeout(() => {navigate('/pricing')}, 500 )}} variant='contained' size='large' fullWidth sx={{ backgroundColor: (theme) => theme.palette.success.main, color: (theme) => theme.palette.common.black, '&:hover': { backgroundColor: (theme) => theme.palette.success.dark, color: (theme) => theme.palette.common.black } }}>
+              Choose Plan
+            </Button>
+            :
+            <LoadingButton
+              onClick={(event) => {
+                if (user) {
+                  earlyAccessSubmit();
+                } else {
+                  navigate('/signup')
+                }
+              }}
+              loading={earlyAccessLoading}
+              disabled={user?.userDetails?.earlyAccessStatus || earlyAccessLoading || earlyAccessDisabled || earlyAccessComplete}
+              variant="contained"
+              startIcon={<SupervisedUserCircleIcon />}
+              size="large"
+              fullWidth
+              sx={css`
             font-size: 18px;
             background-color: #54d62c;
             color: black;
@@ -343,22 +356,23 @@ export default function Header({ onOpenNav }) {
               }
             }` : ''}
           `}
-            onBlur={() => {
-              // Blur the button when it loses focus
-              buttonRef.current.blur();
-            }}
-            ref={buttonRef}
-          >
-            {earlyAccessComplete ? (
-              `You're on the list!`
-            ) : (
-              <>
-                {user?.userDetails?.earlyAccessStatus && user?.userDetails?.earlyAccessStatus !== null
-                  ? `You're on the list!`
-                  : 'Request Access'}
-              </>
-            )}
-          </LoadingButton>
+              onBlur={() => {
+                // Blur the button when it loses focus
+                buttonRef.current.blur();
+              }}
+              ref={buttonRef}
+            >
+              {earlyAccessComplete ? (
+                `You're on the list!`
+              ) : (
+                <>
+                  {user?.userDetails?.earlyAccessStatus && user?.userDetails?.earlyAccessStatus !== null
+                    ? `You're on the list!`
+                    : 'Request Access'}
+                </>
+              )}
+            </LoadingButton>
+          }
           {/* <Typography
               variant="caption"
               align="center"
