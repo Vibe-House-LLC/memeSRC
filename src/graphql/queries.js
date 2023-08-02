@@ -136,8 +136,16 @@ export const getSourceMedia = /* GraphQL */ `
           nextToken
         }
         credits
+        stripeCustomer {
+          id
+          createdAt
+          updatedAt
+          stripeCustomerUserId
+        }
+        magicSubscription
         createdAt
         updatedAt
+        userDetailsStripeCustomerId
       }
       createdAt
       updatedAt
@@ -180,8 +188,10 @@ export const listSourceMedias = /* GraphQL */ `
           stripeId
           status
           credits
+          magicSubscription
           createdAt
           updatedAt
+          userDetailsStripeCustomerId
         }
         createdAt
         updatedAt
@@ -223,8 +233,10 @@ export const getFile = /* GraphQL */ `
           stripeId
           status
           credits
+          magicSubscription
           createdAt
           updatedAt
+          userDetailsStripeCustomerId
         }
         createdAt
         updatedAt
@@ -652,8 +664,30 @@ export const getUserDetails = /* GraphQL */ `
         nextToken
       }
       credits
+      stripeCustomer {
+        id
+        user {
+          id
+          username
+          email
+          earlyAccessStatus
+          contributorAccessStatus
+          stripeId
+          status
+          credits
+          magicSubscription
+          createdAt
+          updatedAt
+          userDetailsStripeCustomerId
+        }
+        createdAt
+        updatedAt
+        stripeCustomerUserId
+      }
+      magicSubscription
       createdAt
       updatedAt
+      userDetailsStripeCustomerId
     }
   }
 `;
@@ -679,8 +713,83 @@ export const listUserDetails = /* GraphQL */ `
           nextToken
         }
         credits
+        stripeCustomer {
+          id
+          createdAt
+          updatedAt
+          stripeCustomerUserId
+        }
+        magicSubscription
         createdAt
         updatedAt
+        userDetailsStripeCustomerId
+      }
+      nextToken
+    }
+  }
+`;
+export const getStripeCustomer = /* GraphQL */ `
+  query GetStripeCustomer($id: ID!) {
+    getStripeCustomer(id: $id) {
+      id
+      user {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        sourceMedia {
+          nextToken
+        }
+        status
+        votes {
+          nextToken
+        }
+        credits
+        stripeCustomer {
+          id
+          createdAt
+          updatedAt
+          stripeCustomerUserId
+        }
+        magicSubscription
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerId
+      }
+      createdAt
+      updatedAt
+      stripeCustomerUserId
+    }
+  }
+`;
+export const listStripeCustomers = /* GraphQL */ `
+  query ListStripeCustomers(
+    $filter: ModelStripeCustomerFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listStripeCustomers(filter: $filter, limit: $limit, nextToken: $nextToken) {
+      items {
+        id
+        user {
+          id
+          username
+          email
+          earlyAccessStatus
+          contributorAccessStatus
+          stripeId
+          status
+          credits
+          magicSubscription
+          createdAt
+          updatedAt
+          userDetailsStripeCustomerId
+        }
+        createdAt
+        updatedAt
+        stripeCustomerUserId
       }
       nextToken
     }
@@ -705,8 +814,16 @@ export const getSeriesUserVote = /* GraphQL */ `
           nextToken
         }
         credits
+        stripeCustomer {
+          id
+          createdAt
+          updatedAt
+          stripeCustomerUserId
+        }
+        magicSubscription
         createdAt
         updatedAt
+        userDetailsStripeCustomerId
       }
       series {
         id
@@ -749,8 +866,10 @@ export const listSeriesUserVotes = /* GraphQL */ `
           stripeId
           status
           credits
+          magicSubscription
           createdAt
           updatedAt
+          userDetailsStripeCustomerId
         }
         series {
           id

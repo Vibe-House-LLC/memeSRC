@@ -150,7 +150,18 @@ type UserDetails @model @auth(
   sourceMedia: [SourceMedia] @hasMany,
   status: String,
   votes: [SeriesUserVote] @hasMany,
-  credits: Int
+  credits: Int,
+  stripeCustomer: StripeCustomer @hasOne
+  magicSubscription: String
+}
+
+type StripeCustomer @model @auth(
+  rules: [
+    { allow: groups, groups: ["admins"] },
+  ]
+) {
+  id: ID!,
+  user: UserDetails @belongsTo
 }
 
 type SeriesUserVote @model @auth(
