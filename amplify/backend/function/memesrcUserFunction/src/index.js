@@ -11,6 +11,8 @@ import { defaultProvider } from '@aws-sdk/credential-provider-node';
 import { SignatureV4 } from '@aws-sdk/signature-v4';
 import { HttpRequest } from '@aws-sdk/protocol-http';
 import { default as fetch, Request } from 'node-fetch';
+import Stripe from 'stripe';
+const stripe = new Stripe('sk_test_51LofMwAqFX20vifIzFBRBpASuI6Eyfz1Ja8rjd0bOn7kGT7otYRSgZehjHql30Jc6IKimTTkAR68Wfuhq9widyxM00D19mS7Gf');
 
 const GRAPHQL_ENDPOINT = process.env.API_MEMESRC_GRAPHQLAPIENDPOINTOUTPUT;
 const AWS_REGION = process.env.AWS_REGION || 'us-east-1';
@@ -110,7 +112,7 @@ async function processVotes(allItems, userSub) {
 
     if (vote.userDetailsVotesId && vote.userDetailsVotesId.normalize() === userSub.normalize()) {
       currentUserVotes[vote.seriesUserVoteSeriesId] = (currentUserVotes[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
-    
+
       const voteTime = new Date(vote.createdAt);
       if (!lastUserVoteTimestamps[vote.seriesUserVoteSeriesId] || voteTime > lastUserVoteTimestamps[vote.seriesUserVoteSeriesId]) {
         lastUserVoteTimestamps[vote.seriesUserVoteSeriesId] = voteTime;
@@ -118,15 +120,15 @@ async function processVotes(allItems, userSub) {
         const currentTime = new Date().getTime();
         const diffInHours = (currentTime - voteTime.getTime()) / (1000 * 60 * 60);
         isLastUserVoteOlderThan24Hours[vote.seriesUserVoteSeriesId] = diffInHours > 24;
-    
+
         // calculate next vote time
         if (diffInHours < 24) {
-          nextVoteTime[vote.seriesUserVoteSeriesId] = new Date(voteTime.getTime() + 24*60*60*1000).toISOString();
+          nextVoteTime[vote.seriesUserVoteSeriesId] = new Date(voteTime.getTime() + 24 * 60 * 60 * 1000).toISOString();
         } else {
           nextVoteTime[vote.seriesUserVoteSeriesId] = null;
         }
       }
-    }    
+    }
   });
 
   return {
@@ -398,9 +400,9 @@ export const handler = async (event) => {
         }
       `;
 
-      console.log(query)
+    console.log(query)
 
-      response = await makeRequest(query);
+    response = await makeRequest(query);
   }
 
   if (path === `/${process.env.ENV}/public/vote`) {
@@ -479,7 +481,7 @@ export const handler = async (event) => {
         nextVoteTime,
         lastUserVoteTimestamps
       } = await processVotes(rawVotes, userSub);
-  
+
       const result = {
         votes: votesCount,
         userVotes: currentUserVotes,
@@ -492,7 +494,7 @@ export const handler = async (event) => {
         nextVoteTime: nextVoteTime,
         lastVoteTime: lastUserVoteTimestamps
       };
-  
+
       response = {
         statusCode: 200,
         body: result,
@@ -594,7 +596,7 @@ export const handler = async (event) => {
 
   // This sets a users Contributor status to "requested"
   if (path === `/${process.env.ENV}/public/user/update/contributorStatus`) {
-    
+
     const query = `
       mutation updateUserDetails {
           updateUserDetails(input: { id: "${userSub}", contributorAccessStatus: "requested" }) {
@@ -614,6 +616,97 @@ export const handler = async (event) => {
         success: true,
         message: `You have been added to the waiting list!`,
         details: becomeContributor
+      }
+    }
+  }
+
+  // Get the checkout session
+  if (path === `/${process.env.ENV}/public/user/update/getCheckoutSession`) {
+    try {
+      // Lets pull in the user details
+      const query = `
+        query getUserDetails {
+            getUserDetails(id: "${userSub}") {
+              earlyAccessStatus
+              id
+              email
+              magicSubscription
+              stripeCustomer {
+                createdAt
+                id
+              }
+            }
+          }
+        `;
+      console.log('The Query')
+      console.log(query)
+
+      const userDetailsQuery = await makeRequest(query);
+      console.log('userDetailsQuery')
+      console.log(userDetailsQuery)
+
+      const userDetails = userDetailsQuery.body.data.getUserDetails
+      console.log('User Details')
+      console.log(userDetails)
+
+      // Now lets set the customer id
+      let stripeCustomerId;
+      if (!userDetails.stripeCustomer) {
+        // Create stripe customer since they don't have one.
+        // metadata is only viewable by us, so I've added their sub as "userId" as this could be useful in the future.
+        const customer = await stripe.customers.create({
+          email: userDetails.email,
+          metadata: {
+            userId: userDetails.id
+          }
+        });
+
+        // Now lets add the StripeCustomer to GraphQL
+        const createStripeCustomerQuery = `
+        mutation createStripeCustomer {
+          createStripeCustomer(input: {id: "${customer.id}", stripeCustomerUserId: "${userDetails.id}"}) {
+            id
+          }
+        }
+      `
+        console.log('createStripeCustomerQuery')
+        console.log(createStripeCustomerQuery)
+        await makeRequest(createStripeCustomerQuery)
+
+        // And finally, lets set stripeCustomerId to the new id
+        stripeCustomerId = customer.id
+
+      } else {
+        // The user already has a StripeCustomer made, so we will set stripeCustomerId to the one attached to their userDetails.
+        stripeCustomerId === userDetails.stripeCustomer.id
+      }
+
+      // Now that the customerId is set, lets create a checkout session.
+      const session = await stripe.checkout.sessions.create({
+        success_url: 'http://localhost:3000/{CHECKOUT_SESSION_ID}',
+        cancel_url: body.currentUrl,
+        customer: stripeCustomerId,
+        line_items: [
+          { price: 'price_1NaRIhAqFX20vifI4IPhW1OX', quantity: 1 },
+        ],
+        mode: 'subscription',
+        metadata: {
+          callbackUrl: body.currentUrl
+        }
+      });
+
+      response = {
+        statusCode: 200,
+        body: session.url
+      }
+
+    } catch (error) {
+      response = {
+        statusCode: 500,
+        body: {
+          error,
+          message: 'Something went wrong. Please try again.'
+        }
       }
     }
   }

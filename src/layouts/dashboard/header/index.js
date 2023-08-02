@@ -84,6 +84,7 @@ export default function Header({ onOpenNav }) {
 
   const [earlyAccessComplete, setEarlyAccessComplete] = useState(false);
   const [earlyAccessDisabled, setEarlyAccessDisabled] = useState(false);
+  const [loadingSubscriptionUrl, setLoadingSubscriptionUrl] = useState(false);
 
   const containerRef = useRef(null);
 
@@ -164,6 +165,22 @@ export default function Header({ onOpenNav }) {
       setEarlyAccessLoading(false);
       setEarlyAccessDisabled(true);
     }).catch(err => console.log(err))
+  }
+
+  const buySubscription = () => {
+    setLoadingSubscriptionUrl(true)
+    API.post('publicapi', '/user/update/getCheckoutSession', {
+      body: {
+        currentUrl: window.location.href
+      }
+    }).then(results => {
+      console.log(results)
+      setLoadingSubscriptionUrl(false)
+      window.location.href = results
+    }).catch(error => {
+      console.log(error.response)
+      setLoadingSubscriptionUrl(false)
+    })
   }
 
   return (
@@ -325,9 +342,16 @@ export default function Header({ onOpenNav }) {
         <Box width="100%" px={2} pb={2} pt={1}>
           {/* TODO: Remove the " || true" from here. Just here for visualizing purposes. */}
           {(user?.userDetails?.earlyAccessStatus === 'approved' || true) ?
-            <Button onClick={() => { setAnchorEl(null); setTimeout(() => {navigate('/pricing')}, 500 )}} variant='contained' size='large' fullWidth sx={{ backgroundColor: (theme) => theme.palette.success.main, color: (theme) => theme.palette.common.black, '&:hover': { backgroundColor: (theme) => theme.palette.success.dark, color: (theme) => theme.palette.common.black } }}>
+            <LoadingButton loading={loadingSubscriptionUrl} onClick={buySubscription} variant='contained' size='large' fullWidth sx={{
+              backgroundColor: (theme) => theme.palette.success.main,
+              color: (theme) => theme.palette.common.black,
+              '&:hover': {
+                ...(!loadingSubscriptionUrl && {backgroundColor: (theme) => theme.palette.success.dark,
+                color: (theme) => theme.palette.common.black})
+              }
+            }}>
               Choose Plan
-            </Button>
+            </LoadingButton>
             :
             <LoadingButton
               onClick={(event) => {

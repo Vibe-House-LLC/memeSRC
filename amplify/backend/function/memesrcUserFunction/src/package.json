@@ -10,7 +10,9 @@
     "@aws-sdk/credential-provider-node": "^3.76.0",
     "@aws-sdk/protocol-http": "^3.58.0",
     "@aws-sdk/signature-v4": "^3.58.0",
-    "node-fetch": "^3.2.3"
+    "@types/stripe": "^8.0.417",
+    "node-fetch": "^3.2.3",
+    "stripe": "^12.16.0"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.92"
