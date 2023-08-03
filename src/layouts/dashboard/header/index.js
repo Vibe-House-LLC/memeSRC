@@ -196,7 +196,7 @@ export default function Header({ onOpenNav }) {
       setMessage('Your subscription has been cancelled.')
       setSeverity('success')
       setOpen(true)
-      setUser({...user, magicSubscription: null})
+      setUser({...user, userDetails: { ...user.userDetails, magicSubscription: null }})
     }).catch(error => {
       console.log(error.response)
       setLoadingSubscriptionUrl(false)
