@@ -37,6 +37,7 @@ import LanguagePopover from './LanguagePopover';
 import NotificationsPopover from './NotificationsPopover';
 import { ColorModeContext } from '../../../theme';
 import { UserContext } from '../../../UserContext';
+import { SnackbarContext } from '../../../SnackbarContext';
 
 // ----------------------------------------------------------------------
 
@@ -68,7 +69,7 @@ export default function Header({ onOpenNav }) {
 
   const buttonRef = useRef(null);
 
-  const { user } = useContext(UserContext);
+  const { user, setUser } = useContext(UserContext);
 
   const theme = useTheme();
 
@@ -85,6 +86,8 @@ export default function Header({ onOpenNav }) {
   const [earlyAccessComplete, setEarlyAccessComplete] = useState(false);
   const [earlyAccessDisabled, setEarlyAccessDisabled] = useState(false);
   const [loadingSubscriptionUrl, setLoadingSubscriptionUrl] = useState(false);
+
+  const { setOpen, setMessage, setSeverity } = useContext(SnackbarContext)
 
   const containerRef = useRef(null);
 
@@ -182,6 +185,27 @@ export default function Header({ onOpenNav }) {
       setLoadingSubscriptionUrl(false)
     })
   }
+
+
+
+  const cancelSubscription = () => {
+    setLoadingSubscriptionUrl(true)
+    API.post('publicapi', '/user/update/cancelSubscription').then(results => {
+      console.log(results)
+      setLoadingSubscriptionUrl(false)
+      setMessage('Your subscription has been cancelled.')
+      setSeverity('success')
+      setOpen(true)
+      setUser({...user, magicSubscription: null})
+    }).catch(error => {
+      console.log(error.response)
+      setLoadingSubscriptionUrl(false)
+      setMessage('Something went wrong.')
+      setSeverity('error')
+      setOpen(true)
+    })
+  }
+
 
   return (
     <>
@@ -342,16 +366,26 @@ export default function Header({ onOpenNav }) {
         <Box width="100%" px={2} pb={2} pt={1}>
           {/* TODO: Remove the " || true" from here. Just here for visualizing purposes. */}
           {(user?.userDetails?.earlyAccessStatus === 'approved' || true) ?
-            <LoadingButton loading={loadingSubscriptionUrl} onClick={buySubscription} variant='contained' size='large' fullWidth sx={{
-              backgroundColor: (theme) => theme.palette.success.main,
-              color: (theme) => theme.palette.common.black,
-              '&:hover': {
-                ...(!loadingSubscriptionUrl && {backgroundColor: (theme) => theme.palette.success.dark,
-                color: (theme) => theme.palette.common.black})
+            <>
+              {user?.userDetails?.magicSubscription === 'true' ?
+                <LoadingButton loading={loadingSubscriptionUrl} onClick={cancelSubscription} variant='contained' size='large' fullWidth>
+                  Cancel Subscription
+                </LoadingButton>
+                :
+                <LoadingButton loading={loadingSubscriptionUrl} onClick={buySubscription} variant='contained' size='large' fullWidth sx={{
+                backgroundColor: (theme) => theme.palette.success.main,
+                color: (theme) => theme.palette.common.black,
+                '&:hover': {
+                  ...(!loadingSubscriptionUrl && {
+                    backgroundColor: (theme) => theme.palette.success.dark,
+                    color: (theme) => theme.palette.common.black
+                  })
+                }
+              }}>
+                Choose Plan
+              </LoadingButton>
               }
-            }}>
-              Choose Plan
-            </LoadingButton>
+            </>
             :
             <LoadingButton
               onClick={(event) => {

@@ -151,7 +151,8 @@ type UserDetails @model @auth(
   status: String,
   votes: [SeriesUserVote] @hasMany,
   credits: Int,
-  stripeCustomer: StripeCustomer @hasOne
+  stripeCustomerInfo: StripeCustomer @hasOne,
+  stripeCheckoutSession: [StripeCheckoutSession] @hasMany,
   magicSubscription: String
 }
 
@@ -161,7 +162,17 @@ type StripeCustomer @model @auth(
   ]
 ) {
   id: ID!,
+  user: UserDetails @hasOne
+}
+
+type StripeCheckoutSession @model @auth(
+  rules: [
+    { allow: groups, groups: ["admins"] },
+  ]
+) {
+  id: ID!,
   user: UserDetails @belongsTo
+  status: String
 }
 
 type SeriesUserVote @model @auth(

@@ -151,6 +151,14 @@
           ],
           "category": "function",
           "resourceName": "memesrcTVDB"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcPublicStripeFunction"
         }
       ],
       "providerPlugin": "awscloudformation",
@@ -335,6 +343,20 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "memesrcPublicStripeFunction": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "memesrcUserFunction"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "memesrcRandom": {
       "build": true,
       "dependsOn": [
@@ -411,288 +433,6 @@
     "S3AndCloudFront": {
       "providerPlugin": "awscloudformation",
       "service": "S3AndCloudFront"
-    }
-  },
-  "parameters": {
-    "AMPLIFY_function_AdminQueries9e1cafc6_deploymentBucketName": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "AdminQueries9e1cafc6"
-        }
-      ]
-    },
-    "AMPLIFY_function_AdminQueries9e1cafc6_s3Key": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "AdminQueries9e1cafc6"
-        }
-      ]
-    },
-    "AMPLIFY_function_S3Trigger016e2873_deploymentBucketName": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "S3Trigger016e2873"
-        }
-      ]
-    },
-    "AMPLIFY_function_S3Trigger016e2873_s3Key": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "S3Trigger016e2873"
-        }
-      ]
-    },
-    "AMPLIFY_function_SearchFunction_deploymentBucketName": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "SearchFunction"
-        }
-      ]
-    },
-    "AMPLIFY_function_SearchFunction_s3Key": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "SearchFunction"
-        }
-      ]
-    },
-    "AMPLIFY_function_SearchFunction_secretsPathAmplifyAppId": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "SearchFunction"
-        }
-      ]
-    },
-    "AMPLIFY_function_memesrcAnalyticsAddDailyPartition_deploymentBucketName": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "memesrcAnalyticsAddDailyPartition"
-        }
-      ]
-    },
-    "AMPLIFY_function_memesrcAnalyticsAddDailyPartition_s3Key": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "memesrcAnalyticsAddDailyPartition"
-        }
-      ]
-    },
-    "AMPLIFY_function_memesrcAnalyticsInitDBs_deploymentBucketName": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "memesrcAnalyticsInitDBs"
-        }
-      ]
-    },
-    "AMPLIFY_function_memesrcAnalyticsInitDBs_s3Key": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "memesrcAnalyticsInitDBs"
-        }
-      ]
-    },
-    "AMPLIFY_function_memesrcAnalyticsMsck_deploymentBucketName": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "memesrcAnalyticsMsck"
-        }
-      ]
-    },
-    "AMPLIFY_function_memesrcAnalyticsMsck_s3Key": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "memesrcAnalyticsMsck"
-        }
-      ]
-    },
-    "AMPLIFY_function_memesrcAnalyticsReporting_deploymentBucketName": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "memesrcAnalyticsReporting"
-        }
-      ]
-    },
-    "AMPLIFY_function_memesrcAnalyticsReporting_s3Key": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "memesrcAnalyticsReporting"
-        }
-      ]
-    },
-    "AMPLIFY_function_memesrcFrameFunction_deploymentBucketName": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "memesrcFrameFunction"
-        }
-      ]
-    },
-    "AMPLIFY_function_memesrcFrameFunction_s3Key": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "memesrcFrameFunction"
-        }
-      ]
-    },
-    "AMPLIFY_function_memesrcFrameFunction_secretsPathAmplifyAppId": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "memesrcFrameFunction"
-        }
-      ]
-    },
-    "AMPLIFY_function_memesrcGraphQL_deploymentBucketName": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "memesrcGraphQL"
-        }
-      ]
-    },
-    "AMPLIFY_function_memesrcGraphQL_s3Key": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "memesrcGraphQL"
-        }
-      ]
-    },
-    "AMPLIFY_function_memesrcRandom_deploymentBucketName": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "memesrcRandom"
-        }
-      ]
-    },
-    "AMPLIFY_function_memesrcRandom_s3Key": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "memesrcRandom"
-        }
-      ]
-    },
-    "AMPLIFY_function_memesrcRandom_secretsPathAmplifyAppId": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "memesrcRandom"
-        }
-      ]
-    },
-    "AMPLIFY_function_memesrcTVDB_deploymentBucketName": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "memesrcTVDB"
-        }
-      ]
-    },
-    "AMPLIFY_function_memesrcTVDB_s3Key": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "memesrcTVDB"
-        }
-      ]
-    },
-    "AMPLIFY_function_memesrcTVDB_secretsPathAmplifyAppId": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "memesrcTVDB"
-        }
-      ]
-    },
-    "AMPLIFY_function_memesrcUUID_deploymentBucketName": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "memesrcUUID"
-        }
-      ]
-    },
-    "AMPLIFY_function_memesrcUUID_s3Key": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "memesrcUUID"
-        }
-      ]
-    },
-    "AMPLIFY_function_memesrcUserFunction_deploymentBucketName": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "memesrcUserFunction"
-        }
-      ]
-    },
-    "AMPLIFY_function_memesrcUserFunction_s3Key": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "memesrcUserFunction"
-        }
-      ]
-    },
-    "AMPLIFY_function_memesrcVote_deploymentBucketName": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "memesrcVote"
-        }
-      ]
-    },
-    "AMPLIFY_function_memesrcVote_s3Key": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "memesrcVote"
-        }
-      ]
-    },
-    "AMPLIFY_function_memesrcinpainter_deploymentBucketName": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "memesrcinpainter"
-        }
-      ]
-    },
-    "AMPLIFY_function_memesrcinpainter_s3Key": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "memesrcinpainter"
-        }
-      ]
-    },
-    "AMPLIFY_function_memesrcinpainter_secretsPathAmplifyAppId": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "memesrcinpainter"
-        }
-      ]
     }
   },
   "storage": {
