@@ -23,7 +23,7 @@ import {
 } from '@mui/material';
 import { Auth, API, graphqlOperation } from 'aws-amplify';
 // components
-import { Delete, Edit, Upload } from '@mui/icons-material';
+import { AutoFixHighRounded, Delete, Edit, Upload } from '@mui/icons-material';
 import Label from '../components/label';
 import Iconify from '../components/iconify';
 import Scrollbar from '../components/scrollbar';
@@ -299,6 +299,25 @@ export default function UserPage() {
     }
   }
 
+  const giveEarlyAccessInvite = async (userObj) => {
+    handleCloseMenu();
+    try {
+      await API.graphql(
+        graphqlOperation(updateUserDetails, { input: { id: userObj.id, earlyAccessStatus: 'invited' }})
+      )
+      setMessage(`${userObj.username} has been invited to early access!`)
+      setSeverity('success');
+      setOpen(true)
+      setChosenUser(null)
+    } catch {
+      console.error('Something went wrong.')
+      setMessage('Something went wrong.')
+      setSeverity('error');
+      setOpen(true)
+      setChosenUser(null)
+    }
+  }
+
   return (
     <>
       <Helmet>
@@ -504,6 +523,11 @@ export default function UserPage() {
         <MenuItem onClick={() => makeContributor(chosenUser)}>
           <Upload sx={{ mr: 1.5 }} />
           Make Contributor
+        </MenuItem>
+
+        <MenuItem onClick={() => giveEarlyAccessInvite(chosenUser)}>
+          <AutoFixHighRounded sx={{ mr: 1.5 }} />
+          Invite To Early Access
         </MenuItem>
 
         {/* TODO: Make user list adapt to changes */}
