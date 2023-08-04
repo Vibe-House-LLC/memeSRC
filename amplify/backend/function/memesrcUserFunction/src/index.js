@@ -816,7 +816,7 @@ export const handler = async (event) => {
       async function cancelActiveSubscriptions(subscriptions) {
         // Get only active subscriptions
         const activeSubscriptions = subscriptions.filter(subscription => subscription.status === 'active');
-      
+
         // Cancel each active subscription
         for (const subscription of activeSubscriptions) {
           try {
@@ -837,8 +837,8 @@ export const handler = async (event) => {
           }
         }
         `
-        console.log('removeMagicSubscriptionQuery')
-        console.log(removeMagicSubscriptionQuery)
+      console.log('removeMagicSubscriptionQuery')
+      console.log(removeMagicSubscriptionQuery)
 
       await makeRequest(removeMagicSubscriptionQuery)
 
@@ -857,6 +857,89 @@ export const handler = async (event) => {
         body: {
           error,
           message: 'Something went wrong. Please try again.'
+        }
+      }
+    }
+  }
+
+  if (path === `/${process.env.ENV}/public/user/update/acceptMagicInvitation`) {
+    try {
+      /* ---------------------- Lets pull in the user details --------------------- */
+      const query = `
+        query getUserDetails {
+            getUserDetails(id: "${userSub}") {
+              earlyAccessStatus
+              id
+              magicSubscription
+            }
+          }
+        `;
+      console.log('UserDetails Query Text')
+      console.log(query)
+
+      const userDetailsQuery = await makeRequest(query);
+      console.log('userDetailsQuery')
+      console.log(userDetailsQuery)
+
+      const userDetails = userDetailsQuery.body.data.getUserDetails
+      console.log('User Details')
+      console.log(userDetails)
+
+      /* ----------------------- Now lets check their status ---------------------- */
+
+      if (userDetails?.earlyAccessStatus === 'invited') {
+        // They're invited. Set their magic credits to 5
+        const acceptInviteQuery = `
+          mutation updateUserDetails {
+            updateUserDetails(input: {id: "${userSub}", earlyAccessStatus: "accepted", credits: 5 }) {
+              id
+              earlyAccessStatus
+              credits
+            }
+          }
+        `
+        console.log('acceptInviteQuery')
+        console.log(acceptInviteQuery)
+
+        const acceptInvite = await makeRequest(acceptInviteQuery)
+        console.log('acceptInvite')
+        console.log(acceptInvite)
+
+        // The user has now accepted the invite and has 5 free credits
+        response = {
+          statusCode: 200,
+          body: {
+            status: 'accepted',
+            message: 'Welcome! Enjoy 5 free magic points.',
+            credits: acceptInvite.body.data.updateUserDetails.credits
+          }
+        }
+      } else if (userDetails?.earlyAccessStatus === 'accepted') {
+        // The user is in the accepted state.
+        response = {
+          status: 403,
+          body: {
+            status: 'alreadyAccepted',
+            message: 'You have already accepted the invitation.'
+          }
+        }
+      } else {
+        // The user is not in the invited state.
+        response = {
+          status: 403,
+          body: {
+            status: 'notInvited',
+            message: 'You have not been invited to early access.'
+          }
+        }
+      }
+    } catch (error) {
+      // There was an error
+      response = {
+        status: 403,
+        body: {
+          status: 'error',
+          message: 'There was an error when making the request.'
         }
       }
     }
