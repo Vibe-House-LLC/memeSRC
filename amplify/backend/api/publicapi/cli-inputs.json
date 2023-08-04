@@ -239,6 +239,13 @@
           ]
         }
       }
+    },
+    "/stripeVerification": {
+      "name": "/stripeVerification",
+      "lambdaFunction": "memesrcPublicStripeFunction",
+      "permissions": {
+        "setting": "open"
+      }
     }
   }
 }

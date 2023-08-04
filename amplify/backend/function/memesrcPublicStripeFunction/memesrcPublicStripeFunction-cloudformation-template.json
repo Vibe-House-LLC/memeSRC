@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "{\"createdOn\":\"Mac\",\"createdBy\":\"Amplify\",\"createdWith\":\"12.1.0\",\"stackType\":\"function-Lambda\",\"metadata\":{}}",
+  "Description": "{\"createdOn\":\"Mac\",\"createdBy\":\"Amplify\",\"createdWith\":\"11.0.3\",\"stackType\":\"function-Lambda\",\"metadata\":{}}",
   "Parameters": {
     "CloudWatchRule": {
       "Type": "String",
@@ -16,17 +16,9 @@
     "s3Key": {
       "Type": "String"
     },
-    "apimemesrcGraphQLAPIIdOutput": {
+    "functionmemesrcUserFunctionName": {
       "Type": "String",
-      "Default": "apimemesrcGraphQLAPIIdOutput"
-    },
-    "apimemesrcGraphQLAPIEndpointOutput": {
-      "Type": "String",
-      "Default": "apimemesrcGraphQLAPIEndpointOutput"
-    },
-    "apimemesrcGraphQLAPIKeyOutput": {
-      "Type": "String",
-      "Default": "apimemesrcGraphQLAPIKeyOutput"
+      "Default": "functionmemesrcUserFunctionName"
     },
     "secretsPathAmplifyAppId": {
       "Type": "String"
@@ -62,12 +54,12 @@
         "FunctionName": {
           "Fn::If": [
             "ShouldNotCreateEnvResources",
-            "memesrcUserFunction",
+            "memesrcPublicStripeFunction",
             {
               "Fn::Join": [
                 "",
                 [
-                  "memesrcUserFunction",
+                  "memesrcPublicStripeFunction",
                   "-",
                   {
                     "Ref": "env"
@@ -85,14 +77,8 @@
             "REGION": {
               "Ref": "AWS::Region"
             },
-            "API_MEMESRC_GRAPHQLAPIIDOUTPUT": {
-              "Ref": "apimemesrcGraphQLAPIIdOutput"
-            },
-            "API_MEMESRC_GRAPHQLAPIENDPOINTOUTPUT": {
-              "Ref": "apimemesrcGraphQLAPIEndpointOutput"
-            },
-            "API_MEMESRC_GRAPHQLAPIKEYOUTPUT": {
-              "Ref": "apimemesrcGraphQLAPIKeyOutput"
+            "FUNCTION_MEMESRCUSERFUNCTION_NAME": {
+              "Ref": "functionmemesrcUserFunctionName"
             },
             "stripeKey": {
               "Fn::Join": [
@@ -108,7 +94,7 @@
                         "env": {
                           "Ref": "env"
                         },
-                        "functionName": "memesrcUserFunction"
+                        "functionName": "memesrcPublicStripeFunction"
                       }
                     ]
                   },
@@ -135,12 +121,12 @@
         "RoleName": {
           "Fn::If": [
             "ShouldNotCreateEnvResources",
-            "memesrcLambdaRole548b232b",
+            "memesrcLambdaRole4fa4529b",
             {
               "Fn::Join": [
                 "",
                 [
-                  "memesrcLambdaRole548b232b",
+                  "memesrcLambdaRole4fa4529b",
                   "-",
                   {
                     "Ref": "env"
@@ -229,14 +215,22 @@
             {
               "Effect": "Allow",
               "Action": [
-                "appsync:GraphQL"
+                "lambda:Create*",
+                "lambda:Put*",
+                "lambda:Add*",
+                "lambda:Get*",
+                "lambda:List*",
+                "lambda:Invoke*",
+                "lambda:Update*",
+                "lambda:Delete*",
+                "lambda:Remove*"
               ],
               "Resource": [
                 {
                   "Fn::Join": [
                     "",
                     [
-                      "arn:aws:appsync:",
+                      "arn:aws:lambda:",
                       {
                         "Ref": "AWS::Region"
                       },
@@ -244,31 +238,10 @@
                       {
                         "Ref": "AWS::AccountId"
                       },
-                      ":apis/",
+                      ":function:",
                       {
-                        "Ref": "apimemesrcGraphQLAPIIdOutput"
-                      },
-                      "/types/Query/*"
-                    ]
-                  ]
-                },
-                {
-                  "Fn::Join": [
-                    "",
-                    [
-                      "arn:aws:appsync:",
-                      {
-                        "Ref": "AWS::Region"
-                      },
-                      ":",
-                      {
-                        "Ref": "AWS::AccountId"
-                      },
-                      ":apis/",
-                      {
-                        "Ref": "apimemesrcGraphQLAPIIdOutput"
-                      },
-                      "/types/Mutation/*"
+                        "Ref": "functionmemesrcUserFunctionName"
+                      }
                     ]
                   ]
                 }
@@ -319,7 +292,7 @@
                           "env": {
                             "Ref": "env"
                           },
-                          "functionName": "memesrcUserFunction"
+                          "functionName": "memesrcPublicStripeFunction"
                         }
                       ]
                     },

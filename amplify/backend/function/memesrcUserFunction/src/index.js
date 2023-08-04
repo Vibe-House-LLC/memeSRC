@@ -1,3 +1,17 @@
+/*
+Use the following code to retrieve configured secrets from SSM:
+
+const aws = require('aws-sdk');
+
+const { Parameters } = await (new aws.SSM())
+  .getParameters({
+    Names: ["stripeKey"].map(secretName => process.env[secretName]),
+    WithDecryption: true,
+  })
+  .promise();
+
+Parameters will be of the form { Name: 'secretName', Value: 'secretValue', ... }[]
+*/
 /* Amplify Params - DO NOT EDIT
   API_MEMESRC_GRAPHQLAPIENDPOINTOUTPUT
   API_MEMESRC_GRAPHQLAPIIDOUTPUT
@@ -10,7 +24,9 @@ import crypto from '@aws-crypto/sha256-js';
 import { defaultProvider } from '@aws-sdk/credential-provider-node';
 import { SignatureV4 } from '@aws-sdk/signature-v4';
 import { HttpRequest } from '@aws-sdk/protocol-http';
+import { SSM, GetParametersCommand } from '@aws-sdk/client-ssm';
 import { default as fetch, Request } from 'node-fetch';
+import Stripe from 'stripe';
 
 const GRAPHQL_ENDPOINT = process.env.API_MEMESRC_GRAPHQLAPIENDPOINTOUTPUT;
 const AWS_REGION = process.env.AWS_REGION || 'us-east-1';
@@ -110,7 +126,7 @@ async function processVotes(allItems, userSub) {
 
     if (vote.userDetailsVotesId && vote.userDetailsVotesId.normalize() === userSub.normalize()) {
       currentUserVotes[vote.seriesUserVoteSeriesId] = (currentUserVotes[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
-    
+
       const voteTime = new Date(vote.createdAt);
       if (!lastUserVoteTimestamps[vote.seriesUserVoteSeriesId] || voteTime > lastUserVoteTimestamps[vote.seriesUserVoteSeriesId]) {
         lastUserVoteTimestamps[vote.seriesUserVoteSeriesId] = voteTime;
@@ -118,15 +134,15 @@ async function processVotes(allItems, userSub) {
         const currentTime = new Date().getTime();
         const diffInHours = (currentTime - voteTime.getTime()) / (1000 * 60 * 60);
         isLastUserVoteOlderThan24Hours[vote.seriesUserVoteSeriesId] = diffInHours > 24;
-    
+
         // calculate next vote time
         if (diffInHours < 24) {
-          nextVoteTime[vote.seriesUserVoteSeriesId] = new Date(voteTime.getTime() + 24*60*60*1000).toISOString();
+          nextVoteTime[vote.seriesUserVoteSeriesId] = new Date(voteTime.getTime() + 24 * 60 * 60 * 1000).toISOString();
         } else {
           nextVoteTime[vote.seriesUserVoteSeriesId] = null;
         }
       }
-    }    
+    }
   });
 
   return {
@@ -200,6 +216,7 @@ function getUserDetails(params) {
                       status
                       earlyAccessStatus
                       contributorAccessStatus
+                      magicSubscription
                       votes {
                         items {
                             series {
@@ -229,6 +246,7 @@ function getUserDetails(params) {
                   status
                   earlyAccessStatus
                   contributorAccessStatus
+                  magicSubscription
                   votes {
                     items {
                         series {
@@ -310,6 +328,18 @@ export const handler = async (event) => {
   const body = event.body ? JSON.parse(event.body) : '';
   // Get the path
   const path = event.path;
+  // Pull secrets from SSM
+  const ssmClient = new SSM();
+  const ssmParams = {
+    Names: ['stripeKey'].map(secretName => process.env[secretName]),
+    WithDecryption: true,
+  };
+  const { Parameters } = await ssmClient.send(new GetParametersCommand(ssmParams));
+
+
+  const stripeKey = Parameters.find(param => param.Name === process.env['stripeKey']).Value;
+
+  const stripe = new Stripe(stripeKey);
   // Create the response variable
   let response;
 
@@ -398,9 +428,9 @@ export const handler = async (event) => {
         }
       `;
 
-      console.log(query)
+    console.log(query)
 
-      response = await makeRequest(query);
+    response = await makeRequest(query);
   }
 
   if (path === `/${process.env.ENV}/public/vote`) {
@@ -479,7 +509,7 @@ export const handler = async (event) => {
         nextVoteTime,
         lastUserVoteTimestamps
       } = await processVotes(rawVotes, userSub);
-  
+
       const result = {
         votes: votesCount,
         userVotes: currentUserVotes,
@@ -492,7 +522,7 @@ export const handler = async (event) => {
         nextVoteTime: nextVoteTime,
         lastVoteTime: lastUserVoteTimestamps
       };
-  
+
       response = {
         statusCode: 200,
         body: result,
@@ -594,7 +624,7 @@ export const handler = async (event) => {
 
   // This sets a users Contributor status to "requested"
   if (path === `/${process.env.ENV}/public/user/update/contributorStatus`) {
-    
+
     const query = `
       mutation updateUserDetails {
           updateUserDetails(input: { id: "${userSub}", contributorAccessStatus: "requested" }) {
@@ -614,6 +644,386 @@ export const handler = async (event) => {
         success: true,
         message: `You have been added to the waiting list!`,
         details: becomeContributor
+      }
+    }
+  }
+
+  // Get the checkout session
+  if (path === `/${process.env.ENV}/public/user/update/getCheckoutSession`) {
+    try {
+      // Lets pull in the user details
+      const query = `
+        query getUserDetails {
+            getUserDetails(id: "${userSub}") {
+              earlyAccessStatus
+              id
+              email
+              magicSubscription
+              stripeCustomerInfo {
+                createdAt
+                id
+              }
+            }
+          }
+        `;
+      console.log('The Query')
+      console.log(query)
+
+      const userDetailsQuery = await makeRequest(query);
+      console.log('userDetailsQuery')
+      console.log(userDetailsQuery)
+
+      const userDetails = userDetailsQuery.body.data.getUserDetails
+      console.log('User Details')
+      console.log(userDetails)
+
+      // Now lets set the customer id
+      let stripeCustomerId;
+      if (!userDetails.stripeCustomerInfo) {
+        // Create stripe customer since they don't have one.
+        // metadata is only viewable by us, so I've added their sub as "userId" as this could be useful in the future.
+        const customer = await stripe.customers.create({
+          email: userDetails.email,
+          metadata: {
+            userId: userDetails.id
+          }
+        });
+
+        // Now lets add the StripeCustomer to GraphQL
+        const createStripeCustomerQuery = `
+          mutation createStripeCustomer {
+            createStripeCustomer(input: {id: "${customer.id}", stripeCustomerUserId: "${userDetails.id}"}) {
+              id
+            }
+          }
+        `
+        console.log('createStripeCustomerQuery')
+        console.log(createStripeCustomerQuery)
+        await makeRequest(createStripeCustomerQuery)
+
+        const addStripeCustomerToUserQuery = `
+        mutation updateUserDetails {
+          updateUserDetails(input: {id: "${userDetails.id}", userDetailsStripeCustomerInfoId: "${customer.id}"}) {
+            id
+          }
+        }
+        `
+        console.log('addStripeCustomerToUserQuery')
+        console.log(addStripeCustomerToUserQuery)
+        const addStripeCustomerToUser = await makeRequest(addStripeCustomerToUserQuery)
+        console.log('addStripeCustomerToUser')
+        console.log(addStripeCustomerToUser)
+        console.log(JSON.stringify(addStripeCustomerToUser))
+
+        // And finally, lets set stripeCustomerId to the new id
+        stripeCustomerId = customer.id
+
+      } else {
+        // The user already has a StripeCustomer made, so we will set stripeCustomerId to the one attached to their userDetails.
+        stripeCustomerId = userDetails.stripeCustomerInfo.id
+      }
+
+      const stripeCustomerInfo = await stripe.customers.retrieve(stripeCustomerId, {
+        expand: ['subscriptions'],
+      });
+      console.log('stripeCustomerInfo')
+      console.log(stripeCustomerInfo)
+
+      // Now that the customerId is set, lets create a checkout session.
+      const session = await stripe.checkout.sessions.create({
+        success_url: `https://api.memesrc.com/${process.env.ENV}/public/stripeVerification?checkoutSessionId={CHECKOUT_SESSION_ID}`,
+        cancel_url: body.currentUrl,
+        customer: stripeCustomerId,
+        line_items: [
+          { price: 'price_1NbUZgAqFX20vifIg0yJrCNI', quantity: 1 },
+        ],
+        mode: 'subscription',
+        metadata: {
+          callbackUrl: body.currentUrl
+        }
+      });
+
+      const createCheckoutSessionQuery = `
+        mutation createStripeCheckoutSession {
+          createStripeCheckoutSession(input: {id: "${session.id}", userDetailsStripeCheckoutSessionId: "${userDetails.id}", status: "open"}) {
+            id
+          }
+        }
+      `
+      console.log('createCheckoutSessionQuery')
+      console.log(createCheckoutSessionQuery)
+
+      const createCheckoutSession = await makeRequest(createCheckoutSessionQuery)
+      console.log('createCheckoutSession')
+      console.log(createCheckoutSession)
+
+      response = {
+        statusCode: 200,
+        body: session.url
+      }
+
+    } catch (error) {
+      console.log(error)
+      response = {
+        statusCode: 500,
+        body: {
+          error,
+          message: 'Something went wrong. Please try again.'
+        }
+      }
+    }
+  }
+
+  // Cancel a subscription
+  if (path === `/${process.env.ENV}/public/user/update/cancelSubscription`) {
+    try {
+      // Lets pull in the user details
+      const query = `
+        query getUserDetails {
+            getUserDetails(id: "${userSub}") {
+              earlyAccessStatus
+              id
+              email
+              magicSubscription
+              stripeCustomerInfo {
+                createdAt
+                id
+              }
+            }
+          }
+        `;
+      console.log('The Query')
+      console.log(query)
+
+      const userDetailsQuery = await makeRequest(query);
+      console.log('userDetailsQuery')
+      console.log(userDetailsQuery)
+
+      const userDetails = userDetailsQuery.body.data.getUserDetails
+      console.log('User Details')
+      console.log(userDetails)
+
+
+      const stripeCustomerId = userDetails.stripeCustomerInfo.id
+
+      const stripeCustomerInfo = await stripe.customers.retrieve(stripeCustomerId, {
+        expand: ['subscriptions'],
+      });
+      console.log('stripeCustomerInfo')
+      console.log(JSON.stringify(stripeCustomerInfo))
+      const subscriptions = stripeCustomerInfo.subscriptions.data
+
+      async function cancelActiveSubscriptions(subscriptions) {
+        // Get only active subscriptions
+        const activeSubscriptions = subscriptions.filter(subscription => subscription.status === 'active');
+
+        // Cancel each active subscription
+        for (const subscription of activeSubscriptions) {
+          try {
+            await stripe.subscriptions.cancel(subscription.id);
+            console.log(`Subscription ${subscription.id} cancelled successfully.`);
+          } catch (error) {
+            console.error(`Failed to cancel subscription ${subscription.id}.`, error);
+          }
+        }
+      }
+
+      await cancelActiveSubscriptions(subscriptions)
+
+      const removeMagicSubscriptionQuery = `
+        mutation updateUserDetails {
+          updateUserDetails(input: {id: "${userSub}", magicSubscription: null}) {
+            id
+          }
+        }
+        `
+      console.log('removeMagicSubscriptionQuery')
+      console.log(removeMagicSubscriptionQuery)
+
+      await makeRequest(removeMagicSubscriptionQuery)
+
+      response = {
+        statusCode: 200,
+        body: {
+          subscriptionCancelled: true,
+          message: 'Your subscription has been canceled.'
+        }
+      }
+
+    } catch (error) {
+      console.log(error)
+      response = {
+        statusCode: 500,
+        body: {
+          error,
+          message: 'Something went wrong. Please try again.'
+        }
+      }
+    }
+  }
+
+  if (path === `/${process.env.ENV}/public/user/update/acceptMagicInvitation`) {
+    try {
+      /* ---------------------- Lets pull in the user details --------------------- */
+      const query = `
+        query getUserDetails {
+            getUserDetails(id: "${userSub}") {
+              earlyAccessStatus
+              id
+              magicSubscription
+            }
+          }
+        `;
+      console.log('UserDetails Query Text')
+      console.log(query)
+
+      const userDetailsQuery = await makeRequest(query);
+      console.log('userDetailsQuery')
+      console.log(userDetailsQuery)
+
+      const userDetails = userDetailsQuery.body.data.getUserDetails
+      console.log('User Details')
+      console.log(userDetails)
+
+      /* ----------------------- Now lets check their status ---------------------- */
+
+      if (userDetails?.earlyAccessStatus === 'invited') {
+        // They're invited. Set their magic credits to 5
+        const acceptInviteQuery = `
+          mutation updateUserDetails {
+            updateUserDetails(input: {id: "${userSub}", earlyAccessStatus: "accepted", credits: 5 }) {
+              id
+              earlyAccessStatus
+              credits
+            }
+          }
+        `
+        console.log('acceptInviteQuery')
+        console.log(acceptInviteQuery)
+
+        const acceptInvite = await makeRequest(acceptInviteQuery)
+        console.log('acceptInvite')
+        console.log(acceptInvite)
+
+        // The user has now accepted the invite and has 5 free credits
+        response = {
+          statusCode: 200,
+          body: {
+            status: 'accepted',
+            message: 'Welcome! Enjoy 5 free magic points.',
+            credits: acceptInvite.body.data.updateUserDetails.credits
+          }
+        }
+      } else if (userDetails?.earlyAccessStatus === 'accepted') {
+        // The user is in the accepted state.
+        response = {
+          status: 403,
+          body: {
+            status: 'alreadyAccepted',
+            message: 'You have already accepted the invitation.'
+          }
+        }
+      } else {
+        // The user is not in the invited state.
+        response = {
+          status: 403,
+          body: {
+            status: 'notInvited',
+            message: 'You have not been invited to early access.'
+          }
+        }
+      }
+    } catch (error) {
+      // There was an error
+      response = {
+        status: 403,
+        body: {
+          status: 'error',
+          message: 'There was an error when making the request.'
+        }
+      }
+    }
+  }
+
+  // This handles adding the customers credits after subscribing
+  if (path === `/function/magic69/addCredits`) {
+    try {
+      // Lets get the checkout session from GraphQL
+      const getStripeCheckoutSessionQuery = `
+        query getStripeCheckoutSession {
+          getStripeCheckoutSession(id: "${body.checkoutSessionId}") {
+            id
+            status
+            user {
+              id
+            }
+          }
+        }
+      `
+      console.log('getStripeCheckoutSessionQuery')
+      console.log(getStripeCheckoutSessionQuery)
+
+      const getStripeCheckoutSession = await makeRequest(getStripeCheckoutSessionQuery);
+      console.log('getStripeCheckoutSession')
+      console.log(getStripeCheckoutSession)
+
+      // Now if the checkout session status is open, lets add their credits.
+      const userId = getStripeCheckoutSession.body.data.getStripeCheckoutSession.user.id
+      const status = getStripeCheckoutSession.body.data.getStripeCheckoutSession.status
+
+      if (status === 'open') {
+        const updateUserDetailsQuery = `
+          mutation updateUserDetails {
+            updateUserDetails(input: {id: "${userId}", magicSubscription: "true", credits: 69}) {
+              id
+              credits
+            }
+          }
+        `
+        console.log('updateUserDetailsQuery')
+        console.log(updateUserDetailsQuery)
+
+        const updateUsersCredits = await makeRequest(updateUserDetailsQuery)
+        console.log('updateUsersCredits')
+        console.log(updateUsersCredits)
+
+        const updateCheckoutSessionStatus = `
+          mutation updateStripeCheckoutSession {
+            updateStripeCheckoutSession(input: {id: "${body.checkoutSessionId}", status: "complete"}) {
+              id
+            }
+          }
+        `
+        console.log('updateCheckoutSessionStatus')
+        console.log(updateCheckoutSessionStatus)
+
+        const updateCheckoutSession = await makeRequest(updateCheckoutSessionStatus)
+        console.log('updateCheckoutSession')
+        console.log(updateCheckoutSession)
+
+        response = {
+          statusCode: 200,
+          body: {
+            complete: true,
+            message: 'User has been given 69 credits'
+          }
+        }
+      } else {
+        response = {
+          statusCode: 500,
+          body: {
+            message: 'This checkout session has already been completed.',
+            errorCode: 'CheckoutSessionCompleted'
+          }
+        }
+      }
+    } catch (error) {
+      response = {
+        statusCode: 500,
+        body: {
+          error,
+          message: 'Something went wrong. Please try again.'
+        }
       }
     }
   }

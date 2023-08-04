@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "function": {
+      "memesrcUserFunction": [
+        "create",
+        "read",
+        "update",
+        "delete"
+      ]
+    }
+  },
+  "lambdaLayers": [],
+  "secretNames": [
+    "stripeKey"
+  ]
+}

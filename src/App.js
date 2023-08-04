@@ -6,6 +6,7 @@ import Router from './routes';
 // theme
 import ThemeProvider from './theme';
 import SnackBar from './utils/Snackbar';
+import StripeWatcher from './utils/StripeWatcher';
 // components
 // import ScrollToTop from './components/scroll-to-top';
 // import { StyledChart } from './components/chart';
@@ -23,14 +24,15 @@ export default function App() {
       <SnackBar>
         {/* <ScrollToTop /> */}
         {/* <StyledChart /> */}
-
-        <Suspense fallback={
-          <Backdrop open sx={{ backgroundColor: "white" }}>
-            <CircularProgress />
-          </Backdrop>
-        }>
-          <Router />
-        </Suspense>
+        <StripeWatcher>
+          <Suspense fallback={
+            <Backdrop open sx={{ backgroundColor: "white" }}>
+              <CircularProgress />
+            </Backdrop>
+          }>
+            <Router />
+          </Suspense>
+        </StripeWatcher>
       </SnackBar>
     </ThemeProvider>
   );

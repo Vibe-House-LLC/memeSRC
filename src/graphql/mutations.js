@@ -146,8 +146,19 @@ export const createSourceMedia = /* GraphQL */ `
           nextToken
         }
         credits
+        stripeCustomerInfo {
+          id
+          createdAt
+          updatedAt
+          stripeCustomerUserId
+        }
+        stripeCheckoutSession {
+          nextToken
+        }
+        magicSubscription
         createdAt
         updatedAt
+        userDetailsStripeCustomerInfoId
       }
       createdAt
       updatedAt
@@ -205,8 +216,19 @@ export const updateSourceMedia = /* GraphQL */ `
           nextToken
         }
         credits
+        stripeCustomerInfo {
+          id
+          createdAt
+          updatedAt
+          stripeCustomerUserId
+        }
+        stripeCheckoutSession {
+          nextToken
+        }
+        magicSubscription
         createdAt
         updatedAt
+        userDetailsStripeCustomerInfoId
       }
       createdAt
       updatedAt
@@ -264,8 +286,19 @@ export const deleteSourceMedia = /* GraphQL */ `
           nextToken
         }
         credits
+        stripeCustomerInfo {
+          id
+          createdAt
+          updatedAt
+          stripeCustomerUserId
+        }
+        stripeCheckoutSession {
+          nextToken
+        }
+        magicSubscription
         createdAt
         updatedAt
+        userDetailsStripeCustomerInfoId
       }
       createdAt
       updatedAt
@@ -308,8 +341,10 @@ export const createFile = /* GraphQL */ `
           stripeId
           status
           credits
+          magicSubscription
           createdAt
           updatedAt
+          userDetailsStripeCustomerInfoId
         }
         createdAt
         updatedAt
@@ -358,8 +393,10 @@ export const updateFile = /* GraphQL */ `
           stripeId
           status
           credits
+          magicSubscription
           createdAt
           updatedAt
+          userDetailsStripeCustomerInfoId
         }
         createdAt
         updatedAt
@@ -408,8 +445,10 @@ export const deleteFile = /* GraphQL */ `
           stripeId
           status
           credits
+          magicSubscription
           createdAt
           updatedAt
+          userDetailsStripeCustomerInfoId
         }
         createdAt
         updatedAt
@@ -1048,8 +1087,40 @@ export const createUserDetails = /* GraphQL */ `
         nextToken
       }
       credits
+      stripeCustomerInfo {
+        id
+        user {
+          id
+          username
+          email
+          earlyAccessStatus
+          contributorAccessStatus
+          stripeId
+          status
+          credits
+          magicSubscription
+          createdAt
+          updatedAt
+          userDetailsStripeCustomerInfoId
+        }
+        createdAt
+        updatedAt
+        stripeCustomerUserId
+      }
+      stripeCheckoutSession {
+        items {
+          id
+          status
+          createdAt
+          updatedAt
+          userDetailsStripeCheckoutSessionId
+        }
+        nextToken
+      }
+      magicSubscription
       createdAt
       updatedAt
+      userDetailsStripeCustomerInfoId
     }
   }
 `;
@@ -1089,8 +1160,40 @@ export const updateUserDetails = /* GraphQL */ `
         nextToken
       }
       credits
+      stripeCustomerInfo {
+        id
+        user {
+          id
+          username
+          email
+          earlyAccessStatus
+          contributorAccessStatus
+          stripeId
+          status
+          credits
+          magicSubscription
+          createdAt
+          updatedAt
+          userDetailsStripeCustomerInfoId
+        }
+        createdAt
+        updatedAt
+        stripeCustomerUserId
+      }
+      stripeCheckoutSession {
+        items {
+          id
+          status
+          createdAt
+          updatedAt
+          userDetailsStripeCheckoutSessionId
+        }
+        nextToken
+      }
+      magicSubscription
       createdAt
       updatedAt
+      userDetailsStripeCustomerInfoId
     }
   }
 `;
@@ -1130,8 +1233,295 @@ export const deleteUserDetails = /* GraphQL */ `
         nextToken
       }
       credits
+      stripeCustomerInfo {
+        id
+        user {
+          id
+          username
+          email
+          earlyAccessStatus
+          contributorAccessStatus
+          stripeId
+          status
+          credits
+          magicSubscription
+          createdAt
+          updatedAt
+          userDetailsStripeCustomerInfoId
+        }
+        createdAt
+        updatedAt
+        stripeCustomerUserId
+      }
+      stripeCheckoutSession {
+        items {
+          id
+          status
+          createdAt
+          updatedAt
+          userDetailsStripeCheckoutSessionId
+        }
+        nextToken
+      }
+      magicSubscription
       createdAt
       updatedAt
+      userDetailsStripeCustomerInfoId
+    }
+  }
+`;
+export const createStripeCustomer = /* GraphQL */ `
+  mutation CreateStripeCustomer(
+    $input: CreateStripeCustomerInput!
+    $condition: ModelStripeCustomerConditionInput
+  ) {
+    createStripeCustomer(input: $input, condition: $condition) {
+      id
+      user {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        sourceMedia {
+          nextToken
+        }
+        status
+        votes {
+          nextToken
+        }
+        credits
+        stripeCustomerInfo {
+          id
+          createdAt
+          updatedAt
+          stripeCustomerUserId
+        }
+        stripeCheckoutSession {
+          nextToken
+        }
+        magicSubscription
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+      }
+      createdAt
+      updatedAt
+      stripeCustomerUserId
+    }
+  }
+`;
+export const updateStripeCustomer = /* GraphQL */ `
+  mutation UpdateStripeCustomer(
+    $input: UpdateStripeCustomerInput!
+    $condition: ModelStripeCustomerConditionInput
+  ) {
+    updateStripeCustomer(input: $input, condition: $condition) {
+      id
+      user {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        sourceMedia {
+          nextToken
+        }
+        status
+        votes {
+          nextToken
+        }
+        credits
+        stripeCustomerInfo {
+          id
+          createdAt
+          updatedAt
+          stripeCustomerUserId
+        }
+        stripeCheckoutSession {
+          nextToken
+        }
+        magicSubscription
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+      }
+      createdAt
+      updatedAt
+      stripeCustomerUserId
+    }
+  }
+`;
+export const deleteStripeCustomer = /* GraphQL */ `
+  mutation DeleteStripeCustomer(
+    $input: DeleteStripeCustomerInput!
+    $condition: ModelStripeCustomerConditionInput
+  ) {
+    deleteStripeCustomer(input: $input, condition: $condition) {
+      id
+      user {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        sourceMedia {
+          nextToken
+        }
+        status
+        votes {
+          nextToken
+        }
+        credits
+        stripeCustomerInfo {
+          id
+          createdAt
+          updatedAt
+          stripeCustomerUserId
+        }
+        stripeCheckoutSession {
+          nextToken
+        }
+        magicSubscription
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+      }
+      createdAt
+      updatedAt
+      stripeCustomerUserId
+    }
+  }
+`;
+export const createStripeCheckoutSession = /* GraphQL */ `
+  mutation CreateStripeCheckoutSession(
+    $input: CreateStripeCheckoutSessionInput!
+    $condition: ModelStripeCheckoutSessionConditionInput
+  ) {
+    createStripeCheckoutSession(input: $input, condition: $condition) {
+      id
+      user {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        sourceMedia {
+          nextToken
+        }
+        status
+        votes {
+          nextToken
+        }
+        credits
+        stripeCustomerInfo {
+          id
+          createdAt
+          updatedAt
+          stripeCustomerUserId
+        }
+        stripeCheckoutSession {
+          nextToken
+        }
+        magicSubscription
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+      }
+      status
+      createdAt
+      updatedAt
+      userDetailsStripeCheckoutSessionId
+    }
+  }
+`;
+export const updateStripeCheckoutSession = /* GraphQL */ `
+  mutation UpdateStripeCheckoutSession(
+    $input: UpdateStripeCheckoutSessionInput!
+    $condition: ModelStripeCheckoutSessionConditionInput
+  ) {
+    updateStripeCheckoutSession(input: $input, condition: $condition) {
+      id
+      user {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        sourceMedia {
+          nextToken
+        }
+        status
+        votes {
+          nextToken
+        }
+        credits
+        stripeCustomerInfo {
+          id
+          createdAt
+          updatedAt
+          stripeCustomerUserId
+        }
+        stripeCheckoutSession {
+          nextToken
+        }
+        magicSubscription
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+      }
+      status
+      createdAt
+      updatedAt
+      userDetailsStripeCheckoutSessionId
+    }
+  }
+`;
+export const deleteStripeCheckoutSession = /* GraphQL */ `
+  mutation DeleteStripeCheckoutSession(
+    $input: DeleteStripeCheckoutSessionInput!
+    $condition: ModelStripeCheckoutSessionConditionInput
+  ) {
+    deleteStripeCheckoutSession(input: $input, condition: $condition) {
+      id
+      user {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        sourceMedia {
+          nextToken
+        }
+        status
+        votes {
+          nextToken
+        }
+        credits
+        stripeCustomerInfo {
+          id
+          createdAt
+          updatedAt
+          stripeCustomerUserId
+        }
+        stripeCheckoutSession {
+          nextToken
+        }
+        magicSubscription
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+      }
+      status
+      createdAt
+      updatedAt
+      userDetailsStripeCheckoutSessionId
     }
   }
 `;
@@ -1157,8 +1547,19 @@ export const createSeriesUserVote = /* GraphQL */ `
           nextToken
         }
         credits
+        stripeCustomerInfo {
+          id
+          createdAt
+          updatedAt
+          stripeCustomerUserId
+        }
+        stripeCheckoutSession {
+          nextToken
+        }
+        magicSubscription
         createdAt
         updatedAt
+        userDetailsStripeCustomerInfoId
       }
       series {
         id
@@ -1205,8 +1606,19 @@ export const updateSeriesUserVote = /* GraphQL */ `
           nextToken
         }
         credits
+        stripeCustomerInfo {
+          id
+          createdAt
+          updatedAt
+          stripeCustomerUserId
+        }
+        stripeCheckoutSession {
+          nextToken
+        }
+        magicSubscription
         createdAt
         updatedAt
+        userDetailsStripeCustomerInfoId
       }
       series {
         id
@@ -1253,8 +1665,19 @@ export const deleteSeriesUserVote = /* GraphQL */ `
           nextToken
         }
         credits
+        stripeCustomerInfo {
+          id
+          createdAt
+          updatedAt
+          stripeCustomerUserId
+        }
+        stripeCheckoutSession {
+          nextToken
+        }
+        magicSubscription
         createdAt
         updatedAt
+        userDetailsStripeCustomerInfoId
       }
       series {
         id

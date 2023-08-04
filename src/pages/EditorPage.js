@@ -6,7 +6,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
 import { Accordion, AccordionDetails, AccordionSummary, Backdrop, Button, Card, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, TextField, ToggleButton, ToggleButtonGroup, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
-import { Add, AddCircleOutline, ArrowForward, ArrowForwardIos, AutoFixHighRounded, Close, ContentCopy, Description, FormatAlignCenter, FormatAlignLeft, FormatAlignRight, GpsFixed, GpsNotFixed, HighlightOffRounded, History, HistoryToggleOffRounded, IosShare, Menu, More, PlusOne, Redo, Share, SupervisedUserCircle, Undo, Update } from '@mui/icons-material';
+import { Add, AddCircleOutline, ArrowForward, ArrowForwardIos, AutoFixHighRounded, Close, ContentCopy, Description, FormatAlignCenter, FormatAlignLeft, FormatAlignRight, GpsFixed, GpsNotFixed, HighlightOffRounded, History, HistoryToggleOffRounded, IosShare, Menu, More, PlusOne, Redo, Share, SupervisedUserCircle, Undo, Update, Verified } from '@mui/icons-material';
 import { API, Storage } from 'aws-amplify';
 import { Box } from '@mui/system';
 import { Helmet } from 'react-helmet-async';
@@ -102,7 +102,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
   const [loadedSeriesTitle, setLoadedSeriesTitle] = useState('_universal');
   const [drawingMode, setDrawingMode] = useState(false);
-  const [magicPrompt, setMagicPrompt] = useState('simple photo')
+  const [magicPrompt, setMagicPrompt] = useState('Everyday scene as cinestill sample')
   const [imageLoaded, setImageLoaded] = useState(false);
   const [loadingInpaintingResult, setLoadingInpaintingResult] = useState(false);
   const { setSeverity, setMessage, setOpen } = useContext(SnackbarContext);
@@ -119,6 +119,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
   const [earlyAccessComplete, setEarlyAccessComplete] = useState(false);
   const [earlyAccessDisabled, setEarlyAccessDisabled] = useState(false);
+  const [loadingSubscriptionUrl, setLoadingSubscriptionUrl] = useState(false);
 
   const [subtitlesExpanded, setSubtitlesExpanded] = useState(false);
   const buttonRef = useRef(null);
@@ -134,6 +135,60 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       setEarlyAccessLoading(false);
       setEarlyAccessDisabled(true);
     }).catch(err => console.log(err))
+  }
+
+  const acceptInvitation = () => {
+    setLoadingSubscriptionUrl(true)
+    API.post('publicapi', '/user/update/acceptMagicInvitation').then(results => {
+      console.log(results)
+      setUser({ ...user, userDetails: { ...user.userDetails, earlyAccessStatus: 'accepted', credits: results.credits } })
+      setLoadingSubscriptionUrl(false)
+      setMessage(results.message);
+      setSeverity('success');
+      setOpen(true)
+    }).catch(error => {
+      console.log(error.response)
+      setMessage(error.response.message);
+      setSeverity('error');
+      setOpen(true)
+      setLoadingSubscriptionUrl(false)
+    })
+  }
+
+  const buySubscription = () => {
+    setLoadingSubscriptionUrl(true)
+    API.post('publicapi', '/user/update/getCheckoutSession', {
+      body: {
+        currentUrl: window.location.href
+      }
+    }).then(results => {
+      console.log(results)
+      setLoadingSubscriptionUrl(false)
+      window.location.href = results
+    }).catch(error => {
+      console.log(error.response)
+      setLoadingSubscriptionUrl(false)
+    })
+  }
+
+
+
+  const cancelSubscription = () => {
+    setLoadingSubscriptionUrl(true)
+    API.post('publicapi', '/user/update/cancelSubscription').then(results => {
+      console.log(results)
+      setLoadingSubscriptionUrl(false)
+      setMessage('Your subscription has been cancelled.')
+      setSeverity('info')
+      setOpen(true)
+      setUser({ ...user, userDetails: { ...user.userDetails, magicSubscription: null } })
+    }).catch(error => {
+      console.log(error.response)
+      setLoadingSubscriptionUrl(false)
+      setMessage('Something went wrong.')
+      setSeverity('error')
+      setOpen(true)
+    })
   }
 
   const handleSubtitlesExpand = () => {
@@ -1530,93 +1585,238 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
             maxWidth: '400px',
           }}
         >
-          <Stack justifyContent="center" spacing={3}>
-            <Stack direction="row" color="#54d62c" alignItems="center" justifyContent="left" spacing={1}>
-              <AutoFixHighRounded fontSize="large" />
-              <Typography variant="h3">Magic Tools</Typography>
+          {/* --------------------- User is invited to early access -------------------- */}
+          {(user?.userDetails?.earlyAccessStatus === 'invited') &&
+            <>
+              <Stack justifyContent="center" spacing={3}>
+                <Stack direction="row" color="#54d62c" alignItems="center" justifyContent="left" spacing={1}>
+                  <AutoFixHighRounded fontSize="large" />
+                  <Typography variant="h3">Magic Tools</Typography>
+                </Stack>
+
+                <Typography variant="h3">
+                  A new suite of generative editing tools and features are coming soon!
+                </Typography>
+
+                <Typography variant="subtitle1" fontWeight="bold" lineHeight={2} textAlign="left" px={2}>
+                  <ul>
+                    <li>
+                      Magic Eraser{' '}
+                      <Chip
+                        color="success"
+                        size="small"
+                        label="Early Access"
+                        sx={{ marginLeft: '5px', opacity: 0.7 }}
+                        variant="outlined"
+                      />
+                    </li>
+                    <li>
+                      Magic Fill{' '}
+                      <Chip size="small" label="Planned" sx={{ marginLeft: '5px', opacity: 0.5 }} variant="outlined" />
+                    </li>
+                    <li>
+                      Magic Expander{' '}
+                      <Chip size="small" label="Planned" sx={{ marginLeft: '5px', opacity: 0.5 }} variant="outlined" />
+                    </li>
+                    <li>
+                      Magic Isolator{' '}
+                      <Chip size="small" label="Planned" sx={{ marginLeft: '5px', opacity: 0.5 }} variant="outlined" />
+                    </li>
+                  </ul>
+                </Typography>
+
+                <Stack direction='row' alignItems='center'>
+                  <Verified sx={{ mr: 1 }} color='success' />
+                  <Typography variant="h5" sx={{ color: theme => theme.palette.success.main }}>
+                    Congrats!
+                  </Typography>
+                </Stack>
+              </Stack>
+              <Typography variant='body1' textAlign='left' fontWeight={700} pt={1}>
+                You've been invited to the Early Access program to help us test new features as they're developed.
+              </Typography>
+            </>
+          }
+
+          {/* --------------------- User has accepted early access -------------------- */}
+          {(user?.userDetails?.earlyAccessStatus === 'accepted') &&
+            <Stack justifyContent="center" spacing={3}>
+              <Stack direction="row" color="#54d62c" alignItems="center" justifyContent="left" spacing={1}>
+                <AutoFixHighRounded fontSize="large" />
+                <Typography variant="h3">Magic Tools</Typography>
+              </Stack>
+
+              <Typography variant="h4">
+                You're in the Early Access program for a new suite of generative editing tools!
+              </Typography>
+
+              <Typography variant="subtitle1" fontWeight="bold" lineHeight={2} textAlign="left" px={2}>
+                <ul>
+                  <li>
+                    Magic Eraser{' '}
+                    <Chip
+                      color="success"
+                      size="small"
+                      label="Early Access"
+                      sx={{ marginLeft: '5px', opacity: 0.7 }}
+                      variant="outlined"
+                    />
+                  </li>
+                  <li>
+                    Magic Fill{' '}
+                    <Chip size="small" label="Planned" sx={{ marginLeft: '5px', opacity: 0.5 }} variant="outlined" />
+                  </li>
+                  <li>
+                    Magic Expander{' '}
+                    <Chip size="small" label="Planned" sx={{ marginLeft: '5px', opacity: 0.5 }} variant="outlined" />
+                  </li>
+                  <li>
+                    Magic Isolator{' '}
+                    <Chip size="small" label="Planned" sx={{ marginLeft: '5px', opacity: 0.5 }} variant="outlined" />
+                  </li>
+                </ul>
+              </Typography>
+              <Divider />
+              {user?.userDetails?.magicSubscription === 'true' ?
+                <Typography variant='body1' component='span' fontWeight={800} fontSize={20} textAlign='center'>
+                  You have <Typography variant='body1' component='span' fontWeight={800} fontSize={26} sx={{ color: (theme) => theme.palette.success.main }} textAlign='center'>{user?.userDetails?.credits}</Typography> credits
+                </Typography>
+                :
+                <Typography variant='body1' component='span' fontWeight={800} fontSize={20} textAlign='center'>
+                  You have <Typography variant='body1' component='span' fontWeight={800} fontSize={26} sx={{ color: (theme) => theme.palette.success.main }} textAlign='center'>{user?.userDetails?.credits}</Typography> free credits
+                </Typography>
+              }
             </Stack>
+          }
 
-            <Typography variant="h3">
-              A new suite of generative editing tools and features are coming soon!
-            </Typography>
+          {/* --------------------- User has done nothing about early access -------------------- */}
+          {(!user?.userDetails?.earlyAccessStatus || user?.userDetails?.earlyAccessStatus === 'requested') &&
+            <Stack justifyContent="center" spacing={3}>
+              <Stack direction="row" color="#54d62c" alignItems="center" justifyContent="left" spacing={1}>
+                <AutoFixHighRounded fontSize="large" />
+                <Typography variant="h3">Magic Tools</Typography>
+              </Stack>
 
-            <Typography variant="subtitle1" fontWeight="bold" lineHeight={2} textAlign="left" px={2}>
-              <ul>
-                <li>
-                  Magic Eraser{' '}
-                  <Chip
-                    color="success"
-                    size="small"
-                    label="Early Access"
-                    sx={{ marginLeft: '5px', opacity: 0.7 }}
-                    variant="outlined"
-                  />
-                </li>
-                <li>
-                  Magic Fill{' '}
-                  <Chip size="small" label="Planned" sx={{ marginLeft: '5px', opacity: 0.5 }} variant="outlined" />
-                </li>
-                <li>
-                  Magic Expander{' '}
-                  <Chip size="small" label="Planned" sx={{ marginLeft: '5px', opacity: 0.5 }} variant="outlined" />
-                </li>
-                <li>
-                  Magic Isolator{' '}
-                  <Chip size="small" label="Planned" sx={{ marginLeft: '5px', opacity: 0.5 }} variant="outlined" />
-                </li>
-              </ul>
-            </Typography>
+              <Typography variant="h3">
+                A new suite of generative editing tools and features are coming soon!
+              </Typography>
 
-            <Typography variant="body1">
-              We're opening an Early Access program for users who would like to help us test these features as they're
-              developed.
-            </Typography>
-          </Stack>
+              <Typography variant="subtitle1" fontWeight="bold" lineHeight={2} textAlign="left" px={2}>
+                <ul>
+                  <li>
+                    Magic Eraser{' '}
+                    <Chip
+                      color="success"
+                      size="small"
+                      label="Early Access"
+                      sx={{ marginLeft: '5px', opacity: 0.7 }}
+                      variant="outlined"
+                    />
+                  </li>
+                  <li>
+                    Magic Fill{' '}
+                    <Chip size="small" label="Planned" sx={{ marginLeft: '5px', opacity: 0.5 }} variant="outlined" />
+                  </li>
+                  <li>
+                    Magic Expander{' '}
+                    <Chip size="small" label="Planned" sx={{ marginLeft: '5px', opacity: 0.5 }} variant="outlined" />
+                  </li>
+                  <li>
+                    Magic Isolator{' '}
+                    <Chip size="small" label="Planned" sx={{ marginLeft: '5px', opacity: 0.5 }} variant="outlined" />
+                  </li>
+                </ul>
+              </Typography>
+              <Typography variant="body1"> We're opening an Early Access program for users who would like to help us test these features as they're
+                developed.
+              </Typography>
+            </Stack>
+          }
         </Box>
         <Box width="100%" px={2} pb={2} pt={1}>
-          <LoadingButton
-            onClick={(event) => {
-              if (user) {
-                earlyAccessSubmit();
-              } else {
-                navigate('/signup')
+          {(user?.userDetails?.earlyAccessStatus === 'accepted') ?
+            <>
+              {user?.userDetails?.magicSubscription === 'true' ?
+                <LoadingButton loading={loadingSubscriptionUrl} onClick={cancelSubscription} variant='contained' size='large' fullWidth>
+                  Cancel Subscription
+                </LoadingButton>
+                :
+                <LoadingButton loading={loadingSubscriptionUrl} onClick={buySubscription} variant='contained' size='large' fullWidth sx={{
+                  backgroundColor: (theme) => theme.palette.success.main,
+                  color: (theme) => theme.palette.common.black,
+                  '&:hover': {
+                    ...(!loadingSubscriptionUrl && {
+                      backgroundColor: (theme) => theme.palette.success.dark,
+                      color: (theme) => theme.palette.common.black
+                    })
+                  }
+                }}>
+                  Get More Credits
+                </LoadingButton>
               }
-            }}
-            loading={earlyAccessLoading}
-            disabled={user?.userDetails?.earlyAccessStatus || earlyAccessLoading || earlyAccessDisabled || earlyAccessComplete}
-            variant="contained"
-            startIcon={<SupervisedUserCircle />}
-            size="large"
-            fullWidth
-            sx={css`
-            font-size: 18px;
-            background-color: #54d62c;
-            color: black;
-    
-            ${!(earlyAccessLoading || earlyAccessDisabled) ? `@media (hover: hover) and (pointer: fine) {
-              /* Apply hover style only on non-mobile devices */
-              &:hover {
-                background-color: #96f176;
-                color: black;
+            </>
+            :
+            <>
+              {(user?.userDetails?.earlyAccessStatus === 'invited') ?
+                <LoadingButton loading={loadingSubscriptionUrl} onClick={acceptInvitation} variant='contained' size='large' fullWidth sx={{
+                  backgroundColor: (theme) => theme.palette.success.main,
+                  color: (theme) => theme.palette.common.black,
+                  '&:hover': {
+                    ...(!loadingSubscriptionUrl && {
+                      backgroundColor: (theme) => theme.palette.success.dark,
+                      color: (theme) => theme.palette.common.black
+                    })
+                  }
+                }}>
+                  Accept Invitation
+                </LoadingButton>
+                :
+                <LoadingButton
+                  onClick={(event) => {
+                    if (user) {
+                      earlyAccessSubmit();
+                    } else {
+                      navigate('/signup')
+                    }
+                  }}
+                  loading={earlyAccessLoading}
+                  disabled={user?.userDetails?.earlyAccessStatus || earlyAccessLoading || earlyAccessDisabled || earlyAccessComplete}
+                  variant="contained"
+                  startIcon={<SupervisedUserCircle />}
+                  size="large"
+                  fullWidth
+                  sx={css`
+                        font-size: 18px;
+                        background-color: #54d62c;
+                        color: black;
+                
+                        ${!(earlyAccessLoading || earlyAccessDisabled) ? `@media (hover: hover) and (pointer: fine) {
+                          /* Apply hover style only on non-mobile devices */
+                          &:hover {
+                            background-color: #96f176;
+                            color: black;
+                          }
+                        }` : ''}
+                      `}
+                  onBlur={() => {
+                    // Blur the button when it loses focus
+                    buttonRef.current.blur();
+                  }}
+                  ref={buttonRef}
+                >
+                  {earlyAccessComplete ? (
+                    `You're on the list!`
+                  ) : (
+                    <>
+                      {user?.userDetails?.earlyAccessStatus && user?.userDetails?.earlyAccessStatus !== null
+                        ? `You're on the list!`
+                        : 'Request Access'}
+                    </>
+                  )}
+                </LoadingButton>
               }
-            }` : ''}
-          `}
-            onBlur={() => {
-              // Blur the button when it loses focus
-              buttonRef.current.blur();
-            }}
-            ref={buttonRef}
-          >
-            {earlyAccessComplete ? (
-              `You're on the list!`
-            ) : (
-              <>
-                {user?.userDetails?.earlyAccessStatus && user?.userDetails?.earlyAccessStatus !== null
-                  ? `You're on the list!`
-                  : 'Request Access'}
-              </>
-            )}
-          </LoadingButton>
+            </>
+          }
           {/* <Typography
               variant="caption"
               align="center"
