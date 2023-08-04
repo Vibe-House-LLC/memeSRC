@@ -735,7 +735,7 @@ export const handler = async (event) => {
         cancel_url: body.currentUrl,
         customer: stripeCustomerId,
         line_items: [
-          { price: 'price_1NbUZgAqFX20vifIg0yJrCNI', quantity: 1 },
+          { price: 'price_1NbXguAqFX20vifI34N1MJFO', quantity: 1 },
         ],
         mode: 'subscription',
         metadata: {
