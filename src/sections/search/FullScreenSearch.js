@@ -397,7 +397,7 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
                 </Box>
                 {currentThemeTitleText}
               </Typography>
-              {!localStorage.getItem('alertDismissed') && (
+              {/* {!localStorage.getItem('alertDismissed') && (
                 <Alert
                   severity="info"
                   action={
@@ -432,7 +432,7 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
                 >
                   <b>New:</b> Vote every 24h!
                 </Alert>
-              )}
+              )} */}
             </Grid>
           </Grid>
           <StyledSearchForm onSubmit={(e) => searchFunction(e)}>
