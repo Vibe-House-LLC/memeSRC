@@ -375,7 +375,7 @@ export default function Header({ onOpenNav }) {
                 <Stack direction='row' alignItems='center'>
                   <Verified sx={{ mr: 1 }} color='success' />
                   <Typography variant="h5" sx={{ color: theme => theme.palette.success.main }}>
-                    Congrats!
+                    You're Invited!
                   </Typography>
                 </Stack>
               </Stack>
