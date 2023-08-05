@@ -102,7 +102,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
   const [loadedSeriesTitle, setLoadedSeriesTitle] = useState('_universal');
   const [drawingMode, setDrawingMode] = useState(false);
-  const [magicPrompt, setMagicPrompt] = useState('Everyday scene as cinestill sample')
+  const [magicPrompt, setMagicPrompt] = useState('Everyday scene as cinestill sample, Empty, Nothing, Plain, Vacant, Desolate, Void, Barren, Uninhabited, Abandoned, Unoccupied, Untouched, Clear, Blank, Pristine, Unmarred')
   const [imageLoaded, setImageLoaded] = useState(false);
   const [loadingInpaintingResult, setLoadingInpaintingResult] = useState(false);
   const { setSeverity, setMessage, setOpen } = useContext(SnackbarContext);
