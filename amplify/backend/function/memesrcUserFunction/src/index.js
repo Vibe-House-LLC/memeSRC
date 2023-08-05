@@ -888,10 +888,11 @@ export const handler = async (event) => {
       /* ----------------------- Now lets check their status ---------------------- */
 
       if (userDetails?.earlyAccessStatus === 'invited') {
+        const freeCreditValue = Math.max(5, userDetails.credits)
         // They're invited. Set their magic credits to 5
         const acceptInviteQuery = `
           mutation updateUserDetails {
-            updateUserDetails(input: {id: "${userSub}", earlyAccessStatus: "accepted", credits: 5 }) {
+            updateUserDetails(input: {id: "${userSub}", earlyAccessStatus: "accepted", credits: ${freeCreditValue} }) {
               id
               earlyAccessStatus
               credits
