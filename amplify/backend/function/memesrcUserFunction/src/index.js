@@ -907,12 +907,12 @@ export const handler = async (event) => {
         console.log('acceptInvite')
         console.log(acceptInvite)
 
-        // The user has now accepted the invite and has 5 free credits
+        // The user has now accepted the invite and has free credits
         response = {
           statusCode: 200,
           body: {
             status: 'accepted',
-            message: 'Welcome! Enjoy 5 free magic points.',
+            message: `You're in! You have some free credits.`,
             credits: acceptInvite.body.data.updateUserDetails.credits
           }
         }
