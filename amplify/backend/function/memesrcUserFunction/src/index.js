@@ -871,6 +871,7 @@ export const handler = async (event) => {
               earlyAccessStatus
               id
               magicSubscription
+              credits
             }
           }
         `;
@@ -888,7 +889,7 @@ export const handler = async (event) => {
       /* ----------------------- Now lets check their status ---------------------- */
 
       if (userDetails?.earlyAccessStatus === 'invited') {
-        const freeCreditValue = Math.max(5, userDetails.credits)
+        const freeCreditValue = Math.max(5, (userDetails.credits || 0));
         // They're invited. Set their magic credits to 5
         const acceptInviteQuery = `
           mutation updateUserDetails {
@@ -936,11 +937,12 @@ export const handler = async (event) => {
       }
     } catch (error) {
       // There was an error
+      console.log(error)
       response = {
         status: 403,
         body: {
           status: 'error',
-          message: 'There was an error when making the request.'
+          message: 'There was an error when making the request'
         }
       }
     }
