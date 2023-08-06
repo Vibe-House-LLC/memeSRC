@@ -16,9 +16,58 @@ export default function EditorProjectsPage() {
       { id: 4, title: 'Project 4', imageUrl: 'https://picsum.photos/id/240/200/267', createdDate: '2023-04-04' },
       { id: 5, title: 'Project 5', imageUrl: 'https://picsum.photos/id/241/200/267', createdDate: '2023-05-05' },
       { id: 6, title: 'Project 6', imageUrl: 'https://picsum.photos/id/242/200/267', createdDate: '2023-06-06' },
-      // add more projects as needed
     ]);
   }, []);
+
+  // Project Card sub-component
+  function ProjectCard({ project, isAddNew }) {
+    const onClick = isAddNew ? () => navigate('/editor/new') : undefined;
+
+    return (
+      <Card>
+        <CardActionArea onClick={onClick}>
+          <Box
+            sx={{
+              height: '300px',
+              position: 'relative',
+              backgroundColor: isAddNew ? 'gray' : undefined,
+              display: isAddNew ? 'flex' : undefined,
+              justifyContent: isAddNew ? 'center' : undefined,
+              alignItems: isAddNew ? 'center' : undefined,
+            }}
+          >
+            {isAddNew ? (
+              <AddCircleOutlineIcon style={{ fontSize: '5rem' }} />
+            ) : (
+              <img
+                src={project.imageUrl}
+                alt={project.title}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  objectPosition: 'center',
+                }}
+              />
+            )}
+          </Box>
+          <CardContent>
+            <Typography gutterBottom variant="h5" component="div">
+              {isAddNew ? 'Create New Project' : project.title}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {isAddNew
+                ? 'Start a new editor project'
+                : `Created on: ${new Date(project.createdDate).toLocaleDateString()}`}
+            </Typography>
+          </CardContent>
+        </CardActionArea>
+      </Card>
+    );
+  }
 
   return (
     <BasePage
@@ -32,66 +81,12 @@ export default function EditorProjectsPage() {
       <Container sx={{ py: 5 }}>
         <Grid container spacing={3}>
           <Grid item key="addNew" xs={12} sm={6} md={4}>
-            <Card>
-              <CardActionArea onClick={() => navigate('/editor/new')}>
-                <Box sx={{
-                  height: '300px',
-                  position: 'relative',
-                  backgroundColor: 'gray',
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center'
-                }}>
-                  <AddCircleOutlineIcon
-                    style={{
-                      fontSize: '5rem'
-                    }}
-                  />
-                </Box>
-                <CardContent>
-                  <Typography gutterBottom variant="h5" component="div">
-                    Create New Project
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Start a new editor project
-                  </Typography>
-                </CardContent>
-              </CardActionArea>
-            </Card>
+            <ProjectCard isAddNew />
           </Grid>
 
           {projects.map((project) => (
             <Grid item key={project.id} xs={12} sm={6} md={4}>
-              <Card>
-                <CardActionArea>
-                  <Box sx={{
-                    height: '300px',
-                    position: 'relative',
-                  }}>
-                    <img
-                      src={project.imageUrl}
-                      alt={project.title}
-                      style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover',
-                        objectPosition: 'center',
-                      }}
-                    />
-                  </Box>
-                  <CardContent>
-                    <Typography gutterBottom variant="h5" component="div">
-                      {project.title}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Created on: {new Date(project.createdDate).toLocaleDateString()}
-                    </Typography>
-                  </CardContent>
-                </CardActionArea>
-              </Card>
+              <ProjectCard project={project} />
             </Grid>
           ))}
         </Grid>
