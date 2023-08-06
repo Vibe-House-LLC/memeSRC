@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Container, Typography, Grid, Card, CardActionArea, CardContent, Box, IconButton } from '@mui/material';
+import { Container, Typography, Grid, Card, CardActionArea, CardContent, Box } from '@mui/material';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import { useNavigate } from 'react-router-dom';
 import BasePage from './BasePage';
@@ -33,20 +33,18 @@ export default function EditorProjectsPage() {
         <Grid container spacing={3}>
           <Grid item key="addNew" xs={12} sm={6} md={4}>
             <Card>
-              <CardActionArea>
-                <Box
-                  sx={{
-                    height: '300px',
-                    position: 'relative',
-                    backgroundColor: 'gray',
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                  }}
-                >
+              <CardActionArea onClick={() => navigate('/editor/new')}>
+                <Box sx={{
+                  height: '300px',
+                  position: 'relative',
+                  backgroundColor: 'gray',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center'
+                }}>
                   <AddCircleOutlineIcon
                     style={{
-                      fontSize: '5rem',
+                      fontSize: '5rem'
                     }}
                   />
                 </Box>
@@ -66,12 +64,10 @@ export default function EditorProjectsPage() {
             <Grid item key={project.id} xs={12} sm={6} md={4}>
               <Card>
                 <CardActionArea>
-                  <Box
-                    sx={{
-                      height: '300px',
-                      position: 'relative',
-                    }}
-                  >
+                  <Box sx={{
+                    height: '300px',
+                    position: 'relative',
+                  }}>
                     <img
                       src={project.imageUrl}
                       alt={project.title}
