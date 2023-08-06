@@ -20,7 +20,7 @@ import {
   Fab,
   Divider,
 } from '@mui/material';
-import { AutoFixHighRounded, Close, Verified } from '@mui/icons-material';
+import { Add, ArrowCircleUpRounded, ArrowUpward, ArrowUpwardRounded, AutoFixHighRounded, Close, HdrPlusTwoTone, InfoRounded, MonetizationOnRounded, NewReleasesRounded, UpgradeRounded, Verified } from '@mui/icons-material';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import SupervisedUserCircleIcon from '@mui/icons-material/SupervisedUserCircle';
 // utils
@@ -305,8 +305,8 @@ export default function Header({ onOpenNav }) {
           sx: {
             backgroundColor: 'black',
             borderRadius: '15px',
-            padding: '7px'
-          }
+            padding: '7px',
+          },
         }}
       >
         <Fab
@@ -333,7 +333,7 @@ export default function Header({ onOpenNav }) {
           }}
         >
           {/* --------------------- User is invited to early access -------------------- */}
-          {(user?.userDetails?.earlyAccessStatus === 'invited') &&
+          {user?.userDetails?.earlyAccessStatus === 'invited' && (
             <>
               <Stack justifyContent="center" spacing={3}>
                 <Stack direction="row" color="#54d62c" alignItems="center" justifyContent="left" spacing={1}>
@@ -372,21 +372,21 @@ export default function Header({ onOpenNav }) {
                   </ul>
                 </Typography>
 
-                <Stack direction='row' alignItems='center'>
-                  <Verified sx={{ mr: 1 }} color='success' />
-                  <Typography variant="h5" sx={{ color: theme => theme.palette.success.main }}>
+                <Stack direction="row" alignItems="center">
+                  <Verified sx={{ mr: 1 }} color="success" />
+                  <Typography variant="h5" sx={{ color: (theme) => theme.palette.success.main }}>
                     You're Invited!
                   </Typography>
                 </Stack>
               </Stack>
-              <Typography variant='body1' textAlign='left' fontWeight={700} pt={1}>
+              <Typography variant="body1" textAlign="left" fontWeight={700} pt={1}>
                 You've been invited to the Early Access program to help us test new features as they're developed.
               </Typography>
             </>
-          }
+          )}
 
           {/* --------------------- User has accepted early access -------------------- */}
-          {(user?.userDetails?.earlyAccessStatus === 'accepted') &&
+          {user?.userDetails?.earlyAccessStatus === 'accepted' && (
             <Stack justifyContent="center" spacing={3}>
               <Stack direction="row" color="#54d62c" alignItems="center" justifyContent="left" spacing={1}>
                 <AutoFixHighRounded fontSize="large" />
@@ -424,20 +424,42 @@ export default function Header({ onOpenNav }) {
                 </ul>
               </Typography>
               <Divider />
-              {user?.userDetails?.magicSubscription === 'true' ?
-                <Typography variant='body1' component='span' fontWeight={800} fontSize={20} textAlign='center'>
-                  You have <Typography variant='body1' component='span' fontWeight={800} fontSize={26} sx={{ color: (theme) => theme.palette.success.main }} textAlign='center'>{user?.userDetails?.credits}</Typography> credits
+              {user?.userDetails?.magicSubscription === 'true' ? (
+                <Typography variant="body1" component="span" fontWeight={800} fontSize={20} textAlign="center">
+                  You have{' '}
+                  <Typography
+                    variant="body1"
+                    component="span"
+                    fontWeight={800}
+                    fontSize={26}
+                    sx={{ color: (theme) => theme.palette.success.main }}
+                    textAlign="center"
+                  >
+                    {user?.userDetails?.credits}
+                  </Typography>{' '}
+                  credits
                 </Typography>
-                :
-                <Typography variant='body1' component='span' fontWeight={800} fontSize={20} textAlign='center'>
-                  You have <Typography variant='body1' component='span' fontWeight={800} fontSize={26} sx={{ color: (theme) => theme.palette.success.main }} textAlign='center'>{user?.userDetails?.credits}</Typography> free credits
+              ) : (
+                <Typography variant="body1" component="span" fontWeight={800} fontSize={20} textAlign="center">
+                  You have{' '}
+                  <Typography
+                    variant="body1"
+                    component="span"
+                    fontWeight={800}
+                    fontSize={26}
+                    sx={{ color: (theme) => theme.palette.success.main }}
+                    textAlign="center"
+                  >
+                    {user?.userDetails?.credits}
+                  </Typography>{' '}
+                  free credits
                 </Typography>
-              }
+              )}
             </Stack>
-          }
+          )}
 
           {/* --------------------- User has done nothing about early access -------------------- */}
-          {(!user?.userDetails?.earlyAccessStatus || user?.userDetails?.earlyAccessStatus === 'requested') &&
+          {(!user?.userDetails?.earlyAccessStatus || user?.userDetails?.earlyAccessStatus === 'requested') && (
             <Stack justifyContent="center" spacing={3}>
               <Stack direction="row" color="#54d62c" alignItems="center" justifyContent="left" spacing={1}>
                 <AutoFixHighRounded fontSize="large" />
@@ -474,77 +496,117 @@ export default function Header({ onOpenNav }) {
                   </li>
                 </ul>
               </Typography>
-              <Typography variant="body1"> We're opening an Early Access program for users who would like to help us test these features as they're
+              <Typography variant="body1">
+                {' '}
+                We're opening an Early Access program for users who would like to help us test these features as they're
                 developed.
               </Typography>
             </Stack>
-          }
+          )}
         </Box>
         <Box width="100%" px={2} pb={2} pt={1}>
-          {(user?.userDetails?.earlyAccessStatus === 'accepted') ?
+          {user?.userDetails?.earlyAccessStatus === 'accepted' ? (
             <>
-              {user?.userDetails?.magicSubscription === 'true' ?
-                <LoadingButton loading={loadingSubscriptionUrl} onClick={cancelSubscription} variant='contained' size='large' fullWidth>
-                  Cancel Subscription
+            {user?.userDetails?.magicSubscription === 'true' ? (
+              <LoadingButton
+                loading={loadingSubscriptionUrl}
+                onClick={cancelSubscription}
+                variant="contained"
+                size="large"
+                fullWidth
+              >
+                Cancel Subscription
+              </LoadingButton>
+            ) : (
+              <>
+                <LoadingButton
+                  loading={loadingSubscriptionUrl}
+                  onClick={buySubscription}
+                  variant="contained"
+                  size="large"
+                  fullWidth
+                  sx={{
+                    backgroundColor: (theme) => theme.palette.success.main,
+                    color: (theme) => theme.palette.common.black,
+                    '&:hover': {
+                      ...(!loadingSubscriptionUrl && {
+                        backgroundColor: (theme) => theme.palette.success.dark,
+                        color: (theme) => theme.palette.common.black,
+                      }),
+                    },
+                  }}
+                >
+                  Upgrade to Magic 69
                 </LoadingButton>
-                :
-                <LoadingButton loading={loadingSubscriptionUrl} onClick={buySubscription} variant='contained' size='large' fullWidth sx={{
-                  backgroundColor: (theme) => theme.palette.success.main,
-                  color: (theme) => theme.palette.common.black,
-                  '&:hover': {
-                    ...(!loadingSubscriptionUrl && {
-                      backgroundColor: (theme) => theme.palette.success.dark,
-                      color: (theme) => theme.palette.common.black
-                    })
-                  }
-                }}>
-                  Get More Credits
-                </LoadingButton>
-              }
-            </>
-            :
+                <Typography 
+                  variant="caption" 
+                  display="block" 
+                  gutterBottom 
+                  align="center"
+                  sx={{ pt: 1, marginTop: 1, opacity: 0.8 }}
+                >
+                  Get 69 credits/mo for $6. Cancel any time.
+                </Typography>
+              </>
+            )}
+          </>
+          ) : (
             <>
-              {(user?.userDetails?.earlyAccessStatus === 'invited') ?
-                <LoadingButton loading={loadingSubscriptionUrl} onClick={acceptInvitation} variant='contained' size='large' fullWidth sx={{
-                  backgroundColor: (theme) => theme.palette.success.main,
-                  color: (theme) => theme.palette.common.black,
-                  '&:hover': {
-                    ...(!loadingSubscriptionUrl && {
-                      backgroundColor: (theme) => theme.palette.success.dark,
-                      color: (theme) => theme.palette.common.black
-                    })
-                  }
-                }}>
+              {user?.userDetails?.earlyAccessStatus === 'invited' ? (
+                <LoadingButton
+                  loading={loadingSubscriptionUrl}
+                  onClick={acceptInvitation}
+                  variant="contained"
+                  size="large"
+                  fullWidth
+                  sx={{
+                    backgroundColor: (theme) => theme.palette.success.main,
+                    color: (theme) => theme.palette.common.black,
+                    '&:hover': {
+                      ...(!loadingSubscriptionUrl && {
+                        backgroundColor: (theme) => theme.palette.success.dark,
+                        color: (theme) => theme.palette.common.black,
+                      }),
+                    },
+                  }}
+                >
                   Accept Invitation
                 </LoadingButton>
-                :
+              ) : (
                 <LoadingButton
                   onClick={(event) => {
                     if (user) {
                       earlyAccessSubmit();
                     } else {
-                      navigate('/signup')
+                      navigate('/signup');
                     }
                   }}
                   loading={earlyAccessLoading}
-                  disabled={user?.userDetails?.earlyAccessStatus || earlyAccessLoading || earlyAccessDisabled || earlyAccessComplete}
+                  disabled={
+                    user?.userDetails?.earlyAccessStatus ||
+                    earlyAccessLoading ||
+                    earlyAccessDisabled ||
+                    earlyAccessComplete
+                  }
                   variant="contained"
                   startIcon={<SupervisedUserCircleIcon />}
                   size="large"
                   fullWidth
                   sx={css`
-                        font-size: 18px;
-                        background-color: #54d62c;
-                        color: black;
-                
-                        ${!(earlyAccessLoading || earlyAccessDisabled) ? `@media (hover: hover) and (pointer: fine) {
+                    font-size: 18px;
+                    background-color: #54d62c;
+                    color: black;
+
+                    ${!(earlyAccessLoading || earlyAccessDisabled)
+                      ? `@media (hover: hover) and (pointer: fine) {
                           /* Apply hover style only on non-mobile devices */
                           &:hover {
                             background-color: #96f176;
                             color: black;
                           }
-                        }` : ''}
-                      `}
+                        }`
+                      : ''}
+                  `}
                   onBlur={() => {
                     // Blur the button when it loses focus
                     buttonRef.current.blur();
@@ -561,9 +623,9 @@ export default function Header({ onOpenNav }) {
                     </>
                   )}
                 </LoadingButton>
-              }
+              )}
             </>
-          }
+          )}
           {/* <Typography
               variant="caption"
               align="center"
