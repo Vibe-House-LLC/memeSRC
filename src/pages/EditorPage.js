@@ -1736,25 +1736,49 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         <Box width="100%" px={2} pb={2} pt={1}>
           {(user?.userDetails?.earlyAccessStatus === 'accepted') ?
             <>
-              {user?.userDetails?.magicSubscription === 'true' ?
-                <LoadingButton loading={loadingSubscriptionUrl} onClick={cancelSubscription} variant='contained' size='large' fullWidth>
-                  Cancel Subscription
+            {user?.userDetails?.magicSubscription === 'true' ? (
+              <LoadingButton
+                loading={loadingSubscriptionUrl}
+                onClick={cancelSubscription}
+                variant="contained"
+                size="large"
+                fullWidth
+              >
+                Cancel Subscription
+              </LoadingButton>
+            ) : (
+              <>
+                <LoadingButton
+                  loading={loadingSubscriptionUrl}
+                  onClick={buySubscription}
+                  variant="contained"
+                  size="large"
+                  fullWidth
+                  sx={{
+                    backgroundColor: (theme) => theme.palette.success.main,
+                    color: (theme) => theme.palette.common.black,
+                    '&:hover': {
+                      ...(!loadingSubscriptionUrl && {
+                        backgroundColor: (theme) => theme.palette.success.dark,
+                        color: (theme) => theme.palette.common.black,
+                      }),
+                    },
+                  }}
+                >
+                  Upgrade to Magic 69
                 </LoadingButton>
-                :
-                <LoadingButton loading={loadingSubscriptionUrl} onClick={buySubscription} variant='contained' size='large' fullWidth sx={{
-                  backgroundColor: (theme) => theme.palette.success.main,
-                  color: (theme) => theme.palette.common.black,
-                  '&:hover': {
-                    ...(!loadingSubscriptionUrl && {
-                      backgroundColor: (theme) => theme.palette.success.dark,
-                      color: (theme) => theme.palette.common.black
-                    })
-                  }
-                }}>
-                  Get More Credits
-                </LoadingButton>
-              }
-            </>
+                <Typography 
+                  variant="caption" 
+                  display="block" 
+                  gutterBottom 
+                  align="center"
+                  sx={{ pt: 1, marginTop: 1, opacity: 0.8 }}
+                >
+                  Get 69 credits/mo for $6. Cancel any time.
+                </Typography>
+              </>
+            )}
+          </>
             :
             <>
               {(user?.userDetails?.earlyAccessStatus === 'invited') ?
