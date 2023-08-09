@@ -176,7 +176,7 @@ export default function UserPage() {
         email: user.email,
         id: user.id,
         earlyAccessStatus: user.earlyAccessStatus || 'no response',
-        contributorAccessStatus: user.contributorAccessStatus,
+        contributorAccessStatus: user.contributorAccessStatus || 'no response',
         status: user.status,
         enabled: true,
         credits: parseInt(user.credits, 10) || 0,
@@ -512,7 +512,8 @@ export default function UserPage() {
                     username: user.username,
                     email: user.email,
                     id: user.id,
-                    earlyAccessStatus: user.earlyAccessStatus || 'no response', // You'd need to include these in your GraphQL query
+                    earlyAccessStatus: user.earlyAccessStatus || 'no response',
+                    contributorAccessStatus: user.contributorAccessStatus || 'no response',
                     status: user.status,
                     enabled: true,
                     credits: parseInt(user.credits, 10) || 0,
