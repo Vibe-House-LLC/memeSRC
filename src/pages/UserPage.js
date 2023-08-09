@@ -175,7 +175,7 @@ export default function UserPage() {
         username: user.username,
         email: user.email,
         id: user.id,
-        earlyAccessStatus: Boolean(user.earlyAccessStatus),
+        earlyAccessStatus: user.earlyAccessStatus,
         contributorAccessStatus: user.contributorAccessStatus,
         status: user.status,
         enabled: true,
@@ -375,8 +375,7 @@ export default function UserPage() {
 
                         <TableCell align="left">{id}</TableCell>
 
-                        <TableCell align="left">{(earlyAccessStatus) ? 'Requested' : 'No Response'}</TableCell>
-
+                        <TableCell align="left" sx={{textTransform: 'capitalize'}}>{earlyAccessStatus || 'No Response'}</TableCell>
                         <TableCell align="left">
                           <Label color={
                             contributorAccessStatus === 'approved'
@@ -491,7 +490,7 @@ export default function UserPage() {
                     username: user.username,
                     email: user.email,
                     id: user.id,
-                    earlyAccessStatus: Boolean(user.earlyAccessStatus), // You'd need to include these in your GraphQL query
+                    earlyAccessStatus: user.earlyAccessStatus, // You'd need to include these in your GraphQL query
                     status: user.status,
                     enabled: true,
                     credits: parseInt(user.credits, 10) || 0,
