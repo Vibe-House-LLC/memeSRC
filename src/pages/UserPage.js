@@ -175,8 +175,8 @@ export default function UserPage() {
         username: user.username,
         email: user.email,
         id: user.id,
-        earlyAccessStatus: Boolean(user.earlyAccessStatus),
-        contributorAccessStatus: user.contributorAccessStatus,
+        earlyAccessStatus: user.earlyAccessStatus || 'no response',
+        contributorAccessStatus: user.contributorAccessStatus || 'no response',
         status: user.status,
         enabled: true,
         credits: parseInt(user.credits, 10) || 0,
@@ -284,7 +284,7 @@ export default function UserPage() {
     try {
       await API.post(apiName, path, myInit);
       await API.graphql(
-        graphqlOperation(updateUserDetails, { input: { id: userObj.id, contributorAccessStatus: 'approved' }})
+        graphqlOperation(updateUserDetails, { input: { id: userObj.id, contributorAccessStatus: 'approved' } })
       )
       setMessage(`${userObj.username} has been made a contributor!`)
       setSeverity('success');
@@ -303,7 +303,7 @@ export default function UserPage() {
     handleCloseMenu();
     try {
       await API.graphql(
-        graphqlOperation(updateUserDetails, { input: { id: userObj.id, earlyAccessStatus: 'invited' }})
+        graphqlOperation(updateUserDetails, { input: { id: userObj.id, earlyAccessStatus: 'invited' } })
       )
       setMessage(`${userObj.username} has been invited to early access!`)
       setSeverity('success');
@@ -317,6 +317,24 @@ export default function UserPage() {
       setChosenUser(null)
     }
   }
+
+  const getColor = (earlyAccessStatus) => {
+    let color;
+    switch (earlyAccessStatus) {
+      case 'accepted':
+        color = 'success';
+        break;
+      case 'invited':
+        color = 'warning';
+        break;
+      case 'requested':
+        color = 'info';
+        break;
+      default:
+        color = 'default';
+    }
+    return color;
+  };
 
   return (
     <>
@@ -338,9 +356,7 @@ export default function UserPage() {
 
         <Card>
           <UserListToolbar numSelected={selected.length} filterName={filterName} onFilterName={handleFilterByName} />
-
-          <Scrollbar>
-            <TableContainer sx={{ minWidth: 800 }}>
+            <TableContainer>
               <Table>
                 <UserListHead
                   order={order}
@@ -375,8 +391,11 @@ export default function UserPage() {
 
                         <TableCell align="left">{id}</TableCell>
 
-                        <TableCell align="left">{(earlyAccessStatus) ? 'Requested' : 'No Response'}</TableCell>
-
+                        <TableCell align="left" sx={{ textTransform: 'capitalize' }}>
+                          <Label color={getColor(earlyAccessStatus)}>
+                            {earlyAccessStatus}
+                          </Label>
+                        </TableCell>
                         <TableCell align="left">
                           <Label color={
                             contributorAccessStatus === 'approved'
@@ -409,7 +428,7 @@ export default function UserPage() {
                           <IconButton size="large" color="inherit" onClick={(event) => {
                             setChosenUser(row)
                             handleOpenMenu(event, index)
-                            }}>
+                          }}>
                             <Iconify icon={'eva:more-vertical-fill'} />
                           </IconButton>
                         </TableCell>
@@ -449,8 +468,6 @@ export default function UserPage() {
               </Table>
             </TableContainer>
 
-          </Scrollbar>
-
           <TablePagination
             rowsPerPageOptions={[5, 10, 25]}
             component="div"
@@ -461,7 +478,7 @@ export default function UserPage() {
             onRowsPerPageChange={handleChangeRowsPerPage}
           />
         </Card>
-      </Container>
+      </Container >
 
       <Popover
         open={Boolean(menuOpen)}
@@ -491,7 +508,8 @@ export default function UserPage() {
                     username: user.username,
                     email: user.email,
                     id: user.id,
-                    earlyAccessStatus: Boolean(user.earlyAccessStatus), // You'd need to include these in your GraphQL query
+                    earlyAccessStatus: user.earlyAccessStatus || 'no response',
+                    contributorAccessStatus: user.contributorAccessStatus || 'no response',
                     status: user.status,
                     enabled: true,
                     credits: parseInt(user.credits, 10) || 0,
