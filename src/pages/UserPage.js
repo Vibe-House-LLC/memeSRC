@@ -356,9 +356,7 @@ export default function UserPage() {
 
         <Card>
           <UserListToolbar numSelected={selected.length} filterName={filterName} onFilterName={handleFilterByName} />
-
-          <Scrollbar>
-            <TableContainer sx={{ minWidth: 800 }}>
+            <TableContainer>
               <Table>
                 <UserListHead
                   order={order}
@@ -469,8 +467,6 @@ export default function UserPage() {
                 )}
               </Table>
             </TableContainer>
-
-          </Scrollbar>
 
           <TablePagination
             rowsPerPageOptions={[5, 10, 25]}
