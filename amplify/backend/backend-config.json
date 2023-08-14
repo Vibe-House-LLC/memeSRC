@@ -506,6 +506,22 @@
         }
       ]
     },
+    "AMPLIFY_function_memesrcAggregateVotes_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcAggregateVotes"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcAggregateVotes_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcAggregateVotes"
+        }
+      ]
+    },
     "AMPLIFY_function_memesrcAnalyticsAddDailyPartition_deploymentBucketName": {
       "usedBy": [
         {
