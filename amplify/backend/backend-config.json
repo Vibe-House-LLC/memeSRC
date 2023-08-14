@@ -250,6 +250,20 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "memesrcAggregateVotes": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "GraphQLAPIIdOutput"
+          ],
+          "category": "api",
+          "resourceName": "memesrc"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "memesrcAnalyticsAddDailyPartition": {
       "build": true,
       "dependsOn": [

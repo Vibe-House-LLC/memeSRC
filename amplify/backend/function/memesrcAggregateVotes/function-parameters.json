@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "storage": {
+      "SeriesUserVote:@model(appsync)": [
+        "create",
+        "read",
+        "update"
+      ]
+    }
+  },
+  "lambdaLayers": []
+}
