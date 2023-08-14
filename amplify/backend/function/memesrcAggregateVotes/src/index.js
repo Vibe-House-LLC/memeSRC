@@ -55,7 +55,7 @@ exports.handler = async (event) => {
     const analyticsMetricParams = {
         TableName: process.env.API_MEMESRC_ANALYTICSMETRICSTABLE_NAME,
         Item: {
-            id: `seriesVotes}`,  // This can be a UUID or any unique identifier
+            id: `seriesVotes`,  // This can be a UUID or any unique identifier
             createdAt: currentTimestamp,
             updatedAt: currentTimestamp,
             value: JSON.stringify(voteAggregation),
