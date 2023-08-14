@@ -250,6 +250,20 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "memesrcAggregateVotes": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "GraphQLAPIIdOutput"
+          ],
+          "category": "api",
+          "resourceName": "memesrc"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "memesrcAnalyticsAddDailyPartition": {
       "build": true,
       "dependsOn": [
@@ -489,6 +503,22 @@
         {
           "category": "function",
           "resourceName": "SearchFunction"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcAggregateVotes_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcAggregateVotes"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcAggregateVotes_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcAggregateVotes"
         }
       ]
     },

@@ -38,6 +38,8 @@
     ]
   },
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.388.0",
+    "@aws-sdk/util-dynamodb": "^3.388.0",
     "@emotion/react": "^11.10.4",
     "@emotion/styled": "^11.10.4",
     "@faker-js/faker": "^7.6.0",

@@ -98,6 +98,10 @@
           "secretsPathAmplifyAppId": "d32pnvtwxwtte5",
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
           "s3Key": "amplify-builds/memesrcPublicStripeFunction-64596765443165306137-build.zip"
+        },
+        "memesrcAggregateVotes": {
+          "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
+          "s3Key": "amplify-builds/memesrcAggregateVotes-2f797845505a56676476-build.zip"
         }
       },
       "storage": {
