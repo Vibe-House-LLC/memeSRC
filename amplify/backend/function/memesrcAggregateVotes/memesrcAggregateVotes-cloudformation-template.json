@@ -102,6 +102,32 @@
             },
             "API_MEMESRC_GRAPHQLAPIIDOUTPUT": {
               "Ref": "apimemesrcGraphQLAPIIdOutput"
+            },
+            "API_MEMESRC_ANALYTICSMETRICSTABLE_NAME": {
+              "Fn::ImportValue": {
+                "Fn::Sub": "${apimemesrcGraphQLAPIIdOutput}:GetAtt:AnalyticsMetricsTable:Name"
+              }
+            },
+            "API_MEMESRC_ANALYTICSMETRICSTABLE_ARN": {
+              "Fn::Join": [
+                "",
+                [
+                  "arn:aws:dynamodb:",
+                  {
+                    "Ref": "AWS::Region"
+                  },
+                  ":",
+                  {
+                    "Ref": "AWS::AccountId"
+                  },
+                  ":table/",
+                  {
+                    "Fn::ImportValue": {
+                      "Fn::Sub": "${apimemesrcGraphQLAPIIdOutput}:GetAtt:AnalyticsMetricsTable:Name"
+                    }
+                  }
+                ]
+              ]
             }
           }
         },
@@ -213,6 +239,67 @@
         "PolicyDocument": {
           "Version": "2012-10-17",
           "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "dynamodb:Put*",
+                "dynamodb:Create*",
+                "dynamodb:BatchWriteItem",
+                "dynamodb:Get*",
+                "dynamodb:BatchGetItem",
+                "dynamodb:List*",
+                "dynamodb:Describe*",
+                "dynamodb:Scan",
+                "dynamodb:Query",
+                "dynamodb:Update*",
+                "dynamodb:RestoreTable*"
+              ],
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:dynamodb:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":",
+                      {
+                        "Ref": "AWS::AccountId"
+                      },
+                      ":table/",
+                      {
+                        "Fn::ImportValue": {
+                          "Fn::Sub": "${apimemesrcGraphQLAPIIdOutput}:GetAtt:AnalyticsMetricsTable:Name"
+                        }
+                      }
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:dynamodb:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":",
+                      {
+                        "Ref": "AWS::AccountId"
+                      },
+                      ":table/",
+                      {
+                        "Fn::ImportValue": {
+                          "Fn::Sub": "${apimemesrcGraphQLAPIIdOutput}:GetAtt:AnalyticsMetricsTable:Name"
+                        }
+                      },
+                      "/index/*"
+                    ]
+                  ]
+                }
+              ]
+            },
             {
               "Effect": "Allow",
               "Action": [

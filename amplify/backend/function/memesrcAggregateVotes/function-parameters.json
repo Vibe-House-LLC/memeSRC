@@ -1,6 +1,11 @@
 {
   "permissions": {
     "storage": {
+      "AnalyticsMetrics:@model(appsync)": [
+        "create",
+        "read",
+        "update"
+      ],
       "SeriesUserVote:@model(appsync)": [
         "create",
         "read",
