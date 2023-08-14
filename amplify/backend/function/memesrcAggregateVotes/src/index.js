@@ -50,7 +50,7 @@ exports.handler = async (event) => {
     const putParams = {
         TableName: process.env.API_MEMESRC_ANALYTICSMETRICSTABLE_NAME,
         Item: marshall({
-            id: "voteAggregation",
+            id: "totalVotes",
             value: JSON.stringify(voteAggregation),
             createdAt: currentTime,
             updatedAt: currentTime,
