@@ -706,6 +706,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
           setMessage(`Image Generation Successful! Remaining credits: ${newCreditAmount}`)
           setOpen(true)
           setEditorTool();
+          setMagicPrompt('Everyday scene as cinestill sample, Empty, Nothing, Plain, Vacant, Desolate, Void, Barren, Uninhabited, Abandoned, Unoccupied, Untouched, Clear, Blank, Pristine, Unmarred')
+          setPromptEnabled('erase')
         }, 500);
         // setImageSrc(response.imageData);
       } catch (error) {
@@ -847,6 +849,11 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       setMagicPrompt('Everyday scene as cinestill sample, Empty, Nothing, Plain, Vacant, Desolate, Void, Barren, Uninhabited, Abandoned, Unoccupied, Untouched, Clear, Blank, Pristine, Unmarred')
     }
   }, [promptEnabled])
+
+  useEffect(() => {
+      setPromptEnabled('erase')
+      setMagicPrompt('Everyday scene as cinestill sample, Empty, Nothing, Plain, Vacant, Desolate, Void, Barren, Uninhabited, Abandoned, Unoccupied, Untouched, Clear, Blank, Pristine, Unmarred')
+  }, [editorTool])
 
   // ------------------------------------------------------------------------
 
