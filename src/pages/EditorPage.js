@@ -1661,7 +1661,13 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                     </li>
                     <li>
                       Magic Fill{' '}
-                      <Chip size="small" label="Planned" sx={{ marginLeft: '5px', opacity: 0.5 }} variant="outlined" />
+                      <Chip
+                        color="success"
+                        size="small"
+                        label="Early Access"
+                        sx={{ marginLeft: '5px', opacity: 0.7 }}
+                        variant="outlined"
+                      />
                     </li>
                     <li>
                       Magic Expander{' '}
@@ -1713,7 +1719,13 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                   </li>
                   <li>
                     Magic Fill{' '}
-                    <Chip size="small" label="Planned" sx={{ marginLeft: '5px', opacity: 0.5 }} variant="outlined" />
+                    <Chip
+                        color="success"
+                        size="small"
+                        label="Early Access"
+                        sx={{ marginLeft: '5px', opacity: 0.7 }}
+                        variant="outlined"
+                      />
                   </li>
                   <li>
                     Magic Expander{' '}
@@ -1764,7 +1776,13 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                   </li>
                   <li>
                     Magic Fill{' '}
-                    <Chip size="small" label="Planned" sx={{ marginLeft: '5px', opacity: 0.5 }} variant="outlined" />
+                    <Chip
+                        color="success"
+                        size="small"
+                        label="Early Access"
+                        sx={{ marginLeft: '5px', opacity: 0.7 }}
+                        variant="outlined"
+                      />
                   </li>
                   <li>
                     Magic Expander{' '}
