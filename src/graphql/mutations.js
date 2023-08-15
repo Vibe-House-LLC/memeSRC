@@ -156,6 +156,9 @@ export const createSourceMedia = /* GraphQL */ `
           nextToken
         }
         magicSubscription
+        userNotifications {
+          nextToken
+        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -226,6 +229,9 @@ export const updateSourceMedia = /* GraphQL */ `
           nextToken
         }
         magicSubscription
+        userNotifications {
+          nextToken
+        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -296,6 +302,9 @@ export const deleteSourceMedia = /* GraphQL */ `
           nextToken
         }
         magicSubscription
+        userNotifications {
+          nextToken
+        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -1118,6 +1127,20 @@ export const createUserDetails = /* GraphQL */ `
         nextToken
       }
       magicSubscription
+      userNotifications {
+        items {
+          id
+          title
+          description
+          avatar
+          type
+          isUnRead
+          createdAt
+          updatedAt
+          userDetailsUserNotificationsId
+        }
+        nextToken
+      }
       createdAt
       updatedAt
       userDetailsStripeCustomerInfoId
@@ -1191,6 +1214,20 @@ export const updateUserDetails = /* GraphQL */ `
         nextToken
       }
       magicSubscription
+      userNotifications {
+        items {
+          id
+          title
+          description
+          avatar
+          type
+          isUnRead
+          createdAt
+          updatedAt
+          userDetailsUserNotificationsId
+        }
+        nextToken
+      }
       createdAt
       updatedAt
       userDetailsStripeCustomerInfoId
@@ -1264,6 +1301,20 @@ export const deleteUserDetails = /* GraphQL */ `
         nextToken
       }
       magicSubscription
+      userNotifications {
+        items {
+          id
+          title
+          description
+          avatar
+          type
+          isUnRead
+          createdAt
+          updatedAt
+          userDetailsUserNotificationsId
+        }
+        nextToken
+      }
       createdAt
       updatedAt
       userDetailsStripeCustomerInfoId
@@ -1302,6 +1353,9 @@ export const createStripeCustomer = /* GraphQL */ `
           nextToken
         }
         magicSubscription
+        userNotifications {
+          nextToken
+        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -1344,6 +1398,9 @@ export const updateStripeCustomer = /* GraphQL */ `
           nextToken
         }
         magicSubscription
+        userNotifications {
+          nextToken
+        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -1386,6 +1443,9 @@ export const deleteStripeCustomer = /* GraphQL */ `
           nextToken
         }
         magicSubscription
+        userNotifications {
+          nextToken
+        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -1428,6 +1488,9 @@ export const createStripeCheckoutSession = /* GraphQL */ `
           nextToken
         }
         magicSubscription
+        userNotifications {
+          nextToken
+        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -1471,6 +1534,9 @@ export const updateStripeCheckoutSession = /* GraphQL */ `
           nextToken
         }
         magicSubscription
+        userNotifications {
+          nextToken
+        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -1514,6 +1580,9 @@ export const deleteStripeCheckoutSession = /* GraphQL */ `
           nextToken
         }
         magicSubscription
+        userNotifications {
+          nextToken
+        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -1557,6 +1626,9 @@ export const createSeriesUserVote = /* GraphQL */ `
           nextToken
         }
         magicSubscription
+        userNotifications {
+          nextToken
+        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -1616,6 +1688,9 @@ export const updateSeriesUserVote = /* GraphQL */ `
           nextToken
         }
         magicSubscription
+        userNotifications {
+          nextToken
+        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -1675,6 +1750,9 @@ export const deleteSeriesUserVote = /* GraphQL */ `
           nextToken
         }
         magicSubscription
+        userNotifications {
+          nextToken
+        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -1699,6 +1777,156 @@ export const deleteSeriesUserVote = /* GraphQL */ `
       updatedAt
       userDetailsVotesId
       seriesUserVoteSeriesId
+    }
+  }
+`;
+export const createUserNotification = /* GraphQL */ `
+  mutation CreateUserNotification(
+    $input: CreateUserNotificationInput!
+    $condition: ModelUserNotificationConditionInput
+  ) {
+    createUserNotification(input: $input, condition: $condition) {
+      id
+      user {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        sourceMedia {
+          nextToken
+        }
+        status
+        votes {
+          nextToken
+        }
+        credits
+        stripeCustomerInfo {
+          id
+          createdAt
+          updatedAt
+          stripeCustomerUserId
+        }
+        stripeCheckoutSession {
+          nextToken
+        }
+        magicSubscription
+        userNotifications {
+          nextToken
+        }
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+      }
+      title
+      description
+      avatar
+      type
+      isUnRead
+      createdAt
+      updatedAt
+      userDetailsUserNotificationsId
+    }
+  }
+`;
+export const updateUserNotification = /* GraphQL */ `
+  mutation UpdateUserNotification(
+    $input: UpdateUserNotificationInput!
+    $condition: ModelUserNotificationConditionInput
+  ) {
+    updateUserNotification(input: $input, condition: $condition) {
+      id
+      user {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        sourceMedia {
+          nextToken
+        }
+        status
+        votes {
+          nextToken
+        }
+        credits
+        stripeCustomerInfo {
+          id
+          createdAt
+          updatedAt
+          stripeCustomerUserId
+        }
+        stripeCheckoutSession {
+          nextToken
+        }
+        magicSubscription
+        userNotifications {
+          nextToken
+        }
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+      }
+      title
+      description
+      avatar
+      type
+      isUnRead
+      createdAt
+      updatedAt
+      userDetailsUserNotificationsId
+    }
+  }
+`;
+export const deleteUserNotification = /* GraphQL */ `
+  mutation DeleteUserNotification(
+    $input: DeleteUserNotificationInput!
+    $condition: ModelUserNotificationConditionInput
+  ) {
+    deleteUserNotification(input: $input, condition: $condition) {
+      id
+      user {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        sourceMedia {
+          nextToken
+        }
+        status
+        votes {
+          nextToken
+        }
+        credits
+        stripeCustomerInfo {
+          id
+          createdAt
+          updatedAt
+          stripeCustomerUserId
+        }
+        stripeCheckoutSession {
+          nextToken
+        }
+        magicSubscription
+        userNotifications {
+          nextToken
+        }
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+      }
+      title
+      description
+      avatar
+      type
+      isUnRead
+      createdAt
+      updatedAt
+      userDetailsUserNotificationsId
     }
   }
 `;

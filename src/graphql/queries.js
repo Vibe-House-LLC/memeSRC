@@ -146,6 +146,9 @@ export const getSourceMedia = /* GraphQL */ `
           nextToken
         }
         magicSubscription
+        userNotifications {
+          nextToken
+        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -698,6 +701,20 @@ export const getUserDetails = /* GraphQL */ `
         nextToken
       }
       magicSubscription
+      userNotifications {
+        items {
+          id
+          title
+          description
+          avatar
+          type
+          isUnRead
+          createdAt
+          updatedAt
+          userDetailsUserNotificationsId
+        }
+        nextToken
+      }
       createdAt
       updatedAt
       userDetailsStripeCustomerInfoId
@@ -736,6 +753,9 @@ export const listUserDetails = /* GraphQL */ `
           nextToken
         }
         magicSubscription
+        userNotifications {
+          nextToken
+        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -773,6 +793,9 @@ export const getStripeCustomer = /* GraphQL */ `
           nextToken
         }
         magicSubscription
+        userNotifications {
+          nextToken
+        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -843,6 +866,9 @@ export const getStripeCheckoutSession = /* GraphQL */ `
           nextToken
         }
         magicSubscription
+        userNotifications {
+          nextToken
+        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -919,6 +945,9 @@ export const getSeriesUserVote = /* GraphQL */ `
           nextToken
         }
         magicSubscription
+        userNotifications {
+          nextToken
+        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -986,6 +1015,93 @@ export const listSeriesUserVotes = /* GraphQL */ `
         updatedAt
         userDetailsVotesId
         seriesUserVoteSeriesId
+      }
+      nextToken
+    }
+  }
+`;
+export const getUserNotification = /* GraphQL */ `
+  query GetUserNotification($id: ID!) {
+    getUserNotification(id: $id) {
+      id
+      user {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        sourceMedia {
+          nextToken
+        }
+        status
+        votes {
+          nextToken
+        }
+        credits
+        stripeCustomerInfo {
+          id
+          createdAt
+          updatedAt
+          stripeCustomerUserId
+        }
+        stripeCheckoutSession {
+          nextToken
+        }
+        magicSubscription
+        userNotifications {
+          nextToken
+        }
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+      }
+      title
+      description
+      avatar
+      type
+      isUnRead
+      createdAt
+      updatedAt
+      userDetailsUserNotificationsId
+    }
+  }
+`;
+export const listUserNotifications = /* GraphQL */ `
+  query ListUserNotifications(
+    $filter: ModelUserNotificationFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listUserNotifications(
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        user {
+          id
+          username
+          email
+          earlyAccessStatus
+          contributorAccessStatus
+          stripeId
+          status
+          credits
+          magicSubscription
+          createdAt
+          updatedAt
+          userDetailsStripeCustomerInfoId
+        }
+        title
+        description
+        avatar
+        type
+        isUnRead
+        createdAt
+        updatedAt
+        userDetailsUserNotificationsId
       }
       nextToken
     }

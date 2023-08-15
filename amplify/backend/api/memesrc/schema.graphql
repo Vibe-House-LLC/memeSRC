@@ -154,6 +154,7 @@ type UserDetails @model @auth(
   stripeCustomerInfo: StripeCustomer @hasOne,
   stripeCheckoutSession: [StripeCheckoutSession] @hasMany,
   magicSubscription: String
+  userNotifications: [UserNotification] @hasMany
 }
 
 type StripeCustomer @model @auth(
@@ -186,4 +187,18 @@ type SeriesUserVote @model @auth(
   user: UserDetails @belongsTo,
   series: Series @hasOne,
   boost: Int
+}
+
+type UserNotification @model @auth(
+  rules: [
+    { allow: groups, groups: ["admins"] },
+  ]
+) {
+  id: ID!,
+  user: UserDetails @belongsTo
+  title: String
+  description: String
+  avatar: String
+  type: String
+  isUnRead: Boolean
 }
