@@ -79,7 +79,7 @@ async function getAllVotes() {
   return totalVotes;
 }
 
-async function processVotes({allItems, userSub}) {
+async function processVotes({ allItems, userSub }) {
   const votesCount = {};
   const currentUserVotes = {};
   const votesCountUp = {};
@@ -105,7 +105,7 @@ async function processVotes({allItems, userSub}) {
     }
 
     votesCount[vote.seriesUserVoteSeriesId] = (votesCount[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
-    
+
     currentUserVotes[vote.seriesUserVoteSeriesId] = (currentUserVotes[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
 
     const voteTime = new Date(vote.createdAt);
@@ -225,6 +225,17 @@ function getUserDetails(params, nextToken = null) {
         earlyAccessStatus
         contributorAccessStatus
         magicSubscription
+        userNotifications(sortDirection: DESC) {
+          items {
+            avatar
+            createdAt
+            description
+            id
+            isUnRead
+            title
+            type
+          }
+        }
         votes(limit: ${limit}${nextToken ? `, nextToken: "${nextToken}"` : ''}) {
           items {
             series { id }
@@ -304,7 +315,7 @@ async function getAllUserVotes(params) {
   do {
     const query = getUserDetails(params, nextToken);
     const response = await makeRequest(query);
-    
+
     console.log(`response: ${JSON.stringify(response)}`)
 
     // Depending on the structure of your response, you might need to adjust the following lines.
@@ -500,39 +511,70 @@ export const handler = async (event) => {
   }
 
   if (path === `/${process.env.ENV}/public/vote/list`) {
+    // To fix the issue, we need to first check if the user is auth'd. This is going to get their auth type.
+    // If they're not signed in, it will return "unauthenticated". We'll use that below to dictate what to send back.
+    const userAuth = event.requestContext.identity.cognitoAuthenticationType
+
     try {
       // Get the aggregated votes
       const totalVotes = await getAllVotes();
 
-      // Summarize the user's personal votes
-      const userVotes = await getAllUserVotes({ subId: userSub });
-      console.log(`userVotes: ${JSON.stringify(userVotes)}`)
-      // const userVotes = allVotes.body.data.getUserDetails.votes.items;
+      // Now we want to change it so that it only tries to get user votes if a users logged in.
+      // First lets set these as lets
+      let currentUserVotesUp = null
+      let currentUserVotesDown = null
+      let isLastUserVoteOlderThan24Hours = null
+      let lastBoostValue = null
+      let nextVoteTime = null
+      let lastUserVoteTimestamps = null
+      let combinedUserVotes = {};
 
-      console.log(totalVotes)
-      const {
-        currentUserVotesUp,
-        currentUserVotesDown,
-        isLastUserVoteOlderThan24Hours,
-        lastBoostValue,
-        nextVoteTime,
-        lastUserVoteTimestamps
-      } = await processVotes({ allItems: userVotes, userSub });
+      if (userAuth !== "unauthenticated") {
+        // Summarize the user's personal votes
+        const userVotes = await getAllUserVotes({ subId: userSub });
+        console.log(`userVotes: ${JSON.stringify(userVotes)}`)
+        // const userVotes = allVotes.body.data.getUserDetails.votes.items;
+
+        console.log(totalVotes)
+        // The next change is going to be setting these values to the lets. That way they'll be null unless we hit this step.
+        // I'm going to comment out the original code in case we need to come back to it.
+        /* 
+        const {
+          currentUserVotesUp,
+          currentUserVotesDown,
+          isLastUserVoteOlderThan24Hours,
+          lastBoostValue,
+          nextVoteTime,
+          lastUserVoteTimestamps
+        } = await processVotes({ allItems: userVotes, userSub }); 
+        */
+
+        const userProcessedVotes = await processVotes({ allItems: userVotes, userSub });
+        currentUserVotesUp = userProcessedVotes.currentUserVotesUp
+        currentUserVotesDown = userProcessedVotes.currentUserVotesDown
+        isLastUserVoteOlderThan24Hours = userProcessedVotes.isLastUserVoteOlderThan24Hours
+        lastBoostValue = userProcessedVotes.lastBoostValue
+        nextVoteTime = userProcessedVotes.nextVoteTime
+        lastUserVoteTimestamps = userProcessedVotes.lastUserVoteTimestamps
+        for (let id in currentUserVotesUp) {
+          combinedUserVotes[id] = (currentUserVotesUp[id] || 0) - (currentUserVotesDown[id] || 0);
+        }
+      }
 
       const combinedVotes = {};
       const votesUp = {};
       const votesDown = {};
-      
+
       for (let id in totalVotes) {
         combinedVotes[id] = totalVotes[id].upvotes - totalVotes[id].downvotes;
         votesUp[id] = totalVotes[id].upvotes;
         votesDown[id] = -totalVotes[id].downvotes; // To keep the downvotes as negative
       }
 
-      const combinedUserVotes = {};
-      for (let id in currentUserVotesUp) {
-        combinedUserVotes[id] = (currentUserVotesUp[id] || 0) - (currentUserVotesDown[id] || 0);
-      }
+      // const combinedUserVotes = {};
+      // for (let id in currentUserVotesUp) {
+      //   combinedUserVotes[id] = (currentUserVotesUp[id] || 0) - (currentUserVotesDown[id] || 0);
+      // }
 
       const result = {
         votes: combinedVotes,
