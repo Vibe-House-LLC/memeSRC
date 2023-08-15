@@ -5,8 +5,8 @@ import { css, styled } from '@mui/material/styles';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
-import { Accordion, AccordionDetails, AccordionSummary, Backdrop, Button, Card, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, TextField, ToggleButton, ToggleButtonGroup, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
-import { Add, AddCircleOutline, ArrowForward, ArrowForwardIos, AutoFixHighRounded, Close, ContentCopy, Description, FormatAlignCenter, FormatAlignLeft, FormatAlignRight, GpsFixed, GpsNotFixed, HighlightOffRounded, History, HistoryToggleOffRounded, IosShare, Menu, More, PlusOne, Redo, Share, SupervisedUserCircle, Undo, Update, Verified } from '@mui/icons-material';
+import { Accordion, AccordionDetails, AccordionSummary, Backdrop, Button, Card, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, Tab, Tabs, TextField, ToggleButton, ToggleButtonGroup, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
+import { Add, AddCircleOutline, ArrowForward, ArrowForwardIos, AutoFixHigh, AutoFixHighRounded, Close, ContentCopy, Description, FormatAlignCenter, FormatAlignLeft, FormatAlignRight, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, History, HistoryToggleOffRounded, IosShare, Menu, More, PlusOne, Redo, Share, SupervisedUserCircle, Undo, Update, Verified } from '@mui/icons-material';
 import { API, Storage } from 'aws-amplify';
 import { Box } from '@mui/system';
 import { Helmet } from 'react-helmet-async';
@@ -122,6 +122,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const [loadingSubscriptionUrl, setLoadingSubscriptionUrl] = useState(false);
 
   const [subtitlesExpanded, setSubtitlesExpanded] = useState(false);
+  const [promptEnabled, setPromptEnabled] = useState('erase');
   const buttonRef = useRef(null);
 
   const [anchorEl, setAnchorEl] = useState(null);
@@ -705,6 +706,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
           setMessage(`Image Generation Successful! Remaining credits: ${newCreditAmount}`)
           setOpen(true)
           setEditorTool();
+          setMagicPrompt('Everyday scene as cinestill sample, Empty, Nothing, Plain, Vacant, Desolate, Void, Barren, Uninhabited, Abandoned, Unoccupied, Untouched, Clear, Blank, Pristine, Unmarred')
+          setPromptEnabled('erase')
         }, 500);
         // setImageSrc(response.imageData);
       } catch (error) {
@@ -837,6 +840,20 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       }, [1000])
     }
   }
+
+  // This is going to handle toggling our default prompt and no prompt when the user switches between erase and fill.
+  useEffect(() => {
+    if (promptEnabled === "fill") {
+      setMagicPrompt('')
+    } else {
+      setMagicPrompt('Everyday scene as cinestill sample, Empty, Nothing, Plain, Vacant, Desolate, Void, Barren, Uninhabited, Abandoned, Unoccupied, Untouched, Clear, Blank, Pristine, Unmarred')
+    }
+  }, [promptEnabled])
+
+  useEffect(() => {
+      setPromptEnabled('erase')
+      setMagicPrompt('Everyday scene as cinestill sample, Empty, Nothing, Plain, Vacant, Desolate, Void, Barren, Uninhabited, Abandoned, Unoccupied, Untouched, Clear, Blank, Pristine, Unmarred')
+  }, [editorTool])
 
   // ------------------------------------------------------------------------
 
@@ -1222,7 +1239,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                         }}
                         aria-label="text alignment"
                         size='small'
-                        sx={{ mx: { xs: 'auto', md: 'unset' } }}
+                        sx={{ mx: { xs: 'auto' } }}
                       >
                         <ToggleButton size='small' onClick={loadFineTuningFrames} value="fineTuning" aria-label="centered">
                           <Stack direction='row' spacing={1} alignItems='center'>
@@ -1236,7 +1253,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                           <Stack direction='row' spacing={1} alignItems='center'>
                             <AutoFixHighRounded alt="Magic Eraser" fontSize='small' />
                             <Typography variant='body2'>
-                              Magic Eraser
+                              Magic Tools
                             </Typography>
                           </Stack>
                         </ToggleButton>
@@ -1273,43 +1290,82 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                       </>
                     }
                     {editorTool === 'magicEraser' &&
-                      <Stack direction='row' alignItems='center' spacing={2} sx={{ mt: 2 }}>
-                        <Slider
-                          size="small"
-                          min={1}
-                          max={100}
-                          value={brushToolSize}
-                          aria-label="Small"
-                          valueLabelDisplay='auto'
-                          sx={{
-                            marginRight: 0.5
+                      <>
+                        <Tabs
+                          value={promptEnabled}
+                          onChange={(event, value) => { setPromptEnabled(value) }}
+                          centered
+                          TabIndicatorProps={{
+                            style: {
+                              backgroundColor: 'limegreen',
+                              top: '60px',  // Adjusts the position of the indicator
+                              height: '3px' // Adjusts the thickness of the indicator
+                            }
                           }}
-                          onChange={(event) => {
-                            setShowBrushSize(true)
-                            handleBrushToolSize(event.target.value);
-                          }}
-                          onChangeCommitted={() => {
-                            setShowBrushSize(false)
-                          }}
-                          // valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
-                          // marks
-                          track={false}
-                        />
-                        <Button variant='contained' onClick={() => {
-                          setEditorTool()
-                          toggleDrawingMode('fineTuning')
-                        }}>
-                          Cancel
-                        </Button>
-                        <Button variant='contained' onClick={
-                          () => {
-                            exportDrawing();
-                            toggleDrawingMode('fineTuning');
-                          }
-                        }>
-                          Apply
-                        </Button>
-                      </Stack>
+                        >
+                          <Tab value="erase" label="Eraser" icon={<AutoFixHigh fontSize='small' />} iconPosition='start' style={{ color: promptEnabled === 'erase' ? 'limegreen' : undefined }} />
+                          <Tab value="fill" label="Fill" icon={<FormatColorFill fontSize='small' />} iconPosition='start' style={{ color: promptEnabled === 'fill' ? 'limegreen' : undefined }} />
+                        </Tabs>
+
+
+                        <Stack direction='row' alignItems='center' spacing={2} sx={{ mt: 2 }}>
+                          <Slider
+                            size="small"
+                            min={1}
+                            max={100}
+                            value={brushToolSize}
+                            aria-label="Small"
+                            valueLabelDisplay='auto'
+                            sx={{
+                              marginRight: 0.5
+                            }}
+                            onChange={(event) => {
+                              setShowBrushSize(true)
+                              handleBrushToolSize(event.target.value);
+                            }}
+                            onChangeCommitted={() => {
+                              setShowBrushSize(false)
+                            }}
+                            // valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
+                            // marks
+                            track={false}
+                          />
+                          <Button variant='contained' onClick={() => {
+                            setEditorTool()
+                            toggleDrawingMode('fineTuning')
+                          }}>
+                            Cancel
+                          </Button>
+                          <Button variant='contained' onClick={
+                            () => {
+                              exportDrawing();
+                              toggleDrawingMode('fineTuning');
+                            }
+                          }>
+                            Apply
+                          </Button>
+                        </Stack>
+                        {promptEnabled === "fill" &&
+                          <TextField
+                            value={magicPrompt}
+                            onChange={(event) => {
+                              setMagicPrompt(event.target.value);
+                            }}
+                            fullWidth
+                            sx={{
+                              mt: 3,
+                              '& .MuiInputLabel-root.Mui-focused': { // targets label when focused
+                                color: 'limegreen',
+                              },
+                              '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': { // targets border when focused
+                                borderColor: 'limegreen',
+                              },
+                            }}
+                            label='Magic Fill Prompt'
+                          />
+
+                        }
+                      </>
 
                     }
                   </Card>
@@ -1612,7 +1668,13 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                     </li>
                     <li>
                       Magic Fill{' '}
-                      <Chip size="small" label="Planned" sx={{ marginLeft: '5px', opacity: 0.5 }} variant="outlined" />
+                      <Chip
+                        color="success"
+                        size="small"
+                        label="Early Access"
+                        sx={{ marginLeft: '5px', opacity: 0.7 }}
+                        variant="outlined"
+                      />
                     </li>
                     <li>
                       Magic Expander{' '}
@@ -1664,7 +1726,13 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                   </li>
                   <li>
                     Magic Fill{' '}
-                    <Chip size="small" label="Planned" sx={{ marginLeft: '5px', opacity: 0.5 }} variant="outlined" />
+                    <Chip
+                        color="success"
+                        size="small"
+                        label="Early Access"
+                        sx={{ marginLeft: '5px', opacity: 0.7 }}
+                        variant="outlined"
+                      />
                   </li>
                   <li>
                     Magic Expander{' '}
@@ -1715,7 +1783,13 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                   </li>
                   <li>
                     Magic Fill{' '}
-                    <Chip size="small" label="Planned" sx={{ marginLeft: '5px', opacity: 0.5 }} variant="outlined" />
+                    <Chip
+                        color="success"
+                        size="small"
+                        label="Early Access"
+                        sx={{ marginLeft: '5px', opacity: 0.7 }}
+                        variant="outlined"
+                      />
                   </li>
                   <li>
                     Magic Expander{' '}
@@ -1736,49 +1810,49 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         <Box width="100%" px={2} pb={2} pt={1}>
           {(user?.userDetails?.earlyAccessStatus === 'accepted') ?
             <>
-            {user?.userDetails?.magicSubscription === 'true' ? (
-              <LoadingButton
-                loading={loadingSubscriptionUrl}
-                onClick={cancelSubscription}
-                variant="contained"
-                size="large"
-                fullWidth
-              >
-                Cancel Subscription
-              </LoadingButton>
-            ) : (
-              <>
+              {user?.userDetails?.magicSubscription === 'true' ? (
                 <LoadingButton
                   loading={loadingSubscriptionUrl}
-                  onClick={buySubscription}
+                  onClick={cancelSubscription}
                   variant="contained"
                   size="large"
                   fullWidth
-                  sx={{
-                    backgroundColor: (theme) => theme.palette.success.main,
-                    color: (theme) => theme.palette.common.black,
-                    '&:hover': {
-                      ...(!loadingSubscriptionUrl && {
-                        backgroundColor: (theme) => theme.palette.success.dark,
-                        color: (theme) => theme.palette.common.black,
-                      }),
-                    },
-                  }}
                 >
-                  Upgrade to Magic 69
+                  Cancel Subscription
                 </LoadingButton>
-                <Typography 
-                  variant="caption" 
-                  display="block" 
-                  gutterBottom 
-                  align="center"
-                  sx={{ pt: 1, marginTop: 1, opacity: 0.8 }}
-                >
-                  Get 69 credits/mo for $6. Cancel any time.
-                </Typography>
-              </>
-            )}
-          </>
+              ) : (
+                <>
+                  <LoadingButton
+                    loading={loadingSubscriptionUrl}
+                    onClick={buySubscription}
+                    variant="contained"
+                    size="large"
+                    fullWidth
+                    sx={{
+                      backgroundColor: (theme) => theme.palette.success.main,
+                      color: (theme) => theme.palette.common.black,
+                      '&:hover': {
+                        ...(!loadingSubscriptionUrl && {
+                          backgroundColor: (theme) => theme.palette.success.dark,
+                          color: (theme) => theme.palette.common.black,
+                        }),
+                      },
+                    }}
+                  >
+                    Upgrade to Magic 69
+                  </LoadingButton>
+                  <Typography
+                    variant="caption"
+                    display="block"
+                    gutterBottom
+                    align="center"
+                    sx={{ pt: 1, marginTop: 1, opacity: 0.8 }}
+                  >
+                    Get 69 credits/mo for $6. Cancel any time.
+                  </Typography>
+                </>
+              )}
+            </>
             :
             <>
               {(user?.userDetails?.earlyAccessStatus === 'invited') ?
