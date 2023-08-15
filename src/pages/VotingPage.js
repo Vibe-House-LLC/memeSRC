@@ -587,7 +587,7 @@ export default function VotingPage() {
                                     title={
                                       // This is where we show two different options depending on vote status
                                       // TODO: Show how much time remains until the next vote
-                                      ableToVote[show.id] !== true || votingStatus[show.id]
+                                      (ableToVote[show.id] && ableToVote[show.id] !== true) || votingStatus[show.id]
                                         ? user ? `🔒 ${timeRemaining}`
                                         : 'Upvote'
                                         : 'Upvote'
@@ -620,7 +620,7 @@ export default function VotingPage() {
                                             ? handleUpvote(show.id)
                                             : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
                                         }
-                                        disabled={user && (ableToVote[show.id] !== true || votingStatus[show.id])}
+                                        disabled={user && ((ableToVote[show.id] && ableToVote[show.id] !== true) || votingStatus[show.id])}
                                         size="small"
                                       >
                                         {lastBoost[show.id] === -1 &&
@@ -668,7 +668,7 @@ export default function VotingPage() {
                                       calculateTimeRemaining(nextVoteTimes[show.id]);
                                     }}
                                     title={
-                                      ableToVote[show.id] !== true || votingStatus[show.id]
+                                      (ableToVote[show.id] && ableToVote[show.id] !== true) || votingStatus[show.id]
                                         ? user ? `🔒 ${timeRemaining}`
                                         : 'Downvote'
                                         : 'Downvote'
@@ -701,7 +701,7 @@ export default function VotingPage() {
                                             ? handleDownvote(show.id)
                                             : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
                                         }
-                                        disabled={user && (ableToVote[show.id] !== true || votingStatus[show.id])}
+                                        disabled={user && ((ableToVote[show.id] && ableToVote[show.id] !== true) || votingStatus[show.id])}
                                         size="small"
                                       >
                                         <ArrowDownward
@@ -736,7 +736,7 @@ export default function VotingPage() {
                                     title={
                                       // This is where we show two different options depending on vote status
                                       // TODO: Show how much time remains until the next vote
-                                      ableToVote[show.id] !== true || votingStatus[show.id]
+                                      (ableToVote[show.id] && ableToVote[show.id] !== true) || votingStatus[show.id]
                                         ? user ? `🔒 ${timeRemaining}`
                                         : 'Upvote'
                                         : 'Upvote'
@@ -766,7 +766,7 @@ export default function VotingPage() {
                                             ? handleUpvote(show.id)
                                             : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
                                         }
-                                        disabled={user && (ableToVote[show.id] !== true || votingStatus[show.id])}
+                                        disabled={user && ((ableToVote[show.id] && ableToVote[show.id] !== true) || votingStatus[show.id])}
                                         size="small"
                                       >
                                         {lastBoost[show.id] === -1 &&
