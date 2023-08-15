@@ -180,71 +180,72 @@ function updateUserDetails(params) {
   return query;
 }
 
-function getUserDetails(params) {
-  // console.log(`getUserDetails PARAMS: ${params}`);
+function getUserDetails(params, nextToken = null) {
+  const limit = 1000;
+
+  let innerQuery = '';
+
   if (params.username) {
-    const query = `
-          query listUserDetails {
-              listUserDetails(filter: {username: {eq: "${params.username.toLowerCase()}"}}) {
-                  items {
-                      updatedAt
-                      username
-                      stripeId
-                      id
-                      email
-                      createdAt
-                      status
-                      earlyAccessStatus
-                      contributorAccessStatus
-                      magicSubscription
-                      votes {
-                        items {
-                            series {
-                                id
-                            }
-                            boost
-                            seriesUserVoteSeriesId
-                            createdAt
-                        }
-                      }
-                      credits
-                  }
-              }
+    innerQuery = `
+      listUserDetails(filter: {username: {eq: "${params.username.toLowerCase()}"}}) {
+        items {
+          updatedAt
+          username
+          stripeId
+          id
+          email
+          createdAt
+          status
+          earlyAccessStatus
+          contributorAccessStatus
+          magicSubscription
+          votes(limit: ${limit}${nextToken ? `, nextToken: "${nextToken}"` : ''}) {
+            items {
+              series { id }
+              boost
+              seriesUserVoteSeriesId
+              createdAt
+            }
+            nextToken
           }
-      `;
-    // console.log(query);
-    return query;
+          credits
+        }
+      }
+    `;
   } else if (params.subId) {
-    const query = `
-          query getUserDetails {
-              getUserDetails(id: "${params.subId}") {
-                  createdAt
-                  email
-                  id
-                  stripeId
-                  username
-                  updatedAt
-                  status
-                  earlyAccessStatus
-                  contributorAccessStatus
-                  magicSubscription
-                  votes {
-                    items {
-                        series {
-                            id
-                        }
-                        boost
-                        seriesUserVoteSeriesId
-                        createdAt
-                    }
-                  }
-                  credits
-              }
+    innerQuery = `
+      getUserDetails(id: "${params.subId}") {
+        createdAt
+        email
+        id
+        stripeId
+        username
+        updatedAt
+        status
+        earlyAccessStatus
+        contributorAccessStatus
+        magicSubscription
+        votes(limit: ${limit}${nextToken ? `, nextToken: "${nextToken}"` : ''}) {
+          items {
+            series { id }
+            boost
+            seriesUserVoteSeriesId
+            createdAt
           }
-      `;
-    console.log(query);
-    return query;
+          nextToken
+        }
+        credits
+      }
+    `;
   }
+
+  const query = `
+    query {
+      ${innerQuery}
+    }
+  `;
+
+  return query;
 }
 
 async function makeRequest(query) {
@@ -294,6 +295,29 @@ async function makeRequest(query) {
     statusCode,
     body,
   };
+}
+
+async function getAllUserVotes(params) {
+  let allVotes = [];
+  let nextToken = null;
+
+  do {
+    const query = getUserDetails(params, nextToken);
+    const response = await makeRequest(query);
+    
+    console.log(`response: ${JSON.stringify(response)}`)
+
+    // Depending on the structure of your response, you might need to adjust the following lines.
+    const userDetails = response.body.data.getUserDetails;
+
+    if (userDetails && userDetails.votes && userDetails.votes.items) {
+      allVotes = allVotes.concat(userDetails.votes.items);
+      nextToken = userDetails.votes.nextToken;
+    }
+
+  } while (nextToken);
+
+  return allVotes;
 }
 
 /**
@@ -481,8 +505,9 @@ export const handler = async (event) => {
       const totalVotes = await getAllVotes();
 
       // Summarize the user's personal votes
-      const userDetails = await makeRequest(getUserDetails({ subId: userSub }));
-      const userVotes = userDetails.body.data.getUserDetails.votes.items;
+      const userVotes = await getAllUserVotes({ subId: userSub });
+      console.log(`userVotes: ${JSON.stringify(userVotes)}`)
+      // const userVotes = allVotes.body.data.getUserDetails.votes.items;
 
       console.log(totalVotes)
       const {
