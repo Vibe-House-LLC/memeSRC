@@ -1,4 +1,3 @@
-// Import required AWS SDK v3 clients and commands for Node.js
 const { DynamoDBClient, PutItemCommand, ScanCommand } = require("@aws-sdk/client-dynamodb");
 const { marshall, unmarshall } = require("@aws-sdk/util-dynamodb");
 
@@ -8,18 +7,34 @@ const ddb = new DynamoDBClient({ region: REGION });
 /**
  * @type {import('@types/aws-lambda').APIGatewayProxyHandler}
  */
+
+// Utility function to perform full table scan with pagination
+async function scanDynamoDBTable(params) {
+    let lastEvaluatedKey;
+    const allResults = [];
+    do {
+        if (lastEvaluatedKey) {
+            params.ExclusiveStartKey = lastEvaluatedKey;
+        }
+        const scanResponse = await ddb.send(new ScanCommand(params));
+        allResults.push(...scanResponse.Items);
+        lastEvaluatedKey = scanResponse.LastEvaluatedKey;
+    } while (lastEvaluatedKey);
+    return allResults;
+}
+
 exports.handler = async (event) => {
     console.log(`EVENT: ${JSON.stringify(event)}`);
 
-    // Scan the SeriesUserVote DynamoDB table
+    // Scan the SeriesUserVote DynamoDB table with pagination
     const scanParams = {
         TableName: process.env.API_MEMESRC_SERIESUSERVOTETABLE_NAME
     };
 
     let scanResults;
     try {
-        const scanResponse = await ddb.send(new ScanCommand(scanParams));
-        scanResults = scanResponse.Items.map(item => unmarshall(item));
+        const items = await scanDynamoDBTable(scanParams);
+        scanResults = items.map(item => unmarshall(item));
     } catch (scanError) {
         console.error(`Error scanning DynamoDB table: ${JSON.stringify(scanError)}`);
         return {
