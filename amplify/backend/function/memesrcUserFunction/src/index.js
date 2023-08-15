@@ -74,11 +74,12 @@ async function getAllVotes() {
     );
   }
 
-  let allItems = JSON.parse(response.body.data.getAnalyticsMetrics.items[0]);
-  return allItems;
+  const totalVotes = JSON.parse(response.body.data.getAnalyticsMetrics.value);
+
+  return totalVotes;
 }
 
-async function processVotes(allItems, userSub) {
+async function processVotes({allItems, userSub}) {
   const votesCount = {};
   const currentUserVotes = {};
   const votesCountUp = {};
@@ -89,44 +90,37 @@ async function processVotes(allItems, userSub) {
   const lastBoostValue = {};
   const nextVoteTime = {};
 
+  console.log(`allItems: ${JSON.stringify(allItems)}`)
+
   const seriesIds = new Set(allItems.map(item => item.seriesUserVoteSeriesId));
   const isLastUserVoteOlderThan24Hours = {};
   seriesIds.forEach(id => isLastUserVoteOlderThan24Hours[id] = true);
 
   allItems.forEach((vote) => {
+    console.log(vote)
     if (vote.boost > 0) {
-      votesCountUp[vote.seriesUserVoteSeriesId] = (votesCountUp[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
-      if (vote.userDetailsVotesId && vote.userDetailsVotesId.normalize() === userSub.normalize()) {
-        currentUserVotesUp[vote.seriesUserVoteSeriesId] =
-          (currentUserVotesUp[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
-      }
+      currentUserVotesUp[vote.seriesUserVoteSeriesId] = (currentUserVotesUp[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
     } else if (vote.boost < 0) {
-      votesCountDown[vote.seriesUserVoteSeriesId] = (votesCountDown[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
-      if (vote.userDetailsVotesId && vote.userDetailsVotesId.normalize() === userSub.normalize()) {
-        currentUserVotesDown[vote.seriesUserVoteSeriesId] =
-          (currentUserVotesDown[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
-      }
+      currentUserVotesDown[vote.seriesUserVoteSeriesId] = (currentUserVotesDown[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
     }
 
     votesCount[vote.seriesUserVoteSeriesId] = (votesCount[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
+    
+    currentUserVotes[vote.seriesUserVoteSeriesId] = (currentUserVotes[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
 
-    if (vote.userDetailsVotesId && vote.userDetailsVotesId.normalize() === userSub.normalize()) {
-      currentUserVotes[vote.seriesUserVoteSeriesId] = (currentUserVotes[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
+    const voteTime = new Date(vote.createdAt);
+    if (!lastUserVoteTimestamps[vote.seriesUserVoteSeriesId] || voteTime > lastUserVoteTimestamps[vote.seriesUserVoteSeriesId]) {
+      lastUserVoteTimestamps[vote.seriesUserVoteSeriesId] = voteTime;
+      lastBoostValue[vote.seriesUserVoteSeriesId] = vote.boost;
+      const currentTime = new Date().getTime();
+      const diffInHours = (currentTime - voteTime.getTime()) / (1000 * 60 * 60);
+      isLastUserVoteOlderThan24Hours[vote.seriesUserVoteSeriesId] = diffInHours > 24;
 
-      const voteTime = new Date(vote.createdAt);
-      if (!lastUserVoteTimestamps[vote.seriesUserVoteSeriesId] || voteTime > lastUserVoteTimestamps[vote.seriesUserVoteSeriesId]) {
-        lastUserVoteTimestamps[vote.seriesUserVoteSeriesId] = voteTime;
-        lastBoostValue[vote.seriesUserVoteSeriesId] = vote.boost;
-        const currentTime = new Date().getTime();
-        const diffInHours = (currentTime - voteTime.getTime()) / (1000 * 60 * 60);
-        isLastUserVoteOlderThan24Hours[vote.seriesUserVoteSeriesId] = diffInHours > 24;
-
-        // calculate next vote time
-        if (diffInHours < 24) {
-          nextVoteTime[vote.seriesUserVoteSeriesId] = new Date(voteTime.getTime() + 24 * 60 * 60 * 1000).toISOString();
-        } else {
-          nextVoteTime[vote.seriesUserVoteSeriesId] = null;
-        }
+      // calculate next vote time
+      if (diffInHours < 24) {
+        nextVoteTime[vote.seriesUserVoteSeriesId] = new Date(voteTime.getTime() + 24 * 60 * 60 * 1000).toISOString();
+      } else {
+        nextVoteTime[vote.seriesUserVoteSeriesId] = null;
       }
     }
   });
@@ -186,69 +180,72 @@ function updateUserDetails(params) {
   return query;
 }
 
-function getUserDetails(params) {
-  // console.log(`getUserDetails PARAMS: ${params}`);
+function getUserDetails(params, nextToken = null) {
+  const limit = 1000;
+
+  let innerQuery = '';
+
   if (params.username) {
-    const query = `
-          query listUserDetails {
-              listUserDetails(filter: {username: {eq: "${params.username.toLowerCase()}"}}) {
-                  items {
-                      updatedAt
-                      username
-                      stripeId
-                      id
-                      email
-                      createdAt
-                      status
-                      earlyAccessStatus
-                      contributorAccessStatus
-                      magicSubscription
-                      votes {
-                        items {
-                            series {
-                                id
-                            }
-                            boost
-                            createdAt
-                        }
-                      }
-                      credits
-                  }
-              }
+    innerQuery = `
+      listUserDetails(filter: {username: {eq: "${params.username.toLowerCase()}"}}) {
+        items {
+          updatedAt
+          username
+          stripeId
+          id
+          email
+          createdAt
+          status
+          earlyAccessStatus
+          contributorAccessStatus
+          magicSubscription
+          votes(limit: ${limit}${nextToken ? `, nextToken: "${nextToken}"` : ''}) {
+            items {
+              series { id }
+              boost
+              seriesUserVoteSeriesId
+              createdAt
+            }
+            nextToken
           }
-      `;
-    // console.log(query);
-    return query;
+          credits
+        }
+      }
+    `;
   } else if (params.subId) {
-    const query = `
-          query getUserDetails {
-              getUserDetails(id: "${params.subId}") {
-                  createdAt
-                  email
-                  id
-                  stripeId
-                  username
-                  updatedAt
-                  status
-                  earlyAccessStatus
-                  contributorAccessStatus
-                  magicSubscription
-                  votes {
-                    items {
-                        series {
-                            id
-                        }
-                        boost
-                        createdAt
-                    }
-                  }
-                  credits
-              }
+    innerQuery = `
+      getUserDetails(id: "${params.subId}") {
+        createdAt
+        email
+        id
+        stripeId
+        username
+        updatedAt
+        status
+        earlyAccessStatus
+        contributorAccessStatus
+        magicSubscription
+        votes(limit: ${limit}${nextToken ? `, nextToken: "${nextToken}"` : ''}) {
+          items {
+            series { id }
+            boost
+            seriesUserVoteSeriesId
+            createdAt
           }
-      `;
-    console.log(query);
-    return query;
+          nextToken
+        }
+        credits
+      }
+    `;
   }
+
+  const query = `
+    query {
+      ${innerQuery}
+    }
+  `;
+
+  return query;
 }
 
 async function makeRequest(query) {
@@ -298,6 +295,29 @@ async function makeRequest(query) {
     statusCode,
     body,
   };
+}
+
+async function getAllUserVotes(params) {
+  let allVotes = [];
+  let nextToken = null;
+
+  do {
+    const query = getUserDetails(params, nextToken);
+    const response = await makeRequest(query);
+    
+    console.log(`response: ${JSON.stringify(response)}`)
+
+    // Depending on the structure of your response, you might need to adjust the following lines.
+    const userDetails = response.body.data.getUserDetails;
+
+    if (userDetails && userDetails.votes && userDetails.votes.items) {
+      allVotes = allVotes.concat(userDetails.votes.items);
+      nextToken = userDetails.votes.nextToken;
+    }
+
+  } while (nextToken);
+
+  return allVotes;
 }
 
 /**
@@ -485,8 +505,9 @@ export const handler = async (event) => {
       const totalVotes = await getAllVotes();
 
       // Summarize the user's personal votes
-      const userDetails = await getUserDetails();
-      const votesArray = userDetails.votes.items;
+      const userVotes = await getAllUserVotes({ subId: userSub });
+      console.log(`userVotes: ${JSON.stringify(userVotes)}`)
+      // const userVotes = allVotes.body.data.getUserDetails.votes.items;
 
       console.log(totalVotes)
       const {
@@ -496,10 +517,28 @@ export const handler = async (event) => {
         lastBoostValue,
         nextVoteTime,
         lastUserVoteTimestamps
-      } = await processVotes(userVotesUp, userSub);
+      } = await processVotes({ allItems: userVotes, userSub });
+
+      const combinedVotes = {};
+      const votesUp = {};
+      const votesDown = {};
+      
+      for (let id in totalVotes) {
+        combinedVotes[id] = totalVotes[id].upvotes - totalVotes[id].downvotes;
+        votesUp[id] = totalVotes[id].upvotes;
+        votesDown[id] = -totalVotes[id].downvotes; // To keep the downvotes as negative
+      }
+
+      const combinedUserVotes = {};
+      for (let id in currentUserVotesUp) {
+        combinedUserVotes[id] = (currentUserVotesUp[id] || 0) - (currentUserVotesDown[id] || 0);
+      }
 
       const result = {
-        votes: totalVotes,
+        votes: combinedVotes,
+        userVotes: combinedUserVotes,
+        votesUp: votesUp,
+        votesDown: votesDown,
         userVotesUp: currentUserVotesUp,
         userVotesDown: currentUserVotesDown,
         ableToVote: isLastUserVoteOlderThan24Hours,
