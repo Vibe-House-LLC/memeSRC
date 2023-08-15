@@ -257,7 +257,9 @@ export default function Header({ onOpenNav }) {
               xs: 2,
             }}
           >
-            {/* <NotificationsPopover /> */}
+            {user &&
+              <NotificationsPopover />
+            }
             <>
               <Chip
                 onClick={(event) => {
@@ -418,12 +420,12 @@ export default function Header({ onOpenNav }) {
                   <li>
                     Magic Fill{' '}
                     <Chip
-                        color="success"
-                        size="small"
-                        label="Early Access"
-                        sx={{ marginLeft: '5px', opacity: 0.7 }}
-                        variant="outlined"
-                      />
+                      color="success"
+                      size="small"
+                      label="Early Access"
+                      sx={{ marginLeft: '5px', opacity: 0.7 }}
+                      variant="outlined"
+                    />
                   </li>
                   <li>
                     Magic Expander{' '}
@@ -497,12 +499,12 @@ export default function Header({ onOpenNav }) {
                   <li>
                     Magic Fill{' '}
                     <Chip
-                        color="success"
-                        size="small"
-                        label="Early Access"
-                        sx={{ marginLeft: '5px', opacity: 0.7 }}
-                        variant="outlined"
-                      />
+                      color="success"
+                      size="small"
+                      label="Early Access"
+                      sx={{ marginLeft: '5px', opacity: 0.7 }}
+                      variant="outlined"
+                    />
                   </li>
                   <li>
                     Magic Expander{' '}
@@ -525,49 +527,49 @@ export default function Header({ onOpenNav }) {
         <Box width="100%" px={2} pb={2} pt={1}>
           {user?.userDetails?.earlyAccessStatus === 'accepted' ? (
             <>
-            {user?.userDetails?.magicSubscription === 'true' ? (
-              <LoadingButton
-                loading={loadingSubscriptionUrl}
-                onClick={cancelSubscription}
-                variant="contained"
-                size="large"
-                fullWidth
-              >
-                Cancel Subscription
-              </LoadingButton>
-            ) : (
-              <>
+              {user?.userDetails?.magicSubscription === 'true' ? (
                 <LoadingButton
                   loading={loadingSubscriptionUrl}
-                  onClick={buySubscription}
+                  onClick={cancelSubscription}
                   variant="contained"
                   size="large"
                   fullWidth
-                  sx={{
-                    backgroundColor: (theme) => theme.palette.success.main,
-                    color: (theme) => theme.palette.common.black,
-                    '&:hover': {
-                      ...(!loadingSubscriptionUrl && {
-                        backgroundColor: (theme) => theme.palette.success.dark,
-                        color: (theme) => theme.palette.common.black,
-                      }),
-                    },
-                  }}
                 >
-                  Upgrade to Magic 69
+                  Cancel Subscription
                 </LoadingButton>
-                <Typography 
-                  variant="caption" 
-                  display="block" 
-                  gutterBottom 
-                  align="center"
-                  sx={{ pt: 1, marginTop: 1, opacity: 0.8 }}
-                >
-                  Get 69 credits/mo for $6. Cancel any time.
-                </Typography>
-              </>
-            )}
-          </>
+              ) : (
+                <>
+                  <LoadingButton
+                    loading={loadingSubscriptionUrl}
+                    onClick={buySubscription}
+                    variant="contained"
+                    size="large"
+                    fullWidth
+                    sx={{
+                      backgroundColor: (theme) => theme.palette.success.main,
+                      color: (theme) => theme.palette.common.black,
+                      '&:hover': {
+                        ...(!loadingSubscriptionUrl && {
+                          backgroundColor: (theme) => theme.palette.success.dark,
+                          color: (theme) => theme.palette.common.black,
+                        }),
+                      },
+                    }}
+                  >
+                    Upgrade to Magic 69
+                  </LoadingButton>
+                  <Typography
+                    variant="caption"
+                    display="block"
+                    gutterBottom
+                    align="center"
+                    sx={{ pt: 1, marginTop: 1, opacity: 0.8 }}
+                  >
+                    Get 69 credits/mo for $6. Cancel any time.
+                  </Typography>
+                </>
+              )}
+            </>
           ) : (
             <>
               {user?.userDetails?.earlyAccessStatus === 'invited' ? (
