@@ -56,18 +56,12 @@ function createUserDetails(params) {
   return query;
 }
 
-async function getAllVotes(userSub, nextToken) {
+async function getAllVotes() {
   let query = `
-    query ListSeriesUserVotes {
-      listSeriesUserVotes(limit: 1000${nextToken ? `, nextToken: "${nextToken}"` : ''}) {
-        items {
-          id
-          boost
-          userDetailsVotesId
-          seriesUserVoteSeriesId
-          createdAt
-        }
-        nextToken
+    query GetAnalyticsMetrics {
+      getAnalyticsMetrics(id: "totalVotes") {
+        value
+        updatedAt
       }
     }
   `;
@@ -80,15 +74,7 @@ async function getAllVotes(userSub, nextToken) {
     );
   }
 
-  let allItems = response.body.data.listSeriesUserVotes.items;
-  if (response.body.data.listSeriesUserVotes.nextToken) {
-    console.log('loading another page...');
-    console.log(`nextToken: ${response.body.data.listSeriesUserVotes.nextToken}`);
-    let newItems = await getAllVotes(userSub, response.body.data.listSeriesUserVotes.nextToken);
-    allItems = allItems.concat(newItems);
-    console.log('loaded another page');
-  }
-
+  let allItems = JSON.parse(response.body.data.getAnalyticsMetrics.items[0]);
   return allItems;
 }
 
@@ -495,26 +481,25 @@ export const handler = async (event) => {
 
   if (path === `/${process.env.ENV}/public/vote/list`) {
     try {
-      const rawVotes = await getAllVotes(userSub);
+      // Get the aggregated votes
+      const totalVotes = await getAllVotes();
+
+      // Summarize the user's personal votes
+      const userDetails = await getUserDetails();
+      const votesArray = userDetails.votes.items;
+
+      console.log(totalVotes)
       const {
-        allVotes,
-        votesCount,
-        currentUserVotes,
-        votesCountUp,
-        votesCountDown,
         currentUserVotesUp,
         currentUserVotesDown,
         isLastUserVoteOlderThan24Hours,
         lastBoostValue,
         nextVoteTime,
         lastUserVoteTimestamps
-      } = await processVotes(rawVotes, userSub);
+      } = await processVotes(userVotesUp, userSub);
 
       const result = {
-        votes: votesCount,
-        userVotes: currentUserVotes,
-        votesUp: votesCountUp,
-        votesDown: votesCountDown,
+        votes: totalVotes,
         userVotesUp: currentUserVotesUp,
         userVotesDown: currentUserVotesDown,
         ableToVote: isLastUserVoteOlderThan24Hours,
