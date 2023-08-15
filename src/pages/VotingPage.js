@@ -197,13 +197,15 @@ export default function VotingPage() {
 
       setShows(sortedShows);
       setVotes(voteData.votes);
-      setUserVotes(voteData.userVotes);
-      setUserVotesUp(voteData.userVotesUp);
-      setUserVotesDown(voteData.userVotesDown);
+      setUserVotes(user ? voteData.userVotes : 0);
+      setUserVotesUp(user ? voteData.userVotesUp : 0);
+      setUserVotesDown(user ? voteData.userVotesDown : 0);
       setUpvotes(voteData.votesUp);
       setDownvotes(voteData.votesDown);
-      setAbleToVote(voteData.ableToVote);
-      setLastBoost(voteData.lastBoost);
+      setAbleToVote(user ? voteData.ableToVote : true);
+      setLastBoost(user ? voteData.lastBoost : [{}]);
+      console.log('last boost');
+      console.log(voteData.lastBoost)
 
       const nextVoteTimes = {};
       Object.keys(voteData.nextVoteTime).forEach((seriesId) => {
@@ -586,7 +588,8 @@ export default function VotingPage() {
                                       // This is where we show two different options depending on vote status
                                       // TODO: Show how much time remains until the next vote
                                       ableToVote[show.id] !== true || votingStatus[show.id]
-                                        ? `🔒 ${timeRemaining}`
+                                        ? user ? `🔒 ${timeRemaining}`
+                                        : 'Upvote'
                                         : 'Upvote'
                                     }
                                     componentsProps={{
@@ -617,7 +620,7 @@ export default function VotingPage() {
                                             ? handleUpvote(show.id)
                                             : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
                                         }
-                                        disabled={ableToVote[show.id] !== true || votingStatus[show.id]}
+                                        disabled={user && (ableToVote[show.id] !== true || votingStatus[show.id])}
                                         size="small"
                                       >
                                         {lastBoost[show.id] === -1 &&
@@ -666,7 +669,8 @@ export default function VotingPage() {
                                     }}
                                     title={
                                       ableToVote[show.id] !== true || votingStatus[show.id]
-                                        ? `🔒 ${timeRemaining}`
+                                        ? user ? `🔒 ${timeRemaining}`
+                                        : 'Downvote'
                                         : 'Downvote'
                                     }
                                     componentsProps={{
@@ -697,7 +701,7 @@ export default function VotingPage() {
                                             ? handleDownvote(show.id)
                                             : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
                                         }
-                                        disabled={ableToVote[show.id] !== true || votingStatus[show.id]}
+                                        disabled={user && (ableToVote[show.id] !== true || votingStatus[show.id])}
                                         size="small"
                                       >
                                         <ArrowDownward
@@ -733,7 +737,8 @@ export default function VotingPage() {
                                       // This is where we show two different options depending on vote status
                                       // TODO: Show how much time remains until the next vote
                                       ableToVote[show.id] !== true || votingStatus[show.id]
-                                        ? `🔒 ${timeRemaining}`
+                                        ? user ? `🔒 ${timeRemaining}`
+                                        : 'Upvote'
                                         : 'Upvote'
                                     }
                                     componentsProps={{
@@ -761,7 +766,7 @@ export default function VotingPage() {
                                             ? handleUpvote(show.id)
                                             : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
                                         }
-                                        disabled={ableToVote[show.id] !== true || votingStatus[show.id]}
+                                        disabled={user && (ableToVote[show.id] !== true || votingStatus[show.id])}
                                         size="small"
                                       >
                                         {lastBoost[show.id] === -1 &&
