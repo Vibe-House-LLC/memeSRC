@@ -520,8 +520,13 @@ export const handler = async (event) => {
       } = await processVotes({ allItems: userVotes, userSub });
 
       const combinedVotes = {};
+      const votesUp = {};
+      const votesDown = {};
+      
       for (let id in totalVotes) {
         combinedVotes[id] = totalVotes[id].upvotes - totalVotes[id].downvotes;
+        votesUp[id] = totalVotes[id].upvotes;
+        votesDown[id] = -totalVotes[id].downvotes; // To keep the downvotes as negative
       }
 
       const combinedUserVotes = {};
@@ -532,8 +537,8 @@ export const handler = async (event) => {
       const result = {
         votes: combinedVotes,
         userVotes: combinedUserVotes,
-        votesUp: currentUserVotesUp,
-        votesDown: currentUserVotesDown,
+        votesUp: votesUp,
+        votesDown: votesDown,
         userVotesUp: currentUserVotesUp,
         userVotesDown: currentUserVotesDown,
         ableToVote: isLastUserVoteOlderThan24Hours,
