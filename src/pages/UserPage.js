@@ -20,10 +20,17 @@ import {
   IconButton,
   TableContainer,
   TablePagination,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  TextField,
+  CircularProgress,
 } from '@mui/material';
 import { Auth, API, graphqlOperation } from 'aws-amplify';
 // components
-import { AutoFixHighRounded, Delete, Edit, Upload } from '@mui/icons-material';
+import { AutoFixHighRounded, Check, Delete, Edit, Message, Upload } from '@mui/icons-material';
 import Label from '../components/label';
 import Iconify from '../components/iconify';
 import Scrollbar from '../components/scrollbar';
@@ -32,7 +39,7 @@ import { UserListHead, UserListToolbar } from '../sections/@dashboard/user';
 import UserCountChart from '../sections/@dashboard/app/UserSignupsGraph';
 // graphql
 import { listUserDetails } from '../graphql/queries';
-import { updateUserDetails } from '../graphql/mutations';
+import { createUserNotification, updateUserDetails } from '../graphql/mutations';
 import { SnackbarContext } from '../SnackbarContext';
 // mock
 // import USERLIST from '../_mock/user';
@@ -168,6 +175,49 @@ export default function UserPage() {
   const [chosenUser, setChosenUser] = useState(null);
   const [credits, setCredits] = useState(0);
   const { setOpen, setMessage, setSeverity } = useContext(SnackbarContext)
+
+  // States for notification stuff
+  const [sendNotificationOpen, setSendNotificationOpen] = useState(false);
+  const [notificationTitle, setNotificationTitle] = useState('');
+  const [notificationDescription, setNotificationDescription] = useState('');
+  const [notificationType, setNotificationType] = useState('chat_message');
+  const [sendingNotification, setSendingNotification] = useState(false);
+  const [notificationSent, setNotificationSent] = useState(false);
+
+  const handleSendNotificationClose = () => {
+    setChosenUser(null)
+    setSendNotificationOpen(false)
+    setNotificationTitle('')
+    setNotificationDescription('')
+  }
+
+  const handleSendNotification = () => {
+    setSendingNotification(true);
+    const notificationData = {
+      title: notificationTitle,
+      description: notificationDescription,
+      isUnRead: true,
+      type: notificationType,
+      userDetailsUserNotificationsId: chosenUser.id
+    }
+
+    console.log(notificationData)
+    API.graphql(
+      graphqlOperation(createUserNotification, { input: notificationData })
+    ).then(response => {
+      console.log(response)
+      setSendingNotification(false)
+      setNotificationSent(true);
+      setTimeout(() => {
+        setSendNotificationOpen(false)
+        setChosenUser(null)
+        setSendingNotification(false)
+        setNotificationSent(false);
+        setNotificationTitle('')
+        setNotificationDescription('')
+      }, 700)
+    }).catch(error => console.log(error))
+  }
 
   useEffect(() => {
     listUserDetailsGraphQL(50).then((users) => {
@@ -356,117 +406,117 @@ export default function UserPage() {
 
         <Card>
           <UserListToolbar numSelected={selected.length} filterName={filterName} onFilterName={handleFilterByName} />
-            <TableContainer>
-              <Table>
-                <UserListHead
-                  order={order}
-                  orderBy={orderBy}
-                  headLabel={TABLE_HEAD}
-                  rowCount={userList.length}
-                  numSelected={selected.length}
-                  onRequestSort={handleRequestSort}
-                  onSelectAllClick={handleSelectAllClick}
-                />
-                <TableBody>
-                  {filteredUsers.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row, index) => {
-                    const { username, email, id, earlyAccessStatus, contributorAccessStatus, status, enabled, credits, createdAt } = row;
-                    const selectedUser = selected.indexOf(username) !== -1;
+          <TableContainer>
+            <Table>
+              <UserListHead
+                order={order}
+                orderBy={orderBy}
+                headLabel={TABLE_HEAD}
+                rowCount={userList.length}
+                numSelected={selected.length}
+                onRequestSort={handleRequestSort}
+                onSelectAllClick={handleSelectAllClick}
+              />
+              <TableBody>
+                {filteredUsers.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row, index) => {
+                  const { username, email, id, earlyAccessStatus, contributorAccessStatus, status, enabled, credits, createdAt } = row;
+                  const selectedUser = selected.indexOf(username) !== -1;
 
-                    return (
-                      <TableRow hover key={id} tabIndex={-1} role="checkbox" selected={selectedUser}>
-                        <TableCell padding="checkbox">
-                          <Checkbox checked={selectedUser} onChange={(event) => handleClick(event, username)} />
-                        </TableCell>
+                  return (
+                    <TableRow hover key={id} tabIndex={-1} role="checkbox" selected={selectedUser}>
+                      <TableCell padding="checkbox">
+                        <Checkbox checked={selectedUser} onChange={(event) => handleClick(event, username)} />
+                      </TableCell>
 
-                        <TableCell component="th" scope="row" padding="none">
-                          <Stack direction="row" alignItems="center" spacing={2}>
-                            {/* <Avatar alt={username} src={avatarUrl} /> */}
-                            <Typography variant="subtitle2" noWrap>
-                              {username}
-                            </Typography>
-                          </Stack>
-                        </TableCell>
+                      <TableCell component="th" scope="row" padding="none">
+                        <Stack direction="row" alignItems="center" spacing={2}>
+                          {/* <Avatar alt={username} src={avatarUrl} /> */}
+                          <Typography variant="subtitle2" noWrap>
+                            {username}
+                          </Typography>
+                        </Stack>
+                      </TableCell>
 
-                        <TableCell align="left">{email}</TableCell>
+                      <TableCell align="left">{email}</TableCell>
 
-                        <TableCell align="left">{id}</TableCell>
+                      <TableCell align="left">{id}</TableCell>
 
-                        <TableCell align="left" sx={{ textTransform: 'capitalize' }}>
-                          <Label color={getColor(earlyAccessStatus)}>
-                            {earlyAccessStatus}
-                          </Label>
-                        </TableCell>
-                        <TableCell align="left">
-                          <Label color={
-                            contributorAccessStatus === 'approved'
-                              ? 'success'
-                              : contributorAccessStatus === 'requested'
-                                ? 'warning'
-                                : 'default'
-                          }>
-                            {contributorAccessStatus === 'approved'
-                              ? 'Approved'
-                              : contributorAccessStatus === 'requested'
-                                ? 'Requested'
-                                : 'No Response'}
-                          </Label>
-                        </TableCell>
+                      <TableCell align="left" sx={{ textTransform: 'capitalize' }}>
+                        <Label color={getColor(earlyAccessStatus)}>
+                          {earlyAccessStatus}
+                        </Label>
+                      </TableCell>
+                      <TableCell align="left">
+                        <Label color={
+                          contributorAccessStatus === 'approved'
+                            ? 'success'
+                            : contributorAccessStatus === 'requested'
+                              ? 'warning'
+                              : 'default'
+                        }>
+                          {contributorAccessStatus === 'approved'
+                            ? 'Approved'
+                            : contributorAccessStatus === 'requested'
+                              ? 'Requested'
+                              : 'No Response'}
+                        </Label>
+                      </TableCell>
 
-                        <TableCell align="left">
-                          <Label color={(status === "unverified") ? 'error' : 'success'}>{sentenceCase(status)}</Label>
-                        </TableCell>
+                      <TableCell align="left">
+                        <Label color={(status === "unverified") ? 'error' : 'success'}>{sentenceCase(status)}</Label>
+                      </TableCell>
 
-                        {/* <TableCell align="left">
+                      {/* <TableCell align="left">
                           <Label color={enabled ? 'success' : 'error'}>{sentenceCase(enabled ? 'Enabled' : 'Disabled')}</Label>
                         </TableCell> */}
 
-                        <TableCell align="left">{credits}</TableCell>
+                      <TableCell align="left">{credits}</TableCell>
 
-                        <TableCell align="left">{createdAt}</TableCell>
+                      <TableCell align="left">{createdAt}</TableCell>
 
-                        <TableCell align="right">
-                          <IconButton size="large" color="inherit" onClick={(event) => {
-                            setChosenUser(row)
-                            handleOpenMenu(event, index)
-                          }}>
-                            <Iconify icon={'eva:more-vertical-fill'} />
-                          </IconButton>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                  {emptyRows > 0 && (
-                    <TableRow style={{ height: 53 * emptyRows }}>
-                      <TableCell colSpan={6} />
-                    </TableRow>
-                  )}
-                </TableBody>
-
-                {isNotFound && (
-                  <TableBody>
-                    <TableRow>
-                      <TableCell align="center" colSpan={6} sx={{ py: 3 }}>
-                        <Paper
-                          sx={{
-                            textAlign: 'center',
-                          }}
-                        >
-                          <Typography variant="h6" paragraph>
-                            Not found
-                          </Typography>
-
-                          <Typography variant="body2">
-                            No results found for &nbsp;
-                            <strong>&quot;{filterName}&quot;</strong>.
-                            <br /> Try checking for typos or using complete words.
-                          </Typography>
-                        </Paper>
+                      <TableCell align="right">
+                        <IconButton size="large" color="inherit" onClick={(event) => {
+                          setChosenUser(row)
+                          handleOpenMenu(event, index)
+                        }}>
+                          <Iconify icon={'eva:more-vertical-fill'} />
+                        </IconButton>
                       </TableCell>
                     </TableRow>
-                  </TableBody>
+                  );
+                })}
+                {emptyRows > 0 && (
+                  <TableRow style={{ height: 53 * emptyRows }}>
+                    <TableCell colSpan={6} />
+                  </TableRow>
                 )}
-              </Table>
-            </TableContainer>
+              </TableBody>
+
+              {isNotFound && (
+                <TableBody>
+                  <TableRow>
+                    <TableCell align="center" colSpan={6} sx={{ py: 3 }}>
+                      <Paper
+                        sx={{
+                          textAlign: 'center',
+                        }}
+                      >
+                        <Typography variant="h6" paragraph>
+                          Not found
+                        </Typography>
+
+                        <Typography variant="body2">
+                          No results found for &nbsp;
+                          <strong>&quot;{filterName}&quot;</strong>.
+                          <br /> Try checking for typos or using complete words.
+                        </Typography>
+                      </Paper>
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              )}
+            </Table>
+          </TableContainer>
 
           <TablePagination
             rowsPerPageOptions={[5, 10, 25]}
@@ -543,6 +593,14 @@ export default function UserPage() {
           Make Contributor
         </MenuItem>
 
+        <MenuItem onClick={() => {
+          setSendNotificationOpen(true);
+          setMenuOpen(false)
+        }}>
+          <Message sx={{ mr: 1.5 }} />
+          Send Notification
+        </MenuItem>
+
         <MenuItem onClick={() => giveEarlyAccessInvite(chosenUser)}>
           <AutoFixHighRounded sx={{ mr: 1.5 }} />
           Invite To Early Access
@@ -554,6 +612,66 @@ export default function UserPage() {
           Disable
         </MenuItem>
       </Popover>
+
+      <Dialog open={sendNotificationOpen} onClose={handleSendNotificationClose}>
+        <DialogTitle>Send Notification</DialogTitle>
+        <DialogContent>
+          {sendingNotification ?
+            <>
+              <Stack spacing={3} pt={3}>
+                <Typography variant='h4'>
+                  Your notification is sending...
+                </Typography>
+                <CircularProgress size={50} color='success' sx={{ alignSelf: 'center' }} />
+              </Stack>
+            </>
+            :
+            <>
+              {notificationSent ?
+                <>
+                  <Stack spacing={3} pt={3}>
+                    <Typography variant='h4'>
+                      Your notification has been sent!
+                    </Typography>
+                    <Check sx={{ fontSize: 60, alignSelf: 'center' }} color='success' />
+                  </Stack>
+                </>
+                :
+                <>
+                  <DialogContentText>
+                    Fill out this form to send a notification to the user
+                  </DialogContentText>
+                  <Stack spacing={3} pt={3}>
+                    <TextField
+                      disabled
+                      value={chosenUser?.username || ''}
+                      label='Username'
+                    />
+                    <TextField
+                      value={notificationTitle}
+                      onChange={(event) => {
+                        setNotificationTitle(event.target.value)
+                      }}
+                      label="Title"
+                    />
+                    <TextField
+                      value={notificationDescription}
+                      onChange={(event) => {
+                        setNotificationDescription(event.target.value)
+                      }}
+                      label="Message"
+                    />
+                  </Stack>
+                </>
+              }
+            </>
+          }
+        </DialogContent>
+        <DialogActions>
+          <Button variant='primary' disabled={sendingNotification || notificationSent} onClick={handleSendNotificationClose}>Cancel</Button>
+          <Button variant='primary' disabled={sendingNotification || notificationSent} onClick={handleSendNotification}>Send</Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 }

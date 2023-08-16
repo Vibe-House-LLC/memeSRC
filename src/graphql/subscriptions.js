@@ -146,6 +146,9 @@ export const onCreateSourceMedia = /* GraphQL */ `
           nextToken
         }
         magicSubscription
+        userNotifications {
+          nextToken
+        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -215,6 +218,9 @@ export const onUpdateSourceMedia = /* GraphQL */ `
           nextToken
         }
         magicSubscription
+        userNotifications {
+          nextToken
+        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -284,6 +290,9 @@ export const onDeleteSourceMedia = /* GraphQL */ `
           nextToken
         }
         magicSubscription
+        userNotifications {
+          nextToken
+        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -1060,6 +1069,20 @@ export const onCreateUserDetails = /* GraphQL */ `
         nextToken
       }
       magicSubscription
+      userNotifications {
+        items {
+          id
+          title
+          description
+          avatar
+          type
+          isUnRead
+          createdAt
+          updatedAt
+          userDetailsUserNotificationsId
+        }
+        nextToken
+      }
       createdAt
       updatedAt
       userDetailsStripeCustomerInfoId
@@ -1132,6 +1155,20 @@ export const onUpdateUserDetails = /* GraphQL */ `
         nextToken
       }
       magicSubscription
+      userNotifications {
+        items {
+          id
+          title
+          description
+          avatar
+          type
+          isUnRead
+          createdAt
+          updatedAt
+          userDetailsUserNotificationsId
+        }
+        nextToken
+      }
       createdAt
       updatedAt
       userDetailsStripeCustomerInfoId
@@ -1204,6 +1241,20 @@ export const onDeleteUserDetails = /* GraphQL */ `
         nextToken
       }
       magicSubscription
+      userNotifications {
+        items {
+          id
+          title
+          description
+          avatar
+          type
+          isUnRead
+          createdAt
+          updatedAt
+          userDetailsUserNotificationsId
+        }
+        nextToken
+      }
       createdAt
       updatedAt
       userDetailsStripeCustomerInfoId
@@ -1241,6 +1292,9 @@ export const onCreateStripeCustomer = /* GraphQL */ `
           nextToken
         }
         magicSubscription
+        userNotifications {
+          nextToken
+        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -1282,6 +1336,9 @@ export const onUpdateStripeCustomer = /* GraphQL */ `
           nextToken
         }
         magicSubscription
+        userNotifications {
+          nextToken
+        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -1323,6 +1380,9 @@ export const onDeleteStripeCustomer = /* GraphQL */ `
           nextToken
         }
         magicSubscription
+        userNotifications {
+          nextToken
+        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -1364,6 +1424,9 @@ export const onCreateStripeCheckoutSession = /* GraphQL */ `
           nextToken
         }
         magicSubscription
+        userNotifications {
+          nextToken
+        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -1406,6 +1469,9 @@ export const onUpdateStripeCheckoutSession = /* GraphQL */ `
           nextToken
         }
         magicSubscription
+        userNotifications {
+          nextToken
+        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -1448,6 +1514,9 @@ export const onDeleteStripeCheckoutSession = /* GraphQL */ `
           nextToken
         }
         magicSubscription
+        userNotifications {
+          nextToken
+        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -1490,6 +1559,9 @@ export const onCreateSeriesUserVote = /* GraphQL */ `
           nextToken
         }
         magicSubscription
+        userNotifications {
+          nextToken
+        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -1548,6 +1620,9 @@ export const onUpdateSeriesUserVote = /* GraphQL */ `
           nextToken
         }
         magicSubscription
+        userNotifications {
+          nextToken
+        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -1606,6 +1681,9 @@ export const onDeleteSeriesUserVote = /* GraphQL */ `
           nextToken
         }
         magicSubscription
+        userNotifications {
+          nextToken
+        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -1630,6 +1708,153 @@ export const onDeleteSeriesUserVote = /* GraphQL */ `
       updatedAt
       userDetailsVotesId
       seriesUserVoteSeriesId
+    }
+  }
+`;
+export const onCreateUserNotification = /* GraphQL */ `
+  subscription OnCreateUserNotification(
+    $filter: ModelSubscriptionUserNotificationFilterInput
+  ) {
+    onCreateUserNotification(filter: $filter) {
+      id
+      user {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        sourceMedia {
+          nextToken
+        }
+        status
+        votes {
+          nextToken
+        }
+        credits
+        stripeCustomerInfo {
+          id
+          createdAt
+          updatedAt
+          stripeCustomerUserId
+        }
+        stripeCheckoutSession {
+          nextToken
+        }
+        magicSubscription
+        userNotifications {
+          nextToken
+        }
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+      }
+      title
+      description
+      avatar
+      type
+      isUnRead
+      createdAt
+      updatedAt
+      userDetailsUserNotificationsId
+    }
+  }
+`;
+export const onUpdateUserNotification = /* GraphQL */ `
+  subscription OnUpdateUserNotification(
+    $filter: ModelSubscriptionUserNotificationFilterInput
+  ) {
+    onUpdateUserNotification(filter: $filter) {
+      id
+      user {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        sourceMedia {
+          nextToken
+        }
+        status
+        votes {
+          nextToken
+        }
+        credits
+        stripeCustomerInfo {
+          id
+          createdAt
+          updatedAt
+          stripeCustomerUserId
+        }
+        stripeCheckoutSession {
+          nextToken
+        }
+        magicSubscription
+        userNotifications {
+          nextToken
+        }
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+      }
+      title
+      description
+      avatar
+      type
+      isUnRead
+      createdAt
+      updatedAt
+      userDetailsUserNotificationsId
+    }
+  }
+`;
+export const onDeleteUserNotification = /* GraphQL */ `
+  subscription OnDeleteUserNotification(
+    $filter: ModelSubscriptionUserNotificationFilterInput
+  ) {
+    onDeleteUserNotification(filter: $filter) {
+      id
+      user {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        sourceMedia {
+          nextToken
+        }
+        status
+        votes {
+          nextToken
+        }
+        credits
+        stripeCustomerInfo {
+          id
+          createdAt
+          updatedAt
+          stripeCustomerUserId
+        }
+        stripeCheckoutSession {
+          nextToken
+        }
+        magicSubscription
+        userNotifications {
+          nextToken
+        }
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+      }
+      title
+      description
+      avatar
+      type
+      isUnRead
+      createdAt
+      updatedAt
+      userDetailsUserNotificationsId
     }
   }
 `;
