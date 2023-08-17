@@ -801,9 +801,12 @@ export const handler = async (event) => {
         cancel_url: body.currentUrl,
         customer: stripeCustomerId,
         line_items: [
-          { price: 'price_1NbXguAqFX20vifI34N1MJFO', quantity: 1 },
+          { price: `${process.env.ENV === 'beta' ? 'price_1NbXguAqFX20vifI34N1MJFO' : 'price_1NaRIhAqFX20vifI4IPhW1OX'}`, quantity: 1 },
         ],
         mode: 'subscription',
+        discounts: [{
+          coupon: `${process.env.ENV === 'beta' ? 'kATioxFd' : '8Pw2sX0r'}`
+        }],
         metadata: {
           callbackUrl: body.currentUrl
         }

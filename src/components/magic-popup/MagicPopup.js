@@ -367,7 +367,7 @@ export default function MagicPopup({ children }) {
                                             },
                                         }}
                                     >
-                                        Upgrade to Magic 69
+                                        Try Magic 69 <Chip size='small' sx={{ml: 1, backgroundColor: 'white', color: 'green'}} label="50% off" />
                                     </LoadingButton>
                                     <Typography
                                         variant="caption"
@@ -376,7 +376,7 @@ export default function MagicPopup({ children }) {
                                         align="center"
                                         sx={{ pt: 1, marginTop: 1, opacity: 0.8 }}
                                     >
-                                        Get 69 credits/mo for $6. Cancel any time.
+                                        Get 69 credits/mo for <del>$6</del> $3. Cancel any time.
                                     </Typography>
                                 </>
                             )}
