@@ -40,6 +40,7 @@ const MetadataPage = lazy(() => import('./pages/MetadataPage'));
 const HomepageSectionPage = lazy(() => import('./pages/HomepageSectionPage'));
 const ContributorRequest = lazy(() => import('./pages/ContributorRequest'));
 const PricingPage = lazy(() => import('./pages/PricingPage'));
+const MagicPopup = lazy(() => import('./components/magic-popup/MagicPopup'));
 
 // ----------------------------------------------------------------------
 
@@ -48,7 +49,7 @@ export default function Router() {
   const routes = useRoutes([
     {
       path: '/',
-      element: <GuestAuth><DashboardLayout /></GuestAuth>,
+      element: <GuestAuth><MagicPopup><DashboardLayout /></MagicPopup></GuestAuth>,
       children: [
         { element: <HomePage />, index: true },
         { path: 'search', element: <Navigate to='/' /> },
@@ -67,7 +68,7 @@ export default function Router() {
     },
     {
       path: '/dashboard',
-      element: <CheckAuth><DashboardLayout /></CheckAuth>,
+      element: <CheckAuth><MagicPopup><DashboardLayout /></MagicPopup></CheckAuth>,
       children: [
         { element: <Navigate to="/dashboard/app" />, index: true },
         { path: 'app', element: <DashboardAppPage /> },
