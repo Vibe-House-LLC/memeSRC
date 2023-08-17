@@ -44,6 +44,7 @@ export default function AccountPopover() {
 
   const logout = () => {
     Auth.signOut().then(() => {
+      window.localStorage.removeItem('memeSRCUserInfo')
       userDetails?.setUser(null);
       navigate('/login')
     }).catch((err) => {
