@@ -102,6 +102,11 @@
         "memesrcAggregateVotes": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
           "s3Key": "amplify-builds/memesrcAggregateVotes-3353496a64392b532f4d-build.zip"
+        },
+        "memesrcStripeCallback": {
+          "secretsPathAmplifyAppId": "d32pnvtwxwtte5",
+          "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
+          "s3Key": "amplify-builds/memesrcStripeCallback-4836486876574c56334d-build.zip"
         }
       },
       "storage": {

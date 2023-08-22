@@ -159,6 +159,14 @@
           ],
           "category": "function",
           "resourceName": "memesrcPublicStripeFunction"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcStripeCallback"
         }
       ],
       "providerPlugin": "awscloudformation",
@@ -380,6 +388,20 @@
           ],
           "category": "storage",
           "resourceName": "memesrcGeneratedImages"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "memesrcStripeCallback": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "memesrcUserFunction"
         }
       ],
       "providerPlugin": "awscloudformation",
@@ -671,6 +693,30 @@
         {
           "category": "function",
           "resourceName": "memesrcRandom"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcStripeCallback_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcStripeCallback"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcStripeCallback_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcStripeCallback"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcStripeCallback_secretsPathAmplifyAppId": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcStripeCallback"
         }
       ]
     },

@@ -246,6 +246,13 @@
       "permissions": {
         "setting": "open"
       }
+    },
+    "/stripeCallback": {
+      "name": "/stripeCallback",
+      "lambdaFunction": "memesrcStripeCallback",
+      "permissions": {
+        "setting": "open"
+      }
     }
   }
 }
