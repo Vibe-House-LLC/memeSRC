@@ -1109,6 +1109,7 @@ export const handler = async (event) => {
           getStripeCustomer(id: "${body.stripeCustomerId}") {
             user {
               id
+              credits
             }
           }
         }
@@ -1122,10 +1123,11 @@ export const handler = async (event) => {
         // The stripe customer exists and is attached to a user.
         // Lets throw 69 credits at them.
         const userId = stripeCustomer.body.data.getStripeCustomer.user.id
+        const newCreditValue = Math.max(69, (stripeCustomer.body.data.getStripeCustomer.user.credits || 0));
 
         const updateUserDetailsQuery = `
           mutation updateUserDetails {
-            updateUserDetails(input: {id: "${userId}", magicSubscription: "true", credits: 69, subscriptionPeriodStart: "${body.periodStart}", subscriptionPeriodEnd: "${body.periodEnd}", subscriptionStatus: "active"}) {
+            updateUserDetails(input: {id: "${userId}", magicSubscription: "true", credits: ${newCreditValue}, subscriptionPeriodStart: "${body.periodStart}", subscriptionPeriodEnd: "${body.periodEnd}", subscriptionStatus: "active"}) {
               id
               credits
             }
@@ -1143,7 +1145,7 @@ export const handler = async (event) => {
           statusCode: 200,
           body: {
             code: 'success',
-            message: 'The user now has 69 credits, and their subscriptionPeriodStart and subscriptionPeriodEnd have been updated'
+            message: `The user now has ${newCreditValue} credits, and their subscriptionPeriodStart and subscriptionPeriodEnd have been updated`
           }
         }
       } else {
