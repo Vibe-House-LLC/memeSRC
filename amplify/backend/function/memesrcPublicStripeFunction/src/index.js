@@ -28,7 +28,7 @@ exports.handler = async (event) => {
 
   const queryStringParameters = event.queryStringParameters
 
-  const handleGiveUserCredits = async (checkoutSessionId) => {
+  const handleGiveUserCredits = async (checkoutSessionId, periodStart, periodEnd) => {
     const lambdaClient = new LambdaClient({ region: "us-east-1" });
 
     // Create the request object to invoke the user function
@@ -37,7 +37,9 @@ exports.handler = async (event) => {
       Payload: JSON.stringify({
         path: `/function/magic69/addCredits`,
         body: JSON.stringify({
-          checkoutSessionId
+          checkoutSessionId,
+          periodStart,
+          periodEnd
         })
       }),
     };
@@ -118,9 +120,27 @@ exports.handler = async (event) => {
   const checkoutSessionId = checkoutSession.id
   console.log('checkoutSessionId')
   console.log(checkoutSessionId)
+
+  const invoiceId = checkoutSession.invoice
+  console.log('invoiceId')
+  console.log(invoiceId)
   
   try {
-    const updateUsersCredits = await handleGiveUserCredits(checkoutSessionId);
+    // First lets pull the invoice
+    const invoice = await stripe.invoices.retrieve(
+      invoiceId
+    );
+
+    // Now lets check the invoice to get the start and end times
+    console.log('THE INVOICE', JSON.stringify(invoice))
+
+    const periodStart = invoice['period_start']
+    console.log('periodStart', periodStart)
+    const periodEnd = invoice['period_end']
+    console.log('periodEnd', periodEnd)
+
+    // Then lets update the user details
+    const updateUsersCredits = await handleGiveUserCredits(checkoutSessionId, periodStart, periodEnd);
     console.log('updateUsersCredits')
     console.log(updateUsersCredits)
 

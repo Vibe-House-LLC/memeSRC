@@ -901,7 +901,7 @@ export const handler = async (event) => {
 
       const removeMagicSubscriptionQuery = `
         mutation updateUserDetails {
-          updateUserDetails(input: {id: "${userSub}", magicSubscription: null}) {
+          updateUserDetails(input: {id: "${userSub}", magicSubscription: null, subscriptionStatus: "canceled"}) {
             id
           }
         }
@@ -1046,7 +1046,7 @@ export const handler = async (event) => {
       if (status === 'open') {
         const updateUserDetailsQuery = `
           mutation updateUserDetails {
-            updateUserDetails(input: {id: "${userId}", magicSubscription: "true", credits: 69}) {
+            updateUserDetails(input: {id: "${userId}", magicSubscription: "true", credits: 69, subscriptionPeriodStart: "${body.periodStart}", subscriptionPeriodEnd: "${body.periodEnd}", subscriptionStatus: "active"}) {
               id
               credits
             }
@@ -1095,6 +1095,142 @@ export const handler = async (event) => {
         body: {
           error,
           message: 'Something went wrong. Please try again.'
+        }
+      }
+    }
+  }
+
+  if (path === `/function/magic69/renewCredits`) {
+    // Lets wrap this in a try/catch. That way if stripe customer in GraphQL doesn't exist, it will fail.
+    try {
+      // First we want to get the UserDetails ID by checking the stripe customer.
+      const getStripeCustomerQuery = `
+        query getStripeCustomer {
+          getStripeCustomer(id: "${body.stripeCustomerId}") {
+            user {
+              id
+            }
+          }
+        }
+      `
+      console.log('getStripeCustomerQuery', getStripeCustomerQuery);
+      const stripeCustomer = await makeRequest(getStripeCustomerQuery);
+      console.log('stripeCustomer', JSON.stringify(stripeCustomer))
+
+      // Now lets make sure that the customer existed.
+      if (stripeCustomer?.body?.data?.getStripeCustomer?.user?.id) {
+        // The stripe customer exists and is attached to a user.
+        // Lets throw 69 credits at them.
+        const userId = stripeCustomer.body.data.getStripeCustomer.user.id
+
+        const updateUserDetailsQuery = `
+          mutation updateUserDetails {
+            updateUserDetails(input: {id: "${userId}", magicSubscription: "true", credits: 69, subscriptionPeriodStart: "${body.periodStart}", subscriptionPeriodEnd: "${body.periodEnd}", subscriptionStatus: "active"}) {
+              id
+              credits
+            }
+          }
+        `
+        console.log('updateUserDetailsQuery')
+        console.log(updateUserDetailsQuery)
+
+        const updateUsersCredits = await makeRequest(updateUserDetailsQuery)
+        console.log('updateUsersCredits')
+        console.log(updateUsersCredits)
+
+        // The user now has 69 credits, and their subscriptionPeriodStart and subscriptionPeriodEnd have been updated
+        response = {
+          statusCode: 200,
+          body: {
+            code: 'success',
+            message: 'The user now has 69 credits, and their subscriptionPeriodStart and subscriptionPeriodEnd have been updated'
+          }
+        }
+      } else {
+        response = {
+          statusCode: 406,
+          body: {
+            error: 'UserDoesNotExist',
+            message: 'The stripe customer ID does not correspond to a customer ID in GraphQL. This could be because the customer ID in question did not sign up for magic tools.'
+          }
+        }
+      }
+
+    } catch (error) {
+      console.log(error)
+      response = {
+        statusCode: 500,
+        body: {
+          error: 'TryCaught',
+          message: 'Something failed in the try/catch. Check logs for memesrcUserFunction.'
+        }
+      }
+    }
+  }
+
+  if (path === `/function/magic69/failedPayment`) {
+    // Lets wrap this in a try/catch. That way if stripe customer in GraphQL doesn't exist, it will fail.
+    try {
+      // First we want to get the UserDetails ID by checking the stripe customer.
+      const getStripeCustomerQuery = `
+        query getStripeCustomer {
+          getStripeCustomer(id: "${body.stripeCustomerId}") {
+            user {
+              id
+            }
+          }
+        }
+      `
+      console.log('getStripeCustomerQuery', getStripeCustomerQuery);
+      const stripeCustomer = await makeRequest(getStripeCustomerQuery);
+      console.log('stripeCustomer', JSON.stringify(stripeCustomer))
+
+      // Now lets make sure that the customer existed.
+      if (stripeCustomer?.body?.data?.getStripeCustomer?.user?.id) {
+        // The stripe customer exists and is attached to a user.
+        // Lets throw 69 credits at them.
+        const userId = stripeCustomer.body.data.getStripeCustomer.user.id
+
+        const updateUserDetailsQuery = `
+          mutation updateUserDetails {
+            updateUserDetails(input: {id: "${userId}", subscriptionStatus: "failedPayment"}) {
+              id
+              credits
+            }
+          }
+        `
+        console.log('updateUserDetailsQuery')
+        console.log(updateUserDetailsQuery)
+
+        const updateUsersCredits = await makeRequest(updateUserDetailsQuery)
+        console.log('updateUsersCredits')
+        console.log(updateUsersCredits)
+
+        // The user subscriptionStatus is now set to failedPayment
+        response = {
+          statusCode: 200,
+          body: {
+            code: 'success',
+            message: 'The user subscriptionStatus is now set to failedPayment'
+          }
+        }
+      } else {
+        response = {
+          statusCode: 406,
+          body: {
+            error: 'UserDoesNotExist',
+            message: 'The stripe customer ID does not correspond to a customer ID in GraphQL. This could be because the customer ID in question did not sign up for magic tools.'
+          }
+        }
+      }
+
+    } catch (error) {
+      console.log(error)
+      response = {
+        statusCode: 500,
+        body: {
+          error: 'TryCaught',
+          message: 'Something failed in the try/catch. Check logs for memesrcUserFunction.'
         }
       }
     }

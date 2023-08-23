@@ -155,6 +155,9 @@ export const createSourceMedia = /* GraphQL */ `
         stripeCheckoutSession {
           nextToken
         }
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
         magicSubscription
         userNotifications {
           nextToken
@@ -228,6 +231,9 @@ export const updateSourceMedia = /* GraphQL */ `
         stripeCheckoutSession {
           nextToken
         }
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
         magicSubscription
         userNotifications {
           nextToken
@@ -301,6 +307,9 @@ export const deleteSourceMedia = /* GraphQL */ `
         stripeCheckoutSession {
           nextToken
         }
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
         magicSubscription
         userNotifications {
           nextToken
@@ -350,6 +359,9 @@ export const createFile = /* GraphQL */ `
           stripeId
           status
           credits
+          subscriptionPeriodStart
+          subscriptionPeriodEnd
+          subscriptionStatus
           magicSubscription
           createdAt
           updatedAt
@@ -402,6 +414,9 @@ export const updateFile = /* GraphQL */ `
           stripeId
           status
           credits
+          subscriptionPeriodStart
+          subscriptionPeriodEnd
+          subscriptionStatus
           magicSubscription
           createdAt
           updatedAt
@@ -454,6 +469,9 @@ export const deleteFile = /* GraphQL */ `
           stripeId
           status
           credits
+          subscriptionPeriodStart
+          subscriptionPeriodEnd
+          subscriptionStatus
           magicSubscription
           createdAt
           updatedAt
@@ -1107,6 +1125,9 @@ export const createUserDetails = /* GraphQL */ `
           stripeId
           status
           credits
+          subscriptionPeriodStart
+          subscriptionPeriodEnd
+          subscriptionStatus
           magicSubscription
           createdAt
           updatedAt
@@ -1126,6 +1147,9 @@ export const createUserDetails = /* GraphQL */ `
         }
         nextToken
       }
+      subscriptionPeriodStart
+      subscriptionPeriodEnd
+      subscriptionStatus
       magicSubscription
       userNotifications {
         items {
@@ -1194,6 +1218,9 @@ export const updateUserDetails = /* GraphQL */ `
           stripeId
           status
           credits
+          subscriptionPeriodStart
+          subscriptionPeriodEnd
+          subscriptionStatus
           magicSubscription
           createdAt
           updatedAt
@@ -1213,6 +1240,9 @@ export const updateUserDetails = /* GraphQL */ `
         }
         nextToken
       }
+      subscriptionPeriodStart
+      subscriptionPeriodEnd
+      subscriptionStatus
       magicSubscription
       userNotifications {
         items {
@@ -1281,6 +1311,9 @@ export const deleteUserDetails = /* GraphQL */ `
           stripeId
           status
           credits
+          subscriptionPeriodStart
+          subscriptionPeriodEnd
+          subscriptionStatus
           magicSubscription
           createdAt
           updatedAt
@@ -1300,6 +1333,9 @@ export const deleteUserDetails = /* GraphQL */ `
         }
         nextToken
       }
+      subscriptionPeriodStart
+      subscriptionPeriodEnd
+      subscriptionStatus
       magicSubscription
       userNotifications {
         items {
@@ -1352,6 +1388,9 @@ export const createStripeCustomer = /* GraphQL */ `
         stripeCheckoutSession {
           nextToken
         }
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
         magicSubscription
         userNotifications {
           nextToken
@@ -1397,6 +1436,9 @@ export const updateStripeCustomer = /* GraphQL */ `
         stripeCheckoutSession {
           nextToken
         }
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
         magicSubscription
         userNotifications {
           nextToken
@@ -1442,6 +1484,9 @@ export const deleteStripeCustomer = /* GraphQL */ `
         stripeCheckoutSession {
           nextToken
         }
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
         magicSubscription
         userNotifications {
           nextToken
@@ -1487,6 +1532,9 @@ export const createStripeCheckoutSession = /* GraphQL */ `
         stripeCheckoutSession {
           nextToken
         }
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
         magicSubscription
         userNotifications {
           nextToken
@@ -1533,6 +1581,9 @@ export const updateStripeCheckoutSession = /* GraphQL */ `
         stripeCheckoutSession {
           nextToken
         }
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
         magicSubscription
         userNotifications {
           nextToken
@@ -1579,6 +1630,9 @@ export const deleteStripeCheckoutSession = /* GraphQL */ `
         stripeCheckoutSession {
           nextToken
         }
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
         magicSubscription
         userNotifications {
           nextToken
@@ -1625,6 +1679,9 @@ export const createSeriesUserVote = /* GraphQL */ `
         stripeCheckoutSession {
           nextToken
         }
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
         magicSubscription
         userNotifications {
           nextToken
@@ -1687,6 +1744,9 @@ export const updateSeriesUserVote = /* GraphQL */ `
         stripeCheckoutSession {
           nextToken
         }
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
         magicSubscription
         userNotifications {
           nextToken
@@ -1749,6 +1809,9 @@ export const deleteSeriesUserVote = /* GraphQL */ `
         stripeCheckoutSession {
           nextToken
         }
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
         magicSubscription
         userNotifications {
           nextToken
@@ -1811,6 +1874,9 @@ export const createUserNotification = /* GraphQL */ `
         stripeCheckoutSession {
           nextToken
         }
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
         magicSubscription
         userNotifications {
           nextToken
@@ -1861,6 +1927,9 @@ export const updateUserNotification = /* GraphQL */ `
         stripeCheckoutSession {
           nextToken
         }
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
         magicSubscription
         userNotifications {
           nextToken
@@ -1911,6 +1980,9 @@ export const deleteUserNotification = /* GraphQL */ `
         stripeCheckoutSession {
           nextToken
         }
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
         magicSubscription
         userNotifications {
           nextToken

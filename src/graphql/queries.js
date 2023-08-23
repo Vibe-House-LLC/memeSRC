@@ -145,6 +145,9 @@ export const getSourceMedia = /* GraphQL */ `
         stripeCheckoutSession {
           nextToken
         }
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
         magicSubscription
         userNotifications {
           nextToken
@@ -194,6 +197,9 @@ export const listSourceMedias = /* GraphQL */ `
           stripeId
           status
           credits
+          subscriptionPeriodStart
+          subscriptionPeriodEnd
+          subscriptionStatus
           magicSubscription
           createdAt
           updatedAt
@@ -239,6 +245,9 @@ export const getFile = /* GraphQL */ `
           stripeId
           status
           credits
+          subscriptionPeriodStart
+          subscriptionPeriodEnd
+          subscriptionStatus
           magicSubscription
           createdAt
           updatedAt
@@ -681,6 +690,9 @@ export const getUserDetails = /* GraphQL */ `
           stripeId
           status
           credits
+          subscriptionPeriodStart
+          subscriptionPeriodEnd
+          subscriptionStatus
           magicSubscription
           createdAt
           updatedAt
@@ -700,6 +712,9 @@ export const getUserDetails = /* GraphQL */ `
         }
         nextToken
       }
+      subscriptionPeriodStart
+      subscriptionPeriodEnd
+      subscriptionStatus
       magicSubscription
       userNotifications {
         items {
@@ -752,6 +767,9 @@ export const listUserDetails = /* GraphQL */ `
         stripeCheckoutSession {
           nextToken
         }
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
         magicSubscription
         userNotifications {
           nextToken
@@ -792,6 +810,9 @@ export const getStripeCustomer = /* GraphQL */ `
         stripeCheckoutSession {
           nextToken
         }
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
         magicSubscription
         userNotifications {
           nextToken
@@ -824,6 +845,9 @@ export const listStripeCustomers = /* GraphQL */ `
           stripeId
           status
           credits
+          subscriptionPeriodStart
+          subscriptionPeriodEnd
+          subscriptionStatus
           magicSubscription
           createdAt
           updatedAt
@@ -865,6 +889,9 @@ export const getStripeCheckoutSession = /* GraphQL */ `
         stripeCheckoutSession {
           nextToken
         }
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
         magicSubscription
         userNotifications {
           nextToken
@@ -902,6 +929,9 @@ export const listStripeCheckoutSessions = /* GraphQL */ `
           stripeId
           status
           credits
+          subscriptionPeriodStart
+          subscriptionPeriodEnd
+          subscriptionStatus
           magicSubscription
           createdAt
           updatedAt
@@ -944,6 +974,9 @@ export const getSeriesUserVote = /* GraphQL */ `
         stripeCheckoutSession {
           nextToken
         }
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
         magicSubscription
         userNotifications {
           nextToken
@@ -993,6 +1026,9 @@ export const listSeriesUserVotes = /* GraphQL */ `
           stripeId
           status
           credits
+          subscriptionPeriodStart
+          subscriptionPeriodEnd
+          subscriptionStatus
           magicSubscription
           createdAt
           updatedAt
@@ -1048,6 +1084,9 @@ export const getUserNotification = /* GraphQL */ `
         stripeCheckoutSession {
           nextToken
         }
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
         magicSubscription
         userNotifications {
           nextToken
@@ -1089,6 +1128,9 @@ export const listUserNotifications = /* GraphQL */ `
           stripeId
           status
           credits
+          subscriptionPeriodStart
+          subscriptionPeriodEnd
+          subscriptionStatus
           magicSubscription
           createdAt
           updatedAt
