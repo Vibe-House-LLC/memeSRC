@@ -15,7 +15,7 @@ import { API, Auth, graphqlOperation, Storage } from 'aws-amplify';
 import { faker } from '@faker-js/faker';
 import { LoadingButton } from '@mui/lab';
 import { useNavigate } from 'react-router-dom';
-import { ArrowDropDown, CheckCircle, Pending, Poll, RequestPage, StorageOutlined } from '@mui/icons-material';
+import { ArrowDropDown, CheckCircle, ListAlt, Pending, Poll, RequestPage, StorageOutlined } from '@mui/icons-material';
 import { listSeriesData, updateSeriesData } from '../utils/migrateSeriesData';
 import Iconify from '../components/iconify';
 import { createSeries, updateSeries, deleteSeries } from '../graphql/mutations';
@@ -127,7 +127,7 @@ export default function DashboardSeriesPage() {
   const [uploadProgress, setUploadProgress] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [fileLocation, setFileLocation] = useState('');
-  const [sortMethod, setSortMethod] = useState('live');
+  const [sortMethod, setSortMethod] = useState('all');
   const [selectedIndex, setSelectedIndex] = useState(null)
   const [migrationLoading, setMigrationLoading] = useState(false);
   const { setMessage, setSeverity, setOpen } = useContext(SnackbarContext);
@@ -329,7 +329,7 @@ export default function DashboardSeriesPage() {
     async function getData() {
       const data = await fetchMetadata();
       setMetadata(data);
-      setFilteredMetadata(data.filter(obj => !obj.statusText));
+      setFilteredMetadata(data);
       setLoading(false);
     }
     getData();
@@ -491,6 +491,15 @@ export default function DashboardSeriesPage() {
         </Stack>
         <Container sx={{ paddingX: 0 }}>
           <Tabs value={sortMethod} onChange={filterResults} indicatorColor="secondary" textColor="inherit" sx={{ mb: 3 }}>
+          <Tab
+              label={
+                <Box display="flex" alignItems="center">
+                  <ListAlt color="success" sx={{ mr: 1 }} />
+                  All
+                </Box>
+              }
+              value="all"
+            />
             <Tab
               label={
                 <Box display="flex" alignItems="center">
