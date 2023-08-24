@@ -15,7 +15,7 @@ import { API, Auth, graphqlOperation, Storage } from 'aws-amplify';
 import { faker } from '@faker-js/faker';
 import { LoadingButton } from '@mui/lab';
 import { useNavigate } from 'react-router-dom';
-import { ArrowDropDown, CheckCircle, ListAlt, Pending, Poll, RequestPage, StorageOutlined } from '@mui/icons-material';
+import { ArrowDropDown, CheckCircle, InfoOutlined, ListAlt, Pending, Poll, RequestPage, StorageOutlined } from '@mui/icons-material';
 import { listSeriesData, updateSeriesData } from '../utils/migrateSeriesData';
 import Iconify from '../components/iconify';
 import { createSeries, updateSeries, deleteSeries } from '../graphql/mutations';
@@ -412,6 +412,13 @@ export default function DashboardSeriesPage() {
       case 'requested':
         setFilteredMetadata(metadata.filter(obj => obj.statusText === "submittedRequest"));
         break;
+      case 'other':
+        setFilteredMetadata(metadata.filter(obj => 
+          obj.statusText !== "requested" &&
+          obj.statusText !== "submittedRequest" &&
+          !!obj.statusText // this ensures we exclude empty or null statusText
+        ));
+        break;
       default:
         setFilteredMetadata(metadata);
     }
@@ -526,6 +533,15 @@ export default function DashboardSeriesPage() {
                 </Box>
               }
               value="requested"
+            />
+            <Tab
+              label={
+                <Box display="flex" alignItems="center">
+                  <InfoOutlined color='error' sx={{ mr: 1 }} />
+                  Other
+                </Box>
+              }
+              value="other"
             />
           </Tabs>
           <Grid container spacing={2}>
