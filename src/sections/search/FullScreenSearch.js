@@ -397,9 +397,9 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
                 </Box>
                 {currentThemeTitleText}
               </Typography>
-              {/* {!localStorage.getItem('alertDismissed') && (
+              {!localStorage.getItem('alertDismissed36f7w') && (
                 <Alert
-                  severity="info"
+                  severity="success"
                   action={
                     <>
                       <Button
@@ -410,7 +410,7 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
                         size="small"
                         style={{ marginRight: '5px' }}
                       >
-                        Try
+                        Vote
                       </Button>
                       <IconButton
                         color="inherit"
@@ -430,9 +430,9 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
                     opacity: 0.9,
                   }}
                 >
-                  <b>New:</b> Vote every 24h!
+                  <b>Added:</b> 50+&nbsp;new&nbsp;requests
                 </Alert>
-              )} */}
+              )}
             </Grid>
           </Grid>
           <StyledSearchForm onSubmit={(e) => searchFunction(e)}>

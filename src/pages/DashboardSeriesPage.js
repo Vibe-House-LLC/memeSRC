@@ -15,7 +15,17 @@ import { API, Auth, graphqlOperation, Storage } from 'aws-amplify';
 import { faker } from '@faker-js/faker';
 import { LoadingButton } from '@mui/lab';
 import { useNavigate } from 'react-router-dom';
-import { ArrowDropDown, CheckCircle, InfoOutlined, ListAlt, Pending, Poll, RequestPage, StorageOutlined } from '@mui/icons-material';
+import {
+  ArrowDropDown,
+  ChangeHistoryOutlined,
+  CheckCircle,
+  InfoOutlined,
+  ListAlt,
+  Pending,
+  Poll,
+  RequestPage,
+  StorageOutlined,
+} from '@mui/icons-material';
 import { listSeriesData, updateSeriesData } from '../utils/migrateSeriesData';
 import Iconify from '../components/iconify';
 import { createSeries, updateSeries, deleteSeries } from '../graphql/mutations';
@@ -450,6 +460,54 @@ export default function DashboardSeriesPage() {
     })
   }
 
+  const handleChangeAllStatus = async () => {
+    const newStatus = prompt('Please enter the new status for all items:');
+
+    if (newStatus) {
+      const chunks = chunkArray(filteredMetadata, 3);
+
+      const updateSeriesStatus = async (seriesData) => {
+        return API.graphql(
+          graphqlOperation(onUpdateSeries, {
+            filter: { id: { eq: seriesData.id } },
+            update: { statusText: newStatus },
+          })
+        )
+          .then(() => {
+            seriesData.statusText = newStatus;
+          })
+          .catch((error) => {
+            console.warn(`Error updating series with ID ${seriesData.id}:`, error);
+          });
+      };
+
+      for (let i = 0; i < chunks.length; i += 1) {
+        const chunk = chunks[i];
+        // eslint-disable-next-line no-await-in-loop
+        await Promise.all(chunk.map(updateSeriesStatus));
+
+        // If this is not the last chunk, add a delay
+        if (i < chunks.length - 1) {
+          // eslint-disable-next-line no-await-in-loop
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+      }
+
+      console.log('Status updated for all series.');
+    }
+  };
+
+  function chunkArray(array, size) {
+    const chunkedArr = [];
+    let idx = 0;
+    while (idx < array.length) {
+      chunkedArr.push(array.slice(idx, size + idx));
+      idx += size;
+    }
+    return chunkedArr;
+  }
+
+
 
 
   return (
@@ -466,7 +524,7 @@ export default function DashboardSeriesPage() {
             aria-controls="options-menu"
             aria-haspopup="true"
             onClick={handleOptionsMenuClick}
-            variant='contained'
+            variant="contained"
             startIcon={<ArrowDropDown />}
           >
             Options
@@ -480,10 +538,11 @@ export default function DashboardSeriesPage() {
             anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
             transformOrigin={{ vertical: 'top', horizontal: 'right' }}
           >
-            <MenuItem onClick={() => {
-              navigate('/dashboard/addseries');
-              handleOptionsMenuClose();
-            }}
+            <MenuItem
+              onClick={() => {
+                navigate('/dashboard/addseries');
+                handleOptionsMenuClose();
+              }}
             >
               <Button fullWidth variant="contained" startIcon={<Iconify icon="eva:plus-fill" />}>
                 Add Show
@@ -494,11 +553,23 @@ export default function DashboardSeriesPage() {
                 Migrate Data
               </Button>
             </MenuItem>
+            {/* Added menu item for changing the status of all series */}
+            <MenuItem onClick={handleChangeAllStatus}>
+              <Button fullWidth variant="contained" startIcon={<ChangeHistoryOutlined />}>
+                Change All Status
+              </Button>
+            </MenuItem>
           </Menu>
         </Stack>
         <Container sx={{ paddingX: 0 }}>
-          <Tabs value={sortMethod} onChange={filterResults} indicatorColor="secondary" textColor="inherit" sx={{ mb: 3 }}>
-          <Tab
+          <Tabs
+            value={sortMethod}
+            onChange={filterResults}
+            indicatorColor="secondary"
+            textColor="inherit"
+            sx={{ mb: 3 }}
+          >
+            <Tab
               label={
                 <Box display="flex" alignItems="center">
                   <ListAlt color="success" sx={{ mr: 1 }} />
@@ -528,7 +599,7 @@ export default function DashboardSeriesPage() {
             <Tab
               label={
                 <Box display="flex" alignItems="center">
-                  <Pending color='action' sx={{ mr: 1 }} />
+                  <Pending color="action" sx={{ mr: 1 }} />
                   Requested
                 </Box>
               }
@@ -537,7 +608,7 @@ export default function DashboardSeriesPage() {
             <Tab
               label={
                 <Box display="flex" alignItems="center">
-                  <InfoOutlined color='error' sx={{ mr: 1 }} />
+                  <InfoOutlined color="error" sx={{ mr: 1 }} />
                   Other
                 </Box>
               }
@@ -545,248 +616,87 @@ export default function DashboardSeriesPage() {
             />
           </Tabs>
           <Grid container spacing={2}>
-            {(loading) ? "Loading" : filteredMetadata.map((seriesItem, index) => (
-              <SeriesCard
-                key={index}
-                post={{
-                  id: seriesItem.id,
-                  cover: seriesItem.image,
-                  name: seriesItem.name,
-                  createdAt: seriesItem.createdAt,
-                  tvdbid: seriesItem.tvdbid,
-                  slug: seriesItem.slug,
-                  year: seriesItem.year,
-                  statusText: seriesItem.statusText,
-                  description: seriesItem.description,
-                  view: faker.datatype.number(),
-                  comment: faker.datatype.number(),
-                  share: faker.datatype.number(),
-                  favorite: faker.datatype.number(),
-                  author: {
-                    name: seriesItem.name,
-                    avatarUrl: '🍌',
-                  }
-                }}
-                handleEdit={handleEdit}
-                handleDelete={handleDelete}
-              />
-            ))}
-
-
-            {/* (loading) ? "Loading" : metadata.map((metadataItem, index) => (
-              <Grid item xs={12} sm={6} md={4} key={metadataItem.id}>
-                <Card sx={{ maxWidth: 345 }}>
-                  <CardHeader
-                    avatar={
-                      <Avatar sx={{ bgcolor: grey[200] }} aria-label="recipe">
-                        {metadataItem.emoji}
-                      </Avatar>
-                    }
-                    action={
-                      <>
-                        <IconButton aria-label="settings" onClick={(event) => handleMoreVertClick(event, index)}>
-                          <MoreVertIcon />
-                        </IconButton>
-                      </>
-                    }
-                    style={{ height: "100px", top: "0" }}
-                    title={metadataItem.title}
-                    subheader={`${metadataItem.frameCount.toLocaleString('en-US')} frames`}
+            {loading
+              ? 'Loading'
+              : filteredMetadata.map((seriesItem, index) => (
+                  <SeriesCard
+                    key={index}
+                    post={{
+                      id: seriesItem.id,
+                      cover: seriesItem.image,
+                      name: seriesItem.name,
+                      createdAt: seriesItem.createdAt,
+                      tvdbid: seriesItem.tvdbid,
+                      slug: seriesItem.slug,
+                      year: seriesItem.year,
+                      statusText: seriesItem.statusText,
+                      description: seriesItem.description,
+                      view: faker.datatype.number(),
+                      comment: faker.datatype.number(),
+                      share: faker.datatype.number(),
+                      favorite: faker.datatype.number(),
+                      author: {
+                        name: seriesItem.name,
+                        avatarUrl: '🍌',
+                      },
+                    }}
+                    handleEdit={handleEdit}
+                    handleDelete={handleDelete}
                   />
-                  <Popover
-                    id={popoverId}
-                    open={open}
-                    anchorEl={anchorEl}
-                    onClose={handleClose}
-                    anchorOrigin={{
-                      vertical: 'top',
-                      horizontal: 'right',
-                    }}
-                    transformOrigin={{
-                      vertical: 'top',
-                      horizontal: 'right',
-                    }}
-                  >
-                    <List>
-                      <ListItem button onClick={handleEdit}>
-                        <ListItemText primary="Edit" />
-                      </ListItem>
-                      <ListItem button onClick={handleDelete}>
-                        <ListItemText primary="Delete" />
-                      </ListItem>
-                    </List>
-                  </Popover>
-                  
-                  <CardActions disableSpacing>
-                    <IconButton aria-label="add to favorites">
-                      <FavoriteIcon />
-                    </IconButton>
-                    <IconButton aria-label="share">
-                      <ShareIcon />
-                    </IconButton>
-                    <ExpandMore
-                      expand={expanded}
-                      onClick={handleExpandClick}
-                      aria-expanded={expanded}
-                      aria-label="show more"
-                    >
-                      <ExpandMoreIcon />
-                    </ExpandMore>
-                  </CardActions>
-                  <Collapse in={expanded} timeout="auto" unmountOnExit>
-                    <CardContent>
-                      <Typography>{metadataItem.description}</Typography>
-                      <Typography>Frame Count: {metadataItem.frameCount}</Typography>
-                      <Typography>Color Main: {metadataItem.colorMain}</Typography>
-                      <Typography>Color Secondary: {metadataItem.colorSecondary}</Typography>
-                      <Typography>Emoji: {metadataItem.emoji}</Typography>
-                      <Typography>Status: {metadataItem.status}</Typography>
-                    </CardContent>
-                  </Collapse>
-                </Card>
-              </Grid>
-                  )) */}
-
-
+                ))}
           </Grid>
         </Container>
       </Container>
-      {/* <button type="button" onClick={() => handleEdit(item)}>Edit</button>
-                  <button type="button" onClick={() => deleteExistingSeries(item.id)}>Delete</button> */}
       <Dialog open={showForm} onClose={handleClose}>
         <DialogTitle>Create New Content Metadata</DialogTitle>
         <DialogContent>
           <form>
             <Grid container spacing={2} paddingTop={2}>
-              {/* <Grid item xs={12}>
-                <TextField
-                  label="ID"
-                  fullWidth
-                  value={id}
-                  onChange={(event) => setId(event.target.value)}
-                />
-              </Grid> */}
-
               <Grid item xs={12}>
-                <TextField
-                  label="ID"
-                  fullWidth
-                  value={id}
-                  onChange={(event) => setId(event.target.value)}
-                />
-                {/* <Autocomplete
-                  id="series-search"
-                  sx={{ width: '100%' }}
-                  open={tvdbSearchopen}
-                  onOpen={() => {
-                    setTvdbSearchOpen(true);
-                  }}
-                  onClose={() => {
-                    setTvdbSearchOpen(false);
-                  }}
-                  isOptionEqualToValue={(tvdbResults, value) => tvdbResults.name === value.name}
-                  getOptionLabel={(tvdbResults) => tvdbResults.name}
-                  noOptionsText="No Results Found"
-                  autoHighlight
-                  options={tvdbResults}
-                  loading={tvdbResultsLoading}
-                  loadingText="Searching..."
-                  value={tvdbid}
-                  onChange={(event, selected) => {
-                    if (typeof selected === 'object') {
-                      setTvdbid(selected.tvdb_id);
-                      setSeriesDescription(selected.overview);
-                      setSlug(selected.slug);
-                      setSeriesName(selected.name);
-                      setSeriesYear(selected.year);
-                      setSeriesImage(selected.image_url);
-                      setMetadataLoaded(true);
-                      console.log(selected.tvdb_id);
-                      setDialogButtonText('Submit');
-                    } else {
-                      setTvdbid('');
-                      setSeriesDescription('');
-                      setSlug('');
-                      setSeriesName('');
-                      setSeriesYear('');
-                      setSeriesImage('');
-                    }
-                  }}
-                  filterOptions={(x) => x}
-                  renderInput={(params) => (
-                    <TextField
-                      value={tvdbSearchQuery}
-                      onChange={(event) => {
-                        setTvdbSearchQuery(event.target.value);
-                        // if (event.target.value !== seriesName) {
-                        //   setTvdbid('');
-                        //   setSeriesDescription('');
-                        //   setSlug('');
-                        //   setSeriesName('');
-                        //   setSeriesYear('');
-                        //   setSeriesImage('');
-                        // }
-                      }}
-                      {...params}
-                      label="Search TVDB"
-                      InputProps={{
-                        ...params.InputProps,
-                        endAdornment: (
-                          <>
-                            {tvdbResultsLoading ? <CircularProgress color="inherit" size={20} /> : null}
-                            {params.InputProps.endAdornment}
-                          </>
-                        ),
-                      }}
-                    />
-                  )}
-                /> */}
+                <TextField label="ID" fullWidth value={id} onChange={(event) => setId(event.target.value)} />
               </Grid>
-              {metadataLoaded &&
+              {metadataLoaded && (
                 <>
-                  {/* <Grid item xs={12}>
-                    <TextField
-                      label="TVDB ID"
-                      fullWidth
-                      value={tvdbid}
-                      onChange={(event) => setTvdbid(event.target.value)}
-                    />
-                  </Grid> */}
                   <Grid item xs={12}>
                     <TextField
                       label="Slug"
                       fullWidth
                       value={seriesSlug}
-                      onChange={(event) => setSlug(event.target.value)} />
+                      onChange={(event) => setSlug(event.target.value)}
+                    />
                   </Grid>
                   <Grid item xs={12}>
                     <TextField
                       label="Name"
                       fullWidth
                       value={seriesName}
-                      onChange={(event) => setSeriesName(event.target.value)} />
+                      onChange={(event) => setSeriesName(event.target.value)}
+                    />
                   </Grid>
                   <Grid item xs={12}>
                     <TextField
                       label="Year"
-                      type='number'
+                      type="number"
                       fullWidth
                       value={seriesYear}
-                      onChange={(event) => setSeriesYear(event.target.value)} />
+                      onChange={(event) => setSeriesYear(event.target.value)}
+                    />
                   </Grid>
                   <Grid item xs={12}>
                     <TextField
                       label="Image"
                       fullWidth
                       value={seriesImage}
-                      onChange={(event) => setSeriesImage(event.target.value)} />
+                      onChange={(event) => setSeriesImage(event.target.value)}
+                    />
                   </Grid>
                   <Grid item xs={12}>
                     <TextField
                       label="Description"
                       fullWidth
                       value={seriesDescription}
-                      onChange={(event) => setSeriesDescription(event.target.value)} />
+                      onChange={(event) => setSeriesDescription(event.target.value)}
+                    />
                   </Grid>
                   <Grid item xs={12}>
                     <FormControl fullWidth>
@@ -797,31 +707,17 @@ export default function DashboardSeriesPage() {
                         value={statusText}
                         label="Status"
                         onChange={(event) => {
-                          setStatusText(event.target.value)
+                          setStatusText(event.target.value);
                         }}
                       >
-                        <MenuItem value='active'>Active</MenuItem>
-                        <MenuItem value='inactive'>Inactive</MenuItem>
-                        <MenuItem value='requested'>Requested</MenuItem>
+                        <MenuItem value="active">Active</MenuItem>
+                        <MenuItem value="inactive">Inactive</MenuItem>
+                        <MenuItem value="requested">Requested</MenuItem>
                       </Select>
                     </FormControl>
                   </Grid>
-                  {/* <Grid item xs={12}>
-                    <Button variant="contained" fullWidth component="label">
-                      Upload
-                      <input
-                        hidden
-                        accept="*"
-                        type="file"
-                        onChange={(event) => handleUpload(event.target.files)}
-                      />
-                    </Button>
-                    <Typography component='p' variant='body1'>
-                      {fileLocation}
-                    </Typography>
-                  </Grid> */}
 
-                  {uploading &&
+                  {uploading && (
                     <>
                       <Grid item xs={12}>
                         <LinearProgress variant="determinate" value={uploadProgress} />
@@ -832,44 +728,47 @@ export default function DashboardSeriesPage() {
                           fullWidth
                           value={statusText}
                           disabled
-                          onChange={(event) => setStatusText(event.target.value)} />
+                          onChange={(event) => setStatusText(event.target.value)}
+                        />
                       </Grid>
                     </>
-                  }
-                  {seriesSeasons && seriesSeasons.map((season) =>
-                    (season.type.id === 1) ?
-                      <Grid item xs={6} md={4}>
-                        <img src={season.image} alt='season artwork' style={{ width: '100%', height: 'auto' }} />
-                        <Typography component='h6' variant='h6'>
-                          Season {season.number}
-                        </Typography>
-                      </Grid>
-                      : null
-
                   )}
+                  {seriesSeasons &&
+                    seriesSeasons.map((season) =>
+                      season.type.id === 1 ? (
+                        <Grid item xs={6} md={4}>
+                          <img src={season.image} alt="season artwork" style={{ width: '100%', height: 'auto' }} />
+                          <Typography component="h6" variant="h6">
+                            Season {season.number}
+                          </Typography>
+                        </Grid>
+                      ) : null
+                    )}
                 </>
-              }
+              )}
             </Grid>
           </form>
-          {/* <Button variant='contained' onClick={searchTvdb} >Search</Button> */}
         </DialogContent>
         <DialogActions>
-          <Button variant='contained' onClick={handleCloseForm}>Cancel</Button>
-          {metadataLoaded && <LoadingButton variant='contained' type='submit' onClick={metadataLoaded ? handleSubmit : handleGetMetadata} loading={dialogButtonLoading}>{dialogButtonText}</LoadingButton>}
+          <Button variant="contained" onClick={handleCloseForm}>
+            Cancel
+          </Button>
+          {metadataLoaded && (
+            <LoadingButton
+              variant="contained"
+              type="submit"
+              onClick={metadataLoaded ? handleSubmit : handleGetMetadata}
+              loading={dialogButtonLoading}
+            >
+              {dialogButtonText}
+            </LoadingButton>
+          )}
         </DialogActions>
       </Dialog>
-      <Backdrop
-        sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }}
-        open={migrationLoading}
-      >
-        <Box
-          display="flex"
-          flexDirection="column"
-          justifyContent="center"
-          alignItems="center"
-        >
+      <Backdrop sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }} open={migrationLoading}>
+        <Box display="flex" flexDirection="column" justifyContent="center" alignItems="center">
           <CircularProgress color="inherit" />
-          <Typography variant='h5' sx={{ mt: 2 }}>
+          <Typography variant="h5" sx={{ mt: 2 }}>
             Migrating TVDB ID's...
           </Typography>
         </Box>
