@@ -56,10 +56,12 @@ function createUserDetails(params) {
   return query;
 }
 
-async function getAllVotes() {
+async function getAllVotes(seriesId) {
+  let id = seriesId ? `totalVotes-${seriesId}` : "totalVotes";
+
   let query = `
     query GetAnalyticsMetrics {
-      getAnalyticsMetrics(id: "totalVotes") {
+      getAnalyticsMetrics(id: "${id}") {
         value
         updatedAt
       }
@@ -515,84 +517,94 @@ export const handler = async (event) => {
     // If they're not signed in, it will return "unauthenticated". We'll use that below to dictate what to send back.
     const userAuth = event.requestContext.identity.cognitoAuthenticationType
 
+    // Extract the seriesId from the query string parameters if present
+    const seriesId = event.queryStringParameters && event.queryStringParameters.id;
+
     try {
-      // Get the aggregated votes
-      const totalVotes = await getAllVotes();
+      // Pass the seriesId to the getAllVotes function
+      const totalVotes = await getAllVotes(seriesId);
 
-      // Now we want to change it so that it only tries to get user votes if a users logged in.
-      // First lets set these as lets
-      let currentUserVotesUp = null
-      let currentUserVotesDown = null
-      let isLastUserVoteOlderThan24Hours = null
-      let lastBoostValue = null
-      let nextVoteTime = null
-      let lastUserVoteTimestamps = null
-      let combinedUserVotes = {};
+      if (seriesId) {
+        response = {
+          statusCode: 200,
+          body: JSON.stringify(totalVotes),
+        };
+      } else {
+        // Now we want to change it so that it only tries to get user votes if a users logged in.
+        // First lets set these as lets
+        let currentUserVotesUp = null
+        let currentUserVotesDown = null
+        let isLastUserVoteOlderThan24Hours = null
+        let lastBoostValue = null
+        let nextVoteTime = null
+        let lastUserVoteTimestamps = null
+        let combinedUserVotes = {};
 
-      if (userAuth !== "unauthenticated") {
-        // Summarize the user's personal votes
-        const userVotes = await getAllUserVotes({ subId: userSub });
-        console.log(`userVotes: ${JSON.stringify(userVotes)}`)
-        // const userVotes = allVotes.body.data.getUserDetails.votes.items;
+        if (userAuth !== "unauthenticated") {
+          // Summarize the user's personal votes
+          const userVotes = await getAllUserVotes({ subId: userSub });
+          console.log(`userVotes: ${JSON.stringify(userVotes)}`)
+          // const userVotes = allVotes.body.data.getUserDetails.votes.items;
 
-        console.log(totalVotes)
-        // The next change is going to be setting these values to the lets. That way they'll be null unless we hit this step.
-        // I'm going to comment out the original code in case we need to come back to it.
-        /* 
-        const {
-          currentUserVotesUp,
-          currentUserVotesDown,
-          isLastUserVoteOlderThan24Hours,
-          lastBoostValue,
-          nextVoteTime,
-          lastUserVoteTimestamps
-        } = await processVotes({ allItems: userVotes, userSub }); 
-        */
+          console.log(totalVotes)
+          // The next change is going to be setting these values to the lets. That way they'll be null unless we hit this step.
+          // I'm going to comment out the original code in case we need to come back to it.
+          /* 
+          const {
+            currentUserVotesUp,
+            currentUserVotesDown,
+            isLastUserVoteOlderThan24Hours,
+            lastBoostValue,
+            nextVoteTime,
+            lastUserVoteTimestamps
+          } = await processVotes({ allItems: userVotes, userSub }); 
+          */
 
-        const userProcessedVotes = await processVotes({ allItems: userVotes, userSub });
-        currentUserVotesUp = userProcessedVotes.currentUserVotesUp
-        currentUserVotesDown = userProcessedVotes.currentUserVotesDown
-        isLastUserVoteOlderThan24Hours = userProcessedVotes.isLastUserVoteOlderThan24Hours
-        lastBoostValue = userProcessedVotes.lastBoostValue
-        nextVoteTime = userProcessedVotes.nextVoteTime
-        lastUserVoteTimestamps = userProcessedVotes.lastUserVoteTimestamps
-        for (let id in currentUserVotesUp) {
-          combinedUserVotes[id] = (currentUserVotesUp[id] || 0) - (currentUserVotesDown[id] || 0);
+          const userProcessedVotes = await processVotes({ allItems: userVotes, userSub });
+          currentUserVotesUp = userProcessedVotes.currentUserVotesUp
+          currentUserVotesDown = userProcessedVotes.currentUserVotesDown
+          isLastUserVoteOlderThan24Hours = userProcessedVotes.isLastUserVoteOlderThan24Hours
+          lastBoostValue = userProcessedVotes.lastBoostValue
+          nextVoteTime = userProcessedVotes.nextVoteTime
+          lastUserVoteTimestamps = userProcessedVotes.lastUserVoteTimestamps
+          for (let id in currentUserVotesUp) {
+            combinedUserVotes[id] = (currentUserVotesUp[id] || 0) - (currentUserVotesDown[id] || 0);
+          }
         }
+
+        const combinedVotes = {};
+        const votesUp = {};
+        const votesDown = {};
+
+        for (let id in totalVotes) {
+          combinedVotes[id] = totalVotes[id].upvotes - totalVotes[id].downvotes;
+          votesUp[id] = totalVotes[id].upvotes;
+          votesDown[id] = -totalVotes[id].downvotes; // To keep the downvotes as negative
+        }
+
+        // const combinedUserVotes = {};
+        // for (let id in currentUserVotesUp) {
+        //   combinedUserVotes[id] = (currentUserVotesUp[id] || 0) - (currentUserVotesDown[id] || 0);
+        // }
+
+        const result = {
+          votes: combinedVotes,
+          userVotes: combinedUserVotes,
+          votesUp: votesUp,
+          votesDown: votesDown,
+          userVotesUp: currentUserVotesUp,
+          userVotesDown: currentUserVotesDown,
+          ableToVote: isLastUserVoteOlderThan24Hours,
+          lastBoost: lastBoostValue,
+          nextVoteTime: nextVoteTime,
+          lastVoteTime: lastUserVoteTimestamps
+        };
+
+        response = {
+          statusCode: 200,
+          body: result,
+        };
       }
-
-      const combinedVotes = {};
-      const votesUp = {};
-      const votesDown = {};
-
-      for (let id in totalVotes) {
-        combinedVotes[id] = totalVotes[id].upvotes - totalVotes[id].downvotes;
-        votesUp[id] = totalVotes[id].upvotes;
-        votesDown[id] = -totalVotes[id].downvotes; // To keep the downvotes as negative
-      }
-
-      // const combinedUserVotes = {};
-      // for (let id in currentUserVotesUp) {
-      //   combinedUserVotes[id] = (currentUserVotesUp[id] || 0) - (currentUserVotesDown[id] || 0);
-      // }
-
-      const result = {
-        votes: combinedVotes,
-        userVotes: combinedUserVotes,
-        votesUp: votesUp,
-        votesDown: votesDown,
-        userVotesUp: currentUserVotesUp,
-        userVotesDown: currentUserVotesDown,
-        ableToVote: isLastUserVoteOlderThan24Hours,
-        lastBoost: lastBoostValue,
-        nextVoteTime: nextVoteTime,
-        lastVoteTime: lastUserVoteTimestamps
-      };
-
-      response = {
-        statusCode: 200,
-        body: result,
-      };
     } catch (error) {
       console.log(`Failed to get votes: ${error.message}`);
       response = {
