@@ -724,6 +724,7 @@ export const getUserDetails = /* GraphQL */ `
           avatar
           type
           isUnRead
+          path
           createdAt
           updatedAt
           userDetailsUserNotificationsId
@@ -1100,6 +1101,7 @@ export const getUserNotification = /* GraphQL */ `
       avatar
       type
       isUnRead
+      path
       createdAt
       updatedAt
       userDetailsUserNotificationsId
@@ -1141,6 +1143,7 @@ export const listUserNotifications = /* GraphQL */ `
         avatar
         type
         isUnRead
+        path
         createdAt
         updatedAt
         userDetailsUserNotificationsId

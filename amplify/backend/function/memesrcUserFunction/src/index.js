@@ -236,6 +236,7 @@ function getUserDetails(params, nextToken = null) {
             isUnRead
             title
             type
+            path
           }
         }
         votes(limit: ${limit}${nextToken ? `, nextToken: "${nextToken}"` : ''}) {

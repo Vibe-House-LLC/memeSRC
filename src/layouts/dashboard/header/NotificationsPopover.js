@@ -23,6 +23,7 @@ import {
 // utils
 // import { API, graphqlOperation } from 'aws-amplify';
 import { API } from 'aws-amplify';
+import { useNavigate } from 'react-router-dom';
 import { fToNow } from '../../../utils/formatTime';
 // components
 import Iconify from '../../../components/iconify';
@@ -68,8 +69,8 @@ export default function NotificationsPopover() {
 
   useEffect(() => {
     setNotifications(
-      user?.userDetails?.userNotifications?.items.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)) || []
-    );
+      (user?.userDetails?.userNotifications?.items?.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))?.slice(0, 6)) || []
+    );    
     console.log(user?.userDetails?.userNotifications?.items)
   }, [user])
 
@@ -106,10 +107,10 @@ export default function NotificationsPopover() {
       setUser({
         ...user,
         userDetails:
-          {
-            ...user.userDetails,
-            notifications: newNotifications
-          },
+        {
+          ...user.userDetails,
+          notifications: newNotifications
+        },
       })
 
       API.post('publicapi', '/user/update/notification/read', {
@@ -129,10 +130,10 @@ export default function NotificationsPopover() {
         setUser({
           ...user,
           userDetails:
-            {
-              ...user.userDetails,
-              notifications: newNotifications
-            },
+          {
+            ...user.userDetails,
+            notifications: newNotifications
+          },
         })
       })
     }
@@ -154,10 +155,10 @@ export default function NotificationsPopover() {
       setUser({
         ...user,
         userDetails:
-          {
-            ...user.userDetails,
-            notifications: newNotifications
-          },
+        {
+          ...user.userDetails,
+          notifications: newNotifications
+        },
       })
 
       API.post('publicapi', '/user/update/notification/unread', {
@@ -177,10 +178,10 @@ export default function NotificationsPopover() {
         setUser({
           ...user,
           userDetails:
-            {
-              ...user.userDetails,
-              notifications: newNotifications
-            },
+          {
+            ...user.userDetails,
+            notifications: newNotifications
+          },
         })
       })
     }
@@ -289,6 +290,7 @@ NotificationItem.propTypes = {
 };
 
 function NotificationItem({ notification, readFunction, unreadFunction }) {
+  const navigate = useNavigate();
   const { avatar, title } = renderContent(notification);
 
   return (
@@ -301,7 +303,16 @@ function NotificationItem({ notification, readFunction, unreadFunction }) {
           bgcolor: 'action.selected',
         }),
       }}
-      onClick={() => { if (notification.isUnRead === false ) { unreadFunction(notification) } else { readFunction(notification) } }}
+      onClick={() => {
+        if (notification.isUnRead === false) {
+          unreadFunction(notification)
+        } else {
+          readFunction(notification);
+          if (notification.path) {
+            navigate(notification.path)
+          }
+        }
+      }}
     >
       <ListItemAvatar>
         <Avatar sx={{ bgcolor: 'background.neutral' }}>{avatar}</Avatar>

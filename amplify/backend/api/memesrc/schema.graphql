@@ -204,4 +204,5 @@ type UserNotification @model @auth(
   avatar: String
   type: String
   isUnRead: Boolean
+  path: String
 }

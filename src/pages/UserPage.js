@@ -181,6 +181,7 @@ export default function UserPage() {
   const [notificationTitle, setNotificationTitle] = useState('');
   const [notificationDescription, setNotificationDescription] = useState('');
   const [notificationType, setNotificationType] = useState('chat_message');
+  const [notificationPath, setNotificationPath] = useState('');
   const [sendingNotification, setSendingNotification] = useState(false);
   const [notificationSent, setNotificationSent] = useState(false);
 
@@ -198,7 +199,8 @@ export default function UserPage() {
       description: notificationDescription,
       isUnRead: true,
       type: notificationType,
-      userDetailsUserNotificationsId: chosenUser.id
+      userDetailsUserNotificationsId: chosenUser.id,
+      ...(notificationPath && { path: notificationPath })
     }
 
     console.log(notificationData)
@@ -660,6 +662,14 @@ export default function UserPage() {
                         setNotificationDescription(event.target.value)
                       }}
                       label="Message"
+                    />
+                    <TextField
+                      value={notificationPath}
+                      onChange={(event) => {
+                        setNotificationPath(event.target.value)
+                      }}
+                      label="(optional) redirect path"
+                      placeholder='/dashboard/app'
                     />
                   </Stack>
                 </>
