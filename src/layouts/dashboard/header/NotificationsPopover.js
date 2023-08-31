@@ -113,6 +113,10 @@ export default function NotificationsPopover() {
         },
       })
 
+      if (notifications.filter((item) => item.isUnRead === true).length === 0){
+        setOpen(false)
+      }
+
       API.post('publicapi', '/user/update/notification/read', {
         body: {
           notificationId: notification.id
