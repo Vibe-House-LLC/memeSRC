@@ -138,6 +138,54 @@ export default function NotificationsPopover() {
     }
   };
 
+  const handleMarkAsUnRead = (notification) => {
+    // Find the index of the notification in the notifications array
+    const index = notifications.findIndex(n => n.id === notification.id);
+
+    if (index > -1) {
+      // Copy the array for immutability
+      const newNotifications = [...notifications];
+
+      // Update the 'isUnRead' property of the specific notification to false
+      newNotifications[index].isUnRead = true;
+
+      // Set the updated notifications array
+      setNotifications(newNotifications);
+      setUser({
+        ...user,
+        userDetails:
+          {
+            ...user.userDetails,
+            notifications: newNotifications
+          },
+      })
+
+      API.post('publicapi', '/user/update/notification/unread', {
+        body: {
+          notificationId: notification.id
+        }
+      }).then((response) => console.log(response)).catch(error => {
+        console.log(error);
+        // Copy the array for immutability
+        const newNotifications = [...notifications];
+
+        // Update the 'isUnRead' property of the specific notification to false
+        newNotifications[index].isUnRead = true;
+
+        // Set the updated notifications array
+        setNotifications(newNotifications);
+        setUser({
+          ...user,
+          userDetails:
+            {
+              ...user.userDetails,
+              notifications: newNotifications
+            },
+        })
+      })
+    }
+  };
+
   return (
     <>
       <IconButton color={open ? 'primary' : 'default'} onClick={handleOpen} sx={{ width: 40, height: 40 }}>
@@ -205,7 +253,7 @@ export default function NotificationsPopover() {
                 }
               >
                 {notifications.filter(obj => obj.isUnRead !== true).map((notification) => (
-                  <NotificationItem key={notification.id} notification={notification} />
+                  <NotificationItem unreadFunction={handleMarkAsUnRead} key={notification.id} notification={notification} />
                 ))}
               </List>
             </Scrollbar>
@@ -236,10 +284,11 @@ NotificationItem.propTypes = {
     type: PropTypes.string,
     avatar: PropTypes.any,
     readFunction: PropTypes.func,
+    unreadFunction: PropTypes.func,
   }),
 };
 
-function NotificationItem({ notification, readFunction }) {
+function NotificationItem({ notification, readFunction, unreadFunction }) {
   const { avatar, title } = renderContent(notification);
 
   return (
@@ -252,7 +301,7 @@ function NotificationItem({ notification, readFunction }) {
           bgcolor: 'action.selected',
         }),
       }}
-      onClick={() => { readFunction(notification) }}
+      onClick={() => { if (notification.isUnRead === false ) { unreadFunction(notification) } else { readFunction(notification) } }}
     >
       <ListItemAvatar>
         <Avatar sx={{ bgcolor: 'background.neutral' }}>{avatar}</Avatar>
