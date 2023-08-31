@@ -813,7 +813,7 @@ export const handler = async (event) => {
         cancel_url: body.currentUrl,
         customer: stripeCustomerId,
         line_items: [
-          {price: `${process.env.ENV === 'beta' ? 'price_1NbXguAqFX20vifI34N1MJFO' : 'price_1Nhc9UAqFX20vifI0mYIzSfs'}`, quantity: 1},
+          { price: `${process.env.ENV === 'beta' ? 'price_1NbXguAqFX20vifI34N1MJFO' : 'price_1Nhc9UAqFX20vifI0mYIzSfs'}`, quantity: 1 },
         ],
         mode: 'subscription',
         discounts: [{
@@ -1247,6 +1247,120 @@ export const handler = async (event) => {
           message: 'Something failed in the try/catch. Check logs for memesrcUserFunction.'
         }
       }
+    }
+  }
+
+  // This marks a notification as read
+  if (path === `/${process.env.ENV}/public/user/update/notification/read`) {
+    // First we want to pull down the notification and compare the users sub to the one associated to the notification
+    // We'll wrap all of this in a try/catch so that if anyone tries to tamper with any of the data and it fails, nothing will happen.
+    try {
+      const getNotificationQuery = `
+      query getUserNotification {
+        getUserNotification(id: "${body.notificationId}") {
+          user {
+            id
+          }
+          isUnRead
+        }
+      }
+    `
+      console.log('getNotificationQuery')
+      console.log(getNotificationQuery)
+
+      const getNotification = await makeRequest(getNotificationQuery);
+      console.log('getNotification')
+      console.log(getNotification)
+
+      if (getNotification.body.data.getUserNotification.user.id === userSub) {
+        // If the user sub matches the one associated with the notification, lets make isUnRead: false
+        const updateNotificationQuery = `
+          mutation updateUserNotification {
+            updateUserNotification(input: {id: "${body.notificationId}", isUnRead: false}) {
+              id
+            }
+          }
+        `
+        console.log('updateNotificationQuery')
+        console.log(updateNotificationQuery)
+        
+        const updateNotification = await makeRequest(updateNotificationQuery);
+        console.log('updateNotification');
+        console.log(updateNotification)
+      } else {
+        response = {
+          statusCode: 403,
+          body: 'You do not have permission to update this notification.'
+        }
+      }
+
+    } catch (error) {
+      response = {
+        statusCode: 500,
+        body: 'Something went wrong.'
+      }
+    }
+
+    response = {
+      statusCode: 200,
+      body: 'The notification has been marked as read.'
+    }
+  }
+
+  // This marks a notification as unread
+  if (path === `/${process.env.ENV}/public/user/update/notification/unread`) {
+    // First we want to pull down the notification and compare the users sub to the one associated to the notification
+    // We'll wrap all of this in a try/catch so that if anyone tries to tamper with any of the data and it fails, nothing will happen.
+    try {
+      const getNotificationQuery = `
+      query getUserNotification {
+        getUserNotification(id: "${body.notificationId}") {
+          user {
+            id
+          }
+          isUnRead
+        }
+      }
+    `
+      console.log('getNotificationQuery')
+      console.log(getNotificationQuery)
+
+      const getNotification = await makeRequest(getNotificationQuery);
+      console.log('getNotification')
+      console.log(getNotification)
+
+      if (getNotification.body.data.getUserNotification.user.id === userSub) {
+        // If the user sub matches the one associated with the notification, lets make isUnRead: true
+        const updateNotificationQuery = `
+          mutation updateUserNotification {
+            updateUserNotification(input: {id: "${body.notificationId}", isUnRead: true}) {
+              id
+            }
+          }
+        `
+        console.log('updateNotificationQuery')
+        console.log(updateNotificationQuery)
+        
+        const updateNotification = await makeRequest(updateNotificationQuery);
+        console.log('updateNotification');
+        console.log(updateNotification)
+      } else {
+        response = {
+          statusCode: 403,
+          body: 'You do not have permission to update this notification.'
+        }
+      }
+
+    } catch (error) {
+      response = {
+        statusCode: 500,
+        body: 'Something went wrong.'
+      }
+    }
+
+    response = {
+      statusCode: 200,
+      body: 'The notification has been marked as unread.'
     }
   }
 
