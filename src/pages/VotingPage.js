@@ -163,6 +163,17 @@ export default function VotingPage() {
 
       const voteData = await API.get('publicapi', '/vote/list');
 
+      // TODO: The example below pulls total votes for individual series to show the new endpoint.
+      // TODO: We can use the new `id` URL param to do more efficient pagination and/or individual series pages showing votes.
+      // if (voteData) {
+      //     const votesPromises = Object.keys(voteData.votes).map(seriesId => 
+      //         API.get('publicapi', `/vote/list?id=${seriesId}`).then(individualVoteData => {
+      //             console.log(`Votes for series ${seriesId}:`, individualVoteData);
+      //         })
+      //     );
+      //     await Promise.all(votesPromises);
+      // }      
+
       let sortedShows;
 
       switch (rankMethod) {

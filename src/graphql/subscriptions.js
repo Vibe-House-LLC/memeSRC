@@ -1101,6 +1101,7 @@ export const onCreateUserDetails = /* GraphQL */ `
           avatar
           type
           isUnRead
+          path
           createdAt
           updatedAt
           userDetailsUserNotificationsId
@@ -1193,6 +1194,7 @@ export const onUpdateUserDetails = /* GraphQL */ `
           avatar
           type
           isUnRead
+          path
           createdAt
           updatedAt
           userDetailsUserNotificationsId
@@ -1285,6 +1287,7 @@ export const onDeleteUserDetails = /* GraphQL */ `
           avatar
           type
           isUnRead
+          path
           createdAt
           updatedAt
           userDetailsUserNotificationsId
@@ -1820,6 +1823,7 @@ export const onCreateUserNotification = /* GraphQL */ `
       avatar
       type
       isUnRead
+      path
       createdAt
       updatedAt
       userDetailsUserNotificationsId
@@ -1872,6 +1876,7 @@ export const onUpdateUserNotification = /* GraphQL */ `
       avatar
       type
       isUnRead
+      path
       createdAt
       updatedAt
       userDetailsUserNotificationsId
@@ -1924,6 +1929,7 @@ export const onDeleteUserNotification = /* GraphQL */ `
       avatar
       type
       isUnRead
+      path
       createdAt
       updatedAt
       userDetailsUserNotificationsId

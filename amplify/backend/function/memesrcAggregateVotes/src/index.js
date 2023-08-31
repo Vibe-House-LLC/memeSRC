@@ -60,8 +60,32 @@ exports.handler = async (event) => {
         }
     }
 
-    // Write aggregated results to AnalyticsMetrics DynamoDB table
+    // Write aggregated results for each series to AnalyticsMetrics DynamoDB table
     const currentTime = new Date().toISOString();
+    for (const [seriesId, votes] of Object.entries(voteAggregation)) {
+        const individualPutParams = {
+            TableName: process.env.API_MEMESRC_ANALYTICSMETRICSTABLE_NAME,
+            Item: marshall({
+                id: `totalVotes-${seriesId}`,  // Unique ID per series
+                value: JSON.stringify(votes),
+                createdAt: currentTime,
+                updatedAt: currentTime,
+                __typename: "AnalyticsMetrics"
+            })
+        };
+
+        try {
+            await ddb.send(new PutItemCommand(individualPutParams));
+        } catch (putError) {
+            console.error(`Error putting individual series vote to DynamoDB table: ${JSON.stringify(putError)}`);
+            return {
+                statusCode: 500,
+                body: JSON.stringify('Failed to put individual series vote to DynamoDB table')
+            };
+        }
+    }
+
+    // Write aggregated results for all series to AnalyticsMetrics DynamoDB table
     const putParams = {
         TableName: process.env.API_MEMESRC_ANALYTICSMETRICSTABLE_NAME,
         Item: marshall({
