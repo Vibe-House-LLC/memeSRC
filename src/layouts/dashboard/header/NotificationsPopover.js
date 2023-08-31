@@ -22,6 +22,8 @@ import {
 } from '@mui/material';
 // utils
 // import { API, graphqlOperation } from 'aws-amplify';
+import { API } from 'aws-amplify';
+import { useNavigate } from 'react-router-dom';
 import { fToNow } from '../../../utils/formatTime';
 // components
 import Iconify from '../../../components/iconify';
@@ -66,7 +68,9 @@ export default function NotificationsPopover() {
   // pullNotifications();
 
   useEffect(() => {
-    setNotifications(user?.userDetails?.userNotifications?.items || [])
+    setNotifications(
+      (user?.userDetails?.userNotifications?.items?.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))?.slice(0, 6)) || []
+    );    
     console.log(user?.userDetails?.userNotifications?.items)
   }, [user])
 
@@ -85,6 +89,106 @@ export default function NotificationsPopover() {
         isUnRead: false,
       }))
     );
+  };
+
+  const handleMarkAsRead = (notification) => {
+    // Find the index of the notification in the notifications array
+    const index = notifications.findIndex(n => n.id === notification.id);
+
+    if (index > -1) {
+      // Copy the array for immutability
+      const newNotifications = [...notifications];
+
+      // Update the 'isUnRead' property of the specific notification to false
+      newNotifications[index].isUnRead = false;
+
+      // Set the updated notifications array
+      setNotifications(newNotifications);
+      setUser({
+        ...user,
+        userDetails:
+        {
+          ...user.userDetails,
+          notifications: newNotifications
+        },
+      })
+
+      if (notifications.filter((item) => item.isUnRead === true).length === 0){
+        setOpen(false)
+      }
+
+      API.post('publicapi', '/user/update/notification/read', {
+        body: {
+          notificationId: notification.id
+        }
+      }).then((response) => console.log(response)).catch(error => {
+        console.log(error);
+        // Copy the array for immutability
+        const newNotifications = [...notifications];
+
+        // Update the 'isUnRead' property of the specific notification to false
+        newNotifications[index].isUnRead = true;
+
+        // Set the updated notifications array
+        setNotifications(newNotifications);
+        setUser({
+          ...user,
+          userDetails:
+          {
+            ...user.userDetails,
+            notifications: newNotifications
+          },
+        })
+      })
+    }
+  };
+
+  const handleMarkAsUnRead = (notification) => {
+    // Find the index of the notification in the notifications array
+    const index = notifications.findIndex(n => n.id === notification.id);
+
+    if (index > -1) {
+      // Copy the array for immutability
+      const newNotifications = [...notifications];
+
+      // Update the 'isUnRead' property of the specific notification to false
+      newNotifications[index].isUnRead = true;
+
+      // Set the updated notifications array
+      setNotifications(newNotifications);
+      setUser({
+        ...user,
+        userDetails:
+        {
+          ...user.userDetails,
+          notifications: newNotifications
+        },
+      })
+
+      API.post('publicapi', '/user/update/notification/unread', {
+        body: {
+          notificationId: notification.id
+        }
+      }).then((response) => console.log(response)).catch(error => {
+        console.log(error);
+        // Copy the array for immutability
+        const newNotifications = [...notifications];
+
+        // Update the 'isUnRead' property of the specific notification to false
+        newNotifications[index].isUnRead = true;
+
+        // Set the updated notifications array
+        setNotifications(newNotifications);
+        setUser({
+          ...user,
+          userDetails:
+          {
+            ...user.userDetails,
+            notifications: newNotifications
+          },
+        })
+      })
+    }
   };
 
   return (
@@ -117,20 +221,20 @@ export default function NotificationsPopover() {
             </Typography>
           </Box>
 
-          {totalUnRead > 0 && (
+          {/* {totalUnRead > 0 && (
             <Tooltip title=" Mark all as read">
               <IconButton color="primary" onClick={handleMarkAllAsRead}>
                 <Iconify icon="eva:done-all-fill" />
               </IconButton>
             </Tooltip>
-          )}
+          )} */}
         </Box>
 
-        
+
 
         {notifications?.length > 0 &&
           <>
-          <Divider sx={{ borderStyle: 'dashed' }} />
+            <Divider sx={{ borderStyle: 'dashed' }} />
             <Scrollbar sx={{ height: { xs: 340, sm: 'auto' } }}>
               <List
                 disablePadding
@@ -140,8 +244,8 @@ export default function NotificationsPopover() {
                   </ListSubheader>
                 }
               >
-                {notifications.slice(0, 2).map((notification) => (
-                  <NotificationItem key={notification.id} notification={notification} />
+                {notifications.filter(obj => obj.isUnRead === true).map((notification) => (
+                  <NotificationItem readFunction={handleMarkAsRead} key={notification.id} notification={notification} />
                 ))}
               </List>
 
@@ -153,8 +257,8 @@ export default function NotificationsPopover() {
                   </ListSubheader>
                 }
               >
-                {notifications.slice(2, 5).map((notification) => (
-                  <NotificationItem key={notification.id} notification={notification} />
+                {notifications.filter(obj => obj.isUnRead !== true).map((notification) => (
+                  <NotificationItem unreadFunction={handleMarkAsUnRead} key={notification.id} notification={notification} />
                 ))}
               </List>
             </Scrollbar>
@@ -184,10 +288,13 @@ NotificationItem.propTypes = {
     description: PropTypes.string,
     type: PropTypes.string,
     avatar: PropTypes.any,
+    readFunction: PropTypes.func,
+    unreadFunction: PropTypes.func,
   }),
 };
 
-function NotificationItem({ notification }) {
+function NotificationItem({ notification, readFunction, unreadFunction }) {
+  const navigate = useNavigate();
   const { avatar, title } = renderContent(notification);
 
   return (
@@ -199,6 +306,16 @@ function NotificationItem({ notification }) {
         ...(notification.isUnRead && {
           bgcolor: 'action.selected',
         }),
+      }}
+      onClick={() => {
+        if (notification.isUnRead === false) {
+          unreadFunction(notification)
+        } else {
+          readFunction(notification);
+          if (notification.path) {
+            navigate(notification.path)
+          }
+        }
       }}
     >
       <ListItemAvatar>
