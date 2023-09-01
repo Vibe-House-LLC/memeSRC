@@ -28,7 +28,7 @@
       "function": {
         "AdminQueries9e1cafc6": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/AdminQueries9e1cafc6-53424b6a51346c544e73-build.zip"
+          "s3Key": "amplify-builds/AdminQueries9e1cafc6-6838585141753033634d-build.zip"
         },
         "memesrcc3c71449": {},
         "SearchFunction": {
