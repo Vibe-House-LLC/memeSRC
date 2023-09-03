@@ -1007,7 +1007,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                           )}
                           {subtitlesExpanded ? 'Hide' : 'View'} Nearby Subtitles
                         </Typography>
-                        <Chip size="small" label="New!" color="success" />
+                        {/* <Chip size="small" label="New!" color="success" /> */}
                       </AccordionSummary>
                       <AccordionDetails sx={{ paddingY: 0, paddingX: 0 }}>
                         <List sx={{ padding: '.5em 0' }}>
