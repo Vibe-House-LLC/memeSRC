@@ -114,7 +114,7 @@ export default function EpisodePage({ setSeriesTitle }) {
           {memoizedResults && memoizedResults.map(result => (
             <Grid item xs={12} sm={12} md={12} key={result.fid}>
               <div style={{ display: 'flex', justifyContent: 'center' }}>
-                <Card component="a" href={`/editor/${result.fid}`} style={{ display: 'flex', textDecoration: 'none' }}>
+                <Card component="a" href={`/frame/${result.fid}`} style={{ display: 'flex', textDecoration: 'none' }}>
                   <CardMedia
                     component="img"
                     alt={result.subtitle}

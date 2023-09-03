@@ -161,7 +161,7 @@ export default function TopBannerSearchRevised(props) {
         .then(response => {
           const fid = response.frame_id;
           console.log(fid)
-          navigate(`/editor/${fid}`);
+          navigate(`/frame/${fid}`);
           setLoadingRandom(false);
         })
         .catch(error => {
