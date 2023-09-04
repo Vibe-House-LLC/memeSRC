@@ -194,7 +194,7 @@ export default function SearchPage() {
           memoizedResults &&
           memoizedResults.map((result) => (
             <Grid item xs={12} sm={6} md={3} key={result.fid}>
-              <a href={`/editor/${result.fid}?search=${encodeURI(searchTerm)}`} style={{ textDecoration: 'none' }}>
+              <a href={`/${process.env.REACT_APP_USER_BRANCH === 'dev' ? 'frame' : 'editor'}/${result.fid}?search=${encodeURI(searchTerm)}`} style={{ textDecoration: 'none' }}>
                 <StyledCard>
                   <StyledCardMediaContainer aspectRatio={memoizedAspectRatio}>
                     <StyledCardMedia

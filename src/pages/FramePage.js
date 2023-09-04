@@ -1,10 +1,24 @@
 import { Helmet } from 'react-helmet-async';
 import { Link as RouterLink, useParams } from 'react-router-dom';
-import { styled } from '@mui/material/styles';
-import { AppBar, Toolbar, IconButton, Button, Typography, Container, Card, CardContent, CardMedia, Grid, Chip, CircularProgress } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { API } from 'aws-amplify';
-import HomeIcon from '@mui/icons-material/Home';
+import { styled } from '@mui/material/styles';
+import {
+  AppBar,
+  Toolbar,
+  IconButton,
+  Button,
+  Typography,
+  Container,
+  Card,
+  CardContent,
+  CardMedia,
+  Grid,
+  Chip,
+  Slider,
+  CircularProgress,
+} from '@mui/material';
+import { Home } from '@mui/icons-material';
 
 const StyledCard = styled(Card)({
   display: 'flex',
@@ -15,6 +29,10 @@ const StyledCard = styled(Card)({
 export default function FramePage() {
   const { fid } = useParams();
   const [frameData, setFrameData] = useState({});
+  const [surroundingFrames, setSurroundingFrames] = useState();
+  const [sliderValue, setSliderValue] = useState(0);
+  const [middleIndex, setMiddleIndex] = useState(0);
+  const [displayImage, setDisplayImage] = useState(`https://memesrc.com/${fid.split('-')[0]}/img/${fid.split('-')[1]}/${fid.split('-')[2]}/${fid}.jpg`);
 
   useEffect(() => {
     const getSessionID = async () => {
@@ -39,22 +57,82 @@ export default function FramePage() {
         const queryStringParams = { queryStringParameters: { fid, sessionId } }
         return API.get('publicapi', '/frame', queryStringParams)
       })
-      .then(setFrameData)
+      .then(data => {
+        setFrameData(data);
+        setSurroundingFrames(data.frames_surrounding);
+        const newMiddleIndex = Math.floor(data.frames_fine_tuning.length / 2);
+        const initialFineTuneImage = data.frames_fine_tuning[newMiddleIndex];
+        setMiddleIndex(newMiddleIndex)
+        setDisplayImage(`https://memesrc.com${initialFineTuneImage}`);
+      })
       .catch(console.error);
-  }, [fid]);
+    }, [fid]);
 
-  return (
-    <>
-      <Helmet>
-        <title> Frame Details | memeSRC 2.0 </title>
-      </Helmet>
+    useEffect(() => {
+      if (frameData.frames_fine_tuning && middleIndex !== 0) {
+        const displayIndex = middleIndex + sliderValue;
+        const newDisplayFrame = frameData.frames_fine_tuning[displayIndex];
+        setDisplayImage(`https://memesrc.com${newDisplayFrame}`);
+      }
+    }, [sliderValue, frameData, middleIndex]);
+    
 
-      <AppBar position="static">
-        <Toolbar>
-          <IconButton edge="start" color="inherit" aria-label="menu" to="/" component={RouterLink}>
-            <HomeIcon />
-          </IconButton>
-          <Typography variant="h6" style={{ flexGrow: 1 }}>
+    const renderSurroundingFrames = () => {
+      if (surroundingFrames) {
+        return (
+          <Grid container spacing={2}>
+            {surroundingFrames.map((frame, index) => (
+              <Grid item xs={4} key={index}>
+                <Card>
+                  <CardMedia
+                    component="img"
+                    alt={`${frame.fid}`}
+                    image={`https://memesrc.com${frame.frame_image}`}
+                  />
+                  <CardContent>
+                    <Typography variant="caption">{frame.subtitle || 'No subtitle'}</Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        );
+      }
+      return null;
+    };
+
+    const renderFineTuningFrames = () => {
+      return (
+        <>
+          <CardMedia
+            component="img"
+            alt={`Fine-tuning ${sliderValue}`}
+            image={displayImage}
+          />
+          <Slider
+            value={sliderValue}
+            min={-middleIndex}
+            max={middleIndex}
+            step={1}
+            onChange={(e, newValue) => setSliderValue(newValue)}
+          />
+        </>
+      );
+    };
+      
+  
+    return (
+      <>
+        <Helmet>
+          <title> Frame Details | memeSRC 2.0 </title>
+        </Helmet>
+  
+        <AppBar position="static">
+          <Toolbar>
+            <IconButton edge="start" color="inherit" aria-label="menu" to="/" component={RouterLink}>
+              <Home />
+            </IconButton>
+            <Typography variant="h6" style={{ flexGrow: 1 }}>
             <>
               <RouterLink to={`/series/${fid.split('-')[0]}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                 {fid.split('-')[0]}
@@ -63,15 +141,14 @@ export default function FramePage() {
                 size='small'
                 label={`S${fid.split('-')[1]} E${fid.split('-')[2]}`}
                 sx={{
-                  marginLeft: '5px', // Adjust as needed for space between chips
+                  marginLeft: '5px',
                   "& .MuiChip-label": {
                     fontWeight: 'bold',
                   },
                 }}
               />
             </>
-
-          </Typography>
+            </Typography>
         </Toolbar>
       </AppBar>
 
@@ -79,11 +156,7 @@ export default function FramePage() {
         <Grid container spacing={2} direction="row" alignItems="center" justifyContent="center">
           <Grid item xs={12} md={6}>
             <StyledCard>
-              <CardMedia
-                component="img"
-                alt={fid.split('-')[0]}
-                image={`https://memesrc.com/${fid.split('-')[0]}/img/${fid.split('-')[1]}/${fid.split('-')[2]}/${fid}.jpg`}
-              />
+              {renderFineTuningFrames()}
             </StyledCard>
           </Grid>
           <Grid item xs={12} md={6}>
@@ -93,7 +166,7 @@ export default function FramePage() {
                   size='small'
                   label={`S${fid.split('-')[1]} E${fid.split('-')[2]}`}
                   sx={{
-                    marginLeft: '5px', // Adjust as needed for space between chips
+                    marginLeft: '5px',
                     "& .MuiChip-label": {
                       fontWeight: 'bold',
                     },
@@ -112,7 +185,11 @@ export default function FramePage() {
                 TODO: add more metadata, links, content, etc. here
               </Typography>
             </CardContent>
+          </Grid>
 
+          <Grid item xs={12}>
+            <Typography variant="h6">Surrounding Frames</Typography>
+            {renderSurroundingFrames()}
           </Grid>
         </Grid>
       </Container>
