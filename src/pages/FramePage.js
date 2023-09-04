@@ -32,7 +32,6 @@ export default function FramePage() {
   const [surroundingFrames, setSurroundingFrames] = useState();
   const [sliderValue, setSliderValue] = useState(0);
   const [middleIndex, setMiddleIndex] = useState(0);
-  const [loadingFineTuning, setLoadingFineTuning] = useState(true);
   const [displayImage, setDisplayImage] = useState(`https://memesrc.com/${fid.split('-')[0]}/img/${fid.split('-')[1]}/${fid.split('-')[2]}/${fid}.jpg`);
 
   useEffect(() => {
@@ -62,8 +61,9 @@ export default function FramePage() {
         setFrameData(data);
         setSurroundingFrames(data.frames_surrounding);
         const newMiddleIndex = Math.floor(data.frames_fine_tuning.length / 2);
-        setMiddleIndex(newMiddleIndex);
-        setLoadingFineTuning(false);
+        const initialFineTuneImage = data.frames_fine_tuning[newMiddleIndex];
+        setMiddleIndex(newMiddleIndex)
+        setDisplayImage(`https://memesrc.com${initialFineTuneImage}`);
       })
       .catch(console.error);
     }, [fid]);
@@ -102,10 +102,6 @@ export default function FramePage() {
     };
 
     const renderFineTuningFrames = () => {
-      if (loadingFineTuning) {
-        return <CircularProgress />;
-      }
-    
       return (
         <>
           <CardMedia
@@ -122,7 +118,8 @@ export default function FramePage() {
           />
         </>
       );
-    };    
+    };
+      
   
     return (
       <>
