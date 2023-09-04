@@ -147,7 +147,7 @@ export default function TopBannerSearch(props) {
         .then(response => {
           const fid = response.frame_id;
           console.log(fid)
-          navigate(`/frame/${fid}`);
+          navigate(`/${process.env.REACT_APP_USER_BRANCH === 'dev' ? 'frame' : 'editor'}/${fid}`);
           setLoadingRandom(false);
         })
         .catch(error => {
