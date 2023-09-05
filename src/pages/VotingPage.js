@@ -27,6 +27,8 @@ import {
   DialogContent,
   DialogActions,
   useTheme,
+  Checkbox,
+  FormControlLabel,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { ArrowUpward, ArrowDownward, Search, Close, ThumbUp, Whatshot, Lock } from '@mui/icons-material';
@@ -55,7 +57,7 @@ const StyledFab = styled(Fab)(() => ({
 
 const StyledImg = styled('img')``;
 
-export default function VotingPage() {
+export default function VotingPage({ shows: searchableShows }) {
   const navigate = useNavigate();
   const [shows, setShows] = useState([]);
   const [votes, setVotes] = useState({});
@@ -76,6 +78,8 @@ export default function VotingPage() {
   const [openAddRequest, setOpenAddRequest] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState();
   const [submittingRequest, setSubmittingRequest] = useState(false);
+  const [hideSearchable, setHideSearchable] = useState(false);
+  const [filteredAndSortedShows, setFilteredAndSortedShows] = useState([]);
   const { setMessage, setOpen, setSeverity } = useContext(SnackbarContext)
 
   const location = useLocation();
@@ -132,12 +136,18 @@ export default function VotingPage() {
         });
     }
 
-    sortedShows.forEach((show, index) => {
-      show.rank = index + 1; // add a rank to each show
+    // If hideSearchable is true, filter out the searchable shows
+    const visibleShows = hideSearchable 
+      ? sortedShows.filter(show => !searchableShows.some(searchableShow => searchableShow.id === show.slug))
+      : sortedShows;
+
+    // Now rank the sorted and possibly filtered shows
+    visibleShows.forEach((show, index) => {
+      show.rank = index + 1;
     });
 
-    setShows(sortedShows);
-  }, [upvotes, downvotes, votes, rankMethod]);
+    setFilteredAndSortedShows(visibleShows);
+  }, [upvotes, downvotes, votes, rankMethod, hideSearchable, searchableShows]);
 
   const fetchShowsAndVotes = async () => {
     setLoading(true);
@@ -420,7 +430,7 @@ export default function VotingPage() {
           <Typography variant="h3" component="h1" gutterBottom>
             Requested Shows
           </Typography>
-          <Typography variant="subtitle2">Upvote the shows you wish were on memeSRC</Typography>
+          <Typography variant="subtitle2">Upvote shows you want on memeSRC</Typography>
         </Box>
         {!localStorage.getItem('alertDismissedVotePage999') && (
           <Alert
@@ -505,6 +515,19 @@ export default function VotingPage() {
               ),
             }}
           />
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={hideSearchable}
+                onChange={() => setHideSearchable(!hideSearchable)}
+                name="hideSearchable"
+                color="primary"
+              />
+            }
+            label="Hide Searchable Shows"
+            style={{ opacity: hideSearchable ? 1 : 0.5 }}
+            sx={{ margin: 1 }}
+          />
         </Box>
         <Grid container style={{ minWidth: '100%' }}>
           {loading ? (
@@ -527,10 +550,13 @@ export default function VotingPage() {
             </Grid>
           ) : (
             <FlipMove style={{ minWidth: '100%' }}>
-              {filteredShows.map((show, idx) => (
-                <Grid item xs={12} key={show.id} style={{ marginBottom: 15 }}>
-                  <Card>
-                    <CardContent>
+              {filteredAndSortedShows.map((show, idx) => (
+                hideSearchable && searchableShows.some(searchableShow => searchableShow.id === show.slug)
+                  ? null
+                  : (
+                    <Grid item xs={12} key={show.id} style={{ marginBottom: 15 }}>
+                      <Card>
+                        <CardContent>
                       <Box display="flex" alignItems="center">
                         <Box flexGrow={1} marginRight={2}>
                           <Box display="flex" alignItems="center">
@@ -553,6 +579,18 @@ export default function VotingPage() {
                                 alignItems="center"
                                 sx={{ marginTop: '0.1rem', marginBottom: '-0.5rem' }}
                               >
+                                {
+                                  searchableShows.some(searchableShow => searchableShow.id === show.slug) && (
+                                    <a 
+                                      href={`https://memesrc.com/${show.slug}`} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer" 
+                                      style={{ textDecoration: 'none', color: 'inherit' }}
+                                    >
+                                      <Chip sx={{ marginRight: 1 }} size='small' label="🔍" color="success" variant="filled" />
+                                    </a>
+                                  )
+                                }
                                 <Typography
                                   variant="subtitle2"
                                   color="success.main"
@@ -808,7 +846,7 @@ export default function VotingPage() {
                       </Box>
                     </CardContent>
                   </Card>
-                </Grid>
+                </Grid>)
               ))}
               <Grid
                 item
