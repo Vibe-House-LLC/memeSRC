@@ -579,7 +579,18 @@ export default function VotingPage({ shows: searchableShows }) {
                                 alignItems="center"
                                 sx={{ marginTop: '0.1rem', marginBottom: '-0.5rem' }}
                               >
-                                { searchableShows.some(searchableShow => searchableShow.id === show.slug) && <Chip sx={{ marginRight: 1 }} size='small' label="🔍" color="success" variant="filled" /> }
+                                {
+                                  searchableShows.some(searchableShow => searchableShow.id === show.slug) && (
+                                    <a 
+                                      href={`https://memesrc.com/${show.slug}`} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer" 
+                                      style={{ textDecoration: 'none', color: 'inherit' }}
+                                    >
+                                      <Chip sx={{ marginRight: 1 }} size='small' label="🔍" color="success" variant="filled" />
+                                    </a>
+                                  )
+                                }
                                 <Typography
                                   variant="subtitle2"
                                   color="success.main"
