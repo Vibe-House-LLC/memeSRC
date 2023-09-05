@@ -138,22 +138,22 @@ export default function VotingPage({ shows: searchableShows }) {
 
     // If hideSearchable is true, filter out the searchable shows
     const visibleShows = hideSearchable 
-    ? sortedShows.filter(show => !searchableShows.some(searchableShow => searchableShow.id === show.slug))
-    : sortedShows;
+      ? sortedShows.filter(show => !searchableShows.some(searchableShow => searchableShow.id === show.slug))
+      : sortedShows;
 
-    // Now apply the search filter
+    // Rank the sorted and filtered shows
+    visibleShows.forEach((show, index) => {
+      show.rank = index + 1;
+    });
+
+    // Apply the search filter
     const searchFilteredShows = visibleShows.filter((show) => 
       show.statusText === 'requested' && 
       show.name.toLowerCase().includes(searchText.toLowerCase())
     );
 
-    // Now rank the sorted and filtered shows
-    searchFilteredShows.forEach((show, index) => {
-      show.rank = index + 1;
-    });
-
     setFilteredAndSortedShows(searchFilteredShows);
-    }, [upvotes, downvotes, votes, rankMethod, hideSearchable, searchableShows, searchText]);
+  }, [upvotes, downvotes, votes, rankMethod, hideSearchable, searchableShows, searchText]);
 
   const fetchShowsAndVotes = async () => {
     setLoading(true);
