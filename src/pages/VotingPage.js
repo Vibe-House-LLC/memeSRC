@@ -27,6 +27,8 @@ import {
   DialogContent,
   DialogActions,
   useTheme,
+  Checkbox,
+  FormControlLabel,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { ArrowUpward, ArrowDownward, Search, Close, ThumbUp, Whatshot, Lock } from '@mui/icons-material';
@@ -55,7 +57,7 @@ const StyledFab = styled(Fab)(() => ({
 
 const StyledImg = styled('img')``;
 
-export default function VotingPage() {
+export default function VotingPage({ shows: searchableShows }) {
   const navigate = useNavigate();
   const [shows, setShows] = useState([]);
   const [votes, setVotes] = useState({});
@@ -76,6 +78,7 @@ export default function VotingPage() {
   const [openAddRequest, setOpenAddRequest] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState();
   const [submittingRequest, setSubmittingRequest] = useState(false);
+  const [hideSearchable, setHideSearchable] = useState(false);
   const { setMessage, setOpen, setSeverity } = useContext(SnackbarContext)
 
   const location = useLocation();
@@ -505,6 +508,19 @@ export default function VotingPage() {
               ),
             }}
           />
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={hideSearchable}
+                onChange={() => setHideSearchable(!hideSearchable)}
+                name="hideSearchable"
+                color="primary"
+              />
+            }
+            label="Hide Searchable Shows"
+            style={{ opacity: hideSearchable ? 1 : 0.5 }}
+            sx={{ margin: 1 }}
+          />
         </Box>
         <Grid container style={{ minWidth: '100%' }}>
           {loading ? (
@@ -528,9 +544,12 @@ export default function VotingPage() {
           ) : (
             <FlipMove style={{ minWidth: '100%' }}>
               {filteredShows.map((show, idx) => (
-                <Grid item xs={12} key={show.id} style={{ marginBottom: 15 }}>
-                  <Card>
-                    <CardContent>
+                hideSearchable && searchableShows.some(searchableShow => searchableShow.id === show.slug)
+                  ? null
+                  : (
+                    <Grid item xs={12} key={show.id} style={{ marginBottom: 15 }}>
+                      <Card>
+                        <CardContent>
                       <Box display="flex" alignItems="center">
                         <Box flexGrow={1} marginRight={2}>
                           <Box display="flex" alignItems="center">
@@ -553,6 +572,7 @@ export default function VotingPage() {
                                 alignItems="center"
                                 sx={{ marginTop: '0.1rem', marginBottom: '-0.5rem' }}
                               >
+                                { searchableShows.some(searchableShow => searchableShow.id === show.slug) && <Chip sx={{ marginRight: 1 }} size='small' label="🔍" color="success" variant="filled" /> }
                                 <Typography
                                   variant="subtitle2"
                                   color="success.main"
@@ -808,7 +828,7 @@ export default function VotingPage() {
                       </Box>
                     </CardContent>
                   </Card>
-                </Grid>
+                </Grid>)
               ))}
               <Grid
                 item
