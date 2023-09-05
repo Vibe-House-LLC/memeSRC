@@ -79,6 +79,7 @@ export default function VotingPage({ shows: searchableShows }) {
   const [selectedRequest, setSelectedRequest] = useState();
   const [submittingRequest, setSubmittingRequest] = useState(false);
   const [hideSearchable, setHideSearchable] = useState(false);
+  const [filteredAndSortedShows, setFilteredAndSortedShows] = useState([]);
   const { setMessage, setOpen, setSeverity } = useContext(SnackbarContext)
 
   const location = useLocation();
@@ -135,12 +136,18 @@ export default function VotingPage({ shows: searchableShows }) {
         });
     }
 
-    sortedShows.forEach((show, index) => {
-      show.rank = index + 1; // add a rank to each show
+    // If hideSearchable is true, filter out the searchable shows
+    const visibleShows = hideSearchable 
+      ? sortedShows.filter(show => !searchableShows.some(searchableShow => searchableShow.id === show.slug))
+      : sortedShows;
+
+    // Now rank the sorted and possibly filtered shows
+    visibleShows.forEach((show, index) => {
+      show.rank = index + 1;
     });
 
-    setShows(sortedShows);
-  }, [upvotes, downvotes, votes, rankMethod]);
+    setFilteredAndSortedShows(visibleShows);
+  }, [upvotes, downvotes, votes, rankMethod, hideSearchable, searchableShows]);
 
   const fetchShowsAndVotes = async () => {
     setLoading(true);
@@ -423,7 +430,7 @@ export default function VotingPage({ shows: searchableShows }) {
           <Typography variant="h3" component="h1" gutterBottom>
             Requested Shows
           </Typography>
-          <Typography variant="subtitle2">Upvote the shows you wish were on memeSRC</Typography>
+          <Typography variant="subtitle2">Upvote shows you want on memeSRC</Typography>
         </Box>
         {!localStorage.getItem('alertDismissedVotePage999') && (
           <Alert
@@ -543,7 +550,7 @@ export default function VotingPage({ shows: searchableShows }) {
             </Grid>
           ) : (
             <FlipMove style={{ minWidth: '100%' }}>
-              {filteredShows.map((show, idx) => (
+              {filteredAndSortedShows.map((show, idx) => (
                 hideSearchable && searchableShows.some(searchableShow => searchableShow.id === show.slug)
                   ? null
                   : (
