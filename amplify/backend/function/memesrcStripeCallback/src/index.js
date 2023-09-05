@@ -114,6 +114,42 @@ exports.handler = async (event) => {
     return UserFunctionJson
   }
 
+  const handleSetCanceledSubsciptionStatus = async (stripeCustomerId) => {
+    const lambdaClient = new LambdaClient({ region: "us-east-1" });
+
+    // Create the request object to invoke the user function
+    const invokeRequest = {
+      FunctionName: process.env.FUNCTION_MEMESRCUSERFUNCTION_NAME,
+      Payload: JSON.stringify({
+        path: `/function/magic69/cancelSubscription`,
+        body: JSON.stringify({
+          stripeCustomerId
+        })
+      }),
+    };
+
+    console.log('THE REQUEST')
+    console.log(invokeRequest)
+
+    // Invoke the user function and wait for the result
+    const UserFunctionResults = await lambdaClient.send(new InvokeCommand(invokeRequest));
+    console.log('UserFunction RESULTS')
+    console.log(UserFunctionResults)
+
+    // Convert the Uint8Array to a string
+    const UserFunctionString = new TextDecoder().decode(UserFunctionResults.Payload);
+
+    // Parse the result of the user function
+    console.log('UserFunction STRING')
+    console.log(UserFunctionString);
+    const UserFunctionJson = JSON.parse(UserFunctionString);
+
+    console.log('RETURNED FROM UserFunction')
+    console.log(UserFunctionJson)
+
+    return UserFunctionJson
+  }
+
   /* -------------------------------- Functions ------------------------------- */
 
   // This function checks to see if an invoice object contains at least one of the price ID's.
@@ -172,7 +208,7 @@ exports.handler = async (event) => {
   }
 
 
-  
+
 
   const subscriptionRenewelPaymentComplete = async (stripeEvent) => {
     console.log('Subscription Renewel Payment Complete')
@@ -212,8 +248,12 @@ exports.handler = async (event) => {
 
   const subscriptionCanceled = async (stripeEvent) => {
     console.log('Subscription Canceled')
-    // TODO: Add path in user function to handle this. We can swap this over along side swapping over the button to "Manage Subscription"
-    // I think a higher priority tonight is going to be handling a failed payment now that the renewel should work.
+
+    const stripeCustomerId = stripeEvent.customer
+    console.log('stripeCustomerId', stripeCustomerId)
+
+    const setCancelStatus = await handleSetCanceledSubsciptionStatus(stripeCustomerId)
+    console.log('setCancelStatus', setCancelStatus)
   }
 
 
