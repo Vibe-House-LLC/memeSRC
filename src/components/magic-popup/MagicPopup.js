@@ -60,9 +60,27 @@ export default function MagicPopup({ children }) {
         })
     }
 
+    // /user/update/getPortalLink
+
     const buySubscription = () => {
         setLoadingSubscriptionUrl(true)
         API.post('publicapi', '/user/update/getCheckoutSession', {
+            body: {
+                currentUrl: window.location.href
+            }
+        }).then(results => {
+            console.log(results)
+            setLoadingSubscriptionUrl(false)
+            window.location.href = results
+        }).catch(error => {
+            console.log(error.response)
+            setLoadingSubscriptionUrl(false)
+        })
+    }
+
+    const logIntoCustomerPortal = () => {
+        setLoadingSubscriptionUrl(true)
+        API.post('publicapi', '/user/update/getPortalLink', {
             body: {
                 currentUrl: window.location.href
             }
@@ -341,12 +359,12 @@ export default function MagicPopup({ children }) {
                             {user?.userDetails?.magicSubscription === 'true' ? (
                                 <LoadingButton
                                     loading={loadingSubscriptionUrl}
-                                    onClick={cancelSubscription}
+                                    onClick={logIntoCustomerPortal}
                                     variant="contained"
                                     size="large"
                                     fullWidth
                                 >
-                                    Cancel Subscription
+                                    Customer Portal
                                 </LoadingButton>
                             ) : (
                                 <>

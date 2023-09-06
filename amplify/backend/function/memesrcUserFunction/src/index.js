@@ -728,6 +728,60 @@ export const handler = async (event) => {
   }
 
   // Get the checkout session
+  if (path === `/${process.env.ENV}/public/user/update/getPortalLink`) {
+    try {
+      // Lets pull in the user details
+      const query = `
+        query getUserDetails {
+            getUserDetails(id: "${userSub}") {
+              earlyAccessStatus
+              id
+              email
+              magicSubscription
+              stripeCustomerInfo {
+                createdAt
+                id
+              }
+            }
+          }
+        `;
+      console.log('The Query')
+      console.log(query)
+
+      const userDetailsQuery = await makeRequest(query);
+      console.log('userDetailsQuery')
+      console.log(userDetailsQuery)
+
+      const userDetails = userDetailsQuery.body.data.getUserDetails
+      console.log('User Details')
+      console.log(userDetails)
+
+      // Now lets set the customer id
+      const stripeCustomerId = userDetails.stripeCustomerInfo.id
+
+      const portalSession = await stripe.billingPortal.sessions.create({
+        customer: stripeCustomerId,
+        return_url: body.currentUrl,
+      });
+
+      response = {
+        statusCode: 200,
+        body: portalSession.url
+      }
+
+    } catch (error) {
+      console.log(error)
+      response = {
+        statusCode: 500,
+        body: {
+          error,
+          message: 'Something went wrong. Please try again.'
+        }
+      }
+    }
+  }
+
+  // Get the checkout session
   if (path === `/${process.env.ENV}/public/user/update/getCheckoutSession`) {
     try {
       // Lets pull in the user details
@@ -1251,6 +1305,75 @@ export const handler = async (event) => {
     }
   }
 
+
+  // Stripe callback to cancel subscription
+  if (path === `/function/magic69/cancelSubscription`) {
+    // Lets wrap this in a try/catch. That way if stripe customer in GraphQL doesn't exist, it will fail.
+    try {
+      // First we want to get the UserDetails ID by checking the stripe customer.
+      const getStripeCustomerQuery = `
+        query getStripeCustomer {
+          getStripeCustomer(id: "${body.stripeCustomerId}") {
+            user {
+              id
+            }
+          }
+        }
+      `
+      console.log('getStripeCustomerQuery', getStripeCustomerQuery);
+      const stripeCustomer = await makeRequest(getStripeCustomerQuery);
+      console.log('stripeCustomer', JSON.stringify(stripeCustomer))
+
+      // Now lets make sure that the customer existed.
+      if (stripeCustomer?.body?.data?.getStripeCustomer?.user?.id) {
+        // The stripe customer exists and is attached to a user.
+        // Lets throw 69 credits at them.
+        const userId = stripeCustomer.body.data.getStripeCustomer.user.id
+
+        const updateUserDetailsQuery = `
+        mutation updateUserDetails {
+          updateUserDetails(input: {id: "${userId}", magicSubscription: null, subscriptionStatus: "canceled"}) {
+            id
+          }
+        }
+        `
+        console.log('updateUserDetailsQuery')
+        console.log(updateUserDetailsQuery)
+
+        const updateUserDetails = await makeRequest(updateUserDetailsQuery)
+        console.log('updateUserDetails')
+        console.log(updateUserDetails)
+
+        // The user subscriptionStatus is now set to canceled
+        response = {
+          statusCode: 200,
+          body: {
+            code: 'success',
+            message: 'The user subscriptionStatus is now set to canceled'
+          }
+        }
+      } else {
+        response = {
+          statusCode: 406,
+          body: {
+            error: 'UserDoesNotExist',
+            message: 'The stripe customer ID does not correspond to a customer ID in GraphQL. This could be because the customer ID in question did not sign up for magic tools.'
+          }
+        }
+      }
+
+    } catch (error) {
+      console.log(error)
+      response = {
+        statusCode: 500,
+        body: {
+          error: 'TryCaught',
+          message: 'Something failed in the try/catch. Check logs for memesrcUserFunction.'
+        }
+      }
+    }
+  }
+
   // This marks a notification as read
   if (path === `/${process.env.ENV}/public/user/update/notification/read`) {
     // First we want to pull down the notification and compare the users sub to the one associated to the notification
@@ -1284,7 +1407,7 @@ export const handler = async (event) => {
         `
         console.log('updateNotificationQuery')
         console.log(updateNotificationQuery)
-        
+
         const updateNotification = await makeRequest(updateNotificationQuery);
         console.log('updateNotification');
         console.log(updateNotification)
@@ -1341,7 +1464,7 @@ export const handler = async (event) => {
         `
         console.log('updateNotificationQuery')
         console.log(updateNotificationQuery)
-        
+
         const updateNotification = await makeRequest(updateNotificationQuery);
         console.log('updateNotification');
         console.log(updateNotification)
