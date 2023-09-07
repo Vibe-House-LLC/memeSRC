@@ -22,6 +22,10 @@
     "functionmemesrcUserFunctionName": {
       "Type": "String",
       "Default": "functionmemesrcUserFunctionName"
+    },
+    "storagememesrcGeneratedImagesBucketName": {
+      "Type": "String",
+      "Default": "storagememesrcGeneratedImagesBucketName"
     }
   },
   "Conditions": {
@@ -101,6 +105,9 @@
             },
             "FUNCTION_MEMESRCUSERFUNCTION_NAME": {
               "Ref": "functionmemesrcUserFunctionName"
+            },
+            "STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME": {
+              "Ref": "storagememesrcGeneratedImagesBucketName"
             }
           }
         },
@@ -299,6 +306,44 @@
                       {
                         "Ref": "functionmemesrcUserFunctionName"
                       }
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Effect": "Allow",
+              "Action": "s3:ListBucket",
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:s3:::",
+                      {
+                        "Ref": "storagememesrcGeneratedImagesBucketName"
+                      }
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "s3:PutObject",
+                "s3:GetObject"
+              ],
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:s3:::",
+                      {
+                        "Ref": "storagememesrcGeneratedImagesBucketName"
+                      },
+                      "/*"
                     ]
                   ]
                 }
