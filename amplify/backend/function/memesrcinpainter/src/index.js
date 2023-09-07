@@ -25,7 +25,8 @@ Amplify Params - DO NOT EDIT */
 
 const { SSMClient, GetParameterCommand } = require("@aws-sdk/client-ssm");
 const { LambdaClient, InvokeCommand } = require("@aws-sdk/client-lambda");
-const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3"); // Import the S3 client
+const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
+const uuid = require('uuid');
 const axios = require('axios');
 const FormData = require('form-data');
 const { Buffer } = require('buffer');
@@ -129,46 +130,52 @@ exports.handler = async (event) => {
     // Send the request
     const response = await axios.post('https://api.openai.com/v1/images/edits', formData, { headers });
 
-    const image_url = response.data.data[0].url;
-    console.log(image_url);
-    // const image_url = "https://memesrc.com/test-gen.png"
-
-    // Download the image from the URL
-    const imageResponse = await axios({
-        method: 'get',
-        url: image_url,
-        responseType: 'arraybuffer'
-    });
-
-    // Image buffer
-    const imageBuffer = Buffer.from(imageResponse.data, 'binary');
-
-    // Create a new S3 client
+    // Set up the S3 client
     const s3Client = new S3Client({ region: "us-east-1" });
 
-    // Define a unique filename using a UUID (you can use a library like uuid for this)
-    const uuid = require('uuid');
-    const fileName = `${uuid.v4()}.jpeg`;
+    // This will be our collection of promises
+    const promises = response.data.data.map(async (imageItem) => {
+        const image_url = imageItem.url;
+        console.log(image_url);
 
-    // Define the S3 upload parameters with the `/public` directory
-    const s3Params = {
-        Bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
-        Key: `public/${fileName}`,
-        Body: imageBuffer,
-        ContentType: 'image/jpeg',
-    };
+        // Download the image from the URL
+        const imageResponse = await axios({
+            method: 'get',
+            url: image_url,
+            responseType: 'arraybuffer'
+        });
 
-    // Upload the image to S3
-    await s3Client.send(new PutObjectCommand(s3Params));
+        // Image buffer
+        const imageBuffer = Buffer.from(imageResponse.data, 'binary');
 
-    // Construct the public URL for the uploaded image based on your CDN setup
-    const cdnImageUrl = `https://i-${process.env.ENV}.memesrc.com/${fileName}`;
+        // Define a unique filename using a UUID
+        const fileName = `${uuid.v4()}.jpeg`;
+
+        // Define the S3 upload parameters with the `/public` directory
+        const s3Params = {
+            Bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
+            Key: `public/${fileName}`,
+            Body: imageBuffer,
+            ContentType: 'image/jpeg',
+        };
+
+        // Upload the image to S3
+        const uploadCommand = new PutObjectCommand(s3Params);
+        await s3Client.send(uploadCommand);
+
+
+        // Construct the public URL for the uploaded image based on your CDN setup
+        return `https://i-${process.env.ENV}.memesrc.com/${fileName}`;
+    });
+
+    // Wait for all promises to resolve
+    const cdnImageUrls = await Promise.all(promises);
 
     // Formulate response
     const res = {
         statusCode: 200,
         body: JSON.stringify({
-            imageUrl: cdnImageUrl // Return the CDN URL of the uploaded image
+            imageUrls: cdnImageUrls // Return the array of CDN URLs of the uploaded images
         }),
         headers: {
             "Content-Type": "application/json",
