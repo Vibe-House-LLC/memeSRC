@@ -616,7 +616,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         });
         
         // Assume the backend sends an imageURL property in the response.
-        const imageUrl = response.imageUrl;
+        const imageUrl = response.imageUrls[0];
 
         console.log(`response: ${response}`)
         console.log(response)
