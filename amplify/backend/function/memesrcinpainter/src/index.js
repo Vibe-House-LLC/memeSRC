@@ -1,4 +1,9 @@
-/*
+/* Amplify Params - DO NOT EDIT
+	ENV
+	FUNCTION_MEMESRCUSERFUNCTION_NAME
+	REGION
+	STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME
+Amplify Params - DO NOT EDIT *//*
 Use the following code to retrieve configured secrets from SSM:
 
 const aws = require('aws-sdk');
@@ -20,6 +25,7 @@ Amplify Params - DO NOT EDIT */
 
 const { SSMClient, GetParameterCommand } = require("@aws-sdk/client-ssm");
 const { LambdaClient, InvokeCommand } = require("@aws-sdk/client-lambda");
+const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3"); // Import the S3 client
 const axios = require('axios');
 const FormData = require('form-data');
 const { Buffer } = require('buffer');
@@ -134,14 +140,35 @@ exports.handler = async (event) => {
         responseType: 'arraybuffer'
     });
 
-    // Convert image data to base64 string
-    const base64Image = Buffer.from(imageResponse.data, 'binary').toString('base64');
+    // Image buffer
+    const imageBuffer = Buffer.from(imageResponse.data, 'binary');
+
+    // Create a new S3 client
+    const s3Client = new S3Client({ region: "us-east-1" });
+
+    // Define a unique filename using a UUID (you can use a library like uuid for this)
+    const uuid = require('uuid');
+    const fileName = `${uuid.v4()}.jpeg`;
+
+    // Define the S3 upload parameters with the `/public` directory
+    const s3Params = {
+        Bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
+        Key: `public/${fileName}`,
+        Body: imageBuffer,
+        ContentType: 'image/jpeg',
+    };
+
+    // Upload the image to S3
+    await s3Client.send(new PutObjectCommand(s3Params));
+
+    // Construct the public URL for the uploaded image based on your CDN setup
+    const cdnImageUrl = `https://i-${process.env.ENV}.memesrc.com/${fileName}`;
 
     // Formulate response
     const res = {
         statusCode: 200,
         body: JSON.stringify({
-            imageData: `data:image/jpeg;base64,${base64Image}`
+            imageUrl: cdnImageUrl // Return the CDN URL of the uploaded image
         }),
         headers: {
             "Content-Type": "application/json",
