@@ -614,37 +614,49 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         const response = await API.post('publicapi', '/inpaint', {
           body: data
         });
-        addToHistory();
-        originalCanvas.getObjects().forEach((obj) => {
-          if (obj instanceof fabric.Path) {
-            editor.canvas.remove(obj)
-          }
-        });
+        
+        // Assume the backend sends an imageURL property in the response.
+        const imageUrl = response.imageUrl;
 
-        fabric.Image.fromURL(response.imageData, (returnedImage) => {
-          const originalHeight = editor.canvas.height
-          const originalWidth = editor.canvas.width
+        console.log(`response: ${response}`)
+        console.log(response)
+        console.log(`imageUrl: ${imageUrl}`)
+      
+        // Fetch the image as a blob from the given URL.
+        const imageResponse = await fetch(imageUrl);
+        const imageBlob = await imageResponse.blob();
+      
+        // Convert the blob to a data URL so fabric can use it.
+        const reader = new FileReader();
+        reader.readAsDataURL(imageBlob);
+        reader.onloadend = () => {
+          const base64data = reader.result;
+          console.log(base64data)
+          fabric.Image.fromURL(base64data, (returnedImage) => {
+            const originalHeight = editor.canvas.height
+            const originalWidth = editor.canvas.width
 
-          const scale = Math.min(1024 / originalWidth, 1024 / originalHeight);
-          returnedImage.scale(1 / scale)
-          editor.canvas.setBackgroundImage(returnedImage)
-          setBgEditorStates(prevHistory => [...prevHistory, returnedImage]);
-          editor.canvas.backgroundImage.center()
-          editor.canvas.renderAll();
-        }, { crossOrigin: "anonymous" });
-        const newCreditAmount = user?.userDetails.credits - 1
-        setUser({ ...user, userDetails: { ...user?.userDetails, credits: newCreditAmount } })
+            const scale = Math.min(1024 / originalWidth, 1024 / originalHeight);
+            returnedImage.scale(1 / scale)
+            editor.canvas.setBackgroundImage(returnedImage)
+            setBgEditorStates(prevHistory => [...prevHistory, returnedImage]);
+            editor.canvas.backgroundImage.center()
+            editor.canvas.renderAll();
+          }, { crossOrigin: "anonymous" });
+          const newCreditAmount = user?.userDetails.credits - 1
+          setUser({ ...user, userDetails: { ...user?.userDetails, credits: newCreditAmount } })
 
-        setLoadingInpaintingResult(false)
-        setTimeout(() => {
-          setSeverity('success')
-          setMessage(`Image Generation Successful! Remaining credits: ${newCreditAmount}`)
-          setOpen(true)
-          setEditorTool();
-          setMagicPrompt('Everyday scene as cinestill sample, Empty, Nothing, Plain, Vacant, Desolate, Void, Barren, Uninhabited, Abandoned, Unoccupied, Untouched, Clear, Blank, Pristine, Unmarred')
-          setPromptEnabled('erase')
-        }, 500);
+          setLoadingInpaintingResult(false)
+          setTimeout(() => {
+            setSeverity('success')
+            setMessage(`Image Generation Successful! Remaining credits: ${newCreditAmount}`)
+            setOpen(true)
+            setEditorTool();
+            setMagicPrompt('Everyday scene as cinestill sample, Empty, Nothing, Plain, Vacant, Desolate, Void, Barren, Uninhabited, Abandoned, Unoccupied, Untouched, Clear, Blank, Pristine, Unmarred')
+            setPromptEnabled('erase')
+          }, 500);
         // setImageSrc(response.imageData);
+        }
       } catch (error) {
         setLoadingInpaintingResult(false)
         if (error.response?.data?.error?.name === "InsufficientCredits") {
