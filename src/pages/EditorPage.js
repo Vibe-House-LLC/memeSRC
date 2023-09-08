@@ -1307,13 +1307,16 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                           }}>
                             Cancel
                           </Button>
-                          <Button variant='contained' onClick={
-                            () => {
-                              exportDrawing();
-                              toggleDrawingMode('fineTuning');
-                            }
-                          }>
-                            Apply
+                          <Button 
+                              variant='contained' 
+                              style={{ backgroundColor: 'limegreen', color: 'white' }} // green background with white text
+                              onClick={
+                                  () => {
+                                    exportDrawing();
+                                    toggleDrawingMode('fineTuning');
+                                  }
+                              }>
+                              Apply
                           </Button>
                         </Stack>
                         {promptEnabled === "fill" &&
@@ -1547,7 +1550,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
       <Snackbar
         open={snackbarOpen}
-        autoHideDuration={1000}
+        autoHideDuration={2000}
         severity="success"
         onClose={handleSnackbarClose}
         message="Copied to clipboard!"
@@ -1576,48 +1579,58 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       >
           <DialogTitle id="alert-dialog-title">
               {"Magic Results"}
-              <div style={{ fontSize: '0.8em', marginTop: '5px' }}>Select the best option from below:</div>
+              <div style={{ fontSize: '0.8em', marginTop: '5px' }}>Pick the best variation:</div>
           </DialogTitle>
           <DialogContent style={{ padding: 0 }}>  {/* Reduced padding */}
-              <Grid container>
-                  {returnedImages?.map((image, index) => (
-                      <Grid item xs={6} key={image} onClick={() => setSelectedImage(image)} style={{ padding: '5px' }}>
-                          <div style={{ position: 'relative', border: selectedImage === image ? '2px solid green' : '2px solid lightgray', borderRadius: '4px' }}>
-                              <img
-                                  src={image}
-                                  alt="placeholder"
-                                  style={{ width: '100%', aspectRatio: `${editorAspectRatio}/1`, objectFit: 'cover', objectPosition: 'center' }}
-                              />
-                              {selectedImage === image && (
-                                  <div
-                                      style={{
-                                          position: 'absolute',
-                                          top: 0,
-                                          left: 0,
-                                          right: 0,
-                                          bottom: 0,
-                                          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          justifyContent: 'center'
-                                      }}
-                                  >
-                                      <CheckCircleOutline
-                                          style={{ color: 'green', fontSize: 40 }}
-                                      />
-                                  </div>
-                              )}
-                          </div>
-                      </Grid>
-                  ))}
-              </Grid>
-          </DialogContent>
-          <DialogActions style={{ padding: '8px 16px' }}> {/* Reduced padding */}
-              <Button variant='contained' onClick={handleSelectResultCancel}>Cancel</Button>
-              <Button disabled={!selectedImage} onClick={() => { handleAddCanvasBackground(selectedImage) }} variant='contained'>
-                  Confirm Selection
-              </Button>
-          </DialogActions>
+    <Grid container>
+        {returnedImages?.map((image, index) => (
+            <Grid item xs={6} key={image} onClick={() => setSelectedImage(image)} style={{ padding: '5px' }}>
+                <div style={{ position: 'relative', border: selectedImage === image ? '2px solid green' : '2px solid lightgray', borderRadius: '4px' }}>
+                    <img
+                        src={image}
+                        alt="placeholder"
+                        style={{ 
+                            width: '100%', 
+                            aspectRatio: `${editorAspectRatio}/1`, 
+                            objectFit: 'cover', 
+                            objectPosition: 'center',
+                            filter: selectedImage && selectedImage !== image ? 'brightness(50%)' : 'none' // Darkening non-selected images when another image is selected
+                        }}
+                    />
+                    {selectedImage === image && (
+                        <div
+                            style={{
+                                position: 'absolute',
+                                top: 8,  // Adjusted position
+                                left: 8, // Adjusted position
+                            }}
+                        >
+                            <CheckCircleOutline
+                                style={{ color: 'green', fontSize: 40 }}
+                            />
+                        </div>
+                    )}
+                </div>
+            </Grid>
+        ))}
+    </Grid>
+</DialogContent>
+<DialogActions style={{ padding: '8px 16px' }}> {/* Reduced padding */}
+    <Button variant='contained' onClick={() => {
+                setEditorTool()
+                toggleDrawingMode('fineTuning')
+                handleSelectResultCancel()
+              }}>Cancel</Button>
+    <Button 
+      disabled={!selectedImage}  // This line ensures the button is disabled if no image is selected
+      onClick={() => { handleAddCanvasBackground(selectedImage) }} 
+      variant='contained'
+      style={{ backgroundColor: 'limegreen', color: 'white' }}
+    >
+        Apply
+    </Button>
+</DialogActions>
+
       </Dialog>
     </>
   );
