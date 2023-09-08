@@ -118,7 +118,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const [loadingFineTuningFrames, setLoadingFineTuningFrames] = useState(true);
   const [earlyAccessLoading, setEarlyAccessLoading] = useState(false);
 
-  const [variationDisplayColumns, setVariationDisplayColumns] = useState(2);
+  const [variationDisplayColumns, setVariationDisplayColumns] = useState(1);
 
   const [earlyAccessComplete, setEarlyAccessComplete] = useState(false);
   const [earlyAccessDisabled, setEarlyAccessDisabled] = useState(false);
