@@ -1582,55 +1582,54 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
               <div style={{ fontSize: '0.8em', marginTop: '5px' }}>Pick the best variation:</div>
           </DialogTitle>
           <DialogContent style={{ padding: 0 }}>  {/* Reduced padding */}
-    <Grid container>
-        {returnedImages?.map((image, index) => (
-            <Grid item xs={6} key={image} onClick={() => setSelectedImage(image)} style={{ padding: '5px' }}>
-                <div style={{ position: 'relative', border: selectedImage === image ? '2px solid green' : '2px solid lightgray', borderRadius: '4px' }}>
-                    <img
-                        src={image}
-                        alt="placeholder"
-                        style={{ 
-                            width: '100%', 
-                            aspectRatio: `${editorAspectRatio}/1`, 
-                            objectFit: 'cover', 
-                            objectPosition: 'center',
-                            filter: selectedImage && selectedImage !== image ? 'brightness(50%)' : 'none' // Darkening non-selected images when another image is selected
-                        }}
-                    />
-                    {selectedImage === image && (
-                        <div
-                            style={{
-                                position: 'absolute',
-                                top: 8,  // Adjusted position
-                                left: 8, // Adjusted position
-                            }}
-                        >
-                            <CheckCircleOutline
-                                style={{ color: 'green', fontSize: 40 }}
+            <Grid container>
+                {returnedImages?.map((image, index) => (
+                    <Grid item xs={6} key={image} onClick={() => setSelectedImage(image)} style={{ padding: '5px' }}>
+                        <div style={{ position: 'relative', border: selectedImage === image ? '2px solid green' : '2px solid lightgray', borderRadius: '4px' }}>
+                            <img
+                                src={image}
+                                alt="placeholder"
+                                style={{ 
+                                    width: '100%', 
+                                    aspectRatio: `${editorAspectRatio}/1`, 
+                                    objectFit: 'cover', 
+                                    objectPosition: 'center',
+                                    filter: selectedImage && selectedImage !== image ? 'brightness(50%)' : 'none' // Darkening non-selected images when another image is selected
+                                }}
                             />
+                            {selectedImage === image && (
+                                <div
+                                    style={{
+                                        position: 'absolute',
+                                        top: 8,  // Adjusted position
+                                        left: 8, // Adjusted position
+                                    }}
+                                >
+                                    <CheckCircleOutline
+                                        style={{ color: 'green', fontSize: 40 }}
+                                    />
+                                </div>
+                            )}
                         </div>
-                    )}
-                </div>
+                    </Grid>
+                ))}
             </Grid>
-        ))}
-    </Grid>
-</DialogContent>
-<DialogActions style={{ padding: '8px 16px' }}> {/* Reduced padding */}
-    <Button variant='contained' onClick={() => {
-                setEditorTool()
-                toggleDrawingMode('fineTuning')
-                handleSelectResultCancel()
-              }}>Cancel</Button>
-    <Button 
-      disabled={!selectedImage}  // This line ensures the button is disabled if no image is selected
-      onClick={() => { handleAddCanvasBackground(selectedImage) }} 
-      variant='contained'
-      style={{ backgroundColor: 'limegreen', color: 'white' }}
-    >
-        Apply
-    </Button>
-</DialogActions>
-
+        </DialogContent>
+        <DialogActions style={{ padding: '8px 16px' }}> {/* Reduced padding */}
+            <Button variant='contained' onClick={() => {
+                        setEditorTool()
+                        toggleDrawingMode('fineTuning')
+                        handleSelectResultCancel()
+                      }}>Cancel</Button>
+            <Button 
+              disabled={!selectedImage}  // This line ensures the button is disabled if no image is selected
+              onClick={() => { handleAddCanvasBackground(selectedImage) }} 
+              variant='contained'
+              style={{ backgroundColor: 'limegreen', color: 'white' }}
+            >
+                Apply
+            </Button>
+        </DialogActions>
       </Dialog>
     </>
   );
