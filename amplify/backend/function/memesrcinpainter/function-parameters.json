@@ -11,6 +11,13 @@
         "update",
         "delete"
       ]
+    },
+    "storage": {
+      "memesrcGeneratedImages": [
+        "create",
+        "read",
+        "update"
+      ]
     }
   }
 }

@@ -6,7 +6,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
 import { Accordion, AccordionDetails, AccordionSummary, Backdrop, Button, Card, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, Tab, Tabs, TextField, ToggleButton, ToggleButtonGroup, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
-import { Add, AddCircleOutline, ArrowForward, ArrowForwardIos, AutoFixHigh, AutoFixHighRounded, Close, ContentCopy, Description, FormatAlignCenter, FormatAlignLeft, FormatAlignRight, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, History, HistoryToggleOffRounded, IosShare, Menu, More, PlusOne, Redo, Share, SupervisedUserCircle, Undo, Update, Verified } from '@mui/icons-material';
+import { Add, AddCircleOutline, ArrowForward, ArrowForwardIos, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ContentCopy, Description, FormatAlignCenter, FormatAlignLeft, FormatAlignRight, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, History, HistoryToggleOffRounded, IosShare, Menu, More, PlusOne, Redo, Share, SupervisedUserCircle, Undo, Update, Verified, ZoomIn, ZoomOut } from '@mui/icons-material';
 import { API, Storage } from 'aws-amplify';
 import { Box } from '@mui/system';
 import { Helmet } from 'react-helmet-async';
@@ -103,7 +103,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
   const [loadedSeriesTitle, setLoadedSeriesTitle] = useState('_universal');
   const [drawingMode, setDrawingMode] = useState(false);
-  const [magicPrompt, setMagicPrompt] = useState('Everyday scene as cinestill sample, Empty, Nothing, Plain, Vacant, Desolate, Void, Barren, Uninhabited, Abandoned, Unoccupied, Untouched, Clear, Blank, Pristine, Unmarred')
+  const [magicPrompt, setMagicPrompt] = useState('Everyday scene as cinematic cinestill sample')  // , Empty, Nothing, Plain, Vacant, Desolate, Void, Barren, Uninhabited, Abandoned, Unoccupied, Untouched, Clear, Blank, Pristine, Unmarred
   const [imageLoaded, setImageLoaded] = useState(false);
   const [loadingInpaintingResult, setLoadingInpaintingResult] = useState(false);
   const { setSeverity, setMessage, setOpen } = useContext(SnackbarContext);
@@ -118,6 +118,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const [loadingFineTuningFrames, setLoadingFineTuningFrames] = useState(true);
   const [earlyAccessLoading, setEarlyAccessLoading] = useState(false);
 
+  const [variationDisplayColumns, setVariationDisplayColumns] = useState(1);
+
   const [earlyAccessComplete, setEarlyAccessComplete] = useState(false);
   const [earlyAccessDisabled, setEarlyAccessDisabled] = useState(false);
   const [loadingSubscriptionUrl, setLoadingSubscriptionUrl] = useState(false);
@@ -126,6 +128,13 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const [promptEnabled, setPromptEnabled] = useState('erase');
   const buttonRef = useRef(null);
   const { magicToolsPopoverAnchorEl, setMagicToolsPopoverAnchorEl } = useContext(MagicPopupContext)
+
+  // Image selection stuff
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [openSelectResult, setOpenSelectResult] = useState(false);
+  // const images = Array(5).fill("https://placekitten.com/350/350");
+  const isMd = useMediaQuery((theme) => theme.breakpoints.up('md'));
+  const [returnedImages, setReturnedImages] = useState([]);
 
   const handleSubtitlesExpand = () => {
     setSubtitlesExpanded(!subtitlesExpanded);
@@ -510,6 +519,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
   const exportDrawing = async () => {
     setLoadingInpaintingResult(true)
+    window.scrollTo(0, 0);
     const originalCanvas = editor.canvas;
 
     // let fabricImage = null;
@@ -614,37 +624,18 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         const response = await API.post('publicapi', '/inpaint', {
           body: data
         });
-        addToHistory();
-        originalCanvas.getObjects().forEach((obj) => {
-          if (obj instanceof fabric.Path) {
-            editor.canvas.remove(obj)
-          }
-        });
 
-        fabric.Image.fromURL(response.imageData, (returnedImage) => {
-          const originalHeight = editor.canvas.height
-          const originalWidth = editor.canvas.width
-
-          const scale = Math.min(1024 / originalWidth, 1024 / originalHeight);
-          returnedImage.scale(1 / scale)
-          editor.canvas.setBackgroundImage(returnedImage)
-          setBgEditorStates(prevHistory => [...prevHistory, returnedImage]);
-          editor.canvas.backgroundImage.center()
-          editor.canvas.renderAll();
-        }, { crossOrigin: "anonymous" });
+        // Assume the backend sends an imageURL property in the response.
+        const imageUrls = response.imageUrls;
+        setReturnedImages([...returnedImages, ...imageUrls])
+        setLoadingInpaintingResult(false)
+        setOpenSelectResult(true)
         const newCreditAmount = user?.userDetails.credits - 1
         setUser({ ...user, userDetails: { ...user?.userDetails, credits: newCreditAmount } })
 
-        setLoadingInpaintingResult(false)
-        setTimeout(() => {
-          setSeverity('success')
-          setMessage(`Image Generation Successful! Remaining credits: ${newCreditAmount}`)
-          setOpen(true)
-          setEditorTool();
-          setMagicPrompt('Everyday scene as cinestill sample, Empty, Nothing, Plain, Vacant, Desolate, Void, Barren, Uninhabited, Abandoned, Unoccupied, Untouched, Clear, Blank, Pristine, Unmarred')
-          setPromptEnabled('erase')
-        }, 500);
-        // setImageSrc(response.imageData);
+        console.log(`response: ${response}`)
+        console.log(response)
+        console.log(`imageUrl: ${imageUrls}`)
       } catch (error) {
         setLoadingInpaintingResult(false)
         if (error.response?.data?.error?.name === "InsufficientCredits") {
@@ -661,6 +652,53 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       }
     }
   };
+
+  const handleAddCanvasBackground = async (imgUrl) => {
+    setOpenSelectResult(false)
+    // Fetch the image as a blob from the given URL.
+    const imageResponse = await fetch(imgUrl);
+    const imageBlob = await imageResponse.blob();
+    setSelectedImage()
+    setReturnedImages([])
+
+    // Convert the blob to a data URL so fabric can use it.
+    const reader = new FileReader();
+    reader.readAsDataURL(imageBlob);
+    reader.onloadend = () => {
+      const base64data = reader.result;
+      console.log(base64data)
+      fabric.Image.fromURL(base64data, (returnedImage) => {
+        const originalHeight = editor.canvas.height
+        const originalWidth = editor.canvas.width
+
+        const scale = Math.min(1024 / originalWidth, 1024 / originalHeight);
+        returnedImage.scale(1 / scale)
+        editor.canvas.setBackgroundImage(returnedImage)
+        setBgEditorStates(prevHistory => [...prevHistory, returnedImage]);
+        editor.canvas.backgroundImage.center()
+        editor.canvas.renderAll();
+      }, { crossOrigin: "anonymous" });
+
+      // setTimeout(() => {
+      //   setSeverity('success')
+      //   setMessage(`Image Generation Successful! Remaining credits: ${newCreditAmount}`)
+      //   setOpen(true)
+      //   setEditorTool();
+      //   setMagicPrompt('Everyday scene as cinestill sample, Empty, Nothing, Plain, Vacant, Desolate, Void, Barren, Uninhabited, Abandoned, Unoccupied, Untouched, Clear, Blank, Pristine, Unmarred')
+      //   setPromptEnabled('erase')
+      // }, 500);
+      setEditorTool();
+      setMagicPrompt('Everyday scene as cinestill sample, Empty, Nothing, Plain, Vacant, Desolate, Void, Barren, Uninhabited, Abandoned, Unoccupied, Untouched, Clear, Blank, Pristine, Unmarred')
+      setPromptEnabled('erase')
+      // setImageSrc(response.imageData);
+    }
+  }
+
+  const handleSelectResultCancel = () => {
+    setSelectedImage()
+    setReturnedImages([])
+    setOpenSelectResult(false)
+  }
 
   const handleBrushToolSize = (size) => {
     if (editor) {
@@ -786,11 +824,12 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   }, [promptEnabled])
 
   useEffect(() => {
-      setPromptEnabled('erase')
-      setMagicPrompt('Everyday scene as cinestill sample, Empty, Nothing, Plain, Vacant, Desolate, Void, Barren, Uninhabited, Abandoned, Unoccupied, Untouched, Clear, Blank, Pristine, Unmarred')
+    setPromptEnabled('erase')
+    setMagicPrompt('Everyday scene as cinestill sample, Empty, Nothing, Plain, Vacant, Desolate, Void, Barren, Uninhabited, Abandoned, Unoccupied, Untouched, Clear, Blank, Pristine, Unmarred')
   }, [editorTool])
 
   // ------------------------------------------------------------------------
+
 
   // Outputs
   return (
@@ -1271,13 +1310,16 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                           }}>
                             Cancel
                           </Button>
-                          <Button variant='contained' onClick={
-                            () => {
-                              exportDrawing();
-                              toggleDrawingMode('fineTuning');
-                            }
-                          }>
-                            Apply
+                          <Button 
+                              variant='contained' 
+                              style={{ backgroundColor: 'limegreen', color: 'white' }} // green background with white text
+                              onClick={
+                                  () => {
+                                    exportDrawing();
+                                    toggleDrawingMode('fineTuning');
+                                  }
+                              }>
+                              Apply
                           </Button>
                         </Stack>
                         {promptEnabled === "fill" &&
@@ -1511,7 +1553,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
       <Snackbar
         open={snackbarOpen}
-        autoHideDuration={1000}
+        autoHideDuration={2000}
         severity="success"
         onClose={handleSnackbarClose}
         message="Copied to clipboard!"
@@ -1527,9 +1569,106 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       >
         <Stack alignItems="center" direction="column" spacing={2}>
           <CircularProgress color="inherit" />
-          <Typography variant="h5">Generating image...</Typography>
+          <Typography variant="h5">Generating 2 variations...</Typography>
         </Stack>
       </Backdrop>
+
+      <Dialog
+      open={openSelectResult}
+      aria-labelledby="alert-dialog-title"
+      aria-describedby="alert-dialog-description"
+      maxWidth='md'
+      PaperProps={{ style: { margin: '8px', padding: '10px' } }}
+    >
+      <DialogTitle id="alert-dialog-title">
+        {"Magic Results"}
+        <div style={{ fontSize: '0.8em', marginTop: '5px' }}>Pick the best variation:</div>
+      </DialogTitle>
+      <DialogContent style={{ padding: 0 }}>  {/* Reduced padding */}
+        <Grid container>
+        {returnedImages?.map((image, index) => (
+            <Grid 
+                item xs={variationDisplayColumns === 2 ? 6 : 12} 
+                key={image} 
+                onClick={() => setSelectedImage(image)} 
+                style={{ padding: '5px' }}
+            >
+                <div style={{ 
+                    position: 'relative', 
+                    border: selectedImage === image ? '2px solid green' : '2px solid lightgray', 
+                    borderRadius: '4px' 
+                }}>
+                    <img
+                        src={image}
+                        alt="placeholder"
+                        style={{ 
+                            width: '100%', 
+                            aspectRatio: `${editorAspectRatio}/1`, 
+                            objectFit: 'cover', 
+                            objectPosition: 'center',
+                            filter: selectedImage && selectedImage !== image ? 'brightness(50%)' : 'none'
+                        }}
+                    />
+                    {selectedImage === image && (
+                        <Fab
+                        size='small'
+                            style={{
+                                position: 'absolute',
+                                top: 10,
+                                left: 10,
+                                backgroundColor: 'green',
+                                color: 'white'
+                            }}
+                        >
+                            <CheckCircleOutline />
+                        </Fab>
+                    )}
+                </div>
+            </Grid>
+        ))}
+        </Grid>
+      </DialogContent>
+      <DialogActions style={{ padding: '8px 16px' }}>
+        <Button 
+          variant='contained' 
+          onClick={() => {
+            setEditorTool()
+            toggleDrawingMode('fineTuning')
+            handleSelectResultCancel()
+          }}
+        >
+          Cancel
+        </Button>
+        <Button 
+          disabled={!selectedImage}
+          onClick={() => { handleAddCanvasBackground(selectedImage) }}
+          variant='contained'
+          style={{
+            backgroundColor: 'limegreen',
+            color: 'white',
+            opacity: selectedImage ? 1 : 0.5, // Adjust opacity based on selectedImage
+            cursor: selectedImage ? 'pointer' : 'not-allowed', // Change cursor style
+          }}
+        >
+          Apply
+        </Button>
+      </DialogActions>
+
+      <Fab 
+          size="small"  // Makes the FAB smaller
+          style={{
+            position: 'absolute',
+            top: '20px',
+            right: '20px',
+            backgroundColor: '#333', // Dark background color
+            color: '#fff', // White text color
+            boxShadow: 'none', // Remove box shadow (if any)
+        }}
+          onClick={() => setVariationDisplayColumns(prev => (prev === 2 ? 1 : 2))}
+      >
+          {variationDisplayColumns === 2 ? <ZoomIn /> : <ZoomOut />}
+      </Fab>
+    </Dialog>
     </>
   );
 }

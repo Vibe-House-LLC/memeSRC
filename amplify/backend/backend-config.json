@@ -459,6 +459,13 @@
           ],
           "category": "function",
           "resourceName": "memesrcUserFunction"
+        },
+        {
+          "attributes": [
+            "BucketName"
+          ],
+          "category": "storage",
+          "resourceName": "memesrcGeneratedImages"
         }
       ],
       "providerPlugin": "awscloudformation",

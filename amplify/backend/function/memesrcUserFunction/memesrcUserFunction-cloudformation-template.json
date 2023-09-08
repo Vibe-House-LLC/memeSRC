@@ -127,7 +127,7 @@
         "Runtime": "nodejs16.x",
         "MemorySize": 1024,
         "Layers": [],
-        "Timeout": 25
+        "Timeout": 30
       }
     },
     "LambdaExecutionRole": {
