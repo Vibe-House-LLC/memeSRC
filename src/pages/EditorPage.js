@@ -656,7 +656,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     const imageResponse = await fetch(imgUrl);
     const imageBlob = await imageResponse.blob();
     setSelectedImage()
-    setReturnedImages()
+    setReturnedImages([])
 
     // Convert the blob to a data URL so fabric can use it.
     const reader = new FileReader();
@@ -693,7 +693,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
   const handleSelectResultCancel = () => {
     setSelectedImage()
-    setReturnedImages()
+    setReturnedImages([])
     setOpenSelectResult(false)
   }
 
