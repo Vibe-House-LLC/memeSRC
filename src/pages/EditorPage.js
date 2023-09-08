@@ -519,6 +519,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
   const exportDrawing = async () => {
     setLoadingInpaintingResult(true)
+    window.scrollTo(0, 0);
     const originalCanvas = editor.canvas;
 
     // let fabricImage = null;
@@ -1568,7 +1569,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       >
         <Stack alignItems="center" direction="column" spacing={2}>
           <CircularProgress color="inherit" />
-          <Typography variant="h5">Generating images...</Typography>
+          <Typography variant="h5">Generating 2 variations...</Typography>
         </Stack>
       </Backdrop>
 
@@ -1585,45 +1586,46 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       </DialogTitle>
       <DialogContent style={{ padding: 0 }}>  {/* Reduced padding */}
         <Grid container>
-          {returnedImages?.map((image, index) => (
+        {returnedImages?.map((image, index) => (
             <Grid 
-              item xs={variationDisplayColumns === 2 ? 6 : 12} 
-              key={image} 
-              onClick={() => setSelectedImage(image)} 
-              style={{ padding: '5px' }}
+                item xs={variationDisplayColumns === 2 ? 6 : 12} 
+                key={image} 
+                onClick={() => setSelectedImage(image)} 
+                style={{ padding: '5px' }}
             >
-              <div style={{ 
-                position: 'relative', 
-                border: selectedImage === image ? '2px solid green' : '2px solid lightgray', 
-                borderRadius: '4px' 
-              }}>
-                <img
-                  src={image}
-                  alt="placeholder"
-                  style={{ 
-                    width: '100%', 
-                    aspectRatio: `${editorAspectRatio}/1`, 
-                    objectFit: 'cover', 
-                    objectPosition: 'center',
-                    filter: selectedImage && selectedImage !== image ? 'brightness(50%)' : 'none'
-                  }}
-                />
-                {selectedImage === image && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: 8,
-                      left: 8,
-                    }}
-                  >
-                    <CheckCircleOutline
-                      style={{ color: 'green', fontSize: 40 }}
+                <div style={{ 
+                    position: 'relative', 
+                    border: selectedImage === image ? '2px solid green' : '2px solid lightgray', 
+                    borderRadius: '4px' 
+                }}>
+                    <img
+                        src={image}
+                        alt="placeholder"
+                        style={{ 
+                            width: '100%', 
+                            aspectRatio: `${editorAspectRatio}/1`, 
+                            objectFit: 'cover', 
+                            objectPosition: 'center',
+                            filter: selectedImage && selectedImage !== image ? 'brightness(50%)' : 'none'
+                        }}
                     />
-                  </div>
-                )}
-              </div>
+                    {selectedImage === image && (
+                        <Fab
+                        size='small'
+                            style={{
+                                position: 'absolute',
+                                top: 10,
+                                left: 10,
+                                backgroundColor: 'green',
+                                color: 'white'
+                            }}
+                        >
+                            <CheckCircleOutline />
+                        </Fab>
+                    )}
+                </div>
             </Grid>
-          ))}
+        ))}
         </Grid>
       </DialogContent>
       <DialogActions style={{ padding: '8px 16px' }}>
