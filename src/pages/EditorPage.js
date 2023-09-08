@@ -6,7 +6,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
 import { Accordion, AccordionDetails, AccordionSummary, Backdrop, Button, Card, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, Tab, Tabs, TextField, ToggleButton, ToggleButtonGroup, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
-import { Add, AddCircleOutline, ArrowForward, ArrowForwardIos, AutoFixHigh, AutoFixHighRounded, Close, ContentCopy, Description, FormatAlignCenter, FormatAlignLeft, FormatAlignRight, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, History, HistoryToggleOffRounded, IosShare, Menu, More, PlusOne, Redo, Share, SupervisedUserCircle, Undo, Update, Verified } from '@mui/icons-material';
+import { Add, AddCircleOutline, ArrowForward, ArrowForwardIos, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ContentCopy, Description, FormatAlignCenter, FormatAlignLeft, FormatAlignRight, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, History, HistoryToggleOffRounded, IosShare, Menu, More, PlusOne, Redo, Share, SupervisedUserCircle, Undo, Update, Verified } from '@mui/icons-material';
 import { API, Storage } from 'aws-amplify';
 import { Box } from '@mui/system';
 import { Helmet } from 'react-helmet-async';
@@ -126,6 +126,11 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const [promptEnabled, setPromptEnabled] = useState('erase');
   const buttonRef = useRef(null);
   const { magicToolsPopoverAnchorEl, setMagicToolsPopoverAnchorEl } = useContext(MagicPopupContext)
+
+  // Image selection stuff
+  const [selectedImage, setSelectedImage] = useState(null);
+  const images = Array(5).fill("https://placekitten.com/350/350");
+  const isMd = useMediaQuery((theme) => theme.breakpoints.up('md'));
 
   const handleSubtitlesExpand = () => {
     setSubtitlesExpanded(!subtitlesExpanded);
@@ -614,18 +619,18 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         const response = await API.post('publicapi', '/inpaint', {
           body: data
         });
-        
+
         // Assume the backend sends an imageURL property in the response.
         const imageUrl = response.imageUrls[0];
 
         console.log(`response: ${response}`)
         console.log(response)
         console.log(`imageUrl: ${imageUrl}`)
-      
+
         // Fetch the image as a blob from the given URL.
         const imageResponse = await fetch(imageUrl);
         const imageBlob = await imageResponse.blob();
-      
+
         // Convert the blob to a data URL so fabric can use it.
         const reader = new FileReader();
         reader.readAsDataURL(imageBlob);
@@ -655,7 +660,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
             setMagicPrompt('Everyday scene as cinestill sample, Empty, Nothing, Plain, Vacant, Desolate, Void, Barren, Uninhabited, Abandoned, Unoccupied, Untouched, Clear, Blank, Pristine, Unmarred')
             setPromptEnabled('erase')
           }, 500);
-        // setImageSrc(response.imageData);
+          // setImageSrc(response.imageData);
         }
       } catch (error) {
         setLoadingInpaintingResult(false)
@@ -798,11 +803,29 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   }, [promptEnabled])
 
   useEffect(() => {
-      setPromptEnabled('erase')
-      setMagicPrompt('Everyday scene as cinestill sample, Empty, Nothing, Plain, Vacant, Desolate, Void, Barren, Uninhabited, Abandoned, Unoccupied, Untouched, Clear, Blank, Pristine, Unmarred')
+    setPromptEnabled('erase')
+    setMagicPrompt('Everyday scene as cinestill sample, Empty, Nothing, Plain, Vacant, Desolate, Void, Barren, Uninhabited, Abandoned, Unoccupied, Untouched, Clear, Blank, Pristine, Unmarred')
   }, [editorTool])
 
   // ------------------------------------------------------------------------
+
+  const getImgWidth = () => {
+    const container = document.getElementById("canvas-container");
+    if (container) {
+      const containerWidth = container.offsetWidth;
+      const containerHeight = container.offsetHeight;
+      const containerAspectRatio = containerWidth / containerHeight;
+
+      // If the image width is predetermined (e.g., 300px):
+      const imageWidth = 300;
+      const calculatedImageHeight = imageWidth / containerAspectRatio;
+
+      console.log(calculatedImageHeight)
+      return calculatedImageHeight;
+    }
+    return 0; // Default value if the container is not found
+  }
+
 
   // Outputs
   return (
@@ -1542,6 +1565,100 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
           <Typography variant="h5">Generating image...</Typography>
         </Stack>
       </Backdrop>
+
+      <Dialog
+        open
+        // onClose={handleClose}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description"
+        maxWidth='md'
+      >
+        <DialogTitle id="alert-dialog-title">
+          {"Magic Results"}
+        </DialogTitle>
+        {isMd ?
+          <DialogContent>
+            <Grid container spacing={3}>
+              {images.map((image, index) => (
+                <Grid item xs={4} key={index} onClick={() => setSelectedImage(index)}>
+                  <div style={{ position: 'relative' }}>
+                    <img
+                      src={image}
+                      alt="placeholder"
+                      style={{ width: '100%', aspectRatio: `${editorAspectRatio}/1`, objectFit: 'cover', objectPosition: 'center' }}
+                    />
+                    {selectedImage === index && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                      >
+                        <CheckCircleOutline
+                          style={{ color: 'green', fontSize: 40 }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </Grid>
+              ))}
+            </Grid>
+
+          </DialogContent>
+          :
+          <DialogContent sx={{ overflowX: isMd ? 'unset' : 'auto', overflowY: 'hidden', padding: 0 }}>
+            <Stack direction="row">
+              {images.map((image, index) => (
+                <Box
+                  key={index}
+                  style={{ position: 'relative', paddingLeft: 10, paddingRight: 10 }}
+                  onClick={() => setSelectedImage(index)}
+                >
+                  <img
+                    src={image}
+                    alt="placeholder"
+                    style={{ minWidth: isMd ? '300px' : '200px', aspectRatio: `${editorAspectRatio}/1`, objectFit: 'cover', objectPosition: 'center' }}
+                  />
+                  {selectedImage === index && (
+                    <>
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                      >
+                        <CheckCircleOutline
+                          style={{ color: 'green', fontSize: 40 }}
+                        />
+                      </div>
+                    </>
+                  )}
+                </Box>
+              ))}
+            </Stack>
+          </DialogContent>
+        }
+        <DialogActions>
+          <Button variant='contained'>Cancel</Button>
+          <Button disabled={!selectedImage} variant='contained'>
+            Confirm Selection
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 }
