@@ -103,7 +103,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
   const [loadedSeriesTitle, setLoadedSeriesTitle] = useState('_universal');
   const [drawingMode, setDrawingMode] = useState(false);
-  const [magicPrompt, setMagicPrompt] = useState('Everyday scene as cinestill sample, Empty, Nothing, Plain, Vacant, Desolate, Void, Barren, Uninhabited, Abandoned, Unoccupied, Untouched, Clear, Blank, Pristine, Unmarred')
+  const [magicPrompt, setMagicPrompt] = useState('Everyday scene as cinematic cinestill sample')  // , Empty, Nothing, Plain, Vacant, Desolate, Void, Barren, Uninhabited, Abandoned, Unoccupied, Untouched, Clear, Blank, Pristine, Unmarred
   const [imageLoaded, setImageLoaded] = useState(false);
   const [loadingInpaintingResult, setLoadingInpaintingResult] = useState(false);
   const { setSeverity, setMessage, setOpen } = useContext(SnackbarContext);
@@ -1568,98 +1568,56 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       </Backdrop>
 
       <Dialog
-        open={openSelectResult}
-        disableScrollLock
-        // onClose={handleClose}
-        aria-labelledby="alert-dialog-title"
-        aria-describedby="alert-dialog-description"
-        maxWidth='md'
+          open={openSelectResult}
+          aria-labelledby="alert-dialog-title"
+          aria-describedby="alert-dialog-description"
+          maxWidth='md'
+          PaperProps={{ style: { margin: '8px', padding: '10px' } }}
       >
-        <DialogTitle id="alert-dialog-title">
-          {"Magic Results"}
-        </DialogTitle>
-        {isMd ?
-          <DialogContent>
-            <Grid container spacing={3}>
-              {returnedImages?.map((image, index) => (
-                <Grid item xs={4} key={image} onClick={() => setSelectedImage(image)}>
-                  <div style={{ position: 'relative' }}>
-                    <img
-                      src={image}
-                      alt="placeholder"
-                      style={{ width: '100%', aspectRatio: `${editorAspectRatio}/1`, objectFit: 'cover', objectPosition: 'center' }}
-                    />
-                    {selectedImage === image && (
-                      <div
-                        style={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center'
-                        }}
-                      >
-                        <CheckCircleOutline
-                          style={{ color: 'green', fontSize: 40 }}
-                        />
-                      </div>
-                    )}
-                  </div>
-                </Grid>
-              ))}
-            </Grid>
-
+          <DialogTitle id="alert-dialog-title">
+              {"Magic Results"}
+              <div style={{ fontSize: '0.8em', marginTop: '5px' }}>Select the best option from below:</div>
+          </DialogTitle>
+          <DialogContent style={{ padding: 0 }}>  {/* Reduced padding */}
+              <Grid container>
+                  {returnedImages?.map((image, index) => (
+                      <Grid item xs={6} key={image} onClick={() => setSelectedImage(image)} style={{ padding: '5px' }}>
+                          <div style={{ position: 'relative', border: selectedImage === image ? '2px solid green' : '2px solid lightgray', borderRadius: '4px' }}>
+                              <img
+                                  src={image}
+                                  alt="placeholder"
+                                  style={{ width: '100%', aspectRatio: `${editorAspectRatio}/1`, objectFit: 'cover', objectPosition: 'center' }}
+                              />
+                              {selectedImage === image && (
+                                  <div
+                                      style={{
+                                          position: 'absolute',
+                                          top: 0,
+                                          left: 0,
+                                          right: 0,
+                                          bottom: 0,
+                                          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center'
+                                      }}
+                                  >
+                                      <CheckCircleOutline
+                                          style={{ color: 'green', fontSize: 40 }}
+                                      />
+                                  </div>
+                              )}
+                          </div>
+                      </Grid>
+                  ))}
+              </Grid>
           </DialogContent>
-          :
-          <DialogContent sx={{ overflowX: isMd ? 'unset' : 'auto', overflowY: 'hidden', padding: 0 }}>
-            <Stack direction="row">
-              {returnedImages?.map((image, index) => (
-                <Box
-                  key={image}
-                  style={{ position: 'relative', paddingLeft: 10, paddingRight: 10 }}
-                  onClick={() => setSelectedImage(image)}
-                >
-                  <img
-                    src={image}
-                    alt="placeholder"
-                    style={{ minWidth: isMd ? '300px' : '200px', aspectRatio: `${editorAspectRatio}/1`, objectFit: 'cover', objectPosition: 'center' }}
-                  />
-                  {selectedImage === image && (
-                    <>
-                      <div
-                        style={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center'
-                        }}
-                      >
-                        <CheckCircleOutline
-                          style={{ color: 'green', fontSize: 40 }}
-                        />
-                      </div>
-                    </>
-                  )}
-                </Box>
-              ))}
-            </Stack>
-          </DialogContent>
-        }
-        <DialogActions>
-          <Button variant='contained' onClick={handleSelectResultCancel}>Cancel</Button>
-          <Button disabled={!selectedImage} onClick={() => { handleAddCanvasBackground(selectedImage) }} variant='contained'>
-            Confirm Selection
-          </Button>
-        </DialogActions>
+          <DialogActions style={{ padding: '8px 16px' }}> {/* Reduced padding */}
+              <Button variant='contained' onClick={handleSelectResultCancel}>Cancel</Button>
+              <Button disabled={!selectedImage} onClick={() => { handleAddCanvasBackground(selectedImage) }} variant='contained'>
+                  Confirm Selection
+              </Button>
+          </DialogActions>
       </Dialog>
     </>
   );
