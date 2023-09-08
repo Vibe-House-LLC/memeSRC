@@ -1649,7 +1649,14 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
       <Fab 
           size="small"  // Makes the FAB smaller
-          style={{ position: 'absolute', top: '20px', right: '20px' }}  // Positions the FAB to the top-right
+          style={{
+            position: 'absolute',
+            top: '20px',
+            right: '20px',
+            backgroundColor: '#333', // Dark background color
+            color: '#fff', // White text color
+            boxShadow: 'none', // Remove box shadow (if any)
+        }}
           onClick={() => setVariationDisplayColumns(prev => (prev === 2 ? 1 : 2))}
       >
           {variationDisplayColumns === 2 ? <ZoomIn /> : <ZoomOut />}
