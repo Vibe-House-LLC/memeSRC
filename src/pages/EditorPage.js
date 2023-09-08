@@ -129,8 +129,10 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
   // Image selection stuff
   const [selectedImage, setSelectedImage] = useState(null);
-  const images = Array(5).fill("https://placekitten.com/350/350");
+  const [openSelectResult, setOpenSelectResult] = useState(false);
+  // const images = Array(5).fill("https://placekitten.com/350/350");
   const isMd = useMediaQuery((theme) => theme.breakpoints.up('md'));
+  const [returnedImages, setReturnedImages] = useState([]);
 
   const handleSubtitlesExpand = () => {
     setSubtitlesExpanded(!subtitlesExpanded);
@@ -621,47 +623,16 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         });
 
         // Assume the backend sends an imageURL property in the response.
-        const imageUrl = response.imageUrls[0];
+        const imageUrls = response.imageUrls;
+        setReturnedImages([...returnedImages, ...imageUrls])
+        setLoadingInpaintingResult(false)
+        setOpenSelectResult(true)
+        const newCreditAmount = user?.userDetails.credits - 1
+        setUser({ ...user, userDetails: { ...user?.userDetails, credits: newCreditAmount } })
 
         console.log(`response: ${response}`)
         console.log(response)
-        console.log(`imageUrl: ${imageUrl}`)
-
-        // Fetch the image as a blob from the given URL.
-        const imageResponse = await fetch(imageUrl);
-        const imageBlob = await imageResponse.blob();
-
-        // Convert the blob to a data URL so fabric can use it.
-        const reader = new FileReader();
-        reader.readAsDataURL(imageBlob);
-        reader.onloadend = () => {
-          const base64data = reader.result;
-          console.log(base64data)
-          fabric.Image.fromURL(base64data, (returnedImage) => {
-            const originalHeight = editor.canvas.height
-            const originalWidth = editor.canvas.width
-
-            const scale = Math.min(1024 / originalWidth, 1024 / originalHeight);
-            returnedImage.scale(1 / scale)
-            editor.canvas.setBackgroundImage(returnedImage)
-            setBgEditorStates(prevHistory => [...prevHistory, returnedImage]);
-            editor.canvas.backgroundImage.center()
-            editor.canvas.renderAll();
-          }, { crossOrigin: "anonymous" });
-          const newCreditAmount = user?.userDetails.credits - 1
-          setUser({ ...user, userDetails: { ...user?.userDetails, credits: newCreditAmount } })
-
-          setLoadingInpaintingResult(false)
-          setTimeout(() => {
-            setSeverity('success')
-            setMessage(`Image Generation Successful! Remaining credits: ${newCreditAmount}`)
-            setOpen(true)
-            setEditorTool();
-            setMagicPrompt('Everyday scene as cinestill sample, Empty, Nothing, Plain, Vacant, Desolate, Void, Barren, Uninhabited, Abandoned, Unoccupied, Untouched, Clear, Blank, Pristine, Unmarred')
-            setPromptEnabled('erase')
-          }, 500);
-          // setImageSrc(response.imageData);
-        }
+        console.log(`imageUrl: ${imageUrls}`)
       } catch (error) {
         setLoadingInpaintingResult(false)
         if (error.response?.data?.error?.name === "InsufficientCredits") {
@@ -678,6 +649,53 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       }
     }
   };
+
+  const handleAddCanvasBackground = async (imgUrl) => {
+    setOpenSelectResult(false)
+    // Fetch the image as a blob from the given URL.
+    const imageResponse = await fetch(imgUrl);
+    const imageBlob = await imageResponse.blob();
+    setSelectedImage()
+    setReturnedImages()
+
+    // Convert the blob to a data URL so fabric can use it.
+    const reader = new FileReader();
+    reader.readAsDataURL(imageBlob);
+    reader.onloadend = () => {
+      const base64data = reader.result;
+      console.log(base64data)
+      fabric.Image.fromURL(base64data, (returnedImage) => {
+        const originalHeight = editor.canvas.height
+        const originalWidth = editor.canvas.width
+
+        const scale = Math.min(1024 / originalWidth, 1024 / originalHeight);
+        returnedImage.scale(1 / scale)
+        editor.canvas.setBackgroundImage(returnedImage)
+        setBgEditorStates(prevHistory => [...prevHistory, returnedImage]);
+        editor.canvas.backgroundImage.center()
+        editor.canvas.renderAll();
+      }, { crossOrigin: "anonymous" });
+
+      // setTimeout(() => {
+      //   setSeverity('success')
+      //   setMessage(`Image Generation Successful! Remaining credits: ${newCreditAmount}`)
+      //   setOpen(true)
+      //   setEditorTool();
+      //   setMagicPrompt('Everyday scene as cinestill sample, Empty, Nothing, Plain, Vacant, Desolate, Void, Barren, Uninhabited, Abandoned, Unoccupied, Untouched, Clear, Blank, Pristine, Unmarred')
+      //   setPromptEnabled('erase')
+      // }, 500);
+      setEditorTool();
+      setMagicPrompt('Everyday scene as cinestill sample, Empty, Nothing, Plain, Vacant, Desolate, Void, Barren, Uninhabited, Abandoned, Unoccupied, Untouched, Clear, Blank, Pristine, Unmarred')
+      setPromptEnabled('erase')
+      // setImageSrc(response.imageData);
+    }
+  }
+
+  const handleSelectResultCancel = () => {
+    setSelectedImage()
+    setReturnedImages()
+    setOpenSelectResult(false)
+  }
 
   const handleBrushToolSize = (size) => {
     if (editor) {
@@ -808,23 +826,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   }, [editorTool])
 
   // ------------------------------------------------------------------------
-
-  const getImgWidth = () => {
-    const container = document.getElementById("canvas-container");
-    if (container) {
-      const containerWidth = container.offsetWidth;
-      const containerHeight = container.offsetHeight;
-      const containerAspectRatio = containerWidth / containerHeight;
-
-      // If the image width is predetermined (e.g., 300px):
-      const imageWidth = 300;
-      const calculatedImageHeight = imageWidth / containerAspectRatio;
-
-      console.log(calculatedImageHeight)
-      return calculatedImageHeight;
-    }
-    return 0; // Default value if the container is not found
-  }
 
 
   // Outputs
@@ -1562,12 +1563,13 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       >
         <Stack alignItems="center" direction="column" spacing={2}>
           <CircularProgress color="inherit" />
-          <Typography variant="h5">Generating image...</Typography>
+          <Typography variant="h5">Generating images...</Typography>
         </Stack>
       </Backdrop>
 
       <Dialog
-        open
+        open={openSelectResult}
+        disableScrollLock
         // onClose={handleClose}
         aria-labelledby="alert-dialog-title"
         aria-describedby="alert-dialog-description"
@@ -1579,15 +1581,15 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         {isMd ?
           <DialogContent>
             <Grid container spacing={3}>
-              {images.map((image, index) => (
-                <Grid item xs={4} key={index} onClick={() => setSelectedImage(index)}>
+              {returnedImages?.map((image, index) => (
+                <Grid item xs={4} key={image} onClick={() => setSelectedImage(image)}>
                   <div style={{ position: 'relative' }}>
                     <img
                       src={image}
                       alt="placeholder"
                       style={{ width: '100%', aspectRatio: `${editorAspectRatio}/1`, objectFit: 'cover', objectPosition: 'center' }}
                     />
-                    {selectedImage === index && (
+                    {selectedImage === image && (
                       <div
                         style={{
                           position: 'absolute',
@@ -1615,18 +1617,18 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
           :
           <DialogContent sx={{ overflowX: isMd ? 'unset' : 'auto', overflowY: 'hidden', padding: 0 }}>
             <Stack direction="row">
-              {images.map((image, index) => (
+              {returnedImages?.map((image, index) => (
                 <Box
-                  key={index}
+                  key={image}
                   style={{ position: 'relative', paddingLeft: 10, paddingRight: 10 }}
-                  onClick={() => setSelectedImage(index)}
+                  onClick={() => setSelectedImage(image)}
                 >
                   <img
                     src={image}
                     alt="placeholder"
                     style={{ minWidth: isMd ? '300px' : '200px', aspectRatio: `${editorAspectRatio}/1`, objectFit: 'cover', objectPosition: 'center' }}
                   />
-                  {selectedImage === index && (
+                  {selectedImage === image && (
                     <>
                       <div
                         style={{
@@ -1653,8 +1655,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
           </DialogContent>
         }
         <DialogActions>
-          <Button variant='contained'>Cancel</Button>
-          <Button disabled={!selectedImage} variant='contained'>
+          <Button variant='contained' onClick={handleSelectResultCancel}>Cancel</Button>
+          <Button disabled={!selectedImage} onClick={() => { handleAddCanvasBackground(selectedImage) }} variant='contained'>
             Confirm Selection
           </Button>
         </DialogActions>
