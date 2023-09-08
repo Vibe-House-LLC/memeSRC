@@ -6,7 +6,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
 import { Accordion, AccordionDetails, AccordionSummary, Backdrop, Button, Card, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, Tab, Tabs, TextField, ToggleButton, ToggleButtonGroup, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
-import { Add, AddCircleOutline, ArrowForward, ArrowForwardIos, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ContentCopy, Description, FormatAlignCenter, FormatAlignLeft, FormatAlignRight, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, History, HistoryToggleOffRounded, IosShare, Menu, More, PlusOne, Redo, Share, SupervisedUserCircle, Undo, Update, Verified } from '@mui/icons-material';
+import { Add, AddCircleOutline, ArrowForward, ArrowForwardIos, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ContentCopy, Description, FormatAlignCenter, FormatAlignLeft, FormatAlignRight, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, History, HistoryToggleOffRounded, IosShare, Menu, More, PlusOne, Redo, Share, SupervisedUserCircle, Undo, Update, Verified, ZoomIn, ZoomOut } from '@mui/icons-material';
 import { API, Storage } from 'aws-amplify';
 import { Box } from '@mui/system';
 import { Helmet } from 'react-helmet-async';
@@ -117,6 +117,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const [bgFutureStates, setBgFutureStates] = useState([]);
   const [loadingFineTuningFrames, setLoadingFineTuningFrames] = useState(true);
   const [earlyAccessLoading, setEarlyAccessLoading] = useState(false);
+
+  const [variationDisplayColumns, setVariationDisplayColumns] = useState(2);
 
   const [earlyAccessComplete, setEarlyAccessComplete] = useState(false);
   const [earlyAccessDisabled, setEarlyAccessDisabled] = useState(false);
@@ -1571,66 +1573,88 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       </Backdrop>
 
       <Dialog
-          open={openSelectResult}
-          aria-labelledby="alert-dialog-title"
-          aria-describedby="alert-dialog-description"
-          maxWidth='md'
-          PaperProps={{ style: { margin: '8px', padding: '10px' } }}
-      >
-          <DialogTitle id="alert-dialog-title">
-              {"Magic Results"}
-              <div style={{ fontSize: '0.8em', marginTop: '5px' }}>Pick the best variation:</div>
-          </DialogTitle>
-          <DialogContent style={{ padding: 0 }}>  {/* Reduced padding */}
-            <Grid container>
-                {returnedImages?.map((image, index) => (
-                    <Grid item xs={6} key={image} onClick={() => setSelectedImage(image)} style={{ padding: '5px' }}>
-                        <div style={{ position: 'relative', border: selectedImage === image ? '2px solid green' : '2px solid lightgray', borderRadius: '4px' }}>
-                            <img
-                                src={image}
-                                alt="placeholder"
-                                style={{ 
-                                    width: '100%', 
-                                    aspectRatio: `${editorAspectRatio}/1`, 
-                                    objectFit: 'cover', 
-                                    objectPosition: 'center',
-                                    filter: selectedImage && selectedImage !== image ? 'brightness(50%)' : 'none' // Darkening non-selected images when another image is selected
-                                }}
-                            />
-                            {selectedImage === image && (
-                                <div
-                                    style={{
-                                        position: 'absolute',
-                                        top: 8,  // Adjusted position
-                                        left: 8, // Adjusted position
-                                    }}
-                                >
-                                    <CheckCircleOutline
-                                        style={{ color: 'green', fontSize: 40 }}
-                                    />
-                                </div>
-                            )}
-                        </div>
-                    </Grid>
-                ))}
-            </Grid>
-        </DialogContent>
-        <DialogActions style={{ padding: '8px 16px' }}> {/* Reduced padding */}
-            <Button variant='contained' onClick={() => {
-                        setEditorTool()
-                        toggleDrawingMode('fineTuning')
-                        handleSelectResultCancel()
-                      }}>Cancel</Button>
-            <Button 
-              disabled={!selectedImage}  // This line ensures the button is disabled if no image is selected
-              onClick={() => { handleAddCanvasBackground(selectedImage) }} 
-              variant='contained'
-              style={{ backgroundColor: 'limegreen', color: 'white' }}
+      open={openSelectResult}
+      aria-labelledby="alert-dialog-title"
+      aria-describedby="alert-dialog-description"
+      maxWidth='md'
+      PaperProps={{ style: { margin: '8px', padding: '10px' } }}
+    >
+      <DialogTitle id="alert-dialog-title">
+        {"Magic Results"}
+        <div style={{ fontSize: '0.8em', marginTop: '5px' }}>Pick the best variation:</div>
+      </DialogTitle>
+      <DialogContent style={{ padding: 0 }}>  {/* Reduced padding */}
+        <Grid container>
+          {returnedImages?.map((image, index) => (
+            <Grid 
+              item xs={variationDisplayColumns === 2 ? 6 : 12} 
+              key={image} 
+              onClick={() => setSelectedImage(image)} 
+              style={{ padding: '5px' }}
             >
-                Apply
-            </Button>
-        </DialogActions>
-      </Dialog>
+              <div style={{ 
+                position: 'relative', 
+                border: selectedImage === image ? '2px solid green' : '2px solid lightgray', 
+                borderRadius: '4px' 
+              }}>
+                <img
+                  src={image}
+                  alt="placeholder"
+                  style={{ 
+                    width: '100%', 
+                    aspectRatio: `${editorAspectRatio}/1`, 
+                    objectFit: 'cover', 
+                    objectPosition: 'center',
+                    filter: selectedImage && selectedImage !== image ? 'brightness(50%)' : 'none'
+                  }}
+                />
+                {selectedImage === image && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 8,
+                      left: 8,
+                    }}
+                  >
+                    <CheckCircleOutline
+                      style={{ color: 'green', fontSize: 40 }}
+                    />
+                  </div>
+                )}
+              </div>
+            </Grid>
+          ))}
+        </Grid>
+      </DialogContent>
+      <DialogActions style={{ padding: '8px 16px' }}>
+        <Button 
+          variant='contained' 
+          onClick={() => {
+            setEditorTool()
+            toggleDrawingMode('fineTuning')
+            handleSelectResultCancel()
+          }}
+        >
+          Cancel
+        </Button>
+        <Button 
+          disabled={!selectedImage}
+          onClick={() => { handleAddCanvasBackground(selectedImage) }}
+          variant='contained'
+          style={{ backgroundColor: 'limegreen', color: 'white' }}
+        >
+          Apply
+        </Button>
+      </DialogActions>
+
+      <Fab 
+          size="small"  // Makes the FAB smaller
+          style={{ position: 'absolute', top: '20px', right: '20px' }}  // Positions the FAB to the top-right
+          onClick={() => setVariationDisplayColumns(prev => (prev === 2 ? 1 : 2))}
+      >
+          {variationDisplayColumns === 2 ? <ZoomIn /> : <ZoomOut />}
+      </Fab>
+    </Dialog>
     </>
   );
 }
