@@ -1641,7 +1641,12 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
           disabled={!selectedImage}
           onClick={() => { handleAddCanvasBackground(selectedImage) }}
           variant='contained'
-          style={{ backgroundColor: 'limegreen', color: 'white' }}
+          style={{
+            backgroundColor: 'limegreen',
+            color: 'white',
+            opacity: selectedImage ? 1 : 0.5, // Adjust opacity based on selectedImage
+            cursor: selectedImage ? 'pointer' : 'not-allowed', // Change cursor style
+          }}
         >
           Apply
         </Button>
