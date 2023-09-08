@@ -118,7 +118,7 @@ exports.handler = async (event) => {
         contentType: 'image/png',
     });
     formData.append('prompt', prompt);
-    formData.append('n', 1);
+    formData.append('n', 2);
     formData.append('size', "1024x1024");
 
     // Prepare the headers
