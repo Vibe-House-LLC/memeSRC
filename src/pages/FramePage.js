@@ -1,5 +1,5 @@
 import { Helmet } from 'react-helmet-async';
-import { Link as RouterLink, useParams } from 'react-router-dom';
+import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { API } from 'aws-amplify';
 import { styled } from '@mui/material/styles';
@@ -17,22 +17,35 @@ import {
   Chip,
   Slider,
   CircularProgress,
+  Stack,
+  Tooltip,
 } from '@mui/material';
-import { Home } from '@mui/icons-material';
+import { HistoryToggleOffRounded, Home } from '@mui/icons-material';
 
-const StyledCard = styled(Card)({
-  display: 'flex',
-  flexDirection: 'column',
-  justifyContent: 'center',
-});
+const StyledCard = styled(Card)`
+  
+  border: 3px solid transparent;
+  box-sizing: border-box;
+
+  &:hover {
+    border: 3px solid orange;
+  }
+`;
+
+const StyledCardMedia = styled('img')`
+  width: 100%;
+  height: auto;
+  background-color: black;
+`;
 
 export default function FramePage() {
+  const navigate = useNavigate();
   const { fid } = useParams();
   const [frameData, setFrameData] = useState({});
   const [surroundingFrames, setSurroundingFrames] = useState();
   const [sliderValue, setSliderValue] = useState(0);
   const [middleIndex, setMiddleIndex] = useState(0);
-  const [displayImage, setDisplayImage] = useState(`https://memesrc.com/${fid.split('-')[0]}/img/${fid.split('-')[1]}/${fid.split('-')[2]}/${fid}.jpg`);
+  const [displayImage, setDisplayImage] = useState('');
 
   useEffect(() => {
     const getSessionID = async () => {
@@ -58,6 +71,7 @@ export default function FramePage() {
         return API.get('publicapi', '/frame', queryStringParams)
       })
       .then(data => {
+        setDisplayImage(`https://memesrc.com/${fid.split('-')[0]}/img/${fid.split('-')[1]}/${fid.split('-')[2]}/${fid}.jpg`)
         setFrameData(data);
         setSurroundingFrames(data.frames_surrounding);
         const newMiddleIndex = Math.floor(data.frames_fine_tuning.length / 2);
@@ -66,73 +80,96 @@ export default function FramePage() {
         setDisplayImage(`https://memesrc.com${initialFineTuneImage}`);
       })
       .catch(console.error);
-    }, [fid]);
+  }, [fid]);
 
-    useEffect(() => {
-      if (frameData.frames_fine_tuning && middleIndex !== 0) {
-        const displayIndex = middleIndex + sliderValue;
-        const newDisplayFrame = frameData.frames_fine_tuning[displayIndex];
-        setDisplayImage(`https://memesrc.com${newDisplayFrame}`);
-      }
-    }, [sliderValue, frameData, middleIndex]);
-    
+  useEffect(() => {
+    if (frameData.frames_fine_tuning && middleIndex !== 0) {
+      const displayIndex = middleIndex + sliderValue;
+      const newDisplayFrame = frameData.frames_fine_tuning[displayIndex];
+      setDisplayImage(`https://memesrc.com${newDisplayFrame}`);
+    }
+  }, [sliderValue, frameData, middleIndex]);
 
-    const renderSurroundingFrames = () => {
-      if (surroundingFrames) {
-        return (
-          <Grid container spacing={2}>
-            {surroundingFrames.map((frame, index) => (
-              <Grid item xs={4} key={index}>
-                <Card>
-                  <CardMedia
+
+  const renderSurroundingFrames = () => {
+    if (surroundingFrames) {
+      return (
+        <Grid container spacing={2}>
+          {surroundingFrames.map((frame, index) => (
+            <Grid item xs={4} sm={4} md={12 / 9} key={frame}>
+              <a style={{ textDecoration: 'none' }}>
+                <StyledCard style={{ border: fid === frame ? '3px solid orange' : '' }}>
+                  {/* {console.log(`${fid} = ${result?.fid}`)} */}
+                  <StyledCardMedia
                     component="img"
                     alt={`${frame.fid}`}
-                    image={`https://memesrc.com${frame.frame_image}`}
+                    src={`https://memesrc.com${frame.frame_image}`}
+                    title={frame.subtitle || 'No subtitle'}
+                    onClick={() => {
+                      navigate(`/frame/${frame.fid}`)
+                    }}
                   />
-                  <CardContent>
-                    <Typography variant="caption">{frame.subtitle || 'No subtitle'}</Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-        );
-      }
-      return null;
-    };
-
-    const renderFineTuningFrames = () => {
-      return (
-        <>
-          <CardMedia
-            component="img"
-            alt={`Fine-tuning ${sliderValue}`}
-            image={displayImage}
-          />
-          <Slider
-            value={sliderValue}
-            min={-middleIndex}
-            max={middleIndex}
-            step={1}
-            onChange={(e, newValue) => setSliderValue(newValue)}
-          />
-        </>
+                </StyledCard>
+              </a>
+            </Grid>
+          ))}
+        </Grid>
       );
-    };
-      
-  
+    }
+    return null;
+  };
+
+  const renderFineTuningFrames = () => {
     return (
       <>
-        <Helmet>
-          <title> Frame Details | memeSRC 2.0 </title>
-        </Helmet>
-  
-        <AppBar position="static">
-          <Toolbar>
-            <IconButton edge="start" color="inherit" aria-label="menu" to="/" component={RouterLink}>
-              <Home />
+        <CardMedia
+          component="img"
+          alt={`Fine-tuning ${sliderValue}`}
+          image={displayImage}
+        />
+        {/* <Slider
+          value={sliderValue}
+          min={-middleIndex}
+          max={middleIndex}
+          step={1}
+          onChange={(e, newValue) => setSliderValue(newValue)}
+        /> */}
+
+        <Stack spacing={2} direction="row" p={2} pr={3} alignItems={'center'}>
+          <Tooltip title="Fine Tuning">
+            <IconButton>
+              <HistoryToggleOffRounded alt="Fine Tuning" />
             </IconButton>
-            <Typography variant="h6" style={{ flexGrow: 1 }}>
+          </Tooltip>
+          <Slider
+            size="small"
+            defaultValue={4}
+            min={-middleIndex}
+            max={middleIndex}
+            value={sliderValue}
+            step={1}
+            onChange={(e, newValue) => setSliderValue(newValue)}
+            valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
+            marks
+          />
+        </Stack>
+      </>
+    );
+  };
+
+
+  return (
+    <>
+      <Helmet>
+        <title> Frame Details | memeSRC 2.0 </title>
+      </Helmet>
+
+      <AppBar position="static">
+        <Toolbar>
+          <IconButton edge="start" color="inherit" aria-label="menu" to="/" component={RouterLink}>
+            <Home />
+          </IconButton>
+          <Typography variant="h6" style={{ flexGrow: 1 }}>
             <>
               <RouterLink to={`/series/${fid.split('-')[0]}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                 {fid.split('-')[0]}
@@ -148,7 +185,7 @@ export default function FramePage() {
                 }}
               />
             </>
-            </Typography>
+          </Typography>
         </Toolbar>
       </AppBar>
 
