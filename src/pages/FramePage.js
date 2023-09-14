@@ -311,7 +311,7 @@ export default function FramePage({ shows = [] }) {
                                       },
                                     },
                                   }}
-                                  onClick={() => navigate(`/editor/${result?.fid}`)}
+                                  onClick={() => navigate(`/frame/${result?.fid}`)}
                                 >
                                   {loading ? (
                                     <CircularProgress size={20} sx={{ color: '#565656' }} />
