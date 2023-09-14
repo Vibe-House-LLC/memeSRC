@@ -48,7 +48,7 @@ const StyledCardMedia = styled('img')`
   background-color: black;
 `;
 
-export default function FramePage() {
+export default function FramePage({ shows = [] }) {
   const navigate = useNavigate();
   const { fid } = useParams();
   const [frameData, setFrameData] = useState({});
@@ -59,6 +59,35 @@ export default function FramePage() {
   const [subtitlesExpanded, setSubtitlesExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [aspectRatio, setAspectRatio] = useState('16/9');
+  const [showTitle, setShowTitle] = useState('');
+
+  const getCurrentQueryString = () => {
+    const currentUrl = window.location.href;
+    const queryStringStartIndex = currentUrl.indexOf('?');
+
+    // Check if a query string is found; if not, return an empty string
+    if (queryStringStartIndex !== -1) {
+      return currentUrl.substring(queryStringStartIndex);
+    }
+
+    return '';
+  };
+
+  useEffect(() => {
+    // Ensure `fid` and `shows` are defined
+    if (fid && shows && shows.length > 0) {
+      const foundShow = shows.find((obj) => obj.id === fid.split('-')[0]);
+
+      // Check if a matching show was found
+      if (foundShow) {
+        setShowTitle(foundShow.title);
+      } else {
+        console.error(`Show with ID ${fid.split('-')[0]} not found.`);
+      }
+    } else {
+      console.error('Invalid `fid` or `shows` array.');
+    }
+  }, [fid, shows]);
 
   const isMd = useMediaQuery((theme) => theme.breakpoints.up('md'))
 
@@ -217,7 +246,7 @@ export default function FramePage() {
             <Typography variant="h6" style={{ flexGrow: 1 }}>
               <>
                 <RouterLink to={`/series/${fid.split('-')[0]}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                  {fid.split('-')[0]}
+                  {showTitle}
                 </RouterLink>
                 <Chip
                   size='small'
@@ -366,7 +395,8 @@ export default function FramePage() {
           <Grid item xs={12} md={6}>
             <CardContent style={{ marginBottom: '1rem' }}>
               <Typography variant="h4" component="div" style={{ marginBottom: '0.5rem' }}>
-                {fid.split('-')[0]} <Chip
+                {showTitle}
+                <Chip
                   size='small'
                   label={`S${fid.split('-')[1]} E${fid.split('-')[2]}`}
                   sx={{
@@ -381,7 +411,7 @@ export default function FramePage() {
                 {frameData.subtitle ? `"${frameData.subtitle}"` : <Skeleton variant='text' height={25} width={'max(100px, 50%)'} />}
               </Typography>
 
-              <Button size="large" variant="contained" to={`/editor/${fid}`} component={RouterLink} style={{ marginBottom: '1rem' }}>
+              <Button size="large" variant="contained" to={`/editor/${fid}${getCurrentQueryString()}`} component={RouterLink} style={{ marginBottom: '1rem' }}>
                 Add Captions & Edit Photo
               </Button>
 
@@ -564,7 +594,7 @@ export default function FramePage() {
                           src={`https://memesrc.com${frame.frame_image}`}
                           title={frame.subtitle || 'No subtitle'}
                           onClick={() => {
-                            navigate(`/frame/${frame.fid}`)
+                            navigate(`/frame/${frame.fid}${getCurrentQueryString()}`)
                           }}
                         />
                       </StyledCard>
