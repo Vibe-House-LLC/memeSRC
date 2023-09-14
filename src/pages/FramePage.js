@@ -29,6 +29,7 @@ import {
   AccordionDetails,
   List,
   useMediaQuery,
+  Box,
 } from '@mui/material';
 import { Add, Close, ContentCopy, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu } from '@mui/icons-material';
 
@@ -349,41 +350,6 @@ export default function FramePage({ shows = [] }) {
                                   {result?.subtitle.replace(/\n/g, ' ')}
                                 </Typography>
                               </ListItemText>
-                              <ListItemIcon sx={{ paddingRight: '0', marginLeft: 'auto' }}>
-                                {/* <Fab
-                                size="small"
-                                sx={{
-                                  backgroundColor: theme => theme.palette.background.paper,
-                                  boxShadow: 'none',
-                                  marginRight: '2px',
-                                  '&:hover': {
-                                    xs: { backgroundColor: 'inherit' },
-                                    md: { backgroundColor: 'ButtonHighlight' },
-                                  },
-                                }}
-                                onClick={() => {
-                                  navigator.clipboard.writeText(result?.subtitle.replace(/\n/g, ' '));
-                                  handleSnackbarOpen();
-                                }}
-                              >
-                                <ContentCopy sx={{ color: 'rgb(89, 89, 89)' }} />
-                              </Fab> */}
-                                {/* <Fab
-                                size="small"
-                                sx={{
-                                  backgroundColor: theme.palette.background.paper,
-                                  boxShadow: 'none',
-                                  marginLeft: 'auto',
-                                  '&:hover': {
-                                    xs: { backgroundColor: 'inherit' },
-                                    md: { backgroundColor: 'ButtonHighlight' },
-                                  },
-                                }}
-                                onClick={() => addText(result?.subtitle.replace(/\n/g, ' '), true)}
-                              >
-                                <Add sx={{ color: 'rgb(89, 89, 89)', cursor: 'pointer' }} />
-                              </Fab> */}
-                              </ListItemIcon>
                             </ListItem>
                           ))}
                     </List>
@@ -392,9 +358,9 @@ export default function FramePage({ shows = [] }) {
               </Card>
             }
           </Grid>
-          <Grid item xs={12} md={6}>
-            <CardContent style={{ marginBottom: '1rem' }}>
-              <Typography variant="h4" component="div" style={{ marginBottom: '0.5rem' }}>
+          <Grid item xs={12} md={6} display='flex'>
+            <Box sx={{ marginBottom: '1rem', px: 5, mx: isMd ? 0 : 'auto' }}>
+              <Typography variant="h4" component="div" style={{ marginBottom: '0.5rem' }} textAlign={isMd ? 'left' : 'center'}>
                 {showTitle}
                 <Chip
                   size='small'
@@ -407,18 +373,18 @@ export default function FramePage({ shows = [] }) {
                   }}
                 />
               </Typography>
-              <Typography variant="subtitle1" color="text.secondary" style={{ marginBottom: '1rem' }}>
+              <Typography variant="subtitle1" color="text.secondary" style={{ marginBottom: '1rem' }} textAlign={isMd ? 'left' : 'center'}>
                 {frameData.subtitle ? `"${frameData.subtitle}"` : <Skeleton variant='text' height={25} width={'max(100px, 50%)'} />}
               </Typography>
 
-              <Button size="large" variant="contained" to={`/editor/${fid}${getCurrentQueryString()}`} component={RouterLink} style={{ marginBottom: '1rem' }}>
+              <Button size="large" fullWidth={!isMd} variant="contained" to={`/editor/${fid}${getCurrentQueryString()}`} component={RouterLink} style={{ marginBottom: '1rem' }}>
                 Add Captions & Edit Photo
               </Button>
 
               {/* <Typography variant="subtitle1" color="text.secondary" style={{ marginBottom: '1rem' }}>
                 TODO: add more metadata, links, content, etc. here
               </Typography> */}
-            </CardContent>
+            </Box>
           </Grid>
           {isMd &&
             <Grid item xs={12} md={6}>
