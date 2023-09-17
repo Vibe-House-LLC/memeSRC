@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation, useParams } from 'react-router-dom';
 import { styled } from '@mui/material/styles';
 import Header from './header';
 import Nav from './nav';
@@ -22,8 +22,9 @@ const Main = styled('div')(({ theme, isRootPath }) => ({
 
 export default function DashboardLayout() {
   const [open, setOpen] = useState(false);
+  const { seriesId } = useParams();
   const location = useLocation();
-  const isRootPath = location.pathname === '/';
+  const isRootPath = location.pathname === '/' || seriesId;
 
   useEffect(() => {
     // Close navigation bar whenever the route changes
