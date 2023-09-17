@@ -211,83 +211,56 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
     setCurrentThemeBragText(defaultBragText);
   };
 
-  const handleChangeSeries = (newSeriesTitle) => {
-    setSeriesTitle(newSeriesTitle);
-    if (newSeriesTitle !== '_universal') {
-      const selectedSeriesProperties = shows.findIndex((object) => object.id === newSeriesTitle);
+  // The handleChangeSeries function now only handles theme updates
+  const handleChangeSeries = useCallback((newSeriesTitle) => {
+    const selectedSeriesProperties = shows.find((object) => object.id === newSeriesTitle);
 
-      if (selectedSeriesProperties !== -1) {  // Ensure that we found a match
-        setCurrentThemeBackground({ backgroundColor: `${shows[selectedSeriesProperties].colorMain}` });
-        setCurrentThemeFontColor(shows[selectedSeriesProperties].colorSecondary);
-        setCurrentThemeTitleText(shows[selectedSeriesProperties].title);
+    if (selectedSeriesProperties) {
+        setCurrentThemeBackground({ backgroundColor: `${selectedSeriesProperties.colorMain}` });
+        setCurrentThemeFontColor(selectedSeriesProperties.colorSecondary);
+        setCurrentThemeTitleText(selectedSeriesProperties.title);
         setCurrentThemeBragText(
-          `Search over ${shows[selectedSeriesProperties].frameCount.toLocaleString('en-US')} frames from ${
-            shows[selectedSeriesProperties].title
-          }`
+            `Search over ${selectedSeriesProperties.frameCount.toLocaleString('en-US')} frames from ${
+                selectedSeriesProperties.title
+            }`
         );
-      } else {
-        console.warn(`Series with ID ${newSeriesTitle} not found.`);
-        resetTheme();
-      }
     } else {
-      resetTheme();
+        resetTheme();
     }
-};
+  }, [shows]);
 
-  // useEffect(() => {
-  //   changeTheme()
-  // }, [seriesTitle])
-
-  useEffect(() => {
-    // Every time the location changes, check the seriesId and update the theme
-    if (seriesId) {
-      const matchedSeries = shows.find((show) => show.id === seriesId);
-      if (matchedSeries) {
-        setSeriesTitle(matchedSeries.title);
-        handleChangeSeries(matchedSeries.id);
-      }
-    }
-}, [location, shows, seriesId]);
-
-
-
-  useEffect(() => {
-    // Only proceed if shows have been loaded and there's a seriesId
-    if (shows.length > 0 && seriesId) {
-      const matchedSeries = shows.find((show) => show.id === seriesId);
-      if (matchedSeries) {
-        setSeriesTitle(matchedSeries.title);
-        handleChangeSeries(matchedSeries.id);
-      }
-    }
-  }, [shows, seriesId]);  
-
+  // This useEffect handles the data fetching
   useEffect(() => {
     async function getData() {
-      // Get shows
-      const fetchedShows = await fetchShows();
-  
-      // If there's a seriesId from the params, set it as the current series.
-      if (seriesId) {
-        const matchedSeries = fetchedShows.find((show) => show.id === seriesId);
-        if (matchedSeries) {
-          setSeriesTitle(matchedSeries.title);
-          handleChangeSeries(matchedSeries.id);
-        }
-      } else {
-        setSeriesTitle('_universal');  // default or initial series title
-      }
-  
-      setShows(fetchedShows);
-      setLoading(false);
-  
-      // Get homepage sections
-      const fetchedSections = await fetchSections();
-      setSections(fetchedSections);
+        // Get shows
+        const fetchedShows = await fetchShows();
+        setShows(fetchedShows);
+        setLoading(false);
+
+        // Get homepage sections
+        const fetchedSections = await fetchSections();
+        setSections(fetchedSections);
     }
     getData();
-  }, [seriesId]);   
-  
+  }, []);
+
+  // This useEffect ensures the theme is applied based on the seriesId once the data is loaded
+  useEffect(() => {
+    // Check if shows have been loaded
+    if (shows.length > 0) {
+        // Determine the series to use based on the URL or default to '_universal'
+        const currentSeriesId = seriesId || '_universal';
+        
+        if (currentSeriesId !== seriesTitle) {
+            setSeriesTitle(currentSeriesId); // Update the series title based on the URL parameter
+            handleChangeSeries(currentSeriesId); // Update the theme
+            
+            // Navigation logic
+            navigate(currentSeriesId === '_universal' ? '/' : `/${currentSeriesId}`);
+        }
+    }
+  }, [seriesId, seriesTitle, shows, handleChangeSeries, navigate]);
+
 
   useEffect(() => {
     document.addEventListener('scroll', () => {
@@ -483,12 +456,15 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
           <StyledSearchForm onSubmit={(e) => searchFunction(e)}>
             <Grid container justifyContent="center">
               <Grid item sm={3.5} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
-                <StyledSearchSelector
-                  onChange={(x) => {
-                    handleChangeSeries(x.target.value);
+              <StyledSearchSelector
+                  onChange={(e) => {
+                      const newSeriesTitle = e.target.value;
+                      setSeriesTitle(newSeriesTitle); // Update the series title based on the selection
+                      handleChangeSeries(newSeriesTitle); // Update the theme
+                      navigate(newSeriesTitle === '_universal' ? '/' : `/${newSeriesTitle}`); // Navigate
                   }}
                   value={seriesTitle}
-                >
+              >
                   <option key="_universal" value="_universal" selected>
                     🌈 All Shows
                   </option>
