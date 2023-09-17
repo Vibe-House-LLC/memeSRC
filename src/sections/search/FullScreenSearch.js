@@ -5,7 +5,7 @@ import { ArrowDownwardRounded, Favorite, MapsUgc, Shuffle } from '@mui/icons-mat
 import { API, graphqlOperation } from 'aws-amplify';
 import { useCallback, useEffect, useState } from 'react';
 import { LoadingButton } from '@mui/lab';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
 import CloseIcon from '@mui/icons-material/Close';
 import { searchPropTypes } from './SearchPropTypes';
 import Logo from '../../components/logo/Logo';
@@ -190,6 +190,8 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
 
   const [alertOpen, setAlertOpen] = useState(true);
 
+  const location = useLocation();
+
   // Theme States
   const [currentThemeBragText, setCurrentThemeBragText] = useState(defaultBragText);
   const [currentThemeTitleText, setCurrentThemeTitleText] = useState(defaultTitleText);
@@ -198,7 +200,7 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
     backgroundImage: defaultBackground,
   });
 
-  const { sectionIndex } = useParams();
+  const { sectionIndex, seriesId } = useParams();
 
   const navigate = useNavigate();
 
@@ -213,36 +215,79 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
     setSeriesTitle(newSeriesTitle);
     if (newSeriesTitle !== '_universal') {
       const selectedSeriesProperties = shows.findIndex((object) => object.id === newSeriesTitle);
-      console.log(selectedSeriesProperties);
-      setCurrentThemeBackground({ backgroundColor: `${shows[selectedSeriesProperties].colorMain}` });
-      setCurrentThemeFontColor(shows[selectedSeriesProperties].colorSecondary);
-      setCurrentThemeTitleText(shows[selectedSeriesProperties].title);
-      setCurrentThemeBragText(
-        `Search over ${shows[selectedSeriesProperties].frameCount.toLocaleString('en-US')} frames from ${
-          shows[selectedSeriesProperties].title
-        }`
-      );
+
+      if (selectedSeriesProperties !== -1) {  // Ensure that we found a match
+        setCurrentThemeBackground({ backgroundColor: `${shows[selectedSeriesProperties].colorMain}` });
+        setCurrentThemeFontColor(shows[selectedSeriesProperties].colorSecondary);
+        setCurrentThemeTitleText(shows[selectedSeriesProperties].title);
+        setCurrentThemeBragText(
+          `Search over ${shows[selectedSeriesProperties].frameCount.toLocaleString('en-US')} frames from ${
+            shows[selectedSeriesProperties].title
+          }`
+        );
+      } else {
+        console.warn(`Series with ID ${newSeriesTitle} not found.`);
+        resetTheme();
+      }
     } else {
       resetTheme();
     }
-  };
+};
 
   // useEffect(() => {
   //   changeTheme()
   // }, [seriesTitle])
 
   useEffect(() => {
+    // Every time the location changes, check the seriesId and update the theme
+    if (seriesId) {
+      const matchedSeries = shows.find((show) => show.id === seriesId);
+      if (matchedSeries) {
+        setSeriesTitle(matchedSeries.title);
+        handleChangeSeries(matchedSeries.id);
+      }
+    }
+}, [location, shows, seriesId]);
+
+
+
+  useEffect(() => {
+    // Only proceed if shows have been loaded and there's a seriesId
+    if (shows.length > 0 && seriesId) {
+      const matchedSeries = shows.find((show) => show.id === seriesId);
+      if (matchedSeries) {
+        setSeriesTitle(matchedSeries.title);
+        handleChangeSeries(matchedSeries.id);
+      }
+    }
+  }, [shows, seriesId]);  
+
+  useEffect(() => {
     async function getData() {
       // Get shows
-      const shows = await fetchShows();
-      setShows(shows);
+      const fetchedShows = await fetchShows();
+  
+      // If there's a seriesId from the params, set it as the current series.
+      if (seriesId) {
+        const matchedSeries = fetchedShows.find((show) => show.id === seriesId);
+        if (matchedSeries) {
+          setSeriesTitle(matchedSeries.title);
+          handleChangeSeries(matchedSeries.id);
+        }
+      } else {
+        setSeriesTitle('_universal');  // default or initial series title
+      }
+  
+      setShows(fetchedShows);
       setLoading(false);
+  
       // Get homepage sections
-      const sections = await fetchSections();
-      setSections(sections);
+      const fetchedSections = await fetchSections();
+      setSections(fetchedSections);
     }
     getData();
-  }, []);
+  }, [seriesId]);   
+  
 
   useEffect(() => {
     document.addEventListener('scroll', () => {

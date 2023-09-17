@@ -3,6 +3,7 @@ import { useParams, Navigate } from 'react-router-dom';
 import { API, graphqlOperation } from 'aws-amplify';  // Ensure graphqlOperation is imported
 import { listSeries } from '../graphql/queries';
 import SeriesPage from './SeriesPage';
+import HomePage from './HomePage';
 
 const DynamicRouteHandler = () => {
   const { seriesId } = useParams();
@@ -41,7 +42,8 @@ const DynamicRouteHandler = () => {
   }
 
   if (seriesData) {
-    return <SeriesPage seriesData={seriesData} />; // Pass seriesData as prop to SeriesPage
+    // return <SeriesPage seriesData={seriesData} />; // Pass seriesData as prop to SeriesPage
+    return <HomePage />
   }
 
   return <Navigate to="/404" replace />;
