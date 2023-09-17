@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { API } from 'aws-amplify';
 import HomeIcon from '@mui/icons-material/Home';
 import { listSeries } from '../graphql/queries';
+import BasePage from './BasePage';
 
 const StyledCard = styled(Card)({
   display: 'flex',
@@ -34,7 +35,6 @@ export default function SeriesPage() {
           },
         },
       });
-      console.log(response.data)
       setSeriesData(response.data.listSeries.items[0]);
       setLoading(false);
     } catch (err) {
@@ -43,7 +43,13 @@ export default function SeriesPage() {
   };
 
   return (
-    <>
+    <BasePage
+      pageTitle="Series Details"
+      breadcrumbLinks={[
+        { path: "/", name: "Home" },
+        { path: `/${seriesId}`, name: seriesData?.name || "Series" } // Adjust as per your data structure
+      ]}
+    >
       <Helmet>
         <title> Series Details | memeSRC 2.0 </title>
       </Helmet>
@@ -75,6 +81,6 @@ export default function SeriesPage() {
       ) : (
         <Typography variant="body1">No data found.</Typography>
       )}
-    </>
+    </BasePage>
   );
 }
