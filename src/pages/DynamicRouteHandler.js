@@ -40,7 +40,7 @@ const DynamicRouteHandler = () => {
   }
 
   if (seriesData) {
-    return <SeriesPage />; // Display the SeriesPage component when valid series data exists
+    return <SeriesPage seriesData={seriesData} />;
   }
 
   return <Navigate to="/404" replace />;
