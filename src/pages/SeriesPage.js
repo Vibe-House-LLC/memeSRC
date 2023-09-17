@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { API } from 'aws-amplify';
 import HomeIcon from '@mui/icons-material/Home';
 import { listSeries } from '../graphql/queries';
+import BasePage from './BasePage';
 
 const StyledCard = styled(Card)({
   display: 'flex',
@@ -13,68 +14,42 @@ const StyledCard = styled(Card)({
   justifyContent: 'center',
 });
 
-export default function SeriesPage() {
-  const { seriesId } = useParams();
-  const [seriesData, setSeriesData] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchSeriesData();
-  }, [seriesId]);
-
-  const fetchSeriesData = async () => {
-    try {
-      const response = await API.graphql({
-        query: listSeries,
-        variables: {
-          filter: {
-            slug: {
-              eq: seriesId,
-            },
-          },
-        },
-      });
-      console.log(response.data)
-      setSeriesData(response.data.listSeries.items[0]);
-      setLoading(false);
-    } catch (err) {
-      console.log(err);
-    }
-  };
+export default function SeriesPage({ seriesData }) { // Destructure seriesData from props
+  // No need to fetch seriesData again, so we can remove the related useState and useEffect
 
   return (
-    <>
+    <BasePage
+      pageTitle="Series Details"
+      breadcrumbLinks={[
+        { path: "/", name: "Home" },
+        { path: `/${seriesData.slug}`, name: seriesData.name }
+      ]}
+    >
       <Helmet>
         <title> Series Details | memeSRC 2.0 </title>
       </Helmet>
 
-      {loading ? (
-        <CircularProgress />
-      ) : seriesData ? (
-        <Container maxWidth="xl">
-          <Grid container spacing={2} direction="row" alignItems="center" justifyContent="center">
-            <Grid item xs={12} md={6}>
-              <StyledCard>
-                <CardMedia
-                  component="img"
-                  alt={seriesData.name}
-                  image={seriesData.image}
-                  sx={{ maxHeight: '500px', objectFit: 'contain' }}
-                />
-              </StyledCard>
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <CardContent>
-                <Typography variant="h2">{seriesData.name} ({seriesData.year})</Typography>
-                <Typography variant="body1">{seriesData.description}</Typography>
-                <Typography variant="h4">Seasons:</Typography>
-              </CardContent>
-            </Grid>
+      <Container maxWidth="xl">
+        <Grid container spacing={2} direction="row" alignItems="center" justifyContent="center">
+          <Grid item xs={12} md={6}>
+            <StyledCard>
+              <CardMedia
+                component="img"
+                alt={seriesData.name}
+                image={seriesData.image}
+                sx={{ maxHeight: '500px', objectFit: 'contain' }}
+              />
+            </StyledCard>
           </Grid>
-        </Container>
-      ) : (
-        <Typography variant="body1">No data found.</Typography>
-      )}
-    </>
+          <Grid item xs={12} md={6}>
+            <CardContent>
+              <Typography variant="h2">{seriesData.name} ({seriesData.year})</Typography>
+              <Typography variant="body1">{seriesData.description}</Typography>
+              <Typography variant="h4">Seasons:</Typography>
+            </CardContent>
+          </Grid>
+        </Grid>
+      </Container>
+    </BasePage>
   );
 }

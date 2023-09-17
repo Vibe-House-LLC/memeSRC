@@ -41,6 +41,7 @@ const HomepageSectionPage = lazy(() => import('./pages/HomepageSectionPage'));
 const ContributorRequest = lazy(() => import('./pages/ContributorRequest'));
 const PricingPage = lazy(() => import('./pages/PricingPage'));
 const MagicPopup = lazy(() => import('./components/magic-popup/MagicPopup'));
+const DynamicRouteHandler = lazy(() => import('./pages/DynamicRouteHandler'));
 
 // ----------------------------------------------------------------------
 
@@ -64,6 +65,7 @@ export default function Router() {
         { path: '/vote', element: <TopBannerSearchRevised><VotingPage /></TopBannerSearchRevised> },
         { path: '/upload', element: <ContributorRequest /> },
         { path: '/pricing', element: <PricingPage /> },
+        { path: '/:seriesId', element: <DynamicRouteHandler /> },
       ]
     },
     {

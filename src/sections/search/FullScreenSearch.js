@@ -5,7 +5,7 @@ import { ArrowDownwardRounded, Favorite, MapsUgc, Shuffle } from '@mui/icons-mat
 import { API, graphqlOperation } from 'aws-amplify';
 import { useCallback, useEffect, useState } from 'react';
 import { LoadingButton } from '@mui/lab';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
 import CloseIcon from '@mui/icons-material/Close';
 import { searchPropTypes } from './SearchPropTypes';
 import Logo from '../../components/logo/Logo';
@@ -190,6 +190,8 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
 
   const [alertOpen, setAlertOpen] = useState(true);
 
+  const location = useLocation();
+
   // Theme States
   const [currentThemeBragText, setCurrentThemeBragText] = useState(defaultBragText);
   const [currentThemeTitleText, setCurrentThemeTitleText] = useState(defaultTitleText);
@@ -198,7 +200,7 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
     backgroundImage: defaultBackground,
   });
 
-  const { sectionIndex } = useParams();
+  const { sectionIndex, seriesId } = useParams();
 
   const navigate = useNavigate();
 
@@ -209,40 +211,56 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
     setCurrentThemeBragText(defaultBragText);
   };
 
-  const handleChangeSeries = (newSeriesTitle) => {
-    setSeriesTitle(newSeriesTitle);
-    if (newSeriesTitle !== '_universal') {
-      const selectedSeriesProperties = shows.findIndex((object) => object.id === newSeriesTitle);
-      console.log(selectedSeriesProperties);
-      setCurrentThemeBackground({ backgroundColor: `${shows[selectedSeriesProperties].colorMain}` });
-      setCurrentThemeFontColor(shows[selectedSeriesProperties].colorSecondary);
-      setCurrentThemeTitleText(shows[selectedSeriesProperties].title);
-      setCurrentThemeBragText(
-        `Search over ${shows[selectedSeriesProperties].frameCount.toLocaleString('en-US')} frames from ${
-          shows[selectedSeriesProperties].title
-        }`
-      );
+  // The handleChangeSeries function now only handles theme updates
+  const handleChangeSeries = useCallback((newSeriesTitle) => {
+    const selectedSeriesProperties = shows.find((object) => object.id === newSeriesTitle);
+
+    if (selectedSeriesProperties) {
+        setCurrentThemeBackground({ backgroundColor: `${selectedSeriesProperties.colorMain}` });
+        setCurrentThemeFontColor(selectedSeriesProperties.colorSecondary);
+        setCurrentThemeTitleText(selectedSeriesProperties.title);
+        setCurrentThemeBragText(
+            `Search over ${selectedSeriesProperties.frameCount.toLocaleString('en-US')} frames from ${
+                selectedSeriesProperties.title
+            }`
+        );
     } else {
-      resetTheme();
+        resetTheme();
     }
-  };
+  }, [shows]);
 
-  // useEffect(() => {
-  //   changeTheme()
-  // }, [seriesTitle])
-
+  // This useEffect handles the data fetching
   useEffect(() => {
     async function getData() {
-      // Get shows
-      const shows = await fetchShows();
-      setShows(shows);
-      setLoading(false);
-      // Get homepage sections
-      const sections = await fetchSections();
-      setSections(sections);
+        // Get shows
+        const fetchedShows = await fetchShows();
+        setShows(fetchedShows);
+        setLoading(false);
+
+        // Get homepage sections
+        const fetchedSections = await fetchSections();
+        setSections(fetchedSections);
     }
     getData();
   }, []);
+
+  // This useEffect ensures the theme is applied based on the seriesId once the data is loaded
+  useEffect(() => {
+    // Check if shows have been loaded
+    if (shows.length > 0) {
+        // Determine the series to use based on the URL or default to '_universal'
+        const currentSeriesId = seriesId || '_universal';
+        
+        if (currentSeriesId !== seriesTitle) {
+            setSeriesTitle(currentSeriesId); // Update the series title based on the URL parameter
+            handleChangeSeries(currentSeriesId); // Update the theme
+            
+            // Navigation logic
+            navigate(currentSeriesId === '_universal' ? '/' : `/${currentSeriesId}`);
+        }
+    }
+  }, [seriesId, seriesTitle, shows, handleChangeSeries, navigate]);
+
 
   useEffect(() => {
     document.addEventListener('scroll', () => {
@@ -438,12 +456,15 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
           <StyledSearchForm onSubmit={(e) => searchFunction(e)}>
             <Grid container justifyContent="center">
               <Grid item sm={3.5} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
-                <StyledSearchSelector
-                  onChange={(x) => {
-                    handleChangeSeries(x.target.value);
+              <StyledSearchSelector
+                  onChange={(e) => {
+                      const newSeriesTitle = e.target.value;
+                      setSeriesTitle(newSeriesTitle); // Update the series title based on the selection
+                      handleChangeSeries(newSeriesTitle); // Update the theme
+                      navigate(newSeriesTitle === '_universal' ? '/' : `/${newSeriesTitle}`); // Navigate
                   }}
                   value={seriesTitle}
-                >
+              >
                   <option key="_universal" value="_universal" selected>
                     🌈 All Shows
                   </option>
