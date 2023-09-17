@@ -1,47 +1,40 @@
 import { useState, useEffect } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
-import { API, graphqlOperation } from 'aws-amplify';  // Ensure graphqlOperation is imported
-import { listSeries } from '../graphql/queries';
+import { API, graphqlOperation } from 'aws-amplify';
+import { getContentMetadata } from '../graphql/queries'; // Import the getContentMetadata
 import SeriesPage from './SeriesPage';
 import HomePage from './HomePage';
 
 const DynamicRouteHandler = () => {
   const { seriesId } = useParams();
   const [loading, setLoading] = useState(true);
-  const [seriesData, setSeriesData] = useState(null);
+  const [metadata, setMetadata] = useState(null);
 
   useEffect(() => {
-    const fetchSeriesData = async () => {
+    const fetchContentMetadata = async () => {
       try {
         const response = await API.graphql({
-          ...graphqlOperation(listSeries, {
-            filter: {
-              slug: {
-                eq: seriesId,
-              },
-            },
-          }),
+          query: getContentMetadata,
+          variables: { id: seriesId },
           authMode: 'API_KEY',
         });
 
-        if (response.data.listSeries.items.length > 0) {
-          setSeriesData(response.data.listSeries.items[0]);
-        }
+        setMetadata(response.data.getContentMetadata);
       } catch (error) {
-        console.error('Failed to fetch GraphQL series data:', error);
+        console.error('Failed to fetch GraphQL content metadata:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchSeriesData();
+    fetchContentMetadata();
   }, [seriesId]);
 
   if (loading) {
     return <div>Loading...</div>;
   }
 
-  if (seriesData) {
+  if (metadata) {
     // return <SeriesPage seriesData={seriesData} />; // Pass seriesData as prop to SeriesPage
     return <HomePage />
   }
