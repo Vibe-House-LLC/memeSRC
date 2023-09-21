@@ -415,7 +415,7 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
                 </Box>
                 {currentThemeTitleText}
               </Typography>
-              {!localStorage.getItem('alertDismissed36f7w') && (
+              {/* {!localStorage.getItem('alertDismissed36f7w') && (
                 <Alert
                   severity="success"
                   action={
@@ -450,7 +450,7 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
                 >
                   <b>Added:</b> 50+&nbsp;new&nbsp;requests
                 </Alert>
-              )}
+              )} */}
             </Grid>
           </Grid>
           <StyledSearchForm onSubmit={(e) => searchFunction(e)}>
