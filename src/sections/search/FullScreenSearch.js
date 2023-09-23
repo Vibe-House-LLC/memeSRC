@@ -428,7 +428,7 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
                         size="small"
                         style={{ marginRight: '5px' }}
                       >
-                        Vote
+                        Request
                       </Button>
                       <IconButton
                         color="inherit"
