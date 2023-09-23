@@ -31,8 +31,9 @@ export default function TvdbSearch({onSelect = () => {}, onClear = () => {}, typ
                 if (searchResults?.length > 0) {
                     let filteredResults = searchResults;
 
-                    if (typeFilter) {
-                        filteredResults = filteredResults.filter(obj => obj.type === typeFilter)
+                    // Modified the filter condition to work with an array of types
+                    if (typeFilter.length > 0) {
+                        filteredResults = filteredResults.filter(obj => typeFilter.includes(obj.type));
                     }
 
                     const mappedResults = filteredResults.map((result) => ({

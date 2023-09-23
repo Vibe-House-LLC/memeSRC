@@ -429,14 +429,14 @@ export default function VotingPage({ shows: searchableShows }) {
   return (
     <>
       <Helmet>
-        <title> Vote and Requests • TV Shows • memeSRC </title>
+        <title> Vote and Requests • TV Shows & Movies • memeSRC </title>
       </Helmet>
       <Container maxWidth="md">
         <Box my={2}>
           <Typography variant="h3" component="h1" gutterBottom>
-            Requested Shows
+            Requests
           </Typography>
-          <Typography variant="subtitle2">Upvote shows you want on memeSRC</Typography>
+          <Typography variant="subtitle2">Upvote shows and movies you want on memeSRC</Typography>
         </Box>
         {!localStorage.getItem('alertDismissedVotePage999') && (
           <Alert
@@ -503,7 +503,7 @@ export default function VotingPage({ shows: searchableShows }) {
             variant="outlined"
             value={searchText}
             onChange={handleSearchChange}
-            placeholder="Search requested shows..."
+            placeholder="Search requests..."
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -530,7 +530,7 @@ export default function VotingPage({ shows: searchableShows }) {
                 color="primary"
               />
             }
-            label="Hide Searchable Shows"
+            label="Hide Searchable"
             style={{ opacity: hideSearchable ? 1 : 0.5 }}
             sx={{ margin: 1 }}
           />
@@ -899,7 +899,7 @@ export default function VotingPage({ shows: searchableShows }) {
           </Typography>
         </DialogTitle>
         <DialogContent sx={{ paddingTop: 2 }}>
-          <TvdbSearch typeFilter='series' onClear={(value) => { setSelectedRequest() }} onSelect={(value) => { setSelectedRequest(value) }} />
+          <TvdbSearch typeFilter={['series', 'movie']} onClear={(value) => { setSelectedRequest() }} onSelect={(value) => { setSelectedRequest(value) }} />
           {selectedRequest &&
 
             <Grid container spacing={2} alignItems='center' mt={2}>

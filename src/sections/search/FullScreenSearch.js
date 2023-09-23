@@ -169,7 +169,7 @@ const StyledGridContainer = styled(Grid)`
 
 // Theme Defaults
 const defaultTitleText = 'memeSRC';
-const defaultBragText = 'Search over 36 million screencaps from your favorite shows.';
+const defaultBragText = 'Search over 38 million screencaps from shows & movies.';
 const defaultFontColor = '#FFFFFF';
 const defaultBackground = `linear-gradient(45deg,
   #5461c8 12.5% /* 1*12.5% */,
@@ -448,7 +448,7 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
                     opacity: 0.9,
                   }}
                 >
-                  Vote&nbsp;again&nbsp;every&nbsp;24h!
+                  <b>Movies</b>&nbsp;are&nbsp;now&nbsp;supported!
                 </Alert>
               )}
             </Grid>
@@ -466,7 +466,7 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
                   value={seriesTitle}
               >
                   <option key="_universal" value="_universal" selected>
-                    🌈 All Shows
+                    🌈 All Shows & Movies
                   </option>
                   {loading ? (
                     <option key="loading" value="loading" disabled>

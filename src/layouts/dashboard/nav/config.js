@@ -74,7 +74,7 @@ const navConfig = [
         icon: icon('ic_file'),
       },
       {
-        title: 'TV Shows',
+        title: 'Content Manager',
         path: '/dashboard/series',
         externalLink: false,
         icon: icon('ic_booking')

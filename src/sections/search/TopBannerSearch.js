@@ -203,7 +203,7 @@ export default function TopBannerSearch(props) {
                 disableUnderline
               >
 
-                <MenuItem key='_universal' value='_universal' selected>🌈 All Shows</MenuItem>
+                <MenuItem key='_universal' value='_universal' selected>🌈 All Shows & Movies</MenuItem>
                 {(loading) ? <MenuItem key="loading" value="loading" disabled>Loading...</MenuItem> : shows.map((item) => (
                   <MenuItem key={item.id} value={item.id}>{item.emoji} {item.title}</MenuItem>
                 ))}
