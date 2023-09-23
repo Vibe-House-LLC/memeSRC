@@ -103,15 +103,15 @@ export default function VotingPage({ shows: searchableShows }) {
     fetchShowsAndVotes();
   }, [user]);
 
-  useEffect(() => {
-    // Switch to the "Battleground" tab for users who signed up before 2023-07-07 and have voted (until they manually select a tab)
-    // TODO: remove this in the future after this 'migration' period for the vote sorting options
-    const savedRankMethod = localStorage.getItem('rankMethod');
-    console.log(user);
-    if (!savedRankMethod && Object.keys(userVotes).length > 0 && user.userDetails.createdAt < '2023-07-08') {
-      setRankMethod('combined');
-    }
-  }, [userVotes]);
+  // useEffect(() => {
+  //   // Switch to the "Battleground" tab for users who signed up before 2023-07-07 and have voted (until they manually select a tab)
+  //   // TODO: remove this in the future after this 'migration' period for the vote sorting options
+  //   const savedRankMethod = localStorage.getItem('rankMethod');
+  //   console.log(user);
+  //   if (!savedRankMethod && Object.keys(userVotes).length > 0 && user.userDetails.createdAt < '2023-07-08') {
+  //     setRankMethod('combined');
+  //   }
+  // }, [userVotes]);
 
   useEffect(() => {
     let sortedShows;
