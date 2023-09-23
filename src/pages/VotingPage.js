@@ -78,7 +78,7 @@ export default function VotingPage({ shows: searchableShows }) {
   const [openAddRequest, setOpenAddRequest] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState();
   const [submittingRequest, setSubmittingRequest] = useState(false);
-  const [hideSearchable, setHideSearchable] = useState(false);
+  const [hideSearchable, setHideSearchable] = useState(true);
   const [filteredAndSortedShows, setFilteredAndSortedShows] = useState([]);
   const { setMessage, setOpen, setSeverity } = useContext(SnackbarContext)
 
