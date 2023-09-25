@@ -243,7 +243,7 @@ export default function FramePage({ shows = [] }) {
 
       <Container maxWidth="xl" sx={{ pt: 2 }}>
         <Grid container spacing={2} direction="row" alignItems="center">
-          <Grid item xs={12}>
+          {/* <Grid item xs={12}>
             <Typography variant="h6" style={{ flexGrow: 1 }}>
               <>
                 <RouterLink to={`/series/${fid.split('-')[0]}`} style={{ textDecoration: 'none', color: 'inherit' }}>
@@ -261,7 +261,7 @@ export default function FramePage({ shows = [] }) {
                 />
               </>
             </Typography>
-          </Grid>
+          </Grid> */}
           <Grid item xs={12} md={6}>
             <Card>
               {renderFineTuningFrames()}
