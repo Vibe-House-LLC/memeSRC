@@ -174,7 +174,7 @@ export default function FramePage({ shows = [] }) {
     return (
       <>
         <CardMedia
-          component="img"
+          component={loading ? () => <Skeleton variant='rectangular' sx={{ width: '100%', height: 'auto', aspectRatio }} /> : 'img'}
           alt={`Fine-tuning ${sliderValue}`}
           image={displayImage}
           id='frameImage'
@@ -374,7 +374,13 @@ export default function FramePage({ shows = [] }) {
                 />
               </Typography>
               <Typography variant="subtitle1" color="text.secondary" style={{ marginBottom: '1rem' }} textAlign={isMd ? 'left' : 'center'}>
-                {frameData.subtitle ? `"${frameData.subtitle}"` : <Skeleton variant='text' height={25} width={'max(100px, 50%)'} />}
+                {loading ?
+                  <Skeleton variant='text' height={25} width={'max(100px, 50%)'} />
+                  :
+                  <>
+                    {frameData.subtitle ? `"${frameData.subtitle}"` : null}
+                  </>
+                }
               </Typography>
 
               <Button size="large" fullWidth={!isMd} variant="contained" to={`/editor/${fid}${getCurrentQueryString()}`} component={RouterLink} style={{ marginBottom: '1rem' }}>
