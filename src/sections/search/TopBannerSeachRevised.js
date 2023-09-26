@@ -1,10 +1,10 @@
 import styled from "@emotion/styled";
-import { Fab, FormControl, Grid, InputBase, Link, MenuItem, Select, Typography } from "@mui/material";
-import { Favorite, MapsUgc, Search, Shuffle } from "@mui/icons-material";
+import { Box, Button, Container, Fab, FormControl, Grid, InputBase, Link, MenuItem, Select, Stack, Typography } from "@mui/material";
+import { ArrowBack, Favorite, MapsUgc, Search, Shuffle } from "@mui/icons-material";
 import { API, graphqlOperation } from 'aws-amplify';
 import { cloneElement, useCallback, useEffect, useState } from "react";
 import { LoadingButton } from "@mui/lab";
-import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
+import { Link as RouterLink, useLocation, useNavigate, useParams } from "react-router-dom";
 import { searchPropTypes } from "./SearchPropTypes";
 import Logo from "../../components/logo/Logo";
 import { listContentMetadata } from '../../graphql/queries';
@@ -94,7 +94,7 @@ TopBannerSearchRevised.propTypes = searchPropTypes;
 export default function TopBannerSearchRevised(props) {
   const { search, pathname } = useLocation();
   const searchQuery = new URLSearchParams(search).get('search');
-
+  const { fid } = useParams();
   const [shows, setShows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingRandom, setLoadingRandom] = useState(false);
@@ -257,9 +257,31 @@ export default function TopBannerSearchRevised(props) {
             </StyledRightFooter>
           </>
           :
-          <>
+          <Container maxWidth="xl" sx={{ pt: 2 }}>
+            <Box
+              sx={{width: '100%', px: 3}}
+            >
+              <Link
+                component={RouterLink}
+                to={`/search/${fid.split('-')[0]}/${searchTerm}`}
+                sx={{
+                  color: 'white',
+                  textDecoration: 'none',
+                  '&:hover': {
+                    textDecoration: 'underline',
+                  },
+                }}
+              >
+                <Stack direction='row' alignItems='center'>
+                  <ArrowBack fontSize="small" />
+                  <Typography variant="body1" ml={1}>
+                    Back to Search
+                  </Typography>
+                </Stack>
+              </Link>
+            </Box>
             {cloneElement(props.children, { setSeriesTitle, shows })}
-          </>
+          </Container>
 
       }
     </>
