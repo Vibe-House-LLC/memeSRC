@@ -61,6 +61,7 @@ export default function FramePage({ shows = [] }) {
   const [loading, setLoading] = useState(false);
   const [aspectRatio, setAspectRatio] = useState('16/9');
   const [showTitle, setShowTitle] = useState('');
+  const [episodeDetails, setEpisodeDetails] = useState();
 
   const getCurrentQueryString = () => {
     const currentUrl = window.location.href;
@@ -88,6 +89,7 @@ export default function FramePage({ shows = [] }) {
     } else {
       console.error('Invalid `fid` or `shows` array.');
     }
+    setEpisodeDetails(fid.split('-'))
   }, [fid, shows]);
 
   const isMd = useMediaQuery((theme) => theme.breakpoints.up('md'))
@@ -575,6 +577,17 @@ export default function FramePage({ shows = [] }) {
                 ))}
               </Grid>
             }
+            <Grid item xs={12} mt={3}>
+                    {episodeDetails && (
+                      <Button
+                        variant="contained"
+                        fullWidth
+                        href={`/episode/${episodeDetails[0]}/${episodeDetails[1]}/${episodeDetails[2]}/${episodeDetails[3]}`}
+                      >
+                        View Episode
+                      </Button>
+                    )}
+                  </Grid>
           </Grid>
         </Grid>
       </Container>

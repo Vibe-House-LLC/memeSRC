@@ -182,6 +182,7 @@ export default function TopBannerSearch(props) {
               <StyledSearchInput
                 label="With normal TextField"
                 id="outlined-start-adornment"
+                disabled={resultsLoading}
                 // InputProps={{
                 //   endAdornment: <InputAdornment position="end"><Typography variant="caption"><Search /></Typography></InputAdornment>,
                 // }}
