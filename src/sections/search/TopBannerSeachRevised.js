@@ -92,7 +92,7 @@ TopBannerSearchRevised.propTypes = searchPropTypes;
 
 
 export default function TopBannerSearchRevised(props) {
-  const { search } = useLocation();
+  const { search, pathname } = useLocation();
   const searchQuery = new URLSearchParams(search).get('search');
 
   const [shows, setShows] = useState([]);
@@ -173,9 +173,12 @@ export default function TopBannerSearchRevised(props) {
 
   return (
     <>
-      <StyledHeader>
-        <Grid container marginY={3} paddingX={2}>
-          {/* <Grid item marginX={{ xs: 'auto', md: 0 }} marginY='auto'>
+      {
+        pathname.startsWith("/search") ?
+          <>
+            <StyledHeader>
+              <Grid container marginY={3} paddingX={2}>
+                {/* <Grid item marginX={{ xs: 'auto', md: 0 }} marginY='auto'>
             <Grid display='flex' xs={12} marginBottom={{ xs: 3, md: 0 }}>
               <Link to="/" component={RouterLink} sx={{ display: 'contents' }}>
                 <Logo style={{ float: 'left' }} />
@@ -187,71 +190,78 @@ export default function TopBannerSearchRevised(props) {
 
 
           </Grid> */}
-          <Grid item xs={12} md={6} paddingLeft={{ xs: 0, md: 2 }}>
-            <form onSubmit={e => searchFunction(e)}>
-              <StyledSearchInput
-                label="With normal TextField"
-                id="outlined-start-adornment"
-                // InputProps={{
-                //   endAdornment: <InputAdornment position="end"><Typography variant="caption"><Search /></Typography></InputAdornment>,
-                // }}
-                endAdornment={<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} />}
-                sx={{ width: '100%' }}
-                value={searchTerm}
-                onChange={(event) => { setSearchTerm(event.target.value); }}
-              />
-            </form>
-          </Grid>
-        </Grid>
-        <Grid container wrap="nowrap" sx={{ overflowX: "scroll", flexWrap: "nowrap", scrollbarWidth: 'none', '&::-webkit-scrollbar': { height: '0 !important', width: '0 !important', display: 'none' } }} paddingX={2}>
-          <Grid item marginLeft={{ md: 6 }}>
+                <Grid item xs={12} md={6} paddingLeft={{ xs: 0, md: 2 }}>
+                  <form onSubmit={e => searchFunction(e)}>
+                    <StyledSearchInput
+                      label="With normal TextField"
+                      id="outlined-start-adornment"
+                      // InputProps={{
+                      //   endAdornment: <InputAdornment position="end"><Typography variant="caption"><Search /></Typography></InputAdornment>,
+                      // }}
+                      endAdornment={<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} />}
+                      sx={{ width: '100%' }}
+                      value={searchTerm}
+                      onChange={(event) => { setSearchTerm(event.target.value); }}
+                    />
+                  </form>
+                </Grid>
+              </Grid>
+              <Grid container wrap="nowrap" sx={{ overflowX: "scroll", flexWrap: "nowrap", scrollbarWidth: 'none', '&::-webkit-scrollbar': { height: '0 !important', width: '0 !important', display: 'none' } }} paddingX={2}>
+                <Grid item marginLeft={{ md: 6 }}>
 
-            <FormControl variant="standard" sx={{ minWidth: 120 }}>
-              <Select
-                labelId="demo-simple-select-standard-label"
-                id="demo-simple-select-standard"
-                value={seriesTitle}
-                onChange={(x) => { setSeriesTitle(x.target.value); }}
-                label="Age"
-                size="small"
-                autoWidth
-                disableUnderline
-              >
+                  <FormControl variant="standard" sx={{ minWidth: 120 }}>
+                    <Select
+                      labelId="demo-simple-select-standard-label"
+                      id="demo-simple-select-standard"
+                      value={seriesTitle}
+                      onChange={(x) => { setSeriesTitle(x.target.value); }}
+                      label="Age"
+                      size="small"
+                      autoWidth
+                      disableUnderline
+                    >
 
-                <MenuItem key='_universal' value='_universal' selected>🌈 All Shows</MenuItem>
-                {(loading) ? <MenuItem key="loading" value="loading" disabled>Loading...</MenuItem> : shows.map((item) => (
-                  <MenuItem key={item.id} value={item.id}>{item.emoji} {item.title}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item marginLeft={{ xs: 3 }} marginY='auto' display='flex' style={{ whiteSpace: 'nowrap' }}>
-            <Typography fontSize={13}><a href="/vote" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>Request a show</a></Typography>
-          </Grid>
-          <Grid item marginLeft={{ xs: 3 }} marginY='auto' display='flex' style={{ whiteSpace: 'nowrap' }}>
-            <Typography fontSize={13}><a href="https://forms.gle/8CETtVbwYoUmxqbi7" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>Report issues</a></Typography>
-          </Grid>
-          <Grid item marginLeft={{ xs: 3 }} marginY='auto' display='flex' style={{ whiteSpace: 'nowrap' }}>
-            <Typography fontSize={13}><a href="https://memesrc.com/donate" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>Support the team</a></Typography>
-          </Grid>
-        </Grid>
-      </StyledHeader>
-      {cloneElement(props.children, { setSeriesTitle, shows })}
-      <StyledLeftFooter className="bottomBtn">
-        <a href="https://forms.gle/8CETtVbwYoUmxqbi7" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
-          <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black", zIndex: '1300' }} size='medium'>
-            <MapsUgc color="white" />
-          </Fab>
-        </a>
-        <a href="https://memesrc.com/donate" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
-          <Fab color="primary" aria-label="donate" style={{ backgroundColor: "black", zIndex: '1300' }} size='medium'>
-            <Favorite />
-          </Fab>
-        </a>
-      </StyledLeftFooter>
-      <StyledRightFooter className="bottomBtn">
-        <StyledButton onClick={loadRandomFrame} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
-      </StyledRightFooter>
+                      <MenuItem key='_universal' value='_universal' selected>🌈 All Shows</MenuItem>
+                      {(loading) ? <MenuItem key="loading" value="loading" disabled>Loading...</MenuItem> : shows.map((item) => (
+                        <MenuItem key={item.id} value={item.id}>{item.emoji} {item.title}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item marginLeft={{ xs: 3 }} marginY='auto' display='flex' style={{ whiteSpace: 'nowrap' }}>
+                  <Typography fontSize={13}><a href="/vote" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>Request a show</a></Typography>
+                </Grid>
+                <Grid item marginLeft={{ xs: 3 }} marginY='auto' display='flex' style={{ whiteSpace: 'nowrap' }}>
+                  <Typography fontSize={13}><a href="https://forms.gle/8CETtVbwYoUmxqbi7" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>Report issues</a></Typography>
+                </Grid>
+                <Grid item marginLeft={{ xs: 3 }} marginY='auto' display='flex' style={{ whiteSpace: 'nowrap' }}>
+                  <Typography fontSize={13}><a href="https://memesrc.com/donate" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>Support the team</a></Typography>
+                </Grid>
+              </Grid>
+            </StyledHeader>
+            {cloneElement(props.children, { setSeriesTitle, shows })}
+            <StyledLeftFooter className="bottomBtn">
+              <a href="https://forms.gle/8CETtVbwYoUmxqbi7" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
+                <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black", zIndex: '1300' }} size='medium'>
+                  <MapsUgc color="white" />
+                </Fab>
+              </a>
+              <a href="https://memesrc.com/donate" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
+                <Fab color="primary" aria-label="donate" style={{ backgroundColor: "black", zIndex: '1300' }} size='medium'>
+                  <Favorite />
+                </Fab>
+              </a>
+            </StyledLeftFooter>
+            <StyledRightFooter className="bottomBtn">
+              <StyledButton onClick={loadRandomFrame} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
+            </StyledRightFooter>
+          </>
+          :
+          <>
+            {cloneElement(props.children, { setSeriesTitle, shows })}
+          </>
+
+      }
     </>
   )
 }

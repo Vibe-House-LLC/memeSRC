@@ -93,7 +93,7 @@ export default function SearchPage() {
   const [loadedSearchTerm, setLoadedSearchTerm] = useState(null);
   const [loadedSeriesTitle, setLoadedSeriesTitle] = useState(null);
   const [results, setResults] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [aspectRatio, setAspectRatio] = useState('56.25%'); // Default to 16:9 aspect ratio
 
   const memoizedResults = useMemo(() => results, [results]);
@@ -119,10 +119,9 @@ export default function SearchPage() {
   };
 
   useEffect(() => {
-    if (params) {
+    if (params && !loading) {
       if (params.seriesId !== loadedSeriesTitle || params.searchTerms !== loadedSearchTerm) {
         setSearchTerm(params.searchTerms)
-        setSeriesTitle(params.seriesId)
         setLoading(true);
         getSessionID().then(sessionId => {
           const apiName = 'publicapi';
@@ -137,6 +136,7 @@ export default function SearchPage() {
           API.get(apiName, path, myInit)
             .then(data => {
               setResults(data);
+              setSeriesTitle(params.seriesId)
               setLoading(false);
               setLoadedSearchTerm(searchTerm);
               setLoadedSeriesTitle(seriesTitle);
@@ -146,7 +146,7 @@ export default function SearchPage() {
                 const img = new Image();
                 img.src = `https://memesrc.com${item.frame_image}`;
 
-                img.onload = function(event) {
+                img.onload = function (event) {
                   const aspectRatio = event.target.width / event.target.height;
                   if (aspectRatio > maxAspectRatio) {
                     maxAspectRatio = aspectRatio;
@@ -162,7 +162,7 @@ export default function SearchPage() {
         })
       }
     }
-  }, [params, searchTerm, seriesTitle, loadedSeriesTitle, loadedSearchTerm])
+  }, [params, searchTerm, seriesTitle, loadedSeriesTitle, loadedSearchTerm, loading])
 
   const handleSearch = useCallback((e) => {
     if (e) {
@@ -177,16 +177,14 @@ export default function SearchPage() {
       <Helmet>
         <title>{`${searchTerm} • Search • memeSRC`}</title>
       </Helmet>
-      {(memoizedResults || loading) && (
-        <TopBannerSearch
-          searchFunction={handleSearch}
-          setSearchTerm={setSearchTerm}
-          setSeriesTitle={setSeriesTitle}
-          searchTerm={searchTerm}
-          seriesTitle={seriesTitle}
-          loading={loading}
-        />
-      )}
+      <TopBannerSearch
+        searchFunction={handleSearch}
+        setSearchTerm={setSearchTerm}
+        setSeriesTitle={setSeriesTitle}
+        searchTerm={searchTerm}
+        seriesTitle={seriesTitle}
+        resultsLoading={loading}
+      />
       <Grid container spacing={2} alignItems="stretch" paddingX={{ xs: 2, md: 6 }}>
         {loading ? (
           <StyledCircularProgress />

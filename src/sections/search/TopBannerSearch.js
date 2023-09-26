@@ -72,7 +72,8 @@ const StyledHeader = styled('header')(() => ({
   lineHeight: 0,
   width: '100%',
   zIndex: '1000',
-  paddingBottom: '20px'
+  paddingBottom: '20px',
+  paddingTop: '30px'
 }));
 
 async function fetchShows() {
@@ -95,7 +96,7 @@ export default function TopBannerSearch(props) {
   const [shows, setShows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingRandom, setLoadingRandom] = useState(false);
-  const { searchTerm, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction } = props
+  const { searchTerm, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction, resultsLoading } = props
 
   const navigate = useNavigate();
 
@@ -108,6 +109,10 @@ export default function TopBannerSearch(props) {
     }
     getData();
   }, []);
+
+  useEffect(() => {
+    console.log(resultsLoading)
+  }, [resultsLoading])
 
   useEffect(() => {
     searchFunction()
@@ -191,7 +196,11 @@ export default function TopBannerSearch(props) {
         <Grid container wrap="nowrap" sx={{ overflowX: "scroll", flexWrap: "nowrap", scrollbarWidth: 'none', '&::-webkit-scrollbar': { height: '0 !important', width: '0 !important', display: 'none' } }} paddingX={2}>
           <Grid item marginLeft={{ md: 6 }}>
 
-            <FormControl variant="standard" sx={{ minWidth: 120 }}>
+            <FormControl
+              disabled={resultsLoading}
+              variant="standard"
+              sx={{ minWidth: 120 }}
+            >
               <Select
                 labelId="demo-simple-select-standard-label"
                 id="demo-simple-select-standard"
