@@ -843,7 +843,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
             container
             item
             xs={12}
-            md={8}
             minWidth={{ xs: {}, md: '98vw', lg: '1200px' }}
             justifyContent="center"
             marginBottom={8.3}

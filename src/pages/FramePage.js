@@ -32,6 +32,7 @@ import {
   Box,
 } from '@mui/material';
 import { Add, Close, ContentCopy, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu } from '@mui/icons-material';
+import useSearchDetails from '../hooks/useSearchDetails';
 
 const StyledCard = styled(Card)`
   
@@ -50,6 +51,7 @@ const StyledCardMedia = styled('img')`
 `;
 
 export default function FramePage({ shows = [] }) {
+  const { setFrame } = useSearchDetails();
   const navigate = useNavigate();
   const { fid } = useParams();
   const [frameData, setFrameData] = useState({});
@@ -125,6 +127,7 @@ export default function FramePage({ shows = [] }) {
       .then(data => {
         // setDisplayImage(`https://memesrc.com/${fid.split('-')[0]}/img/${fid.split('-')[1]}/${fid.split('-')[2]}/${fid}.jpg`)
         setFrameData(data);
+        setFrame(fid)
         setSurroundingFrames(data.frames_surrounding);
         const newMiddleIndex = Math.floor(data.frames_fine_tuning.length / 2);
         const initialFineTuneImage = data.frames_fine_tuning[newMiddleIndex];

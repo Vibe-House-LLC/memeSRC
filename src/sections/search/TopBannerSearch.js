@@ -8,6 +8,7 @@ import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { searchPropTypes } from "./SearchPropTypes";
 import Logo from "../../components/logo/Logo";
 import { listContentMetadata } from '../../graphql/queries';
+import useSearchDetails from "../../hooks/useSearchDetails";
 
 // Define constants for colors and fonts
 const PRIMARY_COLOR = '#4285F4';
@@ -93,6 +94,7 @@ TopBannerSearch.propTypes = searchPropTypes;
 
 
 export default function TopBannerSearch(props) {
+  const { show, setShow, searchQuery, setSearchQuery } = useSearchDetails();
   const [shows, setShows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingRandom, setLoadingRandom] = useState(false);
@@ -205,8 +207,11 @@ export default function TopBannerSearch(props) {
               <Select
                 labelId="demo-simple-select-standard-label"
                 id="demo-simple-select-standard"
-                value={seriesTitle}
-                onChange={(x) => { setSeriesTitle(x.target.value); }}
+                value={show}
+                onChange={(x) => { 
+                  setSeriesTitle(x.target.value);
+                  setShow(x.target.value)
+                }}
                 label="Age"
                 size="small"
                 autoWidth

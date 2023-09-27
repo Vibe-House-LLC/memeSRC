@@ -2,9 +2,10 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { API } from 'aws-amplify';
 import { Grid, CircularProgress, Card, Chip } from '@mui/material';
 import styled from '@emotion/styled';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import TopBannerSearch from '../sections/search/TopBannerSearch';
+import useSearchDetails from '../hooks/useSearchDetails';
 
 const StyledCircularProgress = styled(CircularProgress)`
   position: absolute;
@@ -87,6 +88,7 @@ const SeasonEpisodeText = styled.span`
 
 export default function SearchPage() {
   const params = useParams();
+  const { show, setShow, searchQuery, setSearchQuery } = useSearchDetails();
 
   const [searchTerm, setSearchTerm] = useState(params.searchTerms);
   const [seriesTitle, setSeriesTitle] = useState(params.seriesId);
@@ -120,8 +122,8 @@ export default function SearchPage() {
 
   useEffect(() => {
     if (params && !loading) {
-      if (params.seriesId !== loadedSeriesTitle || params.searchTerms !== loadedSearchTerm) {
-        setSearchTerm(params.searchTerms)
+      if (params.seriesId !== loadedSeriesTitle || searchQuery !== loadedSearchTerm) {
+        setSearchTerm(searchQuery)
         setLoading(true);
         getSessionID().then(sessionId => {
           const apiName = 'publicapi';
@@ -169,6 +171,7 @@ export default function SearchPage() {
       e.preventDefault();
     }
     const encodedSearchTerms = encodeURI(searchTerm)
+    setSearchQuery(searchTerm)
     navigate(`/search/${seriesTitle}/${encodedSearchTerms}`)
   }, [seriesTitle, searchTerm, navigate]);
 
@@ -192,7 +195,7 @@ export default function SearchPage() {
           memoizedResults &&
           memoizedResults.map((result) => (
             <Grid item xs={12} sm={6} md={3} key={result.fid}>
-              <a href={`/${process.env.REACT_APP_USER_BRANCH === 'dev' ? 'frame' : 'editor'}/${result.fid}?search=${encodeURI(searchTerm)}`} style={{ textDecoration: 'none' }}>
+              <Link to={`/${process.env.REACT_APP_USER_BRANCH === 'dev' ? 'frame' : 'editor'}/${result.fid}`} style={{ textDecoration: 'none' }}>
                 <StyledCard>
                   <StyledCardMediaContainer aspectRatio={memoizedAspectRatio}>
                     <StyledCardMedia
@@ -231,7 +234,7 @@ export default function SearchPage() {
                     />
                   </BottomCardLabel>
                 </StyledCard>
-              </a>
+              </Link>
             </Grid>
           ))
         )}

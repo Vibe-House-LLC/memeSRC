@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { LoadingButton } from '@mui/lab';
 import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
 import CloseIcon from '@mui/icons-material/Close';
+import useSearchDetails from '../../hooks/useSearchDetails';
 import { searchPropTypes } from './SearchPropTypes';
 import Logo from '../../components/logo/Logo';
 import { listContentMetadata, listHomepageSections } from '../../graphql/queries';
@@ -187,6 +188,7 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
   const [loading, setLoading] = useState(true);
   const [loadingRandom, setLoadingRandom] = useState(false);
   const [scrollToSections, setScrollToSections] = useState();
+  const { show, setShow, searchQuery, setSearchQuery } = useSearchDetails();
 
   const [alertOpen, setAlertOpen] = useState(true);
 
@@ -250,6 +252,8 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
     if (shows.length > 0) {
         // Determine the series to use based on the URL or default to '_universal'
         const currentSeriesId = seriesId || '_universal';
+
+        setShow(currentSeriesId)
         
         if (currentSeriesId !== seriesTitle) {
             setSeriesTitle(currentSeriesId); // Update the series title based on the URL parameter

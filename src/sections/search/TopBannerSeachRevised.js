@@ -8,6 +8,7 @@ import { Link as RouterLink, useLocation, useNavigate, useParams } from "react-r
 import { searchPropTypes } from "./SearchPropTypes";
 import Logo from "../../components/logo/Logo";
 import { listContentMetadata } from '../../graphql/queries';
+import useSearchDetails from "../../hooks/useSearchDetails";
 
 // Define constants for colors and fonts
 const PRIMARY_COLOR = '#4285F4';
@@ -92,8 +93,8 @@ TopBannerSearchRevised.propTypes = searchPropTypes;
 
 
 export default function TopBannerSearchRevised(props) {
+  const { show, searchQuery, frame, setFrame } = useSearchDetails();
   const { search, pathname } = useLocation();
-  const searchQuery = new URLSearchParams(search).get('search');
   const { fid } = useParams();
   const [shows, setShows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -171,14 +172,19 @@ export default function TopBannerSearchRevised(props) {
     })
   }, [navigate, seriesTitle]);
 
+  const handleBackToFramePage = () => {
+    navigate(`/frame/${frame}`)
+    setFrame(null)
+  }
+
   return (
     <>
       {
-        pathname.startsWith("/search") ?
-          <>
-            <StyledHeader>
-              <Grid container marginY={3} paddingX={2}>
-                {/* <Grid item marginX={{ xs: 'auto', md: 0 }} marginY='auto'>
+        pathname.startsWith("/search") &&
+        <>
+          <StyledHeader>
+            <Grid container marginY={3} paddingX={2}>
+              {/* <Grid item marginX={{ xs: 'auto', md: 0 }} marginY='auto'>
             <Grid display='flex' xs={12} marginBottom={{ xs: 3, md: 0 }}>
               <Link to="/" component={RouterLink} sx={{ display: 'contents' }}>
                 <Logo style={{ float: 'left' }} />
@@ -190,99 +196,128 @@ export default function TopBannerSearchRevised(props) {
 
 
           </Grid> */}
-                <Grid item xs={12} md={6} paddingLeft={{ xs: 0, md: 2 }}>
-                  <form onSubmit={e => searchFunction(e)}>
-                    <StyledSearchInput
-                      label="With normal TextField"
-                      id="outlined-start-adornment"
-                      // InputProps={{
-                      //   endAdornment: <InputAdornment position="end"><Typography variant="caption"><Search /></Typography></InputAdornment>,
-                      // }}
-                      endAdornment={<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} />}
-                      sx={{ width: '100%' }}
-                      value={searchTerm}
-                      onChange={(event) => { setSearchTerm(event.target.value); }}
-                    />
-                  </form>
-                </Grid>
+              <Grid item xs={12} md={6} paddingLeft={{ xs: 0, md: 2 }}>
+                <form onSubmit={e => searchFunction(e)}>
+                  <StyledSearchInput
+                    label="With normal TextField"
+                    id="outlined-start-adornment"
+                    // InputProps={{
+                    //   endAdornment: <InputAdornment position="end"><Typography variant="caption"><Search /></Typography></InputAdornment>,
+                    // }}
+                    endAdornment={<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} />}
+                    sx={{ width: '100%' }}
+                    value={searchTerm}
+                    onChange={(event) => { setSearchTerm(event.target.value); }}
+                  />
+                </form>
               </Grid>
-              <Grid container wrap="nowrap" sx={{ overflowX: "scroll", flexWrap: "nowrap", scrollbarWidth: 'none', '&::-webkit-scrollbar': { height: '0 !important', width: '0 !important', display: 'none' } }} paddingX={2}>
-                <Grid item marginLeft={{ md: 6 }}>
+            </Grid>
+            <Grid container wrap="nowrap" sx={{ overflowX: "scroll", flexWrap: "nowrap", scrollbarWidth: 'none', '&::-webkit-scrollbar': { height: '0 !important', width: '0 !important', display: 'none' } }} paddingX={2}>
+              <Grid item marginLeft={{ md: 6 }}>
 
-                  <FormControl variant="standard" sx={{ minWidth: 120 }}>
-                    <Select
-                      labelId="demo-simple-select-standard-label"
-                      id="demo-simple-select-standard"
-                      value={seriesTitle}
-                      onChange={(x) => { setSeriesTitle(x.target.value); }}
-                      label="Age"
-                      size="small"
-                      autoWidth
-                      disableUnderline
-                    >
+                <FormControl variant="standard" sx={{ minWidth: 120 }}>
+                  <Select
+                    labelId="demo-simple-select-standard-label"
+                    id="demo-simple-select-standard"
+                    value={seriesTitle}
+                    onChange={(x) => { setSeriesTitle(x.target.value); }}
+                    label="Age"
+                    size="small"
+                    autoWidth
+                    disableUnderline
+                  >
 
-                      <MenuItem key='_universal' value='_universal' selected>🌈 All Shows</MenuItem>
-                      {(loading) ? <MenuItem key="loading" value="loading" disabled>Loading...</MenuItem> : shows.map((item) => (
-                        <MenuItem key={item.id} value={item.id}>{item.emoji} {item.title}</MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item marginLeft={{ xs: 3 }} marginY='auto' display='flex' style={{ whiteSpace: 'nowrap' }}>
-                  <Typography fontSize={13}><a href="/vote" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>Request a show</a></Typography>
-                </Grid>
-                <Grid item marginLeft={{ xs: 3 }} marginY='auto' display='flex' style={{ whiteSpace: 'nowrap' }}>
-                  <Typography fontSize={13}><a href="https://forms.gle/8CETtVbwYoUmxqbi7" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>Report issues</a></Typography>
-                </Grid>
-                <Grid item marginLeft={{ xs: 3 }} marginY='auto' display='flex' style={{ whiteSpace: 'nowrap' }}>
-                  <Typography fontSize={13}><a href="https://memesrc.com/donate" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>Support the team</a></Typography>
-                </Grid>
+                    <MenuItem key='_universal' value='_universal' selected>🌈 All Shows</MenuItem>
+                    {(loading) ? <MenuItem key="loading" value="loading" disabled>Loading...</MenuItem> : shows.map((item) => (
+                      <MenuItem key={item.id} value={item.id}>{item.emoji} {item.title}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </Grid>
-            </StyledHeader>
-            {cloneElement(props.children, { setSeriesTitle, shows })}
-            <StyledLeftFooter className="bottomBtn">
-              <a href="https://forms.gle/8CETtVbwYoUmxqbi7" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
-                <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black", zIndex: '1300' }} size='medium'>
-                  <MapsUgc color="white" />
-                </Fab>
-              </a>
-              <a href="https://memesrc.com/donate" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
-                <Fab color="primary" aria-label="donate" style={{ backgroundColor: "black", zIndex: '1300' }} size='medium'>
-                  <Favorite />
-                </Fab>
-              </a>
-            </StyledLeftFooter>
-            <StyledRightFooter className="bottomBtn">
-              <StyledButton onClick={loadRandomFrame} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
-            </StyledRightFooter>
-          </>
-          :
-          <Container maxWidth="xl" sx={{ pt: 2 }}>
-            <Box
-              sx={{width: '100%', px: 3}}
+              <Grid item marginLeft={{ xs: 3 }} marginY='auto' display='flex' style={{ whiteSpace: 'nowrap' }}>
+                <Typography fontSize={13}><a href="/vote" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>Request a show</a></Typography>
+              </Grid>
+              <Grid item marginLeft={{ xs: 3 }} marginY='auto' display='flex' style={{ whiteSpace: 'nowrap' }}>
+                <Typography fontSize={13}><a href="https://forms.gle/8CETtVbwYoUmxqbi7" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>Report issues</a></Typography>
+              </Grid>
+              <Grid item marginLeft={{ xs: 3 }} marginY='auto' display='flex' style={{ whiteSpace: 'nowrap' }}>
+                <Typography fontSize={13}><a href="https://memesrc.com/donate" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>Support the team</a></Typography>
+              </Grid>
+            </Grid>
+          </StyledHeader>
+          {cloneElement(props.children, { setSeriesTitle, shows })}
+          <StyledLeftFooter className="bottomBtn">
+            <a href="https://forms.gle/8CETtVbwYoUmxqbi7" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
+              <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black", zIndex: '1300' }} size='medium'>
+                <MapsUgc color="white" />
+              </Fab>
+            </a>
+            <a href="https://memesrc.com/donate" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
+              <Fab color="primary" aria-label="donate" style={{ backgroundColor: "black", zIndex: '1300' }} size='medium'>
+                <Favorite />
+              </Fab>
+            </a>
+          </StyledLeftFooter>
+          <StyledRightFooter className="bottomBtn">
+            <StyledButton onClick={loadRandomFrame} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
+          </StyledRightFooter>
+        </>
+      }
+
+      {pathname.startsWith("/frame") &&
+        <Container maxWidth="xl" sx={{ pt: 2 }}>
+          <Box
+            sx={{ width: '100%', px: 3 }}
+          >
+            <Link
+              component={RouterLink}
+              to={searchTerm ? `/search/${show}/${searchTerm}` : '/'}
+              sx={{
+                color: 'white',
+                textDecoration: 'none',
+                '&:hover': {
+                  textDecoration: 'underline',
+                },
+              }}
             >
-              <Link
-                component={RouterLink}
-                to={`/search/${fid.split('-')[0]}/${searchTerm}`}
-                sx={{
-                  color: 'white',
-                  textDecoration: 'none',
-                  '&:hover': {
-                    textDecoration: 'underline',
-                  },
-                }}
-              >
-                <Stack direction='row' alignItems='center'>
-                  <ArrowBack fontSize="small" />
-                  <Typography variant="body1" ml={1}>
-                    Back to Search
-                  </Typography>
-                </Stack>
-              </Link>
-            </Box>
-            {cloneElement(props.children, { setSeriesTitle, shows })}
-          </Container>
+              <Stack direction='row' alignItems='center'>
+                <ArrowBack fontSize="small" />
+                <Typography variant="body1" ml={1}>
+                  Back to Search
+                </Typography>
+              </Stack>
+            </Link>
+          </Box>
+          {cloneElement(props.children, { setSeriesTitle, shows })}
+        </Container>
+      }
 
+      {pathname.startsWith("/editor") &&
+        <Container maxWidth="xl" sx={{ pt: 2 }}>
+          <Box
+            sx={{ width: '100%', px: 3 }}
+          >
+            <Link
+              onClick={handleBackToFramePage}
+              sx={{
+                color: 'white',
+                textDecoration: 'none',
+                '&:hover': {
+                  textDecoration: 'underline',
+                },
+                cursor: 'pointer'
+              }}
+            >
+              <Stack direction='row' alignItems='center'>
+                <ArrowBack fontSize="small" />
+                <Typography variant="body1" ml={1}>
+                  Back to Frame
+                </Typography>
+              </Stack>
+            </Link>
+          </Box>
+          {cloneElement(props.children, { setSeriesTitle, shows })}
+        </Container>
       }
     </>
   )
