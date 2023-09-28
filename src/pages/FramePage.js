@@ -366,9 +366,9 @@ export default function FramePage({ shows = [] }) {
               </Card>
             }
           </Grid>
-          <Grid item xs={12} md={6} display='flex'>
-            <Box sx={{ marginBottom: '1rem', px: 5, mx: isMd ? 0 : 'auto' }}>
-              <Typography variant="h4" component="div" style={{ marginBottom: '0.5rem' }} textAlign={isMd ? 'left' : 'center'}>
+          <Grid item xs={12} md={6}>
+            <Box sx={{ mb: '1rem', mt: isMd ? 0 : '1rem', px: isMd ? 5 : 1, mx: isMd ? 0 : 'auto', width: isMd ? 'inherit' : '100%' }}>
+              <Typography variant="h4" component="div" style={{ marginBottom: '0.5rem' }} textAlign='left'>
                 {showTitle}
                 <Chip
                   size='small'
