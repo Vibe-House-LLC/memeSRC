@@ -1,5 +1,5 @@
 import styled from '@emotion/styled';
-import { Alert, AlertTitle, Button, Fab, Grid, Typography, IconButton } from '@mui/material';
+import { Alert, AlertTitle, Button, Fab, Grid, Typography, IconButton, Stack, useMediaQuery } from '@mui/material';
 import { Box } from '@mui/system';
 import { ArrowDownwardRounded, Favorite, MapsUgc, Shuffle } from '@mui/icons-material';
 import { API, graphqlOperation } from 'aws-amplify';
@@ -190,6 +190,7 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
   const [loadingRandom, setLoadingRandom] = useState(false);
   const [scrollToSections, setScrollToSections] = useState();
   const { show, setShow, searchQuery, setSearchQuery } = useSearchDetails();
+  const isMd = useMediaQuery((theme) => theme.breakpoints.up('sm'));
 
   const [alertOpen, setAlertOpen] = useState(true);
 
@@ -219,30 +220,29 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
     const selectedSeriesProperties = shows.find((object) => object.id === newSeriesTitle);
 
     if (selectedSeriesProperties) {
-        setCurrentThemeBackground({ backgroundColor: `${selectedSeriesProperties.colorMain}` });
-        setCurrentThemeFontColor(selectedSeriesProperties.colorSecondary);
-        setCurrentThemeTitleText(selectedSeriesProperties.title);
-        setCurrentThemeBragText(
-            `Search over ${selectedSeriesProperties.frameCount.toLocaleString('en-US')} frames from ${
-                selectedSeriesProperties.title
-            }`
-        );
+      setCurrentThemeBackground({ backgroundColor: `${selectedSeriesProperties.colorMain}` });
+      setCurrentThemeFontColor(selectedSeriesProperties.colorSecondary);
+      setCurrentThemeTitleText(selectedSeriesProperties.title);
+      setCurrentThemeBragText(
+        `Search over ${selectedSeriesProperties.frameCount.toLocaleString('en-US')} frames from ${selectedSeriesProperties.title
+        }`
+      );
     } else {
-        resetTheme();
+      resetTheme();
     }
   }, [shows]);
 
   // This useEffect handles the data fetching
   useEffect(() => {
     async function getData() {
-        // Get shows
-        const fetchedShows = await fetchShows();
-        setShows(fetchedShows);
-        setLoading(false);
+      // Get shows
+      const fetchedShows = await fetchShows();
+      setShows(fetchedShows);
+      setLoading(false);
 
-        // Get homepage sections
-        const fetchedSections = await fetchSections();
-        setSections(fetchedSections);
+      // Get homepage sections
+      const fetchedSections = await fetchSections();
+      setSections(fetchedSections);
     }
     getData();
   }, []);
@@ -251,18 +251,18 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
   useEffect(() => {
     // Check if shows have been loaded
     if (shows.length > 0) {
-        // Determine the series to use based on the URL or default to '_universal'
-        const currentSeriesId = seriesId || '_universal';
+      // Determine the series to use based on the URL or default to '_universal'
+      const currentSeriesId = seriesId || '_universal';
 
-        setShow(currentSeriesId)
-        
-        if (currentSeriesId !== seriesTitle) {
-            setSeriesTitle(currentSeriesId); // Update the series title based on the URL parameter
-            handleChangeSeries(currentSeriesId); // Update the theme
-            
-            // Navigation logic
-            navigate(currentSeriesId === '_universal' ? '/' : `/${currentSeriesId}`);
-        }
+      setShow(currentSeriesId)
+
+      if (currentSeriesId !== seriesTitle) {
+        setSeriesTitle(currentSeriesId); // Update the series title based on the URL parameter
+        handleChangeSeries(currentSeriesId); // Update the theme
+
+        // Navigation logic
+        navigate(currentSeriesId === '_universal' ? '/' : `/${currentSeriesId}`);
+      }
     }
   }, [seriesId, seriesTitle, shows, handleChangeSeries, navigate]);
 
@@ -462,15 +462,15 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
           <StyledSearchForm onSubmit={(e) => searchFunction(e)}>
             <Grid container justifyContent="center">
               <Grid item sm={3.5} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
-              <StyledSearchSelector
+                <StyledSearchSelector
                   onChange={(e) => {
-                      const newSeriesTitle = e.target.value;
-                      setSeriesTitle(newSeriesTitle); // Update the series title based on the selection
-                      handleChangeSeries(newSeriesTitle); // Update the theme
-                      navigate(newSeriesTitle === '_universal' ? '/' : `/${newSeriesTitle}`); // Navigate
+                    const newSeriesTitle = e.target.value;
+                    setSeriesTitle(newSeriesTitle); // Update the series title based on the selection
+                    handleChangeSeries(newSeriesTitle); // Update the theme
+                    navigate(newSeriesTitle === '_universal' ? '/' : `/${newSeriesTitle}`); // Navigate
                   }}
                   value={seriesTitle}
-              >
+                >
                   <option key="_universal" value="_universal" selected>
                     🌈 All Shows & Movies
                   </option>
@@ -510,7 +510,6 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
             </Grid>
           </StyledSearchForm>
           <Grid item xs={12} textAlign="center" color={currentThemeFontColor} marginTop={4}>
-            <HomePageBannerAd />
             <Typography component="h4" variant="h4">
               {currentThemeBragText}
             </Typography>
@@ -525,6 +524,11 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
                 Beta: Layer editor and more!
               </Typography>
             </Button>
+            <Stack justifyContent='center'>
+              <Box sx={{ width: isMd ? '600px' : '100%', mx: 'auto' }}>
+                <HomePageBannerAd />
+              </Box>
+            </Stack>
           </Grid>
         </Grid>
         <StyledLeftFooter className="bottomBtn">
