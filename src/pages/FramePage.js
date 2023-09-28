@@ -381,7 +381,7 @@ export default function FramePage({ shows = [] }) {
                   }}
                 />
               </Typography>
-              <Typography variant="subtitle1" color="text.secondary" style={{ marginBottom: '1rem' }} textAlign={isMd ? 'left' : 'center'}>
+              <Typography variant="subtitle1" color="text.secondary" style={{ marginBottom: '1rem' }} textAlign='left'>
                 {loading ?
                   <Skeleton variant='text' height={25} width={'max(100px, 50%)'} />
                   :
