@@ -391,6 +391,7 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
           const fid = response.frame_id;
           console.log(fid);
           navigate(`/${process.env.REACT_APP_USER_BRANCH === 'dev' ? 'frame' : 'editor'}/${fid}`);
+          setSearchQuery(null)
           setLoadingRandom(false);
         })
         .catch((error) => {

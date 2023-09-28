@@ -283,7 +283,7 @@ export default function TopBannerSearchRevised(props) {
               <Stack direction='row' alignItems='center'>
                 <ArrowBack fontSize="small" />
                 <Typography variant="body1" ml={1}>
-                  Back to Search
+                  Back to {searchQuery ? 'search' : 'home'}
                 </Typography>
               </Stack>
             </Link>
@@ -311,7 +311,7 @@ export default function TopBannerSearchRevised(props) {
               <Stack direction='row' alignItems='center'>
                 <ArrowBack fontSize="small" />
                 <Typography variant="body1" ml={1}>
-                  Back to Frame
+                  Back to frame
                 </Typography>
               </Stack>
             </Link>
