@@ -265,7 +265,7 @@ export default function TopBannerSearchRevised(props) {
       }
 
       {pathname.startsWith("/frame") &&
-        <Container maxWidth="xl" sx={{ pt: 2 }}>
+        <Container maxWidth="xl" sx={{ pt: 2 }} disableGutters>
           <Box
             sx={{ width: '100%', px: 3 }}
           >
@@ -293,7 +293,7 @@ export default function TopBannerSearchRevised(props) {
       }
 
       {pathname.startsWith("/editor") &&
-        <Container maxWidth="xl" sx={{ pt: 2 }}>
+        <Container maxWidth="xl" sx={{ pt: 2 }} disableGutters>
           <Box
             sx={{ width: '100%', px: 3 }}
           >
