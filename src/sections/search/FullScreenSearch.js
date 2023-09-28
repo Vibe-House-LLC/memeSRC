@@ -12,6 +12,7 @@ import { searchPropTypes } from './SearchPropTypes';
 import Logo from '../../components/logo/Logo';
 import { listContentMetadata, listHomepageSections } from '../../graphql/queries';
 import HomePageSection from './HomePageSection';
+import HomePageBannerAd from '../../ads/HomePageBannerAd';
 
 // Define constants for colors and fonts
 const PRIMARY_COLOR = '#4285F4';
@@ -509,6 +510,7 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
             </Grid>
           </StyledSearchForm>
           <Grid item xs={12} textAlign="center" color={currentThemeFontColor} marginTop={4}>
+            <HomePageBannerAd />
             <Typography component="h4" variant="h4">
               {currentThemeBragText}
             </Typography>
