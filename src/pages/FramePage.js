@@ -192,7 +192,7 @@ export default function FramePage({ shows = [] }) {
           onChange={(e, newValue) => setSliderValue(newValue)}
         /> */}
 
-        <Stack spacing={2} direction="row" p={2} pr={3} alignItems={'center'}>
+        <Stack spacing={2} direction="row" p={0} pr={3} pl={3} alignItems={'center'}>
           <Tooltip title="Fine Tuning">
             <IconButton>
               <HistoryToggleOffRounded alt="Fine Tuning" />
@@ -271,8 +271,11 @@ export default function FramePage({ shows = [] }) {
             <Card>
               {renderFineTuningFrames()}
             </Card>
+            <Button size={isMd ? 'large' : 'medium'} fullWidth={!isMd} variant="contained" to={`/editor/${fid}${getCurrentQueryString()}`} component={RouterLink} sx={{ my: 2 }}>
+                Add Captions & Edit Photo
+              </Button>
             {!isMd &&
-              <Card sx={{ mt: 3 }}>
+              <Card sx={{ mt: 0 }}>
                 <Accordion expanded={subtitlesExpanded} disableGutters>
                   <AccordionSummary sx={{ paddingX: 1.55 }} onClick={handleSubtitlesExpand} textAlign="center">
                     <Typography marginRight="auto" fontWeight="bold" color="#CACACA" fontSize={14.8}>
@@ -388,9 +391,9 @@ export default function FramePage({ shows = [] }) {
                 }
               </Typography>
 
-              <Button size="large" fullWidth={!isMd} variant="contained" to={`/editor/${fid}${getCurrentQueryString()}`} component={RouterLink} style={{ marginBottom: '1rem' }}>
+              {/* <Button size={isMd ? 'large' : 'medium'} fullWidth={!isMd} variant="contained" to={`/editor/${fid}${getCurrentQueryString()}`} component={RouterLink} style={{ marginBottom: '1rem' }}>
                 Add Captions & Edit Photo
-              </Button>
+              </Button> */}
 
               {/* <Typography variant="subtitle1" color="text.secondary" style={{ marginBottom: '1rem' }}>
                 TODO: add more metadata, links, content, etc. here
