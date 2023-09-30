@@ -510,7 +510,7 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
             </Grid>
           </StyledSearchForm>
           <Grid item xs={12} textAlign="center" color={currentThemeFontColor} marginTop={4}>
-            <Typography component="h4" variant="h4" sx={{ marginY: -2 }}>
+            <Typography component="h4" variant="h4" sx={{ marginTop: -2 }}>
               {currentThemeBragText}
             </Typography>
             <Stack justifyContent='center'>

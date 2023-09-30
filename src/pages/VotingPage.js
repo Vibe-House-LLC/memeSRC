@@ -570,8 +570,7 @@ export default function VotingPage({ shows: searchableShows }) {
               </Typography>
               <CircularProgress />
             </Grid>
-          ) : (
-            <>            
+          ) : (         
             <FlipMove style={{ minWidth: '100%' }}>
               {filteredAndSortedShows.map((show, idx) => (
                 hideSearchable && searchableShows.some(searchableShow => searchableShow.id === show.slug)
@@ -922,7 +921,6 @@ export default function VotingPage({ shows: searchableShows }) {
                 </Button>
               </Grid>
             </FlipMove>
-            </>
           )}
           <Grid item xs={12} style={{ marginBottom: 15 }}>
                 <Card>
