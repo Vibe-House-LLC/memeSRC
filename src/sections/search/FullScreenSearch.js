@@ -514,7 +514,7 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
               {currentThemeBragText}
             </Typography>
             <Stack justifyContent='center'>
-              <Box sx={{ width: isMd ? '600px' : '100%', mx: 'auto', maxHeight: '100px' }}>
+              <Box sx={{ width: isMd ? '600px' : '100%', mx: 'auto', maxHeight: '150px' }}>
                 <HomePageBannerAd />
               </Box>
             </Stack>
