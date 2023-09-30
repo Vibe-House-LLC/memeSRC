@@ -433,48 +433,61 @@ export default function VotingPage({ shows: searchableShows }) {
         <title> Vote and Requests • TV Shows & Movies • memeSRC </title>
       </Helmet>
       <Container maxWidth="md">
-        <Box my={2}>
+        <Box my={2} sx={{marginTop: -2, marginBottom: -1.5}}>
           <Typography variant="h3" component="h1" gutterBottom>
             Requests
           </Typography>
           <Typography variant="subtitle2">Upvote shows and movies you want on memeSRC</Typography>
         </Box>
-        {!localStorage.getItem('alertDismissedVotePage999') && (
+
+        {!localStorage.getItem('alertDismissedVotePage9667zz') && (
           <Alert
-            severity="info"
-            action={
+          severity="info"
+          action={
               <IconButton
                 color="inherit"
                 size="small"
                 onClick={() => {
-                  localStorage.setItem('alertDismissedVotePage999', 'true');
+                  localStorage.setItem('alertDismissedVotePage9667zz', 'true');
                   setAlertOpen(false);
                 }}
               >
                 <CloseIcon fontSize="inherit" />
               </IconButton>
-            }
-            sx={{
-              opacity: 0.9,
-              backgroundColor: 'rgb(14, 37, 50)',
-            }}
-          >
-            <AlertTitle>New Features</AlertTitle>
-            <ul>
-              <li>
-                {' '}
-                • <strong>Vote Again:</strong> every 24 hours
-              </li>
-              <li>
-                {' '}
-                • <strong>Most Upvoted:</strong> only count upvotes
-              </li>
-              <li>
-                {' '}
-                • <strong>Battleground:</strong> also count downvotes
-              </li>
-            </ul>
-          </Alert>
+          }
+          sx={{
+            marginTop: 2,
+            marginBottom: -1,
+            opacity: 0.9,
+          }}
+        >
+          <b>Vote&nbsp;again&nbsp;every&nbsp;24h!</b>
+        </Alert>
+        )}
+
+        {!localStorage.getItem('alertDismissedVotePage1000zz') && (
+          <Alert
+          severity="success"
+          action={
+              <IconButton
+                color="inherit"
+                size="small"
+                onClick={() => {
+                  localStorage.setItem('alertDismissedVotePage1000zz', 'true');
+                  setAlertOpen(false);
+                }}
+              >
+                <CloseIcon fontSize="inherit" />
+              </IconButton>
+          }
+          sx={{
+            marginTop: 2,
+            marginBottom: -1,
+            opacity: 0.9,
+          }}
+        >
+          <b>Movies&nbsp;are&nbsp;now&nbsp;supported!</b>
+        </Alert>
         )}
         <Box my={2}>
           <Tabs value={rankMethod} onChange={handleRankMethodChange} indicatorColor="secondary" textColor="inherit">
@@ -533,7 +546,7 @@ export default function VotingPage({ shows: searchableShows }) {
             }
             label="Hide Searchable"
             style={{ opacity: hideSearchable ? 1 : 0.5 }}
-            sx={{ margin: 1 }}
+            sx={{ margin: 0, marginBottom: -2 }}
           />
         </Box>
         <Grid container style={{ minWidth: '100%' }}>
