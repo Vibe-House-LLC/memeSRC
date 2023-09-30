@@ -510,9 +510,14 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
             </Grid>
           </StyledSearchForm>
           <Grid item xs={12} textAlign="center" color={currentThemeFontColor} marginTop={4}>
-            <Typography component="h4" variant="h4">
+            <Typography component="h4" variant="h4" sx={{ marginY: -2 }}>
               {currentThemeBragText}
             </Typography>
+            <Stack justifyContent='center'>
+              <Box sx={{ width: isMd ? '600px' : '100%', mx: 'auto', maxHeight: '100px' }}>
+                <HomePageBannerAd />
+              </Box>
+            </Stack>
             <Button
               onClick={() => scrollToSection()}
               startIcon="🚀"
@@ -524,11 +529,6 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
                 Beta: Layer editor and more!
               </Typography>
             </Button>
-            <Stack justifyContent='center'>
-              <Box sx={{ width: isMd ? '600px' : '100%', mx: 'auto' }}>
-                <HomePageBannerAd />
-              </Box>
-            </Stack>
           </Grid>
         </Grid>
         <StyledLeftFooter className="bottomBtn">
