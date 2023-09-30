@@ -421,7 +421,7 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
                 </Box>
                 {currentThemeTitleText}
               </Typography>
-              {!localStorage.getItem('alertDismisseds7g3fgwer') && (
+              {!localStorage.getItem('alertDismisseds7g3fgw34') && (
                 <Alert
                   severity="info"
                   action={
@@ -440,7 +440,7 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
                         color="inherit"
                         size="small"
                         onClick={() => {
-                          localStorage.setItem('alertDismissed', 'true');
+                          localStorage.setItem('alertDismisseds7g3fgw34', 'true');
                           setAlertOpen(false);
                         }}
                       >
