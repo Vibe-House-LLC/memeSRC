@@ -515,6 +515,7 @@ export default function VotingPage({ shows: searchableShows }) {
         <Box my={2}>
           <TextField
             fullWidth
+            size="small"
             variant="outlined"
             value={searchText}
             onChange={handleSearchChange}
@@ -592,7 +593,7 @@ export default function VotingPage({ shows: searchableShows }) {
                     }
                     <Grid item xs={12} key={show.id} style={{ marginBottom: 15 }}>
                       <Card>
-                        <CardContent>
+                      <CardContent style={{ paddingTop: 22, paddingBottom: 22 }}>
                       <Box display="flex" alignItems="center">
                         <Box flexGrow={1} marginRight={2}>
                           <Box display="flex" alignItems="center">
