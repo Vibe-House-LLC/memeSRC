@@ -40,6 +40,7 @@ import { listSeries } from '../graphql/queries';
 import { UserContext } from '../UserContext';
 import TvdbSearch from '../components/TvdbSearch/TvdbSearch';
 import { SnackbarContext } from '../SnackbarContext';
+import VotingPageAd from '../ads/VotingPageAd';
 
 const StyledBadge = styled(Badge)(() => ({
   '& .MuiBadge-badge': {
@@ -560,6 +561,13 @@ export default function VotingPage({ shows: searchableShows }) {
                 hideSearchable && searchableShows.some(searchableShow => searchableShow.id === show.slug)
                   ? null
                   : (
+                    <>
+                    {
+                      // Insert the VotingPageAd component every 6 shows
+                      idx % 6 === 0 && idx !== 0
+                      ? <VotingPageAd />
+                      : null
+                    }
                     <Grid item xs={12} key={show.id} style={{ marginBottom: 15 }}>
                       <Card>
                         <CardContent>
@@ -852,7 +860,8 @@ export default function VotingPage({ shows: searchableShows }) {
                       </Box>
                     </CardContent>
                   </Card>
-                </Grid>)
+                </Grid>
+                </>)
               ))}
               <Grid
                 item
