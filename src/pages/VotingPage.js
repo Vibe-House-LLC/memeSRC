@@ -571,6 +571,7 @@ export default function VotingPage({ shows: searchableShows }) {
               <CircularProgress />
             </Grid>
           ) : (
+            <>            
             <FlipMove style={{ minWidth: '100%' }}>
               {filteredAndSortedShows.map((show, idx) => (
                 hideSearchable && searchableShows.some(searchableShow => searchableShow.id === show.slug)
@@ -578,8 +579,8 @@ export default function VotingPage({ shows: searchableShows }) {
                   : (
                     <>
                     {
-                      // Insert the VotingPageAd component every 5 shows
-                      (idx % 5) - 2 === 0 && idx !== 0
+                      // Insert the VotingPageAd component every 6 shows
+                      (idx % 6) - 2 === 0 && idx !== 0
                       ? (
                         <Grid item xs={12} style={{ marginBottom: 15 }}>
                           <Card>
@@ -921,6 +922,15 @@ export default function VotingPage({ shows: searchableShows }) {
                 </Button>
               </Grid>
             </FlipMove>
+            {filteredAndSortedShows.length === 0 && 
+              <Grid item xs={12} style={{ marginBottom: 15 }}>
+                <Card>
+                  <CardContent>
+                    <VotingPageAd />
+                  </CardContent>
+                </Card>
+              </Grid>}
+            </>
           )}
         </Grid>
       </Container>
