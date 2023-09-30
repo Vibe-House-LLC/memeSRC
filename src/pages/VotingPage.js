@@ -563,9 +563,17 @@ export default function VotingPage({ shows: searchableShows }) {
                   : (
                     <>
                     {
-                      // Insert the VotingPageAd component every 6 shows
-                      idx % 6 === 0 && idx !== 0
-                      ? <VotingPageAd />
+                      // Insert the VotingPageAd component every 5 shows
+                      idx % 5 === 0 && idx !== 0
+                      ? (
+                        <Grid item xs={12} style={{ marginBottom: 15 }}>
+                          <Card>
+                            <CardContent>
+                              <VotingPageAd />
+                            </CardContent>
+                          </Card>
+                        </Grid>
+                      )
                       : null
                     }
                     <Grid item xs={12} key={show.id} style={{ marginBottom: 15 }}>
