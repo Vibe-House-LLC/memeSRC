@@ -317,6 +317,13 @@ export default function TopBannerSearchRevised(props) {
             </Link>
           </Box>
           {cloneElement(props.children, { setSeriesTitle, shows })}
+          
+        </Container>
+      }
+
+      {(pathname.startsWith("/episode") || pathname.startsWith("/vote")) &&
+        <Container maxWidth="xl" sx={{ pt: 2 }} disableGutters>
+          {cloneElement(props.children, { setSeriesTitle, shows })}
         </Container>
       }
     </>
