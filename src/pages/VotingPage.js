@@ -41,6 +41,7 @@ import { UserContext } from '../UserContext';
 import TvdbSearch from '../components/TvdbSearch/TvdbSearch';
 import { SnackbarContext } from '../SnackbarContext';
 import VotingPageAd from '../ads/VotingPageAd';
+import VotingPageFooterAd from '../ads/VotingPageFooterAd';
 
 const StyledBadge = styled(Badge)(() => ({
   '& .MuiBadge-badge': {
@@ -925,7 +926,7 @@ export default function VotingPage({ shows: searchableShows }) {
           <Grid item xs={12} style={{ marginBottom: 15 }}>
                 <Card>
                   <CardContent>
-                    <VotingPageAd />
+                    <VotingPageFooterAd />
                   </CardContent>
                 </Card>
               </Grid>
