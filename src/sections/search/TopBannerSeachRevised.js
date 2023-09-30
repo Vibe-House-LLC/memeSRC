@@ -289,6 +289,21 @@ export default function TopBannerSearchRevised(props) {
             </Link>
           </Box>
           {cloneElement(props.children, { setSeriesTitle, shows })}
+          <StyledLeftFooter className="bottomBtn">
+            <a href="https://forms.gle/8CETtVbwYoUmxqbi7" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
+              <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black", zIndex: '1300' }} size='medium'>
+                <MapsUgc color="white" />
+              </Fab>
+            </a>
+            <a href="https://memesrc.com/donate" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
+              <Fab color="primary" aria-label="donate" style={{ backgroundColor: "black", zIndex: '1300' }} size='medium'>
+                <Favorite />
+              </Fab>
+            </a>
+          </StyledLeftFooter>
+          <StyledRightFooter className="bottomBtn">
+            <StyledButton onClick={loadRandomFrame} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
+          </StyledRightFooter>
         </Container>
       }
 
@@ -324,6 +339,21 @@ export default function TopBannerSearchRevised(props) {
       {(pathname.startsWith("/episode") || pathname.startsWith("/vote")) &&
         <Container maxWidth="xl" sx={{ pt: 2 }} disableGutters>
           {cloneElement(props.children, { setSeriesTitle, shows })}
+          <StyledLeftFooter className="bottomBtn">
+            <a href="https://forms.gle/8CETtVbwYoUmxqbi7" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
+              <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black", zIndex: '1300' }} size='medium'>
+                <MapsUgc color="white" />
+              </Fab>
+            </a>
+            <a href="https://memesrc.com/donate" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
+              <Fab color="primary" aria-label="donate" style={{ backgroundColor: "black", zIndex: '1300' }} size='medium'>
+                <Favorite />
+              </Fab>
+            </a>
+          </StyledLeftFooter>
+          <StyledRightFooter className="bottomBtn">
+            <StyledButton onClick={loadRandomFrame} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
+          </StyledRightFooter>
         </Container>
       }
     </>
