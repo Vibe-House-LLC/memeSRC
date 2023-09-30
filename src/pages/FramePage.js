@@ -271,8 +271,42 @@ export default function FramePage({ shows = [] }) {
             <Card>
               {renderFineTuningFrames()}
             </Card>
-            <Button size={isMd ? 'large' : 'medium'} fullWidth={!isMd} variant="contained" to={`/editor/${fid}${getCurrentQueryString()}`} component={RouterLink} sx={{ my: 2 }}>
+            <Grid item xs={12} md={6}>
+            <Box sx={{ mb: '1rem', mt: isMd ? 0 : '1rem', px: isMd ? 5 : 1, mx: isMd ? 0 : 'auto', width: isMd ? 'inherit' : '100%' }}>
+              <Typography variant="h4" component="div" style={{ marginBottom: '0.5rem' }} textAlign='left'>
+                {showTitle}
+                <Chip
+                  size='small'
+                  label={`S${fid.split('-')[1]} E${fid.split('-')[2]}`}
+                  sx={{
+                    marginLeft: '5px',
+                    "& .MuiChip-label": {
+                      fontWeight: 'bold',
+                    },
+                  }}
+                />
+              </Typography>
+              <Typography variant="subtitle1" color="text.secondary" style={{ marginBottom: '1rem' }} textAlign='left'>
+                {loading ?
+                  <Skeleton variant='text' height={25} width={'max(100px, 50%)'} />
+                  :
+                  <>
+                    {frameData.subtitle ? `"${frameData.subtitle}"` : null}
+                  </>
+                }
+              </Typography>
+
+              {/* <Button size={isMd ? 'large' : 'medium'} fullWidth={!isMd} variant="contained" to={`/editor/${fid}${getCurrentQueryString()}`} component={RouterLink} style={{ marginBottom: '1rem' }}>
                 Add Captions & Edit Photo
+              </Button> */}
+
+              {/* <Typography variant="subtitle1" color="text.secondary" style={{ marginBottom: '1rem' }}>
+                TODO: add more metadata, links, content, etc. here
+              </Typography> */}
+            </Box>
+          </Grid>
+            <Button size={isMd ? 'large' : 'medium'} fullWidth={!isMd} variant="contained" to={`/editor/${fid}${getCurrentQueryString()}`} component={RouterLink} sx={{ my: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}>
+                Open In Editor
               </Button>
             {!isMd &&
               <Card sx={{ mt: 0 }}>
@@ -365,40 +399,6 @@ export default function FramePage({ shows = [] }) {
                 </Accordion>
               </Card>
             }
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <Box sx={{ mb: '1rem', mt: isMd ? 0 : '1rem', px: isMd ? 5 : 1, mx: isMd ? 0 : 'auto', width: isMd ? 'inherit' : '100%' }}>
-              <Typography variant="h4" component="div" style={{ marginBottom: '0.5rem' }} textAlign='left'>
-                {showTitle}
-                <Chip
-                  size='small'
-                  label={`S${fid.split('-')[1]} E${fid.split('-')[2]}`}
-                  sx={{
-                    marginLeft: '5px',
-                    "& .MuiChip-label": {
-                      fontWeight: 'bold',
-                    },
-                  }}
-                />
-              </Typography>
-              <Typography variant="subtitle1" color="text.secondary" style={{ marginBottom: '1rem' }} textAlign='left'>
-                {loading ?
-                  <Skeleton variant='text' height={25} width={'max(100px, 50%)'} />
-                  :
-                  <>
-                    {frameData.subtitle ? `"${frameData.subtitle}"` : null}
-                  </>
-                }
-              </Typography>
-
-              {/* <Button size={isMd ? 'large' : 'medium'} fullWidth={!isMd} variant="contained" to={`/editor/${fid}${getCurrentQueryString()}`} component={RouterLink} style={{ marginBottom: '1rem' }}>
-                Add Captions & Edit Photo
-              </Button> */}
-
-              {/* <Typography variant="subtitle1" color="text.secondary" style={{ marginBottom: '1rem' }}>
-                TODO: add more metadata, links, content, etc. here
-              </Typography> */}
-            </Box>
           </Grid>
           {isMd &&
             <Grid item xs={12} md={6}>
