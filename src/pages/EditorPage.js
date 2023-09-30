@@ -934,7 +934,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                       variant="contained"
                       onClick={handleClickDialogOpen}
                       fullWidth
-                      sx={{ zIndex: '50' }}
+                      sx={{ zIndex: '50', backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
                       startIcon={<Share />}
                     >
                       Save/Copy/Share
@@ -1492,13 +1492,18 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
             </DialogContentText>
           </DialogContent>
           <DialogContentText sx={{ paddingX: 4, marginTop: 'auto', paddingBottom: 2 }}>
-            <center>
-              <p>
-                ☝️ <b>{'ontouchstart' in window ? 'Tap and hold' : 'Right click'} the image to save</b>, or use a
-                quick action:
-              </p>
-            </center>
+              <center>
+                  <p>
+                      ☝️ 
+                      <b style={{ color: '#4CAF50' }}>
+                          {'ontouchstart' in window ? 'Tap and hold ' : 'Right click '} 
+                          the image to save
+                      </b>, 
+                      or use a quick action:
+                  </p>
+              </center>
           </DialogContentText>
+
           <DialogActions sx={{ marginBottom: 'auto', display: 'inline-flex', padding: '0 23px' }}>
             <Box display="grid" width="100%">
               {navigator.canShare && (
