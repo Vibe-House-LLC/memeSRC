@@ -174,7 +174,24 @@ export default function FramePage({ shows = [] }) {
     }
     return returnedElement
   };
-
+  
+  const frameToTimecode = (frameNumber, fps) => {
+    const totalSeconds = Math.floor(frameNumber / fps);
+    
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds - (hours * 3600)) / 60);
+    const seconds = totalSeconds - (hours * 3600) - (minutes * 60);
+    const frames = frameNumber % fps;
+  
+    // Format the output with leading zeroes where necessary
+    const hoursStr = String(hours).padStart(2, '0');
+    const minutesStr = String(minutes).padStart(2, '0');
+    const secondsStr = String(seconds).padStart(2, '0');
+    const framesStr = String(frames).padStart(2, '0');
+  
+    return `${hoursStr}:${minutesStr}:${secondsStr}`;
+  };
+  
   const renderFineTuningFrames = () => {
     return (
       <>
@@ -272,8 +289,10 @@ export default function FramePage({ shows = [] }) {
               {renderFineTuningFrames()}
             </Card>
             <Grid item xs={12} md={6}>
-            <Box sx={{ mb: '1rem', mt: isMd ? 0 : '1rem', px: isMd ? 5 : 1, mx: isMd ? 0 : 'auto', width: isMd ? 'inherit' : '100%' }}>
-              <Typography variant="h4" component="div" style={{ marginBottom: '0.5rem' }} textAlign='left'>
+            <Box sx={{ mt: isMd ? 0 : '1rem', width: isMd ? 'inherit' : '100%' }}>
+              <Card style={{ boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+                <CardContent>
+                <Typography variant="h4" component="div" style={{ marginBottom: '0.5rem' }} textAlign='left'>
                 {showTitle}
                 <Chip
                   size='small'
@@ -285,16 +304,33 @@ export default function FramePage({ shows = [] }) {
                     },
                   }}
                 />
+                <Chip
+                  size='small'
+                  label={frameToTimecode(fid.split('-')[3], 9)}
+                  sx={{
+                    marginLeft: '5px',
+                    "& .MuiChip-label": {
+                      fontWeight: 'bold',
+                    },
+                  }}
+                />
               </Typography>
-              <Typography variant="subtitle1" color="text.secondary" style={{ marginBottom: '1rem' }} textAlign='left'>
-                {loading ?
-                  <Skeleton variant='text' height={25} width={'max(100px, 50%)'} />
-                  :
-                  <>
-                    {frameData.subtitle ? `"${frameData.subtitle}"` : null}
-                  </>
-                }
-              </Typography>
+                  <Typography variant="subtitle1" color="text.secondary" style={{ marginBottom: '0rem' }} textAlign='left'>
+                    {loading ?
+                      <Skeleton variant='text' height={25} width={'max(100px, 50%)'} />
+                      :
+                      <>
+                        {frameData.subtitle ? frameData.subtitle : '(no subtitle)'}
+                      </>
+                    }
+                  </Typography>
+                  {/* <Tooltip title="Tap to edit">
+                    <Typography variant="caption" color="text.secondary" style={{ cursor: 'pointer' }}>
+                      tap to edit
+                    </Typography>
+                  </Tooltip> */}
+                </CardContent>
+              </Card>
 
               {/* <Button size={isMd ? 'large' : 'medium'} fullWidth={!isMd} variant="contained" to={`/editor/${fid}${getCurrentQueryString()}`} component={RouterLink} style={{ marginBottom: '1rem' }}>
                 Add Captions & Edit Photo
@@ -305,7 +341,7 @@ export default function FramePage({ shows = [] }) {
               </Typography> */}
             </Box>
           </Grid>
-            <Button size={isMd ? 'large' : 'medium'} fullWidth={!isMd} variant="contained" to={`/editor/${fid}${getCurrentQueryString()}`} component={RouterLink} sx={{ my: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}>
+            <Button size="large" fullWidth={!isMd} variant="contained" to={`/editor/${fid}${getCurrentQueryString()}`} component={RouterLink} sx={{ my: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}>
                 Open In Editor
               </Button>
             {!isMd &&
@@ -411,7 +447,7 @@ export default function FramePage({ shows = [] }) {
                       ) : (
                         <Menu style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
                       )}
-                      {subtitlesExpanded ? 'Hide' : 'View'} Nearby Subtitles
+                      {subtitlesExpanded ? 'Hide' : 'View'} Nearby Subtitlessss
                     </Typography>
                     {/* <Chip size="small" label="New!" color="success" /> */}
                   </AccordionSummary>
