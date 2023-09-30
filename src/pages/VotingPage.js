@@ -31,6 +31,7 @@ import {
   FormControlLabel,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
+import AddIcon from '@mui/icons-material/Add';
 import { ArrowUpward, ArrowDownward, Search, Close, ThumbUp, Whatshot, Lock } from '@mui/icons-material';
 import FlipMove from 'react-flip-move';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -900,25 +901,28 @@ export default function VotingPage({ shows: searchableShows }) {
                 }}
               >
                 <Typography variant="h6" gutterBottom>
-                  Looking for one not in the list?
+                  What are we missing?
                 </Typography>
                 <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={() => {
-                    // window.open('https://forms.gle/8CETtVbwYoUmxqbi7', '_blank')
-                    if (user) {
-                      toggleOpenAddRequest();
-                    } else {
-                      navigate('/signup')
-                    }
-                  }}
-                  style={{
-                    marginTop: 10,
-                    marginBottom: 15,
-                  }}
+                    variant="contained"
+                    color="primary"
+                    onClick={() => {
+                        // window.open('https://forms.gle/8CETtVbwYoUmxqbi7', '_blank')
+                        if (user) {
+                            toggleOpenAddRequest();
+                        } else {
+                            navigate('/signup')
+                        }
+                    }}
+                    style={{
+                        marginTop: 10,
+                        marginBottom: 50,
+                        backgroundColor: 'rgb(84, 214, 44)',
+                        color: 'black'  // Set the text color to black
+                    }}
+                    startIcon={<AddIcon />}  // Add the plus icon at the beginning of the button
                 >
-                  Make a request
+                    Make a request
                 </Button>
               </Grid>
             </FlipMove>
