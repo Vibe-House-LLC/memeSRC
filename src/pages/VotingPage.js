@@ -922,16 +922,15 @@ export default function VotingPage({ shows: searchableShows }) {
                 </Button>
               </Grid>
             </FlipMove>
-            {filteredAndSortedShows.length === 0 && 
-              <Grid item xs={12} style={{ marginBottom: 15 }}>
+            </>
+          )}
+          <Grid item xs={12} style={{ marginBottom: 15 }}>
                 <Card>
                   <CardContent>
                     <VotingPageAd />
                   </CardContent>
                 </Card>
-              </Grid>}
-            </>
-          )}
+              </Grid>
         </Grid>
       </Container>
       <Dialog maxWidth='md' fullWidth onClose={toggleOpenAddRequest} open={openAddRequest}>
