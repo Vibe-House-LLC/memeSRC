@@ -440,7 +440,7 @@ export default function VotingPage({ shows: searchableShows }) {
           <Typography variant="subtitle2">Upvote shows and movies you want on memeSRC</Typography>
         </Box>
 
-        {!localStorage.getItem('alertDismissedVotePage9667zz') && (
+        {/* {!localStorage.getItem('alertDismissedVotePage9667zz') && (
           <Alert
           severity="info"
           action={
@@ -463,9 +463,9 @@ export default function VotingPage({ shows: searchableShows }) {
         >
           <b>Vote&nbsp;again&nbsp;every&nbsp;24h!</b>
         </Alert>
-        )}
+        )} */}
 
-        {!localStorage.getItem('alertDismissedVotePage1000zz') && (
+        {/* {!localStorage.getItem('alertDismissedVotePage1000zz') && (
           <Alert
           severity="success"
           action={
@@ -488,7 +488,8 @@ export default function VotingPage({ shows: searchableShows }) {
         >
           <b>Movies&nbsp;are&nbsp;now&nbsp;supported!</b>
         </Alert>
-        )}
+        )} */}
+
         <Box my={2}>
           <Tabs value={rankMethod} onChange={handleRankMethodChange} indicatorColor="secondary" textColor="inherit">
             <Tab
@@ -545,7 +546,7 @@ export default function VotingPage({ shows: searchableShows }) {
               />
             }
             label="Hide Searchable"
-            style={{ opacity: hideSearchable ? 1 : 0.5 }}
+            style={{ opacity: hideSearchable ? 1 : 0.5, fontSize: '0.1rem' }}
             sx={{ margin: 0, marginBottom: -2 }}
           />
         </Box>
