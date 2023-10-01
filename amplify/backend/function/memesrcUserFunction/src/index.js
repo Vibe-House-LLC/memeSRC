@@ -227,6 +227,7 @@ function getUserDetails(params, nextToken = null) {
         earlyAccessStatus
         contributorAccessStatus
         magicSubscription
+        subscriptionStatus
         userNotifications(sortDirection: DESC) {
           items {
             avatar
