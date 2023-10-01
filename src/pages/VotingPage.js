@@ -581,7 +581,7 @@ export default function VotingPage({ shows: searchableShows }) {
                     <>
                     {
                       // Insert the VotingPageAd component every 6 shows
-                      (idx % 6) - 2 === 0 && idx !== 0
+                      (idx % 6) - 2 === 0 && idx !== 0 && user?.userDetails?.subscriptionStatus !== 'active'
                       ? (
                         <Grid item xs={12} style={{ marginBottom: 15 }}>
                           <Card>
@@ -927,13 +927,20 @@ export default function VotingPage({ shows: searchableShows }) {
               </Grid>
             </FlipMove>
           )}
-          <Grid item xs={12} style={{ marginBottom: 15 }}>
+          {
+            // Insert the VotingPageAd component every 6 shows
+            user?.userDetails?.subscriptionStatus !== 'active'
+            ? (
+              <Grid item xs={12} style={{ marginBottom: 15 }}>
                 <Card>
                   <CardContent>
                     <VotingPageFooterAd />
                   </CardContent>
                 </Card>
               </Grid>
+            )
+            : null
+          }
         </Grid>
       </Container>
       <Dialog maxWidth='md' fullWidth onClose={toggleOpenAddRequest} open={openAddRequest}>
