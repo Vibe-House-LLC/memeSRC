@@ -513,11 +513,11 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
             <Typography component="h4" variant="h4" sx={{ marginTop: -2 }}>
               {currentThemeBragText}
             </Typography>
-            <Stack justifyContent='center'>
+            {/* <Stack justifyContent='center'>
               <Box sx={{ width: isMd ? '600px' : '100%', mx: 'auto', maxHeight: '150px' }}>
                 <HomePageBannerAd />
               </Box>
-            </Stack>
+            </Stack> */}
             <Button
               onClick={() => scrollToSection()}
               startIcon="🚀"
