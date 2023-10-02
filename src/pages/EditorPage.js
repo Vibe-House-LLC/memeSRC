@@ -293,7 +293,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
           setFineTuningFrames(images)
         });
         // Background image from the 
-        fabric.Image.fromURL(`https://memesrc.com${searchDetails.fineTuningFrame !== 4 ? data.frames_fine_tuning[searchDetails.fineTuningFrame] : data.frame_image}`, (oImg) => {
+        fabric.Image.fromURL(`https://memesrc.com${searchDetails.fineTuningFrame ? data.frames_fine_tuning[searchDetails.fineTuningFrame] : data.frame_image}`, (oImg) => {
           console.log(oImg)
           setDefaultFrame(oImg);
           setDefaultSubtitle(data.subtitle);

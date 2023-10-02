@@ -125,7 +125,9 @@ export default function TopBannerSearchRevised(props) {
   }, []);
 
   useEffect(() => {
-    if (!pathname.startsWith("/frame") || !pathname.startsWith("/editor")) {
+    if (!(pathname.startsWith("/frame") || pathname.startsWith("/editor"))) {
+      console.log('PATH', pathname)
+      console.log(pathname.startsWith("/frame"))
       setFineTuningFrame(null)
     }
   }, [pathname])
