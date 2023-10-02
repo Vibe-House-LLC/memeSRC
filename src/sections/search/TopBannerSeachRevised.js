@@ -181,7 +181,7 @@ export default function TopBannerSearchRevised(props) {
   }, [navigate, seriesTitle]);
 
   const handleBackToFramePage = () => {
-    navigate(`/frame/${frame}`)
+    navigate(`/frame/${frame || fid}`)
     setFrame(null)
   }
 
