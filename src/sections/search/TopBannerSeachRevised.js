@@ -93,7 +93,7 @@ TopBannerSearchRevised.propTypes = searchPropTypes;
 
 
 export default function TopBannerSearchRevised(props) {
-  const { show, searchQuery, frame, setFrame } = useSearchDetails();
+  const { show, searchQuery, frame, setFrame, setFineTuningFrame } = useSearchDetails();
   const { search, pathname } = useLocation();
   const { fid } = useParams();
   const [shows, setShows] = useState([]);
@@ -123,6 +123,12 @@ export default function TopBannerSearchRevised(props) {
     }
     getData();
   }, []);
+
+  useEffect(() => {
+    if (!pathname.startsWith("/frame") || !pathname.startsWith("/editor")) {
+      setFineTuningFrame(null)
+    }
+  }, [pathname])
 
   // useEffect(() => {
   //   searchFunction()

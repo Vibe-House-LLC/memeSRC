@@ -15,6 +15,7 @@ import TextEditorControls from '../components/TextEditorControls';
 import { SnackbarContext } from '../SnackbarContext';
 import { UserContext } from '../UserContext';
 import { MagicPopupContext } from '../MagicPopupContext';
+import useSearchDetails from '../hooks/useSearchDetails';
 
 const Alert = forwardRef((props, ref) => <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />);
 
@@ -60,6 +61,8 @@ const StyledCardMedia = styled('img')`
 
 
 const EditorPage = ({ setSeriesTitle, shows }) => {
+  const searchDetails = useSearchDetails();
+  console.log(searchDetails.fineTuningFrame)
   // Get everything ready
   const { fid } = useParams();
   const { user, setUser } = useContext(UserContext);
@@ -92,7 +95,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
   const [loading, setLoading] = useState(true)
 
-  const [fineTuningValue, setFineTuningValue] = useState(4);
+  const [fineTuningValue, setFineTuningValue] = useState(searchDetails.fineTuningFrame || 4);
   const [episodeDetails, setEpisodeDetails] = useState();
   const [openDialog, setOpenDialog] = useState(false);
   const [imageUploading, setImageUploading] = useState();
@@ -290,7 +293,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
           setFineTuningFrames(images)
         });
         // Background image from the 
-        fabric.Image.fromURL(`https://memesrc.com${data.frame_image}`, (oImg) => {
+        fabric.Image.fromURL(`https://memesrc.com${searchDetails.fineTuningFrame !== 4 ? data.frames_fine_tuning[searchDetails.fineTuningFrame] : data.frame_image}`, (oImg) => {
           console.log(oImg)
           setDefaultFrame(oImg);
           setDefaultSubtitle(data.subtitle);
@@ -462,10 +465,12 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     const serializedCanvas = JSON.stringify(editor.canvas);
     setFutureStates([]);
     setBgFutureStates([]);
-
+    searchDetails.setFineTuningFrame(event.target.value)
     setEditorStates(prevHistory => [...prevHistory, serializedCanvas]);
     setBgEditorStates(prevHistory => [...prevHistory, oImg]);
   }
+
+
 
   const handleStyle = (index, customStyles) => {
     // Select the item

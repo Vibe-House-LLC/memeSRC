@@ -51,12 +51,12 @@ const StyledCardMedia = styled('img')`
 `;
 
 export default function FramePage({ shows = [] }) {
-  const { setFrame } = useSearchDetails();
+  const { setFrame, fineTuningFrame, setFineTuningFrame } = useSearchDetails();
   const navigate = useNavigate();
   const { fid } = useParams();
   const [frameData, setFrameData] = useState({});
   const [surroundingFrames, setSurroundingFrames] = useState();
-  const [sliderValue, setSliderValue] = useState(0);
+  const [sliderValue, setSliderValue] = useState(fineTuningFrame || 0);
   const [middleIndex, setMiddleIndex] = useState(0);
   const [displayImage, setDisplayImage] = useState(`https://memesrc.com/${fid.split('-')[0]}/img/${fid.split('-')[1]}/${fid.split('-')[2]}/${fid}.jpg`);
   const [subtitlesExpanded, setSubtitlesExpanded] = useState(false);
@@ -132,6 +132,11 @@ export default function FramePage({ shows = [] }) {
         const newMiddleIndex = Math.floor(data.frames_fine_tuning.length / 2);
         const initialFineTuneImage = data.frames_fine_tuning[newMiddleIndex];
         setMiddleIndex(newMiddleIndex)
+        console.log(newMiddleIndex);
+        console.log(fineTuningFrame)
+        if(typeof fineTuningFrame === 'number') {
+          setSliderValue(fineTuningFrame - newMiddleIndex)
+        }
         setDisplayImage(`https://memesrc.com${initialFineTuneImage}`);
         setLoading(false)
       })
@@ -140,11 +145,21 @@ export default function FramePage({ shows = [] }) {
 
   useEffect(() => {
     if (frameData.frames_fine_tuning && middleIndex !== 0) {
-      const displayIndex = middleIndex + sliderValue;
+      const displayIndex = fineTuningFrame != null ? fineTuningFrame : middleIndex + sliderValue;
+  
+      console.log(displayIndex);
+      console.log(fineTuningFrame);
+  
       const newDisplayFrame = frameData.frames_fine_tuning[displayIndex];
       setDisplayImage(`https://memesrc.com${newDisplayFrame}`);
     }
   }, [sliderValue, frameData, middleIndex]);
+  
+  // Use a callback function to handle slider changes
+  const handleSliderChange = (newSliderValue) => {
+    setSliderValue(newSliderValue);
+    setFineTuningFrame(middleIndex + newSliderValue);
+  };
 
   const renderSurroundingFrames = () => {
     let returnedElement;
@@ -222,7 +237,7 @@ export default function FramePage({ shows = [] }) {
             max={middleIndex}
             value={sliderValue}
             step={1}
-            onChange={(e, newValue) => setSliderValue(newValue)}
+            onChange={(e, newValue) => handleSliderChange(newValue)}
             valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
             marks
           />

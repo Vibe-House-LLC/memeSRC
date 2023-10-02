@@ -8,9 +8,10 @@ export const SearchDetailsProvider = ({ children }) => {
     const [show, setShow] = useState('_universal');
     const [searchQuery, setSearchQuery] = useState('');
     const [frame, setFrame] = useState('');
+    const [fineTuningFrame, setFineTuningFrame] = useState();
 
     return (
-        <SearchContext.Provider value={{ show, setShow, searchQuery, setSearchQuery, frame, setFrame }}>
+        <SearchContext.Provider value={{ show, setShow, searchQuery, setSearchQuery, frame, setFrame, fineTuningFrame, setFineTuningFrame }}>
             {children}
         </SearchContext.Provider>
     );
