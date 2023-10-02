@@ -995,7 +995,7 @@ export default function VotingPage({ shows: searchableShows }) {
           }
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
-          <LoadingButton onClick={submitRequest} loading={submittingRequest} disabled={submittingRequest} variant='contained'>
+          <LoadingButton onClick={submitRequest} loading={submittingRequest} disabled={!selectedRequest || submittingRequest} variant='contained'>
             Submit Request
           </LoadingButton>
         </DialogActions>
