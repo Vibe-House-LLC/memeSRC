@@ -16,6 +16,9 @@ export const SearchDetailsProvider = ({ children }) => {
         if (pathname === '/') {
             setShow('_universal')
         }
+        if (!(pathname.startsWith('/frame') || pathname.startsWith('/editor'))) {
+            setFineTuningFrame(null)
+        }
     }, [pathname])
 
     return (
