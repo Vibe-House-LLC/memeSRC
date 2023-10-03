@@ -279,7 +279,7 @@ export default function TopBannerSearchRevised(props) {
           >
             <Link
               component={RouterLink}
-              to={searchTerm ? `/search/${show}/${searchTerm}` : `/${show || ''}`}
+              to={searchTerm ? `/search/${show}/${searchTerm}` : `/${(show && show !== '_universal') ? show : ''}`}
               sx={{
                 color: 'white',
                 textDecoration: 'none',
