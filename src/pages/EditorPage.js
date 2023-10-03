@@ -501,7 +501,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       if (user && user?.userDetails?.credits > 0) {
         editor.canvas.isDrawingMode = (tool === 'magicEraser');
         editor.canvas.freeDrawingBrush.width = brushToolSize;
-        editor.canvas.freeDrawingBrush.color = 'red';
+        editor.canvas.freeDrawingBrush.color = 'rgba(255, 0, 0, 0.5)';
         if (tool !== 'magicEraser') {
           editor.canvas.getObjects().forEach((obj) => {
             if (obj instanceof fabric.Path) {
@@ -557,7 +557,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     originalCanvas.getObjects().forEach((obj) => {
       if (obj instanceof fabric.Path) {
         const path = obj.toObject();
-        const newPath = new fabric.Path(path.path, { ...path, fill: 'transparent', globalCompositeOperation: 'destination-out' });
+        const newPath = new fabric.Path(path.path, { ...path, stroke: 'red', fill: 'transparent', globalCompositeOperation: 'destination-out' });
+        console.log(path)
         newPath.scale(scale);
         newPath.set({ left: newPath.left * scale + offsetX, top: newPath.top * scale + offsetY });
         tempCanvasDrawing.add(newPath);
