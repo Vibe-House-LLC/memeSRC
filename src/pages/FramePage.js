@@ -134,7 +134,7 @@ export default function FramePage({ shows = [] }) {
         setMiddleIndex(newMiddleIndex)
         console.log(newMiddleIndex);
         console.log(fineTuningFrame)
-        if(typeof fineTuningFrame === 'number') {
+        if (typeof fineTuningFrame === 'number') {
           setSliderValue(fineTuningFrame - newMiddleIndex)
         }
         setDisplayImage(`https://memesrc.com${initialFineTuneImage}`);
@@ -146,15 +146,15 @@ export default function FramePage({ shows = [] }) {
   useEffect(() => {
     if (frameData.frames_fine_tuning && middleIndex !== 0) {
       const displayIndex = fineTuningFrame != null ? fineTuningFrame : middleIndex + sliderValue;
-  
+
       console.log(displayIndex);
       console.log(fineTuningFrame);
-  
+
       const newDisplayFrame = frameData.frames_fine_tuning[displayIndex];
       setDisplayImage(`https://memesrc.com${newDisplayFrame}`);
     }
   }, [sliderValue, frameData, middleIndex]);
-  
+
   // Use a callback function to handle slider changes
   const handleSliderChange = (newSliderValue) => {
     setSliderValue(newSliderValue);
@@ -189,24 +189,24 @@ export default function FramePage({ shows = [] }) {
     }
     return returnedElement
   };
-  
+
   const frameToTimecode = (frameNumber, fps) => {
     const totalSeconds = Math.floor(frameNumber / fps);
-    
+
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds - (hours * 3600)) / 60);
     const seconds = totalSeconds - (hours * 3600) - (minutes * 60);
     const frames = frameNumber % fps;
-  
+
     // Format the output with leading zeroes where necessary
     const hoursStr = String(hours).padStart(2, '0');
     const minutesStr = String(minutes).padStart(2, '0');
     const secondsStr = String(seconds).padStart(2, '0');
     const framesStr = String(frames).padStart(2, '0');
-  
+
     return `${hoursStr}:${minutesStr}:${secondsStr}`;
   };
-  
+
   const renderFineTuningFrames = () => {
     return (
       <>
@@ -303,241 +303,94 @@ export default function FramePage({ shows = [] }) {
             <Card>
               {renderFineTuningFrames()}
             </Card>
-            <Grid item xs={12} md={6}>
-            <Box sx={{ mt: isMd ? 0 : '1rem', width: isMd ? 'inherit' : '100%' }}>
-              <Card style={{ boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
-                <CardContent>
-                <Typography variant="h4" component="div" style={{ marginBottom: '0.5rem' }} textAlign='left'>
-                {showTitle}
-                <Chip
-                  size='small'
-                  label={`S${fid.split('-')[1]} E${fid.split('-')[2]}`}
-                  sx={{
-                    marginLeft: '5px',
-                    "& .MuiChip-label": {
-                      fontWeight: 'bold',
-                    },
-                  }}
-                />
-                <Chip
-                  size='small'
-                  label={frameToTimecode(fid.split('-')[3], 9)}
-                  sx={{
-                    marginLeft: '5px',
-                    "& .MuiChip-label": {
-                      fontWeight: 'bold',
-                    },
-                  }}
-                />
-              </Typography>
-                  <Typography variant="subtitle1" color="text.secondary" style={{ marginBottom: '0rem' }} textAlign='left'>
-                    {loading ?
-                      <Skeleton variant='text' height={25} width={'max(100px, 50%)'} />
-                      :
-                      <>
-                        {frameData.subtitle ? frameData.subtitle : '(no subtitle)'}
-                      </>
-                    }
-                  </Typography>
-                  {/* <Tooltip title="Tap to edit">
-                    <Typography variant="caption" color="text.secondary" style={{ cursor: 'pointer' }}>
-                      tap to edit
-                    </Typography>
-                  </Tooltip> */}
-                </CardContent>
-              </Card>
 
-              {/* <Button size={isMd ? 'large' : 'medium'} fullWidth={!isMd} variant="contained" to={`/editor/${fid}${getCurrentQueryString()}`} component={RouterLink} style={{ marginBottom: '1rem' }}>
-                Add Captions & Edit Photo
-              </Button> */}
-
-              {/* <Typography variant="subtitle1" color="text.secondary" style={{ marginBottom: '1rem' }}>
-                TODO: add more metadata, links, content, etc. here
-              </Typography> */}
-            </Box>
-          </Grid>
-            <Button size="large" fullWidth={!isMd} variant="contained" to={`/editor/${fid}${getCurrentQueryString()}`} component={RouterLink} sx={{ my: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}>
-                Open In Editor
-              </Button>
-            {!isMd &&
-              <Card sx={{ mt: 0 }}>
-                <Accordion expanded={subtitlesExpanded} disableGutters>
-                  <AccordionSummary sx={{ paddingX: 1.55 }} onClick={handleSubtitlesExpand} textAlign="center">
-                    <Typography marginRight="auto" fontWeight="bold" color="#CACACA" fontSize={14.8}>
-                      {subtitlesExpanded ? (
-                        <Close style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
-                      ) : (
-                        <Menu style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
-                      )}
-                      {subtitlesExpanded ? 'Hide' : 'View'} Nearby Subtitles
-                    </Typography>
-                    {/* <Chip size="small" label="New!" color="success" /> */}
-                  </AccordionSummary>
-                  <AccordionDetails sx={{ paddingY: 0, paddingX: 0 }}>
-                    <List sx={{ padding: '.5em 0' }}>
-                      {surroundingFrames &&
-                        surroundingFrames
-                          .filter(
-                            (result, index, array) =>
-                              result?.subtitle &&
-                              (index === 0 ||
-                                result?.subtitle.replace(/\n/g, ' ') !==
-                                array[index - 1].subtitle.replace(/\n/g, ' '))
-                          )
-                          .map((result) => (
-                            <ListItem key={result?.id} disablePadding sx={{ padding: '0 0 .6em 0' }}>
-                              <ListItemIcon sx={{ paddingLeft: '0' }}>
-                                <Fab
-                                  size="small"
-                                  sx={{
-                                    backgroundColor: theme => theme.palette.background.paper,
-                                    boxShadow: 'none',
-                                    marginLeft: '5px',
-                                    '&:hover': {
-                                      xs: { backgroundColor: 'inherit' },
-                                      md: {
-                                        backgroundColor:
-                                          result?.subtitle.replace(/\n/g, ' ') ===
-                                            frameData?.subtitle?.replace(/\n/g, ' ')
-                                            ? 'rgba(0, 0, 0, 0)'
-                                            : 'ButtonHighlight',
+            {isMd &&
+              <Grid item xs={12} mt={3}>
+                <Card>
+                  <Accordion expanded={subtitlesExpanded} disableGutters>
+                    <AccordionSummary sx={{ paddingX: 1.55 }} onClick={handleSubtitlesExpand} textAlign="center">
+                      <Typography marginRight="auto" fontWeight="bold" color="#CACACA" fontSize={14.8}>
+                        {subtitlesExpanded ? (
+                          <Close style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
+                        ) : (
+                          <Menu style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
+                        )}
+                        {subtitlesExpanded ? 'Hide' : 'View'} Nearby Subtitlessss
+                      </Typography>
+                      {/* <Chip size="small" label="New!" color="success" /> */}
+                    </AccordionSummary>
+                    <AccordionDetails sx={{ paddingY: 0, paddingX: 0 }}>
+                      <List sx={{ padding: '.5em 0' }}>
+                        {surroundingFrames &&
+                          surroundingFrames
+                            .filter(
+                              (result, index, array) =>
+                                result?.subtitle &&
+                                (index === 0 ||
+                                  result?.subtitle.replace(/\n/g, ' ') !==
+                                  array[index - 1].subtitle.replace(/\n/g, ' '))
+                            )
+                            .map((result) => (
+                              <ListItem key={result?.id} disablePadding sx={{ padding: '0 0 .6em 0' }}>
+                                <ListItemIcon sx={{ paddingLeft: '0' }}>
+                                  <Fab
+                                    size="small"
+                                    sx={{
+                                      backgroundColor: theme => theme.palette.background.paper,
+                                      boxShadow: 'none',
+                                      marginLeft: '5px',
+                                      '&:hover': {
+                                        xs: { backgroundColor: 'inherit' },
+                                        md: {
+                                          backgroundColor:
+                                            result?.subtitle.replace(/\n/g, ' ') ===
+                                              frameData?.subtitle?.replace(/\n/g, ' ')
+                                              ? 'rgba(0, 0, 0, 0)'
+                                              : 'ButtonHighlight',
+                                        },
                                       },
-                                    },
-                                  }}
-                                  onClick={() => navigate(`/frame/${result?.fid}`)}
-                                >
-                                  {loading ? (
-                                    <CircularProgress size={20} sx={{ color: '#565656' }} />
-                                  ) : result?.subtitle.replace(/\n/g, ' ') ===
-                                    frameData?.subtitle?.replace(/\n/g, ' ') ? (
-                                    <GpsFixed
-                                      sx={{
-                                        color:
-                                          result?.subtitle.replace(/\n/g, ' ') ===
-                                            frameData?.subtitle?.replace(/\n/g, ' ')
-                                            ? 'rgb(202, 202, 202)'
-                                            : 'rgb(89, 89, 89)',
-                                        cursor: 'pointer',
-                                      }}
-                                    />
-                                  ) : (
-                                    <GpsNotFixed sx={{ color: 'rgb(89, 89, 89)', cursor: 'pointer' }} />
-                                  )}
-                                </Fab>
-                              </ListItemIcon>
-                              <ListItemText sx={{ color: 'rgb(173, 173, 173)', fontSize: '4em' }}>
-                                <Typography
-                                  component="p"
-                                  variant="body2"
-                                  color={
-                                    result?.subtitle.replace(/\n/g, ' ') === frameData?.subtitle?.replace(/\n/g, ' ')
-                                      ? 'rgb(202, 202, 202)'
-                                      : ''
-                                  }
-                                  fontWeight={
-                                    result?.subtitle.replace(/\n/g, ' ') === frameData?.subtitle?.replace(/\n/g, ' ')
-                                      ? 700
-                                      : 400
-                                  }
-                                >
-                                  {result?.subtitle.replace(/\n/g, ' ')}
-                                </Typography>
-                              </ListItemText>
-                            </ListItem>
-                          ))}
-                    </List>
-                  </AccordionDetails>
-                </Accordion>
-              </Card>
-            }
-          </Grid>
-          {isMd &&
-            <Grid item xs={12} md={6}>
-              <Card>
-                <Accordion expanded={subtitlesExpanded} disableGutters>
-                  <AccordionSummary sx={{ paddingX: 1.55 }} onClick={handleSubtitlesExpand} textAlign="center">
-                    <Typography marginRight="auto" fontWeight="bold" color="#CACACA" fontSize={14.8}>
-                      {subtitlesExpanded ? (
-                        <Close style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
-                      ) : (
-                        <Menu style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
-                      )}
-                      {subtitlesExpanded ? 'Hide' : 'View'} Nearby Subtitlessss
-                    </Typography>
-                    {/* <Chip size="small" label="New!" color="success" /> */}
-                  </AccordionSummary>
-                  <AccordionDetails sx={{ paddingY: 0, paddingX: 0 }}>
-                    <List sx={{ padding: '.5em 0' }}>
-                      {surroundingFrames &&
-                        surroundingFrames
-                          .filter(
-                            (result, index, array) =>
-                              result?.subtitle &&
-                              (index === 0 ||
-                                result?.subtitle.replace(/\n/g, ' ') !==
-                                array[index - 1].subtitle.replace(/\n/g, ' '))
-                          )
-                          .map((result) => (
-                            <ListItem key={result?.id} disablePadding sx={{ padding: '0 0 .6em 0' }}>
-                              <ListItemIcon sx={{ paddingLeft: '0' }}>
-                                <Fab
-                                  size="small"
-                                  sx={{
-                                    backgroundColor: theme => theme.palette.background.paper,
-                                    boxShadow: 'none',
-                                    marginLeft: '5px',
-                                    '&:hover': {
-                                      xs: { backgroundColor: 'inherit' },
-                                      md: {
-                                        backgroundColor:
-                                          result?.subtitle.replace(/\n/g, ' ') ===
-                                            frameData?.subtitle?.replace(/\n/g, ' ')
-                                            ? 'rgba(0, 0, 0, 0)'
-                                            : 'ButtonHighlight',
-                                      },
-                                    },
-                                  }}
-                                  onClick={() => navigate(`/frame/${result?.fid}`)}
-                                >
-                                  {loading ? (
-                                    <CircularProgress size={20} sx={{ color: '#565656' }} />
-                                  ) : result?.subtitle.replace(/\n/g, ' ') ===
-                                    frameData?.subtitle?.replace(/\n/g, ' ') ? (
-                                    <GpsFixed
-                                      sx={{
-                                        color:
-                                          result?.subtitle.replace(/\n/g, ' ') ===
-                                            frameData?.subtitle?.replace(/\n/g, ' ')
-                                            ? 'rgb(202, 202, 202)'
-                                            : 'rgb(89, 89, 89)',
-                                        cursor: 'pointer',
-                                      }}
-                                    />
-                                  ) : (
-                                    <GpsNotFixed sx={{ color: 'rgb(89, 89, 89)', cursor: 'pointer' }} />
-                                  )}
-                                </Fab>
-                              </ListItemIcon>
-                              <ListItemText sx={{ color: 'rgb(173, 173, 173)', fontSize: '4em' }}>
-                                <Typography
-                                  component="p"
-                                  variant="body2"
-                                  color={
-                                    result?.subtitle.replace(/\n/g, ' ') === frameData?.subtitle?.replace(/\n/g, ' ')
-                                      ? 'rgb(202, 202, 202)'
-                                      : ''
-                                  }
-                                  fontWeight={
-                                    result?.subtitle.replace(/\n/g, ' ') === frameData?.subtitle?.replace(/\n/g, ' ')
-                                      ? 700
-                                      : 400
-                                  }
-                                >
-                                  {result?.subtitle.replace(/\n/g, ' ')}
-                                </Typography>
-                              </ListItemText>
-                              <ListItemIcon sx={{ paddingRight: '0', marginLeft: 'auto' }}>
-                                {/* <Fab
+                                    }}
+                                    onClick={() => navigate(`/frame/${result?.fid}`)}
+                                  >
+                                    {loading ? (
+                                      <CircularProgress size={20} sx={{ color: '#565656' }} />
+                                    ) : result?.subtitle.replace(/\n/g, ' ') ===
+                                      frameData?.subtitle?.replace(/\n/g, ' ') ? (
+                                      <GpsFixed
+                                        sx={{
+                                          color:
+                                            result?.subtitle.replace(/\n/g, ' ') ===
+                                              frameData?.subtitle?.replace(/\n/g, ' ')
+                                              ? 'rgb(202, 202, 202)'
+                                              : 'rgb(89, 89, 89)',
+                                          cursor: 'pointer',
+                                        }}
+                                      />
+                                    ) : (
+                                      <GpsNotFixed sx={{ color: 'rgb(89, 89, 89)', cursor: 'pointer' }} />
+                                    )}
+                                  </Fab>
+                                </ListItemIcon>
+                                <ListItemText sx={{ color: 'rgb(173, 173, 173)', fontSize: '4em' }}>
+                                  <Typography
+                                    component="p"
+                                    variant="body2"
+                                    color={
+                                      result?.subtitle.replace(/\n/g, ' ') === frameData?.subtitle?.replace(/\n/g, ' ')
+                                        ? 'rgb(202, 202, 202)'
+                                        : ''
+                                    }
+                                    fontWeight={
+                                      result?.subtitle.replace(/\n/g, ' ') === frameData?.subtitle?.replace(/\n/g, ' ')
+                                        ? 700
+                                        : 400
+                                    }
+                                  >
+                                    {result?.subtitle.replace(/\n/g, ' ')}
+                                  </Typography>
+                                </ListItemText>
+                                <ListItemIcon sx={{ paddingRight: '0', marginLeft: 'auto' }}>
+                                  {/* <Fab
                                 size="small"
                                 sx={{
                                   backgroundColor: theme => theme.palette.background.paper,
@@ -555,7 +408,7 @@ export default function FramePage({ shows = [] }) {
                               >
                                 <ContentCopy sx={{ color: 'rgb(89, 89, 89)' }} />
                               </Fab> */}
-                                {/* <Fab
+                                  {/* <Fab
                                 size="small"
                                 sx={{
                                   backgroundColor: theme.palette.background.paper,
@@ -570,14 +423,225 @@ export default function FramePage({ shows = [] }) {
                               >
                                 <Add sx={{ color: 'rgb(89, 89, 89)', cursor: 'pointer' }} />
                               </Fab> */}
-                              </ListItemIcon>
-                            </ListItem>
-                          ))}
-                    </List>
-                  </AccordionDetails>
-                </Accordion>
-              </Card>
-            </Grid>
+                                </ListItemIcon>
+                              </ListItem>
+                            ))}
+                      </List>
+                    </AccordionDetails>
+                  </Accordion>
+                </Card>
+              </Grid>
+            }
+
+            {!isMd &&
+              <>
+                <Grid item xs={12} md={6}>
+                  <Box sx={{ mt: isMd ? 0 : '1rem', width: isMd ? 'inherit' : '100%' }}>
+                    <Card style={{ boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+                      <CardContent>
+                        <Typography variant="h4" component="div" style={{ marginBottom: '0.5rem' }} textAlign='left'>
+                          {showTitle}
+                          <Chip
+                            size='small'
+                            label={`S${fid.split('-')[1]} E${fid.split('-')[2]}`}
+                            sx={{
+                              marginLeft: '5px',
+                              "& .MuiChip-label": {
+                                fontWeight: 'bold',
+                              },
+                            }}
+                          />
+                          <Chip
+                            size='small'
+                            label={frameToTimecode(fid.split('-')[3], 9)}
+                            sx={{
+                              marginLeft: '5px',
+                              "& .MuiChip-label": {
+                                fontWeight: 'bold',
+                              },
+                            }}
+                          />
+                        </Typography>
+                        <Typography variant="subtitle1" color="text.secondary" style={{ marginBottom: '0rem' }} textAlign='left'>
+                          {loading ?
+                            <Skeleton variant='text' height={25} width={'max(100px, 50%)'} />
+                            :
+                            <>
+                              {frameData.subtitle ? frameData.subtitle : '(no subtitle)'}
+                            </>
+                          }
+                        </Typography>
+                        {/* <Tooltip title="Tap to edit">
+                    <Typography variant="caption" color="text.secondary" style={{ cursor: 'pointer' }}>
+                      tap to edit
+                    </Typography>
+                  </Tooltip> */}
+                      </CardContent>
+                    </Card>
+
+                    {/* <Button size={isMd ? 'large' : 'medium'} fullWidth={!isMd} variant="contained" to={`/editor/${fid}${getCurrentQueryString()}`} component={RouterLink} style={{ marginBottom: '1rem' }}>
+                Add Captions & Edit Photo
+              </Button> */}
+
+                    {/* <Typography variant="subtitle1" color="text.secondary" style={{ marginBottom: '1rem' }}>
+                TODO: add more metadata, links, content, etc. here
+              </Typography> */}
+                  </Box>
+                </Grid>
+                <Button size="large" fullWidth={!isMd} variant="contained" to={`/editor/${fid}${getCurrentQueryString()}`} component={RouterLink} sx={{ my: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}>
+                  Open In Editor
+                </Button>
+                <Card sx={{ mt: 0 }}>
+                  <Accordion expanded={subtitlesExpanded} disableGutters>
+                    <AccordionSummary sx={{ paddingX: 1.55 }} onClick={handleSubtitlesExpand} textAlign="center">
+                      <Typography marginRight="auto" fontWeight="bold" color="#CACACA" fontSize={14.8}>
+                        {subtitlesExpanded ? (
+                          <Close style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
+                        ) : (
+                          <Menu style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
+                        )}
+                        {subtitlesExpanded ? 'Hide' : 'View'} Nearby Subtitles
+                      </Typography>
+                      {/* <Chip size="small" label="New!" color="success" /> */}
+                    </AccordionSummary>
+                    <AccordionDetails sx={{ paddingY: 0, paddingX: 0 }}>
+                      <List sx={{ padding: '.5em 0' }}>
+                        {surroundingFrames &&
+                          surroundingFrames
+                            .filter(
+                              (result, index, array) =>
+                                result?.subtitle &&
+                                (index === 0 ||
+                                  result?.subtitle.replace(/\n/g, ' ') !==
+                                  array[index - 1].subtitle.replace(/\n/g, ' '))
+                            )
+                            .map((result) => (
+                              <ListItem key={result?.id} disablePadding sx={{ padding: '0 0 .6em 0' }}>
+                                <ListItemIcon sx={{ paddingLeft: '0' }}>
+                                  <Fab
+                                    size="small"
+                                    sx={{
+                                      backgroundColor: theme => theme.palette.background.paper,
+                                      boxShadow: 'none',
+                                      marginLeft: '5px',
+                                      '&:hover': {
+                                        xs: { backgroundColor: 'inherit' },
+                                        md: {
+                                          backgroundColor:
+                                            result?.subtitle.replace(/\n/g, ' ') ===
+                                              frameData?.subtitle?.replace(/\n/g, ' ')
+                                              ? 'rgba(0, 0, 0, 0)'
+                                              : 'ButtonHighlight',
+                                        },
+                                      },
+                                    }}
+                                    onClick={() => navigate(`/frame/${result?.fid}`)}
+                                  >
+                                    {loading ? (
+                                      <CircularProgress size={20} sx={{ color: '#565656' }} />
+                                    ) : result?.subtitle.replace(/\n/g, ' ') ===
+                                      frameData?.subtitle?.replace(/\n/g, ' ') ? (
+                                      <GpsFixed
+                                        sx={{
+                                          color:
+                                            result?.subtitle.replace(/\n/g, ' ') ===
+                                              frameData?.subtitle?.replace(/\n/g, ' ')
+                                              ? 'rgb(202, 202, 202)'
+                                              : 'rgb(89, 89, 89)',
+                                          cursor: 'pointer',
+                                        }}
+                                      />
+                                    ) : (
+                                      <GpsNotFixed sx={{ color: 'rgb(89, 89, 89)', cursor: 'pointer' }} />
+                                    )}
+                                  </Fab>
+                                </ListItemIcon>
+                                <ListItemText sx={{ color: 'rgb(173, 173, 173)', fontSize: '4em' }}>
+                                  <Typography
+                                    component="p"
+                                    variant="body2"
+                                    color={
+                                      result?.subtitle.replace(/\n/g, ' ') === frameData?.subtitle?.replace(/\n/g, ' ')
+                                        ? 'rgb(202, 202, 202)'
+                                        : ''
+                                    }
+                                    fontWeight={
+                                      result?.subtitle.replace(/\n/g, ' ') === frameData?.subtitle?.replace(/\n/g, ' ')
+                                        ? 700
+                                        : 400
+                                    }
+                                  >
+                                    {result?.subtitle.replace(/\n/g, ' ')}
+                                  </Typography>
+                                </ListItemText>
+                              </ListItem>
+                            ))}
+                      </List>
+                    </AccordionDetails>
+                  </Accordion>
+                </Card>
+              </>
+            }
+          </Grid>
+          {isMd &&
+            <>
+              <Grid item xs={12} md={6}>
+                <Box sx={{ mt: isMd ? 0 : '1rem', width: isMd ? 'inherit' : '100%' }}>
+                  <Card style={{ boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+                    <CardContent>
+                      <Typography variant="h4" component="div" style={{ marginBottom: '0.5rem' }} textAlign='left'>
+                        {showTitle}
+                        <Chip
+                          size='small'
+                          label={`S${fid.split('-')[1]} E${fid.split('-')[2]}`}
+                          sx={{
+                            marginLeft: '5px',
+                            "& .MuiChip-label": {
+                              fontWeight: 'bold',
+                            },
+                          }}
+                        />
+                        <Chip
+                          size='small'
+                          label={frameToTimecode(fid.split('-')[3], 9)}
+                          sx={{
+                            marginLeft: '5px',
+                            "& .MuiChip-label": {
+                              fontWeight: 'bold',
+                            },
+                          }}
+                        />
+                      </Typography>
+                      <Typography variant="subtitle1" color="text.secondary" style={{ marginBottom: '0rem' }} textAlign='left'>
+                        {loading ?
+                          <Skeleton variant='text' height={25} width={'max(100px, 50%)'} />
+                          :
+                          <>
+                            {frameData.subtitle ? frameData.subtitle : '(no subtitle)'}
+                          </>
+                        }
+                      </Typography>
+                      <Button size="large" fullWidth={!isMd} variant="contained" to={`/editor/${fid}${getCurrentQueryString()}`} component={RouterLink} sx={{ mt: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}>
+                        Open In Editor
+                      </Button>
+                      {/* <Tooltip title="Tap to edit">
+                    <Typography variant="caption" color="text.secondary" style={{ cursor: 'pointer' }}>
+                      tap to edit
+                    </Typography>
+                  </Tooltip> */}
+                    </CardContent>
+                  </Card>
+
+                  {/* <Button size={isMd ? 'large' : 'medium'} fullWidth={!isMd} variant="contained" to={`/editor/${fid}${getCurrentQueryString()}`} component={RouterLink} style={{ marginBottom: '1rem' }}>
+                Add Captions & Edit Photo
+              </Button> */}
+
+                  {/* <Typography variant="subtitle1" color="text.secondary" style={{ marginBottom: '1rem' }}>
+                TODO: add more metadata, links, content, etc. here
+              </Typography> */}
+                </Box>
+              </Grid>
+            </>
           }
 
           <Grid item xs={12}>
@@ -635,19 +699,19 @@ export default function FramePage({ shows = [] }) {
               </Grid>
             }
             <Grid item xs={12} mt={3}>
-                    {episodeDetails && (
-                      <Button
-                        variant="contained"
-                        fullWidth
-                        href={`/episode/${episodeDetails[0]}/${episodeDetails[1]}/${episodeDetails[2]}/${episodeDetails[3]}`}
-                      >
-                        View Episode
-                      </Button>
-                    )}
-                  </Grid>
+              {episodeDetails && (
+                <Button
+                  variant="contained"
+                  fullWidth
+                  href={`/episode/${episodeDetails[0]}/${episodeDetails[1]}/${episodeDetails[2]}/${episodeDetails[3]}`}
+                >
+                  View Episode
+                </Button>
+              )}
+            </Grid>
           </Grid>
         </Grid>
-      </Container>
+      </Container >
     </>
   );
 }
