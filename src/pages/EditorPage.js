@@ -501,7 +501,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       if (user && user?.userDetails?.credits > 0) {
         editor.canvas.isDrawingMode = (tool === 'magicEraser');
         editor.canvas.freeDrawingBrush.width = brushToolSize;
-        editor.canvas.freeDrawingBrush.color = 'rgba(255, 0, 0, 0.5)';
+        editor.canvas.freeDrawingBrush.color = 'red';
         if (tool !== 'magicEraser') {
           editor.canvas.getObjects().forEach((obj) => {
             if (obj instanceof fabric.Path) {
