@@ -145,7 +145,7 @@ export default function TopBannerSearch(props) {
       const path = '/random';
       const myInit = {
         queryStringParameters: {
-          series: seriesTitle,
+          series: show,
           sessionId
         }
       }

@@ -382,7 +382,7 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
       const path = '/random';
       const myInit = {
         queryStringParameters: {
-          series: seriesTitle,
+          series: show,
           sessionId,
         },
       };
