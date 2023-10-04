@@ -592,7 +592,7 @@ export default function VotingPage({ shows: searchableShows }) {
                   <>
                     {
                       // Insert the VotingPageAd component every 6 shows
-                      (idx % 7) - 3 === 0 && idx !== 0 && user?.userDetails?.subscriptionStatus !== 'active'
+                      (idx % 7) - 2 === 0 && idx !== 0 && user?.userDetails?.subscriptionStatus !== 'active'
                       ? (
                         <Grid item xs={12} style={{ marginBottom: 15 }}>
                           <Card>
