@@ -85,6 +85,10 @@ export default function VotingPage({ shows: searchableShows }) {
   const [filteredAndSortedShows, setFilteredAndSortedShows] = useState([]);
   const { setMessage, setOpen, setSeverity } = useContext(SnackbarContext)
 
+  // Local pagination
+  const itemsPerPage = 25; // number of items to render additionally
+  const [itemsDisplayed, setItemsDisplayed] = useState(itemsPerPage);
+
   const location = useLocation();
 
   const theme = useTheme();
@@ -429,6 +433,11 @@ export default function VotingPage({ shows: searchableShows }) {
     })
   }
 
+  const handleLoadMore = () => {
+    setItemsDisplayed(itemsDisplayed + itemsPerPage);  // load 10 more items when the button is clicked
+  }
+  
+
   return (
     <>
       <Helmet>
@@ -574,11 +583,13 @@ export default function VotingPage({ shows: searchableShows }) {
             </Grid>
           ) : (         
             <FlipMove style={{ minWidth: '100%' }}>
-              {filteredAndSortedShows.map((show, idx) => (
-                hideSearchable && searchableShows.some(searchableShow => searchableShow.id === show.slug)
-                  ? null
-                  : (
-                    <>
+              {filteredAndSortedShows.slice(0, itemsDisplayed).map((show, idx) => {
+                const isLastItem = idx === itemsDisplayed - 1; // Check if current item is the last one being displayed
+                if (hideSearchable && searchableShows.some(searchableShow => searchableShow.id === show.slug)) {
+                  return null;
+                }
+                return (
+                  <>
                     {
                       // Insert the VotingPageAd component every 6 shows
                       (idx % 7) - 3 === 0 && idx !== 0 && user?.userDetails?.subscriptionStatus !== 'active'
@@ -886,8 +897,33 @@ export default function VotingPage({ shows: searchableShows }) {
                     </CardContent>
                   </Card>
                 </Grid>
-                </>)
-              ))}
+                </>
+                );
+              })}
+
+              {filteredAndSortedShows.length > itemsDisplayed && (
+                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={handleLoadMore}
+                    fullWidth
+                    style={{
+                        marginTop: 10,
+                        marginBottom: 50,
+                        backgroundColor: 'rgb(45, 45, 45)',
+                        height: 100,
+                        color: 'white',
+                        fontSize: 'large'
+                    }}
+                    startIcon={<AddIcon />}
+                >
+                    {`Load ${itemsPerPage} More`}
+                </Button>
+            </div>
+            
+              )}
+
               <Grid
                 item
                 xs={12}
