@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 
 import { Backdrop, CircularProgress } from '@mui/material';
+import { SearchDetailsProvider } from './contexts/SearchDetailsProvider';
 // routes
 import Router from './routes';
 // theme
@@ -21,18 +22,21 @@ export default function App() {
   // Return the App
   return (
     <ThemeProvider>
+    
       <SnackBar>
         {/* <ScrollToTop /> */}
         {/* <StyledChart /> */}
-        <StripeWatcher>
-          <Suspense fallback={
-            <Backdrop open sx={{ backgroundColor: "white" }}>
-              <CircularProgress />
-            </Backdrop>
-          }>
-            <Router />
-          </Suspense>
-        </StripeWatcher>
+          <StripeWatcher>
+            <Suspense fallback={
+              <Backdrop open sx={{ backgroundColor: "white" }}>
+                <CircularProgress />
+              </Backdrop>
+            }>
+              <SearchDetailsProvider>
+              <Router />
+              </SearchDetailsProvider>
+            </Suspense>
+          </StripeWatcher>
       </SnackBar>
     </ThemeProvider>
   );

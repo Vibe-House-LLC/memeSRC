@@ -3,6 +3,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import FullScreenSearch from '../sections/search/FullScreenSearch';
+import useSearchDetails from '../hooks/useSearchDetails';
 
 const prepSessionID = async () => {
   let sessionID;
@@ -20,6 +21,7 @@ const prepSessionID = async () => {
 };
 
 export default function SearchPage() {
+  const { setSearchQuery } = useSearchDetails();
   const [searchTerm, setSearchTerm] = useState('');
   const [seriesTitle, setSeriesTitle] = useState('_universal');
 
@@ -37,6 +39,7 @@ export default function SearchPage() {
     if(e) {
       e.preventDefault();
     }
+    setSearchQuery(searchTerm)
     const encodedSearchTerms = encodeURI(searchTerm)
     console.log(`Navigating to: '${`/search/${seriesTitle}/${encodedSearchTerms}`}'`)
     navigate(`/search/${seriesTitle}/${encodedSearchTerms}`)

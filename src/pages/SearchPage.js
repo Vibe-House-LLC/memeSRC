@@ -2,9 +2,10 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { API } from 'aws-amplify';
 import { Grid, CircularProgress, Card, Chip } from '@mui/material';
 import styled from '@emotion/styled';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import TopBannerSearch from '../sections/search/TopBannerSearch';
+import useSearchDetails from '../hooks/useSearchDetails';
 
 const StyledCircularProgress = styled(CircularProgress)`
   position: absolute;
@@ -87,13 +88,14 @@ const SeasonEpisodeText = styled.span`
 
 export default function SearchPage() {
   const params = useParams();
+  const { show, setShow, searchQuery, setSearchQuery } = useSearchDetails();
 
   const [searchTerm, setSearchTerm] = useState(params.searchTerms);
   const [seriesTitle, setSeriesTitle] = useState(params.seriesId);
   const [loadedSearchTerm, setLoadedSearchTerm] = useState(null);
   const [loadedSeriesTitle, setLoadedSeriesTitle] = useState(null);
   const [results, setResults] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [aspectRatio, setAspectRatio] = useState('56.25%'); // Default to 16:9 aspect ratio
 
   const memoizedResults = useMemo(() => results, [results]);
@@ -119,10 +121,9 @@ export default function SearchPage() {
   };
 
   useEffect(() => {
-    if (params) {
-      if (params.seriesId !== loadedSeriesTitle || params.searchTerms !== loadedSearchTerm) {
-        setSearchTerm(params.searchTerms)
-        setSeriesTitle(params.seriesId)
+    if (params && !loading) {
+      if (params.seriesId !== loadedSeriesTitle || searchQuery !== loadedSearchTerm) {
+        setSearchTerm(searchQuery)
         setLoading(true);
         getSessionID().then(sessionId => {
           const apiName = 'publicapi';
@@ -137,6 +138,7 @@ export default function SearchPage() {
           API.get(apiName, path, myInit)
             .then(data => {
               setResults(data);
+              setSeriesTitle(params.seriesId)
               setLoading(false);
               setLoadedSearchTerm(searchTerm);
               setLoadedSeriesTitle(seriesTitle);
@@ -146,7 +148,7 @@ export default function SearchPage() {
                 const img = new Image();
                 img.src = `https://memesrc.com${item.frame_image}`;
 
-                img.onload = function(event) {
+                img.onload = function (event) {
                   const aspectRatio = event.target.width / event.target.height;
                   if (aspectRatio > maxAspectRatio) {
                     maxAspectRatio = aspectRatio;
@@ -162,13 +164,14 @@ export default function SearchPage() {
         })
       }
     }
-  }, [params, searchTerm, seriesTitle, loadedSeriesTitle, loadedSearchTerm])
+  }, [params, searchTerm, seriesTitle, loadedSeriesTitle, loadedSearchTerm, loading])
 
   const handleSearch = useCallback((e) => {
     if (e) {
       e.preventDefault();
     }
     const encodedSearchTerms = encodeURI(searchTerm)
+    setSearchQuery(searchTerm)
     navigate(`/search/${seriesTitle}/${encodedSearchTerms}`)
   }, [seriesTitle, searchTerm, navigate]);
 
@@ -177,16 +180,14 @@ export default function SearchPage() {
       <Helmet>
         <title>{`${searchTerm} • Search • memeSRC`}</title>
       </Helmet>
-      {(memoizedResults || loading) && (
-        <TopBannerSearch
-          searchFunction={handleSearch}
-          setSearchTerm={setSearchTerm}
-          setSeriesTitle={setSeriesTitle}
-          searchTerm={searchTerm}
-          seriesTitle={seriesTitle}
-          loading={loading}
-        />
-      )}
+      <TopBannerSearch
+        searchFunction={handleSearch}
+        setSearchTerm={setSearchTerm}
+        setSeriesTitle={setSeriesTitle}
+        searchTerm={searchTerm}
+        seriesTitle={seriesTitle}
+        resultsLoading={loading}
+      />
       <Grid container spacing={2} alignItems="stretch" paddingX={{ xs: 2, md: 6 }}>
         {loading ? (
           <StyledCircularProgress />
@@ -194,7 +195,7 @@ export default function SearchPage() {
           memoizedResults &&
           memoizedResults.map((result) => (
             <Grid item xs={12} sm={6} md={3} key={result.fid}>
-              <a href={`/${process.env.REACT_APP_USER_BRANCH === 'dev' ? 'frame' : 'editor'}/${result.fid}?search=${encodeURI(searchTerm)}`} style={{ textDecoration: 'none' }}>
+              <Link to={`/frame/${result.fid}`} style={{ textDecoration: 'none' }}>
                 <StyledCard>
                   <StyledCardMediaContainer aspectRatio={memoizedAspectRatio}>
                     <StyledCardMedia
@@ -233,7 +234,7 @@ export default function SearchPage() {
                     />
                   </BottomCardLabel>
                 </StyledCard>
-              </a>
+              </Link>
             </Grid>
           ))
         )}

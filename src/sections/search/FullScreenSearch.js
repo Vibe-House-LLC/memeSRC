@@ -1,5 +1,5 @@
 import styled from '@emotion/styled';
-import { Alert, AlertTitle, Button, Fab, Grid, Typography, IconButton } from '@mui/material';
+import { Alert, AlertTitle, Button, Fab, Grid, Typography, IconButton, Stack, useMediaQuery } from '@mui/material';
 import { Box } from '@mui/system';
 import { ArrowDownwardRounded, Favorite, MapsUgc, Shuffle } from '@mui/icons-material';
 import { API, graphqlOperation } from 'aws-amplify';
@@ -7,10 +7,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { LoadingButton } from '@mui/lab';
 import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
 import CloseIcon from '@mui/icons-material/Close';
+import useSearchDetails from '../../hooks/useSearchDetails';
 import { searchPropTypes } from './SearchPropTypes';
 import Logo from '../../components/logo/Logo';
 import { listContentMetadata, listHomepageSections } from '../../graphql/queries';
 import HomePageSection from './HomePageSection';
+import HomePageBannerAd from '../../ads/HomePageBannerAd';
 
 // Define constants for colors and fonts
 const PRIMARY_COLOR = '#4285F4';
@@ -169,7 +171,7 @@ const StyledGridContainer = styled(Grid)`
 
 // Theme Defaults
 const defaultTitleText = 'memeSRC';
-const defaultBragText = 'Search over 36 million screencaps from your favorite shows.';
+const defaultBragText = 'Search over 38 million screencaps from shows & movies.';
 const defaultFontColor = '#FFFFFF';
 const defaultBackground = `linear-gradient(45deg,
   #5461c8 12.5% /* 1*12.5% */,
@@ -187,6 +189,8 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
   const [loading, setLoading] = useState(true);
   const [loadingRandom, setLoadingRandom] = useState(false);
   const [scrollToSections, setScrollToSections] = useState();
+  const { show, setShow, searchQuery, setSearchQuery } = useSearchDetails();
+  const isMd = useMediaQuery((theme) => theme.breakpoints.up('sm'));
 
   const [alertOpen, setAlertOpen] = useState(true);
 
@@ -216,30 +220,29 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
     const selectedSeriesProperties = shows.find((object) => object.id === newSeriesTitle);
 
     if (selectedSeriesProperties) {
-        setCurrentThemeBackground({ backgroundColor: `${selectedSeriesProperties.colorMain}` });
-        setCurrentThemeFontColor(selectedSeriesProperties.colorSecondary);
-        setCurrentThemeTitleText(selectedSeriesProperties.title);
-        setCurrentThemeBragText(
-            `Search over ${selectedSeriesProperties.frameCount.toLocaleString('en-US')} frames from ${
-                selectedSeriesProperties.title
-            }`
-        );
+      setCurrentThemeBackground({ backgroundColor: `${selectedSeriesProperties.colorMain}` });
+      setCurrentThemeFontColor(selectedSeriesProperties.colorSecondary);
+      setCurrentThemeTitleText(selectedSeriesProperties.title);
+      setCurrentThemeBragText(
+        `Search over ${selectedSeriesProperties.frameCount.toLocaleString('en-US')} frames from ${selectedSeriesProperties.title
+        }`
+      );
     } else {
-        resetTheme();
+      resetTheme();
     }
   }, [shows]);
 
   // This useEffect handles the data fetching
   useEffect(() => {
     async function getData() {
-        // Get shows
-        const fetchedShows = await fetchShows();
-        setShows(fetchedShows);
-        setLoading(false);
+      // Get shows
+      const fetchedShows = await fetchShows();
+      setShows(fetchedShows);
+      setLoading(false);
 
-        // Get homepage sections
-        const fetchedSections = await fetchSections();
-        setSections(fetchedSections);
+      // Get homepage sections
+      const fetchedSections = await fetchSections();
+      setSections(fetchedSections);
     }
     getData();
   }, []);
@@ -248,16 +251,18 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
   useEffect(() => {
     // Check if shows have been loaded
     if (shows.length > 0) {
-        // Determine the series to use based on the URL or default to '_universal'
-        const currentSeriesId = seriesId || '_universal';
-        
-        if (currentSeriesId !== seriesTitle) {
-            setSeriesTitle(currentSeriesId); // Update the series title based on the URL parameter
-            handleChangeSeries(currentSeriesId); // Update the theme
-            
-            // Navigation logic
-            navigate(currentSeriesId === '_universal' ? '/' : `/${currentSeriesId}`);
-        }
+      // Determine the series to use based on the URL or default to '_universal'
+      const currentSeriesId = seriesId || '_universal';
+
+      setShow(currentSeriesId)
+
+      if (currentSeriesId !== seriesTitle) {
+        setSeriesTitle(currentSeriesId); // Update the series title based on the URL parameter
+        handleChangeSeries(currentSeriesId); // Update the theme
+
+        // Navigation logic
+        navigate(currentSeriesId === '_universal' ? '/' : `/${currentSeriesId}`);
+      }
     }
   }, [seriesId, seriesTitle, shows, handleChangeSeries, navigate]);
 
@@ -377,7 +382,7 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
       const path = '/random';
       const myInit = {
         queryStringParameters: {
-          series: seriesTitle,
+          series: show,
           sessionId,
         },
       };
@@ -386,7 +391,8 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
         .then((response) => {
           const fid = response.frame_id;
           console.log(fid);
-          navigate(`/${process.env.REACT_APP_USER_BRANCH === 'dev' ? 'frame' : 'editor'}/${fid}`);
+          navigate(`/frame/${fid}`);
+          setSearchQuery(null)
           setLoadingRandom(false);
         })
         .catch((error) => {
@@ -415,9 +421,9 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
                 </Box>
                 {currentThemeTitleText}
               </Typography>
-              {/* {!localStorage.getItem('alertDismissed36f7w') && (
+              {!localStorage.getItem('alertDismisseds7g3fgw34') && (
                 <Alert
-                  severity="success"
+                  severity="info"
                   action={
                     <>
                       <Button
@@ -428,13 +434,13 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
                         size="small"
                         style={{ marginRight: '5px' }}
                       >
-                        Vote
+                        Request
                       </Button>
                       <IconButton
                         color="inherit"
                         size="small"
                         onClick={() => {
-                          localStorage.setItem('alertDismissed', 'true');
+                          localStorage.setItem('alertDismisseds7g3fgw34', 'true');
                           setAlertOpen(false);
                         }}
                       >
@@ -448,25 +454,25 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
                     opacity: 0.9,
                   }}
                 >
-                  <b>Added:</b> 50+&nbsp;new&nbsp;requests
+                  <b>Movies</b>&nbsp;are&nbsp;now&nbsp;supported!
                 </Alert>
-              )} */}
+              )}
             </Grid>
           </Grid>
           <StyledSearchForm onSubmit={(e) => searchFunction(e)}>
             <Grid container justifyContent="center">
               <Grid item sm={3.5} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
-              <StyledSearchSelector
+                <StyledSearchSelector
                   onChange={(e) => {
-                      const newSeriesTitle = e.target.value;
-                      setSeriesTitle(newSeriesTitle); // Update the series title based on the selection
-                      handleChangeSeries(newSeriesTitle); // Update the theme
-                      navigate(newSeriesTitle === '_universal' ? '/' : `/${newSeriesTitle}`); // Navigate
+                    const newSeriesTitle = e.target.value;
+                    setSeriesTitle(newSeriesTitle); // Update the series title based on the selection
+                    handleChangeSeries(newSeriesTitle); // Update the theme
+                    navigate(newSeriesTitle === '_universal' ? '/' : `/${newSeriesTitle}`); // Navigate
                   }}
                   value={seriesTitle}
-              >
+                >
                   <option key="_universal" value="_universal" selected>
-                    🌈 All Shows
+                    🌈 All Shows & Movies
                   </option>
                   {loading ? (
                     <option key="loading" value="loading" disabled>
@@ -504,9 +510,14 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
             </Grid>
           </StyledSearchForm>
           <Grid item xs={12} textAlign="center" color={currentThemeFontColor} marginTop={4}>
-            <Typography component="h4" variant="h4">
+            <Typography component="h4" variant="h4" sx={{ marginTop: -2 }}>
               {currentThemeBragText}
             </Typography>
+            {/* <Stack justifyContent='center'>
+              <Box sx={{ width: isMd ? '600px' : '100%', mx: 'auto', maxHeight: '150px' }}>
+                <HomePageBannerAd />
+              </Box>
+            </Stack> */}
             <Button
               onClick={() => scrollToSection()}
               startIcon="🚀"

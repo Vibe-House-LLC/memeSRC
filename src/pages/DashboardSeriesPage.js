@@ -513,12 +513,12 @@ export default function DashboardSeriesPage() {
   return (
     <>
       <Helmet>
-        <title> TV Shows - memeSRC </title>
+        <title> Content Manager - memeSRC </title>
       </Helmet>
       <Container>
         <Stack direction="row" alignItems="center" justifyContent="space-between" mb={5}>
           <Typography variant="h4" gutterBottom>
-            TV Shows {loading ? <CircularProgress size={25} /> : `(${filteredMetadata.length})`}
+            Content Manager {loading ? <CircularProgress size={25} /> : `(${filteredMetadata.length})`}
           </Typography>
           <Button
             aria-controls="options-menu"

@@ -31,6 +31,7 @@ import {
   FormControlLabel,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
+import AddIcon from '@mui/icons-material/Add';
 import { ArrowUpward, ArrowDownward, Search, Close, ThumbUp, Whatshot, Lock } from '@mui/icons-material';
 import FlipMove from 'react-flip-move';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -40,6 +41,8 @@ import { listSeries } from '../graphql/queries';
 import { UserContext } from '../UserContext';
 import TvdbSearch from '../components/TvdbSearch/TvdbSearch';
 import { SnackbarContext } from '../SnackbarContext';
+import VotingPageAd from '../ads/VotingPageAd';
+import VotingPageFooterAd from '../ads/VotingPageFooterAd';
 
 const StyledBadge = styled(Badge)(() => ({
   '& .MuiBadge-badge': {
@@ -78,7 +81,7 @@ export default function VotingPage({ shows: searchableShows }) {
   const [openAddRequest, setOpenAddRequest] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState();
   const [submittingRequest, setSubmittingRequest] = useState(false);
-  const [hideSearchable, setHideSearchable] = useState(false);
+  const [hideSearchable, setHideSearchable] = useState(true);
   const [filteredAndSortedShows, setFilteredAndSortedShows] = useState([]);
   const { setMessage, setOpen, setSeverity } = useContext(SnackbarContext)
 
@@ -103,15 +106,15 @@ export default function VotingPage({ shows: searchableShows }) {
     fetchShowsAndVotes();
   }, [user]);
 
-  useEffect(() => {
-    // Switch to the "Battleground" tab for users who signed up before 2023-07-07 and have voted (until they manually select a tab)
-    // TODO: remove this in the future after this 'migration' period for the vote sorting options
-    const savedRankMethod = localStorage.getItem('rankMethod');
-    console.log(user);
-    if (!savedRankMethod && Object.keys(userVotes).length > 0 && user.userDetails.createdAt < '2023-07-08') {
-      setRankMethod('combined');
-    }
-  }, [userVotes]);
+  // useEffect(() => {
+  //   // Switch to the "Battleground" tab for users who signed up before 2023-07-07 and have voted (until they manually select a tab)
+  //   // TODO: remove this in the future after this 'migration' period for the vote sorting options
+  //   const savedRankMethod = localStorage.getItem('rankMethod');
+  //   console.log(user);
+  //   if (!savedRankMethod && Object.keys(userVotes).length > 0 && user.userDetails.createdAt < '2023-07-08') {
+  //     setRankMethod('combined');
+  //   }
+  // }, [userVotes]);
 
   useEffect(() => {
     let sortedShows;
@@ -429,52 +432,66 @@ export default function VotingPage({ shows: searchableShows }) {
   return (
     <>
       <Helmet>
-        <title> Vote and Requests • TV Shows • memeSRC </title>
+        <title> Vote and Requests • TV Shows & Movies • memeSRC </title>
       </Helmet>
       <Container maxWidth="md">
-        <Box my={2}>
+        <Box my={2} sx={{marginTop: -2, marginBottom: -1.5}}>
           <Typography variant="h3" component="h1" gutterBottom>
-            Requested Shows
+            Requests
           </Typography>
-          <Typography variant="subtitle2">Upvote shows you want on memeSRC</Typography>
+          <Typography variant="subtitle2">Upvote shows and movies you want on memeSRC</Typography>
         </Box>
-        {!localStorage.getItem('alertDismissedVotePage999') && (
+
+        {/* {!localStorage.getItem('alertDismissedVotePage9667zz') && (
           <Alert
-            severity="info"
-            action={
+          severity="info"
+          action={
               <IconButton
                 color="inherit"
                 size="small"
                 onClick={() => {
-                  localStorage.setItem('alertDismissedVotePage999', 'true');
+                  localStorage.setItem('alertDismissedVotePage9667zz', 'true');
                   setAlertOpen(false);
                 }}
               >
                 <CloseIcon fontSize="inherit" />
               </IconButton>
-            }
-            sx={{
-              opacity: 0.9,
-              backgroundColor: 'rgb(14, 37, 50)',
-            }}
-          >
-            <AlertTitle>New Features</AlertTitle>
-            <ul>
-              <li>
-                {' '}
-                • <strong>Vote Again:</strong> every 24 hours
-              </li>
-              <li>
-                {' '}
-                • <strong>Most Upvoted:</strong> only count upvotes
-              </li>
-              <li>
-                {' '}
-                • <strong>Battleground:</strong> also count downvotes
-              </li>
-            </ul>
-          </Alert>
-        )}
+          }
+          sx={{
+            marginTop: 2,
+            marginBottom: -1,
+            opacity: 0.9,
+          }}
+        >
+          <b>Vote&nbsp;again&nbsp;every&nbsp;24h!</b>
+        </Alert>
+        )} */}
+
+        {/* {!localStorage.getItem('alertDismissedVotePage1000zz') && (
+          <Alert
+          severity="success"
+          action={
+              <IconButton
+                color="inherit"
+                size="small"
+                onClick={() => {
+                  localStorage.setItem('alertDismissedVotePage1000zz', 'true');
+                  setAlertOpen(false);
+                }}
+              >
+                <CloseIcon fontSize="inherit" />
+              </IconButton>
+          }
+          sx={{
+            marginTop: 2,
+            marginBottom: -1,
+            opacity: 0.9,
+          }}
+        >
+          <b>Movies&nbsp;are&nbsp;now&nbsp;supported!</b>
+        </Alert>
+        )} */}
+
         <Box my={2}>
           <Tabs value={rankMethod} onChange={handleRankMethodChange} indicatorColor="secondary" textColor="inherit">
             <Tab
@@ -500,10 +517,11 @@ export default function VotingPage({ shows: searchableShows }) {
         <Box my={2}>
           <TextField
             fullWidth
+            size="small"
             variant="outlined"
             value={searchText}
             onChange={handleSearchChange}
-            placeholder="Search requested shows..."
+            placeholder="Search requests..."
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -530,9 +548,9 @@ export default function VotingPage({ shows: searchableShows }) {
                 color="primary"
               />
             }
-            label="Hide Searchable Shows"
-            style={{ opacity: hideSearchable ? 1 : 0.5 }}
-            sx={{ margin: 1 }}
+            label="Hide Searchable"
+            style={{ opacity: hideSearchable ? 1 : 0.5, fontSize: '0.1rem' }}
+            sx={{ margin: 0, marginBottom: -2 }}
           />
         </Box>
         <Grid container style={{ minWidth: '100%' }}>
@@ -554,15 +572,30 @@ export default function VotingPage({ shows: searchableShows }) {
               </Typography>
               <CircularProgress />
             </Grid>
-          ) : (
+          ) : (         
             <FlipMove style={{ minWidth: '100%' }}>
               {filteredAndSortedShows.map((show, idx) => (
                 hideSearchable && searchableShows.some(searchableShow => searchableShow.id === show.slug)
                   ? null
                   : (
+                    <>
+                    {
+                      // Insert the VotingPageAd component every 6 shows
+                      (idx % 6) - 2 === 0 && idx !== 0 && user?.userDetails?.subscriptionStatus !== 'active'
+                      ? (
+                        <Grid item xs={12} style={{ marginBottom: 15 }}>
+                          <Card>
+                            <CardContent>
+                              <VotingPageAd />
+                            </CardContent>
+                          </Card>
+                        </Grid>
+                      )
+                      : null
+                    }
                     <Grid item xs={12} key={show.id} style={{ marginBottom: 15 }}>
                       <Card>
-                        <CardContent>
+                      <CardContent style={{ paddingTop: 22, paddingBottom: 22 }}>
                       <Box display="flex" alignItems="center">
                         <Box flexGrow={1} marginRight={2}>
                           <Box display="flex" alignItems="center">
@@ -588,7 +621,7 @@ export default function VotingPage({ shows: searchableShows }) {
                                 {
                                   searchableShows.some(searchableShow => searchableShow.id === show.slug) && (
                                     <a 
-                                      href={`https://memesrc.com/${show.slug}`} 
+                                      href={`https://beta.memesrc.com/${show.slug}`} 
                                       target="_blank" 
                                       rel="noopener noreferrer" 
                                       style={{ textDecoration: 'none', color: 'inherit' }}
@@ -852,7 +885,8 @@ export default function VotingPage({ shows: searchableShows }) {
                       </Box>
                     </CardContent>
                   </Card>
-                </Grid>)
+                </Grid>
+                </>)
               ))}
               <Grid
                 item
@@ -867,29 +901,46 @@ export default function VotingPage({ shows: searchableShows }) {
                 }}
               >
                 <Typography variant="h6" gutterBottom>
-                  Looking for one not in the list?
+                  What are we missing?
                 </Typography>
                 <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={() => {
-                    // window.open('https://forms.gle/8CETtVbwYoUmxqbi7', '_blank')
-                    if (user) {
-                      toggleOpenAddRequest();
-                    } else {
-                      navigate('/signup')
-                    }
-                  }}
-                  style={{
-                    marginTop: 10,
-                    marginBottom: 15,
-                  }}
+                    variant="contained"
+                    color="primary"
+                    onClick={() => {
+                        // window.open('https://forms.gle/8CETtVbwYoUmxqbi7', '_blank')
+                        if (user) {
+                            toggleOpenAddRequest();
+                        } else {
+                            navigate('/signup')
+                        }
+                    }}
+                    style={{
+                        marginTop: 10,
+                        marginBottom: 50,
+                        backgroundColor: 'rgb(84, 214, 44)',
+                        color: 'black'  // Set the text color to black
+                    }}
+                    startIcon={<AddIcon />}  // Add the plus icon at the beginning of the button
                 >
-                  Make a request
+                    Make a request
                 </Button>
               </Grid>
             </FlipMove>
           )}
+          {
+            // Insert the VotingPageAd component every 6 shows
+            user?.userDetails?.subscriptionStatus !== 'active'
+            ? (
+              <Grid item xs={12} style={{ marginBottom: 15 }}>
+                <Card>
+                  <CardContent>
+                    <VotingPageFooterAd />
+                  </CardContent>
+                </Card>
+              </Grid>
+            )
+            : null
+          }
         </Grid>
       </Container>
       <Dialog maxWidth='md' fullWidth onClose={toggleOpenAddRequest} open={openAddRequest}>
@@ -899,7 +950,7 @@ export default function VotingPage({ shows: searchableShows }) {
           </Typography>
         </DialogTitle>
         <DialogContent sx={{ paddingTop: 2 }}>
-          <TvdbSearch typeFilter='series' onClear={(value) => { setSelectedRequest() }} onSelect={(value) => { setSelectedRequest(value) }} />
+          <TvdbSearch typeFilter={['series', 'movie']} onClear={(value) => { setSelectedRequest() }} onSelect={(value) => { setSelectedRequest(value) }} />
           {selectedRequest &&
 
             <Grid container spacing={2} alignItems='center' mt={2}>
@@ -944,7 +995,7 @@ export default function VotingPage({ shows: searchableShows }) {
           }
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
-          <LoadingButton onClick={submitRequest} loading={submittingRequest} disabled={submittingRequest} variant='contained'>
+          <LoadingButton onClick={submitRequest} loading={submittingRequest} disabled={!selectedRequest || submittingRequest} variant='contained'>
             Submit Request
           </LoadingButton>
         </DialogActions>

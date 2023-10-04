@@ -15,6 +15,7 @@ import TextEditorControls from '../components/TextEditorControls';
 import { SnackbarContext } from '../SnackbarContext';
 import { UserContext } from '../UserContext';
 import { MagicPopupContext } from '../MagicPopupContext';
+import useSearchDetails from '../hooks/useSearchDetails';
 
 const Alert = forwardRef((props, ref) => <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />);
 
@@ -60,6 +61,8 @@ const StyledCardMedia = styled('img')`
 
 
 const EditorPage = ({ setSeriesTitle, shows }) => {
+  const searchDetails = useSearchDetails();
+  console.log(searchDetails.fineTuningFrame)
   // Get everything ready
   const { fid } = useParams();
   const { user, setUser } = useContext(UserContext);
@@ -92,7 +95,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
   const [loading, setLoading] = useState(true)
 
-  const [fineTuningValue, setFineTuningValue] = useState(4);
+  const [fineTuningValue, setFineTuningValue] = useState(searchDetails.fineTuningFrame || 4);
   const [episodeDetails, setEpisodeDetails] = useState();
   const [openDialog, setOpenDialog] = useState(false);
   const [imageUploading, setImageUploading] = useState();
@@ -290,7 +293,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
           setFineTuningFrames(images)
         });
         // Background image from the 
-        fabric.Image.fromURL(`https://memesrc.com${data.frame_image}`, (oImg) => {
+        fabric.Image.fromURL(`https://memesrc.com${searchDetails.fineTuningFrame ? data.frames_fine_tuning[searchDetails.fineTuningFrame] : data.frame_image}`, (oImg) => {
           console.log(oImg)
           setDefaultFrame(oImg);
           setDefaultSubtitle(data.subtitle);
@@ -462,10 +465,12 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     const serializedCanvas = JSON.stringify(editor.canvas);
     setFutureStates([]);
     setBgFutureStates([]);
-
+    searchDetails.setFineTuningFrame(event.target.value)
     setEditorStates(prevHistory => [...prevHistory, serializedCanvas]);
     setBgEditorStates(prevHistory => [...prevHistory, oImg]);
   }
+
+
 
   const handleStyle = (index, customStyles) => {
     // Select the item
@@ -496,7 +501,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       if (user && user?.userDetails?.credits > 0) {
         editor.canvas.isDrawingMode = (tool === 'magicEraser');
         editor.canvas.freeDrawingBrush.width = brushToolSize;
-        editor.canvas.freeDrawingBrush.color = 'red';
+        editor.canvas.freeDrawingBrush.color = 'rgba(255, 0, 0, 0.5)';
         if (tool !== 'magicEraser') {
           editor.canvas.getObjects().forEach((obj) => {
             if (obj instanceof fabric.Path) {
@@ -552,7 +557,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     originalCanvas.getObjects().forEach((obj) => {
       if (obj instanceof fabric.Path) {
         const path = obj.toObject();
-        const newPath = new fabric.Path(path.path, { ...path, fill: 'transparent', globalCompositeOperation: 'destination-out' });
+        const newPath = new fabric.Path(path.path, { ...path, stroke: 'red', fill: 'transparent', globalCompositeOperation: 'destination-out' });
+        console.log(path)
         newPath.scale(scale);
         newPath.set({ left: newPath.left * scale + offsetX, top: newPath.top * scale + offsetY });
         tempCanvasDrawing.add(newPath);
@@ -843,7 +849,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
             container
             item
             xs={12}
-            md={8}
             minWidth={{ xs: {}, md: '98vw', lg: '1200px' }}
             justifyContent="center"
             marginBottom={8.3}
@@ -935,8 +940,9 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                       variant="contained"
                       onClick={handleClickDialogOpen}
                       fullWidth
-                      sx={{ zIndex: '50' }}
+                      sx={{ zIndex: '50', backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
                       startIcon={<Share />}
+                      size="large"
                     >
                       Save/Copy/Share
                     </Button>
@@ -1493,13 +1499,18 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
             </DialogContentText>
           </DialogContent>
           <DialogContentText sx={{ paddingX: 4, marginTop: 'auto', paddingBottom: 2 }}>
-            <center>
-              <p>
-                ☝️ <b>{'ontouchstart' in window ? 'Tap and hold' : 'Right click'} the image to save</b>, or use a
-                quick action:
-              </p>
-            </center>
+              <center>
+                  <p>
+                      ☝️ 
+                      <b style={{ color: '#4CAF50' }}>
+                          {'ontouchstart' in window ? 'Tap and hold ' : 'Right click '} 
+                          the image to save
+                      </b>, 
+                      or use a quick action:
+                  </p>
+              </center>
           </DialogContentText>
+
           <DialogActions sx={{ marginBottom: 'auto', display: 'inline-flex', padding: '0 23px' }}>
             <Box display="grid" width="100%">
               {navigator.canShare && (

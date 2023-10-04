@@ -8,6 +8,7 @@ import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { searchPropTypes } from "./SearchPropTypes";
 import Logo from "../../components/logo/Logo";
 import { listContentMetadata } from '../../graphql/queries';
+import useSearchDetails from "../../hooks/useSearchDetails";
 
 // Define constants for colors and fonts
 const PRIMARY_COLOR = '#4285F4';
@@ -72,7 +73,8 @@ const StyledHeader = styled('header')(() => ({
   lineHeight: 0,
   width: '100%',
   zIndex: '1000',
-  paddingBottom: '20px'
+  paddingBottom: '20px',
+  paddingTop: '30px'
 }));
 
 async function fetchShows() {
@@ -92,10 +94,11 @@ TopBannerSearch.propTypes = searchPropTypes;
 
 
 export default function TopBannerSearch(props) {
+  const { show, setShow, searchQuery, setSearchQuery } = useSearchDetails();
   const [shows, setShows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingRandom, setLoadingRandom] = useState(false);
-  const { searchTerm, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction } = props
+  const { searchTerm, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction, resultsLoading } = props
 
   const navigate = useNavigate();
 
@@ -108,6 +111,10 @@ export default function TopBannerSearch(props) {
     }
     getData();
   }, []);
+
+  useEffect(() => {
+    console.log(resultsLoading)
+  }, [resultsLoading])
 
   useEffect(() => {
     searchFunction()
@@ -138,7 +145,7 @@ export default function TopBannerSearch(props) {
       const path = '/random';
       const myInit = {
         queryStringParameters: {
-          series: seriesTitle,
+          series: show,
           sessionId
         }
       }
@@ -147,7 +154,7 @@ export default function TopBannerSearch(props) {
         .then(response => {
           const fid = response.frame_id;
           console.log(fid)
-          navigate(`/${process.env.REACT_APP_USER_BRANCH === 'dev' ? 'frame' : 'editor'}/${fid}`);
+          navigate(`/frame/${fid}`);
           setLoadingRandom(false);
         })
         .catch(error => {
@@ -177,6 +184,7 @@ export default function TopBannerSearch(props) {
               <StyledSearchInput
                 label="With normal TextField"
                 id="outlined-start-adornment"
+                disabled={resultsLoading}
                 // InputProps={{
                 //   endAdornment: <InputAdornment position="end"><Typography variant="caption"><Search /></Typography></InputAdornment>,
                 // }}
@@ -191,19 +199,26 @@ export default function TopBannerSearch(props) {
         <Grid container wrap="nowrap" sx={{ overflowX: "scroll", flexWrap: "nowrap", scrollbarWidth: 'none', '&::-webkit-scrollbar': { height: '0 !important', width: '0 !important', display: 'none' } }} paddingX={2}>
           <Grid item marginLeft={{ md: 6 }}>
 
-            <FormControl variant="standard" sx={{ minWidth: 120 }}>
+            <FormControl
+              disabled={resultsLoading}
+              variant="standard"
+              sx={{ minWidth: 120 }}
+            >
               <Select
                 labelId="demo-simple-select-standard-label"
                 id="demo-simple-select-standard"
-                value={seriesTitle}
-                onChange={(x) => { setSeriesTitle(x.target.value); }}
+                value={show}
+                onChange={(x) => { 
+                  setSeriesTitle(x.target.value);
+                  setShow(x.target.value)
+                }}
                 label="Age"
                 size="small"
                 autoWidth
                 disableUnderline
               >
 
-                <MenuItem key='_universal' value='_universal' selected>🌈 All Shows</MenuItem>
+                <MenuItem key='_universal' value='_universal' selected>🌈 All Shows & Movies</MenuItem>
                 {(loading) ? <MenuItem key="loading" value="loading" disabled>Loading...</MenuItem> : shows.map((item) => (
                   <MenuItem key={item.id} value={item.id}>{item.emoji} {item.title}</MenuItem>
                 ))}
