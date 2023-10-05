@@ -30,6 +30,7 @@ import {
   List,
   useMediaQuery,
   Box,
+  Link,
 } from '@mui/material';
 import { Add, Close, ContentCopy, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu, Visibility, VisibilityOff } from '@mui/icons-material';
 import useSearchDetails from '../hooks/useSearchDetails';
@@ -565,11 +566,14 @@ export default function FramePage({ shows = [] }) {
                         {loading ?
                           <Skeleton variant='text' height={25} width={'max(100px, 50%)'} />
                           :
-                          <Stack direction='row' spacing={1} alignItems='center'>
-                            {showText ? <IconButton size='small' onClick={() => { setShowText(!showText) }}><Visibility sx={{ fontSize: 20 }} /></IconButton> : <IconButton size='small' onClick={() => { setShowText(!showText) }}><VisibilityOff sx={{ fontSize: 20 }} /></IconButton>}
-                            <Typography variant="subtitle1" color="text.secondary" style={{ marginBottom: '0rem' }} textAlign='left'>
-                              {frameData.subtitle ? frameData.subtitle : '(no subtitle)'}
-                            </Typography>
+
+                          <Stack direction='row' spacing={1} alignItems='center' sx={{color: theme => theme.palette.grey[300]}}>
+                            {showText ? <IconButton size='small' onClick={() => { setShowText(!showText) }}><Visibility sx={{ fontSize: 20 }} /></IconButton> : <IconButton size='small' onClick={() => { setShowText(!showText) }}><VisibilityOff sx={{ fontSize: 20, color: showText ? "text.secondary" : "#737373" }} /></IconButton>}
+                            <Link onClick={() => { setShowText(!showText) }} sx={{textDecoration: 'none', cursor: 'pointer'}}>
+                              <Typography variant="subtitle1" color={showText ? "text.secondary" : "#737373"} style={{ marginBottom: '0rem' }} textAlign='left'>
+                                {frameData.subtitle ? frameData.subtitle : '(no subtitle)'}
+                              </Typography>
+                            </Link>
                           </Stack>
                         }
                         {/* <Tooltip title="Tap to edit">
@@ -714,15 +718,18 @@ export default function FramePage({ shows = [] }) {
                         />
                       </Typography>
                       {loading ?
-                        <Skeleton variant='text' height={25} width={'max(100px, 50%)'} />
-                        :
-                        <Stack direction='row' spacing={1} alignItems='center'>
-                          {showText ? <IconButton size='small' onClick={() => { setShowText(!showText) }}><Visibility sx={{ fontSize: 20 }} /></IconButton> : <IconButton size='small' onClick={() => { setShowText(!showText) }}><VisibilityOff sx={{ fontSize: 20 }} /></IconButton>}
-                          <Typography variant="subtitle1" color="text.secondary" style={{ marginBottom: '0rem' }} textAlign='left'>
-                            {frameData.subtitle ? frameData.subtitle : '(no subtitle)'}
-                          </Typography>
-                        </Stack>
-                      }
+                          <Skeleton variant='text' height={25} width={'max(100px, 50%)'} />
+                          :
+
+                          <Stack direction='row' spacing={1} alignItems='center' sx={{color: theme => theme.palette.grey[300]}}>
+                            {showText ? <IconButton size='small' onClick={() => { setShowText(!showText) }}><Visibility sx={{ fontSize: 20 }} /></IconButton> : <IconButton size='small' onClick={() => { setShowText(!showText) }}><VisibilityOff sx={{ fontSize: 20, color: showText ? "text.secondary" : "#737373" }} /></IconButton>}
+                            <Link onClick={() => { setShowText(!showText) }} sx={{textDecoration: 'none', cursor: 'pointer'}}>
+                              <Typography variant="subtitle1" color={showText ? "text.secondary" : "#737373"} style={{ marginBottom: '0rem' }} textAlign='left'>
+                                {frameData.subtitle ? frameData.subtitle : '(no subtitle)'}
+                              </Typography>
+                            </Link>
+                          </Stack>
+                        }
                       <Button size="large" fullWidth={!isMd} variant="contained" to={`/editor/${fid}${getCurrentQueryString()}`} component={RouterLink} sx={{ mt: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}>
                         Open In Editor
                       </Button>
