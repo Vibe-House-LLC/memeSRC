@@ -140,35 +140,48 @@ export default function FramePage({ shows = [] }) {
     img.crossOrigin = "anonymous";
     img.src = displayImage;
     img.onload = function () {
+      const referenceWidth = 1000;
+      const referenceFontSizeDesktop = 40;
+      const referenceFontSizeMobile = 40;
+      const referenceBottomAnch = -10;  // Reference distance from bottom for desktop
+      const referenceBottomAnchMobile = -10; // Reference distance for mobile
+
+      const scaleFactor = img.width / referenceWidth;
+
+      const scaledFontSizeDesktop = referenceFontSizeDesktop * scaleFactor;
+      const scaledFontSizeMobile = referenceFontSizeMobile * scaleFactor;
+      const scaledBottomAnch = isMd ? referenceBottomAnch * scaleFactor : referenceBottomAnchMobile * scaleFactor;
+      const referenceLineHeight = 60;
+      const scaledLineHeight = referenceLineHeight * scaleFactor;
+
       offScreenCanvas.width = img.width;
       offScreenCanvas.height = img.height;
       ctx.drawImage(img, 0, 0);
 
       if (showText) {
         // Styling the text
-        ctx.font = `700 ${isMd ? '6rem' : '8rem'} Arial`;
+        ctx.font = `700 ${isMd ? `${scaledFontSizeDesktop}px` : `${scaledFontSizeMobile}px`} Arial`;
         ctx.textAlign = 'center';
         ctx.fillStyle = 'white';
         ctx.strokeStyle = 'black';
         ctx.lineWidth = 6;
 
         const x = offScreenCanvas.width / 2;
-        const maxWidth = offScreenCanvas.width - 40; // leaving some margin
-        const lineHeight = 70; // adjust as per your requirements
+        const maxWidth = offScreenCanvas.width - 60; // leaving some margin
+        const lineHeight = 80; // adjust as per your requirements
         const startY = offScreenCanvas.height - (2 * lineHeight); // adjust to position the text properly
 
         const text = frameData.subtitle;
 
         // Calculate number of lines without drawing
-        const numOfLines = wrapText(ctx, text, x, startY, maxWidth, lineHeight, false);
-        const totalTextHeight = numOfLines * lineHeight;
+        const numOfLines = wrapText(ctx, text, x, startY, maxWidth, scaledLineHeight, false);
+        const totalTextHeight = numOfLines * scaledLineHeight;  // Use scaled line height
 
-        // Adjust startY to anchor the text 30px from the bottom
-        const bottomAnch = isMd ? 30 : 1
-        const startYAdjusted = offScreenCanvas.height + bottomAnch - totalTextHeight;
+        // Adjust startY to anchor the text a scaled distance from the bottom
+        const startYAdjusted = offScreenCanvas.height - totalTextHeight - scaledBottomAnch;
 
         // Draw the text using the adjusted startY
-        wrapText(ctx, text, x, startYAdjusted, maxWidth, lineHeight);
+        wrapText(ctx, text, x, startYAdjusted, maxWidth, scaledLineHeight);
       }
 
       console.log(offScreenCanvas.toDataURL())
@@ -553,7 +566,7 @@ export default function FramePage({ shows = [] }) {
                           <Skeleton variant='text' height={25} width={'max(100px, 50%)'} />
                           :
                           <Stack direction='row' spacing={1} alignItems='center'>
-                            {showText ? <IconButton size='small' onClick={() => { setShowText(!showText) }}><VisibilityOff sx={{ fontSize: 20 }} /></IconButton> : <IconButton size='small' onClick={() => { setShowText(!showText) }}><Visibility sx={{ fontSize: 20 }} /></IconButton>}
+                            {showText ? <IconButton size='small' onClick={() => { setShowText(!showText) }}><Visibility sx={{ fontSize: 20 }} /></IconButton> : <IconButton size='small' onClick={() => { setShowText(!showText) }}><VisibilityOff sx={{ fontSize: 20 }} /></IconButton>}
                             <Typography variant="subtitle1" color="text.secondary" style={{ marginBottom: '0rem' }} textAlign='left'>
                               {frameData.subtitle ? frameData.subtitle : '(no subtitle)'}
                             </Typography>
@@ -704,7 +717,7 @@ export default function FramePage({ shows = [] }) {
                         <Skeleton variant='text' height={25} width={'max(100px, 50%)'} />
                         :
                         <Stack direction='row' spacing={1} alignItems='center'>
-                          {showText ? <IconButton size='small' onClick={() => { setShowText(!showText) }}><VisibilityOff sx={{ fontSize: 20 }} /></IconButton> : <IconButton size='small' onClick={() => { setShowText(!showText) }}><Visibility sx={{ fontSize: 20 }} /></IconButton>}
+                          {showText ? <IconButton size='small' onClick={() => { setShowText(!showText) }}><Visibility sx={{ fontSize: 20 }} /></IconButton> : <IconButton size='small' onClick={() => { setShowText(!showText) }}><VisibilityOff sx={{ fontSize: 20 }} /></IconButton>}
                           <Typography variant="subtitle1" color="text.secondary" style={{ marginBottom: '0rem' }} textAlign='left'>
                             {frameData.subtitle ? frameData.subtitle : '(no subtitle)'}
                           </Typography>
