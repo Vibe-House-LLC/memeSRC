@@ -30,8 +30,9 @@ import {
   List,
   useMediaQuery,
   Box,
+  Link,
 } from '@mui/material';
-import { Add, Close, ContentCopy, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu } from '@mui/icons-material';
+import { Add, Close, ContentCopy, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu, Visibility, VisibilityOff } from '@mui/icons-material';
 import useSearchDetails from '../hooks/useSearchDetails';
 
 const StyledCard = styled(Card)`
@@ -64,6 +65,8 @@ export default function FramePage({ shows = [] }) {
   const [aspectRatio, setAspectRatio] = useState('16/9');
   const [showTitle, setShowTitle] = useState('');
   const [episodeDetails, setEpisodeDetails] = useState();
+  const [imgSrc, setImgSrc] = useState();
+  const [showText, setShowText] = useState(false);
 
   const getCurrentQueryString = () => {
     const currentUrl = window.location.href;
@@ -93,6 +96,103 @@ export default function FramePage({ shows = [] }) {
     }
     setEpisodeDetails(fid.split('-'))
   }, [fid, shows]);
+
+  /* ---------------------------- Subtitle Function --------------------------- */
+
+  function wrapText(context, text, x, y, maxWidth, lineHeight, shouldDraw = true) {
+    const words = text.split(' ');
+    let line = '';
+    const lines = [];
+
+    for (let n = 0; n < words.length; n += 1) {
+      const testLine = `${line}${words[n]} `;
+      const metrics = context.measureText(testLine);
+      const testWidth = metrics.width;
+
+      if (testWidth > maxWidth && n > 0) {
+        lines.push(line);
+        line = `${words[n]} `;
+      } else {
+        line = testLine;
+      }
+    }
+    lines.push(line);
+
+    if (shouldDraw) { // Only draw if shouldDraw is true
+      for (let k = 0; k < lines.length; k += 1) {
+        context.strokeText(lines[k], x, y);
+        context.fillText(lines[k], x, y);
+        y += lineHeight;
+      }
+    }
+
+    return lines.length; // Return the number of lines
+  }
+
+
+
+
+  useEffect(() => {
+    console.log(displayImage)
+    const offScreenCanvas = document.createElement('canvas');
+    const ctx = offScreenCanvas.getContext('2d');
+
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.src = displayImage;
+    img.onload = function () {
+      const referenceWidth = 1000;
+      const referenceFontSizeDesktop = 40;
+      const referenceFontSizeMobile = 40;
+      const referenceBottomAnch = -10;  // Reference distance from bottom for desktop
+      const referenceBottomAnchMobile = -10; // Reference distance for mobile
+
+      const scaleFactor = img.width / referenceWidth;
+
+      const scaledFontSizeDesktop = referenceFontSizeDesktop * scaleFactor;
+      const scaledFontSizeMobile = referenceFontSizeMobile * scaleFactor;
+      const scaledBottomAnch = isMd ? referenceBottomAnch * scaleFactor : referenceBottomAnchMobile * scaleFactor;
+      const referenceLineHeight = 60;
+      const scaledLineHeight = referenceLineHeight * scaleFactor;
+
+      offScreenCanvas.width = img.width;
+      offScreenCanvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
+
+      if (showText) {
+        // Styling the text
+        ctx.font = `700 ${isMd ? `${scaledFontSizeDesktop}px` : `${scaledFontSizeMobile}px`} Arial`;
+        ctx.textAlign = 'center';
+        ctx.fillStyle = 'white';
+        ctx.strokeStyle = 'black';
+        ctx.lineWidth = 6;
+
+        const x = offScreenCanvas.width / 2;
+        const maxWidth = offScreenCanvas.width - 60; // leaving some margin
+        const lineHeight = 80; // adjust as per your requirements
+        const startY = offScreenCanvas.height - (2 * lineHeight); // adjust to position the text properly
+
+        const text = frameData.subtitle;
+
+        // Calculate number of lines without drawing
+        const numOfLines = wrapText(ctx, text, x, startY, maxWidth, scaledLineHeight, false);
+        const totalTextHeight = numOfLines * scaledLineHeight;  // Use scaled line height
+
+        // Adjust startY to anchor the text a scaled distance from the bottom
+        const startYAdjusted = offScreenCanvas.height - totalTextHeight - scaledBottomAnch;
+
+        // Draw the text using the adjusted startY
+        wrapText(ctx, text, x, startYAdjusted, maxWidth, scaledLineHeight);
+      }
+
+      console.log(offScreenCanvas.toDataURL())
+
+      // Convert the canvas data to an image URL and set it as the src of the img tag
+      setImgSrc(offScreenCanvas.toDataURL());
+    };
+  }, [showText, displayImage, frameData, frameData.subtitle]);
+
+  /* -------------------------------------------------------------------------- */
 
   const isMd = useMediaQuery((theme) => theme.breakpoints.up('md'))
 
@@ -213,7 +313,7 @@ export default function FramePage({ shows = [] }) {
         <CardMedia
           component={loading ? () => <Skeleton variant='rectangular' sx={{ width: '100%', height: 'auto', aspectRatio }} /> : 'img'}
           alt={`Fine-tuning ${sliderValue}`}
-          image={displayImage}
+          image={imgSrc}
           id='frameImage'
         />
         {/* <Slider
@@ -462,15 +562,20 @@ export default function FramePage({ shows = [] }) {
                             }}
                           />
                         </Typography>
-                        <Typography variant="subtitle1" color="text.secondary" style={{ marginBottom: '0rem' }} textAlign='left'>
-                          {loading ?
-                            <Skeleton variant='text' height={25} width={'max(100px, 50%)'} />
-                            :
-                            <>
-                              {frameData.subtitle ? frameData.subtitle : '(no subtitle)'}
-                            </>
-                          }
-                        </Typography>
+
+                        {loading ?
+                          <Skeleton variant='text' height={25} width={'max(100px, 50%)'} />
+                          :
+
+                          <Stack direction='row' spacing={1} alignItems='center' sx={{color: theme => theme.palette.grey[300]}}>
+                            {showText ? <IconButton size='small' onClick={() => { setShowText(!showText) }}><Visibility sx={{ fontSize: 20 }} /></IconButton> : <IconButton size='small' onClick={() => { setShowText(!showText) }}><VisibilityOff sx={{ fontSize: 20, color: showText ? "text.secondary" : "#737373" }} /></IconButton>}
+                            <Link onClick={() => { setShowText(!showText) }} sx={{textDecoration: 'none', cursor: 'pointer'}}>
+                              <Typography variant="subtitle1" color={showText ? "text.secondary" : "#737373"} style={{ marginBottom: '0rem' }} textAlign='left'>
+                                {frameData.subtitle ? frameData.subtitle : '(no subtitle)'}
+                              </Typography>
+                            </Link>
+                          </Stack>
+                        }
                         {/* <Tooltip title="Tap to edit">
                     <Typography variant="caption" color="text.secondary" style={{ cursor: 'pointer' }}>
                       tap to edit
@@ -612,15 +717,19 @@ export default function FramePage({ shows = [] }) {
                           }}
                         />
                       </Typography>
-                      <Typography variant="subtitle1" color="text.secondary" style={{ marginBottom: '0rem' }} textAlign='left'>
-                        {loading ?
+                      {loading ?
                           <Skeleton variant='text' height={25} width={'max(100px, 50%)'} />
                           :
-                          <>
-                            {frameData.subtitle ? frameData.subtitle : '(no subtitle)'}
-                          </>
+
+                          <Stack direction='row' spacing={1} alignItems='center' sx={{color: theme => theme.palette.grey[300]}}>
+                            {showText ? <IconButton size='small' onClick={() => { setShowText(!showText) }}><Visibility sx={{ fontSize: 20 }} /></IconButton> : <IconButton size='small' onClick={() => { setShowText(!showText) }}><VisibilityOff sx={{ fontSize: 20, color: showText ? "text.secondary" : "#737373" }} /></IconButton>}
+                            <Link onClick={() => { setShowText(!showText) }} sx={{textDecoration: 'none', cursor: 'pointer'}}>
+                              <Typography variant="subtitle1" color={showText ? "text.secondary" : "#737373"} style={{ marginBottom: '0rem' }} textAlign='left'>
+                                {frameData.subtitle ? frameData.subtitle : '(no subtitle)'}
+                              </Typography>
+                            </Link>
+                          </Stack>
                         }
-                      </Typography>
                       <Button size="large" fullWidth={!isMd} variant="contained" to={`/editor/${fid}${getCurrentQueryString()}`} component={RouterLink} sx={{ mt: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}>
                         Open In Editor
                       </Button>
