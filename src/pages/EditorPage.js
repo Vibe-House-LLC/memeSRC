@@ -816,7 +816,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       });
 
       // Snap to horizontal center logic when moving the object
-      const snapThreshold = 10;
+      const snapThreshold = 5;
       editor.canvas.on('object:moving', (options) => {
         const movingObject = options.target;
         let movingCenterX;
