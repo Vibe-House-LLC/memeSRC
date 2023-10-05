@@ -851,7 +851,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
             centerLine = new fabric.Line([canvasCenterX, 0, canvasCenterX, editor.canvas.height], {
               stroke: 'red',
               strokeWidth: 2,
-              opacity: 0.4,
+              opacity: 1,
               selectable: false,
               evented: false, // makes sure this line doesn't participate in any canvas events
               centerLine: true, // custom property to uniquely identify the center line
