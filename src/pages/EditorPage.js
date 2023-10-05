@@ -790,23 +790,86 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   }
 
   useEffect(() => {
-    console.log('there was a change to Canvas')
+    console.log('there was a change to Canvas');
+
     if (editor && !editorLoaded) {
-      setEditorLoaded(true)
+      setEditorLoaded(true);
+
+      // Function to remove the center line
+      const removeCenterLine = () => {
+        const centerLine = editor.canvas.getObjects().find((obj) => obj.centerLine === true);
+        if (centerLine) {
+          editor.canvas.remove(centerLine);
+          editor.canvas.renderAll();
+        }
+      };
+
+      // On object modification (when object's movement/editing is completed)
       editor.canvas.on('object:modified', () => {
-        addToHistory()
-      })
-      setBgEditorStates(prevHistory => [...prevHistory, editor.canvas.backgroundImage]);
-    }
-    console.log('there was a change to Canvas')
-    if (editor && !editorLoaded) {
-      setEditorLoaded(true)
+        addToHistory();
+        removeCenterLine(); // remove the center line
+      });
+
+      // On path creation
       editor.canvas.on('path:created', () => {
-        addToHistory()
-      })
-      setBgEditorStates(prevHistory => [...prevHistory, editor.canvas.backgroundImage]);
+        addToHistory();
+      });
+
+      // Snap to horizontal center logic when moving the object
+      const snapThreshold = 10;
+      editor.canvas.on('object:moving', (options) => {
+        const movingObject = options.target;
+        let movingCenterX;
+
+        if (movingObject.type === 'group') {
+          // When multiple objects are selected
+          movingCenterX = movingObject.left;
+        } else {
+          // Single object
+          movingCenterX = movingObject.left + (movingObject.width * movingObject.scaleX) / 2;
+        }
+
+        // Get the horizontal center of the canvas
+        const canvasCenterX = editor.canvas.width / 2;
+
+        // Calculate the horizontal distance from the moving object's/group's center to the canvas center
+        const distanceX = Math.abs(movingCenterX - canvasCenterX);
+
+        // If within threshold, snap to center
+        if (distanceX < snapThreshold) {
+          if (movingObject.type === 'group') {
+            movingObject.set({ left: canvasCenterX });
+          } else {
+            movingObject.set({ left: canvasCenterX - (movingObject.width * movingObject.scaleX) / 2 });
+          }
+
+          // Check if centerLine exists in the canvas
+          let centerLine = editor.canvas.getObjects().find((obj) => obj.centerLine === true);
+
+          // If centerLine does not exist, create and add to canvas
+          if (!centerLine) {
+            centerLine = new fabric.Line([canvasCenterX, 0, canvasCenterX, editor.canvas.height], {
+              stroke: 'red',
+              strokeWidth: 2,
+              opacity: 0.4,
+              selectable: false,
+              evented: false, // makes sure this line doesn't participate in any canvas events
+              centerLine: true, // custom property to uniquely identify the center line
+            });
+            editor.canvas.add(centerLine);
+          }
+        } else {
+          removeCenterLine();
+        }
+
+        // Always render the canvas after changes
+        editor.canvas.renderAll();
+      });
+
+      // Record the background state
+      setBgEditorStates((prevHistory) => [...prevHistory, editor.canvas.backgroundImage]);
     }
-  }, [editor])
+  }, [editor]);
 
   useEffect(() => {
     console.log(editorStates)
