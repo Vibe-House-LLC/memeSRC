@@ -344,6 +344,13 @@
           ],
           "category": "storage",
           "resourceName": "memesrcGeneratedImages"
+        },
+        {
+          "attributes": [
+            "GraphQLAPIIdOutput"
+          ],
+          "category": "api",
+          "resourceName": "memesrc"
         }
       ],
       "providerPlugin": "awscloudformation",
