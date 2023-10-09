@@ -251,7 +251,19 @@ export default function FramePage({ shows = [] }) {
         // setDisplayImage(`https://memesrc.com/${fid.split('-')[0]}/img/${fid.split('-')[1]}/${fid.split('-')[2]}/${fid}.jpg`)
         setFrameData(data);
         setFrame(fid)
-        setSurroundingFrames(data.frames_surrounding);
+        Promise.all(
+          data.frames_surrounding.map(obj => 
+            getFrame(obj.fid)
+              .then(data => ({
+                ...obj,
+                subtitle: data.subtitle
+              }))
+          )
+        ).then(updatedFrames => {
+          setSurroundingFrames(updatedFrames);
+        });        
+        console.log("FRAME DETAILS:")
+        console.log(getFrame('thegoodplace-3-7-6821'))
         const newMiddleIndex = Math.floor(data.frames_fine_tuning.length / 2);
         const initialFineTuneImage = data.frames_fine_tuning[newMiddleIndex];
         setMiddleIndex(newMiddleIndex)
