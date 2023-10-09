@@ -415,7 +415,7 @@ export default function FramePage({ shows = [] }) {
                         ) : (
                           <Menu style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
                         )}
-                        {subtitlesExpanded ? 'Hide' : 'View'} Nearby Subtitlessss
+                        {subtitlesExpanded ? 'Hide' : 'View'} Nearby Subtitles
                       </Typography>
                       {/* <Chip size="small" label="New!" color="success" /> */}
                     </AccordionSummary>
