@@ -19,14 +19,34 @@ const generateFrameIds = (frameId, fineTuning = false) => {
   return prevIds
 }
 
-const generateSurroundingFrames = (frameId) => {
-  const ids = generateFrameIds(frameId)
-  const { seriesId, idS, idE } = splitFrameId(frameId)
-  const surroundingFrameData = ids.map((id) => {
-    const newFrameNum = id.split('-')[3]
-    return { fid: id, frame_image: `/${seriesId}/img/${idS}/${idE}/${id}.jpg` }
-  })
-  return surroundingFrameData
+const fetchSubtitleForFrame = async (frameId) => {
+  try {
+    const frameData = await API.graphql(graphqlOperation(getFrameSubtitle, { id: frameId }));
+    if (frameData.data.getFrameSubtitle && frameData.data.getFrameSubtitle.subtitle) {
+      return frameData.data.getFrameSubtitle.subtitle;
+    }
+    throw new Error('Subtitle not found in DynamoDB');
+  } catch (error) {
+    console.warn(`Failed to fetch subtitle for frame ID ${frameId} from DynamoDB:`, error);
+    return ERROR_SUBTITLE;
+  }
+}
+
+const generateSurroundingFrames = async (frameId) => {
+  const ids = generateFrameIds(frameId);
+  const { seriesId, idS, idE } = splitFrameId(frameId);
+
+  const surroundingFrameDataPromises = ids.map(async (id) => {
+    const subtitle = await fetchSubtitleForFrame(id);
+    const newFrameNum = id.split('-')[3];
+    return {
+      fid: id,
+      frame_image: `/${seriesId}/img/${idS}/${idE}/${id}.jpg`,
+      subtitle
+    };
+  });
+
+  return Promise.all(surroundingFrameDataPromises);
 }
 
 const generateFineTuningFrames = (frameId) => {
@@ -36,12 +56,13 @@ const generateFineTuningFrames = (frameId) => {
   return fineTuningData
 }
 
-const parseFrameData = async (frameId, subtitle) => {
+const parseFrameData = async (frameId, subtitle, source) => {
   const seriesName = frameId.split('-')[0];
   const [idS, idE] = frameId.split('-').slice(1);
   
-  const surroundingFrames = generateSurroundingFrames(frameId)
-  const fineTuningFrames = generateFineTuningFrames(frameId)
+  // Await for the promises to resolve
+  const surroundingFrames = await generateSurroundingFrames(frameId);
+  const fineTuningFrames = generateFineTuningFrames(frameId); // Assuming this is synchronous
 
   return {
     fid: frameId,
@@ -51,53 +72,41 @@ const parseFrameData = async (frameId, subtitle) => {
     subtitle: subtitle || ERROR_SUBTITLE,
     frame_image: `/${seriesName}/img/${idS}/${idE}/${frameId}.jpg`,
     frames_surrounding: surroundingFrames,
-    frames_fine_tuning: fineTuningFrames
+    frames_fine_tuning: fineTuningFrames,
+    source
   };
 }
 
-const getFrame = async (fid) => {
-  try {
-    const frameData = await API.graphql(graphqlOperation(getFrameSubtitle, { id: fid }));
-    const subtitle = frameData.data.getFrameSubtitle.subtitle;
 
-    if (subtitle) {
-      return parseFrameData(fid, subtitle);
+const getFrame = async (fid) => {
+  console.log(`GETTING FRAME: ${fid}`);
+  
+  try {
+    const subtitle = await fetchSubtitleForFrame(fid);
+    console.log(subtitle)
+    if (subtitle !== ERROR_SUBTITLE) {
+      console.log("IT THOUGHT IT MATCHED DDB")
+      return parseFrameData(fid, subtitle, "DDB");
     }
-    
     throw new Error('Subtitle not found in DynamoDB');
   } catch (error) {
     console.warn("Failed to fetch frame data from DynamoDB. Falling back to REST API:", error);
     
     try {
       const restApiData = await API.get('publicapi', '/frame', { queryStringParameters: { fid } });
-      if (restApiData && restApiData.subtitle) {
-        return parseFrameData(fid, restApiData.subtitle);
+      if (restApiData) {
+        return restApiData; // Return the data directly from the REST API
       }
-      
-      return parseFrameData(fid, ERROR_SUBTITLE);
+      throw new Error('No data received from REST API');
     } catch (restApiError) {
       console.error("Failed to fetch frame data from REST API:", restApiError);
-      return parseFrameData(fid, ERROR_SUBTITLE);
+      // You could decide what to return in case of complete failure. For example, an error object or a default structure.
+      return {
+        error: "Failed to fetch frame data from both DDB and REST API",
+        details: restApiError.message
+      };
     }
   }
 }
-
-export const getSurroundingFrameSubtitles = async (fid) => {
-  const surroundingFrameData = generateSurroundingFrames(fid);
-
-  // Fetch subtitles for each frame
-  const framesWithSubtitles = await Promise.all(
-    surroundingFrameData.map(async (frame) => {
-      const data = await getFrame(frame.fid);
-      return {
-        fid: frame.fid,
-        frame_image: frame.frame_image,
-        subtitle: data.subtitle,
-      };
-    })
-  );
-
-  return framesWithSubtitles;
-};
 
 export default getFrame;

@@ -34,7 +34,7 @@ import {
 } from '@mui/material';
 import { Add, Close, ContentCopy, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu, Visibility, VisibilityOff } from '@mui/icons-material';
 import useSearchDetails from '../hooks/useSearchDetails';
-import getFrame, { getSurroundingFrameSubtitles } from '../utils/frameHandler';
+import getFrame from '../utils/frameHandler';
 
 // import { listGlobalMessages } from '../../../graphql/queries'
 
@@ -202,18 +202,6 @@ export default function FramePage({ shows = [] }) {
   const isMd = useMediaQuery((theme) => theme.breakpoints.up('md'))
 
   const handleSubtitlesExpand = async () => {
-    console.log('Accordion clicked');
-    
-    // if (!subtitlesExpanded && surroundingSubtitles === null) {
-    //   console.log('Fetching surrounding subtitles...');
-    //   setSubtitlesLoading(true);
-    //   const subtitlesData = await getSurroundingFrameSubtitles(fid);
-    //   setSurroundingSubtitles(subtitlesData);
-    //   setSubtitlesLoading(false);
-    // } else {
-    //   console.log('No need to fetch. Using existing data or closing accordion.');
-    // }
-
     setSubtitlesExpanded(!subtitlesExpanded);
 };
 
@@ -238,32 +226,16 @@ export default function FramePage({ shows = [] }) {
         });
     };
 
-    // setSurroundingFrames(null);
-    // setSurroundingSubtitles(null);
-
     getSessionID()
       .then(sessionId => {
-        // return API.get('publicapi', '/frame', queryStringParams)
-        // console.log(`TRYING TO LOAD FRAME: ${fid}`)
         return getFrame(fid)
       })
       .then(data => {
-        // setDisplayImage(`https://memesrc.com/${fid.split('-')[0]}/img/${fid.split('-')[1]}/${fid.split('-')[2]}/${fid}.jpg`)
         setFrameData(data);
         setFrame(fid)
-        Promise.all(
-          data.frames_surrounding.map(obj => 
-            getFrame(obj.fid)
-              .then(data => ({
-                ...obj,
-                subtitle: data.subtitle
-              }))
-          )
-        ).then(updatedFrames => {
-          setSurroundingFrames(updatedFrames);
-        });        
+        setSurroundingFrames(data.frames_surrounding);
         console.log("FRAME DETAILS:")
-        console.log(getFrame('thegoodplace-3-7-6821'))
+        console.log(data)
         const newMiddleIndex = Math.floor(data.frames_fine_tuning.length / 2);
         const initialFineTuneImage = data.frames_fine_tuning[newMiddleIndex];
         setMiddleIndex(newMiddleIndex)
@@ -388,52 +360,9 @@ export default function FramePage({ shows = [] }) {
         <title> Frame Details | memeSRC 2.0 </title>
       </Helmet>
 
-      {/* <AppBar position="static">
-        <Toolbar>
-          <IconButton edge="start" color="inherit" aria-label="menu" to="/" component={RouterLink}>
-            <Home />
-          </IconButton>
-          <Typography variant="h6" style={{ flexGrow: 1 }}>
-            <>
-              <RouterLink to={`/series/${fid.split('-')[0]}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                {fid.split('-')[0]}
-              </RouterLink>
-              <Chip
-                size='small'
-                label={`S${fid.split('-')[1]} E${fid.split('-')[2]}`}
-                sx={{
-                  marginLeft: '5px',
-                  "& .MuiChip-label": {
-                    fontWeight: 'bold',
-                  },
-                }}
-              />
-            </>
-          </Typography>
-        </Toolbar>
-      </AppBar> */}
-
       <Container maxWidth="xl" sx={{ pt: 2 }}>
         <Grid container spacing={2} direction="row" alignItems="center">
-          {/* <Grid item xs={12}>
-            <Typography variant="h6" style={{ flexGrow: 1 }}>
-              <>
-                <RouterLink to={`/series/${fid.split('-')[0]}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                  {showTitle}
-                </RouterLink>
-                <Chip
-                  size='small'
-                  label={`S${fid.split('-')[1]} E${fid.split('-')[2]}`}
-                  sx={{
-                    marginLeft: '5px',
-                    "& .MuiChip-label": {
-                      fontWeight: 'bold',
-                    },
-                  }}
-                />
-              </>
-            </Typography>
-          </Grid> */}
+
           <Grid item xs={12} md={6}>
             <Card>
               {renderFineTuningFrames()}
@@ -527,41 +456,7 @@ export default function FramePage({ shows = [] }) {
                                     {result?.subtitle.replace(/\n/g, ' ')}
                                   </Typography>
                                 </ListItemText>
-                                <ListItemIcon sx={{ paddingRight: '0', marginLeft: 'auto' }}>
-                                  {/* <Fab
-                                size="small"
-                                sx={{
-                                  backgroundColor: theme => theme.palette.background.paper,
-                                  boxShadow: 'none',
-                                  marginRight: '2px',
-                                  '&:hover': {
-                                    xs: { backgroundColor: 'inherit' },
-                                    md: { backgroundColor: 'ButtonHighlight' },
-                                  },
-                                }}
-                                onClick={() => {
-                                  navigator.clipboard.writeText(result?.subtitle.replace(/\n/g, ' '));
-                                  handleSnackbarOpen();
-                                }}
-                              >
-                                <ContentCopy sx={{ color: 'rgb(89, 89, 89)' }} />
-                              </Fab> */}
-                                  {/* <Fab
-                                size="small"
-                                sx={{
-                                  backgroundColor: theme.palette.background.paper,
-                                  boxShadow: 'none',
-                                  marginLeft: 'auto',
-                                  '&:hover': {
-                                    xs: { backgroundColor: 'inherit' },
-                                    md: { backgroundColor: 'ButtonHighlight' },
-                                  },
-                                }}
-                                onClick={() => addText(result?.subtitle.replace(/\n/g, ' '), true)}
-                              >
-                                <Add sx={{ color: 'rgb(89, 89, 89)', cursor: 'pointer' }} />
-                              </Fab> */}
-                                </ListItemIcon>
+                                <ListItemIcon sx={{ paddingRight: '0', marginLeft: 'auto' }} />
                               </ListItem>
                             ))}
                       </List>
@@ -615,21 +510,8 @@ export default function FramePage({ shows = [] }) {
                             </Link>
                           </Stack>
                         }
-                        {/* <Tooltip title="Tap to edit">
-                    <Typography variant="caption" color="text.secondary" style={{ cursor: 'pointer' }}>
-                      tap to edit
-                    </Typography>
-                  </Tooltip> */}
                       </CardContent>
                     </Card>
-
-                    {/* <Button size={isMd ? 'large' : 'medium'} fullWidth={!isMd} variant="contained" to={`/editor/${fid}${getCurrentQueryString()}`} component={RouterLink} style={{ marginBottom: '1rem' }}>
-                Add Captions & Edit Photo
-              </Button> */}
-
-                    {/* <Typography variant="subtitle1" color="text.secondary" style={{ marginBottom: '1rem' }}>
-                TODO: add more metadata, links, content, etc. here
-              </Typography> */}
                   </Box>
                 </Grid>
                 <Button size="large" fullWidth={!isMd} variant="contained" to={`/editor/${fid}${getCurrentQueryString()}`} component={RouterLink} sx={{ my: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}>
@@ -772,21 +654,8 @@ export default function FramePage({ shows = [] }) {
                       <Button size="large" fullWidth={!isMd} variant="contained" to={`/editor/${fid}${getCurrentQueryString()}`} component={RouterLink} sx={{ mt: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}>
                         Open In Editor
                       </Button>
-                      {/* <Tooltip title="Tap to edit">
-                    <Typography variant="caption" color="text.secondary" style={{ cursor: 'pointer' }}>
-                      tap to edit
-                    </Typography>
-                  </Tooltip> */}
                     </CardContent>
                   </Card>
-
-                  {/* <Button size={isMd ? 'large' : 'medium'} fullWidth={!isMd} variant="contained" to={`/editor/${fid}${getCurrentQueryString()}`} component={RouterLink} style={{ marginBottom: '1rem' }}>
-                Add Captions & Edit Photo
-              </Button> */}
-
-                  {/* <Typography variant="subtitle1" color="text.secondary" style={{ marginBottom: '1rem' }}>
-                TODO: add more metadata, links, content, etc. here
-              </Typography> */}
                 </Box>
               </Grid>
             </>
