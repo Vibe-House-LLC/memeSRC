@@ -34,6 +34,9 @@ import {
 } from '@mui/material';
 import { Add, Close, ContentCopy, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu, Visibility, VisibilityOff } from '@mui/icons-material';
 import useSearchDetails from '../hooks/useSearchDetails';
+import getFrame, { getSurroundingFrameSubtitles } from '../utils/frameHandler';
+
+// import { listGlobalMessages } from '../../../graphql/queries'
 
 const StyledCard = styled(Card)`
   
@@ -56,11 +59,13 @@ export default function FramePage({ shows = [] }) {
   const navigate = useNavigate();
   const { fid } = useParams();
   const [frameData, setFrameData] = useState({});
-  const [surroundingFrames, setSurroundingFrames] = useState();
+  const [surroundingFrames, setSurroundingFrames] = useState(null);
+  // const [surroundingSubtitles, setSurroundingSubtitles] = useState(null);
   const [sliderValue, setSliderValue] = useState(fineTuningFrame || 0);
   const [middleIndex, setMiddleIndex] = useState(0);
   const [displayImage, setDisplayImage] = useState(`https://memesrc.com/${fid.split('-')[0]}/img/${fid.split('-')[1]}/${fid.split('-')[2]}/${fid}.jpg`);
   const [subtitlesExpanded, setSubtitlesExpanded] = useState(false);
+  // const [subtitlesLoading, setSubtitlesLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [aspectRatio, setAspectRatio] = useState('16/9');
   const [showTitle, setShowTitle] = useState('');
@@ -185,7 +190,7 @@ export default function FramePage({ shows = [] }) {
         wrapText(ctx, text, x, startYAdjusted, maxWidth, scaledLineHeight);
       }
 
-      console.log(offScreenCanvas.toDataURL())
+      // console.log(offScreenCanvas.toDataURL())
 
       // Convert the canvas data to an image URL and set it as the src of the img tag
       setImgSrc(offScreenCanvas.toDataURL());
@@ -196,9 +201,23 @@ export default function FramePage({ shows = [] }) {
 
   const isMd = useMediaQuery((theme) => theme.breakpoints.up('md'))
 
-  const handleSubtitlesExpand = () => {
+  const handleSubtitlesExpand = async () => {
+    console.log('Accordion clicked');
+    
+    // if (!subtitlesExpanded && surroundingSubtitles === null) {
+    //   console.log('Fetching surrounding subtitles...');
+    //   setSubtitlesLoading(true);
+    //   const subtitlesData = await getSurroundingFrameSubtitles(fid);
+    //   setSurroundingSubtitles(subtitlesData);
+    //   setSubtitlesLoading(false);
+    // } else {
+    //   console.log('No need to fetch. Using existing data or closing accordion.');
+    // }
+
     setSubtitlesExpanded(!subtitlesExpanded);
-  };
+};
+
+  
 
   useEffect(() => {
     setLoading(true)
@@ -219,10 +238,14 @@ export default function FramePage({ shows = [] }) {
         });
     };
 
+    // setSurroundingFrames(null);
+    // setSurroundingSubtitles(null);
+
     getSessionID()
       .then(sessionId => {
-        const queryStringParams = { queryStringParameters: { fid, sessionId } }
-        return API.get('publicapi', '/frame', queryStringParams)
+        // return API.get('publicapi', '/frame', queryStringParams)
+        // console.log(`TRYING TO LOAD FRAME: ${fid}`)
+        return getFrame(fid)
       })
       .then(data => {
         // setDisplayImage(`https://memesrc.com/${fid.split('-')[0]}/img/${fid.split('-')[1]}/${fid.split('-')[2]}/${fid}.jpg`)
@@ -420,6 +443,9 @@ export default function FramePage({ shows = [] }) {
                       {/* <Chip size="small" label="New!" color="success" /> */}
                     </AccordionSummary>
                     <AccordionDetails sx={{ paddingY: 0, paddingX: 0 }}>
+                    {/* {subtitlesLoading ? (
+                        <CircularProgress />
+                      ) : ( */}
                       <List sx={{ padding: '.5em 0' }}>
                         {surroundingFrames &&
                           surroundingFrames
@@ -527,6 +553,7 @@ export default function FramePage({ shows = [] }) {
                               </ListItem>
                             ))}
                       </List>
+                      {/* )} */}
                     </AccordionDetails>
                   </Accordion>
                 </Card>
