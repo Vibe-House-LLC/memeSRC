@@ -16,6 +16,7 @@ import { SnackbarContext } from '../SnackbarContext';
 import { UserContext } from '../UserContext';
 import { MagicPopupContext } from '../MagicPopupContext';
 import useSearchDetails from '../hooks/useSearchDetails';
+import getFrame from '../utils/frameHandler';
 
 const Alert = forwardRef((props, ref) => <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />);
 
@@ -278,30 +279,36 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   }, [editor]);
 
   const loadEditorDefaults = useCallback(() => {
-    getSessionID().then(sessionId => {
-      setLoading(true)
-      const queryStringParams = { queryStringParameters: { fid: selectedFid, sessionId } }
-      API.get('publicapi', '/frame', queryStringParams).then(data => {
-        console.log('test')
-        console.log(data)
+    setLoading(true);
+    getFrame(selectedFid)
+      .then((data) => {
+        console.log('test');
+        console.log(data);
         setLoadedSeriesTitle(data.series_name);
         setSurroundingFrames(data.frames_surrounding);
         const episodeDetails = selectedFid.split('-');
         setEpisodeDetails(episodeDetails);
         // Pre load fine tuning frames
         loadImg(data.frames_fine_tuning, oImgBuild).then((images) => {
-          setFineTuningFrames(images)
+          setFineTuningFrames(images);
         });
-        // Background image from the 
-        fabric.Image.fromURL(`https://memesrc.com${searchDetails.fineTuningFrame ? data.frames_fine_tuning[searchDetails.fineTuningFrame] : data.frame_image}`, (oImg) => {
-          console.log(oImg)
-          setDefaultFrame(oImg);
-          setDefaultSubtitle(data.subtitle);
-          setLoading(false)
-        }, { crossOrigin: "anonymous" });
-      }).catch(err => console.log(err))
-    }).catch(err => console.log(err))
-  }, [resizeCanvas, selectedFid, editor, addText])
+        // Background image from the given URL
+        fabric.Image.fromURL(
+          `https://memesrc.com${
+            searchDetails.fineTuningFrame ? data.frames_fine_tuning[searchDetails.fineTuningFrame] : data.frame_image
+          }`,
+          (oImg) => {
+            console.log(oImg);
+            setDefaultFrame(oImg);
+            setDefaultSubtitle(data.subtitle);
+            setLoading(false);
+          },
+          { crossOrigin: 'anonymous' }
+        );
+      })
+      .catch((err) => console.log(err));
+  }, [resizeCanvas, selectedFid, editor, addText]);
+
 
   // Look up data for the fid and set defaults
   useEffect(() => {
