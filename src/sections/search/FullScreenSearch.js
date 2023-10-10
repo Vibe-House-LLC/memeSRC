@@ -183,7 +183,7 @@ const defaultBackground = `linear-gradient(45deg,
   #00ab84 0, #00ab84 87.5% /* 7*12.5% */,
   #00a3e0 0)`;
 
-export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction }) {
+export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction }) {
   const [shows, setShows] = useState([]);
   const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -492,9 +492,22 @@ export default function FullScreenSearch({ searchTerms, setSearchTerm, seriesTit
                   <StyledSearchInput
                     type="text"
                     id="search-term"
-                    value={searchTerms}
+                    value={searchTerm}
                     placeholder="What's the quote?"
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onChange={(e) => {
+                      let value = e.target.value;
+
+                      // Replace curly single quotes with straight single quotes
+                      value = value.replace(/[\u2018\u2019]/g, "'");
+
+                      // Replace curly double quotes with straight double quotes
+                      value = value.replace(/[\u201C\u201D]/g, '"');
+
+                      // Replace en-dash and em-dash with hyphen
+                      value = value.replace(/[\u2013\u2014]/g, '-');
+
+                      setSearchTerm(value);
+                    }}
                   />
                 </StyledLabel>
               </Grid>

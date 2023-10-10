@@ -191,7 +191,20 @@ export default function TopBannerSearch(props) {
                 endAdornment={<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} />}
                 sx={{ width: '100%' }}
                 value={searchTerm}
-                onChange={(event) => { setSearchTerm(event.target.value); }}
+                onChange={(e) => {
+                  let value = e.target.value;
+
+                  // Replace curly single quotes with straight single quotes
+                  value = value.replace(/[\u2018\u2019]/g, "'");
+
+                  // Replace curly double quotes with straight double quotes
+                  value = value.replace(/[\u201C\u201D]/g, '"');
+
+                  // Replace en-dash and em-dash with hyphen
+                  value = value.replace(/[\u2013\u2014]/g, '-');
+
+                  setSearchTerm(value);
+                }}
               />
             </form>
           </Grid>
