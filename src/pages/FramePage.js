@@ -34,6 +34,9 @@ import {
 } from '@mui/material';
 import { Add, Close, ContentCopy, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu, Visibility, VisibilityOff } from '@mui/icons-material';
 import useSearchDetails from '../hooks/useSearchDetails';
+import getFrame from '../utils/frameHandler';
+
+// import { listGlobalMessages } from '../../../graphql/queries'
 
 const StyledCard = styled(Card)`
   
@@ -56,11 +59,13 @@ export default function FramePage({ shows = [] }) {
   const navigate = useNavigate();
   const { fid } = useParams();
   const [frameData, setFrameData] = useState({});
-  const [surroundingFrames, setSurroundingFrames] = useState();
+  const [surroundingFrames, setSurroundingFrames] = useState(null);
+  // const [surroundingSubtitles, setSurroundingSubtitles] = useState(null);
   const [sliderValue, setSliderValue] = useState(fineTuningFrame || 0);
   const [middleIndex, setMiddleIndex] = useState(0);
   const [displayImage, setDisplayImage] = useState(`https://memesrc.com/${fid.split('-')[0]}/img/${fid.split('-')[1]}/${fid.split('-')[2]}/${fid}.jpg`);
   const [subtitlesExpanded, setSubtitlesExpanded] = useState(false);
+  // const [subtitlesLoading, setSubtitlesLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [aspectRatio, setAspectRatio] = useState('16/9');
   const [showTitle, setShowTitle] = useState('');
@@ -185,7 +190,7 @@ export default function FramePage({ shows = [] }) {
         wrapText(ctx, text, x, startYAdjusted, maxWidth, scaledLineHeight);
       }
 
-      console.log(offScreenCanvas.toDataURL())
+      // console.log(offScreenCanvas.toDataURL())
 
       // Convert the canvas data to an image URL and set it as the src of the img tag
       setImgSrc(offScreenCanvas.toDataURL());
@@ -196,9 +201,11 @@ export default function FramePage({ shows = [] }) {
 
   const isMd = useMediaQuery((theme) => theme.breakpoints.up('md'))
 
-  const handleSubtitlesExpand = () => {
+  const handleSubtitlesExpand = async () => {
     setSubtitlesExpanded(!subtitlesExpanded);
-  };
+};
+
+  
 
   useEffect(() => {
     setLoading(true)
@@ -221,14 +228,14 @@ export default function FramePage({ shows = [] }) {
 
     getSessionID()
       .then(sessionId => {
-        const queryStringParams = { queryStringParameters: { fid, sessionId } }
-        return API.get('publicapi', '/frame', queryStringParams)
+        return getFrame(fid)
       })
       .then(data => {
-        // setDisplayImage(`https://memesrc.com/${fid.split('-')[0]}/img/${fid.split('-')[1]}/${fid.split('-')[2]}/${fid}.jpg`)
         setFrameData(data);
         setFrame(fid)
         setSurroundingFrames(data.frames_surrounding);
+        console.log("FRAME DETAILS:")
+        console.log(data)
         const newMiddleIndex = Math.floor(data.frames_fine_tuning.length / 2);
         const initialFineTuneImage = data.frames_fine_tuning[newMiddleIndex];
         setMiddleIndex(newMiddleIndex)
@@ -353,52 +360,9 @@ export default function FramePage({ shows = [] }) {
         <title> Frame Details | memeSRC 2.0 </title>
       </Helmet>
 
-      {/* <AppBar position="static">
-        <Toolbar>
-          <IconButton edge="start" color="inherit" aria-label="menu" to="/" component={RouterLink}>
-            <Home />
-          </IconButton>
-          <Typography variant="h6" style={{ flexGrow: 1 }}>
-            <>
-              <RouterLink to={`/series/${fid.split('-')[0]}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                {fid.split('-')[0]}
-              </RouterLink>
-              <Chip
-                size='small'
-                label={`S${fid.split('-')[1]} E${fid.split('-')[2]}`}
-                sx={{
-                  marginLeft: '5px',
-                  "& .MuiChip-label": {
-                    fontWeight: 'bold',
-                  },
-                }}
-              />
-            </>
-          </Typography>
-        </Toolbar>
-      </AppBar> */}
-
       <Container maxWidth="xl" sx={{ pt: 2 }}>
         <Grid container spacing={2} direction="row" alignItems="center">
-          {/* <Grid item xs={12}>
-            <Typography variant="h6" style={{ flexGrow: 1 }}>
-              <>
-                <RouterLink to={`/series/${fid.split('-')[0]}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                  {showTitle}
-                </RouterLink>
-                <Chip
-                  size='small'
-                  label={`S${fid.split('-')[1]} E${fid.split('-')[2]}`}
-                  sx={{
-                    marginLeft: '5px',
-                    "& .MuiChip-label": {
-                      fontWeight: 'bold',
-                    },
-                  }}
-                />
-              </>
-            </Typography>
-          </Grid> */}
+
           <Grid item xs={12} md={6}>
             <Card>
               {renderFineTuningFrames()}
@@ -415,11 +379,14 @@ export default function FramePage({ shows = [] }) {
                         ) : (
                           <Menu style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
                         )}
-                        {subtitlesExpanded ? 'Hide' : 'View'} Nearby Subtitlessss
+                        {subtitlesExpanded ? 'Hide' : 'View'} Nearby Subtitles
                       </Typography>
                       {/* <Chip size="small" label="New!" color="success" /> */}
                     </AccordionSummary>
                     <AccordionDetails sx={{ paddingY: 0, paddingX: 0 }}>
+                    {/* {subtitlesLoading ? (
+                        <CircularProgress />
+                      ) : ( */}
                       <List sx={{ padding: '.5em 0' }}>
                         {surroundingFrames &&
                           surroundingFrames
@@ -489,44 +456,11 @@ export default function FramePage({ shows = [] }) {
                                     {result?.subtitle.replace(/\n/g, ' ')}
                                   </Typography>
                                 </ListItemText>
-                                <ListItemIcon sx={{ paddingRight: '0', marginLeft: 'auto' }}>
-                                  {/* <Fab
-                                size="small"
-                                sx={{
-                                  backgroundColor: theme => theme.palette.background.paper,
-                                  boxShadow: 'none',
-                                  marginRight: '2px',
-                                  '&:hover': {
-                                    xs: { backgroundColor: 'inherit' },
-                                    md: { backgroundColor: 'ButtonHighlight' },
-                                  },
-                                }}
-                                onClick={() => {
-                                  navigator.clipboard.writeText(result?.subtitle.replace(/\n/g, ' '));
-                                  handleSnackbarOpen();
-                                }}
-                              >
-                                <ContentCopy sx={{ color: 'rgb(89, 89, 89)' }} />
-                              </Fab> */}
-                                  {/* <Fab
-                                size="small"
-                                sx={{
-                                  backgroundColor: theme.palette.background.paper,
-                                  boxShadow: 'none',
-                                  marginLeft: 'auto',
-                                  '&:hover': {
-                                    xs: { backgroundColor: 'inherit' },
-                                    md: { backgroundColor: 'ButtonHighlight' },
-                                  },
-                                }}
-                                onClick={() => addText(result?.subtitle.replace(/\n/g, ' '), true)}
-                              >
-                                <Add sx={{ color: 'rgb(89, 89, 89)', cursor: 'pointer' }} />
-                              </Fab> */}
-                                </ListItemIcon>
+                                <ListItemIcon sx={{ paddingRight: '0', marginLeft: 'auto' }} />
                               </ListItem>
                             ))}
                       </List>
+                      {/* )} */}
                     </AccordionDetails>
                   </Accordion>
                 </Card>
@@ -576,21 +510,8 @@ export default function FramePage({ shows = [] }) {
                             </Link>
                           </Stack>
                         }
-                        {/* <Tooltip title="Tap to edit">
-                    <Typography variant="caption" color="text.secondary" style={{ cursor: 'pointer' }}>
-                      tap to edit
-                    </Typography>
-                  </Tooltip> */}
                       </CardContent>
                     </Card>
-
-                    {/* <Button size={isMd ? 'large' : 'medium'} fullWidth={!isMd} variant="contained" to={`/editor/${fid}${getCurrentQueryString()}`} component={RouterLink} style={{ marginBottom: '1rem' }}>
-                Add Captions & Edit Photo
-              </Button> */}
-
-                    {/* <Typography variant="subtitle1" color="text.secondary" style={{ marginBottom: '1rem' }}>
-                TODO: add more metadata, links, content, etc. here
-              </Typography> */}
                   </Box>
                 </Grid>
                 <Button size="large" fullWidth={!isMd} variant="contained" to={`/editor/${fid}${getCurrentQueryString()}`} component={RouterLink} sx={{ my: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}>
@@ -733,21 +654,8 @@ export default function FramePage({ shows = [] }) {
                       <Button size="large" fullWidth={!isMd} variant="contained" to={`/editor/${fid}${getCurrentQueryString()}`} component={RouterLink} sx={{ mt: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}>
                         Open In Editor
                       </Button>
-                      {/* <Tooltip title="Tap to edit">
-                    <Typography variant="caption" color="text.secondary" style={{ cursor: 'pointer' }}>
-                      tap to edit
-                    </Typography>
-                  </Tooltip> */}
                     </CardContent>
                   </Card>
-
-                  {/* <Button size={isMd ? 'large' : 'medium'} fullWidth={!isMd} variant="contained" to={`/editor/${fid}${getCurrentQueryString()}`} component={RouterLink} style={{ marginBottom: '1rem' }}>
-                Add Captions & Edit Photo
-              </Button> */}
-
-                  {/* <Typography variant="subtitle1" color="text.secondary" style={{ marginBottom: '1rem' }}>
-                TODO: add more metadata, links, content, etc. here
-              </Typography> */}
                 </Box>
               </Grid>
             </>

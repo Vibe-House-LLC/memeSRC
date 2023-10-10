@@ -206,3 +206,14 @@ type UserNotification @model @auth(
   isUnRead: Boolean
   path: String
 }
+
+type FrameSubtitle @model @auth(
+  rules: [
+    { allow: groups, groups: ["admins", "mods"] },
+    { allow: private, operations: [read] },
+    { allow: public, operations: [read] }
+  ]
+) {
+  id: ID!,  # This is the fid
+  subtitle: String!
+}

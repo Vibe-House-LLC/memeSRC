@@ -1,4 +1,11 @@
-/*
+/* Amplify Params - DO NOT EDIT
+	API_MEMESRC_FRAMESUBTITLETABLE_ARN
+	API_MEMESRC_FRAMESUBTITLETABLE_NAME
+	API_MEMESRC_GRAPHQLAPIIDOUTPUT
+	ENV
+	REGION
+	STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME
+Amplify Params - DO NOT EDIT *//*
 Use the following code to retrieve configured secrets from SSM:
 
 const aws = require('aws-sdk');
@@ -24,6 +31,7 @@ Amplify Params - DO NOT EDIT */
 
 const { S3 } = require("@aws-sdk/client-s3");
 const { SSM, GetParametersCommand } = require("@aws-sdk/client-ssm");
+const { DynamoDB } = require('@aws-sdk/client-dynamodb');
 const uuid = require('uuid');
 const axios = require('axios');
 
@@ -49,6 +57,7 @@ const trackAnalyticsEventToS3 = (eventData, eventType, sessionId) => {
 
   return s3.putObject(s3Params);
 };
+
 
 const splitFrameId = (frameId) => {
   const [seriesId, idS, idE, frameNum] = frameId.split('-')
@@ -120,11 +129,10 @@ exports.handler = async (event) => {
   const opensearch_user = Parameters.find(param => param.Name === process.env['opensearch_user']).Value
   const opensearch_pass = Parameters.find(param => param.Name === process.env['opensearch_pass']).Value
 
-  // Define function to get a random frame
-  const getFrame = async fid => {
-    const seriesId = fid.split('-')[0]
-    const url = `${opensearch_url}/${seriesId}/_doc/${fid}`
-    console.log(`OPENSEARCH REQUEST URL: ${url}`)
+  const getFrameFromOpenSearch = async fid => {
+    const seriesId = fid.split('-')[0];
+    const url = `${opensearch_url}/${seriesId}/_doc/${fid}`;
+    console.log(`OPENSEARCH REQUEST URL: ${url}`);
     const headers = { 'Content-Type': 'application/json' };
     const opensearch_auth = {
       username: opensearch_user,
@@ -133,16 +141,45 @@ exports.handler = async (event) => {
     return axios.get(url, {
       auth: opensearch_auth,
       headers
-    }).then((response) => {
-      // console.log(response)
-      const frame = parseFrameData(response.data._source)
-      // console.log(frame)
-      return frame;
-    }).catch((error) => {
+    }).then(response => {
+      return parseFrameData(response.data._source);
+    }).catch(error => {
       console.log(error);
+      throw error;
     });
-  }
+  };  
 
+  // Define function to get a random frame
+  const getFrame = async fid => {
+    const dynamoDBClient = new DynamoDB();
+    const dynamoDBParams = {
+      TableName: process.env.API_MEMESRC_FRAMESUBTITLETABLE_NAME,
+      Key: {
+        id: { S: fid }
+      }
+    };
+    return dynamoDBClient
+      .getItem(dynamoDBParams)
+      .then(data => {
+        if (data.Item) {
+          // If item exists in DynamoDB
+          const rawFrameData = {
+            content_id: fid.split('-')[0], // extract series info from fid
+            frame_id: fid,
+            sub_content: data.Item.subtitle.S
+          };
+          return parseFrameData(rawFrameData);
+        } else {
+          // Fallback to OpenSearch if no record in DynamoDB
+          return getFrameFromOpenSearch(fid);
+        }
+      })
+      .catch(error => {
+        console.log(error);
+        throw error;
+      });
+  };
+  
   // Output the event for debugging purposes
   // console.log(`EVENT: ${JSON.stringify(event)}`);
 

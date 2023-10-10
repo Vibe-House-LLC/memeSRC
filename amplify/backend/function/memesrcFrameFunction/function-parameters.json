@@ -5,6 +5,11 @@
         "create",
         "read",
         "update"
+      ],
+      "FrameSubtitle:@model(appsync)": [
+        "create",
+        "read",
+        "update"
       ]
     }
   },

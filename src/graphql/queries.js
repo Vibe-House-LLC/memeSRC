@@ -12,21 +12,13 @@ export const getSeries = /* GraphQL */ `
       image
       description
       seasons {
-        items {
-          id
-          tvdbid
-          year
-          image
-          description
-          createdAt
-          updatedAt
-          seriesSeasonsId
-        }
         nextToken
+        __typename
       }
       statusText
       createdAt
       updatedAt
+      __typename
     }
   }
 `;
@@ -45,14 +37,13 @@ export const listSeries = /* GraphQL */ `
         year
         image
         description
-        seasons {
-          nextToken
-        }
         statusText
         createdAt
         updatedAt
+        __typename
       }
       nextToken
+      __typename
     }
   }
 `;
@@ -79,14 +70,13 @@ export const seriesByTvdbid = /* GraphQL */ `
         year
         image
         description
-        seasons {
-          nextToken
-        }
         statusText
         createdAt
         updatedAt
+        __typename
       }
       nextToken
+      __typename
     }
   }
 `;
@@ -102,23 +92,14 @@ export const getSourceMedia = /* GraphQL */ `
         year
         image
         description
-        seasons {
-          nextToken
-        }
         statusText
         createdAt
         updatedAt
+        __typename
       }
       files {
-        items {
-          id
-          key
-          status
-          createdAt
-          updatedAt
-          sourceMediaFilesId
-        }
         nextToken
+        __typename
       }
       status
       user {
@@ -128,38 +109,22 @@ export const getSourceMedia = /* GraphQL */ `
         earlyAccessStatus
         contributorAccessStatus
         stripeId
-        sourceMedia {
-          nextToken
-        }
         status
-        votes {
-          nextToken
-        }
         credits
-        stripeCustomerInfo {
-          id
-          createdAt
-          updatedAt
-          stripeCustomerUserId
-        }
-        stripeCheckoutSession {
-          nextToken
-        }
         subscriptionPeriodStart
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
-        userNotifications {
-          nextToken
-        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
+        __typename
       }
       createdAt
       updatedAt
       userDetailsSourceMediaId
       sourceMediaSeriesId
+      __typename
     }
   }
 `;
@@ -172,45 +137,15 @@ export const listSourceMedias = /* GraphQL */ `
     listSourceMedias(filter: $filter, limit: $limit, nextToken: $nextToken) {
       items {
         id
-        series {
-          id
-          tvdbid
-          slug
-          name
-          year
-          image
-          description
-          statusText
-          createdAt
-          updatedAt
-        }
-        files {
-          nextToken
-        }
         status
-        user {
-          id
-          username
-          email
-          earlyAccessStatus
-          contributorAccessStatus
-          stripeId
-          status
-          credits
-          subscriptionPeriodStart
-          subscriptionPeriodEnd
-          subscriptionStatus
-          magicSubscription
-          createdAt
-          updatedAt
-          userDetailsStripeCustomerInfoId
-        }
         createdAt
         updatedAt
         userDetailsSourceMediaId
         sourceMediaSeriesId
+        __typename
       }
       nextToken
+      __typename
     }
   }
 `;
@@ -220,49 +155,19 @@ export const getFile = /* GraphQL */ `
       id
       sourceMedia {
         id
-        series {
-          id
-          tvdbid
-          slug
-          name
-          year
-          image
-          description
-          statusText
-          createdAt
-          updatedAt
-        }
-        files {
-          nextToken
-        }
         status
-        user {
-          id
-          username
-          email
-          earlyAccessStatus
-          contributorAccessStatus
-          stripeId
-          status
-          credits
-          subscriptionPeriodStart
-          subscriptionPeriodEnd
-          subscriptionStatus
-          magicSubscription
-          createdAt
-          updatedAt
-          userDetailsStripeCustomerInfoId
-        }
         createdAt
         updatedAt
         userDetailsSourceMediaId
         sourceMediaSeriesId
+        __typename
       }
       key
       status
       createdAt
       updatedAt
       sourceMediaFilesId
+      __typename
     }
   }
 `;
@@ -275,21 +180,15 @@ export const listFiles = /* GraphQL */ `
     listFiles(filter: $filter, limit: $limit, nextToken: $nextToken) {
       items {
         id
-        sourceMedia {
-          id
-          status
-          createdAt
-          updatedAt
-          userDetailsSourceMediaId
-          sourceMediaSeriesId
-        }
         key
         status
         createdAt
         updatedAt
         sourceMediaFilesId
+        __typename
       }
       nextToken
+      __typename
     }
   }
 `;
@@ -309,29 +208,19 @@ export const getSeason = /* GraphQL */ `
         year
         image
         description
-        seasons {
-          nextToken
-        }
         statusText
         createdAt
         updatedAt
+        __typename
       }
       episodes {
-        items {
-          id
-          tvdbid
-          year
-          image
-          description
-          createdAt
-          updatedAt
-          seasonEpisodesId
-        }
         nextToken
+        __typename
       }
       createdAt
       updatedAt
       seriesSeasonsId
+      __typename
     }
   }
 `;
@@ -348,26 +237,13 @@ export const listSeasons = /* GraphQL */ `
         year
         image
         description
-        series {
-          id
-          tvdbid
-          slug
-          name
-          year
-          image
-          description
-          statusText
-          createdAt
-          updatedAt
-        }
-        episodes {
-          nextToken
-        }
         createdAt
         updatedAt
         seriesSeasonsId
+        __typename
       }
       nextToken
+      __typename
     }
   }
 `;
@@ -385,43 +261,19 @@ export const getEpisode = /* GraphQL */ `
         year
         image
         description
-        series {
-          id
-          tvdbid
-          slug
-          name
-          year
-          image
-          description
-          statusText
-          createdAt
-          updatedAt
-        }
-        episodes {
-          nextToken
-        }
         createdAt
         updatedAt
         seriesSeasonsId
+        __typename
       }
       subtitles {
-        items {
-          id
-          tvdbid
-          year
-          image
-          description
-          start
-          end
-          createdAt
-          updatedAt
-          episodeSubtitlesId
-        }
         nextToken
+        __typename
       }
       createdAt
       updatedAt
       seasonEpisodesId
+      __typename
     }
   }
 `;
@@ -438,24 +290,13 @@ export const listEpisodes = /* GraphQL */ `
         year
         image
         description
-        season {
-          id
-          tvdbid
-          year
-          image
-          description
-          createdAt
-          updatedAt
-          seriesSeasonsId
-        }
-        subtitles {
-          nextToken
-        }
         createdAt
         updatedAt
         seasonEpisodesId
+        __typename
       }
       nextToken
+      __typename
     }
   }
 `;
@@ -475,26 +316,15 @@ export const getSubtitle = /* GraphQL */ `
         year
         image
         description
-        season {
-          id
-          tvdbid
-          year
-          image
-          description
-          createdAt
-          updatedAt
-          seriesSeasonsId
-        }
-        subtitles {
-          nextToken
-        }
         createdAt
         updatedAt
         seasonEpisodesId
+        __typename
       }
       createdAt
       updatedAt
       episodeSubtitlesId
+      __typename
     }
   }
 `;
@@ -513,21 +343,13 @@ export const listSubtitles = /* GraphQL */ `
         description
         start
         end
-        episode {
-          id
-          tvdbid
-          year
-          image
-          description
-          createdAt
-          updatedAt
-          seasonEpisodesId
-        }
         createdAt
         updatedAt
         episodeSubtitlesId
+        __typename
       }
       nextToken
+      __typename
     }
   }
 `;
@@ -538,6 +360,7 @@ export const getAnalyticsMetrics = /* GraphQL */ `
       value
       createdAt
       updatedAt
+      __typename
     }
   }
 `;
@@ -557,8 +380,10 @@ export const listAnalyticsMetrics = /* GraphQL */ `
         value
         createdAt
         updatedAt
+        __typename
       }
       nextToken
+      __typename
     }
   }
 `;
@@ -575,6 +400,7 @@ export const getContentMetadata = /* GraphQL */ `
       status
       createdAt
       updatedAt
+      __typename
     }
   }
 `;
@@ -596,8 +422,10 @@ export const listContentMetadata = /* GraphQL */ `
         status
         createdAt
         updatedAt
+        __typename
       }
       nextToken
+      __typename
     }
   }
 `;
@@ -615,6 +443,7 @@ export const getHomepageSection = /* GraphQL */ `
       textColor
       createdAt
       updatedAt
+      __typename
     }
   }
 `;
@@ -641,8 +470,10 @@ export const listHomepageSections = /* GraphQL */ `
         textColor
         createdAt
         updatedAt
+        __typename
       }
       nextToken
+      __typename
     }
   }
 `;
@@ -656,84 +487,38 @@ export const getUserDetails = /* GraphQL */ `
       contributorAccessStatus
       stripeId
       sourceMedia {
-        items {
-          id
-          status
-          createdAt
-          updatedAt
-          userDetailsSourceMediaId
-          sourceMediaSeriesId
-        }
         nextToken
+        __typename
       }
       status
       votes {
-        items {
-          id
-          boost
-          createdAt
-          updatedAt
-          userDetailsVotesId
-          seriesUserVoteSeriesId
-        }
         nextToken
+        __typename
       }
       credits
       stripeCustomerInfo {
         id
-        user {
-          id
-          username
-          email
-          earlyAccessStatus
-          contributorAccessStatus
-          stripeId
-          status
-          credits
-          subscriptionPeriodStart
-          subscriptionPeriodEnd
-          subscriptionStatus
-          magicSubscription
-          createdAt
-          updatedAt
-          userDetailsStripeCustomerInfoId
-        }
         createdAt
         updatedAt
         stripeCustomerUserId
+        __typename
       }
       stripeCheckoutSession {
-        items {
-          id
-          status
-          createdAt
-          updatedAt
-          userDetailsStripeCheckoutSessionId
-        }
         nextToken
+        __typename
       }
       subscriptionPeriodStart
       subscriptionPeriodEnd
       subscriptionStatus
       magicSubscription
       userNotifications {
-        items {
-          id
-          title
-          description
-          avatar
-          type
-          isUnRead
-          path
-          createdAt
-          updatedAt
-          userDetailsUserNotificationsId
-        }
         nextToken
+        __typename
       }
       createdAt
       updatedAt
       userDetailsStripeCustomerInfoId
+      __typename
     }
   }
 `;
@@ -751,35 +536,19 @@ export const listUserDetails = /* GraphQL */ `
         earlyAccessStatus
         contributorAccessStatus
         stripeId
-        sourceMedia {
-          nextToken
-        }
         status
-        votes {
-          nextToken
-        }
         credits
-        stripeCustomerInfo {
-          id
-          createdAt
-          updatedAt
-          stripeCustomerUserId
-        }
-        stripeCheckoutSession {
-          nextToken
-        }
         subscriptionPeriodStart
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
-        userNotifications {
-          nextToken
-        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
+        __typename
       }
       nextToken
+      __typename
     }
   }
 `;
@@ -794,37 +563,21 @@ export const getStripeCustomer = /* GraphQL */ `
         earlyAccessStatus
         contributorAccessStatus
         stripeId
-        sourceMedia {
-          nextToken
-        }
         status
-        votes {
-          nextToken
-        }
         credits
-        stripeCustomerInfo {
-          id
-          createdAt
-          updatedAt
-          stripeCustomerUserId
-        }
-        stripeCheckoutSession {
-          nextToken
-        }
         subscriptionPeriodStart
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
-        userNotifications {
-          nextToken
-        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
+        __typename
       }
       createdAt
       updatedAt
       stripeCustomerUserId
+      __typename
     }
   }
 `;
@@ -837,28 +590,13 @@ export const listStripeCustomers = /* GraphQL */ `
     listStripeCustomers(filter: $filter, limit: $limit, nextToken: $nextToken) {
       items {
         id
-        user {
-          id
-          username
-          email
-          earlyAccessStatus
-          contributorAccessStatus
-          stripeId
-          status
-          credits
-          subscriptionPeriodStart
-          subscriptionPeriodEnd
-          subscriptionStatus
-          magicSubscription
-          createdAt
-          updatedAt
-          userDetailsStripeCustomerInfoId
-        }
         createdAt
         updatedAt
         stripeCustomerUserId
+        __typename
       }
       nextToken
+      __typename
     }
   }
 `;
@@ -873,38 +611,22 @@ export const getStripeCheckoutSession = /* GraphQL */ `
         earlyAccessStatus
         contributorAccessStatus
         stripeId
-        sourceMedia {
-          nextToken
-        }
         status
-        votes {
-          nextToken
-        }
         credits
-        stripeCustomerInfo {
-          id
-          createdAt
-          updatedAt
-          stripeCustomerUserId
-        }
-        stripeCheckoutSession {
-          nextToken
-        }
         subscriptionPeriodStart
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
-        userNotifications {
-          nextToken
-        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
+        __typename
       }
       status
       createdAt
       updatedAt
       userDetailsStripeCheckoutSessionId
+      __typename
     }
   }
 `;
@@ -921,29 +643,14 @@ export const listStripeCheckoutSessions = /* GraphQL */ `
     ) {
       items {
         id
-        user {
-          id
-          username
-          email
-          earlyAccessStatus
-          contributorAccessStatus
-          stripeId
-          status
-          credits
-          subscriptionPeriodStart
-          subscriptionPeriodEnd
-          subscriptionStatus
-          magicSubscription
-          createdAt
-          updatedAt
-          userDetailsStripeCustomerInfoId
-        }
         status
         createdAt
         updatedAt
         userDetailsStripeCheckoutSessionId
+        __typename
       }
       nextToken
+      __typename
     }
   }
 `;
@@ -958,33 +665,16 @@ export const getSeriesUserVote = /* GraphQL */ `
         earlyAccessStatus
         contributorAccessStatus
         stripeId
-        sourceMedia {
-          nextToken
-        }
         status
-        votes {
-          nextToken
-        }
         credits
-        stripeCustomerInfo {
-          id
-          createdAt
-          updatedAt
-          stripeCustomerUserId
-        }
-        stripeCheckoutSession {
-          nextToken
-        }
         subscriptionPeriodStart
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
-        userNotifications {
-          nextToken
-        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
+        __typename
       }
       series {
         id
@@ -994,18 +684,17 @@ export const getSeriesUserVote = /* GraphQL */ `
         year
         image
         description
-        seasons {
-          nextToken
-        }
         statusText
         createdAt
         updatedAt
+        __typename
       }
       boost
       createdAt
       updatedAt
       userDetailsVotesId
       seriesUserVoteSeriesId
+      __typename
     }
   }
 `;
@@ -1018,42 +707,15 @@ export const listSeriesUserVotes = /* GraphQL */ `
     listSeriesUserVotes(filter: $filter, limit: $limit, nextToken: $nextToken) {
       items {
         id
-        user {
-          id
-          username
-          email
-          earlyAccessStatus
-          contributorAccessStatus
-          stripeId
-          status
-          credits
-          subscriptionPeriodStart
-          subscriptionPeriodEnd
-          subscriptionStatus
-          magicSubscription
-          createdAt
-          updatedAt
-          userDetailsStripeCustomerInfoId
-        }
-        series {
-          id
-          tvdbid
-          slug
-          name
-          year
-          image
-          description
-          statusText
-          createdAt
-          updatedAt
-        }
         boost
         createdAt
         updatedAt
         userDetailsVotesId
         seriesUserVoteSeriesId
+        __typename
       }
       nextToken
+      __typename
     }
   }
 `;
@@ -1068,33 +730,16 @@ export const getUserNotification = /* GraphQL */ `
         earlyAccessStatus
         contributorAccessStatus
         stripeId
-        sourceMedia {
-          nextToken
-        }
         status
-        votes {
-          nextToken
-        }
         credits
-        stripeCustomerInfo {
-          id
-          createdAt
-          updatedAt
-          stripeCustomerUserId
-        }
-        stripeCheckoutSession {
-          nextToken
-        }
         subscriptionPeriodStart
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
-        userNotifications {
-          nextToken
-        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
+        __typename
       }
       title
       description
@@ -1105,6 +750,7 @@ export const getUserNotification = /* GraphQL */ `
       createdAt
       updatedAt
       userDetailsUserNotificationsId
+      __typename
     }
   }
 `;
@@ -1121,23 +767,6 @@ export const listUserNotifications = /* GraphQL */ `
     ) {
       items {
         id
-        user {
-          id
-          username
-          email
-          earlyAccessStatus
-          contributorAccessStatus
-          stripeId
-          status
-          credits
-          subscriptionPeriodStart
-          subscriptionPeriodEnd
-          subscriptionStatus
-          magicSubscription
-          createdAt
-          updatedAt
-          userDetailsStripeCustomerInfoId
-        }
         title
         description
         avatar
@@ -1147,8 +776,40 @@ export const listUserNotifications = /* GraphQL */ `
         createdAt
         updatedAt
         userDetailsUserNotificationsId
+        __typename
       }
       nextToken
+      __typename
+    }
+  }
+`;
+export const getFrameSubtitle = /* GraphQL */ `
+  query GetFrameSubtitle($id: ID!) {
+    getFrameSubtitle(id: $id) {
+      id
+      subtitle
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const listFrameSubtitles = /* GraphQL */ `
+  query ListFrameSubtitles(
+    $filter: ModelFrameSubtitleFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listFrameSubtitles(filter: $filter, limit: $limit, nextToken: $nextToken) {
+      items {
+        id
+        subtitle
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
     }
   }
 `;
