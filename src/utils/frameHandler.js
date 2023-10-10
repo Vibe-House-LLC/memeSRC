@@ -22,10 +22,12 @@ const generateFrameIds = (frameId, fineTuning = false) => {
 const fetchSubtitleForFrame = async (frameId) => {
   try {
     const frameData = await API.graphql(graphqlOperation(getFrameSubtitle, { id: frameId }));
-    if (frameData.data.getFrameSubtitle && frameData.data.getFrameSubtitle.subtitle) {
-      return frameData.data.getFrameSubtitle.subtitle;
-    }
+    if (frameData.data.getFrameSubtitle && typeof frameData.data.getFrameSubtitle.subtitle !== 'undefined') {
+      return frameData.data.getFrameSubtitle.subtitle || "";
+  }
+  
     throw new Error('Subtitle not found in DynamoDB');
+  
   } catch (error) {
     console.warn(`Failed to fetch subtitle for frame ID ${frameId} from DynamoDB:`, error);
     return ERROR_SUBTITLE;
@@ -69,7 +71,7 @@ const parseFrameData = async (frameId, subtitle, source) => {
     series_name: seriesName,
     season_number: parseInt(idS, 10),
     episode_number: parseInt(idE, 10),
-    subtitle: subtitle || ERROR_SUBTITLE,
+    subtitle: (typeof subtitle === 'string') ? subtitle : ERROR_SUBTITLE,
     frame_image: `/${seriesName}/img/${idS}/${idE}/${frameId}.jpg`,
     frames_surrounding: surroundingFrames,
     frames_fine_tuning: fineTuningFrames,
