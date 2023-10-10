@@ -15,21 +15,13 @@ export const createSeries = /* GraphQL */ `
       image
       description
       seasons {
-        items {
-          id
-          tvdbid
-          year
-          image
-          description
-          createdAt
-          updatedAt
-          seriesSeasonsId
-        }
         nextToken
+        __typename
       }
       statusText
       createdAt
       updatedAt
+      __typename
     }
   }
 `;
@@ -47,21 +39,13 @@ export const updateSeries = /* GraphQL */ `
       image
       description
       seasons {
-        items {
-          id
-          tvdbid
-          year
-          image
-          description
-          createdAt
-          updatedAt
-          seriesSeasonsId
-        }
         nextToken
+        __typename
       }
       statusText
       createdAt
       updatedAt
+      __typename
     }
   }
 `;
@@ -79,21 +63,13 @@ export const deleteSeries = /* GraphQL */ `
       image
       description
       seasons {
-        items {
-          id
-          tvdbid
-          year
-          image
-          description
-          createdAt
-          updatedAt
-          seriesSeasonsId
-        }
         nextToken
+        __typename
       }
       statusText
       createdAt
       updatedAt
+      __typename
     }
   }
 `;
@@ -112,23 +88,14 @@ export const createSourceMedia = /* GraphQL */ `
         year
         image
         description
-        seasons {
-          nextToken
-        }
         statusText
         createdAt
         updatedAt
+        __typename
       }
       files {
-        items {
-          id
-          key
-          status
-          createdAt
-          updatedAt
-          sourceMediaFilesId
-        }
         nextToken
+        __typename
       }
       status
       user {
@@ -138,38 +105,22 @@ export const createSourceMedia = /* GraphQL */ `
         earlyAccessStatus
         contributorAccessStatus
         stripeId
-        sourceMedia {
-          nextToken
-        }
         status
-        votes {
-          nextToken
-        }
         credits
-        stripeCustomerInfo {
-          id
-          createdAt
-          updatedAt
-          stripeCustomerUserId
-        }
-        stripeCheckoutSession {
-          nextToken
-        }
         subscriptionPeriodStart
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
-        userNotifications {
-          nextToken
-        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
+        __typename
       }
       createdAt
       updatedAt
       userDetailsSourceMediaId
       sourceMediaSeriesId
+      __typename
     }
   }
 `;
@@ -188,23 +139,14 @@ export const updateSourceMedia = /* GraphQL */ `
         year
         image
         description
-        seasons {
-          nextToken
-        }
         statusText
         createdAt
         updatedAt
+        __typename
       }
       files {
-        items {
-          id
-          key
-          status
-          createdAt
-          updatedAt
-          sourceMediaFilesId
-        }
         nextToken
+        __typename
       }
       status
       user {
@@ -214,38 +156,22 @@ export const updateSourceMedia = /* GraphQL */ `
         earlyAccessStatus
         contributorAccessStatus
         stripeId
-        sourceMedia {
-          nextToken
-        }
         status
-        votes {
-          nextToken
-        }
         credits
-        stripeCustomerInfo {
-          id
-          createdAt
-          updatedAt
-          stripeCustomerUserId
-        }
-        stripeCheckoutSession {
-          nextToken
-        }
         subscriptionPeriodStart
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
-        userNotifications {
-          nextToken
-        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
+        __typename
       }
       createdAt
       updatedAt
       userDetailsSourceMediaId
       sourceMediaSeriesId
+      __typename
     }
   }
 `;
@@ -264,23 +190,14 @@ export const deleteSourceMedia = /* GraphQL */ `
         year
         image
         description
-        seasons {
-          nextToken
-        }
         statusText
         createdAt
         updatedAt
+        __typename
       }
       files {
-        items {
-          id
-          key
-          status
-          createdAt
-          updatedAt
-          sourceMediaFilesId
-        }
         nextToken
+        __typename
       }
       status
       user {
@@ -290,38 +207,22 @@ export const deleteSourceMedia = /* GraphQL */ `
         earlyAccessStatus
         contributorAccessStatus
         stripeId
-        sourceMedia {
-          nextToken
-        }
         status
-        votes {
-          nextToken
-        }
         credits
-        stripeCustomerInfo {
-          id
-          createdAt
-          updatedAt
-          stripeCustomerUserId
-        }
-        stripeCheckoutSession {
-          nextToken
-        }
         subscriptionPeriodStart
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
-        userNotifications {
-          nextToken
-        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
+        __typename
       }
       createdAt
       updatedAt
       userDetailsSourceMediaId
       sourceMediaSeriesId
+      __typename
     }
   }
 `;
@@ -334,49 +235,19 @@ export const createFile = /* GraphQL */ `
       id
       sourceMedia {
         id
-        series {
-          id
-          tvdbid
-          slug
-          name
-          year
-          image
-          description
-          statusText
-          createdAt
-          updatedAt
-        }
-        files {
-          nextToken
-        }
         status
-        user {
-          id
-          username
-          email
-          earlyAccessStatus
-          contributorAccessStatus
-          stripeId
-          status
-          credits
-          subscriptionPeriodStart
-          subscriptionPeriodEnd
-          subscriptionStatus
-          magicSubscription
-          createdAt
-          updatedAt
-          userDetailsStripeCustomerInfoId
-        }
         createdAt
         updatedAt
         userDetailsSourceMediaId
         sourceMediaSeriesId
+        __typename
       }
       key
       status
       createdAt
       updatedAt
       sourceMediaFilesId
+      __typename
     }
   }
 `;
@@ -389,49 +260,19 @@ export const updateFile = /* GraphQL */ `
       id
       sourceMedia {
         id
-        series {
-          id
-          tvdbid
-          slug
-          name
-          year
-          image
-          description
-          statusText
-          createdAt
-          updatedAt
-        }
-        files {
-          nextToken
-        }
         status
-        user {
-          id
-          username
-          email
-          earlyAccessStatus
-          contributorAccessStatus
-          stripeId
-          status
-          credits
-          subscriptionPeriodStart
-          subscriptionPeriodEnd
-          subscriptionStatus
-          magicSubscription
-          createdAt
-          updatedAt
-          userDetailsStripeCustomerInfoId
-        }
         createdAt
         updatedAt
         userDetailsSourceMediaId
         sourceMediaSeriesId
+        __typename
       }
       key
       status
       createdAt
       updatedAt
       sourceMediaFilesId
+      __typename
     }
   }
 `;
@@ -444,49 +285,19 @@ export const deleteFile = /* GraphQL */ `
       id
       sourceMedia {
         id
-        series {
-          id
-          tvdbid
-          slug
-          name
-          year
-          image
-          description
-          statusText
-          createdAt
-          updatedAt
-        }
-        files {
-          nextToken
-        }
         status
-        user {
-          id
-          username
-          email
-          earlyAccessStatus
-          contributorAccessStatus
-          stripeId
-          status
-          credits
-          subscriptionPeriodStart
-          subscriptionPeriodEnd
-          subscriptionStatus
-          magicSubscription
-          createdAt
-          updatedAt
-          userDetailsStripeCustomerInfoId
-        }
         createdAt
         updatedAt
         userDetailsSourceMediaId
         sourceMediaSeriesId
+        __typename
       }
       key
       status
       createdAt
       updatedAt
       sourceMediaFilesId
+      __typename
     }
   }
 `;
@@ -509,29 +320,19 @@ export const createSeason = /* GraphQL */ `
         year
         image
         description
-        seasons {
-          nextToken
-        }
         statusText
         createdAt
         updatedAt
+        __typename
       }
       episodes {
-        items {
-          id
-          tvdbid
-          year
-          image
-          description
-          createdAt
-          updatedAt
-          seasonEpisodesId
-        }
         nextToken
+        __typename
       }
       createdAt
       updatedAt
       seriesSeasonsId
+      __typename
     }
   }
 `;
@@ -554,29 +355,19 @@ export const updateSeason = /* GraphQL */ `
         year
         image
         description
-        seasons {
-          nextToken
-        }
         statusText
         createdAt
         updatedAt
+        __typename
       }
       episodes {
-        items {
-          id
-          tvdbid
-          year
-          image
-          description
-          createdAt
-          updatedAt
-          seasonEpisodesId
-        }
         nextToken
+        __typename
       }
       createdAt
       updatedAt
       seriesSeasonsId
+      __typename
     }
   }
 `;
@@ -599,29 +390,19 @@ export const deleteSeason = /* GraphQL */ `
         year
         image
         description
-        seasons {
-          nextToken
-        }
         statusText
         createdAt
         updatedAt
+        __typename
       }
       episodes {
-        items {
-          id
-          tvdbid
-          year
-          image
-          description
-          createdAt
-          updatedAt
-          seasonEpisodesId
-        }
         nextToken
+        __typename
       }
       createdAt
       updatedAt
       seriesSeasonsId
+      __typename
     }
   }
 `;
@@ -642,43 +423,19 @@ export const createEpisode = /* GraphQL */ `
         year
         image
         description
-        series {
-          id
-          tvdbid
-          slug
-          name
-          year
-          image
-          description
-          statusText
-          createdAt
-          updatedAt
-        }
-        episodes {
-          nextToken
-        }
         createdAt
         updatedAt
         seriesSeasonsId
+        __typename
       }
       subtitles {
-        items {
-          id
-          tvdbid
-          year
-          image
-          description
-          start
-          end
-          createdAt
-          updatedAt
-          episodeSubtitlesId
-        }
         nextToken
+        __typename
       }
       createdAt
       updatedAt
       seasonEpisodesId
+      __typename
     }
   }
 `;
@@ -699,43 +456,19 @@ export const updateEpisode = /* GraphQL */ `
         year
         image
         description
-        series {
-          id
-          tvdbid
-          slug
-          name
-          year
-          image
-          description
-          statusText
-          createdAt
-          updatedAt
-        }
-        episodes {
-          nextToken
-        }
         createdAt
         updatedAt
         seriesSeasonsId
+        __typename
       }
       subtitles {
-        items {
-          id
-          tvdbid
-          year
-          image
-          description
-          start
-          end
-          createdAt
-          updatedAt
-          episodeSubtitlesId
-        }
         nextToken
+        __typename
       }
       createdAt
       updatedAt
       seasonEpisodesId
+      __typename
     }
   }
 `;
@@ -756,43 +489,19 @@ export const deleteEpisode = /* GraphQL */ `
         year
         image
         description
-        series {
-          id
-          tvdbid
-          slug
-          name
-          year
-          image
-          description
-          statusText
-          createdAt
-          updatedAt
-        }
-        episodes {
-          nextToken
-        }
         createdAt
         updatedAt
         seriesSeasonsId
+        __typename
       }
       subtitles {
-        items {
-          id
-          tvdbid
-          year
-          image
-          description
-          start
-          end
-          createdAt
-          updatedAt
-          episodeSubtitlesId
-        }
         nextToken
+        __typename
       }
       createdAt
       updatedAt
       seasonEpisodesId
+      __typename
     }
   }
 `;
@@ -815,26 +524,15 @@ export const createSubtitle = /* GraphQL */ `
         year
         image
         description
-        season {
-          id
-          tvdbid
-          year
-          image
-          description
-          createdAt
-          updatedAt
-          seriesSeasonsId
-        }
-        subtitles {
-          nextToken
-        }
         createdAt
         updatedAt
         seasonEpisodesId
+        __typename
       }
       createdAt
       updatedAt
       episodeSubtitlesId
+      __typename
     }
   }
 `;
@@ -857,26 +555,15 @@ export const updateSubtitle = /* GraphQL */ `
         year
         image
         description
-        season {
-          id
-          tvdbid
-          year
-          image
-          description
-          createdAt
-          updatedAt
-          seriesSeasonsId
-        }
-        subtitles {
-          nextToken
-        }
         createdAt
         updatedAt
         seasonEpisodesId
+        __typename
       }
       createdAt
       updatedAt
       episodeSubtitlesId
+      __typename
     }
   }
 `;
@@ -899,26 +586,15 @@ export const deleteSubtitle = /* GraphQL */ `
         year
         image
         description
-        season {
-          id
-          tvdbid
-          year
-          image
-          description
-          createdAt
-          updatedAt
-          seriesSeasonsId
-        }
-        subtitles {
-          nextToken
-        }
         createdAt
         updatedAt
         seasonEpisodesId
+        __typename
       }
       createdAt
       updatedAt
       episodeSubtitlesId
+      __typename
     }
   }
 `;
@@ -932,6 +608,7 @@ export const createAnalyticsMetrics = /* GraphQL */ `
       value
       createdAt
       updatedAt
+      __typename
     }
   }
 `;
@@ -945,6 +622,7 @@ export const updateAnalyticsMetrics = /* GraphQL */ `
       value
       createdAt
       updatedAt
+      __typename
     }
   }
 `;
@@ -958,6 +636,7 @@ export const deleteAnalyticsMetrics = /* GraphQL */ `
       value
       createdAt
       updatedAt
+      __typename
     }
   }
 `;
@@ -977,6 +656,7 @@ export const createContentMetadata = /* GraphQL */ `
       status
       createdAt
       updatedAt
+      __typename
     }
   }
 `;
@@ -996,6 +676,7 @@ export const updateContentMetadata = /* GraphQL */ `
       status
       createdAt
       updatedAt
+      __typename
     }
   }
 `;
@@ -1015,6 +696,7 @@ export const deleteContentMetadata = /* GraphQL */ `
       status
       createdAt
       updatedAt
+      __typename
     }
   }
 `;
@@ -1035,6 +717,7 @@ export const createHomepageSection = /* GraphQL */ `
       textColor
       createdAt
       updatedAt
+      __typename
     }
   }
 `;
@@ -1055,6 +738,7 @@ export const updateHomepageSection = /* GraphQL */ `
       textColor
       createdAt
       updatedAt
+      __typename
     }
   }
 `;
@@ -1075,6 +759,7 @@ export const deleteHomepageSection = /* GraphQL */ `
       textColor
       createdAt
       updatedAt
+      __typename
     }
   }
 `;
@@ -1091,84 +776,38 @@ export const createUserDetails = /* GraphQL */ `
       contributorAccessStatus
       stripeId
       sourceMedia {
-        items {
-          id
-          status
-          createdAt
-          updatedAt
-          userDetailsSourceMediaId
-          sourceMediaSeriesId
-        }
         nextToken
+        __typename
       }
       status
       votes {
-        items {
-          id
-          boost
-          createdAt
-          updatedAt
-          userDetailsVotesId
-          seriesUserVoteSeriesId
-        }
         nextToken
+        __typename
       }
       credits
       stripeCustomerInfo {
         id
-        user {
-          id
-          username
-          email
-          earlyAccessStatus
-          contributorAccessStatus
-          stripeId
-          status
-          credits
-          subscriptionPeriodStart
-          subscriptionPeriodEnd
-          subscriptionStatus
-          magicSubscription
-          createdAt
-          updatedAt
-          userDetailsStripeCustomerInfoId
-        }
         createdAt
         updatedAt
         stripeCustomerUserId
+        __typename
       }
       stripeCheckoutSession {
-        items {
-          id
-          status
-          createdAt
-          updatedAt
-          userDetailsStripeCheckoutSessionId
-        }
         nextToken
+        __typename
       }
       subscriptionPeriodStart
       subscriptionPeriodEnd
       subscriptionStatus
       magicSubscription
       userNotifications {
-        items {
-          id
-          title
-          description
-          avatar
-          type
-          isUnRead
-          path
-          createdAt
-          updatedAt
-          userDetailsUserNotificationsId
-        }
         nextToken
+        __typename
       }
       createdAt
       updatedAt
       userDetailsStripeCustomerInfoId
+      __typename
     }
   }
 `;
@@ -1185,84 +824,38 @@ export const updateUserDetails = /* GraphQL */ `
       contributorAccessStatus
       stripeId
       sourceMedia {
-        items {
-          id
-          status
-          createdAt
-          updatedAt
-          userDetailsSourceMediaId
-          sourceMediaSeriesId
-        }
         nextToken
+        __typename
       }
       status
       votes {
-        items {
-          id
-          boost
-          createdAt
-          updatedAt
-          userDetailsVotesId
-          seriesUserVoteSeriesId
-        }
         nextToken
+        __typename
       }
       credits
       stripeCustomerInfo {
         id
-        user {
-          id
-          username
-          email
-          earlyAccessStatus
-          contributorAccessStatus
-          stripeId
-          status
-          credits
-          subscriptionPeriodStart
-          subscriptionPeriodEnd
-          subscriptionStatus
-          magicSubscription
-          createdAt
-          updatedAt
-          userDetailsStripeCustomerInfoId
-        }
         createdAt
         updatedAt
         stripeCustomerUserId
+        __typename
       }
       stripeCheckoutSession {
-        items {
-          id
-          status
-          createdAt
-          updatedAt
-          userDetailsStripeCheckoutSessionId
-        }
         nextToken
+        __typename
       }
       subscriptionPeriodStart
       subscriptionPeriodEnd
       subscriptionStatus
       magicSubscription
       userNotifications {
-        items {
-          id
-          title
-          description
-          avatar
-          type
-          isUnRead
-          path
-          createdAt
-          updatedAt
-          userDetailsUserNotificationsId
-        }
         nextToken
+        __typename
       }
       createdAt
       updatedAt
       userDetailsStripeCustomerInfoId
+      __typename
     }
   }
 `;
@@ -1279,84 +872,38 @@ export const deleteUserDetails = /* GraphQL */ `
       contributorAccessStatus
       stripeId
       sourceMedia {
-        items {
-          id
-          status
-          createdAt
-          updatedAt
-          userDetailsSourceMediaId
-          sourceMediaSeriesId
-        }
         nextToken
+        __typename
       }
       status
       votes {
-        items {
-          id
-          boost
-          createdAt
-          updatedAt
-          userDetailsVotesId
-          seriesUserVoteSeriesId
-        }
         nextToken
+        __typename
       }
       credits
       stripeCustomerInfo {
         id
-        user {
-          id
-          username
-          email
-          earlyAccessStatus
-          contributorAccessStatus
-          stripeId
-          status
-          credits
-          subscriptionPeriodStart
-          subscriptionPeriodEnd
-          subscriptionStatus
-          magicSubscription
-          createdAt
-          updatedAt
-          userDetailsStripeCustomerInfoId
-        }
         createdAt
         updatedAt
         stripeCustomerUserId
+        __typename
       }
       stripeCheckoutSession {
-        items {
-          id
-          status
-          createdAt
-          updatedAt
-          userDetailsStripeCheckoutSessionId
-        }
         nextToken
+        __typename
       }
       subscriptionPeriodStart
       subscriptionPeriodEnd
       subscriptionStatus
       magicSubscription
       userNotifications {
-        items {
-          id
-          title
-          description
-          avatar
-          type
-          isUnRead
-          path
-          createdAt
-          updatedAt
-          userDetailsUserNotificationsId
-        }
         nextToken
+        __typename
       }
       createdAt
       updatedAt
       userDetailsStripeCustomerInfoId
+      __typename
     }
   }
 `;
@@ -1374,37 +921,21 @@ export const createStripeCustomer = /* GraphQL */ `
         earlyAccessStatus
         contributorAccessStatus
         stripeId
-        sourceMedia {
-          nextToken
-        }
         status
-        votes {
-          nextToken
-        }
         credits
-        stripeCustomerInfo {
-          id
-          createdAt
-          updatedAt
-          stripeCustomerUserId
-        }
-        stripeCheckoutSession {
-          nextToken
-        }
         subscriptionPeriodStart
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
-        userNotifications {
-          nextToken
-        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
+        __typename
       }
       createdAt
       updatedAt
       stripeCustomerUserId
+      __typename
     }
   }
 `;
@@ -1422,37 +953,21 @@ export const updateStripeCustomer = /* GraphQL */ `
         earlyAccessStatus
         contributorAccessStatus
         stripeId
-        sourceMedia {
-          nextToken
-        }
         status
-        votes {
-          nextToken
-        }
         credits
-        stripeCustomerInfo {
-          id
-          createdAt
-          updatedAt
-          stripeCustomerUserId
-        }
-        stripeCheckoutSession {
-          nextToken
-        }
         subscriptionPeriodStart
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
-        userNotifications {
-          nextToken
-        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
+        __typename
       }
       createdAt
       updatedAt
       stripeCustomerUserId
+      __typename
     }
   }
 `;
@@ -1470,37 +985,21 @@ export const deleteStripeCustomer = /* GraphQL */ `
         earlyAccessStatus
         contributorAccessStatus
         stripeId
-        sourceMedia {
-          nextToken
-        }
         status
-        votes {
-          nextToken
-        }
         credits
-        stripeCustomerInfo {
-          id
-          createdAt
-          updatedAt
-          stripeCustomerUserId
-        }
-        stripeCheckoutSession {
-          nextToken
-        }
         subscriptionPeriodStart
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
-        userNotifications {
-          nextToken
-        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
+        __typename
       }
       createdAt
       updatedAt
       stripeCustomerUserId
+      __typename
     }
   }
 `;
@@ -1518,38 +1017,22 @@ export const createStripeCheckoutSession = /* GraphQL */ `
         earlyAccessStatus
         contributorAccessStatus
         stripeId
-        sourceMedia {
-          nextToken
-        }
         status
-        votes {
-          nextToken
-        }
         credits
-        stripeCustomerInfo {
-          id
-          createdAt
-          updatedAt
-          stripeCustomerUserId
-        }
-        stripeCheckoutSession {
-          nextToken
-        }
         subscriptionPeriodStart
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
-        userNotifications {
-          nextToken
-        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
+        __typename
       }
       status
       createdAt
       updatedAt
       userDetailsStripeCheckoutSessionId
+      __typename
     }
   }
 `;
@@ -1567,38 +1050,22 @@ export const updateStripeCheckoutSession = /* GraphQL */ `
         earlyAccessStatus
         contributorAccessStatus
         stripeId
-        sourceMedia {
-          nextToken
-        }
         status
-        votes {
-          nextToken
-        }
         credits
-        stripeCustomerInfo {
-          id
-          createdAt
-          updatedAt
-          stripeCustomerUserId
-        }
-        stripeCheckoutSession {
-          nextToken
-        }
         subscriptionPeriodStart
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
-        userNotifications {
-          nextToken
-        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
+        __typename
       }
       status
       createdAt
       updatedAt
       userDetailsStripeCheckoutSessionId
+      __typename
     }
   }
 `;
@@ -1616,38 +1083,22 @@ export const deleteStripeCheckoutSession = /* GraphQL */ `
         earlyAccessStatus
         contributorAccessStatus
         stripeId
-        sourceMedia {
-          nextToken
-        }
         status
-        votes {
-          nextToken
-        }
         credits
-        stripeCustomerInfo {
-          id
-          createdAt
-          updatedAt
-          stripeCustomerUserId
-        }
-        stripeCheckoutSession {
-          nextToken
-        }
         subscriptionPeriodStart
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
-        userNotifications {
-          nextToken
-        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
+        __typename
       }
       status
       createdAt
       updatedAt
       userDetailsStripeCheckoutSessionId
+      __typename
     }
   }
 `;
@@ -1665,33 +1116,16 @@ export const createSeriesUserVote = /* GraphQL */ `
         earlyAccessStatus
         contributorAccessStatus
         stripeId
-        sourceMedia {
-          nextToken
-        }
         status
-        votes {
-          nextToken
-        }
         credits
-        stripeCustomerInfo {
-          id
-          createdAt
-          updatedAt
-          stripeCustomerUserId
-        }
-        stripeCheckoutSession {
-          nextToken
-        }
         subscriptionPeriodStart
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
-        userNotifications {
-          nextToken
-        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
+        __typename
       }
       series {
         id
@@ -1701,18 +1135,17 @@ export const createSeriesUserVote = /* GraphQL */ `
         year
         image
         description
-        seasons {
-          nextToken
-        }
         statusText
         createdAt
         updatedAt
+        __typename
       }
       boost
       createdAt
       updatedAt
       userDetailsVotesId
       seriesUserVoteSeriesId
+      __typename
     }
   }
 `;
@@ -1730,33 +1163,16 @@ export const updateSeriesUserVote = /* GraphQL */ `
         earlyAccessStatus
         contributorAccessStatus
         stripeId
-        sourceMedia {
-          nextToken
-        }
         status
-        votes {
-          nextToken
-        }
         credits
-        stripeCustomerInfo {
-          id
-          createdAt
-          updatedAt
-          stripeCustomerUserId
-        }
-        stripeCheckoutSession {
-          nextToken
-        }
         subscriptionPeriodStart
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
-        userNotifications {
-          nextToken
-        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
+        __typename
       }
       series {
         id
@@ -1766,18 +1182,17 @@ export const updateSeriesUserVote = /* GraphQL */ `
         year
         image
         description
-        seasons {
-          nextToken
-        }
         statusText
         createdAt
         updatedAt
+        __typename
       }
       boost
       createdAt
       updatedAt
       userDetailsVotesId
       seriesUserVoteSeriesId
+      __typename
     }
   }
 `;
@@ -1795,33 +1210,16 @@ export const deleteSeriesUserVote = /* GraphQL */ `
         earlyAccessStatus
         contributorAccessStatus
         stripeId
-        sourceMedia {
-          nextToken
-        }
         status
-        votes {
-          nextToken
-        }
         credits
-        stripeCustomerInfo {
-          id
-          createdAt
-          updatedAt
-          stripeCustomerUserId
-        }
-        stripeCheckoutSession {
-          nextToken
-        }
         subscriptionPeriodStart
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
-        userNotifications {
-          nextToken
-        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
+        __typename
       }
       series {
         id
@@ -1831,18 +1229,17 @@ export const deleteSeriesUserVote = /* GraphQL */ `
         year
         image
         description
-        seasons {
-          nextToken
-        }
         statusText
         createdAt
         updatedAt
+        __typename
       }
       boost
       createdAt
       updatedAt
       userDetailsVotesId
       seriesUserVoteSeriesId
+      __typename
     }
   }
 `;
@@ -1860,33 +1257,16 @@ export const createUserNotification = /* GraphQL */ `
         earlyAccessStatus
         contributorAccessStatus
         stripeId
-        sourceMedia {
-          nextToken
-        }
         status
-        votes {
-          nextToken
-        }
         credits
-        stripeCustomerInfo {
-          id
-          createdAt
-          updatedAt
-          stripeCustomerUserId
-        }
-        stripeCheckoutSession {
-          nextToken
-        }
         subscriptionPeriodStart
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
-        userNotifications {
-          nextToken
-        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
+        __typename
       }
       title
       description
@@ -1897,6 +1277,7 @@ export const createUserNotification = /* GraphQL */ `
       createdAt
       updatedAt
       userDetailsUserNotificationsId
+      __typename
     }
   }
 `;
@@ -1914,33 +1295,16 @@ export const updateUserNotification = /* GraphQL */ `
         earlyAccessStatus
         contributorAccessStatus
         stripeId
-        sourceMedia {
-          nextToken
-        }
         status
-        votes {
-          nextToken
-        }
         credits
-        stripeCustomerInfo {
-          id
-          createdAt
-          updatedAt
-          stripeCustomerUserId
-        }
-        stripeCheckoutSession {
-          nextToken
-        }
         subscriptionPeriodStart
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
-        userNotifications {
-          nextToken
-        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
+        __typename
       }
       title
       description
@@ -1951,6 +1315,7 @@ export const updateUserNotification = /* GraphQL */ `
       createdAt
       updatedAt
       userDetailsUserNotificationsId
+      __typename
     }
   }
 `;
@@ -1968,33 +1333,16 @@ export const deleteUserNotification = /* GraphQL */ `
         earlyAccessStatus
         contributorAccessStatus
         stripeId
-        sourceMedia {
-          nextToken
-        }
         status
-        votes {
-          nextToken
-        }
         credits
-        stripeCustomerInfo {
-          id
-          createdAt
-          updatedAt
-          stripeCustomerUserId
-        }
-        stripeCheckoutSession {
-          nextToken
-        }
         subscriptionPeriodStart
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
-        userNotifications {
-          nextToken
-        }
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
+        __typename
       }
       title
       description
@@ -2005,6 +1353,49 @@ export const deleteUserNotification = /* GraphQL */ `
       createdAt
       updatedAt
       userDetailsUserNotificationsId
+      __typename
+    }
+  }
+`;
+export const createFrameSubtitle = /* GraphQL */ `
+  mutation CreateFrameSubtitle(
+    $input: CreateFrameSubtitleInput!
+    $condition: ModelFrameSubtitleConditionInput
+  ) {
+    createFrameSubtitle(input: $input, condition: $condition) {
+      id
+      subtitle
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const updateFrameSubtitle = /* GraphQL */ `
+  mutation UpdateFrameSubtitle(
+    $input: UpdateFrameSubtitleInput!
+    $condition: ModelFrameSubtitleConditionInput
+  ) {
+    updateFrameSubtitle(input: $input, condition: $condition) {
+      id
+      subtitle
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const deleteFrameSubtitle = /* GraphQL */ `
+  mutation DeleteFrameSubtitle(
+    $input: DeleteFrameSubtitleInput!
+    $condition: ModelFrameSubtitleConditionInput
+  ) {
+    deleteFrameSubtitle(input: $input, condition: $condition) {
+      id
+      subtitle
+      createdAt
+      updatedAt
+      __typename
     }
   }
 `;

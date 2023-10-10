@@ -22,6 +22,10 @@
     },
     "secretsPathAmplifyAppId": {
       "Type": "String"
+    },
+    "apimemesrcGraphQLAPIIdOutput": {
+      "Type": "String",
+      "Default": "apimemesrcGraphQLAPIIdOutput"
     }
   },
   "Conditions": {
@@ -145,6 +149,35 @@
                   "opensearch_pass"
                 ]
               ]
+            },
+            "API_MEMESRC_FRAMESUBTITLETABLE_NAME": {
+              "Fn::ImportValue": {
+                "Fn::Sub": "${apimemesrcGraphQLAPIIdOutput}:GetAtt:FrameSubtitleTable:Name"
+              }
+            },
+            "API_MEMESRC_FRAMESUBTITLETABLE_ARN": {
+              "Fn::Join": [
+                "",
+                [
+                  "arn:aws:dynamodb:",
+                  {
+                    "Ref": "AWS::Region"
+                  },
+                  ":",
+                  {
+                    "Ref": "AWS::AccountId"
+                  },
+                  ":table/",
+                  {
+                    "Fn::ImportValue": {
+                      "Fn::Sub": "${apimemesrcGraphQLAPIIdOutput}:GetAtt:FrameSubtitleTable:Name"
+                    }
+                  }
+                ]
+              ]
+            },
+            "API_MEMESRC_GRAPHQLAPIIDOUTPUT": {
+              "Ref": "apimemesrcGraphQLAPIIdOutput"
             }
           }
         },
@@ -289,6 +322,70 @@
                         "Ref": "storagememesrcGeneratedImagesBucketName"
                       },
                       "/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "dynamodb:Put*",
+                "dynamodb:Create*",
+                "dynamodb:BatchWriteItem",
+                "dynamodb:PartiQLInsert",
+                "dynamodb:Get*",
+                "dynamodb:BatchGetItem",
+                "dynamodb:List*",
+                "dynamodb:Describe*",
+                "dynamodb:Scan",
+                "dynamodb:Query",
+                "dynamodb:PartiQLSelect",
+                "dynamodb:Update*",
+                "dynamodb:RestoreTable*",
+                "dynamodb:PartiQLUpdate"
+              ],
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:dynamodb:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":",
+                      {
+                        "Ref": "AWS::AccountId"
+                      },
+                      ":table/",
+                      {
+                        "Fn::ImportValue": {
+                          "Fn::Sub": "${apimemesrcGraphQLAPIIdOutput}:GetAtt:FrameSubtitleTable:Name"
+                        }
+                      }
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:dynamodb:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":",
+                      {
+                        "Ref": "AWS::AccountId"
+                      },
+                      ":table/",
+                      {
+                        "Fn::ImportValue": {
+                          "Fn::Sub": "${apimemesrcGraphQLAPIIdOutput}:GetAtt:FrameSubtitleTable:Name"
+                        }
+                      },
+                      "/index/*"
                     ]
                   ]
                 }
