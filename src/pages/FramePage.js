@@ -209,27 +209,28 @@ export default function FramePage({ shows = [] }) {
 
   useEffect(() => {
     setLoading(true)
-    const getSessionID = async () => {
-      let sessionID;
-      if ("sessionID" in sessionStorage) {
-        sessionID = sessionStorage.getItem("sessionID");
-        return Promise.resolve(sessionID);
-      }
-      return API.get('publicapi', '/uuid')
-        .then(generatedSessionID => {
-          sessionStorage.setItem("sessionID", generatedSessionID);
-          return generatedSessionID;
-        })
-        .catch(err => {
-          console.log(`UUID Gen Fetch Error:  ${err}`);
-          throw err;
-        });
-    };
+    // const getSessionID = async () => {
+    //   let sessionID;
+    //   if ("sessionID" in sessionStorage) {
+    //     sessionID = sessionStorage.getItem("sessionID");
+    //     return Promise.resolve(sessionID);
+    //   }
+    //   return API.get('publicapi', '/uuid')
+    //     .then(generatedSessionID => {
+    //       sessionStorage.setItem("sessionID", generatedSessionID);
+    //       return generatedSessionID;
+    //     })
+    //     .catch(err => {
+    //       console.log(`UUID Gen Fetch Error:  ${err}`);
+    //       throw err;
+    //     });
+    // };
 
-    getSessionID()
-      .then(sessionId => {
-        return getFrame(fid)
-      })
+    // getSessionID()
+      // .then(sessionId => {
+        // return getFrame(fid)
+      // })
+      getFrame(fid)
       .then(data => {
         setFrameData(data);
         setFrame(fid)
