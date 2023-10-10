@@ -884,9 +884,10 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
   const loadFineTuningFrames = () => {
     if (loadingFineTuningFrames) {
-      setTimeout(() => {
-        setLoadingFineTuningFrames(false)
-      }, [1000])
+      setLoadingFineTuningFrames(false)
+      // setTimeout(() => {
+      //   setLoadingFineTuningFrames(false)
+      // }, [1000])
     }
   }
 
