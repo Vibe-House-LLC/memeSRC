@@ -21,7 +21,11 @@ const generateFrameIds = (frameId, fineTuning = false) => {
 
 const fetchSubtitleForFrame = async (frameId) => {
   try {
-    const frameData = await API.graphql(graphqlOperation(getFrameSubtitle, { id: frameId }));
+    const frameData = await API.graphql({
+      ...graphqlOperation(getFrameSubtitle, { id: frameId }),
+      authMode: 'API_KEY',
+    });
+
     if (frameData.data.getFrameSubtitle && typeof frameData.data.getFrameSubtitle.subtitle !== 'undefined') {
       return frameData.data.getFrameSubtitle.subtitle || "";
   }
