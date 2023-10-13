@@ -59,7 +59,6 @@ export default function Nav({ openNav, onCloseNav }) {
       </Box>
 
       <Box sx={{ mb: 5, mx: 2.5 }}>
-        <Link underline="none">
           {!userDetails.user &&
             <StyledAccount>
               <>
@@ -79,7 +78,6 @@ export default function Nav({ openNav, onCloseNav }) {
               </>
             </StyledAccount>
           }
-        </Link>
       </Box>
 
       <NavSection sx={{ paddingBottom: 8 }} data={navConfig} />
