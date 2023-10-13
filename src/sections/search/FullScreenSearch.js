@@ -515,7 +515,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                 <StyledSearchButton
                   type="submit"
                   style={{ backgroundColor: 'black' }}
-                  fullWidth={{ xs: true, sm: false }}
+                  fullWidth={window.innerWidth <= 600}
                 >
                   Search
                 </StyledSearchButton>
