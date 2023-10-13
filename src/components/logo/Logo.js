@@ -10,7 +10,9 @@ import { Box, Link } from '@mui/material';
 // Notice: I remove the 'ref' since it was unused and linter was complaining. Originally:
 // const Logo = forwardRef(({ disabledLink = false, sx, ...other }, ref) => {
 
-const Logo = forwardRef(({ disabledLink = false, sx, ...other }) => {
+const Logo = forwardRef((props, ref) => { // <-- include the ref here
+  const { disabledLink = false, sx, ...other } = props; // Destructure props inside the function
+
   // const theme = useTheme();
 
   // const PRIMARY_LIGHT = theme.palette.primary.light;
