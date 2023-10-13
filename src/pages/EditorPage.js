@@ -1114,7 +1114,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                 >
                   <Card>
                     <Accordion expanded={subtitlesExpanded} disableGutters>
-                      <AccordionSummary sx={{ paddingX: 1.55 }} onClick={handleSubtitlesExpand} textAlign="center">
+                      <AccordionSummary sx={{ paddingX: 1.55, textAlign: "center" }} onClick={handleSubtitlesExpand} >
                         <Typography marginRight="auto" fontWeight="bold" color="#CACACA" fontSize={14.8}>
                           {subtitlesExpanded ? (
                             <Close style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
@@ -1136,8 +1136,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                     result?.subtitle.replace(/\n/g, ' ') !==
                                     array[index - 1].subtitle.replace(/\n/g, ' '))
                               )
-                              .map((result) => (
-                                <ListItem key={result?.id} disablePadding sx={{ padding: '0 0 .6em 0' }}>
+                              .map((result, index) => (
+                                <ListItem key={result.id ? result.id : `surrounding-subtitle-${index}`} disablePadding sx={{ padding: '0 0 .6em 0' }}>
                                   <ListItemIcon sx={{ paddingLeft: '0' }}>
                                     <Fab
                                       size="small"
@@ -1432,7 +1432,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                 <Grid container item spacing={1} order="5">
                   {surroundingFrames &&
                     surroundingFrames.map((result) => (
-                      <Grid item xs={4} sm={4} md={12 / 9} key={result?.fid}>
+                      <Grid item xs={4} sm={4} md={12 / 9} key={result.fid}>
                         <a style={{ textDecoration: 'none' }}>
                           <StyledCard style={{ border: fid === result?.fid ? '3px solid orange' : '' }}>
                             {/* {console.log(`${fid} = ${result?.fid}`)} */}
@@ -1671,7 +1671,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         {returnedImages?.map((image, index) => (
             <Grid 
                 item xs={variationDisplayColumns === 2 ? 6 : 12} 
-                key={image} 
+                key={`image-key-${index}`} 
                 onClick={() => setSelectedImage(image)} 
                 style={{ padding: '5px' }}
             >
