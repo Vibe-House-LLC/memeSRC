@@ -471,7 +471,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                   }}
                   value={seriesTitle}
                 >
-                  <option key="_universal" value="_universal" selected>
+                  <option key="_universal" value="_universal">
                     🌈 All Shows & Movies
                   </option>
                   {loading ? (
@@ -515,7 +515,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                 <StyledSearchButton
                   type="submit"
                   style={{ backgroundColor: 'black' }}
-                  fullWidth={{ xs: true, sm: false }}
+                  fullWidth={window.innerWidth <= 600}
                 >
                   Search
                 </StyledSearchButton>

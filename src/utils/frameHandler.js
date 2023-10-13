@@ -85,13 +85,13 @@ const parseFrameData = async (frameId, subtitle, source) => {
 
 
 const getFrame = async (fid) => {
-  console.log(`GETTING FRAME: ${fid}`);
+  // console.log(`GETTING FRAME: ${fid}`);
   
   try {
     const subtitle = await fetchSubtitleForFrame(fid);
-    console.log(subtitle)
+    // console.log(subtitle)
     if (subtitle !== ERROR_SUBTITLE) {
-      console.log("IT THOUGHT IT MATCHED DDB")
+      // console.log("IT THOUGHT IT MATCHED DDB")
       return parseFrameData(fid, subtitle, "DDB");
     }
     throw new Error('Subtitle not found in DynamoDB');

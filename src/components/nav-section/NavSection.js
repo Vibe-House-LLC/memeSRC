@@ -3,7 +3,7 @@ import { Link, NavLink as RouterLink } from 'react-router-dom';
 // @mui
 import { Box, List, ListItemText, Typography } from '@mui/material';
 //
-import { useContext, useEffect } from 'react';
+import { Fragment, useContext, useEffect } from 'react';
 import { StyledNavItem, StyledNavItemIcon } from './styles';
 import { UserContext } from '../../UserContext';
 
@@ -15,16 +15,16 @@ NavSection.propTypes = {
 
 export default function NavSection({ data = [], ...other }) {
   const { user } = useContext(UserContext)
-  useEffect(() => {
-    console.log(user)
-  }, [user])
+  // useEffect(() => {
+  //   console.log(user)
+  // }, [user])
   return (
     <>
       {
         !user?.['cognito:groups']?.includes('admins') && <Box {...other}>
           <List disablePadding sx={{ p: 1 }}>
             {data.filter(item => item.adminOnly === false).map((section, index) => (
-              <>
+              <Fragment key={section.sectionTitle}>
                 <Typography variant='body2' fontWeight={700} pl={2} mb={2} mt={index > 0 ? 5 : 0}>
                   {section.sectionTitle}
                 </Typography>
@@ -33,7 +33,7 @@ export default function NavSection({ data = [], ...other }) {
                     <NavItem externalLink={item.externalLink} key={item.title} item={item} />
                   )
                 }
-              </>
+              </Fragment>
             ))}
           </List>
         </Box>
@@ -42,7 +42,7 @@ export default function NavSection({ data = [], ...other }) {
         user && user['cognito:groups']?.includes('admins') && <Box {...other}>
           <List disablePadding sx={{ p: 1 }}>
             {data.map((section, index) => (
-              <>
+              <Fragment key={section.sectionTitle}>
                 <Typography variant='body2' fontWeight={700} pl={2} mb={2} mt={index > 0 ? 5 : 0}>
                   {section.sectionTitle}
                 </Typography>
@@ -51,7 +51,7 @@ export default function NavSection({ data = [], ...other }) {
                     <NavItem externalLink={item.externalLink} key={item.title} item={item} />
                   )
                 }
-              </>
+              </Fragment>
             ))}
           </List>
         </Box>

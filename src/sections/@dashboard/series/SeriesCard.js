@@ -240,18 +240,18 @@ export default function SeriesCard({ post, isOverlay = false, isLarge = false, h
         }}
       >
         <List>
-          <ListItem button onClick={() => {
+          <ListItem key="close" button onClick={() => {
             handleClose();
             handleEdit(post);
           }}>
             <ListItemText primary="Edit" />
           </ListItem>
-          <ListItem button onClick={() => {
+          <ListItem key="addtoseries" button onClick={() => {
             navigate(`/dashboard/addtoseries/${id}`)
           }}>
             <ListItemText primary="Add To Series" />
           </ListItem>
-          <ListItem button onClick={() => {
+          <ListItem key="delete" button onClick={() => {
             handleClose();
             handleConfirmationOpen();
           }}>

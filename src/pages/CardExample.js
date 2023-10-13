@@ -77,10 +77,10 @@ export default function RecipeReviewCard() {
                             }}
                         >
                             <List>
-                                <ListItem button>
+                                <ListItem key="edit" button>
                                     <ListItemText primary="Edit" />
                                 </ListItem>
-                                <ListItem button>
+                                <ListItem key="delete" button>
                                     <ListItemText primary="Delete" />
                                 </ListItem>
                             </List>

@@ -9,7 +9,7 @@ const useSearchDetails = () => {
       throw new Error('useSearchDetails must be used within a SearchDetailsProvider');
     }
     
-    console.log(context)
+    // console.log(context)
     return context;
   };
   

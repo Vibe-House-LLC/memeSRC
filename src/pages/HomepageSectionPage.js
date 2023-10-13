@@ -364,10 +364,10 @@ export default function HomepageSectionPage() {
                     }}
                   >
                     <List>
-                      <ListItem button onClick={handleEdit}>
+                      <ListItem button onClick={handleEdit} key="edit">
                         <ListItemText primary="Edit" />
                       </ListItem>
-                      <ListItem button onClick={handleDelete}>
+                      <ListItem button onClick={handleDelete} key="delete">
                         <ListItemText primary="Delete" />
                       </ListItem>
                     </List>

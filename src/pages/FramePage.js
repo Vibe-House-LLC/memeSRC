@@ -90,16 +90,15 @@ export default function FramePage({ shows = [] }) {
     if (fid && shows && shows.length > 0) {
       const foundShow = shows.find((obj) => obj.id === fid.split('-')[0]);
 
+      setEpisodeDetails(fid.split('-'))
+
       // Check if a matching show was found
       if (foundShow) {
         setShowTitle(foundShow.title);
       } else {
         console.error(`Show with ID ${fid.split('-')[0]} not found.`);
       }
-    } else {
-      console.error('Invalid `fid` or `shows` array.');
     }
-    setEpisodeDetails(fid.split('-'))
   }, [fid, shows]);
 
   /* ---------------------------- Subtitle Function --------------------------- */
@@ -138,7 +137,7 @@ export default function FramePage({ shows = [] }) {
 
 
   useEffect(() => {
-    console.log(displayImage)
+    // console.log(displayImage)
     const offScreenCanvas = document.createElement('canvas');
     const ctx = offScreenCanvas.getContext('2d');
 
@@ -235,13 +234,13 @@ export default function FramePage({ shows = [] }) {
         setFrameData(data);
         setFrame(fid)
         setSurroundingFrames(data.frames_surrounding);
-        console.log("FRAME DETAILS:")
-        console.log(data)
+        // console.log("FRAME DETAILS:")
+        // console.log(data)
         const newMiddleIndex = Math.floor(data.frames_fine_tuning.length / 2);
         const initialFineTuneImage = data.frames_fine_tuning[newMiddleIndex];
         setMiddleIndex(newMiddleIndex)
-        console.log(newMiddleIndex);
-        console.log(fineTuningFrame)
+        // console.log(newMiddleIndex);
+        // console.log(fineTuningFrame)
         if (typeof fineTuningFrame === 'number') {
           setSliderValue(fineTuningFrame - newMiddleIndex)
         }
@@ -255,8 +254,8 @@ export default function FramePage({ shows = [] }) {
     if (frameData.frames_fine_tuning && middleIndex !== 0) {
       const displayIndex = fineTuningFrame != null ? fineTuningFrame : middleIndex + sliderValue;
 
-      console.log(displayIndex);
-      console.log(fineTuningFrame);
+      // console.log(displayIndex);
+      // console.log(fineTuningFrame);
 
       const newDisplayFrame = frameData.frames_fine_tuning[displayIndex];
       setDisplayImage(`https://memesrc.com${newDisplayFrame}`);
@@ -276,7 +275,7 @@ export default function FramePage({ shows = [] }) {
       returnedElement =
         <Grid container spacing={2}>
           {surroundingFrames.map((frame, index) => (
-            <Grid item xs={4} sm={4} md={12 / 9} key={frame}>
+            <Grid item xs={4} sm={4} md={12 / 9} key={frame.fid}>
               <a style={{ textDecoration: 'none' }}>
                 <StyledCard style={{ border: fid === frame ? '3px solid orange' : '' }}>
                   {/* {console.log(`${fid} = ${result?.fid}`)} */}
@@ -373,7 +372,7 @@ export default function FramePage({ shows = [] }) {
               <Grid item xs={12} mt={3}>
                 <Card>
                   <Accordion expanded={subtitlesExpanded} disableGutters>
-                    <AccordionSummary sx={{ paddingX: 1.55 }} onClick={handleSubtitlesExpand} textAlign="center">
+                    <AccordionSummary sx={{ paddingX: 1.55, textAlign: 'center' }} onClick={handleSubtitlesExpand}>
                       <Typography marginRight="auto" fontWeight="bold" color="#CACACA" fontSize={14.8}>
                         {subtitlesExpanded ? (
                           <Close style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
@@ -398,8 +397,8 @@ export default function FramePage({ shows = [] }) {
                                   result?.subtitle.replace(/\n/g, ' ') !==
                                   array[index - 1].subtitle.replace(/\n/g, ' '))
                             )
-                            .map((result) => (
-                              <ListItem key={result?.id} disablePadding sx={{ padding: '0 0 .6em 0' }}>
+                            .map((result, index) => (
+                              <ListItem key={result.id ? result.id : `surrounding-subtitle-${index}`} disablePadding sx={{ padding: '0 0 .6em 0' }}>
                                 <ListItemIcon sx={{ paddingLeft: '0' }}>
                                   <Fab
                                     size="small"
@@ -697,7 +696,7 @@ export default function FramePage({ shows = [] }) {
               :
               <Grid container spacing={2} mt={0}>
                 {surroundingFrames?.map((frame, index) => (
-                  <Grid item xs={4} sm={4} md={12 / 9} key={index}>
+                  <Grid item xs={4} sm={4} md={12 / 9} key={`surrounding-frame-${frame.fid ? frame.fid : index}`}>
                     <a style={{ textDecoration: 'none' }}>
                       <StyledCard style={{ border: fid === frame ? '3px solid orange' : '' }}>
                         {/* {console.log(`${fid} = ${result?.fid}`)} */}

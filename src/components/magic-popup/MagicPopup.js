@@ -178,7 +178,7 @@ export default function MagicPopup({ children }) {
 
                                 <Typography variant="subtitle1" fontWeight="bold" lineHeight={2} textAlign="left" px={2}>
                                     <ul>
-                                        <li>
+                                        <li key="magic-eraser">
                                             Magic Eraser{' '}
                                             <Chip
                                                 color="success"
@@ -188,7 +188,7 @@ export default function MagicPopup({ children }) {
                                                 variant="outlined"
                                             />
                                         </li>
-                                        <li>
+                                        <li key="magic-fill">
                                             Magic Fill{' '}
                                             <Chip
                                                 color="success"
@@ -198,11 +198,11 @@ export default function MagicPopup({ children }) {
                                                 variant="outlined"
                                             />
                                         </li>
-                                        <li>
+                                        <li key="magic-expander">
                                             Magic Expander{' '}
                                             <Chip size="small" label="Planned" sx={{ marginLeft: '5px', opacity: 0.5 }} variant="outlined" />
                                         </li>
-                                        <li>
+                                        <li key="magic-isolator">
                                             Magic Isolator{' '}
                                             <Chip size="small" label="Planned" sx={{ marginLeft: '5px', opacity: 0.5 }} variant="outlined" />
                                         </li>
@@ -236,7 +236,7 @@ export default function MagicPopup({ children }) {
 
                             <Typography variant="subtitle1" fontWeight="bold" lineHeight={2} textAlign="left" px={2}>
                                 <ul>
-                                    <li>
+                                    <li key="magic-eraser">
                                         Magic Eraser{' '}
                                         <Chip
                                             color="success"
@@ -246,7 +246,7 @@ export default function MagicPopup({ children }) {
                                             variant="outlined"
                                         />
                                     </li>
-                                    <li>
+                                    <li key="magic-fill">
                                         Magic Fill{' '}
                                         <Chip
                                             color="success"
@@ -256,11 +256,11 @@ export default function MagicPopup({ children }) {
                                             variant="outlined"
                                         />
                                     </li>
-                                    <li>
+                                    <li key="magic-expander">
                                         Magic Expander{' '}
                                         <Chip size="small" label="Planned" sx={{ marginLeft: '5px', opacity: 0.5 }} variant="outlined" />
                                     </li>
-                                    <li>
+                                    <li key="magic-isolator">
                                         Magic Isolator{' '}
                                         <Chip size="small" label="Planned" sx={{ marginLeft: '5px', opacity: 0.5 }} variant="outlined" />
                                     </li>
@@ -315,7 +315,7 @@ export default function MagicPopup({ children }) {
 
                             <Typography variant="subtitle1" fontWeight="bold" lineHeight={2} textAlign="left" px={2}>
                                 <ul>
-                                    <li>
+                                    <li key="magic-eraser">
                                         Magic Eraser{' '}
                                         <Chip
                                             color="success"
@@ -325,7 +325,7 @@ export default function MagicPopup({ children }) {
                                             variant="outlined"
                                         />
                                     </li>
-                                    <li>
+                                    <li key="magic-fill">
                                         Magic Fill{' '}
                                         <Chip
                                             color="success"
@@ -335,11 +335,11 @@ export default function MagicPopup({ children }) {
                                             variant="outlined"
                                         />
                                     </li>
-                                    <li>
+                                    <li key="magic-expander">
                                         Magic Expander{' '}
                                         <Chip size="small" label="Planned" sx={{ marginLeft: '5px', opacity: 0.5 }} variant="outlined" />
                                     </li>
-                                    <li>
+                                    <li key="magic-isolator">
                                         Magic Isolator{' '}
                                         <Chip size="small" label="Planned" sx={{ marginLeft: '5px', opacity: 0.5 }} variant="outlined" />
                                     </li>
