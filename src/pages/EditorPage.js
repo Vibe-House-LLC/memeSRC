@@ -667,45 +667,45 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   };
 
   const handleAddCanvasBackground = async (imgUrl) => {
-    setOpenSelectResult(false)
-    // Fetch the image as a blob from the given URL.
-    const imageResponse = await fetch(imgUrl);
-    const imageBlob = await imageResponse.blob();
-    setSelectedImage()
-    setReturnedImages([])
-
-    // Convert the blob to a data URL so fabric can use it.
-    const reader = new FileReader();
-    reader.readAsDataURL(imageBlob);
-    reader.onloadend = () => {
-      const base64data = reader.result;
-      // console.log(base64data)
-      fabric.Image.fromURL(base64data, (returnedImage) => {
-        const originalHeight = editor.canvas.height
-        const originalWidth = editor.canvas.width
-
-        const scale = Math.min(1024 / originalWidth, 1024 / originalHeight);
-        returnedImage.scale(1 / scale)
-        editor.canvas.setBackgroundImage(returnedImage)
-        setBgEditorStates(prevHistory => [...prevHistory, returnedImage]);
-        editor.canvas.backgroundImage.center()
-        editor.canvas.renderAll();
-      }, { crossOrigin: "anonymous" });
-
-      // setTimeout(() => {
-      //   setSeverity('success')
-      //   setMessage(`Image Generation Successful! Remaining credits: ${newCreditAmount}`)
-      //   setOpen(true)
-      //   setEditorTool();
-      //   setMagicPrompt('Everyday scene as cinestill sample, Empty, Nothing, Plain, Vacant, Desolate, Void, Barren, Uninhabited, Abandoned, Unoccupied, Untouched, Clear, Blank, Pristine, Unmarred')
-      //   setPromptEnabled('erase')
-      // }, 500);
-      setEditorTool();
-      setMagicPrompt('Everyday scene as cinestill sample, Empty, Nothing, Plain, Vacant, Desolate, Void, Barren, Uninhabited, Abandoned, Unoccupied, Untouched, Clear, Blank, Pristine, Unmarred')
-      setPromptEnabled('erase')
-      // setImageSrc(response.imageData);
+    try {
+      
+      setOpenSelectResult(false)
+  
+      // Fetch the image as a blob from the given URL.
+      const imageResponse = await fetch(imgUrl);
+      const imageBlob = await imageResponse.blob();
+      setSelectedImage()
+      setReturnedImages([])
+  
+      // Convert the blob to a data URL so fabric can use it.
+      const reader = new FileReader();
+      reader.readAsDataURL(imageBlob);
+      reader.onloadend = () => {
+        const base64data = reader.result;
+        fabric.Image.fromURL(base64data, (returnedImage) => {
+          const originalHeight = editor.canvas.height
+          const originalWidth = editor.canvas.width
+  
+          const scale = Math.min(1024 / originalWidth, 1024 / originalHeight);
+          returnedImage.scale(1 / scale)
+          editor.canvas.setBackgroundImage(returnedImage)
+          setBgEditorStates(prevHistory => [...prevHistory, returnedImage]);
+          editor.canvas.backgroundImage.center()
+          editor.canvas.renderAll();
+        }, { crossOrigin: "anonymous" });
+  
+        setEditorTool();
+        setMagicPrompt('Everyday scene as cinestill sample, Empty, Nothing, Plain, Vacant, Desolate, Void, Barren, Uninhabited, Abandoned, Unoccupied, Untouched, Clear, Blank, Pristine, Unmarred')
+        setPromptEnabled('erase')
+      }
+    } catch (error) {
+      // Utilize the SnackbarContext to display the error message.
+      setSeverity('error');
+      setMessage(`An error occurred: ${error.message}`);
+      setOpen(true);
     }
   }
+  
 
   const handleSelectResultCancel = () => {
     setSelectedImage()
