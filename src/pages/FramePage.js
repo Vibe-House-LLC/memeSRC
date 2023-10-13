@@ -137,7 +137,7 @@ export default function FramePage({ shows = [] }) {
 
 
   useEffect(() => {
-    console.log(displayImage)
+    // console.log(displayImage)
     const offScreenCanvas = document.createElement('canvas');
     const ctx = offScreenCanvas.getContext('2d');
 
@@ -234,13 +234,13 @@ export default function FramePage({ shows = [] }) {
         setFrameData(data);
         setFrame(fid)
         setSurroundingFrames(data.frames_surrounding);
-        console.log("FRAME DETAILS:")
-        console.log(data)
+        // console.log("FRAME DETAILS:")
+        // console.log(data)
         const newMiddleIndex = Math.floor(data.frames_fine_tuning.length / 2);
         const initialFineTuneImage = data.frames_fine_tuning[newMiddleIndex];
         setMiddleIndex(newMiddleIndex)
-        console.log(newMiddleIndex);
-        console.log(fineTuningFrame)
+        // console.log(newMiddleIndex);
+        // console.log(fineTuningFrame)
         if (typeof fineTuningFrame === 'number') {
           setSliderValue(fineTuningFrame - newMiddleIndex)
         }
@@ -254,8 +254,8 @@ export default function FramePage({ shows = [] }) {
     if (frameData.frames_fine_tuning && middleIndex !== 0) {
       const displayIndex = fineTuningFrame != null ? fineTuningFrame : middleIndex + sliderValue;
 
-      console.log(displayIndex);
-      console.log(fineTuningFrame);
+      // console.log(displayIndex);
+      // console.log(fineTuningFrame);
 
       const newDisplayFrame = frameData.frames_fine_tuning[displayIndex];
       setDisplayImage(`https://memesrc.com${newDisplayFrame}`);

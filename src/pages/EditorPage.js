@@ -63,7 +63,7 @@ const StyledCardMedia = styled('img')`
 
 const EditorPage = ({ setSeriesTitle, shows }) => {
   const searchDetails = useSearchDetails();
-  console.log(searchDetails.fineTuningFrame)
+  // console.log(searchDetails.fineTuningFrame)
   // Get everything ready
   const { fid } = useParams();
   const { user, setUser } = useContext(UserContext);
@@ -154,7 +154,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
   useEffect(() => {
     if (shows.length > 0) {
-      console.log(loadedSeriesTitle);
+      // console.log(loadedSeriesTitle);
       setSeriesTitle(loadedSeriesTitle);
     }
   }, [shows, loadedSeriesTitle])
@@ -183,7 +183,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   // Canvas resizing
   const resizeCanvas = useCallback((width, height) => {
     if (editor) {
-      console.log('Resized the canvas');
+      // console.log('Resized the canvas');
       editor.canvas.preserveObjectStacking = true;
       editor?.canvas.setWidth(width);
       editor?.canvas.setHeight(height);
@@ -193,7 +193,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
   // Update the editor size
   const updateEditorSize = useCallback(() => {
-    console.log()
+    // console.log()
     const [desiredHeight, desiredWidth] = calculateEditorSize(editorAspectRatio);
     // Calculate scale factor
     const scaleFactorX = desiredWidth / canvasSize.width;
@@ -241,7 +241,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         return generatedSessionID;
       })
       .catch(err => {
-        console.log(`UUID Gen Fetch Error:  ${err}`);
+        // console.log(`UUID Gen Fetch Error:  ${err}`);
         throw err;
       });
   };
@@ -282,8 +282,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     setLoading(true);
     getFrame(selectedFid)
       .then((data) => {
-        console.log('test');
-        console.log(data);
+        // console.log('test');
+        // console.log(data);
         setLoadedSeriesTitle(data.series_name);
         setSurroundingFrames(data.frames_surrounding);
         const episodeDetails = selectedFid.split('-');
@@ -298,7 +298,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
             searchDetails.fineTuningFrame ? data.frames_fine_tuning[searchDetails.fineTuningFrame] : data.frame_image
           }`,
           (oImg) => {
-            console.log(oImg);
+            // console.log(oImg);
             setDefaultFrame(oImg);
             setDefaultSubtitle(data.subtitle);
             setLoading(false);
@@ -390,7 +390,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       .then(blob => {
         setImageBlob(blob);
         API.get('publicapi', '/uuid').then(uuid => {
-          console.log(`GOT THIS UUID: ${JSON.stringify(uuid)}`)
+          // console.log(`GOT THIS UUID: ${JSON.stringify(uuid)}`)
           const filename = `${uuid}.jpg`
           setGeneratedImageFilename(filename)
           Storage.put(`${uuid}.jpg`, blob, {
@@ -432,20 +432,20 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const changeColor = (color, index) => {
     setColorPickerColor(color);
     editor.canvas.item(index).set('fill', color.hex);
-    console.log(`Length of object:  + ${selectedObjects.length}`)
+    // console.log(`Length of object:  + ${selectedObjects.length}`)
     setCanvasObjects([...editor.canvas._objects])
-    console.log(editor.canvas.item(index));
+    // console.log(editor.canvas.item(index));
     editor?.canvas.renderAll();
     setColorPickerShowing(false);
   }
 
   const handleEdit = (event, index) => {
-    console.log(event)
-    console.log(index)
+    // console.log(event)
+    // console.log(index)
     editor.canvas.item(index).set('text', event.target.value);
-    console.log(`Length of object:  + ${selectedObjects.length}`)
+    // console.log(`Length of object:  + ${selectedObjects.length}`)
     setCanvasObjects([...editor.canvas._objects])
-    console.log(editor.canvas.item(index));
+    // console.log(editor.canvas.item(index));
     editor?.canvas.renderAll();
   }
 
@@ -458,12 +458,12 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     const defaultFontSize = editor.canvas.getWidth() * 0.04;
     editor.canvas.item(index).fontSize = defaultFontSize * (event.target.value / 100);
     setCanvasObjects([...editor.canvas._objects])
-    console.log(editor.canvas.item(index));
+    // console.log(editor.canvas.item(index));
     editor?.canvas.renderAll();
   }
 
   const handleFineTuning = (event) => {
-    console.log(fineTuningFrames[event.target.value]);
+    // console.log(fineTuningFrames[event.target.value]);
     const oImg = fineTuningFrames[event.target.value];
     oImg.scaleToHeight(editor.canvas.getHeight());
     oImg.scaleToWidth(editor.canvas.getWidth());
@@ -489,7 +489,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     // Update the canvas
     editor.canvas.item(index).dirty = true;
     setCanvasObjects([...editor.canvas._objects]);
-    console.log(editor.canvas.item(index));
+    // console.log(editor.canvas.item(index));
     editor?.canvas.renderAll();
   }
 
@@ -565,7 +565,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       if (obj instanceof fabric.Path) {
         const path = obj.toObject();
         const newPath = new fabric.Path(path.path, { ...path, stroke: 'red', fill: 'transparent', globalCompositeOperation: 'destination-out' });
-        console.log(path)
+        // console.log(path)
         newPath.scale(scale);
         newPath.set({ left: newPath.left * scale + offsetX, top: newPath.top * scale + offsetY });
         tempCanvasDrawing.add(newPath);
@@ -589,7 +589,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
     const newBackgroundImage = new fabric.Image(editor.canvas.backgroundImage.getElement())
 
-    console.log(newBackgroundImage)
+    // console.log(newBackgroundImage)
     const imageWidth = backgroundImage.width
     const imageHeight = backgroundImage.height
     const imageScale = Math.min(1024 / imageWidth, 1024 / imageHeight);
@@ -646,9 +646,9 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         const newCreditAmount = user?.userDetails.credits - 1
         setUser({ ...user, userDetails: { ...user?.userDetails, credits: newCreditAmount } })
 
-        console.log(`response: ${response}`)
-        console.log(response)
-        console.log(`imageUrl: ${imageUrls}`)
+        // console.log(`response: ${response}`)
+        // console.log(response)
+        // console.log(`imageUrl: ${imageUrls}`)
       } catch (error) {
         setLoadingInpaintingResult(false)
         if (error.response?.data?.error?.name === "InsufficientCredits") {
@@ -679,7 +679,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     reader.readAsDataURL(imageBlob);
     reader.onloadend = () => {
       const base64data = reader.result;
-      console.log(base64data)
+      // console.log(base64data)
       fabric.Image.fromURL(base64data, (returnedImage) => {
         const originalHeight = editor.canvas.height
         const originalWidth = editor.canvas.width
@@ -741,7 +741,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   // }
 
   const addToHistory = () => {
-    console.log('there was a change')
+    // console.log('there was a change')
 
     const serializedCanvas = JSON.stringify(editor.canvas);
     const backgroundImage = editor.canvas.backgroundImage;
@@ -797,7 +797,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   }
 
   useEffect(() => {
-    console.log('there was a change to Canvas');
+    // console.log('there was a change to Canvas');
 
     if (editor && !editorLoaded) {
       setEditorLoaded(true);
@@ -878,9 +878,9 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     }
   }, [editor]);
 
-  useEffect(() => {
-    console.log(editorStates)
-  }, [editorStates])
+  // useEffect(() => {
+  //   console.log(editorStates)
+  // }, [editorStates])
 
   const loadFineTuningFrames = () => {
     if (loadingFineTuningFrames) {
