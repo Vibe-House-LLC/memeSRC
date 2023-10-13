@@ -15,9 +15,9 @@ NavSection.propTypes = {
 
 export default function NavSection({ data = [], ...other }) {
   const { user } = useContext(UserContext)
-  useEffect(() => {
-    console.log(user)
-  }, [user])
+  // useEffect(() => {
+  //   console.log(user)
+  // }, [user])
   return (
     <>
       {
