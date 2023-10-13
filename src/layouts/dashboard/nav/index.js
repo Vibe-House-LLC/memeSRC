@@ -50,7 +50,7 @@ export default function Nav({ openNav, onCloseNav }) {
       }}
     >
       <Box sx={{ px: 2.5, py: 3, display: 'inline-flex' }}>
-        <Stack direction='horizontal'>
+        <Stack direction='row'>
           <Link onClick={() => { navigate('/') }}>
             <Logo />
           </Link>
