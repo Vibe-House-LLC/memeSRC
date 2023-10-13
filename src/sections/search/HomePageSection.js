@@ -17,7 +17,7 @@ HomePageSection.propTypes = {
   index: PropTypes.number,
   bottomImage: PropTypes.shape({
     src: PropTypes.string,
-    bottomMargin: PropTypes.number,
+    bottomMargin: PropTypes.string,
     maxHeight: PropTypes.string,
     alt: PropTypes.string
   }),
@@ -51,7 +51,7 @@ export default function HomePageSection({ backgroundColor, textColor, title, sub
         <Grid container justifyContent='center' spacing={2}>
           {buttons.map((button, index) => (
             <Grid item xs={12} sm='auto' key={index}>
-              <Button key={index} color={"secondary"} startIcon={<Favorite />} href={button.destination} variant="contained" size="large" fullWidth={{ xs: true, sm: false }}>
+              <Button key={index} color={"secondary"} startIcon={<Favorite />} href={button.destination} variant="contained" size="large" fullWidth={window.innerWidth <= 600}>
                 {button.title}
               </Button>
             </Grid>
