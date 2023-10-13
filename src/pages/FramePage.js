@@ -276,7 +276,7 @@ export default function FramePage({ shows = [] }) {
       returnedElement =
         <Grid container spacing={2}>
           {surroundingFrames.map((frame, index) => (
-            <Grid item xs={4} sm={4} md={12 / 9} key={frame}>
+            <Grid item xs={4} sm={4} md={12 / 9} key={frame.fid}>
               <a style={{ textDecoration: 'none' }}>
                 <StyledCard style={{ border: fid === frame ? '3px solid orange' : '' }}>
                   {/* {console.log(`${fid} = ${result?.fid}`)} */}
@@ -373,7 +373,7 @@ export default function FramePage({ shows = [] }) {
               <Grid item xs={12} mt={3}>
                 <Card>
                   <Accordion expanded={subtitlesExpanded} disableGutters>
-                    <AccordionSummary sx={{ paddingX: 1.55 }} onClick={handleSubtitlesExpand} textAlign="center">
+                    <AccordionSummary sx={{ paddingX: 1.55, textAlign: 'center' }} onClick={handleSubtitlesExpand}>
                       <Typography marginRight="auto" fontWeight="bold" color="#CACACA" fontSize={14.8}>
                         {subtitlesExpanded ? (
                           <Close style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
@@ -398,8 +398,8 @@ export default function FramePage({ shows = [] }) {
                                   result?.subtitle.replace(/\n/g, ' ') !==
                                   array[index - 1].subtitle.replace(/\n/g, ' '))
                             )
-                            .map((result) => (
-                              <ListItem key={result?.id} disablePadding sx={{ padding: '0 0 .6em 0' }}>
+                            .map((result, index) => (
+                              <ListItem key={result.id ? result.id : `surrounding-subtitle-${index}`} disablePadding sx={{ padding: '0 0 .6em 0' }}>
                                 <ListItemIcon sx={{ paddingLeft: '0' }}>
                                   <Fab
                                     size="small"
@@ -697,7 +697,7 @@ export default function FramePage({ shows = [] }) {
               :
               <Grid container spacing={2} mt={0}>
                 {surroundingFrames?.map((frame, index) => (
-                  <Grid item xs={4} sm={4} md={12 / 9} key={index}>
+                  <Grid item xs={4} sm={4} md={12 / 9} key={`surrounding-frame-${frame.fid ? frame.fid : index}`}>
                     <a style={{ textDecoration: 'none' }}>
                       <StyledCard style={{ border: fid === frame ? '3px solid orange' : '' }}>
                         {/* {console.log(`${fid} = ${result?.fid}`)} */}
