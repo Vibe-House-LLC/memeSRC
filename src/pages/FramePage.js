@@ -90,16 +90,15 @@ export default function FramePage({ shows = [] }) {
     if (fid && shows && shows.length > 0) {
       const foundShow = shows.find((obj) => obj.id === fid.split('-')[0]);
 
+      setEpisodeDetails(fid.split('-'))
+
       // Check if a matching show was found
       if (foundShow) {
         setShowTitle(foundShow.title);
       } else {
         console.error(`Show with ID ${fid.split('-')[0]} not found.`);
       }
-    } else {
-      console.error('Invalid `fid` or `shows` array.');
     }
-    setEpisodeDetails(fid.split('-'))
   }, [fid, shows]);
 
   /* ---------------------------- Subtitle Function --------------------------- */
