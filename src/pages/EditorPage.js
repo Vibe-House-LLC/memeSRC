@@ -666,87 +666,40 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     }
   };
 
-  const handleAddCanvasBackground = async (imgUrl) => {
+  const handleAddCanvasBackground = (imgUrl) => {
     try {
         setOpenSelectResult(false);
-        
-        let imageBlob;
 
-        try {
-            // Attempt to use fetch first
-            const fetchOptions = {
-                method: 'GET',
-                mode: 'cors',
-                credentials: 'same-origin',
-                redirect: 'follow',
-                referrerPolicy: 'no-referrer'
-            };
-            const imageResponse = await fetch(imgUrl, fetchOptions);
-            
-            if (!imageResponse.ok) {
-                throw new Error(`Fetch response not OK: ${imageResponse.statusText}`);
+        fabric.Image.fromURL(imgUrl, (returnedImage) => {
+            if (!returnedImage) {
+                throw new Error('Failed to load image from URL');
             }
 
-            imageBlob = await imageResponse.blob();
-        } catch (fetchError) {
-            // Fallback to XMLHttpRequest if fetch fails
-            imageBlob = await new Promise((resolve, reject) => {
-                const xhr = new XMLHttpRequest();
-                xhr.open('GET', imgUrl, true);
-                xhr.responseType = 'blob';
-                xhr.onload = () => {
-                    if (xhr.status === 200) {
-                        resolve(xhr.response);
-                    } else {
-                        reject(new Error(`XHR error: ${xhr.statusText}`));
-                    }
-                };
-                xhr.onerror = () => {
-                    reject(new Error('XHR network error'));
-                };
-                xhr.send();
-            });
-        }
+            setSelectedImage();
+            setReturnedImages([]);
 
-        if (!imageBlob) {
-            throw new Error('Failed to obtain image blob');
-        }
+            const originalHeight = editor.canvas.height;
+            const originalWidth = editor.canvas.width;
+            const scale = Math.min(1024 / originalWidth, 1024 / originalHeight);
+            returnedImage.scale(1 / scale);
+            editor.canvas.setBackgroundImage(returnedImage);
+            setBgEditorStates(prevHistory => [...prevHistory, returnedImage]);
+            editor.canvas.backgroundImage.center();
+            editor.canvas.renderAll();
 
-        setSelectedImage();
-        setReturnedImages([]);
-
-        // Convert blob to data URL for fabric
-        const reader = new FileReader();
-        reader.onerror = (error) => {
-            throw new Error(`FileReader error: ${error.message}`);
-        };
-        reader.onloadend = handleImageLoadEnd;
-        reader.readAsDataURL(imageBlob);
+            setEditorTool();
+            setMagicPrompt('Everyday scene as cinematic cinestill sample');
+            setPromptEnabled('erase');
+        }, {
+            crossOrigin: "anonymous"
+        });
 
     } catch (error) {
         setSeverity('error');
         setMessage(`An error occurred: ${error.message}`);
         setOpen(true);
     }
-  };
-
-  const handleImageLoadEnd = (event) => {
-      const base64data = event.target.result;
-      fabric.Image.fromURL(base64data, (returnedImage) => {
-          const originalHeight = editor.canvas.height;
-          const originalWidth = editor.canvas.width;
-          const scale = Math.min(1024 / originalWidth, 1024 / originalHeight);
-          returnedImage.scale(1 / scale);
-          editor.canvas.setBackgroundImage(returnedImage);
-          setBgEditorStates(prevHistory => [...prevHistory, returnedImage]);
-          editor.canvas.backgroundImage.center();
-          editor.canvas.renderAll();
-      }, { crossOrigin: "anonymous" });
-
-      setEditorTool();
-      setMagicPrompt('Everyday scene as cinematic cinestill sample');
-      setPromptEnabled('erase');
-  };
+};
 
 
   const handleSelectResultCancel = () => {
