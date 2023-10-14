@@ -118,7 +118,7 @@
           ]
         },
         "Runtime": "nodejs18.x",
-        "MemorySize": 2048,
+        "MemorySize": 3000,
         "Layers": [],
         "Timeout": 30
       }
