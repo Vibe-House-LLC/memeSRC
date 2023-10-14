@@ -668,44 +668,59 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
   const handleAddCanvasBackground = async (imgUrl) => {
     try {
-      
-      setOpenSelectResult(false)
-  
-      // Fetch the image as a blob from the given URL.
-      const imageResponse = await fetch(imgUrl);
-      const imageBlob = await imageResponse.blob();
-      setSelectedImage()
-      setReturnedImages([])
-  
-      // Convert the blob to a data URL so fabric can use it.
-      const reader = new FileReader();
-      reader.readAsDataURL(imageBlob);
-      reader.onloadend = () => {
-        const base64data = reader.result;
-        fabric.Image.fromURL(base64data, (returnedImage) => {
-          const originalHeight = editor.canvas.height
-          const originalWidth = editor.canvas.width
-  
-          const scale = Math.min(1024 / originalWidth, 1024 / originalHeight);
-          returnedImage.scale(1 / scale)
-          editor.canvas.setBackgroundImage(returnedImage)
-          setBgEditorStates(prevHistory => [...prevHistory, returnedImage]);
-          editor.canvas.backgroundImage.center()
-          editor.canvas.renderAll();
-        }, { crossOrigin: "anonymous" });
-  
-        setEditorTool();
-        setMagicPrompt('Everyday scene as cinestill sample, Empty, Nothing, Plain, Vacant, Desolate, Void, Barren, Uninhabited, Abandoned, Unoccupied, Untouched, Clear, Blank, Pristine, Unmarred')
-        setPromptEnabled('erase')
-      }
+        setOpenSelectResult(false);
+
+        // Fetch the image as a blob from the given URL.
+        const imageResponse = await fetch(imgUrl);
+        if (!imageResponse.ok) {
+            throw new Error('Failed to fetch image from URL');
+        }
+        const imageBlob = await imageResponse.blob();
+
+        if (!imageBlob) {
+            throw new Error('Failed to convert image to blob');
+        }
+
+        setSelectedImage();
+        setReturnedImages([]);
+
+        // Check if FileReader is available
+        if (typeof FileReader === 'undefined') {
+            throw new Error('FileReader is not supported in this browser');
+        }
+
+        // Convert the blob to a data URL so fabric can use it.
+        const reader = new FileReader();
+        reader.onerror = (error) => {
+            throw new Error(`FileReader error: ${error.message}`);
+        };
+        reader.onloadend = () => {
+            const base64data = reader.result;
+            fabric.Image.fromURL(base64data, (returnedImage) => {
+                const originalHeight = editor.canvas.height;
+                const originalWidth = editor.canvas.width;
+
+                const scale = Math.min(1024 / originalWidth, 1024 / originalHeight);
+                returnedImage.scale(1 / scale);
+                editor.canvas.setBackgroundImage(returnedImage);
+                setBgEditorStates(prevHistory => [...prevHistory, returnedImage]);
+                editor.canvas.backgroundImage.center();
+                editor.canvas.renderAll();
+            }, { crossOrigin: "anonymous" });
+
+            setEditorTool();
+            setMagicPrompt('Everyday scene as cinematic cinestill sample');
+            setPromptEnabled('erase');
+        };
+        reader.readAsDataURL(imageBlob);
+
     } catch (error) {
-      // Utilize the SnackbarContext to display the error message.
-      setSeverity('error');
-      setMessage(`An error occurred: ${error.message}`);
-      setOpen(true);
+        // Utilize the SnackbarContext to display the error message.
+        setSeverity('error');
+        setMessage(`An error occurred: ${error.message}`);
+        setOpen(true);
     }
-  }
-  
+  };  
 
   const handleSelectResultCancel = () => {
     setSelectedImage()
@@ -896,13 +911,13 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     if (promptEnabled === "fill") {
       setMagicPrompt('')
     } else {
-      setMagicPrompt('Everyday scene as cinestill sample, Empty, Nothing, Plain, Vacant, Desolate, Void, Barren, Uninhabited, Abandoned, Unoccupied, Untouched, Clear, Blank, Pristine, Unmarred')
+      setMagicPrompt('Everyday scene as cinematic cinestill sample')
     }
   }, [promptEnabled])
 
   useEffect(() => {
     setPromptEnabled('erase')
-    setMagicPrompt('Everyday scene as cinestill sample, Empty, Nothing, Plain, Vacant, Desolate, Void, Barren, Uninhabited, Abandoned, Unoccupied, Untouched, Clear, Blank, Pristine, Unmarred')
+    setMagicPrompt('Everyday scene as cinematic cinestill sample')
   }, [editorTool])
 
   // ------------------------------------------------------------------------
