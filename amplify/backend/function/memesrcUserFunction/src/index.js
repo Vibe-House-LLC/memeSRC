@@ -472,14 +472,14 @@ export const handler = async (event) => {
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
     console.log('Last Vote:', lastVote);
 
-    // Check if the last vote was more than 5 minutes ago
+    // Check if the last vote was more than 24 hours ago
     let canVote = false;
     if (lastVote) {
       const voteTime = new Date(lastVote.createdAt);
       console.log(`Last Vote Time: ${voteTime}`)
-      const diffInMinutes = (new Date() - voteTime) / 1000 / 60;
-      console.log(`diffInMinutes: ${diffInMinutes}`)
-      canVote = diffInMinutes > 5;
+      const diffInHours = (new Date() - voteTime) / 1000 / 60 / 60;
+      console.log(`diffInHours: ${diffInHours}`)
+      canVote = diffInHours >= 24;
     } else {
       canVote = true;
     }
@@ -507,7 +507,7 @@ export const handler = async (event) => {
         statusCode: 403,
         body: {
           name: 'VoteTooRecent',
-          message: 'You can only vote once every 5 minutes.',
+          message: 'You can only vote once every 24 hours.',
         },
       };
       console.log('Forbidden Error:', response);
