@@ -661,6 +661,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
           });
         }
         console.log(error.response.data);
+        alert(`Error: ${JSON.stringify(error.response.data)}`)
       }
     }
   };
