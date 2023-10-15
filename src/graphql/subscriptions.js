@@ -1348,8 +1348,6 @@ export const onCreateMagicResult = /* GraphQL */ `
         userDetailsStripeCustomerInfoId
         __typename
       }
-      source
-      status
       prompt
       results
       createdAt
@@ -1383,8 +1381,6 @@ export const onUpdateMagicResult = /* GraphQL */ `
         userDetailsStripeCustomerInfoId
         __typename
       }
-      source
-      status
       prompt
       results
       createdAt
@@ -1418,8 +1414,6 @@ export const onDeleteMagicResult = /* GraphQL */ `
         userDetailsStripeCustomerInfoId
         __typename
       }
-      source
-      status
       prompt
       results
       createdAt

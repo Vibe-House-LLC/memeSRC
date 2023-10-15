@@ -835,8 +835,6 @@ export const getMagicResult = /* GraphQL */ `
         userDetailsStripeCustomerInfoId
         __typename
       }
-      source
-      status
       prompt
       results
       createdAt
@@ -855,8 +853,6 @@ export const listMagicResults = /* GraphQL */ `
     listMagicResults(filter: $filter, limit: $limit, nextToken: $nextToken) {
       items {
         id
-        source
-        status
         prompt
         results
         createdAt
