@@ -253,14 +253,14 @@ export default function SourceMediaList() {
                           <Stack direction="row" alignItems="center" spacing={2}>
                             {/* <Avatar alt={username} src={avatarUrl} /> */}
                             <Typography variant="subtitle2" noWrap>
-                              {series.name}
+                              {series ? series.name : '(NO_NAME)'}
                             </Typography>
                           </Stack>
                         </TableCell>
 
                         <TableCell sx={{cursor: 'pointer'}} onClick={() => {navigate(`files/${id}`)}} align="left">{id}</TableCell>
 
-                        <TableCell sx={{cursor: 'pointer'}} onClick={() => {navigate(`files/${id}`)}} align="left">{user && user.username}</TableCell>
+                        <TableCell sx={{cursor: 'pointer'}} onClick={() => {navigate(`files/${id}`)}} align="left">{user ? user.username : "(NO_USER)"}</TableCell>
 
                         <TableCell sx={{cursor: 'pointer'}} onClick={() => {navigate(`files/${id}`)}} align="left">
                           <Label color={(status === "uploaded") ? 'warning' : 'success'}>{sentenceCase(status)}</Label>

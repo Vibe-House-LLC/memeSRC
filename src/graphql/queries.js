@@ -813,3 +813,55 @@ export const listFrameSubtitles = /* GraphQL */ `
     }
   }
 `;
+export const getMagicResult = /* GraphQL */ `
+  query GetMagicResult($id: ID!) {
+    getMagicResult(id: $id) {
+      id
+      user {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      prompt
+      results
+      createdAt
+      updatedAt
+      magicResultUserId
+      __typename
+    }
+  }
+`;
+export const listMagicResults = /* GraphQL */ `
+  query ListMagicResults(
+    $filter: ModelMagicResultFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listMagicResults(filter: $filter, limit: $limit, nextToken: $nextToken) {
+      items {
+        id
+        prompt
+        results
+        createdAt
+        updatedAt
+        magicResultUserId
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;

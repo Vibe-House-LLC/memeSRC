@@ -1399,3 +1399,105 @@ export const deleteFrameSubtitle = /* GraphQL */ `
     }
   }
 `;
+export const createMagicResult = /* GraphQL */ `
+  mutation CreateMagicResult(
+    $input: CreateMagicResultInput!
+    $condition: ModelMagicResultConditionInput
+  ) {
+    createMagicResult(input: $input, condition: $condition) {
+      id
+      user {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      prompt
+      results
+      createdAt
+      updatedAt
+      magicResultUserId
+      __typename
+    }
+  }
+`;
+export const updateMagicResult = /* GraphQL */ `
+  mutation UpdateMagicResult(
+    $input: UpdateMagicResultInput!
+    $condition: ModelMagicResultConditionInput
+  ) {
+    updateMagicResult(input: $input, condition: $condition) {
+      id
+      user {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      prompt
+      results
+      createdAt
+      updatedAt
+      magicResultUserId
+      __typename
+    }
+  }
+`;
+export const deleteMagicResult = /* GraphQL */ `
+  mutation DeleteMagicResult(
+    $input: DeleteMagicResultInput!
+    $condition: ModelMagicResultConditionInput
+  ) {
+    deleteMagicResult(input: $input, condition: $condition) {
+      id
+      user {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      prompt
+      results
+      createdAt
+      updatedAt
+      magicResultUserId
+      __typename
+    }
+  }
+`;
