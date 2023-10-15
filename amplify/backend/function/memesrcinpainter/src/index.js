@@ -113,8 +113,6 @@ exports.handler = async (event) => {
         "createdAt": { S: new Date().toISOString() },
         "magicResultUserId": { S: userSub[0] },
         "prompt": { S: prompt },
-        "source": { S: "your-source-here" },
-        "status": { S: "pending" },
         "updatedAt": { S: new Date().toISOString() },
         "__typename": { S: "MagicResult" }
     };
