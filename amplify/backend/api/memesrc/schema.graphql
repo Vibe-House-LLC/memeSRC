@@ -157,8 +157,7 @@ type UserDetails @model @auth(
   subscriptionPeriodEnd: String,
   subscriptionStatus: String,
   magicSubscription: String,
-  userNotifications: [UserNotification] @hasMany,
-  magicResults: [MagicResult] @hasMany
+  userNotifications: [UserNotification] @hasMany
 }
 
 type StripeCustomer @model @auth(
@@ -227,7 +226,7 @@ type MagicResult @model @auth(
   ]
 ) {
   id: ID!, 
-  user: UserDetails @belongsTo,
+  user: UserDetails @hasOne,
   source: String,
   status: String,
   prompt: String,
