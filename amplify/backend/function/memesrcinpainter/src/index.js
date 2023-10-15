@@ -40,6 +40,9 @@ const { Buffer } = require('buffer');
  */
 exports.handler = async (event) => {
     const lambdaClient = new LambdaClient({ region: "us-east-1" });
+    const ssmClient = new SSMClient({ region: "us-east-1" });
+    const s3Client = new S3Client({ region: "us-east-1" });
+    const dynamoClient = new DynamoDBClient({ region: "us-east-1" });
 
     const userSub = (event.requestContext?.identity?.cognitoAuthenticationProvider) ? event.requestContext.identity.cognitoAuthenticationProvider.split(':').slice(-1) : '';
 
@@ -53,7 +56,6 @@ exports.handler = async (event) => {
     };
 
     const userDetailsResult = await lambdaClient.send(new InvokeCommand(invokeRequest));
-
     const userDetailsString = new TextDecoder().decode(userDetailsResult.Payload);
     const userDetails = JSON.parse(userDetailsString);
     const userDetailsBody = JSON.parse(userDetails.body);
@@ -76,14 +78,31 @@ exports.handler = async (event) => {
         };
     }
 
-    const ssmClient = new SSMClient({ region: "us-east-1" });
+    const body = JSON.parse(event.body);
+    const prompt = body.prompt;
+
+    // Create the DynamoDB record immediately after checking credits
+    const dynamoRecord = {
+        "id": { S: uuid.v4() },
+        "createdAt": { S: new Date().toISOString() },
+        "magicResultUserId": { S: userSub[0] },
+        "prompt": { S: prompt },
+        "source": { S: "your-source-here" },
+        "status": { S: "pending" },
+        "updatedAt": { S: new Date().toISOString() },
+        "__typename": { S: "MagicResult" }
+    };
+
+    await dynamoClient.send(new PutItemCommand({
+        TableName: process.env.API_MEMESRC_MAGICRESULTTABLE_NAME,
+        Item: dynamoRecord
+    }));
+
     const command = new GetParameterCommand({ Name: process.env.openai_apikey, WithDecryption: true });
     const data = await ssmClient.send(command);
 
-    const body = JSON.parse(event.body);
     const image_data = Buffer.from(body.image.split(",")[1], 'base64');
     const mask_data = Buffer.from(body.mask.split(",")[1], 'base64');
-    const prompt = body.prompt;
 
     let formData = new FormData();
     formData.append('image', image_data, {
@@ -104,23 +123,6 @@ exports.handler = async (event) => {
     };
 
     const response = await axios.post('https://api.openai.com/v1/images/edits', formData, { headers });
-
-    const s3Client = new S3Client({ region: "us-east-1" });
-    const dynamoClient = new DynamoDBClient({ region: "us-east-1" });
-
-    const dynamoRecord = {
-        "id": { S: uuid.v4() },
-        "createdAt": { S: new Date().toISOString() },
-        "magicResultUserId": { S: userSub[0] },
-        "prompt": { S: prompt },
-        "updatedAt": { S: new Date().toISOString() },
-        "__typename": { S: "MagicResult" }
-    };
-
-    await dynamoClient.send(new PutItemCommand({
-        TableName: process.env.API_MEMESRC_MAGICRESULTTABLE_NAME,
-        Item: dynamoRecord
-    }));
 
     const promises = response.data.data.map(async (imageItem) => {
         const image_url = imageItem.url;
@@ -158,7 +160,6 @@ exports.handler = async (event) => {
             ":updatedAt": { S: new Date().toISOString() }
         }
     }));
-    
 
     return {
         statusCode: 200,
