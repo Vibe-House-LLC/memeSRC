@@ -157,7 +157,8 @@ type UserDetails @model @auth(
   subscriptionPeriodEnd: String,
   subscriptionStatus: String,
   magicSubscription: String,
-  userNotifications: [UserNotification] @hasMany
+  userNotifications: [UserNotification] @hasMany,
+  magicResults: [MagicResult] @hasMany
 }
 
 type StripeCustomer @model @auth(
@@ -214,6 +215,21 @@ type FrameSubtitle @model @auth(
     { allow: public, operations: [read] }
   ]
 ) {
-  id: ID!,  # This is the fid
+  id: ID!,
   subtitle: String!
+}
+
+type MagicResult @model @auth(
+  rules: [
+    { allow: groups, groups: ["admins", "mods"] },
+    { allow: private, operations: [read] },
+    { allow: public, operations: [read] }
+  ]
+) {
+  id: ID!, 
+  user: UserDetails @belongsTo,
+  source: String,
+  status: String,
+  prompt: String,
+  results: String
 }
