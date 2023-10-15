@@ -1,16 +1,15 @@
 import { forwardRef, memo, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { fabric } from 'fabric';
 import { FabricJSCanvas, useFabricJSEditor } from 'fabricjs-react'
-import { css, styled } from '@mui/material/styles';
+import { styled } from '@mui/material/styles';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
-import { Accordion, AccordionDetails, AccordionSummary, Backdrop, Button, Card, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, Tab, Tabs, TextField, ToggleButton, ToggleButtonGroup, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
-import { Add, AddCircleOutline, ArrowForward, ArrowForwardIos, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ContentCopy, Description, FormatAlignCenter, FormatAlignLeft, FormatAlignRight, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, History, HistoryToggleOffRounded, IosShare, Menu, More, PlusOne, Redo, Share, SupervisedUserCircle, Undo, Update, Verified, ZoomIn, ZoomOut } from '@mui/icons-material';
+import { Accordion, AccordionDetails, AccordionSummary, Backdrop, Button, Card, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, Tab, Tabs, TextField, ToggleButton, ToggleButtonGroup, Typography, useMediaQuery, useTheme } from '@mui/material';
+import { Add, AddCircleOutline, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ContentCopy, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, History, HistoryToggleOffRounded, IosShare, Menu, Share, Update, ZoomIn, ZoomOut } from '@mui/icons-material';
 import { API, Storage } from 'aws-amplify';
 import { Box } from '@mui/system';
 import { Helmet } from 'react-helmet-async';
-import { LoadingButton } from '@mui/lab';
 import TextEditorControls from '../components/TextEditorControls';
 import { SnackbarContext } from '../SnackbarContext';
 import { UserContext } from '../UserContext';
@@ -104,9 +103,9 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const [shareImageFile, setShareImageFile] = useState();
   const [snackbarOpen, setSnackBarOpen] = useState(false);
   const theme = useTheme();
-  const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
+  // const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
   const [loadedSeriesTitle, setLoadedSeriesTitle] = useState('_universal');
-  const [drawingMode, setDrawingMode] = useState(false);
+  // const [drawingMode, setDrawingMode] = useState(false);
   const [magicPrompt, setMagicPrompt] = useState('Everyday scene as cinematic cinestill sample')  // , Empty, Nothing, Plain, Vacant, Desolate, Void, Barren, Uninhabited, Abandoned, Unoccupied, Untouched, Clear, Blank, Pristine, Unmarred
   const [imageLoaded, setImageLoaded] = useState(false);
   const [loadingInpaintingResult, setLoadingInpaintingResult] = useState(false);
@@ -120,24 +119,24 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const [bgEditorStates, setBgEditorStates] = useState([]);
   const [bgFutureStates, setBgFutureStates] = useState([]);
   const [loadingFineTuningFrames, setLoadingFineTuningFrames] = useState(true);
-  const [earlyAccessLoading, setEarlyAccessLoading] = useState(false);
+  // const [earlyAccessLoading, setEarlyAccessLoading] = useState(false);
 
   const [variationDisplayColumns, setVariationDisplayColumns] = useState(1);
 
-  const [earlyAccessComplete, setEarlyAccessComplete] = useState(false);
-  const [earlyAccessDisabled, setEarlyAccessDisabled] = useState(false);
-  const [loadingSubscriptionUrl, setLoadingSubscriptionUrl] = useState(false);
+  // const [earlyAccessComplete, setEarlyAccessComplete] = useState(false);
+  // const [earlyAccessDisabled, setEarlyAccessDisabled] = useState(false);
+  // const [loadingSubscriptionUrl, setLoadingSubscriptionUrl] = useState(false);
 
   const [subtitlesExpanded, setSubtitlesExpanded] = useState(false);
   const [promptEnabled, setPromptEnabled] = useState('erase');
-  const buttonRef = useRef(null);
-  const { magicToolsPopoverAnchorEl, setMagicToolsPopoverAnchorEl } = useContext(MagicPopupContext)
+  // const buttonRef = useRef(null);
+  const { setMagicToolsPopoverAnchorEl } = useContext(MagicPopupContext)
 
   // Image selection stuff
   const [selectedImage, setSelectedImage] = useState(null);
   const [openSelectResult, setOpenSelectResult] = useState(false);
   // const images = Array(5).fill("https://placekitten.com/350/350");
-  const isMd = useMediaQuery((theme) => theme.breakpoints.up('md'));
+  // const isMd = useMediaQuery((theme) => theme.breakpoints.up('md'));
   const [returnedImages, setReturnedImages] = useState([]);
 
   const handleSubtitlesExpand = () => {
@@ -518,7 +517,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         }
       }
     }
-    setDrawingMode((tool === 'magicEraser'))
+    // setDrawingMode((tool === 'magicEraser'))
   }
 
   const downloadDataURL = (dataURL, fileName) => {
