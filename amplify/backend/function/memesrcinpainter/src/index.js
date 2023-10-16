@@ -41,11 +41,45 @@ exports.handler = async (event) => {
     const s3Client = new S3Client({ region: "us-east-1" });
 
     const userSub = (event.requestContext?.identity?.cognitoAuthenticationProvider) ? event.requestContext.identity.cognitoAuthenticationProvider.split(':').slice(-1) : '';
-
     const body = JSON.parse(event.body);
     const prompt = body.prompt;
 
-    // Upload images to S3
+    console.log(JSON.stringify(process.env))
+
+    // Deducting credits
+    const invokeRequest = {
+        FunctionName: process.env.FUNCTION_MEMESRCUSERFUNCTION_NAME,
+        Payload: JSON.stringify({
+            subId: userSub[0],
+            path: `/${process.env.ENV}/public/user/spendCredits`,
+            numCredits: 1
+        }),
+    };
+
+    const userDetailsResult = await lambdaClient.send(new InvokeCommand(invokeRequest));
+    const userDetailsString = new TextDecoder().decode(userDetailsResult.Payload);
+    const userDetails = JSON.parse(userDetailsString);
+    const userDetailsBody = JSON.parse(userDetails.body);
+    const credits = userDetailsBody?.data?.getUserDetails?.credits;
+
+    if (!credits) {
+        return {
+            statusCode: 403,
+            body: JSON.stringify({
+                error: {
+                    name: "InsufficientCredits",
+                    message: "Insufficient credits"
+                }
+            }),
+            headers: {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Credentials": "true",
+            },
+        };
+    }
+
+    // Upload image inputs to S3
     const imageKey = `tmp/${uuid.v4()}.png`;
     const maskKey = `tmp/${uuid.v4()}.png`;
 
@@ -63,7 +97,7 @@ exports.handler = async (event) => {
         ContentType: 'image/png',
     }));
 
-    // Create the DynamoDB record
+    // Create the DynamoDB record for MagicResult
     const dynamoRecord = {
         "id": { S: uuid.v4() },
         "createdAt": { S: new Date().toISOString() },
