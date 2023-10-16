@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "storage": {
+      "memesrcGeneratedImages": [
+        "create",
+        "read",
+        "update"
+      ],
+      "MagicResult:@model(appsync)": [
+        "create",
+        "read",
+        "update"
+      ]
+    }
+  },
+  "lambdaLayers": [],
+  "secretNames": [
+    "openai_apikey"
+  ]
+}

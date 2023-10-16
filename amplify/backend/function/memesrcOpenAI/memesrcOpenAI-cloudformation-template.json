@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "{\"createdOn\":\"Mac\",\"createdBy\":\"Amplify\",\"createdWith\":\"12.1.0\",\"stackType\":\"function-Lambda\",\"metadata\":{}}",
+  "Description": "{\"createdOn\":\"Mac\",\"createdBy\":\"Amplify\",\"createdWith\":\"12.7.0\",\"stackType\":\"function-Lambda\",\"metadata\":{}}",
   "Parameters": {
     "CloudWatchRule": {
       "Type": "String",
@@ -16,24 +16,16 @@
     "s3Key": {
       "Type": "String"
     },
-    "secretsPathAmplifyAppId": {
-      "Type": "String"
-    },
-    "functionmemesrcUserFunctionName": {
-      "Type": "String",
-      "Default": "functionmemesrcUserFunctionName"
-    },
-    "storagememesrcGeneratedImagesBucketName": {
-      "Type": "String",
-      "Default": "storagememesrcGeneratedImagesBucketName"
-    },
     "apimemesrcGraphQLAPIIdOutput": {
       "Type": "String",
       "Default": "apimemesrcGraphQLAPIIdOutput"
     },
-    "functionmemesrcOpenAIName": {
+    "secretsPathAmplifyAppId": {
+      "Type": "String"
+    },
+    "storagememesrcGeneratedImagesBucketName": {
       "Type": "String",
-      "Default": "functionmemesrcOpenAIName"
+      "Default": "storagememesrcGeneratedImagesBucketName"
     }
   },
   "Conditions": {
@@ -66,12 +58,12 @@
         "FunctionName": {
           "Fn::If": [
             "ShouldNotCreateEnvResources",
-            "memesrcinpainter",
+            "memesrcOpenAI",
             {
               "Fn::Join": [
                 "",
                 [
-                  "memesrcinpainter",
+                  "memesrcOpenAI",
                   "-",
                   {
                     "Ref": "env"
@@ -88,34 +80,6 @@
             },
             "REGION": {
               "Ref": "AWS::Region"
-            },
-            "openai_apikey": {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "Fn::Sub": [
-                      "/amplify/${appId}/${env}/AMPLIFY_${functionName}_",
-                      {
-                        "appId": {
-                          "Ref": "secretsPathAmplifyAppId"
-                        },
-                        "env": {
-                          "Ref": "env"
-                        },
-                        "functionName": "memesrcinpainter"
-                      }
-                    ]
-                  },
-                  "openai_apikey"
-                ]
-              ]
-            },
-            "FUNCTION_MEMESRCUSERFUNCTION_NAME": {
-              "Ref": "functionmemesrcUserFunctionName"
-            },
-            "STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME": {
-              "Ref": "storagememesrcGeneratedImagesBucketName"
             },
             "API_MEMESRC_MAGICRESULTTABLE_NAME": {
               "Fn::ImportValue": {
@@ -146,8 +110,30 @@
             "API_MEMESRC_GRAPHQLAPIIDOUTPUT": {
               "Ref": "apimemesrcGraphQLAPIIdOutput"
             },
-            "FUNCTION_MEMESRCOPENAI_NAME": {
-              "Ref": "functionmemesrcOpenAIName"
+            "openai_apikey": {
+              "Fn::Join": [
+                "",
+                [
+                  {
+                    "Fn::Sub": [
+                      "/amplify/${appId}/${env}/AMPLIFY_${functionName}_",
+                      {
+                        "appId": {
+                          "Ref": "secretsPathAmplifyAppId"
+                        },
+                        "env": {
+                          "Ref": "env"
+                        },
+                        "functionName": "memesrcOpenAI"
+                      }
+                    ]
+                  },
+                  "openai_apikey"
+                ]
+              ]
+            },
+            "STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME": {
+              "Ref": "storagememesrcGeneratedImagesBucketName"
             }
           }
         },
@@ -158,9 +144,8 @@
           ]
         },
         "Runtime": "nodejs18.x",
-        "MemorySize": 200,
         "Layers": [],
-        "Timeout": 100
+        "Timeout": 25
       }
     },
     "LambdaExecutionRole": {
@@ -169,12 +154,12 @@
         "RoleName": {
           "Fn::If": [
             "ShouldNotCreateEnvResources",
-            "memesrcLambdaRole69cc5a2b",
+            "memesrcLambdaRole4d0d5d75",
             {
               "Fn::Join": [
                 "",
                 [
-                  "memesrcLambdaRole69cc5a2b",
+                  "memesrcLambdaRole4d0d5d75",
                   "-",
                   {
                     "Ref": "env"
@@ -245,63 +230,6 @@
         }
       }
     },
-    "AmplifyFunctionSecretsPolicy": {
-      "Type": "AWS::IAM::Policy",
-      "Properties": {
-        "PolicyName": "amplify-function-secrets-policy",
-        "Roles": [
-          {
-            "Ref": "LambdaExecutionRole"
-          }
-        ],
-        "PolicyDocument": {
-          "Version": "2012-10-17",
-          "Statement": [
-            {
-              "Effect": "Allow",
-              "Action": [
-                "ssm:GetParameter",
-                "ssm:GetParameters"
-              ],
-              "Resource": {
-                "Fn::Join": [
-                  "",
-                  [
-                    "arn:aws:ssm:",
-                    {
-                      "Ref": "AWS::Region"
-                    },
-                    ":",
-                    {
-                      "Ref": "AWS::AccountId"
-                    },
-                    ":parameter",
-                    {
-                      "Fn::Sub": [
-                        "/amplify/${appId}/${env}/AMPLIFY_${functionName}_",
-                        {
-                          "appId": {
-                            "Ref": "secretsPathAmplifyAppId"
-                          },
-                          "env": {
-                            "Ref": "env"
-                          },
-                          "functionName": "memesrcinpainter"
-                        }
-                      ]
-                    },
-                    "*"
-                  ]
-                ]
-              }
-            }
-          ]
-        }
-      },
-      "DependsOn": [
-        "LambdaExecutionRole"
-      ]
-    },
     "AmplifyResourcesPolicy": {
       "DependsOn": [
         "LambdaExecutionRole"
@@ -317,76 +245,6 @@
         "PolicyDocument": {
           "Version": "2012-10-17",
           "Statement": [
-            {
-              "Effect": "Allow",
-              "Action": [
-                "lambda:Create*",
-                "lambda:Put*",
-                "lambda:Add*",
-                "lambda:Get*",
-                "lambda:List*",
-                "lambda:Invoke*",
-                "lambda:Update*",
-                "lambda:Delete*",
-                "lambda:Remove*"
-              ],
-              "Resource": [
-                {
-                  "Fn::Join": [
-                    "",
-                    [
-                      "arn:aws:lambda:",
-                      {
-                        "Ref": "AWS::Region"
-                      },
-                      ":",
-                      {
-                        "Ref": "AWS::AccountId"
-                      },
-                      ":function:",
-                      {
-                        "Ref": "functionmemesrcUserFunctionName"
-                      }
-                    ]
-                  ]
-                }
-              ]
-            },
-            {
-              "Effect": "Allow",
-              "Action": [
-                "lambda:Create*",
-                "lambda:Put*",
-                "lambda:Add*",
-                "lambda:Get*",
-                "lambda:List*",
-                "lambda:Invoke*",
-                "lambda:Update*",
-                "lambda:Delete*",
-                "lambda:Remove*"
-              ],
-              "Resource": [
-                {
-                  "Fn::Join": [
-                    "",
-                    [
-                      "arn:aws:lambda:",
-                      {
-                        "Ref": "AWS::Region"
-                      },
-                      ":",
-                      {
-                        "Ref": "AWS::AccountId"
-                      },
-                      ":function:",
-                      {
-                        "Ref": "functionmemesrcOpenAIName"
-                      }
-                    ]
-                  ]
-                }
-              ]
-            },
             {
               "Effect": "Allow",
               "Action": "s3:ListBucket",
@@ -492,6 +350,63 @@
           ]
         }
       }
+    },
+    "AmplifyFunctionSecretsPolicy": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyName": "amplify-function-secrets-policy",
+        "Roles": [
+          {
+            "Ref": "LambdaExecutionRole"
+          }
+        ],
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "ssm:GetParameter",
+                "ssm:GetParameters"
+              ],
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:aws:ssm:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":parameter",
+                    {
+                      "Fn::Sub": [
+                        "/amplify/${appId}/${env}/AMPLIFY_${functionName}_",
+                        {
+                          "appId": {
+                            "Ref": "secretsPathAmplifyAppId"
+                          },
+                          "env": {
+                            "Ref": "env"
+                          },
+                          "functionName": "memesrcOpenAI"
+                        }
+                      ]
+                    },
+                    "*"
+                  ]
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "LambdaExecutionRole"
+      ]
     }
   },
   "Outputs": {
