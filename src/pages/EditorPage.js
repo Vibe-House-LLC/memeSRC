@@ -651,7 +651,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
       try {
         const response = await API.post('publicapi', '/inpaint', {
-            body: data
+          body: data
         });
     
         const magicResultId = response.magicResultId;
@@ -659,24 +659,26 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         const startTime = Date.now();
     
         const pollInterval = setInterval(async () => {
-            const results = await checkMagicResult(magicResultId);
-            if (results || (Date.now() - startTime) >= TIMEOUT) {
-                clearInterval(pollInterval);
-                if (results) {
-                    const imageUrls = JSON.parse(results);
-                    setReturnedImages([...returnedImages, ...imageUrls]);
-                    setLoadingInpaintingResult(false);
-                    setOpenSelectResult(true);
-                    const newCreditAmount = user?.userDetails.credits - 1;
-                    setUser({ ...user, userDetails: { ...user?.userDetails, credits: newCreditAmount } });
-                } else {
-                    console.error("Timeout reached without fetching magic results.");
-                    // Handle the timeout situation as needed.
-                }
+          const results = await checkMagicResult(magicResultId);
+          if (results || (Date.now() - startTime) >= TIMEOUT) {
+            clearInterval(pollInterval);
+            setLoadingInpaintingResult(false);  // Stop the loading spinner
+    
+            if (results) {
+              const imageUrls = JSON.parse(results);
+              setReturnedImages([...returnedImages, ...imageUrls]);
+              setLoadingInpaintingResult(false);
+              setOpenSelectResult(true);
+              const newCreditAmount = user?.userDetails.credits - 1;
+              setUser({ ...user, userDetails: { ...user?.userDetails, credits: newCreditAmount } });
+            } else {
+              console.error("Timeout reached without fetching magic results.");
+              alert("Error: The request timed out. Please try again.");  // Notify the user about the timeout
             }
+          }
         }, QUERY_INTERVAL);
     
-    } catch (error) {
+      } catch (error) {
         setLoadingInpaintingResult(false);
         if (error.response?.data?.error?.name === "InsufficientCredits") {
             setSeverity('error');
@@ -690,7 +692,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         }
         console.log(error.response.data);
         alert(`Error: ${JSON.stringify(error.response.data)}`);
-    }
+      }
     }
   };
 
