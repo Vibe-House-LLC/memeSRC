@@ -372,6 +372,27 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "memesrcOpenAI": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "BucketName"
+          ],
+          "category": "storage",
+          "resourceName": "memesrcGeneratedImages"
+        },
+        {
+          "attributes": [
+            "GraphQLAPIIdOutput"
+          ],
+          "category": "api",
+          "resourceName": "memesrc"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "memesrcPublicStripeFunction": {
       "build": true,
       "dependsOn": [
@@ -466,6 +487,13 @@
           ],
           "category": "function",
           "resourceName": "memesrcUserFunction"
+        },
+        {
+          "attributes": [
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "memesrcOpenAI"
         },
         {
           "attributes": [
@@ -666,6 +694,30 @@
         {
           "category": "function",
           "resourceName": "memesrcGraphQL"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcOpenAI_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcOpenAI"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcOpenAI_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcOpenAI"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcOpenAI_secretsPathAmplifyAppId": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcOpenAI"
         }
       ]
     },

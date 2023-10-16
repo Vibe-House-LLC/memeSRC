@@ -7,7 +7,7 @@ import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
 import { Accordion, AccordionDetails, AccordionSummary, Backdrop, Button, Card, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, Tab, Tabs, TextField, ToggleButton, ToggleButtonGroup, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { Add, AddCircleOutline, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ContentCopy, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, History, HistoryToggleOffRounded, IosShare, Menu, Share, Update, ZoomIn, ZoomOut } from '@mui/icons-material';
-import { API, Storage } from 'aws-amplify';
+import { API, Storage, graphqlOperation } from 'aws-amplify';
 import { Box } from '@mui/system';
 import { Helmet } from 'react-helmet-async';
 import TextEditorControls from '../components/TextEditorControls';
@@ -502,6 +502,23 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
   // ------------------------------------------------------------------------
 
+  const QUERY_INTERVAL = 1000; // Every second
+  const TIMEOUT = 60 * 1000;   // 1 minute
+
+  async function checkMagicResult(id) {
+      try {
+          const result = await API.graphql(graphqlOperation(`query MyQuery {
+            getMagicResult(id: "${id}") {
+              results
+            }
+          }`));
+          return result.data.getMagicResult?.results;
+      } catch (error) {
+          console.error("Error fetching magic result:", error);
+          return null;
+      }
+  }
+
   const toggleDrawingMode = (tool) => {
     if (editor) {
       if (user && user?.userDetails?.credits > 0) {
@@ -634,35 +651,46 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
       try {
         const response = await API.post('publicapi', '/inpaint', {
-          body: data
+            body: data
         });
-
-        // Assume the backend sends an imageURL property in the response.
-        const imageUrls = response.imageUrls;
-        setReturnedImages([...returnedImages, ...imageUrls])
-        setLoadingInpaintingResult(false)
-        setOpenSelectResult(true)
-        const newCreditAmount = user?.userDetails.credits - 1
-        setUser({ ...user, userDetails: { ...user?.userDetails, credits: newCreditAmount } })
-
-        // console.log(`response: ${response}`)
-        // console.log(response)
-        // console.log(`imageUrl: ${imageUrls}`)
-      } catch (error) {
-        setLoadingInpaintingResult(false)
-        if (error.response?.data?.error?.name === "InsufficientCredits") {
-          setSeverity('error')
-          setMessage('Insufficient Credits')
-          setOpen(true)
-          originalCanvas.getObjects().forEach((obj) => {
-            if (obj instanceof fabric.Path) {
-              editor.canvas.remove(obj)
+    
+        const magicResultId = response.magicResultId;
+    
+        const startTime = Date.now();
+    
+        const pollInterval = setInterval(async () => {
+            const results = await checkMagicResult(magicResultId);
+            if (results || (Date.now() - startTime) >= TIMEOUT) {
+                clearInterval(pollInterval);
+                if (results) {
+                    const imageUrls = JSON.parse(results);
+                    setReturnedImages([...returnedImages, ...imageUrls]);
+                    setLoadingInpaintingResult(false);
+                    setOpenSelectResult(true);
+                    const newCreditAmount = user?.userDetails.credits - 1;
+                    setUser({ ...user, userDetails: { ...user?.userDetails, credits: newCreditAmount } });
+                } else {
+                    console.error("Timeout reached without fetching magic results.");
+                    // Handle the timeout situation as needed.
+                }
             }
-          });
+        }, QUERY_INTERVAL);
+    
+    } catch (error) {
+        setLoadingInpaintingResult(false);
+        if (error.response?.data?.error?.name === "InsufficientCredits") {
+            setSeverity('error');
+            setMessage('Insufficient Credits');
+            setOpen(true);
+            originalCanvas.getObjects().forEach((obj) => {
+                if (obj instanceof fabric.Path) {
+                    editor.canvas.remove(obj);
+                }
+            });
         }
         console.log(error.response.data);
-        alert(`Error: ${JSON.stringify(error.response.data)}`)
-      }
+        alert(`Error: ${JSON.stringify(error.response.data)}`);
+    }
     }
   };
 

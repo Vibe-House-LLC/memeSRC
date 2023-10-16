@@ -10,6 +10,12 @@
         "read",
         "update",
         "delete"
+      ],
+      "memesrcOpenAI": [
+        "create",
+        "read",
+        "update",
+        "delete"
       ]
     },
     "storage": {
