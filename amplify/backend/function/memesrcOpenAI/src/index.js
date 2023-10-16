@@ -38,6 +38,20 @@ const streamToBuffer = (stream) => {
     });
 };
 
+const makeRequest = async (formData, headers) => {
+    try {
+        return await axios.post('https://api.openai.com/v1/images/edits', formData, { headers });
+    } catch (error) {
+        if (error.response && error.response.status === 400) {
+            console.error("Received 400 error, retrying in 5 seconds...");
+            await new Promise(resolve => setTimeout(resolve, 5000));  // Wait for 5 seconds
+            return await axios.post('https://api.openai.com/v1/images/edits', formData, { headers });
+        } else {
+            throw error;  // If it's another error or a retry after 400 also fails, throw it
+        }
+    }
+}
+
 /**
  * @type {import('@types/aws-lambda').APIGatewayProxyHandler}
  */
@@ -82,7 +96,7 @@ exports.handler = async (event) => {
         ...formData.getHeaders()
     };
 
-    const response = await axios.post('https://api.openai.com/v1/images/edits', formData, { headers });
+    const response = await makeRequest(formData, headers);
 
     const promises = response.data.data.map(async (imageItem) => {
         const image_url = imageItem.url;
