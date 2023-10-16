@@ -16,6 +16,7 @@ import { UserContext } from '../UserContext';
 import { MagicPopupContext } from '../MagicPopupContext';
 import useSearchDetails from '../hooks/useSearchDetails';
 import getFrame from '../utils/frameHandler';
+import LoadingBackdrop from '../components/LoadingBackdrop';
 
 const Alert = forwardRef((props, ref) => <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />);
 
@@ -1670,15 +1671,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         </Alert>
       </Snackbar>
 
-      <Backdrop
-        sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1, width: '100vw', height: '100vh' }}
-        open={loadingInpaintingResult}
-      >
-        <Stack alignItems="center" direction="column" spacing={2}>
-          <CircularProgress color="inherit" />
-          <Typography variant="h5">Generating 2 variations...</Typography>
-        </Stack>
-      </Backdrop>
+      <LoadingBackdrop open={loadingInpaintingResult} />
 
       <Dialog
       open={openSelectResult}
