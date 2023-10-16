@@ -79,7 +79,7 @@
         "memesrcinpainter": {
           "secretsPathAmplifyAppId": "d32pnvtwxwtte5",
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcinpainter-7234324449533139514f-build.zip"
+          "s3Key": "amplify-builds/memesrcinpainter-536b33446b386a4f7a74-build.zip"
         },
         "memesrcUserFunction": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
@@ -108,11 +108,7 @@
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
           "s3Key": "amplify-builds/memesrcStripeCallback-7a6f31694d512b2f626a-build.zip"
         },
-        "memesrcOpenAI": {
-          "secretsPathAmplifyAppId": "d32pnvtwxwtte5",
-          "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcOpenAI-5075575a4e514d59766a-build.zip"
-        }
+        "memesrcOpenAI": {}
       },
       "storage": {
         "memesrcGeneratedImages": {}
