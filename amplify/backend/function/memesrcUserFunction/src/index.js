@@ -1258,12 +1258,12 @@ export const handler = async (event) => {
       // Now lets make sure that the customer existed.
       if (stripeCustomer?.body?.data?.getStripeCustomer?.user?.id) {
         // The stripe customer exists and is attached to a user.
-        // Lets throw 69 credits at them.
+        // Lets reduce them to 0 credits
         const userId = stripeCustomer.body.data.getStripeCustomer.user.id
 
         const updateUserDetailsQuery = `
           mutation updateUserDetails {
-            updateUserDetails(input: {id: "${userId}", subscriptionStatus: "failedPayment"}) {
+            updateUserDetails(input: {id: "${userId}", subscriptionStatus: "failedPayment", credits: 0}) {
               id
               credits
             }
@@ -1328,12 +1328,12 @@ export const handler = async (event) => {
       // Now lets make sure that the customer existed.
       if (stripeCustomer?.body?.data?.getStripeCustomer?.user?.id) {
         // The stripe customer exists and is attached to a user.
-        // Lets throw 69 credits at them.
+        // Let's reduce them to 0 credits.
         const userId = stripeCustomer.body.data.getStripeCustomer.user.id
 
         const updateUserDetailsQuery = `
         mutation updateUserDetails {
-          updateUserDetails(input: {id: "${userId}", magicSubscription: null, subscriptionStatus: "canceled"}) {
+          updateUserDetails(input: {id: "${userId}", magicSubscription: null, subscriptionStatus: "canceled", credits: 0}) {
             id
           }
         }
