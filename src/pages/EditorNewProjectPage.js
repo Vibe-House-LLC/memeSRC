@@ -73,6 +73,7 @@ export default function EditorNewProjectPage() {
               <Input
                 type="file"
                 id="upload-image"
+                inputProps={{ accept: "image/png, image/jpeg" }}
                 style={{ display: 'none' }}
                 onChange={handleImageUpload}
               />
