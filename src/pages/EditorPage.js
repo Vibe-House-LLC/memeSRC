@@ -1154,146 +1154,148 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                   marginTop={{ xs: -2.5, md: -1.5 }}
                   order={{ xs: 4, md: 4 }}
                 >
-                  <Card>
-                    <Accordion expanded={subtitlesExpanded} disableGutters>
-                      <AccordionSummary sx={{ paddingX: 1.55, textAlign: "center" }} onClick={handleSubtitlesExpand} >
-                        <Typography marginRight="auto" fontWeight="bold" color="#CACACA" fontSize={14.8}>
-                          {subtitlesExpanded ? (
-                            <Close style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
-                          ) : (
-                            <Menu style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
-                          )}
-                          {subtitlesExpanded ? 'Hide' : 'View'} Nearby Subtitles
-                        </Typography>
-                        {/* <Chip size="small" label="New!" color="success" /> */}
-                      </AccordionSummary>
-                      <AccordionDetails sx={{ paddingY: 0, paddingX: 0 }}>
-                        <List sx={{ padding: '.5em 0' }}>
-                          {surroundingFrames &&
-                            surroundingFrames
-                              .filter(
-                                (result, index, array) =>
-                                  result?.subtitle &&
-                                  (index === 0 ||
-                                    result?.subtitle.replace(/\n/g, ' ') !==
-                                    array[index - 1].subtitle.replace(/\n/g, ' '))
-                              )
-                              .map((result, index) => (
-                                <ListItem key={result.id ? result.id : `surrounding-subtitle-${index}`} disablePadding sx={{ padding: '0 0 .6em 0' }}>
-                                  <ListItemIcon sx={{ paddingLeft: '0' }}>
-                                    <Fab
-                                      size="small"
-                                      sx={{
-                                        backgroundColor: theme.palette.background.paper,
-                                        boxShadow: 'none',
-                                        marginLeft: '5px',
-                                        '&:hover': {
-                                          xs: { backgroundColor: 'inherit' },
-                                          md: {
-                                            backgroundColor:
-                                              result?.subtitle.replace(/\n/g, ' ') ===
-                                                defaultSubtitle?.replace(/\n/g, ' ')
-                                                ? 'rgba(0, 0, 0, 0)'
-                                                : 'ButtonHighlight',
+                  {surroundingFrames && surroundingFrames.length > 0 && (
+                    <Card>
+                      <Accordion expanded={subtitlesExpanded} disableGutters>
+                        <AccordionSummary sx={{ paddingX: 1.55, textAlign: "center" }} onClick={handleSubtitlesExpand} >
+                          <Typography marginRight="auto" fontWeight="bold" color="#CACACA" fontSize={14.8}>
+                            {subtitlesExpanded ? (
+                              <Close style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
+                            ) : (
+                              <Menu style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
+                            )}
+                            {subtitlesExpanded ? 'Hide' : 'View'} Nearby Subtitles
+                          </Typography>
+                          {/* <Chip size="small" label="New!" color="success" /> */}
+                        </AccordionSummary>
+                        <AccordionDetails sx={{ paddingY: 0, paddingX: 0 }}>
+                          <List sx={{ padding: '.5em 0' }}>
+                            {surroundingFrames &&
+                              surroundingFrames
+                                .filter(
+                                  (result, index, array) =>
+                                    result?.subtitle &&
+                                    (index === 0 ||
+                                      result?.subtitle.replace(/\n/g, ' ') !==
+                                      array[index - 1].subtitle.replace(/\n/g, ' '))
+                                )
+                                .map((result, index) => (
+                                  <ListItem key={result.id ? result.id : `surrounding-subtitle-${index}`} disablePadding sx={{ padding: '0 0 .6em 0' }}>
+                                    <ListItemIcon sx={{ paddingLeft: '0' }}>
+                                      <Fab
+                                        size="small"
+                                        sx={{
+                                          backgroundColor: theme.palette.background.paper,
+                                          boxShadow: 'none',
+                                          marginLeft: '5px',
+                                          '&:hover': {
+                                            xs: { backgroundColor: 'inherit' },
+                                            md: {
+                                              backgroundColor:
+                                                result?.subtitle.replace(/\n/g, ' ') ===
+                                                  defaultSubtitle?.replace(/\n/g, ' ')
+                                                  ? 'rgba(0, 0, 0, 0)'
+                                                  : 'ButtonHighlight',
+                                            },
                                           },
-                                        },
-                                      }}
-                                      onClick={() => navigate(`/editor/${result?.fid}`)}
-                                    >
-                                      {loading ? (
-                                        <CircularProgress size={20} sx={{ color: '#565656' }} />
-                                      ) : result?.subtitle.replace(/\n/g, ' ') ===
-                                        defaultSubtitle.replace(/\n/g, ' ') ? (
-                                        <GpsFixed
-                                          sx={{
-                                            color:
-                                              result?.subtitle.replace(/\n/g, ' ') ===
-                                                defaultSubtitle?.replace(/\n/g, ' ')
-                                                ? 'rgb(202, 202, 202)'
-                                                : 'rgb(89, 89, 89)',
-                                            cursor: 'pointer',
-                                          }}
-                                        />
-                                      ) : (
-                                        <GpsNotFixed sx={{ color: 'rgb(89, 89, 89)', cursor: 'pointer' }} />
-                                      )}
-                                    </Fab>
-                                  </ListItemIcon>
-                                  <ListItemText sx={{ color: 'rgb(173, 173, 173)', fontSize: '4em' }}>
-                                    <Typography
-                                      component="p"
-                                      variant="body2"
-                                      color={
-                                        result?.subtitle.replace(/\n/g, ' ') === defaultSubtitle?.replace(/\n/g, ' ')
-                                          ? 'rgb(202, 202, 202)'
-                                          : ''
-                                      }
-                                      fontWeight={
-                                        result?.subtitle.replace(/\n/g, ' ') === defaultSubtitle?.replace(/\n/g, ' ')
-                                          ? 700
-                                          : 400
-                                      }
-                                    >
-                                      {result?.subtitle.replace(/\n/g, ' ')}
-                                    </Typography>
-                                  </ListItemText>
-                                  <ListItemIcon sx={{ paddingRight: '0', marginLeft: 'auto' }}>
-                                    <Fab
-                                      size="small"
-                                      sx={{
-                                        backgroundColor: theme.palette.background.paper,
-                                        boxShadow: 'none',
-                                        marginRight: '2px',
-                                        '&:hover': {
-                                          xs: { backgroundColor: 'inherit' },
-                                          md: { backgroundColor: 'ButtonHighlight' },
-                                        },
-                                      }}
-                                      onClick={() => {
-                                        navigator.clipboard.writeText(result?.subtitle.replace(/\n/g, ' '));
-                                        handleSnackbarOpen();
-                                      }}
-                                    >
-                                      <ContentCopy sx={{ color: 'rgb(89, 89, 89)' }} />
-                                    </Fab>
-                                    <Fab
-                                      size="small"
-                                      sx={{
-                                        backgroundColor: theme.palette.background.paper,
-                                        boxShadow: 'none',
-                                        marginLeft: 'auto',
-                                        '&:hover': {
-                                          xs: { backgroundColor: 'inherit' },
-                                          md: { backgroundColor: 'ButtonHighlight' },
-                                        },
-                                      }}
-                                      onClick={() => addText(result?.subtitle.replace(/\n/g, ' '), true)}
-                                    >
-                                      <Add sx={{ color: 'rgb(89, 89, 89)', cursor: 'pointer' }} />
-                                    </Fab>
-                                    {/* <Fab
-                                                                            size="small"
-                                                                            sx={{
-                                                                                backgroundColor: theme.palette.background.paper,
-                                                                                boxShadow: "none",
-                                                                                marginLeft: '5px',
-                                                                                '&:hover': {xs: {backgroundColor: 'inherit'}, md: {backgroundColor: (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 'rgba(0, 0, 0, 0)' : 'ButtonHighlight'}}
-                                                                            }}
-                                                                            onClick={() => navigate(`/editor/${result?.fid}`)}
-                                                                        >
-                                                                        {loading ? (
-                                                                            <CircularProgress size={20} sx={{ color: "#565656"}} />
-                                                                        ) : (
-                                                                            (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle.replace(/\n/g, " ")) ? <GpsFixed sx={{ color: (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 'rgb(50, 50, 50)' : 'rgb(89, 89, 89)', cursor: "pointer"}} /> : <ArrowForward sx={{ color: "rgb(89, 89, 89)", cursor: "pointer"}} /> 
-                                                                        )}
-                                                                        </Fab> */}
-                                  </ListItemIcon>
-                                </ListItem>
-                              ))}
-                        </List>
-                      </AccordionDetails>
-                    </Accordion>
-                  </Card>
+                                        }}
+                                        onClick={() => navigate(`/editor/${result?.fid}`)}
+                                      >
+                                        {loading ? (
+                                          <CircularProgress size={20} sx={{ color: '#565656' }} />
+                                        ) : result?.subtitle.replace(/\n/g, ' ') ===
+                                          defaultSubtitle.replace(/\n/g, ' ') ? (
+                                          <GpsFixed
+                                            sx={{
+                                              color:
+                                                result?.subtitle.replace(/\n/g, ' ') ===
+                                                  defaultSubtitle?.replace(/\n/g, ' ')
+                                                  ? 'rgb(202, 202, 202)'
+                                                  : 'rgb(89, 89, 89)',
+                                              cursor: 'pointer',
+                                            }}
+                                          />
+                                        ) : (
+                                          <GpsNotFixed sx={{ color: 'rgb(89, 89, 89)', cursor: 'pointer' }} />
+                                        )}
+                                      </Fab>
+                                    </ListItemIcon>
+                                    <ListItemText sx={{ color: 'rgb(173, 173, 173)', fontSize: '4em' }}>
+                                      <Typography
+                                        component="p"
+                                        variant="body2"
+                                        color={
+                                          result?.subtitle.replace(/\n/g, ' ') === defaultSubtitle?.replace(/\n/g, ' ')
+                                            ? 'rgb(202, 202, 202)'
+                                            : ''
+                                        }
+                                        fontWeight={
+                                          result?.subtitle.replace(/\n/g, ' ') === defaultSubtitle?.replace(/\n/g, ' ')
+                                            ? 700
+                                            : 400
+                                        }
+                                      >
+                                        {result?.subtitle.replace(/\n/g, ' ')}
+                                      </Typography>
+                                    </ListItemText>
+                                    <ListItemIcon sx={{ paddingRight: '0', marginLeft: 'auto' }}>
+                                      <Fab
+                                        size="small"
+                                        sx={{
+                                          backgroundColor: theme.palette.background.paper,
+                                          boxShadow: 'none',
+                                          marginRight: '2px',
+                                          '&:hover': {
+                                            xs: { backgroundColor: 'inherit' },
+                                            md: { backgroundColor: 'ButtonHighlight' },
+                                          },
+                                        }}
+                                        onClick={() => {
+                                          navigator.clipboard.writeText(result?.subtitle.replace(/\n/g, ' '));
+                                          handleSnackbarOpen();
+                                        }}
+                                      >
+                                        <ContentCopy sx={{ color: 'rgb(89, 89, 89)' }} />
+                                      </Fab>
+                                      <Fab
+                                        size="small"
+                                        sx={{
+                                          backgroundColor: theme.palette.background.paper,
+                                          boxShadow: 'none',
+                                          marginLeft: 'auto',
+                                          '&:hover': {
+                                            xs: { backgroundColor: 'inherit' },
+                                            md: { backgroundColor: 'ButtonHighlight' },
+                                          },
+                                        }}
+                                        onClick={() => addText(result?.subtitle.replace(/\n/g, ' '), true)}
+                                      >
+                                        <Add sx={{ color: 'rgb(89, 89, 89)', cursor: 'pointer' }} />
+                                      </Fab>
+                                      {/* <Fab
+                                                                              size="small"
+                                                                              sx={{
+                                                                                  backgroundColor: theme.palette.background.paper,
+                                                                                  boxShadow: "none",
+                                                                                  marginLeft: '5px',
+                                                                                  '&:hover': {xs: {backgroundColor: 'inherit'}, md: {backgroundColor: (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 'rgba(0, 0, 0, 0)' : 'ButtonHighlight'}}
+                                                                              }}
+                                                                              onClick={() => navigate(`/editor/${result?.fid}`)}
+                                                                          >
+                                                                          {loading ? (
+                                                                              <CircularProgress size={20} sx={{ color: "#565656"}} />
+                                                                          ) : (
+                                                                              (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle.replace(/\n/g, " ")) ? <GpsFixed sx={{ color: (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 'rgb(50, 50, 50)' : 'rgb(89, 89, 89)', cursor: "pointer"}} /> : <ArrowForward sx={{ color: "rgb(89, 89, 89)", cursor: "pointer"}} /> 
+                                                                          )}
+                                                                          </Fab> */}
+                                    </ListItemIcon>
+                                  </ListItem>
+                                ))}
+                          </List>
+                        </AccordionDetails>
+                      </Accordion>
+                    </Card>
+                  )}
                 </Grid>
                 <Grid item xs={12} md={7} lg={7} marginRight={{ xs: '', md: 'auto' }} order={{ xs: 2, md: 3 }}>
                   {/* Fine Tuning Code */}
@@ -1334,14 +1336,16 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                         size='small'
                         sx={{ mx: { xs: 'auto' } }}
                       >
-                        <ToggleButton size='small' onClick={loadFineTuningFrames} value="fineTuning" aria-label="centered">
-                          <Stack direction='row' spacing={1} alignItems='center'>
-                            <HistoryToggleOffRounded alt="Fine Tuning" fontSize='small' />
-                            <Typography variant='body2'>
-                              Fine Tuning
-                            </Typography>
-                          </Stack>
-                        </ToggleButton>
+                        {fineTuningFrames.length > 0 &&
+                          <ToggleButton size='small' onClick={loadFineTuningFrames} value="fineTuning" aria-label="centered">
+                            <Stack direction='row' spacing={1} alignItems='center'>
+                              <HistoryToggleOffRounded alt="Fine Tuning" fontSize='small' />
+                              <Typography variant='body2'>
+                                Fine Tuning
+                              </Typography>
+                            </Stack>
+                          </ToggleButton>
+                        }
                         <ToggleButton size='small' onClick={(event) => { if (!user || user?.userDetails?.credits <= 0) { setMagicToolsPopoverAnchorEl(event.currentTarget); setEditorTool('') } }} value={(user && user?.userDetails?.credits > 0) ? "magicEraser" : "none"} aria-label="right aligned">
                           <Stack direction='row' spacing={1} alignItems='center'>
                             <AutoFixHighRounded alt="Magic Eraser" fontSize='small' />
@@ -1494,17 +1498,17 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                         </a>
                       </Grid>
                     ))}
-                  <Grid item xs={12}>
-                    {episodeDetails && (
-                      <Button
-                        variant="contained"
-                        fullWidth
-                        href={`/episode/${episodeDetails[0]}/${episodeDetails[1]}/${episodeDetails[2]}/${episodeDetails[3]}`}
-                      >
-                        View Episode
-                      </Button>
-                    )}
-                  </Grid>
+                    <Grid item xs={12}>
+                        {episodeDetails && episodeDetails.length > 0 && (
+                            <Button
+                                variant="contained"
+                                fullWidth
+                                href={`/episode/${episodeDetails[0]}/${episodeDetails[1]}/${episodeDetails[2]}/${episodeDetails[3]}`}
+                            >
+                                View Episode
+                            </Button>
+                        )}
+                    </Grid>
                 </Grid>
               </Grid>
             </Card>
