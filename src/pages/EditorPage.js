@@ -78,7 +78,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const [fineTuningFrames, setFineTuningFrames] = useState([]);
   const [canvasObjects, setCanvasObjects] = useState();
   const [surroundingFrames, setSurroundingFrames] = useState();
-  const [selectedFid, setSelectedFid] = useState('seinfeld-7-3-11447');
+  const [selectedFid, setSelectedFid] = useState(fid);
   const [defaultSubtitle, setDefaultSubtitle] = useState(null);
   const [colorPickerShowing, setColorPickerShowing] = useState(false);
   const [colorPickerAnchor, setColorPickerAnchor] = useState(null);
