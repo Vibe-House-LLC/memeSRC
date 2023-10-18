@@ -38,35 +38,37 @@ export default function EditorNewProjectPage() {
       <Grid container justifyContent="center" spacing={2} sx={{ mt: 4 }}>
           <Grid item xs={12} sm={6} md={4} lg={3}>
             <label htmlFor="upload-image" style={{ width: '100%', cursor: 'pointer' }}>
-              <Paper
-                elevation={6}
-                sx={{
-                  p: 3,
-                  position: 'relative',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  height: '100%',
-                }}
-              >
-                <Chip 
-                  label="New!" 
-                  color="success" 
-                  size="small"
-                  sx={{ 
-                    position: 'absolute', // Position chip absolutely
-                    top: 20,  // Adjust as needed
-                    left: 20, // Adjust as needed
-                    fontWeight: 'bold'
-                  }} 
-                />
-                <CloudUploadIcon sx={{ fontSize: 60, mb: 2 }} />
-                <Typography variant="h5" component="div" gutterBottom>
-                  Upload Image
-                </Typography>
-                <Typography color="text.secondary">Choose your own image</Typography>
-              </Paper>
+              <CardActionArea component="div">
+                <Paper
+                  elevation={6}
+                  sx={{
+                    p: 3,
+                    position: 'relative',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '100%',
+                  }}
+                >
+                  <Chip 
+                    label="New!" 
+                    color="success" 
+                    size="small"
+                    sx={{ 
+                      position: 'absolute',
+                      top: 20,
+                      left: 20,
+                      fontWeight: 'bold'
+                    }} 
+                  />
+                  <CloudUploadIcon sx={{ fontSize: 60, mb: 2 }} />
+                  <Typography variant="h5" component="div" gutterBottom>
+                    Upload Image
+                  </Typography>
+                  <Typography color="text.secondary">Choose your own image</Typography>
+                </Paper>
+              </CardActionArea>
               {/* Hidden input for the image upload */}
               <Input
                 type="file"
@@ -76,6 +78,8 @@ export default function EditorNewProjectPage() {
               />
             </label>
           </Grid>
+
+
           <Grid item xs={12} sm={6} md={4} lg={3}>
             <CardActionArea onClick={() => navigate('/')}>
               <Paper
