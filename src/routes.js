@@ -3,6 +3,7 @@ import { lazy } from 'react';
 import EditorNewProjectPage from './pages/EditorNewProjectPage';
 import EditorProjectsPage from './pages/EditorProjectsPage';
 
+
 // ----------------------------------------------------------------------
 
 const AddSeriesPage = lazy(() => import('./pages/AddSeriesPage'));
@@ -54,7 +55,8 @@ export default function Router() {
       children: [
         { element: <HomePage />, index: true },
         { path: 'search', element: <Navigate to='/' /> },
-        { path: 'editor', element: <EditorProjectsPage /> },
+        { path: 'projects', element: <EditorProjectsPage /> },
+        { path: 'editor', element: <EditorPage /> },
         { path: 'editor/new', element: <EditorNewProjectPage /> },
         { path: 'search/:seriesId/:searchTerms', element: <SearchPage /> },
         { path: 'frame/:fid', element: <TopBannerSearchRevised><FramePage /></TopBannerSearchRevised> },

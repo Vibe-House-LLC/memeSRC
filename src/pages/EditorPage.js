@@ -78,7 +78,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const [fineTuningFrames, setFineTuningFrames] = useState([]);
   const [canvasObjects, setCanvasObjects] = useState();
   const [surroundingFrames, setSurroundingFrames] = useState();
-  const [selectedFid, setSelectedFid] = useState(fid);
+  const [selectedFid, setSelectedFid] = useState('seinfeld-7-3-11447');
   const [defaultSubtitle, setDefaultSubtitle] = useState(null);
   const [colorPickerShowing, setColorPickerShowing] = useState(false);
   const [colorPickerAnchor, setColorPickerAnchor] = useState(null);
@@ -153,7 +153,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   }
 
   useEffect(() => {
-    if (shows.length > 0) {
+    if (shows?.length > 0) {
       // console.log(loadedSeriesTitle);
       setSeriesTitle(loadedSeriesTitle);
     }
@@ -170,6 +170,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
   const navigate = useNavigate();
   const location = useLocation();
+
+  console.log(`uploadedImage: ${location.state?.uploadedImage}`)
 
   const handleClickDialogOpen = () => {
     setOpenDialog(true);
@@ -280,34 +282,48 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
   const loadEditorDefaults = useCallback(() => {
     setLoading(true);
-    getFrame(selectedFid)
-      .then((data) => {
-        // console.log('test');
-        // console.log(data);
-        setLoadedSeriesTitle(data.series_name);
-        setSurroundingFrames(data.frames_surrounding);
-        const episodeDetails = selectedFid.split('-');
-        setEpisodeDetails(episodeDetails);
-        // Pre load fine tuning frames
-        loadImg(data.frames_fine_tuning, oImgBuild).then((images) => {
-          setFineTuningFrames(images);
-        });
-        // Background image from the given URL
-        fabric.Image.fromURL(
-          `https://memesrc.com${
-            searchDetails.fineTuningFrame ? data.frames_fine_tuning[searchDetails.fineTuningFrame] : data.frame_image
-          }`,
-          (oImg) => {
-            // console.log(oImg);
-            setDefaultFrame(oImg);
-            setDefaultSubtitle(data.subtitle);
-            setLoading(false);
-          },
-          { crossOrigin: 'anonymous' }
-        );
-      })
-      .catch((err) => console.log(err));
-  }, [resizeCanvas, selectedFid, editor, addText]);
+  
+    // Check if the uploadedImage exists in the location state
+    const uploadedImage = location.state?.uploadedImage;
+  
+    if (uploadedImage) {
+      // Use the uploadedImage as the background instead of the default image
+      fabric.Image.fromURL(uploadedImage, (oImg) => {
+        setDefaultFrame(oImg);
+        // You can set a default subtitle or any other properties here if needed
+        setLoadedSeriesTitle("");
+        setSurroundingFrames([]);
+        setEpisodeDetails([])
+        setDefaultSubtitle("")
+        setLoading(false);
+      }, { crossOrigin: 'anonymous' });
+    } else {
+      getFrame(selectedFid)
+        .then((data) => {
+          setLoadedSeriesTitle(data.series_name);
+          setSurroundingFrames(data.frames_surrounding);
+          const episodeDetails = selectedFid.split('-');
+          setEpisodeDetails(episodeDetails);
+          // Pre load fine tuning frames
+          loadImg(data.frames_fine_tuning, oImgBuild).then((images) => {
+            setFineTuningFrames(images);
+          });
+          // Background image from the given URL
+          fabric.Image.fromURL(
+            `https://memesrc.com${
+              searchDetails.fineTuningFrame ? data.frames_fine_tuning[searchDetails.fineTuningFrame] : data.frame_image
+            }`,
+            (oImg) => {
+              setDefaultFrame(oImg);
+              setDefaultSubtitle(data.subtitle);
+              setLoading(false);
+            },
+            { crossOrigin: 'anonymous' }
+          );
+        })
+        .catch((err) => console.log(err));
+    }
+  }, [resizeCanvas, selectedFid, editor, addText, location]);
 
 
   // Look up data for the fid and set defaults
