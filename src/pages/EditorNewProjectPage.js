@@ -31,7 +31,7 @@ export default function EditorNewProjectPage() {
       pageTitle="New Project"
       breadcrumbLinks={[
         { path: "/", name: "Home" },
-        { path: "/editor/", name: "Editor" },
+        { path: "/editor/projects", name: "Editor" },
         { path: "/editor/new", name: "New" }
       ]}
     >
