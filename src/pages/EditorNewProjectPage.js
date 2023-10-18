@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { Container, Typography, Breadcrumbs, Link, Card, CardActionArea, CardContent, Box, Grid, Paper, Input } from '@mui/material';
+import { Container, Typography, Breadcrumbs, Link, Card, CardActionArea, CardContent, Box, Grid, Paper, Input, Chip } from '@mui/material';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import SearchIcon from '@mui/icons-material/Search';
@@ -42,6 +42,7 @@ export default function EditorNewProjectPage() {
                 elevation={6}
                 sx={{
                   p: 3,
+                  position: 'relative',
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'center',
@@ -49,6 +50,17 @@ export default function EditorNewProjectPage() {
                   height: '100%',
                 }}
               >
+                <Chip 
+                  label="New!" 
+                  color="success" 
+                  size="small"
+                  sx={{ 
+                    position: 'absolute', // Position chip absolutely
+                    top: 20,  // Adjust as needed
+                    left: 20, // Adjust as needed
+                    fontWeight: 'bold'
+                  }} 
+                />
                 <CloudUploadIcon sx={{ fontSize: 60, mb: 2 }} />
                 <Typography variant="h5" component="div" gutterBottom>
                   Upload Image
@@ -91,13 +103,26 @@ export default function EditorNewProjectPage() {
               elevation={6}
               sx={{
                 p: 3,
+                position: 'relative', // Make Paper position relative
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'center',
                 alignItems: 'center',
                 height: '100%',
+                opacity: 0.5,
               }}
             >
+              <Chip 
+                label="coming soon" 
+                color="info" 
+                size="small"
+                sx={{ 
+                  position: 'absolute', // Position chip absolutely
+                  top: 20,  // Adjust as needed
+                  left: 20, // Adjust as needed
+                  fontWeight: 'bold'
+                }} 
+              />
               <AutoFixHighIcon sx={{ fontSize: 60, mb: 2 }} />
               <Typography variant="h5" component="div" gutterBottom>
                 Generate Image
