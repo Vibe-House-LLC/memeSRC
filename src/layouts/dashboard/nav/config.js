@@ -69,7 +69,7 @@ const navConfig = [
       },
       {
         title: 'editor',
-        path: '/editor',
+        path: '/editor/projects',
         externalLink: false,
         icon: icon('ic_file'),
       },
