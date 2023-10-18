@@ -1,5 +1,4 @@
-import { Storage } from 'aws-amplify';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { Container, Typography, Breadcrumbs, Link, Card, CardActionArea, CardContent, Box, Grid, Paper, Input } from '@mui/material';
@@ -13,22 +12,17 @@ export default function EditorNewProjectPage() {
   const [uploadedImage, setUploadedImage] = useState(null);
   const navigate = useNavigate();
 
-  const handleImageUpload = async (event) => {
+  const handleImageUpload = (event) => {
     const file = event.target.files[0];
     if (file) {
-      try {
-        // Upload to S3 in the public directory
-        const result = await Storage.put(file.name, file, {
-          level: 'public',
-          contentType: file.type
-        });
-        const url = await Storage.get(result.key);
-        setUploadedImage(url);
-        console.log(url)
-        navigate('/editor', { state: { uploadedImage: url } });
-      } catch (error) {
-        console.error("Error uploading file: ", error);
+      const reader = new FileReader();
+      reader.onloadend = function() {
+        const base64data = reader.result;
+        setUploadedImage(base64data);
+        console.log(base64data)
+        navigate('/editor', { state: { uploadedImage: base64data } });
       }
+      reader.readAsDataURL(file);
     }
   };
 
