@@ -294,7 +294,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         setLoadedSeriesTitle("");
         setSurroundingFrames([]);
         setEpisodeDetails([])
-        setDefaultSubtitle("")
+        setDefaultSubtitle(false)
         setLoading(false);
       }, { crossOrigin: 'anonymous' });
     } else {
@@ -355,7 +355,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       setImageScale(x / desiredWidth);
       resizeCanvas(desiredWidth, desiredHeight)
       editor?.canvas.setBackgroundImage(oImg);
-      addText(defaultSubtitle, false);
+      addText(defaultSubtitle === false ? "Bottom Text" : defaultSubtitle, false);
       setImageLoaded(true)
     }
   }, [defaultFrame, defaultSubtitle])
@@ -1068,7 +1068,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                       sx={{ zIndex: '50' }}
                       startIcon={<AddCircleOutline />}
                     >
-                      Add Layer
+                      Add Text Layer
                     </Button>
                   </Grid>
 
