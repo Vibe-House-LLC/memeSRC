@@ -2,26 +2,41 @@ import { useEffect, useState } from 'react';
 import { Container, Typography, Grid, Card, CardActionArea, CardContent, Box } from '@mui/material';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import { useNavigate } from 'react-router-dom';
+import { API, graphqlOperation } from 'aws-amplify';
 import BasePage from './BasePage';
+import { listEditorProjects } from '../graphql/queries';
 
 export default function EditorProjectsPage() {
   const [projects, setProjects] = useState([]);
   const navigate = useNavigate();
 
   useEffect(() => {
-    setProjects([
-      { id: 1, title: 'Project 1', imageUrl: 'https://picsum.photos/id/237/200/267', createdDate: '2023-01-01' },
-      { id: 2, title: 'Project 2', imageUrl: 'https://picsum.photos/id/238/200/267', createdDate: '2023-02-02' },
-      { id: 3, title: 'Project 3', imageUrl: 'https://picsum.photos/id/239/200/267', createdDate: '2023-03-03' },
-      { id: 4, title: 'Project 4', imageUrl: 'https://picsum.photos/id/240/200/267', createdDate: '2023-04-04' },
-      { id: 5, title: 'Project 5', imageUrl: 'https://picsum.photos/id/241/200/267', createdDate: '2023-05-05' },
-      { id: 6, title: 'Project 6', imageUrl: 'https://picsum.photos/id/242/200/267', createdDate: '2023-06-06' },
-    ]);
+    const fetchProjects = async () => {
+      try {
+        const projectsData = await API.graphql(graphqlOperation(listEditorProjects));
+        const projectsList = projectsData.data.listEditorProjects.items;
+        // Map the fetched projects to the expected format
+        const mappedProjects = projectsList.map(project => ({
+          id: project.id,
+          title: project.title,
+          // Here you can use a solid color or one of your placeholder images
+          imageUrl: 'https://picsum.photos/id/237/200/267', 
+          createdDate: project.createdAt // Assuming your model auto-generates createdAt
+        }));
+        setProjects(mappedProjects);
+      } catch (error) {
+        console.error('Error fetching projects:', error);
+      }
+    };
+
+    fetchProjects();
   }, []);
 
   // Project Card sub-component
   function ProjectCard({ project, isAddNew }) {
-    const onClick = isAddNew ? () => navigate('/editor/new') : undefined;
+    const onClick = isAddNew 
+    ? () => navigate('/editor/new')
+    : () => navigate(`/editor/project/${project.id}`);
 
     return (
       <Card>
