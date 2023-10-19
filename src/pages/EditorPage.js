@@ -6,7 +6,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
 import { Accordion, AccordionDetails, AccordionSummary, Backdrop, Button, Card, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, Tab, Tabs, TextField, ToggleButton, ToggleButtonGroup, Typography, useMediaQuery, useTheme } from '@mui/material';
-import { Add, AddCircleOutline, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ContentCopy, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, History, HistoryToggleOffRounded, IosShare, Menu, Share, Update, ZoomIn, ZoomOut } from '@mui/icons-material';
+import { Add, AddCircleOutline, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ContentCopy, FolderOpen, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, History, HistoryToggleOffRounded, IosShare, Menu, Share, Update, ZoomIn, ZoomOut } from '@mui/icons-material';
 import { API, Storage, graphqlOperation } from 'aws-amplify';
 import { Box } from '@mui/system';
 import { Helmet } from 'react-helmet-async';
@@ -325,6 +325,44 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     }
   }, [resizeCanvas, selectedFid, editor, addText, location]);
 
+  const loadProjectFromLocalStorage = () => {
+    try {
+      const serializedCanvas = localStorage.getItem('editorState');
+      if (serializedCanvas) {
+        const canvasState = JSON.parse(serializedCanvas);
+        editor.canvas.loadFromJSON(canvasState, () => {
+  
+          // Assuming defaultFrame is an image object loaded from fabric.js
+          const oImg = editor.canvas.backgroundImage;
+          const imageAspectRatio = oImg.width / oImg.height;
+          setEditorAspectRatio(imageAspectRatio);
+          const [desiredHeight, desiredWidth] = calculateEditorSize(imageAspectRatio);
+          setCanvasSize({ height: desiredHeight, width: desiredWidth }); // You mentioned renaming this, but I'll use it as it is for now.
+  
+          // Scale the image to fit the canvas
+          oImg.scale(desiredWidth / oImg.width);
+          // Center the image within the canvas
+          oImg.set({ left: 0, top: 0 });
+          const minWidth = 750;
+          const x = (oImg.width > minWidth) ? oImg.width : minWidth;
+          setImageScale(x / desiredWidth);
+          resizeCanvas(desiredWidth, desiredHeight); // Assuming this function sets the editor.canvas width & height properties
+  
+          editor?.canvas.setBackgroundImage(oImg);
+          addText(defaultSubtitle === false ? "Bottom Text" : defaultSubtitle, false);
+          setImageLoaded(true);
+  
+          // Rendering the canvas after applying all changes
+          editor.canvas.renderAll();
+        });
+      } else {
+        console.error('No saved editor state found in local storage.');
+      }
+    } catch (error) {
+      console.error('Failed to load editor state from local storage:', error);
+    }
+  };
+  
 
   // Look up data for the fid and set defaults
   useEffect(() => {
@@ -794,7 +832,15 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
     setEditorStates(prevHistory => [...prevHistory, serializedCanvas]);
     setBgEditorStates(prevHistory => [...prevHistory, backgroundImage]);
+
+    // Save editor's state to local storage
+    try {
+        localStorage.setItem('editorState', serializedCanvas);
+    } catch (error) {
+        console.error('Failed to save editor state to local storage:', error);
+    }
   }
+
 
   const undo = () => {
     if (editorStates.length <= 1) return; // Ensure there's at least one state to go back to
@@ -1058,6 +1104,17 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                       size="large"
                     >
                       Save/Copy/Share
+                    </Button>
+                  </Grid>
+                  <Grid item xs={12} marginBottom={2}>
+                    <Button
+                      variant="contained"
+                      onClick={loadProjectFromLocalStorage}
+                      fullWidth
+                      sx={{ zIndex: '50' }}
+                      startIcon={<FolderOpen />}
+                    >
+                      Load Project
                     </Button>
                   </Grid>
                   <Grid item xs={12} marginBottom={2}>
