@@ -55,9 +55,9 @@ export default function Router() {
       children: [
         { element: <HomePage />, index: true },
         { path: 'search', element: <Navigate to='/' /> },
-        { path: 'editor', element: <EditorPage /> },
         { path: 'editor/projects', element: <EditorProjectsPage /> },
         { path: 'editor/new', element: <EditorNewProjectPage /> },
+        { path: 'editor/project/:editorProjectId', element: <EditorPage /> },
         { path: 'search/:seriesId/:searchTerms', element: <SearchPage /> },
         { path: 'frame/:fid', element: <TopBannerSearchRevised><FramePage /></TopBannerSearchRevised> },
         { path: 'editor/:fid', element: <TopBannerSearchRevised><EditorPage /></TopBannerSearchRevised> },
