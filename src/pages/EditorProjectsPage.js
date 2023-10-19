@@ -15,15 +15,19 @@ export default function EditorProjectsPage() {
       try {
         const projectsData = await API.graphql(graphqlOperation(listEditorProjects));
         const projectsList = projectsData.data.listEditorProjects.items;
+        
         // Map the fetched projects to the expected format
         const mappedProjects = projectsList.map(project => ({
           id: project.id,
           title: project.title,
-          // Here you can use a solid color or one of your placeholder images
           imageUrl: 'https://picsum.photos/id/237/200/267', 
           createdDate: project.createdAt // Assuming your model auto-generates createdAt
         }));
-        setProjects(mappedProjects);
+
+        // Sort the projects by createdDate, with the newest first
+        const sortedProjects = mappedProjects.sort((a, b) => new Date(b.createdDate) - new Date(a.createdDate));
+        
+        setProjects(sortedProjects);
       } catch (error) {
         console.error('Error fetching projects:', error);
       }
@@ -31,6 +35,7 @@ export default function EditorProjectsPage() {
 
     fetchProjects();
   }, []);
+
 
   // Project Card sub-component
   function ProjectCard({ project, isAddNew }) {
