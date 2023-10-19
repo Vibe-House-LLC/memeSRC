@@ -1501,3 +1501,105 @@ export const deleteMagicResult = /* GraphQL */ `
     }
   }
 `;
+export const createEditorProject = /* GraphQL */ `
+  mutation CreateEditorProject(
+    $input: CreateEditorProjectInput!
+    $condition: ModelEditorProjectConditionInput
+  ) {
+    createEditorProject(input: $input, condition: $condition) {
+      id
+      user {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      title
+      state
+      createdAt
+      updatedAt
+      editorProjectUserId
+      __typename
+    }
+  }
+`;
+export const updateEditorProject = /* GraphQL */ `
+  mutation UpdateEditorProject(
+    $input: UpdateEditorProjectInput!
+    $condition: ModelEditorProjectConditionInput
+  ) {
+    updateEditorProject(input: $input, condition: $condition) {
+      id
+      user {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      title
+      state
+      createdAt
+      updatedAt
+      editorProjectUserId
+      __typename
+    }
+  }
+`;
+export const deleteEditorProject = /* GraphQL */ `
+  mutation DeleteEditorProject(
+    $input: DeleteEditorProjectInput!
+    $condition: ModelEditorProjectConditionInput
+  ) {
+    deleteEditorProject(input: $input, condition: $condition) {
+      id
+      user {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      title
+      state
+      createdAt
+      updatedAt
+      editorProjectUserId
+      __typename
+    }
+  }
+`;
