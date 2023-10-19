@@ -17,6 +17,8 @@ import { MagicPopupContext } from '../MagicPopupContext';
 import useSearchDetails from '../hooks/useSearchDetails';
 import getFrame from '../utils/frameHandler';
 import LoadingBackdrop from '../components/LoadingBackdrop';
+import { createEditorProject } from '../graphql/mutations';
+import { getEditorProject } from '../graphql/queries';
 
 const Alert = forwardRef((props, ref) => <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />);
 
@@ -65,7 +67,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const searchDetails = useSearchDetails();
   // console.log(searchDetails.fineTuningFrame)
   // Get everything ready
-  const { fid } = useParams();
+  const { fid, editorProjectId } = useParams();
   const { user, setUser } = useContext(UserContext);
   const [defaultFrame, setDefaultFrame] = useState(null);
   const [pickingColor, setPickingColor] = useState(false);
@@ -325,44 +327,45 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     }
   }, [resizeCanvas, selectedFid, editor, addText, location]);
 
-  const loadProjectFromLocalStorage = () => {
+  const loadProjectFromAPI = async () => {
     try {
-      const serializedCanvas = localStorage.getItem('editorState');
-      if (serializedCanvas) {
-        const canvasState = JSON.parse(serializedCanvas);
-        editor.canvas.loadFromJSON(canvasState, () => {
+        const response = await API.graphql(graphqlOperation(getEditorProject, { id: editorProjectId }));
+        const serializedCanvas = response.data.getEditorProject.state;
+
+        if (serializedCanvas) {
+            const canvasState = JSON.parse(serializedCanvas);
+            editor.canvas.loadFromJSON(canvasState, () => {
+
+                const oImg = editor.canvas.backgroundImage;
+                const imageAspectRatio = oImg.width / oImg.height;
+                setEditorAspectRatio(imageAspectRatio);
+                const [desiredHeight, desiredWidth] = calculateEditorSize(imageAspectRatio);
+                setCanvasSize({ height: desiredHeight, width: desiredWidth });
   
-          // Assuming defaultFrame is an image object loaded from fabric.js
-          const oImg = editor.canvas.backgroundImage;
-          const imageAspectRatio = oImg.width / oImg.height;
-          setEditorAspectRatio(imageAspectRatio);
-          const [desiredHeight, desiredWidth] = calculateEditorSize(imageAspectRatio);
-          setCanvasSize({ height: desiredHeight, width: desiredWidth }); // You mentioned renaming this, but I'll use it as it is for now.
+                // Scale the image to fit the canvas
+                oImg.scale(desiredWidth / oImg.width);
+                // Center the image within the canvas
+                oImg.set({ left: 0, top: 0 });
+                const minWidth = 750;
+                const x = (oImg.width > minWidth) ? oImg.width : minWidth;
+                setImageScale(x / desiredWidth);
+                resizeCanvas(desiredWidth, desiredHeight);
   
-          // Scale the image to fit the canvas
-          oImg.scale(desiredWidth / oImg.width);
-          // Center the image within the canvas
-          oImg.set({ left: 0, top: 0 });
-          const minWidth = 750;
-          const x = (oImg.width > minWidth) ? oImg.width : minWidth;
-          setImageScale(x / desiredWidth);
-          resizeCanvas(desiredWidth, desiredHeight); // Assuming this function sets the editor.canvas width & height properties
+                editor?.canvas.setBackgroundImage(oImg);
+                addText(defaultSubtitle === false ? "Bottom Text" : defaultSubtitle, false);
+                setImageLoaded(true);
   
-          editor?.canvas.setBackgroundImage(oImg);
-          addText(defaultSubtitle === false ? "Bottom Text" : defaultSubtitle, false);
-          setImageLoaded(true);
-  
-          // Rendering the canvas after applying all changes
-          editor.canvas.renderAll();
-        });
-      } else {
-        console.error('No saved editor state found in local storage.');
-      }
+                // Rendering the canvas after applying all changes
+                editor.canvas.renderAll();
+
+            });
+        } else {
+            console.error('No saved editor state found for the project.');
+        }
     } catch (error) {
-      console.error('Failed to load editor state from local storage:', error);
+        console.error('Failed to load editor state from the GraphQL API:', error);
     }
-  };
-  
+};
 
   // Look up data for the fid and set defaults
   useEffect(() => {
@@ -822,24 +825,28 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   //   );
   // }
 
-  const addToHistory = () => {
-    // console.log('there was a change')
-
+  const addToHistory = async () => {
     const serializedCanvas = JSON.stringify(editor.canvas);
     const backgroundImage = editor.canvas.backgroundImage;
-
-    // Clear future states as the path has now changed due to new action
+  
     setFutureStates([]);
     setBgFutureStates([]);
-
+  
     setEditorStates(prevHistory => [...prevHistory, serializedCanvas]);
     setBgEditorStates(prevHistory => [...prevHistory, backgroundImage]);
-
-    // Save editor's state to local storage
+  
+    // Save editor's state to GraphQL using Amplify
     try {
-        localStorage.setItem('editorState', serializedCanvas);
+      const projectInput = {
+        title: "Some Title", // Set the appropriate title here
+        state: serializedCanvas
+      };
+  
+      const result = await API.graphql(graphqlOperation(createEditorProject, { input: projectInput }));
+      console.log('Saved editor state to the backend:', result);
+  
     } catch (error) {
-        console.error('Failed to save editor state to local storage:', error);
+      console.error('Failed to save editor state to the backend:', error);
     }
   }
 
@@ -1111,7 +1118,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                   <Grid item xs={12} marginBottom={2}>
                     <Button
                       variant="contained"
-                      onClick={loadProjectFromLocalStorage}
+                      onClick={loadProjectFromAPI}
                       fullWidth
                       sx={{ zIndex: '50' }}
                       startIcon={<FolderOpen />}
