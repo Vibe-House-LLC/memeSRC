@@ -327,21 +327,27 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     }
   }, [resizeCanvas, selectedFid, editor, addText, location]);
 
-  const loadProjectFromAPI = async () => {
+  const loadProjectFromS3 = async () => {
     try {
-        const response = await API.graphql(graphqlOperation(getEditorProject, { id: editorProjectId }));
-        const serializedCanvas = response.data.getEditorProject.state;
+        // Generate the file name/path based on the editorProjectId
+        const fileName = `projects/${editorProjectId}.json`;
+
+        // Fetch the serialized canvas state from S3 under the user's protected folder
+        const serializedCanvas = await Storage.get(fileName, { level: 'protected' });
 
         if (serializedCanvas) {
-            const canvasState = JSON.parse(serializedCanvas);
-            editor.canvas.loadFromJSON(canvasState, () => {
-
+            // Fetch the actual content from S3. 
+            // Storage.get provides a pre-signed URL, so we need to fetch the actual content.
+            const response = await fetch(serializedCanvas);
+            const canvasStateJSON = await response.json();
+            
+            editor.canvas.loadFromJSON(canvasStateJSON, () => {
                 const oImg = editor.canvas.backgroundImage;
                 const imageAspectRatio = oImg.width / oImg.height;
                 setEditorAspectRatio(imageAspectRatio);
                 const [desiredHeight, desiredWidth] = calculateEditorSize(imageAspectRatio);
                 setCanvasSize({ height: desiredHeight, width: desiredWidth });
-  
+
                 // Scale the image to fit the canvas
                 oImg.scale(desiredWidth / oImg.width);
                 // Center the image within the canvas
@@ -350,20 +356,19 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                 const x = (oImg.width > minWidth) ? oImg.width : minWidth;
                 setImageScale(x / desiredWidth);
                 resizeCanvas(desiredWidth, desiredHeight);
-  
+
                 editor?.canvas.setBackgroundImage(oImg);
                 addText(defaultSubtitle === false ? "Bottom Text" : defaultSubtitle, false);
                 setImageLoaded(true);
-  
+
                 // Rendering the canvas after applying all changes
                 editor.canvas.renderAll();
-
             });
         } else {
-            console.error('No saved editor state found for the project.');
+            console.error('No saved editor state found for the project in S3.');
         }
     } catch (error) {
-        console.error('Failed to load editor state from the GraphQL API:', error);
+        console.error('Failed to load editor state from S3:', error);
     }
 };
 
@@ -828,25 +833,30 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const addToHistory = async () => {
     const serializedCanvas = JSON.stringify(editor.canvas);
     const backgroundImage = editor.canvas.backgroundImage;
-  
+
     setFutureStates([]);
     setBgFutureStates([]);
-  
+
     setEditorStates(prevHistory => [...prevHistory, serializedCanvas]);
     setBgEditorStates(prevHistory => [...prevHistory, backgroundImage]);
-  
-    // Update the editor's state in GraphQL using Amplify
+
     try {
-      const projectInput = {
-        id: editorProjectId, // Use the extracted editorProjectId
-        state: serializedCanvas
-      };
-  
-      const result = await API.graphql(graphqlOperation(updateEditorProject, { input: projectInput }));
-      // console.log('Updated editor state in the backend:', result);
-  
+        // Create a unique file name based on the editorProjectId
+        const fileName = `projects/${editorProjectId}.json`;
+
+        // Upload the serialized canvas state to S3 under the user's protected folder
+        await Storage.put(fileName, serializedCanvas, {
+            level: 'protected',
+            contentType: 'application/json'
+        });
+
+        // If you want to save the background image too, you can do so like this:
+        // await Storage.put(`projects/${editorProjectId}-bg.jpg`, backgroundImage, {
+        //     level: 'protected',
+        //     contentType: 'image/jpeg'
+        // });
     } catch (error) {
-      console.error('Failed to update editor state in the backend:', error);
+        console.error('Failed to update editor state in S3:', error);
     }
   }
 
@@ -1118,7 +1128,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                   <Grid item xs={12} marginBottom={2}>
                     <Button
                       variant="contained"
-                      onClick={loadProjectFromAPI}
+                      onClick={loadProjectFromS3}
                       fullWidth
                       sx={{ zIndex: '50' }}
                       startIcon={<FolderOpen />}
