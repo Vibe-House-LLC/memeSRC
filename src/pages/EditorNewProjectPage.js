@@ -1,3 +1,4 @@
+import { API, graphqlOperation } from 'aws-amplify';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -7,25 +8,42 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import SearchIcon from '@mui/icons-material/Search';
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
 import BasePage from './BasePage';
+import { createEditorProject } from '../graphql/mutations';
 
 export default function EditorNewProjectPage() {
   const [uploadedImage, setUploadedImage] = useState(null);
   const navigate = useNavigate();
 
-  const handleImageUpload = (event) => {
+  const handleImageUpload = async (event) => {
     const file = event.target.files[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = function() {
+      reader.onloadend = async function() {
         const base64data = reader.result;
         setUploadedImage(base64data);
-        console.log(base64data)
-        navigate('/editor', { state: { uploadedImage: base64data } });
-      }
+  
+        // Create an EditorProject object in GraphQL with an empty state value
+        try {
+          const projectInput = {
+            title: "Same Project Saving",
+            state: JSON.stringify({}) // empty state value
+          };
+  
+          const result = await API.graphql(graphqlOperation(createEditorProject, { input: projectInput }));
+          const newProjectId = result.data.createEditorProject.id;
+  
+          // Navigate to the editor with the newProjectId while passing the uploaded image data
+          navigate(`/editor/project/${newProjectId}`, { state: { uploadedImage: base64data } });
+  
+        } catch (error) {
+          console.error('Failed to create an EditorProject:', error);
+        }
+      };
       reader.readAsDataURL(file);
     }
   };
 
+  // Rest of your component rendering logic remains the same...
   return (
     <BasePage
       pageTitle="New Project"

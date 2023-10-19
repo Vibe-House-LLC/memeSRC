@@ -17,7 +17,7 @@ import { MagicPopupContext } from '../MagicPopupContext';
 import useSearchDetails from '../hooks/useSearchDetails';
 import getFrame from '../utils/frameHandler';
 import LoadingBackdrop from '../components/LoadingBackdrop';
-import { createEditorProject } from '../graphql/mutations';
+import { createEditorProject, updateEditorProject } from '../graphql/mutations';
 import { getEditorProject } from '../graphql/queries';
 
 const Alert = forwardRef((props, ref) => <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />);
@@ -173,7 +173,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  console.log(`uploadedImage: ${location.state?.uploadedImage}`)
+  // console.log(`uploadedImage: ${location.state?.uploadedImage}`)
 
   const handleClickDialogOpen = () => {
     setOpenDialog(true);
@@ -835,18 +835,18 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     setEditorStates(prevHistory => [...prevHistory, serializedCanvas]);
     setBgEditorStates(prevHistory => [...prevHistory, backgroundImage]);
   
-    // Save editor's state to GraphQL using Amplify
+    // Update the editor's state in GraphQL using Amplify
     try {
       const projectInput = {
-        title: "Some Title", // Set the appropriate title here
+        id: editorProjectId, // Use the extracted editorProjectId
         state: serializedCanvas
       };
   
-      const result = await API.graphql(graphqlOperation(createEditorProject, { input: projectInput }));
-      console.log('Saved editor state to the backend:', result);
+      const result = await API.graphql(graphqlOperation(updateEditorProject, { input: projectInput }));
+      // console.log('Updated editor state in the backend:', result);
   
     } catch (error) {
-      console.error('Failed to save editor state to the backend:', error);
+      console.error('Failed to update editor state in the backend:', error);
     }
   }
 
