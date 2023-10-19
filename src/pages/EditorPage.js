@@ -586,6 +586,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
               editor.canvas.remove(obj)
             }
           });
+          addToHistory();
         }
       }
     }
@@ -775,6 +776,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
             setEditorTool();
             setMagicPrompt('Everyday scene as cinematic cinestill sample');
             setPromptEnabled('erase');
+            addToHistory();
         }, {
             crossOrigin: "anonymous"
         });
@@ -901,8 +903,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
       // On object modification (when object's movement/editing is completed)
       editor.canvas.on('object:modified', () => {
-        addToHistory();
         removeCenterLine(); // remove the center line
+        addToHistory();
       });
 
       // On path creation
