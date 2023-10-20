@@ -454,25 +454,26 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       quality: 0.6,
       multiplier: imageScale
     });
-
+  
     fetch(resultImage)
       .then(res => res.blob())
       .then(blob => {
         setImageBlob(blob);
+        
         API.get('publicapi', '/uuid').then(uuid => {
-          // console.log(`GOT THIS UUID: ${JSON.stringify(uuid)}`)
-          const filename = `${uuid}.jpg`
-          setGeneratedImageFilename(filename)
+          const filename = `${uuid}.jpg`;
+          setGeneratedImageFilename(filename);
+  
+          // Save public version of the image
           Storage.put(`${uuid}.jpg`, blob, {
             resumable: true,
             contentType: "image/jpeg",
             completeCallback: (event) => {
               Storage.get(event.key).then(() => {
-                // setGeneratedImage(image);
                 const file = new File([blob], filename, { type: 'image/jpeg' });
                 setShareImageFile(file);
                 setImageUploading(false);
-              })
+              });
             },
             progressCallback: (progress) => {
               console.log(`Uploaded: ${progress.loaded}/${progress.total}`);
@@ -480,11 +481,26 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
             errorCallback: (err) => {
               console.error('Unexpected error while uploading', err);
             }
-          })
-        }).catch(err => console.log(`UUID Gen Fetch Error:  ${err}`));
-      })
+          });
+  
+          // Save protected version of the image
+          const protectedFilename = `projects/${editorProjectId}-preview.jpg`;
+          Storage.put(protectedFilename, blob, {
+            level: 'protected',
+            resumable: true,
+            contentType: "image/jpeg",
+            progressCallback: (progress) => {
+              console.log(`Uploaded protected version: ${progress.loaded}/${progress.total}`);
+            },
+            errorCallback: (err) => {
+              console.error('Unexpected error while uploading protected version', err);
+            }
+          });
+  
+        }).catch(err => console.log(`UUID Gen Fetch Error: ${err}`));
+      });
   }
-
+  
   const showColorPicker = (event, index) => {
     setPickingColor(index);
     setColorPickerShowing(index);

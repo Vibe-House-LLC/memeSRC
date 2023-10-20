@@ -1,4 +1,4 @@
-import { API, graphqlOperation } from 'aws-amplify';
+import { API, graphqlOperation, Storage } from 'aws-amplify';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -31,12 +31,19 @@ export default function EditorNewProjectPage() {
   
           const result = await API.graphql(graphqlOperation(createEditorProject, { input: projectInput }));
           const newProjectId = result.data.createEditorProject.id;
-  
+
+          // Upload 'preview' to Storage
+          const key = `projects/${newProjectId}-preview.jpg`;
+          await Storage.put(key, file, {
+            level: 'protected', 
+            contentType: file.type
+          });
+
           // Navigate to the editor with the newProjectId while passing the uploaded image data
           navigate(`/editor/project/${newProjectId}`, { state: { uploadedImage: base64data } });
   
         } catch (error) {
-          console.error('Failed to create an EditorProject:', error);
+          console.error('Failed to create an EditorProject or upload to Storage:', error);
         }
       };
       reader.readAsDataURL(file);
