@@ -894,8 +894,12 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
           contentType: 'application/json'
       });
 
-      // Convert the canvas to a data URL
-      const canvasDataURL = editor.canvas.toDataURL('image/jpeg');
+      // Convert the canvas to a data URL with appropriate quality and multiplier settings
+      const canvasDataURL = editor.canvas.toDataURL({
+        format: 'jpeg',
+        quality: 0.6,
+        multiplier: 1/scale
+      });
 
       // Convert the data URL to a Blob
       const canvasBlob = dataURLtoBlob(canvasDataURL);
@@ -912,7 +916,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     } catch (error) {
         console.error('Failed to update editor state or canvas image in S3:', error);
     }
-  }
+}
 
   function dataURLtoBlob(dataurl) {
     const arr = dataurl.split(',');
