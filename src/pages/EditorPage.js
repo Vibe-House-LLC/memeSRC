@@ -885,24 +885,51 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     setBgEditorStates(prevHistory => [...prevHistory, backgroundImage]);
 
     try {
-        // Create a unique file name based on the editorProjectId
-        const fileName = `projects/${editorProjectId}.json`;
+      // Create a unique file name based on the editorProjectId for JSON state
+      const stateFileName = `projects/${editorProjectId}.json`;
 
-        // Upload the serialized canvas state to S3 under the user's protected folder
-        await Storage.put(fileName, serializedCanvas, {
-            level: 'protected',
-            contentType: 'application/json'
-        });
+      // Upload the serialized canvas state to S3 under the user's protected folder
+      await Storage.put(stateFileName, serializedCanvas, {
+          level: 'protected',
+          contentType: 'application/json'
+      });
 
-        // If you want to save the background image too, you can do so like this:
-        // await Storage.put(`projects/${editorProjectId}-bg.jpg`, backgroundImage, {
-        //     level: 'protected',
-        //     contentType: 'image/jpeg'
-        // });
+      // Convert the canvas to a data URL
+      const canvasDataURL = editor.canvas.toDataURL('image/jpeg');
+
+      // Convert the data URL to a Blob
+      const canvasBlob = dataURLtoBlob(canvasDataURL);
+
+      // Create a unique file name based on the editorProjectId for the canvas image
+      const canvasImageFileName = `projects/${editorProjectId}-preview.jpg`;
+
+      // Upload the canvas image to S3 under the user's protected folder
+      await Storage.put(canvasImageFileName, canvasBlob, {
+          level: 'protected',
+          contentType: 'image/jpeg'
+      });
+
     } catch (error) {
-        console.error('Failed to update editor state in S3:', error);
+        console.error('Failed to update editor state or canvas image in S3:', error);
     }
   }
+
+  function dataURLtoBlob(dataurl) {
+    const arr = dataurl.split(',');
+    const mimeMatch = arr[0].match(/:(.*?);/);
+    if (!mimeMatch) throw new Error('Invalid data URL');
+    const mime = mimeMatch[1];
+    const bstr = atob(arr[1]);
+    const n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    for (let i = 0; i < n; i += 1) {
+        u8arr[i] = bstr.charCodeAt(i);
+    }
+    return new Blob([u8arr], {type: mime});
+}
+
+
+
 
 
   const undo = () => {
