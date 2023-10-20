@@ -349,7 +349,15 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                 setCanvasSize({ height: desiredHeight, width: desiredWidth });
 
                 // Scale the image to fit the canvas
+                const scale = desiredWidth / oImg.width;
                 oImg.scale(desiredWidth / oImg.width);
+                editor.canvas.forEachObject(obj => {
+                  obj.left *= scale;
+                  obj.top *= scale;
+                  obj.scaleY *= scale;
+                  obj.scaleX *= scale;
+                })
+
                 // Center the image within the canvas
                 oImg.set({ left: 0, top: 0 });
                 const minWidth = 750;
@@ -831,8 +839,28 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   // }
 
   const addToHistory = async () => {
+    // Scale the image to fit the canvas
+    const oImg = editor.canvas.backgroundImage;
+    const imageAspectRatio = oImg.width / oImg.height
+    const [desiredHeight, desiredWidth] = calculateEditorSize(imageAspectRatio);
+    const scale = desiredWidth / oImg.width;
+    oImg.scale(desiredWidth / oImg.width);
+    editor.canvas.forEachObject(obj => {
+      obj.left /= scale;
+      obj.top /= scale;
+      obj.scaleY /= scale;
+      obj.scaleX /= scale;
+    })
+
     const serializedCanvas = JSON.stringify(editor.canvas);
     const backgroundImage = editor.canvas.backgroundImage;
+
+    editor.canvas.forEachObject(obj => {
+      obj.left *= scale;
+      obj.top *= scale;
+      obj.scaleY *= scale;
+      obj.scaleX *= scale;
+    })
 
     setFutureStates([]);
     setBgFutureStates([]);
