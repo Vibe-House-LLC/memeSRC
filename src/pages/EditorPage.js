@@ -5,8 +5,8 @@ import { styled } from '@mui/material/styles';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
-import { Accordion, AccordionDetails, AccordionSummary, Backdrop, Button, Card, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, Tab, Tabs, TextField, ToggleButton, ToggleButtonGroup, Typography, useMediaQuery, useTheme } from '@mui/material';
-import { Add, AddCircleOutline, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ContentCopy, FolderOpen, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, History, HistoryToggleOffRounded, IosShare, Menu, Share, Update, ZoomIn, ZoomOut } from '@mui/icons-material';
+import { Accordion, AccordionDetails, AccordionSummary, Backdrop, Button, ButtonGroup, Card, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, Tab, Tabs, TextField, ToggleButton, ToggleButtonGroup, Typography, useMediaQuery, useTheme } from '@mui/material';
+import { Add, AddCircleOutline, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ContentCopy, FolderOpen, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, History, HistoryToggleOffRounded, IosShare, Menu, Redo, Save, Share, Undo, Update, ZoomIn, ZoomOut } from '@mui/icons-material';
 import { API, Storage, graphqlOperation } from 'aws-amplify';
 import { Box } from '@mui/system';
 import { Helmet } from 'react-helmet-async';
@@ -1164,13 +1164,27 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                 <Grid item xs={12} md={7} lg={7} order="1">
                   <Grid container item mb={1.5}>
                     <Grid item xs={12}>
-                      <Stack direction='row' width='100%' justifyContent='space-between'>
-                        <IconButton size='small' disabled={(editorStates.length <= 1)} onClick={undo}>
-                          <History />
-                        </IconButton>
-                        <IconButton size='small' disabled={(futureStates.length === 0)} onClick={redo}>
-                          <Update />
-                        </IconButton>
+                      <Stack direction='row' width='100%' justifyContent='space-between' alignItems='center'>
+                        
+                        <ButtonGroup variant="contained" size="small">
+                          <IconButton disabled={(editorStates.length <= 1)} onClick={undo}>
+                            <Undo />
+                          </IconButton>
+                          <IconButton disabled={(futureStates.length === 0)} onClick={redo}>
+                            <Redo />
+                          </IconButton>
+                        </ButtonGroup>
+
+                        <Button 
+                          variant="contained" 
+                          size="small" 
+                          startIcon={<Save />} 
+                          onClick={handleClickDialogOpen}
+                          sx={{ zIndex: '50', backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
+                        >
+                          Save/Copy/Share
+                        </Button>
+
                       </Stack>
                     </Grid>
                   </Grid>
@@ -1241,30 +1255,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                       </Grid>
                     </Grid>
                   )} */}
-                  <Grid item xs={12} marginBottom={2}>
-                    <Button
-                      variant="contained"
-                      onClick={handleClickDialogOpen}
-                      fullWidth
-                      sx={{ zIndex: '50', backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
-                      startIcon={<Share />}
-                      size="large"
-                    >
-                      Save/Copy/Share
-                    </Button>
-                  </Grid>
-                  <Grid item xs={12} marginBottom={2}>
-                    <Button
-                      variant="contained"
-                      onClick={() => addText('text', true)}
-                      fullWidth
-                      sx={{ zIndex: '50' }}
-                      startIcon={<AddCircleOutline />}
-                    >
-                      Add Text Layer
-                    </Button>
-                  </Grid>
-
                   <Grid
                     container
                     item
@@ -1337,6 +1327,29 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                           )
                       )}
                   </Grid>
+                  <Grid item xs={12} marginBottom={2}>
+                    <Button
+                      variant="contained"
+                      onClick={() => addText('text', true)}
+                      fullWidth
+                      sx={{ zIndex: '50' }}
+                      startIcon={<AddCircleOutline />}
+                    >
+                      Add Text Layer
+                    </Button>
+                  </Grid>
+                  {/* <Grid item xs={12} marginBottom={2}>
+                    <Button
+                      variant="contained"
+                      onClick={handleClickDialogOpen}
+                      fullWidth
+                      sx={{ zIndex: '50', backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
+                      startIcon={<Share />}
+                      size="large"
+                    >
+                      Save/Copy/Share
+                    </Button>
+                  </Grid> */}
                 </Grid>
                 <Grid
                   item
@@ -1534,7 +1547,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                             <Stack direction='row' spacing={1} alignItems='center'>
                               <HistoryToggleOffRounded alt="Fine Tuning" fontSize='small' />
                               <Typography variant='body2'>
-                                Fine Tuning
+                                Timeshift
                               </Typography>
                             </Stack>
                           </ToggleButton>
@@ -1543,7 +1556,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                           <Stack direction='row' spacing={1} alignItems='center'>
                             <AutoFixHighRounded alt="Magic Eraser" fontSize='small' />
                             <Typography variant='body2'>
-                              Magic Tools
+                              Magic
                             </Typography>
                           </Stack>
                         </ToggleButton>
