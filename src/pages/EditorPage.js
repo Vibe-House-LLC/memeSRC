@@ -1478,6 +1478,19 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                           }
                         }}
                       >
+                        <Tab
+                          style={{
+                            opacity: editorTool === "captions" ? 1 : 0.4,
+                            color: editorTool === "captions" ? "limegreen" : "white"
+                          }}
+                          icon={
+                            <Box display="flex" alignItems="center" fontSize={13} marginX={-1}>
+                              <ClosedCaption fontSize='small' sx={{ mr: 1 }} />
+                              Captions
+                            </Box>
+                          }
+                          value="captions"
+                        />
                         {fineTuningFrames.length > 0 && (
                           <Tab
                             style={{
@@ -1485,9 +1498,9 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                               color: editorTool === "fineTuning" ? "limegreen" : "white"
                             }}
                             icon={
-                              <Box display="flex" alignItems="center">
+                              <Box display="flex" alignItems="center" fontSize={13} marginX={-1}>
                                 <HistoryToggleOffRounded fontSize='small' sx={{ mr: 1 }} />
-                                Shift
+                                Timeshift
                               </Box>
                             }
                             value="fineTuning"
@@ -1496,24 +1509,11 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                         )}
                         <Tab
                           style={{
-                            opacity: editorTool === "captions" ? 1 : 0.4,
-                            color: editorTool === "captions" ? "limegreen" : "white"
-                          }}
-                          icon={
-                            <Box display="flex" alignItems="center">
-                              <ClosedCaption fontSize='small' sx={{ mr: 1 }} />
-                              Captions
-                            </Box>
-                          }
-                          value="captions"
-                        />
-                        <Tab
-                          style={{
                             opacity: editorTool === "magicEraser" ? 1 : 0.4,
                             color: editorTool === "magicEraser" ? "limegreen" : "white"
                           }}
                           icon={
-                            <Box display="flex" alignItems="center">
+                            <Box display="flex" alignItems="center" fontSize={13} marginX={-1}>
                               <AutoFixHighRounded fontSize='small' sx={{ mr: 1 }} />
                               Magic
                             </Box>
