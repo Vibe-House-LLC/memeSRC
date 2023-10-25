@@ -843,6 +843,12 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                 throw new Error('Failed to load image from URL');
             }
 
+            editor.canvas.getObjects().forEach((obj) => {
+              if (obj instanceof fabric.Path) {
+                editor.canvas.remove(obj)
+              }
+            });
+
             setSelectedImage();
             setReturnedImages([]);
 
@@ -855,9 +861,9 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
             editor.canvas.backgroundImage.center();
             editor.canvas.renderAll();
 
-            setEditorTool();
-            setMagicPrompt('Everyday scene as cinematic cinestill sample');
-            setPromptEnabled('erase');
+            // setEditorTool();
+            // setMagicPrompt('Everyday scene as cinematic cinestill sample');
+            // setPromptEnabled('erase');
             addToHistory();
         }, {
             crossOrigin: "anonymous"
@@ -1496,7 +1502,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                             Magic
                           </Box>
                         }
-                        value={(user && user?.userDetails?.credits > 0) ? "magicEraser" : "none"}
+                        value="magicEraser"
                         onClick={(event) => {
                           if (!user || user?.userDetails?.credits <= 0) { 
                             setMagicToolsPopoverAnchorEl(event.currentTarget);
@@ -1654,7 +1660,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                               style={{ backgroundColor: 'limegreen', color: 'white' }}
                               onClick={() => {
                                 exportDrawing();
-                                toggleDrawingMode('fineTuning');
+                                // toggleDrawingMode('fineTuning');
                               }}
                             >Apply</Button>
                           </Stack>
@@ -1966,7 +1972,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         <Button 
           variant='contained' 
           onClick={() => {
-            setEditorTool()
+            setEditorTool('captions')
             toggleDrawingMode('fineTuning')
             handleSelectResultCancel()
           }}
