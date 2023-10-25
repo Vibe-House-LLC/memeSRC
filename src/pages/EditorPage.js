@@ -282,13 +282,64 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     }
   }, [editor]);
 
-  const loadEditorDefaults = useCallback(() => {
+  const loadEditorDefaults = useCallback(async () => {
     setLoading(true);
   
     // Check if the uploadedImage exists in the location state
     const uploadedImage = location.state?.uploadedImage;
   
-    if (uploadedImage) {
+    if (editorProjectId) {
+      try {
+        // Generate the file name/path based on the editorProjectId
+        const fileName = `projects/${editorProjectId}.json`;
+
+        // Fetch the serialized canvas state from S3 under the user's protected folder
+        const serializedCanvas = await Storage.get(fileName, { level: 'protected' });
+
+        if (serializedCanvas) {
+            // Fetch the actual content from S3. 
+            // Storage.get provides a pre-signed URL, so we need to fetch the actual content.
+            const response = await fetch(serializedCanvas);
+            const canvasStateJSON = await response.json();
+            
+            editor?.canvas.loadFromJSON(canvasStateJSON, () => {
+                const oImg = editor.canvas.backgroundImage;
+                const imageAspectRatio = oImg.width / oImg.height;
+                setEditorAspectRatio(imageAspectRatio);
+                const [desiredHeight, desiredWidth] = calculateEditorSize(imageAspectRatio);
+                setCanvasSize({ height: desiredHeight, width: desiredWidth });
+
+                // Scale the image to fit the canvas
+                const scale = desiredWidth / oImg.width;
+                oImg.scale(desiredWidth / oImg.width);
+                editor.canvas.forEachObject(obj => {
+                  obj.left *= scale;
+                  obj.top *= scale;
+                  obj.scaleY *= scale;
+                  obj.scaleX *= scale;
+                })
+
+                // Center the image within the canvas
+                oImg.set({ left: 0, top: 0 });
+                const minWidth = 750;
+                const x = (oImg.width > minWidth) ? oImg.width : minWidth;
+                setImageScale(x / desiredWidth);
+                resizeCanvas(desiredWidth, desiredHeight);
+
+                editor?.canvas.setBackgroundImage(oImg);
+                addText(defaultSubtitle === false ? "Bottom Text" : defaultSubtitle, false);
+                setImageLoaded(true);
+
+                // Rendering the canvas after applying all changes
+                editor.canvas.renderAll();
+            });
+        } else {
+            console.error('No saved editor state found for the project in S3.');
+        }
+      } catch (error) {
+          console.error('Failed to load editor state from S3:', error);
+      }
+    } else if (uploadedImage) {
       // Use the uploadedImage as the background instead of the default image
       fabric.Image.fromURL(uploadedImage, (oImg) => {
         setDefaultFrame(oImg);
@@ -380,12 +431,12 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     }
 };
 
-  // Look up data for the fid and set defaults
-  useEffect(() => {
-    // if (editor) { editor.canvas._objects = [] }
-    loadEditorDefaults();
-    // TODO: BUG - it appears our setup for loading the editor requires it to run twice. Look into fixing this.
-  }, [selectedFid]) // eslint-disable-line react-hooks/exhaustive-deps
+  // // Look up data for the fid and set defaults
+  // useEffect(() => {
+  //   // if (editor) { editor.canvas._objects = [] }
+  //   loadEditorDefaults();
+  //   // TODO: BUG - it appears our setup for loading the editor requires it to run twice. Look into fixing this.
+  // }, [selectedFid]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (editor) {
@@ -993,6 +1044,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         }
       };
 
+      loadEditorDefaults();
+
       // On object modification (when object's movement/editing is completed)
       editor.canvas.on('object:modified', () => {
         removeCenterLine(); // remove the center line
@@ -1198,17 +1251,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                       size="large"
                     >
                       Save/Copy/Share
-                    </Button>
-                  </Grid>
-                  <Grid item xs={12} marginBottom={2}>
-                    <Button
-                      variant="contained"
-                      onClick={loadProjectFromS3}
-                      fullWidth
-                      sx={{ zIndex: '50' }}
-                      startIcon={<FolderOpen />}
-                    >
-                      Load Project
                     </Button>
                   </Grid>
                   <Grid item xs={12} marginBottom={2}>
