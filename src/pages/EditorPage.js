@@ -288,7 +288,18 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     // Check if the uploadedImage exists in the location state
     const uploadedImage = location.state?.uploadedImage;
   
-    if (editorProjectId) {
+    if (uploadedImage) {
+      // Use the uploadedImage as the background instead of the default image
+      fabric.Image.fromURL(uploadedImage, (oImg) => {
+        setDefaultFrame(oImg);
+        // You can set a default subtitle or any other properties here if needed
+        setLoadedSeriesTitle("");
+        setSurroundingFrames([]);
+        setEpisodeDetails([])
+        setDefaultSubtitle(false)
+        setLoading(false);
+      }, { crossOrigin: 'anonymous' });
+    } else if (editorProjectId) {
       try {
         // Generate the file name/path based on the editorProjectId
         const fileName = `projects/${editorProjectId}.json`;
@@ -339,17 +350,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       } catch (error) {
           console.error('Failed to load editor state from S3:', error);
       }
-    } else if (uploadedImage) {
-      // Use the uploadedImage as the background instead of the default image
-      fabric.Image.fromURL(uploadedImage, (oImg) => {
-        setDefaultFrame(oImg);
-        // You can set a default subtitle or any other properties here if needed
-        setLoadedSeriesTitle("");
-        setSurroundingFrames([]);
-        setEpisodeDetails([])
-        setDefaultSubtitle(false)
-        setLoading(false);
-      }, { crossOrigin: 'anonymous' });
     } else {
       getFrame(selectedFid)
         .then((data) => {
