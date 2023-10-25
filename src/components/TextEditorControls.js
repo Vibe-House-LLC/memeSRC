@@ -33,7 +33,7 @@ export default function TextEditorControls(props) {
     return (
         <div>
             <div style={{ display: 'flex', alignItems: 'center' }}>
-                <Typography marginY={1}><b>Caption Layer {props.index+1}</b></Typography>
+                <Typography variant="h5" marginY={1}><b>Caption Layer {props.index+1}</b></Typography>
                 <Chip
                     label=" settings"
                     icon={<Settings />}
