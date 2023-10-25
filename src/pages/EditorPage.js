@@ -431,12 +431,12 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     }
 };
 
-  // // Look up data for the fid and set defaults
-  // useEffect(() => {
-  //   // if (editor) { editor.canvas._objects = [] }
-  //   loadEditorDefaults();
-  //   // TODO: BUG - it appears our setup for loading the editor requires it to run twice. Look into fixing this.
-  // }, [selectedFid]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Look up data for the fid and set defaults
+  useEffect(() => {
+    // if (editor) { editor.canvas._objects = [] }
+    loadEditorDefaults();
+    // TODO: BUG - it appears our setup for loading the editor requires it to run twice. Look into fixing this.
+  }, [selectedFid]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (editor) {
@@ -599,9 +599,9 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     editor?.canvas.renderAll();
   }
 
-  const handleFineTuning = (event) => {
-    // console.log(fineTuningFrames[event.target.value]);
-    const oImg = fineTuningFrames[event.target.value];
+  const handleFineTuning = (value) => {
+    // console.log(fineTuningFrames[value]);
+    const oImg = fineTuningFrames[value];
     oImg.scaleToHeight(editor.canvas.getHeight());
     oImg.scaleToWidth(editor.canvas.getWidth());
     editor?.canvas?.setBackgroundImage(oImg);
@@ -609,11 +609,10 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     const serializedCanvas = JSON.stringify(editor.canvas);
     setFutureStates([]);
     setBgFutureStates([]);
-    searchDetails.setFineTuningFrame(event.target.value)
+    searchDetails.setFineTuningFrame(value)
     setEditorStates(prevHistory => [...prevHistory, serializedCanvas]);
     setBgEditorStates(prevHistory => [...prevHistory, oImg]);
-  }
-
+}
 
 
   const handleStyle = (index, customStyles) => {
