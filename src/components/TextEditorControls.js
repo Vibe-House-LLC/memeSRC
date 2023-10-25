@@ -7,9 +7,9 @@ import FormatColorFillIcon from '@mui/icons-material/FormatColorFill';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
-import { FormatSizeRounded, MoreHoriz } from '@mui/icons-material';
+import { FormatSizeRounded, MoreHoriz, Settings } from '@mui/icons-material';
 import IconButton from '@mui/material/IconButton';
-import { Typography } from '@mui/material';
+import { Button, Chip, Typography } from '@mui/material';
 
 // Prop types
 TextEditorControls.propTypes = {
@@ -33,10 +33,18 @@ export default function TextEditorControls(props) {
     return (
         <div>
             <div style={{ display: 'flex', alignItems: 'center' }}>
-                <Typography marginY={1}><b>Caption #{props.index+1}</b></Typography>
-                <IconButton onClick={() => setEditorVisible(prev => !prev)}>
-                    <MoreHoriz />
-                </IconButton>
+                <Typography marginY={1}><b>Caption Layer {props.index+1}</b></Typography>
+                <Chip
+                    label=" settings"
+                    icon={<Settings />}
+                    clickable
+                    size="small"
+                    color={editorVisible ? "primary" : "default"}
+                    onClick={() => setEditorVisible(prev => !prev)}
+                    variant={editorVisible ? "filled" : "outlined"}
+                    sx={{ marginLeft: 1 }}
+                />
+
             </div>
 
             {editorVisible && (

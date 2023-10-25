@@ -1459,7 +1459,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                     </Stack> */}
 
                   <Card sx={{ width: '100%', px: 1, py: 0 }}>
-                    <Stack width='100%' spacing={0}>
+                    <Stack width='100%' spacing={1}>
                       <Tabs
                         value={editorTool}
                         onChange={(event, value) => {
