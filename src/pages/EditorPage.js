@@ -6,7 +6,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
 import { Accordion, AccordionDetails, AccordionSummary, Backdrop, Button, ButtonGroup, Card, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, Tab, Tabs, TextField, ToggleButton, ToggleButtonGroup, Typography, useMediaQuery, useTheme } from '@mui/material';
-import { Add, AddCircleOutline, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ContentCopy, FolderOpen, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, History, HistoryToggleOffRounded, IosShare, Menu, Redo, Save, Share, Undo, Update, ZoomIn, ZoomOut } from '@mui/icons-material';
+import { Add, AddCircleOutline, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ClosedCaption, ContentCopy, FolderOpen, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, History, HistoryToggleOffRounded, IosShare, Menu, Redo, Save, Share, Undo, Update, ZoomIn, ZoomOut } from '@mui/icons-material';
 import { API, Storage, graphqlOperation } from 'aws-amplify';
 import { Box } from '@mui/system';
 import { Helmet } from 'react-helmet-async';
@@ -113,7 +113,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [loadingInpaintingResult, setLoadingInpaintingResult] = useState(false);
   const { setSeverity, setMessage, setOpen } = useContext(SnackbarContext);
-  const [editorTool, setEditorTool] = useState('');
+  const [editorTool, setEditorTool] = useState('captions');
   const [brushToolSize, setBrushToolSize] = useState(50);
   const [showBrushSize, setShowBrushSize] = useState(false);
   const [editorLoaded, setEditorLoaded] = useState(false);
@@ -1177,7 +1177,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
                         <Button 
                           variant="contained" 
-                          size="small" 
+                          size="medium" 
                           startIcon={<Save />} 
                           onClick={handleClickDialogOpen}
                           sx={{ zIndex: '50', backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
@@ -1255,89 +1255,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                       </Grid>
                     </Grid>
                   )} */}
-                  <Grid
-                    container
-                    item
-                    xs={12}
-                    maxHeight={{ xs: {}, md: `${canvasSize.height - 104}px` }}
-                    paddingX={{ xs: 0, md: 2 }}
-                    sx={{ overflowY: 'scroll', overflow: 'auto' }}
-                    flexDirection="col-reverse"
-                  >
-                    {canvasObjects &&
-                      canvasObjects.map(
-                        (object, index) =>
-                          'text' in object && (
-                            <Grid item xs={12} order={`-${index}`} key={`grid${index}`}>
-                              <Card sx={{ marginBottom: '20px', padding: '10px' }} key={`card${index}`}>
-                                <div style={{ display: 'inline', position: 'relative' }} key={`div${index}`}>
-                                  {/* <button type='button' key={`button${index}`} onClick={(event) => showColorPicker(event, index)}>Change Color</button> */}
-                                  <TextEditorControls
-                                    showColorPicker={(event) => showColorPicker(event, index)}
-                                    colorPickerShowing={colorPickerShowing}
-                                    index={index}
-                                    showFontSizePicker={(event) => showFontSizePicker(event, index)}
-                                    fontSizePickerShowing={fontSizePickerShowing}
-                                    key={`togglebuttons${index}`}
-                                    handleStyle={handleStyle}
-                                  />
-                                </div>
-                                <Fab
-                                  size="small"
-                                  aria-label="add"
-                                  sx={{
-                                    position: 'absolute',
-                                    backgroundColor: theme.palette.background.paper,
-                                    boxShadow: 'none',
-                                    top: '11px',
-                                    right: '9px',
-                                  }}
-                                  onClick={() => deleteLayer(index)}
-                                  key={`fab${index}`}
-                                >
-                                  <HighlightOffRounded color="error" />
-                                </Fab>
-                                <TextField
-                                  size="small"
-                                  key={`textfield${index}`}
-                                  multiline
-                                  type="text"
-                                  value={canvasObjects[index].text}
-                                  fullWidth
-                                  onFocus={() => handleFocus(index)}
-                                  onBlur={addToHistory}
-                                  onChange={(event) => handleEdit(event, index)}
-                                />
-                                {/* <Typography gutterBottom >
-                                                        Font Size
-                                                    </Typography>
-                                                    <Slider
-                                                        size="small"
-                                                        defaultValue={100}
-                                                        min={1}
-                                                        max={200}
-                                                        aria-label="Small"
-                                                        valueLabelDisplay="auto"
-                                                        onChange={(event) => handleFontSize(event, index)}
-                                                        onFocus={() => handleFocus(index)}
-                                                        key={`slider${index}`}
-                                                    /> */}
-                              </Card>
-                            </Grid>
-                          )
-                      )}
-                  </Grid>
-                  <Grid item xs={12} marginBottom={2}>
-                    <Button
-                      variant="contained"
-                      onClick={() => addText('text', true)}
-                      fullWidth
-                      sx={{ zIndex: '50' }}
-                      startIcon={<AddCircleOutline />}
-                    >
-                      Add Text Layer
-                    </Button>
-                  </Grid>
+
                   {/* <Grid item xs={12} marginBottom={2}>
                     <Button
                       variant="contained"
@@ -1529,49 +1447,133 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                       />
                     </Stack> */}
 
-                  <Card sx={{ width: '100%', px: 1, py: 1 }}>
-                    <Stack width='100%' display='flex'>
-                      <ToggleButtonGroup
-                        value={editorTool}
-                        exclusive
-                        onChange={(event, value) => {
-                          setEditorTool(value)
-                          toggleDrawingMode(value)
-                        }}
-                        aria-label="text alignment"
-                        size='small'
-                        sx={{ mx: { xs: 'auto' } }}
-                      >
-                        {fineTuningFrames.length > 0 &&
-                          <ToggleButton size='small' onClick={loadFineTuningFrames} value="fineTuning" aria-label="centered">
-                            <Stack direction='row' spacing={1} alignItems='center'>
-                              <HistoryToggleOffRounded alt="Fine Tuning" fontSize='small' />
-                              <Typography variant='body2'>
-                                Timeshift
-                              </Typography>
-                            </Stack>
-                          </ToggleButton>
+                  <Card sx={{ width: '100%', px: 1, py: 0 }}>
+                    <Stack width='100%' spacing={2}>
+                    <Tabs
+                      value={editorTool}
+                      onChange={(event, value) => {
+                        setEditorTool(value);
+                        toggleDrawingMode(value);
+                      }}
+                      centered
+                      TabIndicatorProps={{
+                        style: {
+                          backgroundColor: 'limegreen',
+                          height: '3px',
                         }
-                        <ToggleButton size='small' onClick={(event) => { if (!user || user?.userDetails?.credits <= 0) { setMagicToolsPopoverAnchorEl(event.currentTarget); setEditorTool('') } }} value={(user && user?.userDetails?.credits > 0) ? "magicEraser" : "none"} aria-label="right aligned">
-                          <Stack direction='row' spacing={1} alignItems='center'>
-                            <AutoFixHighRounded alt="Magic Eraser" fontSize='small' />
-                            <Typography variant='body2'>
-                              Magic
-                            </Typography>
-                          </Stack>
-                        </ToggleButton>
-                      </ToggleButtonGroup>
-                    </Stack>
-                    {editorTool === 'fineTuning' &&
-                      <>
-                        {loadingFineTuningFrames ?
-                          <Stack direction='row' justifyContent='center' alignItems='center' spacing={2} sx={{ mt: 2 }}>
+                      }}
+                    >
+                      {fineTuningFrames.length > 0 && (
+                        <Tab
+                          icon={
+                            <Box display="flex" alignItems="center">
+                              <HistoryToggleOffRounded fontSize='small' sx={{ mr: 1 }} />
+                              Timeshift
+                            </Box>
+                          }
+                          value="fineTuning"
+                          onClick={loadFineTuningFrames}
+                        />
+                      )}
+                      <Tab
+                        icon={
+                          <Box display="flex" alignItems="center">
+                            <ClosedCaption fontSize='small' sx={{ mr: 1 }} />
+                            Captions
+                          </Box>
+                        }
+                        value="captions"
+                      />
+                      <Tab
+                        icon={
+                          <Box display="flex" alignItems="center">
+                            <AutoFixHighRounded fontSize='small' sx={{ mr: 1 }} />
+                            Magic
+                          </Box>
+                        }
+                        value={(user && user?.userDetails?.credits > 0) ? "magicEraser" : "none"}
+                        onClick={(event) => {
+                          if (!user || user?.userDetails?.credits <= 0) { 
+                            setMagicToolsPopoverAnchorEl(event.currentTarget);
+                          }
+                        }}
+                      />
+                    </Tabs>
+
+                      {editorTool === 'captions' && (
+                        <>
+                            {canvasObjects &&
+                              canvasObjects.map(
+                                (object, index) =>
+                                  'text' in object && (
+                                    <Grid item xs={12} order={index} key={`grid${index}`}>
+                                      <Typography margin={1}><b>Caption #{index+1}</b></Typography>
+                                        <div style={{ display: 'inline', position: 'relative' }} key={`div${index}`}>
+                                            <TextEditorControls
+                                                showColorPicker={(event) => showColorPicker(event, index)}
+                                                colorPickerShowing={colorPickerShowing}
+                                                index={index}
+                                                showFontSizePicker={(event) => showFontSizePicker(event, index)}
+                                                fontSizePickerShowing={fontSizePickerShowing}
+                                                key={`togglebuttons${index}`}
+                                                handleStyle={handleStyle}
+                                            />
+                                        </div>
+                                        {/* Container to place TextField and Fab button beside each other */}
+                                        <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                                            <TextField
+                                                size="small"
+                                                key={`textfield${index}`}
+                                                multiline
+                                                type="text"
+                                                value={canvasObjects[index].text}
+                                                fullWidth
+                                                onFocus={() => handleFocus(index)}
+                                                onBlur={addToHistory}
+                                                onChange={(event) => handleEdit(event, index)}
+                                                placeholder='(type your caption)'
+                                            />
+
+                                            {/* Adjusted style for the Fab button */}
+                                            <Fab
+                                                size="small"
+                                                aria-label="add"
+                                                sx={{
+                                                    marginLeft: '10px', // Added margin for spacing
+                                                    backgroundColor: theme.palette.background.paper,
+                                                    boxShadow: 'none'
+                                                }}
+                                                onClick={() => deleteLayer(index)}
+                                                key={`fab${index}`}
+                                            >
+                                                <HighlightOffRounded color="error" />
+                                            </Fab>
+                                        </div>
+                                  </Grid>
+                                )
+                              )
+                            }
+                            <Grid item xs={12} order={canvasObjects?.length+1} key="addLayerButton">
+                              <Button
+                                variant="contained"
+                                onClick={() => addText('text', true)}
+                                fullWidth
+                                sx={{ zIndex: '50', marginY: '10px' }}
+                                startIcon={<AddCircleOutline />}
+                              >
+                                { canvasObjects?.length > 0 ? "Add another caption" : "Add a caption" }
+                              </Button>
+                            </Grid>
+                        </>
+                      )}
+
+                      {editorTool === 'fineTuning' && (
+                        loadingFineTuningFrames ? (
+                          <Stack direction='row' justifyContent='center' alignItems='center' spacing={2}>
                             <CircularProgress size={30} />
-                            <Typography variant='body1'>
-                              Loading frames...
-                            </Typography>
+                            <Typography variant='body1'>Loading frames...</Typography>
                           </Stack>
-                          :
+                        ) : (
                           <Slider
                             size="small"
                             defaultValue={4}
@@ -1580,100 +1582,73 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                             value={fineTuningValue}
                             aria-label="Small"
                             valueLabelDisplay="auto"
-                            onChange={(event) => {
-                              handleFineTuning(event);
-                              setFineTuningValue(event.target.value);
+                            onChange={(event, value) => {
+                              handleFineTuning(value);
+                              setFineTuningValue(value);
                             }}
                             valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
                             marks
                             track={false}
-                            sx={{ mt: 2 }}
                           />
-                        }
-                      </>
-                    }
-                    {editorTool === 'magicEraser' &&
-                      <>
-                        <Tabs
-                          value={promptEnabled}
-                          onChange={(event, value) => { setPromptEnabled(value) }}
-                          centered
-                          TabIndicatorProps={{
-                            style: {
-                              backgroundColor: 'limegreen',
-                              top: '60px',  // Adjusts the position of the indicator
-                              height: '3px' // Adjusts the thickness of the indicator
-                            }
-                          }}
-                        >
-                          <Tab value="erase" label="Eraser" icon={<AutoFixHigh fontSize='small' />} iconPosition='start' style={{ color: promptEnabled === 'erase' ? 'limegreen' : undefined }} />
-                          <Tab value="fill" label="Fill" icon={<FormatColorFill fontSize='small' />} iconPosition='start' style={{ color: promptEnabled === 'fill' ? 'limegreen' : undefined }} />
-                        </Tabs>
+                        )
+                      )}
 
-
-                        <Stack direction='row' alignItems='center' spacing={2} sx={{ mt: 2 }}>
-                          <Slider
-                            size="small"
-                            min={1}
-                            max={100}
-                            value={brushToolSize}
-                            aria-label="Small"
-                            valueLabelDisplay='auto'
-                            sx={{
-                              marginRight: 0.5
-                            }}
-                            onChange={(event) => {
-                              setShowBrushSize(true)
-                              handleBrushToolSize(event.target.value);
-                            }}
-                            onChangeCommitted={() => {
-                              setShowBrushSize(false)
-                            }}
-                            // valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
-                            // marks
-                            track={false}
-                          />
-                          <Button variant='contained' onClick={() => {
-                            setEditorTool()
-                            toggleDrawingMode('fineTuning')
-                          }}>
-                            Cancel
-                          </Button>
-                          <Button 
+                      {editorTool === 'magicEraser' && (
+                        <>
+                          <Stack direction='row' alignItems='center' spacing={2}>
+                            <Slider
+                              size="small"
+                              min={1}
+                              max={100}
+                              value={brushToolSize}
+                              aria-label="Small"
+                              valueLabelDisplay='auto'
+                              sx={{ marginRight: 0.5 }}
+                              onChange={(event, value) => {
+                                setShowBrushSize(true);
+                                handleBrushToolSize(value);
+                              }}
+                              onChangeCommitted={() => {
+                                setShowBrushSize(false);
+                              }}
+                              track={false}
+                            />
+                            <Button variant='contained' onClick={() => {
+                              setEditorTool('fineTuning');
+                              toggleDrawingMode('fineTuning');
+                            }}>Cancel</Button>
+                            <Button 
                               variant='contained' 
-                              style={{ backgroundColor: 'limegreen', color: 'white' }} // green background with white text
-                              onClick={
-                                  () => {
-                                    exportDrawing();
-                                    toggleDrawingMode('fineTuning');
-                                  }
-                              }>
-                              Apply
-                          </Button>
-                        </Stack>
-                        {promptEnabled === "fill" &&
-                          <TextField
-                            value={magicPrompt}
-                            onChange={(event) => {
-                              setMagicPrompt(event.target.value);
-                            }}
-                            fullWidth
-                            sx={{
-                              mt: 3,
-                              '& .MuiInputLabel-root.Mui-focused': { // targets label when focused
-                                color: 'limegreen',
-                              },
-                              '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': { // targets border when focused
-                                borderColor: 'limegreen',
-                              },
-                            }}
-                            label='Magic Fill Prompt'
-                          />
+                              style={{ backgroundColor: 'limegreen', color: 'white' }}
+                              onClick={() => {
+                                exportDrawing();
+                                toggleDrawingMode('fineTuning');
+                              }}
+                            >Apply</Button>
+                          </Stack>
 
-                        }
-                      </>
-
-                    }
+                          {promptEnabled === "fill" && (
+                            <TextField
+                              value={magicPrompt}
+                              onChange={(event) => {
+                                setMagicPrompt(event.target.value);
+                              }}
+                              fullWidth
+                              sx={{
+                                mt: 3,
+                                '& .MuiInputLabel-root.Mui-focused': {
+                                  color: 'limegreen',
+                                },
+                                '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: 'limegreen',
+                                },
+                              }}
+                              label='Magic Fill Prompt'
+                            />
+                          )}
+                        </>
+                      )}
+                    </Stack>
                   </Card>
 
                   {/* <button type='button' onClick={addImage}>Add Image</button>
