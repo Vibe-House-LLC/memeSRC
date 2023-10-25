@@ -1530,7 +1530,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                 (object, index) =>
                                   'text' in object && (
                                     <Grid item xs={12} order={index} key={`grid${index}`} marginBottom={1}>
-                                      <Typography marginY={1}><b>Caption #{index+1}</b></Typography>
                                         <div style={{ display: 'inline', position: 'relative' }} key={`div${index}`}>
                                             <TextEditorControls
                                                 showColorPicker={(event) => showColorPicker(event, index)}
@@ -1581,7 +1580,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                 variant="contained"
                                 onClick={() => addText('text', true)}
                                 fullWidth
-                                sx={{ zIndex: '50', marginY: '10px' }}
+                                sx={{ zIndex: '50', marginY: '20px' }}
                                 startIcon={<AddCircleOutline />}
                               >
                                 { canvasObjects?.length > 0 ? "Add another caption" : "Add a caption" }

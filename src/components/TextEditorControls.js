@@ -7,7 +7,9 @@ import FormatColorFillIcon from '@mui/icons-material/FormatColorFill';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
-import { FormatSizeRounded } from '@mui/icons-material';
+import { FormatSizeRounded, MoreHoriz } from '@mui/icons-material';
+import IconButton from '@mui/material/IconButton';
+import { Typography } from '@mui/material';
 
 // Prop types
 TextEditorControls.propTypes = {
@@ -21,6 +23,7 @@ TextEditorControls.propTypes = {
 
 export default function TextEditorControls(props) {
     const [formats, setFormats] = React.useState(() => ['bold']);
+    const [editorVisible, setEditorVisible] = React.useState(false);
 
     const handleFormat = (event, newFormats) => {
         setFormats(newFormats);
@@ -28,29 +31,40 @@ export default function TextEditorControls(props) {
     };
 
     return (
-        <ToggleButtonGroup
-            value={formats}
-            onChange={handleFormat}
-            aria-label="text formatting"
-            size='small'
-            sx={{ marginBottom: '12px' }}
-        >
-            <ToggleButton value="bold" aria-label="bold">
-                <FormatBoldIcon />
-            </ToggleButton>
-            <ToggleButton value="italic" aria-label="italic">
-                <FormatItalicIcon />
-            </ToggleButton>
-            <ToggleButton value="underlined" aria-label="underlined">
-                <FormatUnderlinedIcon />
-            </ToggleButton>
-            <ToggleButton value="fontsize" aria-label="fontsize" selected={(props.fontSizePickerShowing === props.index)} onClick={props.showFontSizePicker}>
-                <FormatSizeRounded />
-            </ToggleButton>
-            <ToggleButton value="color" aria-label="color" selected={(props.colorPickerShowing === props.index)} onClick={props.showColorPicker}>
-                <FormatColorFillIcon />
-                <ArrowDropDownIcon />
-            </ToggleButton>
-        </ToggleButtonGroup>
+        <div>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+                <Typography marginY={1}><b>Caption #{props.index+1}</b></Typography>
+                <IconButton onClick={() => setEditorVisible(prev => !prev)}>
+                    <MoreHoriz />
+                </IconButton>
+            </div>
+
+            {editorVisible && (
+                <ToggleButtonGroup
+                    value={formats}
+                    onChange={handleFormat}
+                    aria-label="text formatting"
+                    size='small'
+                    sx={{ marginBottom: '12px' }}
+                >
+                    <ToggleButton value="bold" aria-label="bold">
+                        <FormatBoldIcon />
+                    </ToggleButton>
+                    <ToggleButton value="italic" aria-label="italic">
+                        <FormatItalicIcon />
+                    </ToggleButton>
+                    <ToggleButton value="underlined" aria-label="underlined">
+                        <FormatUnderlinedIcon />
+                    </ToggleButton>
+                    <ToggleButton value="fontsize" aria-label="fontsize" selected={(props.fontSizePickerShowing === props.index)} onClick={props.showFontSizePicker}>
+                        <FormatSizeRounded />
+                    </ToggleButton>
+                    <ToggleButton value="color" aria-label="color" selected={(props.colorPickerShowing === props.index)} onClick={props.showColorPicker}>
+                        <FormatColorFillIcon />
+                        <ArrowDropDownIcon />
+                    </ToggleButton>
+                </ToggleButtonGroup>
+            )}
+        </div>
     );
 }
