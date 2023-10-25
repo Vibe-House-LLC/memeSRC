@@ -288,7 +288,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     // Check if the uploadedImage exists in the location state
     const uploadedImage = location.state?.uploadedImage;
   
-    if (uploadedImage) {
+    if (uploadedImage && !defaultFrame) {
       // Use the uploadedImage as the background instead of the default image
       fabric.Image.fromURL(uploadedImage, (oImg) => {
         setDefaultFrame(oImg);
@@ -338,7 +338,9 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                 resizeCanvas(desiredWidth, desiredHeight);
 
                 editor?.canvas.setBackgroundImage(oImg);
-                addText(defaultSubtitle === false ? "Bottom Text" : defaultSubtitle, false);
+                if (defaultSubtitle) {
+                  addText(defaultSubtitle)
+                }
                 setImageLoaded(true);
 
                 // Rendering the canvas after applying all changes
@@ -378,58 +380,58 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     }
   }, [resizeCanvas, selectedFid, editor, addText, location]);
 
-  const loadProjectFromS3 = async () => {
-    try {
-        // Generate the file name/path based on the editorProjectId
-        const fileName = `projects/${editorProjectId}.json`;
+//   const loadProjectFromS3 = async () => {
+//     try {
+//         // Generate the file name/path based on the editorProjectId
+//         const fileName = `projects/${editorProjectId}.json`;
 
-        // Fetch the serialized canvas state from S3 under the user's protected folder
-        const serializedCanvas = await Storage.get(fileName, { level: 'protected' });
+//         // Fetch the serialized canvas state from S3 under the user's protected folder
+//         const serializedCanvas = await Storage.get(fileName, { level: 'protected' });
 
-        if (serializedCanvas) {
-            // Fetch the actual content from S3. 
-            // Storage.get provides a pre-signed URL, so we need to fetch the actual content.
-            const response = await fetch(serializedCanvas);
-            const canvasStateJSON = await response.json();
+//         if (serializedCanvas) {
+//             // Fetch the actual content from S3. 
+//             // Storage.get provides a pre-signed URL, so we need to fetch the actual content.
+//             const response = await fetch(serializedCanvas);
+//             const canvasStateJSON = await response.json();
             
-            editor.canvas.loadFromJSON(canvasStateJSON, () => {
-                const oImg = editor.canvas.backgroundImage;
-                const imageAspectRatio = oImg.width / oImg.height;
-                setEditorAspectRatio(imageAspectRatio);
-                const [desiredHeight, desiredWidth] = calculateEditorSize(imageAspectRatio);
-                setCanvasSize({ height: desiredHeight, width: desiredWidth });
+//             editor.canvas.loadFromJSON(canvasStateJSON, () => {
+//                 const oImg = editor.canvas.backgroundImage;
+//                 const imageAspectRatio = oImg.width / oImg.height;
+//                 setEditorAspectRatio(imageAspectRatio);
+//                 const [desiredHeight, desiredWidth] = calculateEditorSize(imageAspectRatio);
+//                 setCanvasSize({ height: desiredHeight, width: desiredWidth });
 
-                // Scale the image to fit the canvas
-                const scale = desiredWidth / oImg.width;
-                oImg.scale(desiredWidth / oImg.width);
-                editor.canvas.forEachObject(obj => {
-                  obj.left *= scale;
-                  obj.top *= scale;
-                  obj.scaleY *= scale;
-                  obj.scaleX *= scale;
-                })
+//                 // Scale the image to fit the canvas
+//                 const scale = desiredWidth / oImg.width;
+//                 oImg.scale(desiredWidth / oImg.width);
+//                 editor.canvas.forEachObject(obj => {
+//                   obj.left *= scale;
+//                   obj.top *= scale;
+//                   obj.scaleY *= scale;
+//                   obj.scaleX *= scale;
+//                 })
 
-                // Center the image within the canvas
-                oImg.set({ left: 0, top: 0 });
-                const minWidth = 750;
-                const x = (oImg.width > minWidth) ? oImg.width : minWidth;
-                setImageScale(x / desiredWidth);
-                resizeCanvas(desiredWidth, desiredHeight);
+//                 // Center the image within the canvas
+//                 oImg.set({ left: 0, top: 0 });
+//                 const minWidth = 750;
+//                 const x = (oImg.width > minWidth) ? oImg.width : minWidth;
+//                 setImageScale(x / desiredWidth);
+//                 resizeCanvas(desiredWidth, desiredHeight);
 
-                editor?.canvas.setBackgroundImage(oImg);
-                addText(defaultSubtitle === false ? "Bottom Text" : defaultSubtitle, false);
-                setImageLoaded(true);
+//                 editor?.canvas.setBackgroundImage(oImg);
+//                 addText(defaultSubtitle === false ? "Bottom Text" : defaultSubtitle, false);
+//                 setImageLoaded(true);
 
-                // Rendering the canvas after applying all changes
-                editor.canvas.renderAll();
-            });
-        } else {
-            console.error('No saved editor state found for the project in S3.');
-        }
-    } catch (error) {
-        console.error('Failed to load editor state from S3:', error);
-    }
-};
+//                 // Rendering the canvas after applying all changes
+//                 editor.canvas.renderAll();
+//             });
+//         } else {
+//             console.error('No saved editor state found for the project in S3.');
+//         }
+//     } catch (error) {
+//         console.error('Failed to load editor state from S3:', error);
+//     }
+// };
 
   // Look up data for the fid and set defaults
   useEffect(() => {
@@ -460,7 +462,9 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       setImageScale(x / desiredWidth);
       resizeCanvas(desiredWidth, desiredHeight)
       editor?.canvas.setBackgroundImage(oImg);
-      addText(defaultSubtitle === false ? "Bottom Text" : defaultSubtitle, false);
+      if (defaultSubtitle) {
+        addText(defaultSubtitle)
+      }
       setImageLoaded(true)
     }
   }, [defaultFrame, defaultSubtitle])
