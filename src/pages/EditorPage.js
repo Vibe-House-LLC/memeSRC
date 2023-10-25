@@ -1172,53 +1172,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
           >
             <Card sx={{ padding: { xs: 1.5, md: 2 } }}>
               <Grid container item spacing={2} justifyContent="center">
-                <Grid item xs={12} md={7} lg={7} order="1">
-                  <Grid container item mb={1.5}>
-                    <Grid item xs={12}>
-                      <Stack direction='row' width='100%' justifyContent='space-between' alignItems='center'>
-                        
-                        <ButtonGroup variant="contained" size="small">
-                          <IconButton disabled={(editorStates.length <= 1)} onClick={undo}>
-                            <Undo />
-                          </IconButton>
-                          <IconButton disabled={(futureStates.length === 0)} onClick={redo}>
-                            <Redo />
-                          </IconButton>
-                        </ButtonGroup>
-
-                        <Button 
-                          variant="contained" 
-                          size="medium" 
-                          startIcon={<Save />} 
-                          onClick={handleClickDialogOpen}
-                          sx={{ zIndex: '50', backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
-                        >
-                          Save/Copy/Share
-                        </Button>
-
-                      </Stack>
-                    </Grid>
-                  </Grid>
-                  <div style={{ width: '100%', padding: 0, margin: 0, boxSizing: 'border-box', position: 'relative' }} id="canvas-container">
-                    <FabricJSCanvas onReady={onReady} />
-                    {showBrushSize &&
-                      <div style={{
-                        width: brushToolSize,
-                        height: brushToolSize,
-                        position: 'absolute',
-                        left: '50%',
-                        top: '50%',
-                        transform: 'translate(-50%, -50%)',
-                        borderRadius: '50%',
-                        background: 'red',
-                        borderColor: 'black',
-                        borderStyle: 'solid',
-                        borderWidth: '1px',
-                        boxShadow: '0 7px 10px rgba(0, 0, 0, 0.75)'
-                      }} />
-                    }
-                  </div>
-                </Grid>
                 <Grid item xs={12} md={5} lg={5} minWidth={{ xs: {}, md: '350px' }} order={{ xs: 3, md: 2 }}>
                   {/* {user && user.userDetails?.credits > 0 && (
                     <Grid item xs={12} marginBottom={2}>
@@ -1458,7 +1411,53 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                       />
                     </Stack> */}
 
-                  <Card sx={{ width: '100%', px: 1, py: 0 }}>
+                    <Grid item xs={12} md={7} lg={7} order="1">
+                      <Grid container item mb={1.5}>
+                        <Grid item xs={12}>
+                          <Stack direction='row' width='100%' justifyContent='space-between' alignItems='center'>
+                            
+                            <ButtonGroup variant="contained" size="small">
+                              <IconButton disabled={(editorStates.length <= 1)} onClick={undo}>
+                                <Undo />
+                              </IconButton>
+                              <IconButton disabled={(futureStates.length === 0)} onClick={redo}>
+                                <Redo />
+                              </IconButton>
+                            </ButtonGroup>
+
+                            <Button 
+                              variant="contained" 
+                              size="medium" 
+                              startIcon={<Save />} 
+                              onClick={handleClickDialogOpen}
+                              sx={{ zIndex: '50', backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
+                            >
+                              Save/Copy/Share
+                            </Button>
+
+                          </Stack>
+                        </Grid>
+                      </Grid>
+                      <div style={{ width: '100%', padding: 0, margin: 0, boxSizing: 'border-box', position: 'relative' }} id="canvas-container">
+                        <FabricJSCanvas onReady={onReady} />
+                        {showBrushSize &&
+                          <div style={{
+                            width: brushToolSize,
+                            height: brushToolSize,
+                            position: 'absolute',
+                            left: '50%',
+                            top: '50%',
+                            transform: 'translate(-50%, -50%)',
+                            borderRadius: '50%',
+                            background: 'red',
+                            borderColor: 'black',
+                            borderStyle: 'solid',
+                            borderWidth: '1px',
+                            boxShadow: '0 7px 10px rgba(0, 0, 0, 0.75)'
+                          }} />
+                        }
+                      </div>
+                    </Grid>
                     <Stack width='100%' spacing={1}>
                       <Tabs
                         value={editorTool}
@@ -1699,7 +1698,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                       )}
 
                     </Stack>
-                  </Card>
 
                   {/* <button type='button' onClick={addImage}>Add Image</button>
                                     <button type='button' onClick={saveProject}>Save Project</button>
