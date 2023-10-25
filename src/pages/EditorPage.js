@@ -578,6 +578,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     // console.log(editor.canvas.item(index));
     editor?.canvas.renderAll();
     setColorPickerShowing(false);
+    addToHistory();
   }
 
   const handleEdit = (event, index) => {
@@ -601,6 +602,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     setCanvasObjects([...editor.canvas._objects])
     // console.log(editor.canvas.item(index));
     editor?.canvas.renderAll();
+    addToHistory();
   }
 
   const handleFineTuning = (value) => {
@@ -631,6 +633,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     setCanvasObjects([...editor.canvas._objects]);
     // console.log(editor.canvas.item(index));
     editor?.canvas.renderAll();
+    addToHistory();
   }
 
 
