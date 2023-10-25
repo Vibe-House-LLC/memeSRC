@@ -1459,7 +1459,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                     </Stack> */}
 
                   <Card sx={{ width: '100%', px: 1, py: 0 }}>
-                    <Stack width='100%' spacing={2}>
+                    <Stack width='100%' spacing={0}>
                       <Tabs
                         value={editorTool}
                         onChange={(event, value) => {
@@ -1483,7 +1483,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                             icon={
                               <Box display="flex" alignItems="center">
                                 <HistoryToggleOffRounded fontSize='small' sx={{ mr: 1 }} />
-                                Timeshift
+                                Shift
                               </Box>
                             }
                             value="fineTuning"
@@ -1523,15 +1523,14 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                         />
                       </Tabs>
 
-
                       {editorTool === 'captions' && (
                         <>
                             {canvasObjects &&
                               canvasObjects.map(
                                 (object, index) =>
                                   'text' in object && (
-                                    <Grid item xs={12} order={index} key={`grid${index}`}>
-                                      <Typography margin={1}><b>Caption #{index+1}</b></Typography>
+                                    <Grid item xs={12} order={index} key={`grid${index}`} marginBottom={1}>
+                                      <Typography marginY={1}><b>Caption #{index+1}</b></Typography>
                                         <div style={{ display: 'inline', position: 'relative' }} key={`div${index}`}>
                                             <TextEditorControls
                                                 showColorPicker={(event) => showColorPicker(event, index)}
