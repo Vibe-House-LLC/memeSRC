@@ -1129,12 +1129,12 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   // }, [editorStates])
 
   const loadFineTuningFrames = () => {
-    if (loadingFineTuningFrames) {
-      setLoadingFineTuningFrames(false)
-      // setTimeout(() => {
-      //   setLoadingFineTuningFrames(false)
-      // }, [1000])
-    }
+    setLoadingFineTuningFrames(false)
+    // if (loadingFineTuningFrames) {
+    //   setTimeout(() => {
+    //     setLoadingFineTuningFrames(false)
+    //   }, [1000])
+    // }
   }
 
   // This is going to handle toggling our default prompt and no prompt when the user switches between erase and fill.
@@ -1460,56 +1460,69 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
                   <Card sx={{ width: '100%', px: 1, py: 0 }}>
                     <Stack width='100%' spacing={2}>
-                    <Tabs
-                      value={editorTool}
-                      onChange={(event, value) => {
-                        setEditorTool(value);
-                        toggleDrawingMode(value);
-                      }}
-                      centered
-                      TabIndicatorProps={{
-                        style: {
-                          backgroundColor: 'limegreen',
-                          height: '3px',
-                        }
-                      }}
-                    >
-                      {fineTuningFrames.length > 0 && (
-                        <Tab
-                          icon={
-                            <Box display="flex" alignItems="center">
-                              <HistoryToggleOffRounded fontSize='small' sx={{ mr: 1 }} />
-                              Timeshift
-                            </Box>
-                          }
-                          value="fineTuning"
-                          onClick={loadFineTuningFrames}
-                        />
-                      )}
-                      <Tab
-                        icon={
-                          <Box display="flex" alignItems="center">
-                            <ClosedCaption fontSize='small' sx={{ mr: 1 }} />
-                            Captions
-                          </Box>
-                        }
-                        value="captions"
-                      />
-                      <Tab
-                        icon={
-                          <Box display="flex" alignItems="center">
-                            <AutoFixHighRounded fontSize='small' sx={{ mr: 1 }} />
-                            Magic
-                          </Box>
-                        }
-                        value="magicEraser"
-                        onClick={(event) => {
-                          if (!user || user?.userDetails?.credits <= 0) { 
-                            setMagicToolsPopoverAnchorEl(event.currentTarget);
+                      <Tabs
+                        value={editorTool}
+                        onChange={(event, value) => {
+                          setEditorTool(value);
+                          toggleDrawingMode(value);
+                        }}
+                        centered
+                        TabIndicatorProps={{
+                          style: {
+                            backgroundColor: 'limegreen',
+                            height: '3px',
                           }
                         }}
-                      />
-                    </Tabs>
+                      >
+                        {fineTuningFrames.length > 0 && (
+                          <Tab
+                            style={{
+                              opacity: editorTool === "fineTuning" ? 1 : 0.4,
+                              color: editorTool === "fineTuning" ? "limegreen" : "white"
+                            }}
+                            icon={
+                              <Box display="flex" alignItems="center">
+                                <HistoryToggleOffRounded fontSize='small' sx={{ mr: 1 }} />
+                                Timeshift
+                              </Box>
+                            }
+                            value="fineTuning"
+                            onClick={loadFineTuningFrames}
+                          />
+                        )}
+                        <Tab
+                          style={{
+                            opacity: editorTool === "captions" ? 1 : 0.4,
+                            color: editorTool === "captions" ? "limegreen" : "white"
+                          }}
+                          icon={
+                            <Box display="flex" alignItems="center">
+                              <ClosedCaption fontSize='small' sx={{ mr: 1 }} />
+                              Captions
+                            </Box>
+                          }
+                          value="captions"
+                        />
+                        <Tab
+                          style={{
+                            opacity: editorTool === "magicEraser" ? 1 : 0.4,
+                            color: editorTool === "magicEraser" ? "limegreen" : "white"
+                          }}
+                          icon={
+                            <Box display="flex" alignItems="center">
+                              <AutoFixHighRounded fontSize='small' sx={{ mr: 1 }} />
+                              Magic
+                            </Box>
+                          }
+                          value="magicEraser"
+                          onClick={(event) => {
+                            if (!user || user?.userDetails?.credits <= 0) { 
+                              setMagicToolsPopoverAnchorEl(event.currentTarget);
+                            }
+                          }}
+                        />
+                      </Tabs>
+
 
                       {editorTool === 'captions' && (
                         <>
@@ -1652,7 +1665,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                               track={false}
                             />
                             <Button variant='contained' onClick={() => {
-                              setEditorTool('fineTuning');
+                              setEditorTool('captions');
                               toggleDrawingMode('fineTuning');
                             }}>Cancel</Button>
                             <Button 
