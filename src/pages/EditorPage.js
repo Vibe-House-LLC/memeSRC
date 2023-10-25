@@ -1595,6 +1595,33 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
                       {editorTool === 'magicEraser' && (
                         <>
+                          <Tabs
+                            value={promptEnabled}
+                            onChange={(event, value) => {
+                              setPromptEnabled(value);
+                            }}
+                            centered
+                            TabIndicatorProps={{
+                              style: {
+                                backgroundColor: 'limegreen',
+                                height: '3px'
+                              }
+                            }}
+                          >
+                            <Tab
+                              icon={<AutoFixHigh fontSize='small' />}
+                              label="Eraser"
+                              value="erase"
+                              style={{ color: promptEnabled === 'erase' ? 'limegreen' : undefined }}
+                            />
+                            <Tab
+                              icon={<FormatColorFill fontSize='small' />}
+                              label="Fill"
+                              value="fill"
+                              style={{ color: promptEnabled === 'fill' ? 'limegreen' : undefined }}
+                            />
+                          </Tabs>
+
                           <Stack direction='row' alignItems='center' spacing={2}>
                             <Slider
                               size="small"
@@ -1648,6 +1675,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                           )}
                         </>
                       )}
+
                     </Stack>
                   </Card>
 
