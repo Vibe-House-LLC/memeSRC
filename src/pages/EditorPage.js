@@ -271,13 +271,13 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     if (editor) {
       if (append) {
         editor?.canvas.add(text);
-        addToHistory();
         setCanvasObjects([...editor.canvas._objects]);
+        addToHistory();
       } else {
         editor.canvas._objects = [];
         editor?.canvas.add(text);
-        addToHistory();
         setCanvasObjects([...editor.canvas._objects]);
+        addToHistory();
       }
     }
   }, [editor]);
@@ -602,7 +602,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     setCanvasObjects([...editor.canvas._objects])
     // console.log(editor.canvas.item(index));
     editor?.canvas.renderAll();
-    addToHistory();
   }
 
   const handleFineTuning = (value) => {
@@ -635,7 +634,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     editor?.canvas.renderAll();
     addToHistory();
   }
-
 
   const deleteLayer = (index) => {
     editor.canvas.remove(editor.canvas.item(index));
@@ -1812,6 +1810,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
               valueLabelDisplay="auto"
               onChange={(event) => handleFontSize(event, fontSizePickerShowing)}
               onFocus={() => handleFocus(fontSizePickerShowing)}
+              onBlur={addToHistory}
             />
           </StyledLayerControlCard>
         </Popover>
