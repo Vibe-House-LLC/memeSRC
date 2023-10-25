@@ -61,7 +61,7 @@ export default function EditorProjectsPage() {
         <Button
           fullWidth
           variant="contained"
-          color="primary"
+          color="success"
           size="large"
           onClick={() => navigate('/editor/new')}
           sx={{ marginBottom: 2, backgroundColor: 'limegreen' }}
