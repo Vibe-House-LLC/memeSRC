@@ -857,28 +857,10 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
             setSelectedImage();
             setReturnedImages([]);
 
-            const canvasHeight = editor.canvas.height;
-            const canvasWidth = editor.canvas.width;
-
-            // Determine the scale factor for width and height
-            const widthScale = canvasWidth / returnedImage.width;
-            const heightScale = canvasHeight / returnedImage.height;
-
-            // Use the larger scale factor to ensure image covers entire canvas
-            const scale = Math.max(widthScale, heightScale);
-            returnedImage.scale(scale);
-
-            // Crop the image to match canvas dimensions
-            const croppedWidth = canvasWidth / scale;
-            const croppedHeight = canvasHeight / scale;
-            const left = (returnedImage.width - croppedWidth) / 2;
-            const top = (returnedImage.height - croppedHeight) / 2;
-
-            returnedImage.cropX = left;
-            returnedImage.cropY = top;
-            returnedImage.width = croppedWidth;
-            returnedImage.height = croppedHeight;
-
+            const originalHeight = editor.canvas.height;
+            const originalWidth = editor.canvas.width;
+            const scale = Math.min(1024 / originalWidth, 1024 / originalHeight);
+            returnedImage.scale(1 / scale);
             editor.canvas.setBackgroundImage(returnedImage);
             setBgEditorStates(prevHistory => [...prevHistory, returnedImage]);
             editor.canvas.backgroundImage.center();
