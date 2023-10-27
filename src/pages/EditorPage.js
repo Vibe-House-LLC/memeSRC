@@ -643,22 +643,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     addToHistory();
   }
 
-  useEffect(() => {
-    const checkFabricPaths = () => {
-      // Assuming editor.canvas.getObjects() returns an array of objects
-      const objects = editor?.canvas.getObjects();
-      const hasPaths = objects?.some(obj => obj instanceof fabric.Path);
-      setHasFabricPaths(hasPaths);
-    };
-
-    // Call the function to update the state
-    checkFabricPaths();
-
-    // Optional: Set up an observer or event listener if the canvas objects can change dynamically
-    // You would also need to return a cleanup function if you set up an event listener or observer
-
-  }, [editor?.canvas]);
-
   // ------------------------------------------------------------------------
 
   const QUERY_INTERVAL = 1000; // Every second
@@ -690,6 +674,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
               editor.canvas.remove(obj)
             }
           });
+          setHasFabricPaths(false);
           addToHistory();
         }
       }
@@ -849,6 +834,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                     editor.canvas.remove(obj);
                 }
             });
+            setHasFabricPaths(false);
         }
         console.log(error.response.data);
         alert(`Error: ${JSON.stringify(error.response.data)}`);
@@ -870,6 +856,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                 editor.canvas.remove(obj)
               }
             });
+
+            setHasFabricPaths(false);
 
             setSelectedImage();
             setReturnedImages([]);
@@ -1089,6 +1077,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       // On path creation
       editor.canvas.on('path:created', () => {
         addToHistory();
+        setHasFabricPaths(true);
       });
 
       // Snap to horizontal center logic when moving the object
