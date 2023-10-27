@@ -65,6 +65,7 @@ const StyledCardMedia = styled('img')`
 
 const EditorPage = ({ setSeriesTitle, shows }) => {
   const searchDetails = useSearchDetails();
+  const [hasFabricPaths, setHasFabricPaths] = useState(false);
   // console.log(searchDetails.fineTuningFrame)
   // Get everything ready
   const { fid, editorProjectId } = useParams();
@@ -642,6 +643,22 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     addToHistory();
   }
 
+  useEffect(() => {
+    const checkFabricPaths = () => {
+      // Assuming editor.canvas.getObjects() returns an array of objects
+      const objects = editor?.canvas.getObjects();
+      const hasPaths = objects?.some(obj => obj instanceof fabric.Path);
+      setHasFabricPaths(hasPaths);
+    };
+
+    // Call the function to update the state
+    checkFabricPaths();
+
+    // Optional: Set up an observer or event listener if the canvas objects can change dynamically
+    // You would also need to return a cleanup function if you set up an event listener or observer
+
+  }, [editor?.canvas]);
+
   // ------------------------------------------------------------------------
 
   const QUERY_INTERVAL = 1000; // Every second
@@ -866,8 +883,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
             editor.canvas.backgroundImage.center();
             editor.canvas.renderAll();
 
-            // setEditorTool();
-            // setMagicPrompt('Everyday scene as cinematic cinestill sample');
+            setEditorTool('captions');
+            setMagicPrompt('Everyday scene as cinematic cinestill sample');
             // setPromptEnabled('erase');
             addToHistory();
         }, {
@@ -1249,7 +1266,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                             color: editorTool === "captions" ? "limegreen" : "white"
                           }}
                           icon={
-                            <Box display="flex" alignItems="center" fontSize={13} marginX={-1}>
+                            <Box display="flex" alignItems="center" marginX={-1}>
                               <ClosedCaption fontSize='small' sx={{ mr: 1 }} />
                               Caption Editor
                             </Box>
@@ -1262,7 +1279,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                             color: editorTool === "magicEraser" ? "limegreen" : "white"
                           }}
                           icon={
-                            <Box display="flex" alignItems="center" fontSize={13} marginX={-1}>
+                            <Box display="flex" alignItems="center" marginX={-1}>
                               <AutoFixHighRounded fontSize='small' sx={{ mr: 1 }} />
                               Magic Tools
                             </Box>
@@ -1271,6 +1288,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                           onClick={(event) => {
                             if (!user || user?.userDetails?.credits <= 0) { 
                               setMagicToolsPopoverAnchorEl(event.currentTarget);
+                              setEditorTool('captions')
                             }
                           }}
                         />
@@ -1421,12 +1439,19 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                             }}>Cancel</Button>
                             <Button 
                               variant='contained' 
-                              style={{ backgroundColor: 'limegreen', color: 'white' }}
+                              style={{ 
+                                backgroundColor: hasFabricPaths ? 'limegreen' : 'grey', 
+                                color: 'white',
+                                opacity: hasFabricPaths ? 1 : 0.5
+                              }}
                               onClick={() => {
                                 exportDrawing();
                                 // toggleDrawingMode('fineTuning');
                               }}
-                            >Apply</Button>
+                              disabled={!hasFabricPaths} // Button is disabled if there are no fabric.Path instances
+                            >
+                              Apply
+                            </Button>
                           </Stack>
 
                           {promptEnabled === "fill" && (
