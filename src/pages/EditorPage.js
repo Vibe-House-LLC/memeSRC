@@ -1225,19 +1225,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                       </Grid>
                     </Grid>
                   )} */}
-
-                  {/* <Grid item xs={12} marginBottom={2}>
-                    <Button
-                      variant="contained"
-                      onClick={handleClickDialogOpen}
-                      fullWidth
-                      sx={{ zIndex: '50', backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
-                      startIcon={<Share />}
-                      size="large"
-                    >
-                      Save/Copy/Share
-                    </Button>
-                  </Grid> */}
                 </Grid>
                 <Grid
                   item
@@ -1744,6 +1731,18 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                             </Button>
                         )}
                     </Grid>
+                    <Grid item xs={12} marginBottom={2}>
+                    <Button
+                      variant="contained"
+                      onClick={handleClickDialogOpen}
+                      fullWidth
+                      sx={{ zIndex: '50', backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
+                      startIcon={<Share />}
+                      size="large"
+                    >
+                      Save/Copy/Share
+                    </Button>
+                  </Grid>
                 </Grid>
               </Grid>
             </Card>
