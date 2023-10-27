@@ -65,6 +65,7 @@ const StyledCardMedia = styled('img')`
 
 const EditorPage = ({ setSeriesTitle, shows }) => {
   const searchDetails = useSearchDetails();
+  const [hasFabricPaths, setHasFabricPaths] = useState(false);
   // console.log(searchDetails.fineTuningFrame)
   // Get everything ready
   const { fid, editorProjectId } = useParams();
@@ -642,6 +643,22 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     addToHistory();
   }
 
+  useEffect(() => {
+    const checkFabricPaths = () => {
+      // Assuming editor.canvas.getObjects() returns an array of objects
+      const objects = editor?.canvas.getObjects();
+      const hasPaths = objects?.some(obj => obj instanceof fabric.Path);
+      setHasFabricPaths(hasPaths);
+    };
+
+    // Call the function to update the state
+    checkFabricPaths();
+
+    // Optional: Set up an observer or event listener if the canvas objects can change dynamically
+    // You would also need to return a cleanup function if you set up an event listener or observer
+
+  }, [editor?.canvas]);
+
   // ------------------------------------------------------------------------
 
   const QUERY_INTERVAL = 1000; // Every second
@@ -866,8 +883,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
             editor.canvas.backgroundImage.center();
             editor.canvas.renderAll();
 
-            // setEditorTool();
-            // setMagicPrompt('Everyday scene as cinematic cinestill sample');
+            setEditorTool('captions');
+            setMagicPrompt('Everyday scene as cinematic cinestill sample');
             // setPromptEnabled('erase');
             addToHistory();
         }, {
@@ -1178,244 +1195,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
           >
             <Card sx={{ padding: { xs: 1.5, md: 2 } }}>
               <Grid container item spacing={2} justifyContent="center">
-                <Grid item xs={12} md={5} lg={5} minWidth={{ xs: {}, md: '350px' }} order={{ xs: 3, md: 2 }}>
-                  {/* {user && user.userDetails?.credits > 0 && (
-                    <Grid item xs={12} marginBottom={2}>
-                      <Grid container direction="column" spacing={2}>
-                        {drawingMode ? (
-                          <>
-                            <Grid item>
-                              <TextField
-                                fullWidth
-                                id="prompt"
-                                label="Prompt"
-                                variant="outlined"
-                                value={magicPrompt}
-                                onChange={(event) => setMagicPrompt(event.target.value)}
-                              />
-                            </Grid>
-                            <Grid item>
-                              <Button
-                                variant="contained"
-                                onClick={() => {
-                                  exportDrawing();
-                                  toggleDrawingMode();
-                                }}
-                                fullWidth
-                                sx={{ zIndex: '50' }}
-                                startIcon={<AutoFixHighRounded />}
-                              >
-                                Magic Brush (apply)
-                              </Button>
-                            </Grid>
-                          </>
-                        ) : (
-                          <Grid item>
-                            <Button
-                              variant="contained"
-                              onClick={toggleDrawingMode}
-                              fullWidth
-                              sx={{ zIndex: '50' }}
-                              startIcon={<AutoFixHighRounded />}
-                            >
-                              Magic Brush (select)
-                            </Button>
-                          </Grid>
-                        )}
-                      </Grid>
-                    </Grid>
-                  )} */}
-
-                  {/* <Grid item xs={12} marginBottom={2}>
-                    <Button
-                      variant="contained"
-                      onClick={handleClickDialogOpen}
-                      fullWidth
-                      sx={{ zIndex: '50', backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
-                      startIcon={<Share />}
-                      size="large"
-                    >
-                      Save/Copy/Share
-                    </Button>
-                  </Grid> */}
-                </Grid>
-                <Grid
-                  item
-                  xs={12}
-                  md={7}
-                  lg={7}
-                  marginRight={{ xs: '', md: 'auto' }}
-                  marginTop={{ xs: -2.5, md: -1.5 }}
-                  order={{ xs: 4, md: 4 }}
-                >
-                  {surroundingFrames && surroundingFrames.length > 0 && (
-                    <Card>
-                      <Accordion expanded={subtitlesExpanded} disableGutters>
-                        <AccordionSummary sx={{ paddingX: 1.55, textAlign: "center" }} onClick={handleSubtitlesExpand} >
-                          <Typography marginRight="auto" fontWeight="bold" color="#CACACA" fontSize={14.8}>
-                            {subtitlesExpanded ? (
-                              <Close style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
-                            ) : (
-                              <Menu style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
-                            )}
-                            {subtitlesExpanded ? 'Hide' : 'View'} Nearby Subtitles
-                          </Typography>
-                          {/* <Chip size="small" label="New!" color="success" /> */}
-                        </AccordionSummary>
-                        <AccordionDetails sx={{ paddingY: 0, paddingX: 0 }}>
-                          <List sx={{ padding: '.5em 0' }}>
-                            {surroundingFrames &&
-                              surroundingFrames
-                                .filter(
-                                  (result, index, array) =>
-                                    result?.subtitle &&
-                                    (index === 0 ||
-                                      result?.subtitle.replace(/\n/g, ' ') !==
-                                      array[index - 1].subtitle.replace(/\n/g, ' '))
-                                )
-                                .map((result, index) => (
-                                  <ListItem key={result.id ? result.id : `surrounding-subtitle-${index}`} disablePadding sx={{ padding: '0 0 .6em 0' }}>
-                                    <ListItemIcon sx={{ paddingLeft: '0' }}>
-                                      <Fab
-                                        size="small"
-                                        sx={{
-                                          backgroundColor: theme.palette.background.paper,
-                                          boxShadow: 'none',
-                                          marginLeft: '5px',
-                                          '&:hover': {
-                                            xs: { backgroundColor: 'inherit' },
-                                            md: {
-                                              backgroundColor:
-                                                result?.subtitle.replace(/\n/g, ' ') ===
-                                                  defaultSubtitle?.replace(/\n/g, ' ')
-                                                  ? 'rgba(0, 0, 0, 0)'
-                                                  : 'ButtonHighlight',
-                                            },
-                                          },
-                                        }}
-                                        onClick={() => navigate(`/editor/${result?.fid}`)}
-                                      >
-                                        {loading ? (
-                                          <CircularProgress size={20} sx={{ color: '#565656' }} />
-                                        ) : result?.subtitle.replace(/\n/g, ' ') ===
-                                          defaultSubtitle.replace(/\n/g, ' ') ? (
-                                          <GpsFixed
-                                            sx={{
-                                              color:
-                                                result?.subtitle.replace(/\n/g, ' ') ===
-                                                  defaultSubtitle?.replace(/\n/g, ' ')
-                                                  ? 'rgb(202, 202, 202)'
-                                                  : 'rgb(89, 89, 89)',
-                                              cursor: 'pointer',
-                                            }}
-                                          />
-                                        ) : (
-                                          <GpsNotFixed sx={{ color: 'rgb(89, 89, 89)', cursor: 'pointer' }} />
-                                        )}
-                                      </Fab>
-                                    </ListItemIcon>
-                                    <ListItemText sx={{ color: 'rgb(173, 173, 173)', fontSize: '4em' }}>
-                                      <Typography
-                                        component="p"
-                                        variant="body2"
-                                        color={
-                                          result?.subtitle.replace(/\n/g, ' ') === defaultSubtitle?.replace(/\n/g, ' ')
-                                            ? 'rgb(202, 202, 202)'
-                                            : ''
-                                        }
-                                        fontWeight={
-                                          result?.subtitle.replace(/\n/g, ' ') === defaultSubtitle?.replace(/\n/g, ' ')
-                                            ? 700
-                                            : 400
-                                        }
-                                      >
-                                        {result?.subtitle.replace(/\n/g, ' ')}
-                                      </Typography>
-                                    </ListItemText>
-                                    <ListItemIcon sx={{ paddingRight: '0', marginLeft: 'auto' }}>
-                                      <Fab
-                                        size="small"
-                                        sx={{
-                                          backgroundColor: theme.palette.background.paper,
-                                          boxShadow: 'none',
-                                          marginRight: '2px',
-                                          '&:hover': {
-                                            xs: { backgroundColor: 'inherit' },
-                                            md: { backgroundColor: 'ButtonHighlight' },
-                                          },
-                                        }}
-                                        onClick={() => {
-                                          navigator.clipboard.writeText(result?.subtitle.replace(/\n/g, ' '));
-                                          handleSnackbarOpen();
-                                        }}
-                                      >
-                                        <ContentCopy sx={{ color: 'rgb(89, 89, 89)' }} />
-                                      </Fab>
-                                      <Fab
-                                        size="small"
-                                        sx={{
-                                          backgroundColor: theme.palette.background.paper,
-                                          boxShadow: 'none',
-                                          marginLeft: 'auto',
-                                          '&:hover': {
-                                            xs: { backgroundColor: 'inherit' },
-                                            md: { backgroundColor: 'ButtonHighlight' },
-                                          },
-                                        }}
-                                        onClick={() => addText(result?.subtitle.replace(/\n/g, ' '), true)}
-                                      >
-                                        <Add sx={{ color: 'rgb(89, 89, 89)', cursor: 'pointer' }} />
-                                      </Fab>
-                                      {/* <Fab
-                                                                              size="small"
-                                                                              sx={{
-                                                                                  backgroundColor: theme.palette.background.paper,
-                                                                                  boxShadow: "none",
-                                                                                  marginLeft: '5px',
-                                                                                  '&:hover': {xs: {backgroundColor: 'inherit'}, md: {backgroundColor: (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 'rgba(0, 0, 0, 0)' : 'ButtonHighlight'}}
-                                                                              }}
-                                                                              onClick={() => navigate(`/editor/${result?.fid}`)}
-                                                                          >
-                                                                          {loading ? (
-                                                                              <CircularProgress size={20} sx={{ color: "#565656"}} />
-                                                                          ) : (
-                                                                              (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle.replace(/\n/g, " ")) ? <GpsFixed sx={{ color: (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 'rgb(50, 50, 50)' : 'rgb(89, 89, 89)', cursor: "pointer"}} /> : <ArrowForward sx={{ color: "rgb(89, 89, 89)", cursor: "pointer"}} /> 
-                                                                          )}
-                                                                          </Fab> */}
-                                    </ListItemIcon>
-                                  </ListItem>
-                                ))}
-                          </List>
-                        </AccordionDetails>
-                      </Accordion>
-                    </Card>
-                  )}
-                </Grid>
                 <Grid item xs={12} md={7} lg={7} marginRight={{ xs: '', md: 'auto' }} order={{ xs: 2, md: 3 }}>
-                  {/* Fine Tuning Code */}
-                  {/* <Stack spacing={2} direction="row" alignItems={'center'}>
-                      <Tooltip title="Fine Tuning">
-                        <IconButton>
-                          <HistoryToggleOffRounded alt="Fine Tuning" />
-                        </IconButton>
-                      </Tooltip>
-                      <Slider
-                        size="small"
-                        defaultValue={4}
-                        min={0}
-                        max={8}
-                        value={fineTuningValue}
-                        aria-label="Small"
-                        valueLabelDisplay="auto"
-                        onChange={(event) => {
-                          handleFineTuning(event);
-                          setFineTuningValue(event.target.value);
-                        }}
-                        valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
-                        marks
-                        track={false}
-                      />
-                    </Stack> */}
+
 
                     <Grid item xs={12} md={7} lg={7} order="1">
                       <Grid container item mb={1.5}>
@@ -1485,44 +1266,29 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                             color: editorTool === "captions" ? "limegreen" : "white"
                           }}
                           icon={
-                            <Box display="flex" alignItems="center" fontSize={13} marginX={-1}>
+                            <Box display="flex" alignItems="center" marginX={-1}>
                               <ClosedCaption fontSize='small' sx={{ mr: 1 }} />
-                              Captions
+                              Caption Editor
                             </Box>
                           }
                           value="captions"
                         />
-                        {fineTuningFrames.length > 0 && (
-                          <Tab
-                            style={{
-                              opacity: editorTool === "fineTuning" ? 1 : 0.4,
-                              color: editorTool === "fineTuning" ? "limegreen" : "white"
-                            }}
-                            icon={
-                              <Box display="flex" alignItems="center" fontSize={13} marginX={-1}>
-                                <HistoryToggleOffRounded fontSize='small' sx={{ mr: 1 }} />
-                                Timeshift
-                              </Box>
-                            }
-                            value="fineTuning"
-                            onClick={loadFineTuningFrames}
-                          />
-                        )}
                         <Tab
                           style={{
                             opacity: editorTool === "magicEraser" ? 1 : 0.4,
                             color: editorTool === "magicEraser" ? "limegreen" : "white"
                           }}
                           icon={
-                            <Box display="flex" alignItems="center" fontSize={13} marginX={-1}>
+                            <Box display="flex" alignItems="center" marginX={-1}>
                               <AutoFixHighRounded fontSize='small' sx={{ mr: 1 }} />
-                              Magic
+                              Magic Tools
                             </Box>
                           }
                           value="magicEraser"
                           onClick={(event) => {
                             if (!user || user?.userDetails?.credits <= 0) { 
                               setMagicToolsPopoverAnchorEl(event.currentTarget);
+                              setEditorTool('captions')
                             }
                           }}
                         />
@@ -1534,7 +1300,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                               canvasObjects.map(
                                 (object, index) =>
                                   'text' in object && (
-                                    <Grid item xs={12} order={index} key={`grid${index}`} marginBottom={1}>
+                                    <Grid item xs={12} order={index} key={`grid${index}`} marginBottom={1} style={{ marginLeft: '10px' }}>
                                         <div style={{ display: 'inline', position: 'relative' }} key={`div${index}`}>
                                             <TextEditorControls
                                                 showColorPicker={(event) => showColorPicker(event, index)}
@@ -1673,12 +1439,19 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                             }}>Cancel</Button>
                             <Button 
                               variant='contained' 
-                              style={{ backgroundColor: 'limegreen', color: 'white' }}
+                              style={{ 
+                                backgroundColor: hasFabricPaths ? 'limegreen' : 'grey', 
+                                color: 'white',
+                                opacity: hasFabricPaths ? 1 : 0.5
+                              }}
                               onClick={() => {
                                 exportDrawing();
                                 // toggleDrawingMode('fineTuning');
                               }}
-                            >Apply</Button>
+                              disabled={!hasFabricPaths} // Button is disabled if there are no fabric.Path instances
+                            >
+                              Apply
+                            </Button>
                           </Stack>
 
                           {promptEnabled === "fill" && (
@@ -1711,39 +1484,18 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                     <button type='button' onClick={handleClickDialogOpen}>Save Image</button> */}
                 </Grid>
                 <Grid container item spacing={1} order="5">
-                  {surroundingFrames &&
-                    surroundingFrames.map((result) => (
-                      <Grid item xs={4} sm={4} md={12 / 9} key={result.fid}>
-                        <a style={{ textDecoration: 'none' }}>
-                          <StyledCard style={{ border: fid === result?.fid ? '3px solid orange' : '' }}>
-                            {/* {console.log(`${fid} = ${result?.fid}`)} */}
-                            <StyledCardMedia
-                              component="img"
-                              src={`https://memesrc.com${result?.frame_image}`}
-                              alt={result?.subtitle}
-                              title={result?.subtitle}
-                              onClick={() => {
-                                editor.canvas._objects = [];
-                                setSelectedFid(result?.fid);
-                                navigate(`/editor/${result?.fid}`);
-                                setFineTuningValue(4);
-                              }}
-                            />
-                          </StyledCard>
-                        </a>
-                      </Grid>
-                    ))}
-                    <Grid item xs={12}>
-                        {episodeDetails && episodeDetails.length > 0 && (
-                            <Button
-                                variant="contained"
-                                fullWidth
-                                href={`/episode/${episodeDetails[0]}/${episodeDetails[1]}/${episodeDetails[2]}/${episodeDetails[3]}`}
-                            >
-                                View Episode
-                            </Button>
-                        )}
-                    </Grid>
+                  <Grid item xs={12} marginBottom={2}>
+                    <Button
+                      variant="contained"
+                      onClick={handleClickDialogOpen}
+                      fullWidth
+                      sx={{ zIndex: '50', backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
+                      startIcon={<Share />}
+                      size="large"
+                    >
+                      Save/Copy/Share
+                    </Button>
+                  </Grid>
                 </Grid>
               </Grid>
             </Card>

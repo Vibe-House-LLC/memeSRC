@@ -33,17 +33,15 @@ export default function TextEditorControls(props) {
     return (
         <div>
             <div style={{ display: 'flex', alignItems: 'center' }}>
-                <Typography variant="h5" marginY={1}><b>Caption Layer {props.index+1}</b></Typography>
-                <Chip
-                    label=" settings"
-                    icon={<Settings />}
-                    clickable
+                <Typography variant="h5" marginY={1}><b>Caption {props.index+1}</b></Typography>
+                <IconButton
                     size="small"
                     color={editorVisible ? "primary" : "default"}
                     onClick={() => setEditorVisible(prev => !prev)}
-                    variant={editorVisible ? "filled" : "outlined"}
                     sx={{ marginLeft: 1 }}
-                />
+                    >
+                    <Settings />
+                </IconButton>
 
             </div>
 
