@@ -421,7 +421,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                 </Box>
                 {currentThemeTitleText}
               </Typography>
-              {!localStorage.getItem('alertDismisseds7g3fgw34') && (
+              {/* {!localStorage.getItem('alertDismisseds7g3fgw34') && (
                 <Alert
                   severity="info"
                   action={
@@ -456,7 +456,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                 >
                   <b>Movies</b>&nbsp;are&nbsp;now&nbsp;supported!
                 </Alert>
-              )}
+              )} */}
             </Grid>
           </Grid>
           <StyledSearchForm onSubmit={(e) => searchFunction(e)}>

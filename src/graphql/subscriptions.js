@@ -1423,3 +1423,102 @@ export const onDeleteMagicResult = /* GraphQL */ `
     }
   }
 `;
+export const onCreateEditorProject = /* GraphQL */ `
+  subscription OnCreateEditorProject(
+    $filter: ModelSubscriptionEditorProjectFilterInput
+  ) {
+    onCreateEditorProject(filter: $filter) {
+      id
+      user {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      title
+      state
+      createdAt
+      updatedAt
+      editorProjectUserId
+      __typename
+    }
+  }
+`;
+export const onUpdateEditorProject = /* GraphQL */ `
+  subscription OnUpdateEditorProject(
+    $filter: ModelSubscriptionEditorProjectFilterInput
+  ) {
+    onUpdateEditorProject(filter: $filter) {
+      id
+      user {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      title
+      state
+      createdAt
+      updatedAt
+      editorProjectUserId
+      __typename
+    }
+  }
+`;
+export const onDeleteEditorProject = /* GraphQL */ `
+  subscription OnDeleteEditorProject(
+    $filter: ModelSubscriptionEditorProjectFilterInput
+  ) {
+    onDeleteEditorProject(filter: $filter) {
+      id
+      user {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      title
+      state
+      createdAt
+      updatedAt
+      editorProjectUserId
+      __typename
+    }
+  }
+`;

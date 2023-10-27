@@ -230,3 +230,14 @@ type MagicResult @model @auth(
   prompt: String,
   results: String
 }
+
+type EditorProject @model @auth(
+  rules: [
+    { allow: groups, groups: ["admins", "mods"] }
+  ]
+) {
+  id: ID!,
+  user: UserDetails @hasOne,
+  title: String,
+  state: String
+}

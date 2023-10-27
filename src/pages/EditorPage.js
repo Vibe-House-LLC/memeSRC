@@ -5,8 +5,8 @@ import { styled } from '@mui/material/styles';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
-import { Accordion, AccordionDetails, AccordionSummary, Backdrop, Button, Card, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, Tab, Tabs, TextField, ToggleButton, ToggleButtonGroup, Typography, useMediaQuery, useTheme } from '@mui/material';
-import { Add, AddCircleOutline, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ContentCopy, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, History, HistoryToggleOffRounded, IosShare, Menu, Share, Update, ZoomIn, ZoomOut } from '@mui/icons-material';
+import { Accordion, AccordionDetails, AccordionSummary, Backdrop, Button, ButtonGroup, Card, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, Tab, Tabs, TextField, ToggleButton, ToggleButtonGroup, Typography, useMediaQuery, useTheme } from '@mui/material';
+import { Add, AddCircleOutline, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ClosedCaption, ContentCopy, FolderOpen, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, History, HistoryToggleOffRounded, IosShare, Menu, Redo, Save, Share, Undo, Update, ZoomIn, ZoomOut } from '@mui/icons-material';
 import { API, Storage, graphqlOperation } from 'aws-amplify';
 import { Box } from '@mui/system';
 import { Helmet } from 'react-helmet-async';
@@ -17,6 +17,8 @@ import { MagicPopupContext } from '../MagicPopupContext';
 import useSearchDetails from '../hooks/useSearchDetails';
 import getFrame from '../utils/frameHandler';
 import LoadingBackdrop from '../components/LoadingBackdrop';
+import { createEditorProject, updateEditorProject } from '../graphql/mutations';
+import { getEditorProject } from '../graphql/queries';
 
 const Alert = forwardRef((props, ref) => <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />);
 
@@ -65,7 +67,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const searchDetails = useSearchDetails();
   // console.log(searchDetails.fineTuningFrame)
   // Get everything ready
-  const { fid } = useParams();
+  const { fid, editorProjectId } = useParams();
   const { user, setUser } = useContext(UserContext);
   const [defaultFrame, setDefaultFrame] = useState(null);
   const [pickingColor, setPickingColor] = useState(false);
@@ -111,7 +113,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [loadingInpaintingResult, setLoadingInpaintingResult] = useState(false);
   const { setSeverity, setMessage, setOpen } = useContext(SnackbarContext);
-  const [editorTool, setEditorTool] = useState('');
+  const [editorTool, setEditorTool] = useState('captions');
   const [brushToolSize, setBrushToolSize] = useState(50);
   const [showBrushSize, setShowBrushSize] = useState(false);
   const [editorLoaded, setEditorLoaded] = useState(false);
@@ -153,7 +155,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   }
 
   useEffect(() => {
-    if (shows.length > 0) {
+    if (shows?.length > 0) {
       // console.log(loadedSeriesTitle);
       setSeriesTitle(loadedSeriesTitle);
     }
@@ -170,6 +172,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
   const navigate = useNavigate();
   const location = useLocation();
+
+  // console.log(`uploadedImage: ${location.state?.uploadedImage}`)
 
   const handleClickDialogOpen = () => {
     setOpenDialog(true);
@@ -267,48 +271,167 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     if (editor) {
       if (append) {
         editor?.canvas.add(text);
-        addToHistory();
         setCanvasObjects([...editor.canvas._objects]);
+        addToHistory();
       } else {
         editor.canvas._objects = [];
         editor?.canvas.add(text);
-        addToHistory();
         setCanvasObjects([...editor.canvas._objects]);
+        addToHistory();
       }
     }
   }, [editor]);
 
-  const loadEditorDefaults = useCallback(() => {
+  const loadEditorDefaults = useCallback(async () => {
     setLoading(true);
-    getFrame(selectedFid)
-      .then((data) => {
-        // console.log('test');
-        // console.log(data);
-        setLoadedSeriesTitle(data.series_name);
-        setSurroundingFrames(data.frames_surrounding);
-        const episodeDetails = selectedFid.split('-');
-        setEpisodeDetails(episodeDetails);
-        // Pre load fine tuning frames
-        loadImg(data.frames_fine_tuning, oImgBuild).then((images) => {
-          setFineTuningFrames(images);
-        });
-        // Background image from the given URL
-        fabric.Image.fromURL(
-          `https://memesrc.com${
-            searchDetails.fineTuningFrame ? data.frames_fine_tuning[searchDetails.fineTuningFrame] : data.frame_image
-          }`,
-          (oImg) => {
-            // console.log(oImg);
-            setDefaultFrame(oImg);
-            setDefaultSubtitle(data.subtitle);
-            setLoading(false);
-          },
-          { crossOrigin: 'anonymous' }
-        );
-      })
-      .catch((err) => console.log(err));
-  }, [resizeCanvas, selectedFid, editor, addText]);
+  
+    // Check if the uploadedImage exists in the location state
+    const uploadedImage = location.state?.uploadedImage;
+  
+    if (uploadedImage && !defaultFrame) {
+      // Use the uploadedImage as the background instead of the default image
+      fabric.Image.fromURL(uploadedImage, (oImg) => {
+        setDefaultFrame(oImg);
+        // You can set a default subtitle or any other properties here if needed
+        setLoadedSeriesTitle("");
+        setSurroundingFrames([]);
+        setEpisodeDetails([])
+        setDefaultSubtitle(false)
+        setLoading(false);
+      }, { crossOrigin: 'anonymous' });
+    } else if (editorProjectId) {
+      try {
+        // Generate the file name/path based on the editorProjectId
+        const fileName = `projects/${editorProjectId}.json`;
 
+        // Fetch the serialized canvas state from S3 under the user's protected folder
+        const serializedCanvas = await Storage.get(fileName, { level: 'protected' });
+
+        if (serializedCanvas) {
+            // Fetch the actual content from S3. 
+            // Storage.get provides a pre-signed URL, so we need to fetch the actual content.
+            const response = await fetch(serializedCanvas);
+            const canvasStateJSON = await response.json();
+            
+            editor?.canvas.loadFromJSON(canvasStateJSON, () => {
+                const oImg = editor.canvas.backgroundImage;
+                const imageAspectRatio = oImg.width / oImg.height;
+                setEditorAspectRatio(imageAspectRatio);
+                const [desiredHeight, desiredWidth] = calculateEditorSize(imageAspectRatio);
+                setCanvasSize({ height: desiredHeight, width: desiredWidth });
+
+                // Scale the image to fit the canvas
+                const scale = desiredWidth / oImg.width;
+                oImg.scale(desiredWidth / oImg.width);
+                editor.canvas.forEachObject(obj => {
+                  obj.left *= scale;
+                  obj.top *= scale;
+                  obj.scaleY *= scale;
+                  obj.scaleX *= scale;
+                })
+
+                // Center the image within the canvas
+                oImg.set({ left: 0, top: 0 });
+                const minWidth = 750;
+                const x = (oImg.width > minWidth) ? oImg.width : minWidth;
+                setImageScale(x / desiredWidth);
+                resizeCanvas(desiredWidth, desiredHeight);
+
+                editor?.canvas.setBackgroundImage(oImg);
+                if (defaultSubtitle) {
+                  addText(defaultSubtitle)
+                }
+                setImageLoaded(true);
+
+                // Rendering the canvas after applying all changes
+                editor.canvas.renderAll();
+            });
+        } else {
+            console.error('No saved editor state found for the project in S3.');
+        }
+      } catch (error) {
+          console.error('Failed to load editor state from S3:', error);
+      }
+    } else {
+      getFrame(selectedFid)
+        .then((data) => {
+          setLoadedSeriesTitle(data.series_name);
+          setSurroundingFrames(data.frames_surrounding);
+          const episodeDetails = selectedFid.split('-');
+          setEpisodeDetails(episodeDetails);
+          // Pre load fine tuning frames
+          loadImg(data.frames_fine_tuning, oImgBuild).then((images) => {
+            setFineTuningFrames(images);
+          });
+          // Background image from the given URL
+          fabric.Image.fromURL(
+            `https://memesrc.com${
+              searchDetails.fineTuningFrame ? data.frames_fine_tuning[searchDetails.fineTuningFrame] : data.frame_image
+            }`,
+            (oImg) => {
+              setDefaultFrame(oImg);
+              setDefaultSubtitle(data.subtitle);
+              setLoading(false);
+            },
+            { crossOrigin: 'anonymous' }
+          );
+        })
+        .catch((err) => console.log(err));
+    }
+  }, [resizeCanvas, selectedFid, editor, addText, location]);
+
+//   const loadProjectFromS3 = async () => {
+//     try {
+//         // Generate the file name/path based on the editorProjectId
+//         const fileName = `projects/${editorProjectId}.json`;
+
+//         // Fetch the serialized canvas state from S3 under the user's protected folder
+//         const serializedCanvas = await Storage.get(fileName, { level: 'protected' });
+
+//         if (serializedCanvas) {
+//             // Fetch the actual content from S3. 
+//             // Storage.get provides a pre-signed URL, so we need to fetch the actual content.
+//             const response = await fetch(serializedCanvas);
+//             const canvasStateJSON = await response.json();
+            
+//             editor.canvas.loadFromJSON(canvasStateJSON, () => {
+//                 const oImg = editor.canvas.backgroundImage;
+//                 const imageAspectRatio = oImg.width / oImg.height;
+//                 setEditorAspectRatio(imageAspectRatio);
+//                 const [desiredHeight, desiredWidth] = calculateEditorSize(imageAspectRatio);
+//                 setCanvasSize({ height: desiredHeight, width: desiredWidth });
+
+//                 // Scale the image to fit the canvas
+//                 const scale = desiredWidth / oImg.width;
+//                 oImg.scale(desiredWidth / oImg.width);
+//                 editor.canvas.forEachObject(obj => {
+//                   obj.left *= scale;
+//                   obj.top *= scale;
+//                   obj.scaleY *= scale;
+//                   obj.scaleX *= scale;
+//                 })
+
+//                 // Center the image within the canvas
+//                 oImg.set({ left: 0, top: 0 });
+//                 const minWidth = 750;
+//                 const x = (oImg.width > minWidth) ? oImg.width : minWidth;
+//                 setImageScale(x / desiredWidth);
+//                 resizeCanvas(desiredWidth, desiredHeight);
+
+//                 editor?.canvas.setBackgroundImage(oImg);
+//                 addText(defaultSubtitle === false ? "Bottom Text" : defaultSubtitle, false);
+//                 setImageLoaded(true);
+
+//                 // Rendering the canvas after applying all changes
+//                 editor.canvas.renderAll();
+//             });
+//         } else {
+//             console.error('No saved editor state found for the project in S3.');
+//         }
+//     } catch (error) {
+//         console.error('Failed to load editor state from S3:', error);
+//     }
+// };
 
   // Look up data for the fid and set defaults
   useEffect(() => {
@@ -339,7 +462,9 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       setImageScale(x / desiredWidth);
       resizeCanvas(desiredWidth, desiredHeight)
       editor?.canvas.setBackgroundImage(oImg);
-      addText(defaultSubtitle, false);
+      if (defaultSubtitle) {
+        addText(defaultSubtitle)
+      }
       setImageLoaded(true)
     }
   }, [defaultFrame, defaultSubtitle])
@@ -384,25 +509,26 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       quality: 0.6,
       multiplier: imageScale
     });
-
+  
     fetch(resultImage)
       .then(res => res.blob())
       .then(blob => {
         setImageBlob(blob);
+        
         API.get('publicapi', '/uuid').then(uuid => {
-          // console.log(`GOT THIS UUID: ${JSON.stringify(uuid)}`)
-          const filename = `${uuid}.jpg`
-          setGeneratedImageFilename(filename)
+          const filename = `${uuid}.jpg`;
+          setGeneratedImageFilename(filename);
+  
+          // Save public version of the image
           Storage.put(`${uuid}.jpg`, blob, {
             resumable: true,
             contentType: "image/jpeg",
             completeCallback: (event) => {
               Storage.get(event.key).then(() => {
-                // setGeneratedImage(image);
                 const file = new File([blob], filename, { type: 'image/jpeg' });
                 setShareImageFile(file);
                 setImageUploading(false);
-              })
+              });
             },
             progressCallback: (progress) => {
               console.log(`Uploaded: ${progress.loaded}/${progress.total}`);
@@ -410,11 +536,26 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
             errorCallback: (err) => {
               console.error('Unexpected error while uploading', err);
             }
-          })
-        }).catch(err => console.log(`UUID Gen Fetch Error:  ${err}`));
-      })
+          });
+  
+          // Save protected version of the image
+          const protectedFilename = `projects/${editorProjectId}-preview.jpg`;
+          Storage.put(protectedFilename, blob, {
+            level: 'protected',
+            resumable: true,
+            contentType: "image/jpeg",
+            progressCallback: (progress) => {
+              console.log(`Uploaded protected version: ${progress.loaded}/${progress.total}`);
+            },
+            errorCallback: (err) => {
+              console.error('Unexpected error while uploading protected version', err);
+            }
+          });
+  
+        }).catch(err => console.log(`UUID Gen Fetch Error: ${err}`));
+      });
   }
-
+  
   const showColorPicker = (event, index) => {
     setPickingColor(index);
     setColorPickerShowing(index);
@@ -437,6 +578,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     // console.log(editor.canvas.item(index));
     editor?.canvas.renderAll();
     setColorPickerShowing(false);
+    addToHistory();
   }
 
   const handleEdit = (event, index) => {
@@ -462,9 +604,9 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     editor?.canvas.renderAll();
   }
 
-  const handleFineTuning = (event) => {
-    // console.log(fineTuningFrames[event.target.value]);
-    const oImg = fineTuningFrames[event.target.value];
+  const handleFineTuning = (value) => {
+    // console.log(fineTuningFrames[value]);
+    const oImg = fineTuningFrames[value];
     oImg.scaleToHeight(editor.canvas.getHeight());
     oImg.scaleToWidth(editor.canvas.getWidth());
     editor?.canvas?.setBackgroundImage(oImg);
@@ -472,11 +614,10 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     const serializedCanvas = JSON.stringify(editor.canvas);
     setFutureStates([]);
     setBgFutureStates([]);
-    searchDetails.setFineTuningFrame(event.target.value)
+    searchDetails.setFineTuningFrame(value)
     setEditorStates(prevHistory => [...prevHistory, serializedCanvas]);
     setBgEditorStates(prevHistory => [...prevHistory, oImg]);
-  }
-
+}
 
 
   const handleStyle = (index, customStyles) => {
@@ -491,8 +632,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     setCanvasObjects([...editor.canvas._objects]);
     // console.log(editor.canvas.item(index));
     editor?.canvas.renderAll();
+    addToHistory();
   }
-
 
   const deleteLayer = (index) => {
     editor.canvas.remove(editor.canvas.item(index));
@@ -532,6 +673,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
               editor.canvas.remove(obj)
             }
           });
+          addToHistory();
         }
       }
     }
@@ -706,6 +848,12 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                 throw new Error('Failed to load image from URL');
             }
 
+            editor.canvas.getObjects().forEach((obj) => {
+              if (obj instanceof fabric.Path) {
+                editor.canvas.remove(obj)
+              }
+            });
+
             setSelectedImage();
             setReturnedImages([]);
 
@@ -718,9 +866,10 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
             editor.canvas.backgroundImage.center();
             editor.canvas.renderAll();
 
-            setEditorTool();
-            setMagicPrompt('Everyday scene as cinematic cinestill sample');
-            setPromptEnabled('erase');
+            // setEditorTool();
+            // setMagicPrompt('Everyday scene as cinematic cinestill sample');
+            // setPromptEnabled('erase');
+            addToHistory();
         }, {
             crossOrigin: "anonymous"
         });
@@ -731,6 +880,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         setOpen(true);
     }
 };
+
 
 
   const handleSelectResultCancel = () => {
@@ -765,20 +915,94 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   //     </Tooltip>
   //   );
   // }
+  const addToHistory = async () => {
+    try {
+        // Save the current state of the canvas for local undo/redo before any scaling or modifications
+        const serializedCanvas = JSON.stringify(editor.canvas);
+        const backgroundImage = editor.canvas.backgroundImage;
+        
+        setFutureStates([]);
+        setBgFutureStates([]);
 
-  const addToHistory = () => {
-    // console.log('there was a change')
+        setEditorStates(prevHistory => [...prevHistory, serializedCanvas]);
+        setBgEditorStates(prevHistory => [...prevHistory, backgroundImage]);
 
-    const serializedCanvas = JSON.stringify(editor.canvas);
-    const backgroundImage = editor.canvas.backgroundImage;
+        // Scale the image to fit the canvas
+        const oImg = editor.canvas.backgroundImage;
+        const imageAspectRatio = oImg.width / oImg.height;
+        const [desiredHeight, desiredWidth] = calculateEditorSize(imageAspectRatio);
+        const scale = desiredWidth / oImg.width;
+        
+        oImg.scale(scale);
+        editor.canvas.forEachObject(obj => {
+            obj.left /= scale;
+            obj.top /= scale;
+            obj.scaleY /= scale;
+            obj.scaleX /= scale;
+        });
 
-    // Clear future states as the path has now changed due to new action
-    setFutureStates([]);
-    setBgFutureStates([]);
+        // Now, save the scaled state for the S3 storage
+        const scaledSerializedCanvas = JSON.stringify(editor.canvas);
 
-    setEditorStates(prevHistory => [...prevHistory, serializedCanvas]);
-    setBgEditorStates(prevHistory => [...prevHistory, backgroundImage]);
-  }
+        // Revert the scaling to ensure local behavior remains consistent
+        editor.canvas.forEachObject(obj => {
+          obj.left *= scale;
+          obj.top *= scale;
+          obj.scaleY *= scale;
+          obj.scaleX *= scale;
+        });
+        
+        // Create a unique file name based on the editorProjectId for JSON state
+        const stateFileName = `projects/${editorProjectId}.json`;
+
+        // Upload the serialized (scaled) canvas state to S3 under the user's protected folder
+        await Storage.put(stateFileName, scaledSerializedCanvas, {
+            level: 'protected',
+            contentType: 'application/json'
+        });
+
+        // Convert the canvas to a data URL with appropriate quality and multiplier settings
+        const canvasDataURL = editor.canvas.toDataURL({
+            format: 'jpeg',
+            quality: 0.6,
+            multiplier: 1/scale
+        });
+
+        // Convert the data URL to a Blob
+        const canvasBlob = dataURLtoBlob(canvasDataURL);
+
+        // Create a unique file name based on the editorProjectId for the canvas image
+        const canvasImageFileName = `projects/${editorProjectId}-preview.jpg`;
+
+        // Upload the canvas image to S3 under the user's protected folder
+        await Storage.put(canvasImageFileName, canvasBlob, {
+            level: 'protected',
+            contentType: 'image/jpeg'
+        });
+
+    } catch (error) {
+        console.error('Failed to update editor state or canvas image in S3:', error);
+    }
+};
+
+
+  function dataURLtoBlob(dataurl) {
+    const arr = dataurl.split(',');
+    const mimeMatch = arr[0].match(/:(.*?);/);
+    if (!mimeMatch) throw new Error('Invalid data URL');
+    const mime = mimeMatch[1];
+    const bstr = atob(arr[1]);
+    const n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    for (let i = 0; i < n; i += 1) {
+        u8arr[i] = bstr.charCodeAt(i);
+    }
+    return new Blob([u8arr], {type: mime});
+}
+
+
+
+
 
   const undo = () => {
     if (editorStates.length <= 1) return; // Ensure there's at least one state to go back to
@@ -837,10 +1061,12 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         }
       };
 
+      loadEditorDefaults();
+
       // On object modification (when object's movement/editing is completed)
       editor.canvas.on('object:modified', () => {
-        addToHistory();
         removeCenterLine(); // remove the center line
+        addToHistory();
       });
 
       // On path creation
@@ -909,12 +1135,12 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   // }, [editorStates])
 
   const loadFineTuningFrames = () => {
-    if (loadingFineTuningFrames) {
-      setLoadingFineTuningFrames(false)
-      // setTimeout(() => {
-      //   setLoadingFineTuningFrames(false)
-      // }, [1000])
-    }
+    setLoadingFineTuningFrames(false)
+    // if (loadingFineTuningFrames) {
+    //   setTimeout(() => {
+    //     setLoadingFineTuningFrames(false)
+    //   }, [1000])
+    // }
   }
 
   // This is going to handle toggling our default prompt and no prompt when the user switches between erase and fill.
@@ -952,39 +1178,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
           >
             <Card sx={{ padding: { xs: 1.5, md: 2 } }}>
               <Grid container item spacing={2} justifyContent="center">
-                <Grid item xs={12} md={7} lg={7} order="1">
-                  <Grid container item mb={1.5}>
-                    <Grid item xs={12}>
-                      <Stack direction='row' width='100%' justifyContent='space-between'>
-                        <IconButton size='small' disabled={(editorStates.length <= 1)} onClick={undo}>
-                          <History />
-                        </IconButton>
-                        <IconButton size='small' disabled={(futureStates.length === 0)} onClick={redo}>
-                          <Update />
-                        </IconButton>
-                      </Stack>
-                    </Grid>
-                  </Grid>
-                  <div style={{ width: '100%', padding: 0, margin: 0, boxSizing: 'border-box', position: 'relative' }} id="canvas-container">
-                    <FabricJSCanvas onReady={onReady} />
-                    {showBrushSize &&
-                      <div style={{
-                        width: brushToolSize,
-                        height: brushToolSize,
-                        position: 'absolute',
-                        left: '50%',
-                        top: '50%',
-                        transform: 'translate(-50%, -50%)',
-                        borderRadius: '50%',
-                        background: 'red',
-                        borderColor: 'black',
-                        borderStyle: 'solid',
-                        borderWidth: '1px',
-                        boxShadow: '0 7px 10px rgba(0, 0, 0, 0.75)'
-                      }} />
-                    }
-                  </div>
-                </Grid>
                 <Grid item xs={12} md={5} lg={5} minWidth={{ xs: {}, md: '350px' }} order={{ xs: 3, md: 2 }}>
                   {/* {user && user.userDetails?.credits > 0 && (
                     <Grid item xs={12} marginBottom={2}>
@@ -1032,7 +1225,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                       </Grid>
                     </Grid>
                   )} */}
-                  <Grid item xs={12} marginBottom={2}>
+
+                  {/* <Grid item xs={12} marginBottom={2}>
                     <Button
                       variant="contained"
                       onClick={handleClickDialogOpen}
@@ -1043,91 +1237,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                     >
                       Save/Copy/Share
                     </Button>
-                  </Grid>
-                  <Grid item xs={12} marginBottom={2}>
-                    <Button
-                      variant="contained"
-                      onClick={() => addText('text', true)}
-                      fullWidth
-                      sx={{ zIndex: '50' }}
-                      startIcon={<AddCircleOutline />}
-                    >
-                      Add Layer
-                    </Button>
-                  </Grid>
-
-                  <Grid
-                    container
-                    item
-                    xs={12}
-                    maxHeight={{ xs: {}, md: `${canvasSize.height - 104}px` }}
-                    paddingX={{ xs: 0, md: 2 }}
-                    sx={{ overflowY: 'scroll', overflow: 'auto' }}
-                    flexDirection="col-reverse"
-                  >
-                    {canvasObjects &&
-                      canvasObjects.map(
-                        (object, index) =>
-                          'text' in object && (
-                            <Grid item xs={12} order={`-${index}`} key={`grid${index}`}>
-                              <Card sx={{ marginBottom: '20px', padding: '10px' }} key={`card${index}`}>
-                                <div style={{ display: 'inline', position: 'relative' }} key={`div${index}`}>
-                                  {/* <button type='button' key={`button${index}`} onClick={(event) => showColorPicker(event, index)}>Change Color</button> */}
-                                  <TextEditorControls
-                                    showColorPicker={(event) => showColorPicker(event, index)}
-                                    colorPickerShowing={colorPickerShowing}
-                                    index={index}
-                                    showFontSizePicker={(event) => showFontSizePicker(event, index)}
-                                    fontSizePickerShowing={fontSizePickerShowing}
-                                    key={`togglebuttons${index}`}
-                                    handleStyle={handleStyle}
-                                  />
-                                </div>
-                                <Fab
-                                  size="small"
-                                  aria-label="add"
-                                  sx={{
-                                    position: 'absolute',
-                                    backgroundColor: theme.palette.background.paper,
-                                    boxShadow: 'none',
-                                    top: '11px',
-                                    right: '9px',
-                                  }}
-                                  onClick={() => deleteLayer(index)}
-                                  key={`fab${index}`}
-                                >
-                                  <HighlightOffRounded color="error" />
-                                </Fab>
-                                <TextField
-                                  size="small"
-                                  key={`textfield${index}`}
-                                  multiline
-                                  type="text"
-                                  value={canvasObjects[index].text}
-                                  fullWidth
-                                  onFocus={() => handleFocus(index)}
-                                  onBlur={addToHistory}
-                                  onChange={(event) => handleEdit(event, index)}
-                                />
-                                {/* <Typography gutterBottom >
-                                                        Font Size
-                                                    </Typography>
-                                                    <Slider
-                                                        size="small"
-                                                        defaultValue={100}
-                                                        min={1}
-                                                        max={200}
-                                                        aria-label="Small"
-                                                        valueLabelDisplay="auto"
-                                                        onChange={(event) => handleFontSize(event, index)}
-                                                        onFocus={() => handleFocus(index)}
-                                                        key={`slider${index}`}
-                                                    /> */}
-                              </Card>
-                            </Grid>
-                          )
-                      )}
-                  </Grid>
+                  </Grid> */}
                 </Grid>
                 <Grid
                   item
@@ -1138,146 +1248,148 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                   marginTop={{ xs: -2.5, md: -1.5 }}
                   order={{ xs: 4, md: 4 }}
                 >
-                  <Card>
-                    <Accordion expanded={subtitlesExpanded} disableGutters>
-                      <AccordionSummary sx={{ paddingX: 1.55, textAlign: "center" }} onClick={handleSubtitlesExpand} >
-                        <Typography marginRight="auto" fontWeight="bold" color="#CACACA" fontSize={14.8}>
-                          {subtitlesExpanded ? (
-                            <Close style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
-                          ) : (
-                            <Menu style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
-                          )}
-                          {subtitlesExpanded ? 'Hide' : 'View'} Nearby Subtitles
-                        </Typography>
-                        {/* <Chip size="small" label="New!" color="success" /> */}
-                      </AccordionSummary>
-                      <AccordionDetails sx={{ paddingY: 0, paddingX: 0 }}>
-                        <List sx={{ padding: '.5em 0' }}>
-                          {surroundingFrames &&
-                            surroundingFrames
-                              .filter(
-                                (result, index, array) =>
-                                  result?.subtitle &&
-                                  (index === 0 ||
-                                    result?.subtitle.replace(/\n/g, ' ') !==
-                                    array[index - 1].subtitle.replace(/\n/g, ' '))
-                              )
-                              .map((result, index) => (
-                                <ListItem key={result.id ? result.id : `surrounding-subtitle-${index}`} disablePadding sx={{ padding: '0 0 .6em 0' }}>
-                                  <ListItemIcon sx={{ paddingLeft: '0' }}>
-                                    <Fab
-                                      size="small"
-                                      sx={{
-                                        backgroundColor: theme.palette.background.paper,
-                                        boxShadow: 'none',
-                                        marginLeft: '5px',
-                                        '&:hover': {
-                                          xs: { backgroundColor: 'inherit' },
-                                          md: {
-                                            backgroundColor:
-                                              result?.subtitle.replace(/\n/g, ' ') ===
-                                                defaultSubtitle?.replace(/\n/g, ' ')
-                                                ? 'rgba(0, 0, 0, 0)'
-                                                : 'ButtonHighlight',
+                  {surroundingFrames && surroundingFrames.length > 0 && (
+                    <Card>
+                      <Accordion expanded={subtitlesExpanded} disableGutters>
+                        <AccordionSummary sx={{ paddingX: 1.55, textAlign: "center" }} onClick={handleSubtitlesExpand} >
+                          <Typography marginRight="auto" fontWeight="bold" color="#CACACA" fontSize={14.8}>
+                            {subtitlesExpanded ? (
+                              <Close style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
+                            ) : (
+                              <Menu style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
+                            )}
+                            {subtitlesExpanded ? 'Hide' : 'View'} Nearby Subtitles
+                          </Typography>
+                          {/* <Chip size="small" label="New!" color="success" /> */}
+                        </AccordionSummary>
+                        <AccordionDetails sx={{ paddingY: 0, paddingX: 0 }}>
+                          <List sx={{ padding: '.5em 0' }}>
+                            {surroundingFrames &&
+                              surroundingFrames
+                                .filter(
+                                  (result, index, array) =>
+                                    result?.subtitle &&
+                                    (index === 0 ||
+                                      result?.subtitle.replace(/\n/g, ' ') !==
+                                      array[index - 1].subtitle.replace(/\n/g, ' '))
+                                )
+                                .map((result, index) => (
+                                  <ListItem key={result.id ? result.id : `surrounding-subtitle-${index}`} disablePadding sx={{ padding: '0 0 .6em 0' }}>
+                                    <ListItemIcon sx={{ paddingLeft: '0' }}>
+                                      <Fab
+                                        size="small"
+                                        sx={{
+                                          backgroundColor: theme.palette.background.paper,
+                                          boxShadow: 'none',
+                                          marginLeft: '5px',
+                                          '&:hover': {
+                                            xs: { backgroundColor: 'inherit' },
+                                            md: {
+                                              backgroundColor:
+                                                result?.subtitle.replace(/\n/g, ' ') ===
+                                                  defaultSubtitle?.replace(/\n/g, ' ')
+                                                  ? 'rgba(0, 0, 0, 0)'
+                                                  : 'ButtonHighlight',
+                                            },
                                           },
-                                        },
-                                      }}
-                                      onClick={() => navigate(`/editor/${result?.fid}`)}
-                                    >
-                                      {loading ? (
-                                        <CircularProgress size={20} sx={{ color: '#565656' }} />
-                                      ) : result?.subtitle.replace(/\n/g, ' ') ===
-                                        defaultSubtitle.replace(/\n/g, ' ') ? (
-                                        <GpsFixed
-                                          sx={{
-                                            color:
-                                              result?.subtitle.replace(/\n/g, ' ') ===
-                                                defaultSubtitle?.replace(/\n/g, ' ')
-                                                ? 'rgb(202, 202, 202)'
-                                                : 'rgb(89, 89, 89)',
-                                            cursor: 'pointer',
-                                          }}
-                                        />
-                                      ) : (
-                                        <GpsNotFixed sx={{ color: 'rgb(89, 89, 89)', cursor: 'pointer' }} />
-                                      )}
-                                    </Fab>
-                                  </ListItemIcon>
-                                  <ListItemText sx={{ color: 'rgb(173, 173, 173)', fontSize: '4em' }}>
-                                    <Typography
-                                      component="p"
-                                      variant="body2"
-                                      color={
-                                        result?.subtitle.replace(/\n/g, ' ') === defaultSubtitle?.replace(/\n/g, ' ')
-                                          ? 'rgb(202, 202, 202)'
-                                          : ''
-                                      }
-                                      fontWeight={
-                                        result?.subtitle.replace(/\n/g, ' ') === defaultSubtitle?.replace(/\n/g, ' ')
-                                          ? 700
-                                          : 400
-                                      }
-                                    >
-                                      {result?.subtitle.replace(/\n/g, ' ')}
-                                    </Typography>
-                                  </ListItemText>
-                                  <ListItemIcon sx={{ paddingRight: '0', marginLeft: 'auto' }}>
-                                    <Fab
-                                      size="small"
-                                      sx={{
-                                        backgroundColor: theme.palette.background.paper,
-                                        boxShadow: 'none',
-                                        marginRight: '2px',
-                                        '&:hover': {
-                                          xs: { backgroundColor: 'inherit' },
-                                          md: { backgroundColor: 'ButtonHighlight' },
-                                        },
-                                      }}
-                                      onClick={() => {
-                                        navigator.clipboard.writeText(result?.subtitle.replace(/\n/g, ' '));
-                                        handleSnackbarOpen();
-                                      }}
-                                    >
-                                      <ContentCopy sx={{ color: 'rgb(89, 89, 89)' }} />
-                                    </Fab>
-                                    <Fab
-                                      size="small"
-                                      sx={{
-                                        backgroundColor: theme.palette.background.paper,
-                                        boxShadow: 'none',
-                                        marginLeft: 'auto',
-                                        '&:hover': {
-                                          xs: { backgroundColor: 'inherit' },
-                                          md: { backgroundColor: 'ButtonHighlight' },
-                                        },
-                                      }}
-                                      onClick={() => addText(result?.subtitle.replace(/\n/g, ' '), true)}
-                                    >
-                                      <Add sx={{ color: 'rgb(89, 89, 89)', cursor: 'pointer' }} />
-                                    </Fab>
-                                    {/* <Fab
-                                                                            size="small"
-                                                                            sx={{
-                                                                                backgroundColor: theme.palette.background.paper,
-                                                                                boxShadow: "none",
-                                                                                marginLeft: '5px',
-                                                                                '&:hover': {xs: {backgroundColor: 'inherit'}, md: {backgroundColor: (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 'rgba(0, 0, 0, 0)' : 'ButtonHighlight'}}
-                                                                            }}
-                                                                            onClick={() => navigate(`/editor/${result?.fid}`)}
-                                                                        >
-                                                                        {loading ? (
-                                                                            <CircularProgress size={20} sx={{ color: "#565656"}} />
-                                                                        ) : (
-                                                                            (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle.replace(/\n/g, " ")) ? <GpsFixed sx={{ color: (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 'rgb(50, 50, 50)' : 'rgb(89, 89, 89)', cursor: "pointer"}} /> : <ArrowForward sx={{ color: "rgb(89, 89, 89)", cursor: "pointer"}} /> 
-                                                                        )}
-                                                                        </Fab> */}
-                                  </ListItemIcon>
-                                </ListItem>
-                              ))}
-                        </List>
-                      </AccordionDetails>
-                    </Accordion>
-                  </Card>
+                                        }}
+                                        onClick={() => navigate(`/editor/${result?.fid}`)}
+                                      >
+                                        {loading ? (
+                                          <CircularProgress size={20} sx={{ color: '#565656' }} />
+                                        ) : result?.subtitle.replace(/\n/g, ' ') ===
+                                          defaultSubtitle.replace(/\n/g, ' ') ? (
+                                          <GpsFixed
+                                            sx={{
+                                              color:
+                                                result?.subtitle.replace(/\n/g, ' ') ===
+                                                  defaultSubtitle?.replace(/\n/g, ' ')
+                                                  ? 'rgb(202, 202, 202)'
+                                                  : 'rgb(89, 89, 89)',
+                                              cursor: 'pointer',
+                                            }}
+                                          />
+                                        ) : (
+                                          <GpsNotFixed sx={{ color: 'rgb(89, 89, 89)', cursor: 'pointer' }} />
+                                        )}
+                                      </Fab>
+                                    </ListItemIcon>
+                                    <ListItemText sx={{ color: 'rgb(173, 173, 173)', fontSize: '4em' }}>
+                                      <Typography
+                                        component="p"
+                                        variant="body2"
+                                        color={
+                                          result?.subtitle.replace(/\n/g, ' ') === defaultSubtitle?.replace(/\n/g, ' ')
+                                            ? 'rgb(202, 202, 202)'
+                                            : ''
+                                        }
+                                        fontWeight={
+                                          result?.subtitle.replace(/\n/g, ' ') === defaultSubtitle?.replace(/\n/g, ' ')
+                                            ? 700
+                                            : 400
+                                        }
+                                      >
+                                        {result?.subtitle.replace(/\n/g, ' ')}
+                                      </Typography>
+                                    </ListItemText>
+                                    <ListItemIcon sx={{ paddingRight: '0', marginLeft: 'auto' }}>
+                                      <Fab
+                                        size="small"
+                                        sx={{
+                                          backgroundColor: theme.palette.background.paper,
+                                          boxShadow: 'none',
+                                          marginRight: '2px',
+                                          '&:hover': {
+                                            xs: { backgroundColor: 'inherit' },
+                                            md: { backgroundColor: 'ButtonHighlight' },
+                                          },
+                                        }}
+                                        onClick={() => {
+                                          navigator.clipboard.writeText(result?.subtitle.replace(/\n/g, ' '));
+                                          handleSnackbarOpen();
+                                        }}
+                                      >
+                                        <ContentCopy sx={{ color: 'rgb(89, 89, 89)' }} />
+                                      </Fab>
+                                      <Fab
+                                        size="small"
+                                        sx={{
+                                          backgroundColor: theme.palette.background.paper,
+                                          boxShadow: 'none',
+                                          marginLeft: 'auto',
+                                          '&:hover': {
+                                            xs: { backgroundColor: 'inherit' },
+                                            md: { backgroundColor: 'ButtonHighlight' },
+                                          },
+                                        }}
+                                        onClick={() => addText(result?.subtitle.replace(/\n/g, ' '), true)}
+                                      >
+                                        <Add sx={{ color: 'rgb(89, 89, 89)', cursor: 'pointer' }} />
+                                      </Fab>
+                                      {/* <Fab
+                                                                              size="small"
+                                                                              sx={{
+                                                                                  backgroundColor: theme.palette.background.paper,
+                                                                                  boxShadow: "none",
+                                                                                  marginLeft: '5px',
+                                                                                  '&:hover': {xs: {backgroundColor: 'inherit'}, md: {backgroundColor: (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 'rgba(0, 0, 0, 0)' : 'ButtonHighlight'}}
+                                                                              }}
+                                                                              onClick={() => navigate(`/editor/${result?.fid}`)}
+                                                                          >
+                                                                          {loading ? (
+                                                                              <CircularProgress size={20} sx={{ color: "#565656"}} />
+                                                                          ) : (
+                                                                              (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle.replace(/\n/g, " ")) ? <GpsFixed sx={{ color: (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 'rgb(50, 50, 50)' : 'rgb(89, 89, 89)', cursor: "pointer"}} /> : <ArrowForward sx={{ color: "rgb(89, 89, 89)", cursor: "pointer"}} /> 
+                                                                          )}
+                                                                          </Fab> */}
+                                    </ListItemIcon>
+                                  </ListItem>
+                                ))}
+                          </List>
+                        </AccordionDetails>
+                      </Accordion>
+                    </Card>
+                  )}
                 </Grid>
                 <Grid item xs={12} md={7} lg={7} marginRight={{ xs: '', md: 'auto' }} order={{ xs: 2, md: 3 }}>
                   {/* Fine Tuning Code */}
@@ -1305,47 +1417,190 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                       />
                     </Stack> */}
 
-                  <Card sx={{ width: '100%', px: 1, py: 1 }}>
-                    <Stack width='100%' display='flex'>
-                      <ToggleButtonGroup
+                    <Grid item xs={12} md={7} lg={7} order="1">
+                      <Grid container item mb={1.5}>
+                        <Grid item xs={12}>
+                          <Stack direction='row' width='100%' justifyContent='space-between' alignItems='center'>
+                            
+                            <ButtonGroup variant="contained" size="small">
+                              <IconButton disabled={(editorStates.length <= 1)} onClick={undo}>
+                                <Undo />
+                              </IconButton>
+                              <IconButton disabled={(futureStates.length === 0)} onClick={redo}>
+                                <Redo />
+                              </IconButton>
+                            </ButtonGroup>
+
+                            <Button 
+                              variant="contained" 
+                              size="medium" 
+                              startIcon={<Save />} 
+                              onClick={handleClickDialogOpen}
+                              sx={{ zIndex: '50', backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
+                            >
+                              Save/Copy/Share
+                            </Button>
+
+                          </Stack>
+                        </Grid>
+                      </Grid>
+                      <div style={{ width: '100%', padding: 0, margin: 0, boxSizing: 'border-box', position: 'relative' }} id="canvas-container">
+                        <FabricJSCanvas onReady={onReady} />
+                        {showBrushSize &&
+                          <div style={{
+                            width: brushToolSize,
+                            height: brushToolSize,
+                            position: 'absolute',
+                            left: '50%',
+                            top: '50%',
+                            transform: 'translate(-50%, -50%)',
+                            borderRadius: '50%',
+                            background: 'red',
+                            borderColor: 'black',
+                            borderStyle: 'solid',
+                            borderWidth: '1px',
+                            boxShadow: '0 7px 10px rgba(0, 0, 0, 0.75)'
+                          }} />
+                        }
+                      </div>
+                    </Grid>
+                    <Stack width='100%' spacing={1}>
+                      <Tabs
                         value={editorTool}
-                        exclusive
                         onChange={(event, value) => {
-                          setEditorTool(value)
-                          toggleDrawingMode(value)
+                          setEditorTool(value);
+                          toggleDrawingMode(value);
                         }}
-                        aria-label="text alignment"
-                        size='small'
-                        sx={{ mx: { xs: 'auto' } }}
+                        centered
+                        TabIndicatorProps={{
+                          style: {
+                            backgroundColor: 'limegreen',
+                            height: '3px',
+                          }
+                        }}
                       >
-                        <ToggleButton size='small' onClick={loadFineTuningFrames} value="fineTuning" aria-label="centered">
-                          <Stack direction='row' spacing={1} alignItems='center'>
-                            <HistoryToggleOffRounded alt="Fine Tuning" fontSize='small' />
-                            <Typography variant='body2'>
-                              Fine Tuning
-                            </Typography>
-                          </Stack>
-                        </ToggleButton>
-                        <ToggleButton size='small' onClick={(event) => { if (!user || user?.userDetails?.credits <= 0) { setMagicToolsPopoverAnchorEl(event.currentTarget); setEditorTool('') } }} value={(user && user?.userDetails?.credits > 0) ? "magicEraser" : "none"} aria-label="right aligned">
-                          <Stack direction='row' spacing={1} alignItems='center'>
-                            <AutoFixHighRounded alt="Magic Eraser" fontSize='small' />
-                            <Typography variant='body2'>
-                              Magic Tools
-                            </Typography>
-                          </Stack>
-                        </ToggleButton>
-                      </ToggleButtonGroup>
-                    </Stack>
-                    {editorTool === 'fineTuning' &&
-                      <>
-                        {loadingFineTuningFrames ?
-                          <Stack direction='row' justifyContent='center' alignItems='center' spacing={2} sx={{ mt: 2 }}>
+                        <Tab
+                          style={{
+                            opacity: editorTool === "captions" ? 1 : 0.4,
+                            color: editorTool === "captions" ? "limegreen" : "white"
+                          }}
+                          icon={
+                            <Box display="flex" alignItems="center" fontSize={13} marginX={-1}>
+                              <ClosedCaption fontSize='small' sx={{ mr: 1 }} />
+                              Captions
+                            </Box>
+                          }
+                          value="captions"
+                        />
+                        {fineTuningFrames.length > 0 && (
+                          <Tab
+                            style={{
+                              opacity: editorTool === "fineTuning" ? 1 : 0.4,
+                              color: editorTool === "fineTuning" ? "limegreen" : "white"
+                            }}
+                            icon={
+                              <Box display="flex" alignItems="center" fontSize={13} marginX={-1}>
+                                <HistoryToggleOffRounded fontSize='small' sx={{ mr: 1 }} />
+                                Timeshift
+                              </Box>
+                            }
+                            value="fineTuning"
+                            onClick={loadFineTuningFrames}
+                          />
+                        )}
+                        <Tab
+                          style={{
+                            opacity: editorTool === "magicEraser" ? 1 : 0.4,
+                            color: editorTool === "magicEraser" ? "limegreen" : "white"
+                          }}
+                          icon={
+                            <Box display="flex" alignItems="center" fontSize={13} marginX={-1}>
+                              <AutoFixHighRounded fontSize='small' sx={{ mr: 1 }} />
+                              Magic
+                            </Box>
+                          }
+                          value="magicEraser"
+                          onClick={(event) => {
+                            if (!user || user?.userDetails?.credits <= 0) { 
+                              setMagicToolsPopoverAnchorEl(event.currentTarget);
+                            }
+                          }}
+                        />
+                      </Tabs>
+
+                      {editorTool === 'captions' && (
+                        <>
+                            {canvasObjects &&
+                              canvasObjects.map(
+                                (object, index) =>
+                                  'text' in object && (
+                                    <Grid item xs={12} order={index} key={`grid${index}`} marginBottom={1}>
+                                        <div style={{ display: 'inline', position: 'relative' }} key={`div${index}`}>
+                                            <TextEditorControls
+                                                showColorPicker={(event) => showColorPicker(event, index)}
+                                                colorPickerShowing={colorPickerShowing}
+                                                index={index}
+                                                showFontSizePicker={(event) => showFontSizePicker(event, index)}
+                                                fontSizePickerShowing={fontSizePickerShowing}
+                                                key={`togglebuttons${index}`}
+                                                handleStyle={handleStyle}
+                                            />
+                                        </div>
+                                        {/* Container to place TextField and Fab button beside each other */}
+                                        <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                                            <TextField
+                                                size="small"
+                                                key={`textfield${index}`}
+                                                multiline
+                                                type="text"
+                                                value={canvasObjects[index].text}
+                                                fullWidth
+                                                onFocus={() => handleFocus(index)}
+                                                onBlur={addToHistory}
+                                                onChange={(event) => handleEdit(event, index)}
+                                                placeholder='(type your caption)'
+                                            />
+
+                                            {/* Adjusted style for the Fab button */}
+                                            <Fab
+                                                size="small"
+                                                aria-label="add"
+                                                sx={{
+                                                    marginLeft: '10px', // Added margin for spacing
+                                                    backgroundColor: theme.palette.background.paper,
+                                                    boxShadow: 'none'
+                                                }}
+                                                onClick={() => deleteLayer(index)}
+                                                key={`fab${index}`}
+                                            >
+                                                <HighlightOffRounded color="error" />
+                                            </Fab>
+                                        </div>
+                                  </Grid>
+                                )
+                              )
+                            }
+                            <Grid item xs={12} order={canvasObjects?.length+1} key="addLayerButton">
+                              <Button
+                                variant="contained"
+                                onClick={() => addText('text', true)}
+                                fullWidth
+                                sx={{ zIndex: '50', marginY: '20px' }}
+                                startIcon={<AddCircleOutline />}
+                              >
+                                { canvasObjects?.length > 0 ? "Add another caption" : "Add a caption" }
+                              </Button>
+                            </Grid>
+                        </>
+                      )}
+
+                      {editorTool === 'fineTuning' && (
+                        loadingFineTuningFrames ? (
+                          <Stack direction='row' justifyContent='center' alignItems='center' spacing={2}>
                             <CircularProgress size={30} />
-                            <Typography variant='body1'>
-                              Loading frames...
-                            </Typography>
+                            <Typography variant='body1'>Loading frames...</Typography>
                           </Stack>
-                          :
+                        ) : (
                           <Slider
                             size="small"
                             defaultValue={4}
@@ -1354,101 +1609,101 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                             value={fineTuningValue}
                             aria-label="Small"
                             valueLabelDisplay="auto"
-                            onChange={(event) => {
-                              handleFineTuning(event);
-                              setFineTuningValue(event.target.value);
+                            onChange={(event, value) => {
+                              handleFineTuning(value);
+                              setFineTuningValue(value);
                             }}
                             valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
                             marks
                             track={false}
-                            sx={{ mt: 2 }}
                           />
-                        }
-                      </>
-                    }
-                    {editorTool === 'magicEraser' &&
-                      <>
-                        <Tabs
-                          value={promptEnabled}
-                          onChange={(event, value) => { setPromptEnabled(value) }}
-                          centered
-                          TabIndicatorProps={{
-                            style: {
-                              backgroundColor: 'limegreen',
-                              top: '60px',  // Adjusts the position of the indicator
-                              height: '3px' // Adjusts the thickness of the indicator
-                            }
-                          }}
-                        >
-                          <Tab value="erase" label="Eraser" icon={<AutoFixHigh fontSize='small' />} iconPosition='start' style={{ color: promptEnabled === 'erase' ? 'limegreen' : undefined }} />
-                          <Tab value="fill" label="Fill" icon={<FormatColorFill fontSize='small' />} iconPosition='start' style={{ color: promptEnabled === 'fill' ? 'limegreen' : undefined }} />
-                        </Tabs>
+                        )
+                      )}
 
+                      {editorTool === 'magicEraser' && (
+                        <>
+                          <Tabs
+                            value={promptEnabled}
+                            onChange={(event, value) => {
+                              setPromptEnabled(value);
+                            }}
+                            centered
+                            TabIndicatorProps={{
+                              style: {
+                                backgroundColor: 'limegreen',
+                                height: '3px'
+                              }
+                            }}
+                          >
+                            <Tab
+                              icon={<AutoFixHigh fontSize='small' />}
+                              label="Eraser"
+                              value="erase"
+                              style={{ color: promptEnabled === 'erase' ? 'limegreen' : undefined }}
+                            />
+                            <Tab
+                              icon={<FormatColorFill fontSize='small' />}
+                              label="Fill"
+                              value="fill"
+                              style={{ color: promptEnabled === 'fill' ? 'limegreen' : undefined }}
+                            />
+                          </Tabs>
 
-                        <Stack direction='row' alignItems='center' spacing={2} sx={{ mt: 2 }}>
-                          <Slider
-                            size="small"
-                            min={1}
-                            max={100}
-                            value={brushToolSize}
-                            aria-label="Small"
-                            valueLabelDisplay='auto'
-                            sx={{
-                              marginRight: 0.5
-                            }}
-                            onChange={(event) => {
-                              setShowBrushSize(true)
-                              handleBrushToolSize(event.target.value);
-                            }}
-                            onChangeCommitted={() => {
-                              setShowBrushSize(false)
-                            }}
-                            // valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
-                            // marks
-                            track={false}
-                          />
-                          <Button variant='contained' onClick={() => {
-                            setEditorTool()
-                            toggleDrawingMode('fineTuning')
-                          }}>
-                            Cancel
-                          </Button>
-                          <Button 
+                          <Stack direction='row' alignItems='center' spacing={2}>
+                            <Slider
+                              size="small"
+                              min={1}
+                              max={100}
+                              value={brushToolSize}
+                              aria-label="Small"
+                              valueLabelDisplay='auto'
+                              sx={{ marginRight: 0.5 }}
+                              onChange={(event, value) => {
+                                setShowBrushSize(true);
+                                handleBrushToolSize(value);
+                              }}
+                              onChangeCommitted={() => {
+                                setShowBrushSize(false);
+                              }}
+                              track={false}
+                            />
+                            <Button variant='contained' onClick={() => {
+                              setEditorTool('captions');
+                              toggleDrawingMode('fineTuning');
+                            }}>Cancel</Button>
+                            <Button 
                               variant='contained' 
-                              style={{ backgroundColor: 'limegreen', color: 'white' }} // green background with white text
-                              onClick={
-                                  () => {
-                                    exportDrawing();
-                                    toggleDrawingMode('fineTuning');
-                                  }
-                              }>
-                              Apply
-                          </Button>
-                        </Stack>
-                        {promptEnabled === "fill" &&
-                          <TextField
-                            value={magicPrompt}
-                            onChange={(event) => {
-                              setMagicPrompt(event.target.value);
-                            }}
-                            fullWidth
-                            sx={{
-                              mt: 3,
-                              '& .MuiInputLabel-root.Mui-focused': { // targets label when focused
-                                color: 'limegreen',
-                              },
-                              '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': { // targets border when focused
-                                borderColor: 'limegreen',
-                              },
-                            }}
-                            label='Magic Fill Prompt'
-                          />
+                              style={{ backgroundColor: 'limegreen', color: 'white' }}
+                              onClick={() => {
+                                exportDrawing();
+                                // toggleDrawingMode('fineTuning');
+                              }}
+                            >Apply</Button>
+                          </Stack>
 
-                        }
-                      </>
+                          {promptEnabled === "fill" && (
+                            <TextField
+                              value={magicPrompt}
+                              onChange={(event) => {
+                                setMagicPrompt(event.target.value);
+                              }}
+                              fullWidth
+                              sx={{
+                                mt: 3,
+                                '& .MuiInputLabel-root.Mui-focused': {
+                                  color: 'limegreen',
+                                },
+                                '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: 'limegreen',
+                                },
+                              }}
+                              label='Magic Fill Prompt'
+                            />
+                          )}
+                        </>
+                      )}
 
-                    }
-                  </Card>
+                    </Stack>
 
                   {/* <button type='button' onClick={addImage}>Add Image</button>
                                     <button type='button' onClick={saveProject}>Save Project</button>
@@ -1478,17 +1733,17 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                         </a>
                       </Grid>
                     ))}
-                  <Grid item xs={12}>
-                    {episodeDetails && (
-                      <Button
-                        variant="contained"
-                        fullWidth
-                        href={`/episode/${episodeDetails[0]}/${episodeDetails[1]}/${episodeDetails[2]}/${episodeDetails[3]}`}
-                      >
-                        View Episode
-                      </Button>
-                    )}
-                  </Grid>
+                    <Grid item xs={12}>
+                        {episodeDetails && episodeDetails.length > 0 && (
+                            <Button
+                                variant="contained"
+                                fullWidth
+                                href={`/episode/${episodeDetails[0]}/${episodeDetails[1]}/${episodeDetails[2]}/${episodeDetails[3]}`}
+                            >
+                                View Episode
+                            </Button>
+                        )}
+                    </Grid>
                 </Grid>
               </Grid>
             </Card>
@@ -1556,6 +1811,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
               valueLabelDisplay="auto"
               onChange={(event) => handleFontSize(event, fontSizePickerShowing)}
               onFocus={() => handleFocus(fontSizePickerShowing)}
+              onBlur={addToHistory}
             />
           </StyledLayerControlCard>
         </Popover>
@@ -1732,7 +1988,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         <Button 
           variant='contained' 
           onClick={() => {
-            setEditorTool()
+            setEditorTool('captions')
             toggleDrawingMode('fineTuning')
             handleSelectResultCancel()
           }}

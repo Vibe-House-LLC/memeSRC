@@ -1,52 +1,131 @@
-import { useState, useEffect } from 'react';
+import { API, graphqlOperation, Storage } from 'aws-amplify';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { Container, Typography, Breadcrumbs, Link, Card, CardActionArea, CardContent, Box, Grid, Paper } from '@mui/material';
+import { Container, Typography, Breadcrumbs, Link, Card, CardActionArea, CardContent, Box, Grid, Paper, Input, Chip } from '@mui/material';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import SearchIcon from '@mui/icons-material/Search';
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
 import BasePage from './BasePage';
+import { createEditorProject } from '../graphql/mutations';
 
 export default function EditorNewProjectPage() {
-  // Add more states and functions according to your requirements.
-  // These will be used to hold and handle data for your new page.
+  const [uploadedImage, setUploadedImage] = useState(null);
+  const navigate = useNavigate();
 
-  // useState declarations here
+  const handleImageUpload = async (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = async function() {
+        const base64data = reader.result;
+        setUploadedImage(base64data);
+  
+        // Create an EditorProject object in GraphQL with an empty state value
+        try {
+          const projectInput = {
+            title: "Same Project Saving",
+            state: JSON.stringify({}) // empty state value
+          };
+  
+          const result = await API.graphql(graphqlOperation(createEditorProject, { input: projectInput }));
+          const newProjectId = result.data.createEditorProject.id;
 
-  useEffect(() => {
-    // Any initial data loading operations can go here.
+          // Upload 'preview' to Storage
+          const key = `projects/${newProjectId}-preview.jpg`;
+          await Storage.put(key, file, {
+            level: 'protected', 
+            contentType: file.type
+          });
 
-    // API calls here
-  }, []);
+          // Navigate to the editor with the newProjectId while passing the uploaded image data
+          navigate(`/editor/project/${newProjectId}`, { state: { uploadedImage: base64data } });
+  
+        } catch (error) {
+          console.error('Failed to create an EditorProject or upload to Storage:', error);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
+  // Rest of your component rendering logic remains the same...
   return (
     <BasePage
-    pageTitle="New Project"
-    breadcrumbLinks={[
-      { path: "/", name: "Home" },
-      { path: "/editor/", name: "Editor" },
-      { path: "/editor/new", name: "New" }
-    ]}
-  >
-    <Grid container justifyContent="center" spacing={2} sx={{ mt: 4 }}>
+      pageTitle="New Project"
+      breadcrumbLinks={[
+        { path: "/", name: "Home" },
+        { path: "/editor/projects", name: "Editor" },
+        { path: "/editor/new", name: "New" }
+      ]}
+    >
+      <Grid container justifyContent="center" spacing={2} sx={{ mt: 4 }}>
           <Grid item xs={12} sm={6} md={4} lg={3}>
-            <Paper
-              elevation={6}
-              sx={{
-                p: 3,
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-                alignItems: 'center',
-                height: '100%',
-              }}
-            >
-              <CloudUploadIcon sx={{ fontSize: 60, mb: 2 }} />
-              <Typography variant="h5" component="div" gutterBottom>
-                Upload Image
-              </Typography>
-              <Typography color="text.secondary">Choose your own image</Typography>
-            </Paper>
+            <label htmlFor="upload-image" style={{ width: '100%', cursor: 'pointer' }}>
+              <CardActionArea component="div">
+                <Paper
+                  elevation={6}
+                  sx={{
+                    p: 3,
+                    position: 'relative',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '100%',
+                  }}
+                >
+                  <Chip 
+                    label="New!" 
+                    color="success" 
+                    size="small"
+                    sx={{ 
+                      position: 'absolute',
+                      top: 20,
+                      left: 20,
+                      fontWeight: 'bold'
+                    }} 
+                  />
+                  <CloudUploadIcon sx={{ fontSize: 60, mb: 2 }} />
+                  <Typography variant="h5" component="div" gutterBottom>
+                    Upload Image
+                  </Typography>
+                  <Typography color="text.secondary">Choose your own image</Typography>
+                </Paper>
+              </CardActionArea>
+              {/* Hidden input for the image upload */}
+              <Input
+                type="file"
+                id="upload-image"
+                inputProps={{ accept: "image/png, image/jpeg" }}
+                style={{ display: 'none' }}
+                onChange={handleImageUpload}
+              />
+            </label>
+          </Grid>
+
+
+          <Grid item xs={12} sm={6} md={4} lg={3}>
+            <CardActionArea onClick={() => navigate('/')}>
+              <Paper
+                elevation={6}
+                sx={{
+                  p: 3,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  height: '100%',
+                }}
+              >
+                <SearchIcon sx={{ fontSize: 60, mb: 2 }} />
+                <Typography variant="h5" component="div" gutterBottom>
+                  Search Images
+                </Typography>
+                <Typography color="text.secondary">Find 35 million on memeSRC</Typography>
+              </Paper>
+            </CardActionArea>
           </Grid>
 
           <Grid item xs={12} sm={6} md={4} lg={3}>
@@ -54,33 +133,26 @@ export default function EditorNewProjectPage() {
               elevation={6}
               sx={{
                 p: 3,
+                position: 'relative', // Make Paper position relative
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'center',
                 alignItems: 'center',
                 height: '100%',
+                opacity: 0.5,
               }}
             >
-              <SearchIcon sx={{ fontSize: 60, mb: 2 }} />
-              <Typography variant="h5" component="div" gutterBottom>
-                Search Images
-              </Typography>
-              <Typography color="text.secondary">Find 35 million on memeSRC</Typography>
-            </Paper>
-          </Grid>
-
-          <Grid item xs={12} sm={6} md={4} lg={3}>
-            <Paper
-              elevation={6}
-              sx={{
-                p: 3,
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-                alignItems: 'center',
-                height: '100%',
-              }}
-            >
+              <Chip 
+                label="coming soon" 
+                color="info" 
+                size="small"
+                sx={{ 
+                  position: 'absolute', // Position chip absolutely
+                  top: 20,  // Adjust as needed
+                  left: 20, // Adjust as needed
+                  fontWeight: 'bold'
+                }} 
+              />
               <AutoFixHighIcon sx={{ fontSize: 60, mb: 2 }} />
               <Typography variant="h5" component="div" gutterBottom>
                 Generate Image

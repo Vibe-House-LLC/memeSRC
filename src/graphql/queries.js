@@ -865,3 +865,55 @@ export const listMagicResults = /* GraphQL */ `
     }
   }
 `;
+export const getEditorProject = /* GraphQL */ `
+  query GetEditorProject($id: ID!) {
+    getEditorProject(id: $id) {
+      id
+      user {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      title
+      state
+      createdAt
+      updatedAt
+      editorProjectUserId
+      __typename
+    }
+  }
+`;
+export const listEditorProjects = /* GraphQL */ `
+  query ListEditorProjects(
+    $filter: ModelEditorProjectFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listEditorProjects(filter: $filter, limit: $limit, nextToken: $nextToken) {
+      items {
+        id
+        title
+        state
+        createdAt
+        updatedAt
+        editorProjectUserId
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
