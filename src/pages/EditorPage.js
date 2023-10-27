@@ -872,6 +872,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
             editor.canvas.renderAll();
 
             setEditorTool('captions');
+            toggleDrawingMode('captions');
             setMagicPrompt('Everyday scene as cinematic cinestill sample');
             // setPromptEnabled('erase');
             addToHistory();
@@ -1424,7 +1425,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                             />
                             <Button variant='contained' onClick={() => {
                               setEditorTool('captions');
-                              toggleDrawingMode('fineTuning');
+                              toggleDrawingMode('captions');
                             }}>Cancel</Button>
                             <Button 
                               variant='contained' 
