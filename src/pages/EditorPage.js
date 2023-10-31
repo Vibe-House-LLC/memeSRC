@@ -1177,11 +1177,11 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const handleNavigate = (result) => {
     navigate(`/editor/${result?.fid}`);
     setOpenNavWithoutSavingDialog(false);
-    // editor.canvas.discardActiveObject().requestRenderAll();
-    // setFutureStates([]);
-    // setBgFutureStates([]);
-    // setEditorStates([]);
-    // setBgEditorStates([]);
+    editor.canvas.discardActiveObject().requestRenderAll();
+    setFutureStates([]);
+    setBgFutureStates([]);
+    setEditorStates([]);
+    setBgEditorStates([]);
   };
 
   // ------------------------------------------------------------------------
