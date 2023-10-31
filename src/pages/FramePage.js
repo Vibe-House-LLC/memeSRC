@@ -32,7 +32,7 @@ import {
   Box,
   Link,
 } from '@mui/material';
-import { Add, Close, ContentCopy, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu, Visibility, VisibilityOff } from '@mui/icons-material';
+import { Add, BrowseGallery, Close, ContentCopy, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu, OpenInBrowser, OpenInNew, Visibility, VisibilityOff } from '@mui/icons-material';
 import useSearchDetails from '../hooks/useSearchDetails';
 import getFrame from '../utils/frameHandler';
 
@@ -364,6 +364,11 @@ export default function FramePage({ shows = [] }) {
         <Grid container spacing={2} direction="row" alignItems="center">
 
           <Grid item xs={12} md={6}>
+
+            <Typography variant='h2'>
+              {showTitle}
+            </Typography>
+            
             <Card>
               {renderFineTuningFrames()}
             </Card>
@@ -474,12 +479,15 @@ export default function FramePage({ shows = [] }) {
                     <Card style={{ boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
                       <CardContent>
                         <Typography variant="h4" component="div" style={{ marginBottom: '0.5rem' }} textAlign='left'>
-                          {showTitle}
-                          <Chip
+                         "Episode Name Goes Here"
+                        </Typography>
+                        <Chip
                             size='small'
-                            label={`S${fid.split('-')[1]} E${fid.split('-')[2]}`}
+                            icon={<OpenInNew />}
+                            label={`Season ${fid.split('-')[1]} / Episode ${fid.split('-')[2]}`}
+                            onClick={() => navigate(`/episode/${episodeDetails[0]}/${episodeDetails[1]}/${episodeDetails[2]}/${episodeDetails[3]}`)}
                             sx={{
-                              marginLeft: '5px',
+                              marginBottom: '15px',
                               "& .MuiChip-label": {
                                 fontWeight: 'bold',
                               },
@@ -487,20 +495,20 @@ export default function FramePage({ shows = [] }) {
                           />
                           <Chip
                             size='small'
+                            icon={<BrowseGallery />}
                             label={frameToTimecode(fid.split('-')[3], 9)}
                             sx={{
+                              marginBottom: '15px',
                               marginLeft: '5px',
                               "& .MuiChip-label": {
                                 fontWeight: 'bold',
                               },
                             }}
                           />
-                        </Typography>
 
                         {loading ?
                           <Skeleton variant='text' height={25} width={'max(100px, 50%)'} />
                           :
-
                           <Stack direction='row' spacing={1} alignItems='center' sx={{color: theme => theme.palette.grey[300]}}>
                             {showText ? <IconButton size='small' onClick={() => { setShowText(!showText) }}><Visibility sx={{ fontSize: 20 }} /></IconButton> : <IconButton size='small' onClick={() => { setShowText(!showText) }}><VisibilityOff sx={{ fontSize: 20, color: showText ? "text.secondary" : "#737373" }} /></IconButton>}
                             <Link onClick={() => { setShowText(!showText) }} sx={{textDecoration: 'none', cursor: 'pointer'}}>
