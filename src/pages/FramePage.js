@@ -530,10 +530,7 @@ export default function FramePage({ shows = [] }) {
                             :
                             <Stack direction='row' spacing={1} alignItems='center'>
                               {showText ? 
-                                <>
-                                  <IconButton size='small' onClick={() => { setShowText(!showText) }}>
-                                    <VisibilityOff sx={{ fontSize: 20 }} />
-                                  </IconButton>
+                                <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
                                   <TextField
                                     autoFocus
                                     multiline
@@ -542,27 +539,28 @@ export default function FramePage({ shows = [] }) {
                                     size="small"
                                     value={frameData.subtitle}
                                     onChange={(e) => setFrameData({ ...frameData, subtitle: e.target.value })}
-                                    sx={{ ml: 1 }}
+                                    sx={{ margin: -1 }}
                                   />
-                                </>
+                                  <IconButton size='small' sx={{ marginLeft: 2, marginRight: -1.5 }} onClick={() => { setShowText(!showText) }}>
+                                    <VisibilityOff sx={{ fontSize: 20 }} />
+                                  </IconButton>
+                                </Box>
                                 :
-                                <>
-                                  <Link onClick={() => { setShowText(!showText) }} sx={{textDecoration: 'none', cursor: 'pointer'}}>
-                                      <IconButton size='small' onClick={() => { setShowText(!showText) }}>
-                                        <Edit sx={{ fontSize: 20 }} />
-                                      </IconButton>
-                                  </Link>
-                                  <Link onClick={() => { setShowText(!showText) }} sx={{textDecoration: 'none', cursor: 'pointer'}}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                                  <Box sx={{ flexGrow: 1, cursor: 'pointer' }} onClick={() => setShowText(!showText)}>
                                     <Typography 
-                                        variant="subtitle1" 
-                                        style={{ marginBottom: '0rem', whiteSpace: 'pre-line' }}
-                                        textAlign='left' 
-                                        sx={{ color: "text.secondary" }} // "#737373"
+                                      variant="subtitle1" 
+                                      style={{ marginBottom: '0rem', whiteSpace: 'pre-line' }}
+                                      textAlign='left' 
+                                      sx={{ color: "text.secondary" }}
                                     > 
-                                        {frameData.subtitle ? frameData.subtitle : '(no subtitle)'}
+                                      {frameData.subtitle ? frameData.subtitle : '(no subtitle)'}
                                     </Typography>
-                                  </Link>
-                                </>
+                                  </Box>
+                                  <IconButton size='small' onClick={() => setShowText(!showText)} sx={{ cursor: 'pointer', marginLeft: 2, marginRight: -1.5 }}>
+                                    <Edit sx={{ fontSize: 20 }} />
+                                  </IconButton>
+                                </Box>
                               }
                               {/* <IconButton size='small' onClick={() => { setShowText(!showText) }}>
                                 {showText ? <VisibilityOff sx={{ fontSize: 20 }} /> : <Edit sx={{ fontSize: 20 }} />}
