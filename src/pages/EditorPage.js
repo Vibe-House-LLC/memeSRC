@@ -1729,7 +1729,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                       fullWidth
                       sx={{ zIndex: '50', backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
                       startIcon={<Share />}
-                      size="medium"
+                      size="large"
                     >
                       Save/Copy/Share
                     </Button>
