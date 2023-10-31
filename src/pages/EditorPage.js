@@ -68,7 +68,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const [hasFabricPaths, setHasFabricPaths] = useState(false);
   const [openNavWithoutSavingDialog, setOpenNavWithoutSavingDialog] = useState(false);
   const [selectedNavItemFid, setSelectedNavItemFid] = useState(null);
-  
+
   // console.log(searchDetails.fineTuningFrame)
   // Get everything ready
   const { fid, editorProjectId } = useParams();
@@ -464,9 +464,9 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       setImageScale(x / desiredWidth);
       resizeCanvas(desiredWidth, desiredHeight)
       editor?.canvas.setBackgroundImage(oImg);
-      if (defaultSubtitle) {
+      // if (defaultSubtitle) {
         addText(defaultSubtitle)
-      }
+      // }
       setImageLoaded(true)
     }
   }, [defaultFrame, defaultSubtitle])
