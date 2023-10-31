@@ -3,6 +3,7 @@ import { Navigate, Link as RouterLink, useNavigate, useParams } from 'react-rout
 import { useEffect, useState } from 'react';
 import { API } from 'aws-amplify';
 import { styled } from '@mui/material/styles';
+import { useTheme } from '@emotion/react';
 import {
   AppBar,
   Toolbar,
@@ -32,6 +33,8 @@ import {
   Box,
   Link,
   TextField,
+  Snackbar,
+  Alert,
 } from '@mui/material';
 import { Add, ArrowBack, ArrowBackIos, ArrowForward, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu, OpenInBrowser, OpenInNew, Visibility, VisibilityOff } from '@mui/icons-material';
 import useSearchDetails from '../hooks/useSearchDetails';
@@ -73,6 +76,18 @@ export default function FramePage({ shows = [] }) {
   const [episodeDetails, setEpisodeDetails] = useState();
   const [imgSrc, setImgSrc] = useState();
   const [showText, setShowText] = useState(false);
+
+  const [snackbarOpen, setSnackBarOpen] = useState(false);
+
+  const theme = useTheme();
+
+  const handleSnackbarOpen = () => {
+    setSnackBarOpen(true);
+  }
+
+  const handleSnackbarClose = () => {
+    setSnackBarOpen(false);
+  }
 
   const getCurrentQueryString = () => {
     const currentUrl = window.location.href;
@@ -450,106 +465,9 @@ export default function FramePage({ shows = [] }) {
               {renderFineTuningFrames()}
             </Card>
 
-            {isMd &&
-              <Grid item xs={12} mt={3}>
-                <Card>
-                  <Accordion expanded={subtitlesExpanded} disableGutters>
-                    <AccordionSummary sx={{ paddingX: 1.55, textAlign: 'center' }} onClick={handleSubtitlesExpand}>
-                      <Typography marginRight="auto" fontWeight="bold" color="#CACACA" fontSize={14.8}>
-                        {subtitlesExpanded ? (
-                          <Close style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
-                        ) : (
-                          <Menu style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
-                        )}
-                        {subtitlesExpanded ? 'Hide' : 'View'} Nearby Subtitles
-                      </Typography>
-                      {/* <Chip size="small" label="New!" color="success" /> */}
-                    </AccordionSummary>
-                    <AccordionDetails sx={{ paddingY: 0, paddingX: 0 }}>
-                    {/* {subtitlesLoading ? (
-                        <CircularProgress />
-                      ) : ( */}
-                      <List sx={{ padding: '.5em 0' }}>
-                        {surroundingFrames &&
-                          surroundingFrames
-                            .filter(
-                              (result, index, array) =>
-                                result?.subtitle &&
-                                (index === 0 ||
-                                  result?.subtitle.replace(/\n/g, ' ') !==
-                                  array[index - 1].subtitle.replace(/\n/g, ' '))
-                            )
-                            .map((result, index) => (
-                              <ListItem key={result.id ? result.id : `surrounding-subtitle-${index}`} disablePadding sx={{ padding: '0 0 .6em 0' }}>
-                                <ListItemIcon sx={{ paddingLeft: '0' }}>
-                                  <Fab
-                                    size="small"
-                                    sx={{
-                                      backgroundColor: theme => theme.palette.background.paper,
-                                      boxShadow: 'none',
-                                      marginLeft: '5px',
-                                      '&:hover': {
-                                        xs: { backgroundColor: 'inherit' },
-                                        md: {
-                                          backgroundColor:
-                                            result?.subtitle.replace(/\n/g, ' ') ===
-                                              frameData?.subtitle?.replace(/\n/g, ' ')
-                                              ? 'rgba(0, 0, 0, 0)'
-                                              : 'ButtonHighlight',
-                                        },
-                                      },
-                                    }}
-                                    onClick={() => navigate(`/frame/${result?.fid}`)}
-                                  >
-                                    {loading ? (
-                                      <CircularProgress size={20} sx={{ color: '#565656' }} />
-                                    ) : result?.subtitle.replace(/\n/g, ' ') ===
-                                      frameData?.subtitle?.replace(/\n/g, ' ') ? (
-                                      <GpsFixed
-                                        sx={{
-                                          color:
-                                            result?.subtitle.replace(/\n/g, ' ') ===
-                                              frameData?.subtitle?.replace(/\n/g, ' ')
-                                              ? 'rgb(202, 202, 202)'
-                                              : 'rgb(89, 89, 89)',
-                                          cursor: 'pointer',
-                                        }}
-                                      />
-                                    ) : (
-                                      <GpsNotFixed sx={{ color: 'rgb(89, 89, 89)', cursor: 'pointer' }} />
-                                    )}
-                                  </Fab>
-                                </ListItemIcon>
-                                <ListItemText sx={{ color: 'rgb(173, 173, 173)', fontSize: '4em' }}>
-                                  <Typography
-                                    component="p"
-                                    variant="body2"
-                                    color={
-                                      result?.subtitle.replace(/\n/g, ' ') === frameData?.subtitle?.replace(/\n/g, ' ')
-                                        ? 'rgb(202, 202, 202)'
-                                        : ''
-                                    }
-                                    fontWeight={
-                                      result?.subtitle.replace(/\n/g, ' ') === frameData?.subtitle?.replace(/\n/g, ' ')
-                                        ? 700
-                                        : 400
-                                    }
-                                  >
-                                    {result?.subtitle.replace(/\n/g, ' ')}
-                                  </Typography>
-                                </ListItemText>
-                                <ListItemIcon sx={{ paddingRight: '0', marginLeft: 'auto' }} />
-                              </ListItem>
-                            ))}
-                      </List>
-                      {/* )} */}
-                    </AccordionDetails>
-                  </Accordion>
-                </Card>
-              </Grid>
-            }
                 <Grid item xs={12} md={12}>
-                  <Box sx={{ mt: isMd ? 0 : '1rem', width: isMd ? 'inherit' : '100%' }}>
+                  {/* <Box sx={{ mt: isMd ? 0 : '1rem', width: isMd ? 'inherit' : '100%' }}> */}
+                  <Box sx={{ mt: '1rem', width: '100%' }}>
                     <Card style={{ boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
                       <CardContent>
                         {/* <Typography variant="h3" component="div" style={{ marginBottom: '0.5rem' }} textAlign='left'>
@@ -604,7 +522,7 @@ export default function FramePage({ shows = [] }) {
                 </Grid>
                 <Button
                   size="medium"
-                  fullWidth={!isMd}
+                  fullWidth
                   variant="contained"
                   to={`/editor/${fid}${getCurrentQueryString()}`}
                   onClick={() => setShowText(!showText)}
@@ -616,12 +534,12 @@ export default function FramePage({ shows = [] }) {
 
                 <Button
                   size="medium"
-                  fullWidth={!isMd}
+                  fullWidth
                   variant="contained"
                   to={`/editor/${fid}${getCurrentQueryString()}`}
                   component={RouterLink}
-                  // sx={{ my: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
-                  sx={{ my: 2 }}
+                  sx={{ my: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
+                  // sx={{ my: 2 }}
                   startIcon={<Edit />}
                 >
                   Advanced Editor
@@ -709,6 +627,26 @@ export default function FramePage({ shows = [] }) {
                                     {result?.subtitle.replace(/\n/g, ' ')}
                                   </Typography>
                                 </ListItemText>
+                                <ListItemIcon sx={{ paddingRight: '0', marginLeft: 'auto' }}>
+                                      <Fab
+                                        size="small"
+                                        sx={{
+                                          backgroundColor: theme.palette.background.paper,
+                                          boxShadow: 'none',
+                                          marginRight: '2px',
+                                          '&:hover': {
+                                            xs: { backgroundColor: 'inherit' },
+                                            md: { backgroundColor: 'ButtonHighlight' },
+                                          },
+                                        }}
+                                        onClick={() => {
+                                          navigator.clipboard.writeText(result?.subtitle.replace(/\n/g, ' '));
+                                          handleSnackbarOpen();
+                                        }}
+                                      >
+                                        <ContentCopy sx={{ color: 'rgb(89, 89, 89)' }} />
+                                      </Fab>
+                                    </ListItemIcon>
                               </ListItem>
                             ))}
                       </List>
@@ -716,6 +654,18 @@ export default function FramePage({ shows = [] }) {
                   </Accordion>
                 </Card>
           </Grid>
+
+          <Snackbar
+                        open={snackbarOpen}
+                        autoHideDuration={2000}
+                        severity="success"
+                        onClose={handleSnackbarClose}
+                        message="Copied to clipboard!"
+                      >
+                        <Alert onClose={handleSnackbarClose} severity="success" sx={{ width: '100%' }}>
+                          Copied to clipboard!
+                        </Alert>
+                      </Snackbar>
 
           <Grid item xs={12}>
             <Typography variant="h6">Surrounding Frames</Typography>
