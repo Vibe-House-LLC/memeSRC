@@ -515,6 +515,7 @@ export default function FramePage({ shows = [] }) {
                                     <VisibilityOff sx={{ fontSize: 20 }} />
                                   </IconButton>
                                   <TextField
+                                    autoFocus
                                     fullWidth
                                     variant="outlined"
                                     size="small"
