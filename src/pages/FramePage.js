@@ -386,9 +386,35 @@ export default function FramePage({ shows = [] }) {
 
           <Grid item xs={12} md={12}>
 
-            <Typography variant='h2'>
+            <Typography variant='h2' marginBottom={2}>
               {showTitle}
             </Typography>
+
+            <Chip
+                          size='small'
+                          icon={<OpenInNew />}
+                          label={`Season ${fid.split('-')[1]} / Episode ${fid.split('-')[2]}`}
+                          onClick={() => navigate(`/episode/${episodeDetails[0]}/${episodeDetails[1]}/${episodeDetails[2]}/${episodeDetails[3]}`)}
+                          sx={{
+                            marginBottom: '15px',
+                            "& .MuiChip-label": {
+                              fontWeight: 'bold',
+                            },
+                          }}
+                        />
+                        <Chip
+                          size='small'
+                          icon={<BrowseGallery />}
+                          label={frameToTimecode(fid.split('-')[3], 9)}
+                          onClick={() => navigate(`/episode/${episodeDetails[0]}/${episodeDetails[1]}/${episodeDetails[2]}/${episodeDetails[3]}`)}
+                          sx={{
+                            marginBottom: '15px',
+                            marginLeft: '5px',
+                            "& .MuiChip-label": {
+                              fontWeight: 'bold',
+                            },
+                          }}
+                        />
             
             <Card>
               {renderFineTuningFrames()}
@@ -496,35 +522,9 @@ export default function FramePage({ shows = [] }) {
                   <Box sx={{ mt: isMd ? 0 : '1rem', width: isMd ? 'inherit' : '100%' }}>
                     <Card style={{ boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
                       <CardContent>
-                        <Typography variant="h3" component="div" style={{ marginBottom: '0.5rem' }} textAlign='left'>
+                        {/* <Typography variant="h3" component="div" style={{ marginBottom: '0.5rem' }} textAlign='left'>
                          {showTitle}
-                        </Typography>
-                        <Chip
-                            size='small'
-                            icon={<OpenInNew />}
-                            label={`Season ${fid.split('-')[1]} / Episode ${fid.split('-')[2]}`}
-                            onClick={() => navigate(`/episode/${episodeDetails[0]}/${episodeDetails[1]}/${episodeDetails[2]}/${episodeDetails[3]}`)}
-                            sx={{
-                              marginBottom: '15px',
-                              "& .MuiChip-label": {
-                                fontWeight: 'bold',
-                              },
-                            }}
-                          />
-                          <Chip
-                            size='small'
-                            icon={<BrowseGallery />}
-                            label={frameToTimecode(fid.split('-')[3], 9)}
-                            onClick={() => navigate(`/episode/${episodeDetails[0]}/${episodeDetails[1]}/${episodeDetails[2]}/${episodeDetails[3]}`)}
-                            sx={{
-                              marginBottom: '15px',
-                              marginLeft: '5px',
-                              "& .MuiChip-label": {
-                                fontWeight: 'bold',
-                              },
-                            }}
-                          />
-
+                        </Typography> */}
                           {loading ?
                             <Skeleton variant='text' height={25} width={'max(100px, 50%)'} />
                             :
@@ -583,7 +583,7 @@ export default function FramePage({ shows = [] }) {
                   sx={{ marginTop: 2, '&:hover': { backgroundColor: '#737373' } }}
                   startIcon={showText ? <VisibilityOff /> : <Visibility />}
                 >
-                  {showText ? "Hide" : "Enable"} Captions
+                  {showText ? "Hide" : "Show"} Caption
                 </Button>
 
                 <Button
