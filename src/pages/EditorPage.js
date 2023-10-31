@@ -66,6 +66,7 @@ const StyledCardMedia = styled('img')`
 const EditorPage = ({ setSeriesTitle, shows }) => {
   const searchDetails = useSearchDetails();
   const [hasFabricPaths, setHasFabricPaths] = useState(false);
+  const [openNavWithoutSavingDialog, setOpenNavWithoutSavingDialog] = useState(false);
   // console.log(searchDetails.fineTuningFrame)
   // Get everything ready
   const { fid, editorProjectId } = useParams();
@@ -278,7 +279,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         editor.canvas._objects = [];
         editor?.canvas.add(text);
         setCanvasObjects([...editor.canvas._objects]);
-        addToHistory();
+        // addToHistory();
       }
     }
   }, [editor]);
@@ -1164,6 +1165,25 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     setMagicPrompt('Everyday scene as cinematic cinestill sample')
   }, [editorTool])
 
+
+  const handleOpenNavWithoutSavingDialog = (result) => {
+    if (editorStates.length > 0) {
+      setOpenNavWithoutSavingDialog(true);
+    } else {
+      navigate(`/editor/${result?.fid}`);
+    }
+  };
+
+  const handleNavigate = (result) => {
+    navigate(`/editor/${result?.fid}`);
+    setOpenNavWithoutSavingDialog(false);
+    editor.canvas.discardActiveObject().requestRenderAll();
+    setFutureStates([]);
+    setBgFutureStates([]);
+    setEditorStates([]);
+    setBgEditorStates([]);
+  };
+
   // ------------------------------------------------------------------------
 
 
@@ -1185,6 +1205,232 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
           >
             <Card sx={{ padding: { xs: 1.5, md: 2 } }}>
               <Grid container item spacing={2} justifyContent="center">
+              <Grid item xs={12} md={5} lg={5} minWidth={{ xs: {}, md: '350px' }} order={{ xs: 3, md: 2 }}>
+                  {/* {user && user.userDetails?.credits > 0 && (
+                    <Grid item xs={12} marginBottom={2}>
+                      <Grid container direction="column" spacing={2}>
+                        {drawingMode ? (
+                          <>
+                            <Grid item>
+                              <TextField
+                                fullWidth
+                                id="prompt"
+                                label="Prompt"
+                                variant="outlined"
+                                value={magicPrompt}
+                                onChange={(event) => setMagicPrompt(event.target.value)}
+                              />
+                            </Grid>
+                            <Grid item>
+                              <Button
+                                variant="contained"
+                                onClick={() => {
+                                  exportDrawing();
+                                  toggleDrawingMode();
+                                }}
+                                fullWidth
+                                sx={{ zIndex: '50' }}
+                                startIcon={<AutoFixHighRounded />}
+                              >
+                                Magic Brush (apply)
+                              </Button>
+                            </Grid>
+                          </>
+                        ) : (
+                          <Grid item>
+                            <Button
+                              variant="contained"
+                              onClick={toggleDrawingMode}
+                              fullWidth
+                              sx={{ zIndex: '50' }}
+                              startIcon={<AutoFixHighRounded />}
+                            >
+                              Magic Brush (select)
+                            </Button>
+                          </Grid>
+                        )}
+                      </Grid>
+                    </Grid>
+                  )} */}
+                </Grid>
+                <Grid
+                  item
+                  xs={12}
+                  md={7}
+                  lg={7}
+                  marginRight={{ xs: '', md: 'auto' }}
+                  marginTop={{ xs: -2.5, md: -1.5 }}
+                  order={{ xs: 4, md: 4 }}
+                >
+                  {surroundingFrames && surroundingFrames.length > 0 && (
+                    <Card>
+                      <Accordion expanded={subtitlesExpanded} disableGutters>
+                        <AccordionSummary sx={{ paddingX: 1.55, textAlign: "center" }} onClick={handleSubtitlesExpand} >
+                          <Typography marginRight="auto" fontWeight="bold" color="#CACACA" fontSize={14.8}>
+                            {subtitlesExpanded ? (
+                              <Close style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
+                            ) : (
+                              <Menu style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
+                            )}
+                            {subtitlesExpanded ? 'Hide' : 'View'} Nearby Subtitles
+                          </Typography>
+                          {/* <Chip size="small" label="New!" color="success" /> */}
+                        </AccordionSummary>
+                        <AccordionDetails sx={{ paddingY: 0, paddingX: 0 }}>
+                          <List sx={{ padding: '.5em 0' }}>
+                            {surroundingFrames &&
+                              surroundingFrames
+                                .filter(
+                                  (result, index, array) =>
+                                    result?.subtitle &&
+                                    (index === 0 ||
+                                      result?.subtitle.replace(/\n/g, ' ') !==
+                                      array[index - 1].subtitle.replace(/\n/g, ' '))
+                                )
+                                .map((result, index) => (
+                                  <ListItem key={result.id ? result.id : `surrounding-subtitle-${index}`} disablePadding sx={{ padding: '0 0 .6em 0' }}>
+                                    <ListItemIcon sx={{ paddingLeft: '0' }}>
+                                      <Fab
+                                        size="small"
+                                        sx={{
+                                          backgroundColor: theme.palette.background.paper,
+                                          boxShadow: 'none',
+                                          marginLeft: '5px',
+                                          '&:hover': {
+                                            xs: { backgroundColor: 'inherit' },
+                                            md: {
+                                              backgroundColor:
+                                                result?.subtitle.replace(/\n/g, ' ') ===
+                                                  defaultSubtitle?.replace(/\n/g, ' ')
+                                                  ? 'rgba(0, 0, 0, 0)'
+                                                  : 'ButtonHighlight',
+                                            },
+                                          },
+                                        }}
+                                        onClick={() => handleOpenNavWithoutSavingDialog(result)}
+                                      >
+                                        {loading ? (
+                                          <CircularProgress size={20} sx={{ color: '#565656' }} />
+                                        ) : result?.subtitle.replace(/\n/g, ' ') ===
+                                          defaultSubtitle.replace(/\n/g, ' ') ? (
+                                          <GpsFixed
+                                            sx={{
+                                              color:
+                                                result?.subtitle.replace(/\n/g, ' ') ===
+                                                  defaultSubtitle?.replace(/\n/g, ' ')
+                                                  ? 'rgb(202, 202, 202)'
+                                                  : 'rgb(89, 89, 89)',
+                                              cursor: 'pointer',
+                                            }}
+                                          />
+                                        ) : (
+                                          <GpsNotFixed sx={{ color: 'rgb(89, 89, 89)', cursor: 'pointer' }} />
+                                        )}
+                                      </Fab>
+                                      <Dialog
+                                        componentsProps={{
+                                          backdrop: {
+                                            style: { backgroundColor: 'rgba(0, 0, 0, 0.3)' }, // Adjust the opacity as needed
+                                          },
+                                        }}
+                                        open={openNavWithoutSavingDialog}
+                                        onClose={() => setOpenNavWithoutSavingDialog(false)}
+                                        aria-labelledby="alert-dialog-title"
+                                        aria-describedby="alert-dialog-description"
+                                      >
+                                        <DialogTitle id="alert-dialog-title">{"Unsaved Changes"}</DialogTitle>
+                                        <DialogContent>
+                                          <DialogContentText id="alert-dialog-description">
+                                            If you leave this frame, your edits will be lost.
+                                          </DialogContentText>
+                                        </DialogContent>
+                                        <DialogActions>
+                                          <Button onClick={() => setOpenNavWithoutSavingDialog(false)} color="primary">
+                                            Cancel
+                                          </Button>
+                                          <Button onClick={() => handleNavigate(result)} color="primary" autoFocus>
+                                            Leave
+                                          </Button>
+                                        </DialogActions>
+                                      </Dialog>
+                                    </ListItemIcon>
+                                    <ListItemText sx={{ color: 'rgb(173, 173, 173)', fontSize: '4em' }}>
+                                      <Typography
+                                        component="p"
+                                        variant="body2"
+                                        color={
+                                          result?.subtitle.replace(/\n/g, ' ') === defaultSubtitle?.replace(/\n/g, ' ')
+                                            ? 'rgb(202, 202, 202)'
+                                            : ''
+                                        }
+                                        fontWeight={
+                                          result?.subtitle.replace(/\n/g, ' ') === defaultSubtitle?.replace(/\n/g, ' ')
+                                            ? 700
+                                            : 400
+                                        }
+                                      >
+                                        {result?.subtitle.replace(/\n/g, ' ')}
+                                      </Typography>
+                                    </ListItemText>
+                                    <ListItemIcon sx={{ paddingRight: '0', marginLeft: 'auto' }}>
+                                      <Fab
+                                        size="small"
+                                        sx={{
+                                          backgroundColor: theme.palette.background.paper,
+                                          boxShadow: 'none',
+                                          marginRight: '2px',
+                                          '&:hover': {
+                                            xs: { backgroundColor: 'inherit' },
+                                            md: { backgroundColor: 'ButtonHighlight' },
+                                          },
+                                        }}
+                                        onClick={() => {
+                                          navigator.clipboard.writeText(result?.subtitle.replace(/\n/g, ' '));
+                                          handleSnackbarOpen();
+                                        }}
+                                      >
+                                        <ContentCopy sx={{ color: 'rgb(89, 89, 89)' }} />
+                                      </Fab>
+                                      <Fab
+                                        size="small"
+                                        sx={{
+                                          backgroundColor: theme.palette.background.paper,
+                                          boxShadow: 'none',
+                                          marginLeft: 'auto',
+                                          '&:hover': {
+                                            xs: { backgroundColor: 'inherit' },
+                                            md: { backgroundColor: 'ButtonHighlight' },
+                                          },
+                                        }}
+                                        onClick={() => addText(result?.subtitle.replace(/\n/g, ' '), true)}
+                                      >
+                                        <Add sx={{ color: 'rgb(89, 89, 89)', cursor: 'pointer' }} />
+                                      </Fab>
+                                      {/* <Fab
+                                                                              size="small"
+                                                                              sx={{
+                                                                                  backgroundColor: theme.palette.background.paper,
+                                                                                  boxShadow: "none",
+                                                                                  marginLeft: '5px',
+                                                                                  '&:hover': {xs: {backgroundColor: 'inherit'}, md: {backgroundColor: (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 'rgba(0, 0, 0, 0)' : 'ButtonHighlight'}}
+                                                                              }}
+                                                                              onClick={() => navigate(`/editor/${result?.fid}`)}
+                                                                          >
+                                                                          {loading ? (
+                                                                              <CircularProgress size={20} sx={{ color: "#565656"}} />
+                                                                          ) : (
+                                                                              (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle.replace(/\n/g, " ")) ? <GpsFixed sx={{ color: (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 'rgb(50, 50, 50)' : 'rgb(89, 89, 89)', cursor: "pointer"}} /> : <ArrowForward sx={{ color: "rgb(89, 89, 89)", cursor: "pointer"}} /> 
+                                                                          )}
+                                                                          </Fab> */}
+                                    </ListItemIcon>
+                                  </ListItem>
+                                ))}
+                          </List>
+                        </AccordionDetails>
+                      </Accordion>
+                    </Card>
+                  )}
+                </Grid>
                 <Grid item xs={12} md={7} lg={7} marginRight={{ xs: '', md: 'auto' }} order={{ xs: 2, md: 3 }}>
 
 
@@ -1194,7 +1440,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                           <Stack direction='row' width='100%' justifyContent='space-between' alignItems='center'>
                             
                             <ButtonGroup variant="contained" size="small">
-                              <IconButton disabled={(editorStates.length <= 1)} onClick={undo}>
+                              <IconButton disabled={(editorStates.length < 1)} onClick={undo}>
                                 <Undo />
                               </IconButton>
                               <IconButton disabled={(futureStates.length === 0)} onClick={redo}>
@@ -1473,8 +1719,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                     <button type='button' onClick={loadProject}>Load Project</button>
                                     <button type='button' onClick={handleClickDialogOpen}>Save Image</button> */}
                 </Grid>
-                <Grid container item spacing={1} order="5">
-                  <Grid item xs={12} marginBottom={2}>
+                <Grid item xs={12} marginBottom={2} order={2}>
                     <Button
                       variant="contained"
                       onClick={handleClickDialogOpen}
@@ -1486,6 +1731,40 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                       Save/Copy/Share
                     </Button>
                   </Grid>
+                <Grid container item spacing={1} order="5">
+                {surroundingFrames &&
+                    surroundingFrames.map((result) => (
+                      <Grid item xs={4} sm={4} md={12 / 9} key={result.fid}>
+                        <a style={{ textDecoration: 'none' }}>
+                          <StyledCard style={{ border: fid === result?.fid ? '3px solid orange' : '' }}>
+                            {/* {console.log(`${fid} = ${result?.fid}`)} */}
+                            <StyledCardMedia
+                              component="img"
+                              src={`https://memesrc.com${result?.frame_image}`}
+                              alt={result?.subtitle}
+                              title={result?.subtitle}
+                              onClick={() => {
+                                // editor.canvas._objects = [];
+                                // setSelectedFid(result?.fid);
+                                handleOpenNavWithoutSavingDialog(result);
+                                // setFineTuningValue(4);
+                              }}
+                            />
+                          </StyledCard>
+                        </a>
+                      </Grid>
+                    ))}
+                    <Grid item xs={12}>
+                        {episodeDetails && episodeDetails.length > 0 && (
+                            <Button
+                                variant="contained"
+                                fullWidth
+                                href={`/episode/${episodeDetails[0]}/${episodeDetails[1]}/${episodeDetails[2]}/${episodeDetails[3]}`}
+                            >
+                                View Episode
+                            </Button>
+                        )}
+                    </Grid>
                 </Grid>
               </Grid>
             </Card>
