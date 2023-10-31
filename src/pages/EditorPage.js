@@ -67,6 +67,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const searchDetails = useSearchDetails();
   const [hasFabricPaths, setHasFabricPaths] = useState(false);
   const [openNavWithoutSavingDialog, setOpenNavWithoutSavingDialog] = useState(false);
+  const [selectedNavItemFid, setSelectedNavItemFid] = useState(null);
+  
   // console.log(searchDetails.fineTuningFrame)
   // Get everything ready
   const { fid, editorProjectId } = useParams();
@@ -1166,16 +1168,17 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   }, [editorTool])
 
 
-  const handleOpenNavWithoutSavingDialog = (result) => {
+  const handleOpenNavWithoutSavingDialog = (fid) => {
     if (editorStates.length > 1) {
+      setSelectedNavItemFid(fid);
       setOpenNavWithoutSavingDialog(true);
     } else {
-      handleNavigate(result);
+      handleNavigate(fid);
     }
   };
 
-  const handleNavigate = (result) => {
-    navigate(`/editor/${result?.fid}`);
+  const handleNavigate = (fid) => {
+    navigate(`/editor/${fid}`);
     setOpenNavWithoutSavingDialog(false);
     editor.canvas.discardActiveObject().requestRenderAll();
     setFutureStates([]);
@@ -1307,7 +1310,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                             },
                                           },
                                         }}
-                                        onClick={() => handleOpenNavWithoutSavingDialog(result)}
+                                        onClick={() => handleOpenNavWithoutSavingDialog(result?.fid)}
                                       >
                                         {loading ? (
                                           <CircularProgress size={20} sx={{ color: '#565656' }} />
@@ -1327,32 +1330,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                           <GpsNotFixed sx={{ color: 'rgb(89, 89, 89)', cursor: 'pointer' }} />
                                         )}
                                       </Fab>
-                                      <Dialog
-                                        componentsProps={{
-                                          backdrop: {
-                                            style: { backgroundColor: 'rgba(0, 0, 0, 0.3)' }, // Adjust the opacity as needed
-                                          },
-                                        }}
-                                        open={openNavWithoutSavingDialog}
-                                        onClose={() => setOpenNavWithoutSavingDialog(false)}
-                                        aria-labelledby="alert-dialog-title"
-                                        aria-describedby="alert-dialog-description"
-                                      >
-                                        <DialogTitle id="alert-dialog-title">{"Unsaved Changes"}</DialogTitle>
-                                        <DialogContent>
-                                          <DialogContentText id="alert-dialog-description">
-                                            If you leave this frame, your edits will be lost.
-                                          </DialogContentText>
-                                        </DialogContent>
-                                        <DialogActions>
-                                          <Button onClick={() => setOpenNavWithoutSavingDialog(false)} color="primary">
-                                            Cancel
-                                          </Button>
-                                          <Button onClick={() => handleNavigate(result)} color="primary" autoFocus>
-                                            Leave
-                                          </Button>
-                                        </DialogActions>
-                                      </Dialog>
                                     </ListItemIcon>
                                     <ListItemText sx={{ color: 'rgb(173, 173, 173)', fontSize: '4em' }}>
                                       <Typography
@@ -1430,6 +1407,32 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                       </Accordion>
                     </Card>
                   )}
+                  <Dialog
+                    componentsProps={{
+                      backdrop: {
+                        style: { backgroundColor: 'rgba(0, 0, 0, 0.3)' }, // Adjust the opacity as needed
+                      },
+                    }}
+                    open={openNavWithoutSavingDialog}
+                    onClose={() => setOpenNavWithoutSavingDialog(false)}
+                    aria-labelledby="alert-dialog-title"
+                    aria-describedby="alert-dialog-description"
+                  >
+                    <DialogTitle id="alert-dialog-title">{"Unsaved Changes"}</DialogTitle>
+                    <DialogContent>
+                      <DialogContentText id="alert-dialog-description">
+                        If you leave this frame, your edits will be lost.
+                      </DialogContentText>
+                    </DialogContent>
+                    <DialogActions>
+                      <Button onClick={() => setOpenNavWithoutSavingDialog(false)} color="primary">
+                        Cancel
+                      </Button>
+                      <Button onClick={() => handleNavigate(selectedNavItemFid)} color="primary" autoFocus>
+                          Leave
+                      </Button>
+                    </DialogActions>
+                  </Dialog>
                 </Grid>
                 <Grid item xs={12} md={7} lg={7} marginRight={{ xs: '', md: 'auto' }} order={{ xs: 2, md: 3 }}>
 
@@ -1746,7 +1749,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                               onClick={() => {
                                 // editor.canvas._objects = [];
                                 // setSelectedFid(result?.fid);
-                                handleOpenNavWithoutSavingDialog(result);
+                                handleOpenNavWithoutSavingDialog(result?.fid);
                                 // setFineTuningValue(4);
                               }}
                             />
