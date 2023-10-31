@@ -105,34 +105,54 @@ export default function FramePage({ shows = [] }) {
   /* ---------------------------- Subtitle Function --------------------------- */
 
   function wrapText(context, text, x, y, maxWidth, lineHeight, shouldDraw = true) {
-    const words = text.split(' ');
-    let line = '';
-    const lines = [];
-
-    for (let n = 0; n < words.length; n += 1) {
-      const testLine = `${line}${words[n]} `;
-      const metrics = context.measureText(testLine);
-      const testWidth = metrics.width;
-
-      if (testWidth > maxWidth && n > 0) {
-        lines.push(line);
-        line = `${words[n]} `;
+    // Split text into paragraphs (on new lines)
+    const paragraphs = text.split('\n');
+    let totalLines = 0;
+  
+    paragraphs.forEach((paragraph) => {
+      if (paragraph.trim() === '') {
+        // If the paragraph is just a new line
+        if (shouldDraw) {
+          y += lineHeight;
+        }
+        totalLines += 1;
       } else {
-        line = testLine;
+        // Process each paragraph
+        const words = paragraph.split(' ');
+        let line = '';
+  
+        words.forEach((word, n) => {
+          const testLine = `${line}${word} `;
+          const metrics = context.measureText(testLine);
+          const testWidth = metrics.width;
+  
+          if (testWidth > maxWidth && n > 0) {
+            if (shouldDraw) {
+              context.strokeText(line, x, y);
+              context.fillText(line, x, y);
+            }
+            y += lineHeight;
+            totalLines += 1;
+            line = `${word} `;
+          } else {
+            line = testLine;
+          }
+        });
+  
+        if (line.trim() !== '') {
+          if (shouldDraw) {
+            context.strokeText(line, x, y);
+            context.fillText(line, x, y);
+          }
+          y += lineHeight;
+          totalLines += 1;
+        }
       }
-    }
-    lines.push(line);
-
-    if (shouldDraw) { // Only draw if shouldDraw is true
-      for (let k = 0; k < lines.length; k += 1) {
-        context.strokeText(lines[k], x, y);
-        context.fillText(lines[k], x, y);
-        y += lineHeight;
-      }
-    }
-
-    return lines.length; // Return the number of lines
+    });
+  
+    return totalLines;
   }
+  
 
 
 
@@ -476,8 +496,8 @@ export default function FramePage({ shows = [] }) {
                   <Box sx={{ mt: isMd ? 0 : '1rem', width: isMd ? 'inherit' : '100%' }}>
                     <Card style={{ boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
                       <CardContent>
-                        <Typography variant="h4" component="div" style={{ marginBottom: '0.5rem' }} textAlign='left'>
-                         "Episode Name Goes Here"
+                        <Typography variant="h3" component="div" style={{ marginBottom: '0.5rem' }} textAlign='left'>
+                         {showTitle}
                         </Typography>
                         <Chip
                             size='small'
@@ -516,6 +536,7 @@ export default function FramePage({ shows = [] }) {
                                   </IconButton>
                                   <TextField
                                     autoFocus
+                                    multiline
                                     fullWidth
                                     variant="outlined"
                                     size="small"
@@ -534,9 +555,10 @@ export default function FramePage({ shows = [] }) {
                                   <Link onClick={() => { setShowText(!showText) }} sx={{textDecoration: 'none', cursor: 'pointer'}}>
                                     <Typography 
                                         variant="subtitle1" 
-                                        style={{ marginBottom: '0rem' }} 
+                                        style={{ marginBottom: '0rem', whiteSpace: 'pre-line' }}
                                         textAlign='left' 
-                                        sx={{ color: "text.secondary" }}> {/* "#737373" */}
+                                        sx={{ color: "text.secondary" }} // "#737373"
+                                    > 
                                         {frameData.subtitle ? frameData.subtitle : '(no subtitle)'}
                                     </Typography>
                                   </Link>
@@ -552,10 +574,27 @@ export default function FramePage({ shows = [] }) {
                     </Card>
                   </Box>
                 </Grid>
-                <Button size="large" fullWidth={!isMd} variant="contained" to={`/editor/${fid}${getCurrentQueryString()}`} onClick={() => setShowText(!showText)} sx={{ marginTop: 2, '&:hover': { backgroundColor: '#45a045' } }}>
-                  {showText ? "Hide" : "Enable"} Caption
+                <Button
+                  size="medium"
+                  fullWidth={!isMd}
+                  variant="contained"
+                  to={`/editor/${fid}${getCurrentQueryString()}`}
+                  onClick={() => setShowText(!showText)}
+                  sx={{ marginTop: 2, '&:hover': { backgroundColor: '#737373' } }}
+                  startIcon={showText ? <VisibilityOff /> : <Visibility />}
+                >
+                  {showText ? "Hide" : "Enable"} Captions
                 </Button>
-                <Button size="large" fullWidth={!isMd} variant="contained" to={`/editor/${fid}${getCurrentQueryString()}`} component={RouterLink} sx={{ my: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}>
+
+                <Button
+                  size="medium"
+                  fullWidth={!isMd}
+                  variant="contained"
+                  to={`/editor/${fid}${getCurrentQueryString()}`}
+                  component={RouterLink}
+                  sx={{ my: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
+                  startIcon={<Edit />}
+                >
                   Advanced Editor
                 </Button>
                 <Card sx={{ mt: 0 }}>
