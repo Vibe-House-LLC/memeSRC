@@ -1,5 +1,5 @@
 import { Helmet } from 'react-helmet-async';
-import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
+import { Navigate, Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { API } from 'aws-amplify';
 import { styled } from '@mui/material/styles';
@@ -31,8 +31,9 @@ import {
   useMediaQuery,
   Box,
   Link,
+  TextField,
 } from '@mui/material';
-import { Add, BrowseGallery, Close, ContentCopy, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu, OpenInBrowser, OpenInNew, Visibility, VisibilityOff } from '@mui/icons-material';
+import { Add, BrowseGallery, Close, ContentCopy, Edit, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu, OpenInBrowser, OpenInNew, Visibility, VisibilityOff } from '@mui/icons-material';
 import useSearchDetails from '../hooks/useSearchDetails';
 import getFrame from '../utils/frameHandler';
 
@@ -363,7 +364,7 @@ export default function FramePage({ shows = [] }) {
       <Container maxWidth="xl" sx={{ pt: 2 }}>
         <Grid container spacing={2} direction="row" alignItems="center">
 
-          <Grid item xs={12} md={6}>
+          <Grid item xs={12} md={12}>
 
             <Typography variant='h2'>
               {showTitle}
@@ -471,10 +472,7 @@ export default function FramePage({ shows = [] }) {
                 </Card>
               </Grid>
             }
-
-            {!isMd &&
-              <>
-                <Grid item xs={12} md={6}>
+                <Grid item xs={12} md={12}>
                   <Box sx={{ mt: isMd ? 0 : '1rem', width: isMd ? 'inherit' : '100%' }}>
                     <Card style={{ boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
                       <CardContent>
@@ -497,6 +495,7 @@ export default function FramePage({ shows = [] }) {
                             size='small'
                             icon={<BrowseGallery />}
                             label={frameToTimecode(fid.split('-')[3], 9)}
+                            onClick={() => navigate(`/episode/${episodeDetails[0]}/${episodeDetails[1]}/${episodeDetails[2]}/${episodeDetails[3]}`)}
                             sx={{
                               marginBottom: '15px',
                               marginLeft: '5px',
@@ -506,24 +505,57 @@ export default function FramePage({ shows = [] }) {
                             }}
                           />
 
-                        {loading ?
-                          <Skeleton variant='text' height={25} width={'max(100px, 50%)'} />
-                          :
-                          <Stack direction='row' spacing={1} alignItems='center' sx={{color: theme => theme.palette.grey[300]}}>
-                            {showText ? <IconButton size='small' onClick={() => { setShowText(!showText) }}><Visibility sx={{ fontSize: 20 }} /></IconButton> : <IconButton size='small' onClick={() => { setShowText(!showText) }}><VisibilityOff sx={{ fontSize: 20, color: showText ? "text.secondary" : "#737373" }} /></IconButton>}
-                            <Link onClick={() => { setShowText(!showText) }} sx={{textDecoration: 'none', cursor: 'pointer'}}>
-                              <Typography variant="subtitle1" color={showText ? "text.secondary" : "#737373"} style={{ marginBottom: '0rem' }} textAlign='left'>
-                                {frameData.subtitle ? frameData.subtitle : '(no subtitle)'}
-                              </Typography>
-                            </Link>
-                          </Stack>
-                        }
+                          {loading ?
+                            <Skeleton variant='text' height={25} width={'max(100px, 50%)'} />
+                            :
+                            <Stack direction='row' spacing={1} alignItems='center'>
+                              {showText ? 
+                                <>
+                                  <IconButton size='small' onClick={() => { setShowText(!showText) }}>
+                                    <VisibilityOff sx={{ fontSize: 20 }} />
+                                  </IconButton>
+                                  <TextField
+                                    fullWidth
+                                    variant="outlined"
+                                    size="small"
+                                    value={frameData.subtitle}
+                                    onChange={(e) => setFrameData({ ...frameData, subtitle: e.target.value })}
+                                    sx={{ ml: 1 }}
+                                  />
+                                </>
+                                :
+                                <>
+                                  <Link onClick={() => { setShowText(!showText) }} sx={{textDecoration: 'none', cursor: 'pointer'}}>
+                                      <IconButton size='small' onClick={() => { setShowText(!showText) }}>
+                                        <Edit sx={{ fontSize: 20 }} />
+                                      </IconButton>
+                                  </Link>
+                                  <Link onClick={() => { setShowText(!showText) }} sx={{textDecoration: 'none', cursor: 'pointer'}}>
+                                    <Typography 
+                                        variant="subtitle1" 
+                                        style={{ marginBottom: '0rem' }} 
+                                        textAlign='left' 
+                                        sx={{ color: "text.secondary" }}> {/* "#737373" */}
+                                        {frameData.subtitle ? frameData.subtitle : '(no subtitle)'}
+                                    </Typography>
+                                  </Link>
+                                </>
+                              }
+                              {/* <IconButton size='small' onClick={() => { setShowText(!showText) }}>
+                                {showText ? <VisibilityOff sx={{ fontSize: 20 }} /> : <Edit sx={{ fontSize: 20 }} />}
+                              </IconButton> */}
+                            </Stack>
+                          }
+
                       </CardContent>
                     </Card>
                   </Box>
                 </Grid>
+                <Button size="large" fullWidth={!isMd} variant="contained" to={`/editor/${fid}${getCurrentQueryString()}`} onClick={() => setShowText(!showText)} sx={{ marginTop: 2, '&:hover': { backgroundColor: '#45a045' } }}>
+                  {showText ? "Hide" : "Enable"} Caption
+                </Button>
                 <Button size="large" fullWidth={!isMd} variant="contained" to={`/editor/${fid}${getCurrentQueryString()}`} component={RouterLink} sx={{ my: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}>
-                  Open In Editor
+                  Advanced Editor
                 </Button>
                 <Card sx={{ mt: 0 }}>
                   <Accordion expanded={subtitlesExpanded} disableGutters>
@@ -614,60 +646,7 @@ export default function FramePage({ shows = [] }) {
                     </AccordionDetails>
                   </Accordion>
                 </Card>
-              </>
-            }
           </Grid>
-          {isMd &&
-            <>
-              <Grid item xs={12} md={6}>
-                <Box sx={{ mt: isMd ? 0 : '1rem', width: isMd ? 'inherit' : '100%' }}>
-                  <Card style={{ boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
-                    <CardContent>
-                      <Typography variant="h4" component="div" style={{ marginBottom: '0.5rem' }} textAlign='left'>
-                        {showTitle}
-                        <Chip
-                          size='small'
-                          label={`S${fid.split('-')[1]} E${fid.split('-')[2]}`}
-                          sx={{
-                            marginLeft: '5px',
-                            "& .MuiChip-label": {
-                              fontWeight: 'bold',
-                            },
-                          }}
-                        />
-                        <Chip
-                          size='small'
-                          label={frameToTimecode(fid.split('-')[3], 9)}
-                          sx={{
-                            marginLeft: '5px',
-                            "& .MuiChip-label": {
-                              fontWeight: 'bold',
-                            },
-                          }}
-                        />
-                      </Typography>
-                      {loading ?
-                          <Skeleton variant='text' height={25} width={'max(100px, 50%)'} />
-                          :
-
-                          <Stack direction='row' spacing={1} alignItems='center' sx={{color: theme => theme.palette.grey[300]}}>
-                            {showText ? <IconButton size='small' onClick={() => { setShowText(!showText) }}><Visibility sx={{ fontSize: 20 }} /></IconButton> : <IconButton size='small' onClick={() => { setShowText(!showText) }}><VisibilityOff sx={{ fontSize: 20, color: showText ? "text.secondary" : "#737373" }} /></IconButton>}
-                            <Link onClick={() => { setShowText(!showText) }} sx={{textDecoration: 'none', cursor: 'pointer'}}>
-                              <Typography variant="subtitle1" color={showText ? "text.secondary" : "#737373"} style={{ marginBottom: '0rem' }} textAlign='left'>
-                                {frameData.subtitle ? frameData.subtitle : '(no subtitle)'}
-                              </Typography>
-                            </Link>
-                          </Stack>
-                        }
-                      <Button size="large" fullWidth={!isMd} variant="contained" to={`/editor/${fid}${getCurrentQueryString()}`} component={RouterLink} sx={{ mt: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}>
-                        Open In Editor
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </Box>
-              </Grid>
-            </>
-          }
 
           <Grid item xs={12}>
             <Typography variant="h6">Surrounding Frames</Typography>
