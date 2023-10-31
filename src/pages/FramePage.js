@@ -33,7 +33,7 @@ import {
   Link,
   TextField,
 } from '@mui/material';
-import { Add, BrowseGallery, Close, ContentCopy, Edit, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu, OpenInBrowser, OpenInNew, Visibility, VisibilityOff } from '@mui/icons-material';
+import { Add, ArrowBack, ArrowBackIos, ArrowForward, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu, OpenInBrowser, OpenInNew, Visibility, VisibilityOff } from '@mui/icons-material';
 import useSearchDetails from '../hooks/useSearchDetails';
 import getFrame from '../utils/frameHandler';
 
@@ -95,7 +95,7 @@ export default function FramePage({ shows = [] }) {
 
       // Check if a matching show was found
       if (foundShow) {
-        setShowTitle(foundShow.title);
+        setShowTitle(`${foundShow.emoji} ${foundShow.title}`);
       } else {
         console.error(`Show with ID ${fid.split('-')[0]} not found.`);
       }
@@ -183,6 +183,7 @@ export default function FramePage({ shows = [] }) {
       offScreenCanvas.width = img.width;
       offScreenCanvas.height = img.height;
       ctx.drawImage(img, 0, 0);
+      setLoading(false)
 
       if (showText) {
         // Styling the text
@@ -266,7 +267,7 @@ export default function FramePage({ shows = [] }) {
           setSliderValue(fineTuningFrame - newMiddleIndex)
         }
         setDisplayImage(`https://memesrc.com${initialFineTuneImage}`);
-        setLoading(false)
+        // setLoading(false)
       })
       .catch(console.error);
   }, [fid]);
@@ -338,39 +339,68 @@ export default function FramePage({ shows = [] }) {
   const renderFineTuningFrames = () => {
     return (
       <>
+      <div style={{position: 'relative'}}>
         <CardMedia
           component={loading ? () => <Skeleton variant='rectangular' sx={{ width: '100%', height: 'auto', aspectRatio }} /> : 'img'}
           alt={`Fine-tuning ${sliderValue}`}
           image={imgSrc}
           id='frameImage'
         />
-        {/* <Slider
-          value={sliderValue}
+        <IconButton 
+          style={{
+            position: 'absolute', 
+            top: '50%', 
+            left: '2%', // Reduced left margin
+            transform: 'translateY(-50%)', 
+            backgroundColor: 'transparent', 
+            color: 'white', 
+            padding: '20px', // Increase padding to make the button easier to press
+            margin: '-10px'
+          }}
+          onClick={() => {
+            navigate(`/frame/${surroundingFrames[3].fid}`)
+          }}
+        >
+          <ArrowBackIos style={{ fontSize: '2rem' }} /> {/* Increased icon size */}
+        </IconButton>
+        <IconButton 
+          style={{
+            position: 'absolute', 
+            top: '50%', 
+            right: '2%', // Reduced right margin
+            transform: 'translateY(-50%)', 
+            backgroundColor: 'transparent', 
+            color: 'white', 
+            padding: '20px', // Increase padding to make the button easier to press
+            margin: '-10px'
+          }}
+          onClick={() => {
+            navigate(`/frame/${surroundingFrames[5].fid}`)
+          }}
+        >
+          <ArrowForwardIos style={{ fontSize: '2rem' }} /> {/* Increased icon size */}
+        </IconButton>
+      </div>
+  
+      <Stack spacing={2} direction="row" p={0} pr={3} pl={3} alignItems={'center'}>
+        <Tooltip title="Fine Tuning">
+          <IconButton>
+            <HistoryToggleOffRounded alt="Fine Tuning" />
+          </IconButton>
+        </Tooltip>
+        <Slider
+          size="small"
+          defaultValue={4}
           min={-middleIndex}
           max={middleIndex}
+          value={sliderValue}
           step={1}
-          onChange={(e, newValue) => setSliderValue(newValue)}
-        /> */}
-
-        <Stack spacing={2} direction="row" p={0} pr={3} pl={3} alignItems={'center'}>
-          <Tooltip title="Fine Tuning">
-            <IconButton>
-              <HistoryToggleOffRounded alt="Fine Tuning" />
-            </IconButton>
-          </Tooltip>
-          <Slider
-            size="small"
-            defaultValue={4}
-            min={-middleIndex}
-            max={middleIndex}
-            value={sliderValue}
-            step={1}
-            onChange={(e, newValue) => handleSliderChange(newValue)}
-            valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
-            marks
-          />
-        </Stack>
-      </>
+          onChange={(e, newValue) => handleSliderChange(newValue)}
+          valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
+          marks
+        />
+      </Stack>
+    </>
     );
   };
 
@@ -581,7 +611,7 @@ export default function FramePage({ shows = [] }) {
                   sx={{ marginTop: 2, '&:hover': { backgroundColor: '#737373' } }}
                   startIcon={showText ? <VisibilityOff /> : <Visibility />}
                 >
-                  {showText ? "Hide" : "Show"} Caption
+                  {showText ? "Disable" : "Enable"} Caption
                 </Button>
 
                 <Button
@@ -590,7 +620,8 @@ export default function FramePage({ shows = [] }) {
                   variant="contained"
                   to={`/editor/${fid}${getCurrentQueryString()}`}
                   component={RouterLink}
-                  sx={{ my: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
+                  // sx={{ my: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
+                  sx={{ my: 2 }}
                   startIcon={<Edit />}
                 >
                   Advanced Editor
