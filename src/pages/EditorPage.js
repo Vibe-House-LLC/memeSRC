@@ -274,19 +274,17 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       if (append) {
         editor?.canvas.add(text);
         setCanvasObjects([...editor.canvas._objects]);
-        addToHistory();
       } else {
         editor.canvas._objects = [];
         editor?.canvas.add(text);
         setCanvasObjects([...editor.canvas._objects]);
-        // addToHistory();
       }
+      addToHistory();
     }
   }, [editor]);
 
   const loadEditorDefaults = useCallback(async () => {
     setLoading(true);
-  
     // Check if the uploadedImage exists in the location state
     const uploadedImage = location.state?.uploadedImage;
   
@@ -1068,7 +1066,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         }
       };
 
-      loadEditorDefaults();
+      // loadEditorDefaults();
 
       // On object modification (when object's movement/editing is completed)
       editor.canvas.on('object:modified', () => {
@@ -1167,10 +1165,10 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
 
   const handleOpenNavWithoutSavingDialog = (result) => {
-    if (editorStates.length > 0) {
+    if (editorStates.length > 1) {
       setOpenNavWithoutSavingDialog(true);
     } else {
-      navigate(`/editor/${result?.fid}`);
+      handleNavigate(result);
     }
   };
 
@@ -1440,7 +1438,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                           <Stack direction='row' width='100%' justifyContent='space-between' alignItems='center'>
                             
                             <ButtonGroup variant="contained" size="small">
-                              <IconButton disabled={(editorStates.length < 1)} onClick={undo}>
+                              <IconButton disabled={(editorStates.length <= 1)} onClick={undo}>
                                 <Undo />
                               </IconButton>
                               <IconButton disabled={(futureStates.length === 0)} onClick={redo}>
