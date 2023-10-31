@@ -79,6 +79,10 @@ export default function FramePage({ shows = [] }) {
 
   const [snackbarOpen, setSnackBarOpen] = useState(false);
 
+  const [alertOpenTapToEdit, setAlertOpenTapToEdit] = useState(() => {
+    return sessionStorage.getItem('alertDismissed-98ruio') !== 'true';
+  });
+
   const theme = useTheme();
 
   const handleSnackbarOpen = () => {
@@ -460,7 +464,7 @@ export default function FramePage({ shows = [] }) {
                             },
                           }}
                         />
-            
+
             <Card>
               {renderFineTuningFrames()}
             </Card>
@@ -520,6 +524,29 @@ export default function FramePage({ shows = [] }) {
                     </Card>
                   </Box>
                 </Grid>
+
+                {alertOpenTapToEdit && (
+                  <Alert
+                    severity='success'
+                    sx={{ marginTop: 1.5 }}
+                    action={
+                      <IconButton
+                        aria-label="close"
+                        color="inherit"
+                        size="small"
+                        onClick={() => {
+                          sessionStorage.setItem('alertDismissed-98ruio', 'true');
+                          setAlertOpenTapToEdit(!alertOpenTapToEdit);
+                        }}
+                      >
+                        <Close fontSize="inherit" />
+                      </IconButton>
+                    }
+                  >
+                    <b>New!</b> Tap the text ☝️ to edit your caption
+                  </Alert>
+                )}
+
                 <Button
                   size="medium"
                   fullWidth
