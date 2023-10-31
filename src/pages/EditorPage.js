@@ -1066,7 +1066,9 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         }
       };
 
-      // loadEditorDefaults();
+      if (!selectedFid) {
+        loadEditorDefaults();
+      }
 
       // On object modification (when object's movement/editing is completed)
       editor.canvas.on('object:modified', () => {
