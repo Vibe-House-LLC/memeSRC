@@ -1167,7 +1167,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
 
   const handleOpenNavWithoutSavingDialog = (result) => {
-    if (bgEditorStates.length > 1) {
+    if (editorStates.length > 0) {
       setOpenNavWithoutSavingDialog(true);
     } else {
       navigate(`/editor/${result?.fid}`);
@@ -1177,7 +1177,11 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const handleNavigate = (result) => {
     navigate(`/editor/${result?.fid}`);
     setOpenNavWithoutSavingDialog(false);
-    editor.canvas.discardActiveObject().requestRenderAll();
+    // editor.canvas.discardActiveObject().requestRenderAll();
+    // setFutureStates([]);
+    // setBgFutureStates([]);
+    // setEditorStates([]);
+    // setBgEditorStates([]);
   };
 
   // ------------------------------------------------------------------------
@@ -1740,7 +1744,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                               alt={result?.subtitle}
                               title={result?.subtitle}
                               onClick={() => {
-                                editor.canvas._objects = [];
+                                // editor.canvas._objects = [];
                                 // setSelectedFid(result?.fid);
                                 handleOpenNavWithoutSavingDialog(result);
                                 // setFineTuningValue(4);
