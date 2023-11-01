@@ -5,7 +5,7 @@ import { styled } from '@mui/material/styles';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
-import { Accordion, AccordionDetails, AccordionSummary, Backdrop, Button, ButtonGroup, Card, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, Tab, Tabs, TextField, ToggleButton, ToggleButtonGroup, Typography, useMediaQuery, useTheme } from '@mui/material';
+import { Accordion, AccordionDetails, AccordionSummary, Backdrop, Button, ButtonGroup, Card, CircularProgress, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, Tab, Tabs, TextField, ToggleButton, ToggleButtonGroup, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { Add, AddCircleOutline, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ClosedCaption, ContentCopy, FolderOpen, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, History, HistoryToggleOffRounded, IosShare, Menu, Redo, Save, Share, Undo, Update, ZoomIn, ZoomOut } from '@mui/icons-material';
 import { API, Storage, graphqlOperation } from 'aws-amplify';
 import { Box } from '@mui/system';
@@ -289,7 +289,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     setLoading(true);
     // Check if the uploadedImage exists in the location state
     const uploadedImage = location.state?.uploadedImage;
-  
+
     if (uploadedImage && !defaultFrame) {
       // Use the uploadedImage as the background instead of the default image
       fabric.Image.fromURL(uploadedImage, (oImg) => {
@@ -310,49 +310,49 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         const serializedCanvas = await Storage.get(fileName, { level: 'protected' });
 
         if (serializedCanvas) {
-            // Fetch the actual content from S3. 
-            // Storage.get provides a pre-signed URL, so we need to fetch the actual content.
-            const response = await fetch(serializedCanvas);
-            const canvasStateJSON = await response.json();
-            
-            editor?.canvas.loadFromJSON(canvasStateJSON, () => {
-                const oImg = editor.canvas.backgroundImage;
-                const imageAspectRatio = oImg.width / oImg.height;
-                setEditorAspectRatio(imageAspectRatio);
-                const [desiredHeight, desiredWidth] = calculateEditorSize(imageAspectRatio);
-                setCanvasSize({ height: desiredHeight, width: desiredWidth });
+          // Fetch the actual content from S3. 
+          // Storage.get provides a pre-signed URL, so we need to fetch the actual content.
+          const response = await fetch(serializedCanvas);
+          const canvasStateJSON = await response.json();
 
-                // Scale the image to fit the canvas
-                const scale = desiredWidth / oImg.width;
-                oImg.scale(desiredWidth / oImg.width);
-                editor.canvas.forEachObject(obj => {
-                  obj.left *= scale;
-                  obj.top *= scale;
-                  obj.scaleY *= scale;
-                  obj.scaleX *= scale;
-                })
+          editor?.canvas.loadFromJSON(canvasStateJSON, () => {
+            const oImg = editor.canvas.backgroundImage;
+            const imageAspectRatio = oImg.width / oImg.height;
+            setEditorAspectRatio(imageAspectRatio);
+            const [desiredHeight, desiredWidth] = calculateEditorSize(imageAspectRatio);
+            setCanvasSize({ height: desiredHeight, width: desiredWidth });
 
-                // Center the image within the canvas
-                oImg.set({ left: 0, top: 0 });
-                const minWidth = 750;
-                const x = (oImg.width > minWidth) ? oImg.width : minWidth;
-                setImageScale(x / desiredWidth);
-                resizeCanvas(desiredWidth, desiredHeight);
+            // Scale the image to fit the canvas
+            const scale = desiredWidth / oImg.width;
+            oImg.scale(desiredWidth / oImg.width);
+            editor.canvas.forEachObject(obj => {
+              obj.left *= scale;
+              obj.top *= scale;
+              obj.scaleY *= scale;
+              obj.scaleX *= scale;
+            })
 
-                editor?.canvas.setBackgroundImage(oImg);
-                if (defaultSubtitle) {
-                  addText(defaultSubtitle)
-                }
-                setImageLoaded(true);
+            // Center the image within the canvas
+            oImg.set({ left: 0, top: 0 });
+            const minWidth = 750;
+            const x = (oImg.width > minWidth) ? oImg.width : minWidth;
+            setImageScale(x / desiredWidth);
+            resizeCanvas(desiredWidth, desiredHeight);
 
-                // Rendering the canvas after applying all changes
-                editor.canvas.renderAll();
-            });
+            editor?.canvas.setBackgroundImage(oImg);
+            if (defaultSubtitle) {
+              addText(defaultSubtitle)
+            }
+            setImageLoaded(true);
+
+            // Rendering the canvas after applying all changes
+            editor.canvas.renderAll();
+          });
         } else {
-            console.error('No saved editor state found for the project in S3.');
+          console.error('No saved editor state found for the project in S3.');
         }
       } catch (error) {
-          console.error('Failed to load editor state from S3:', error);
+        console.error('Failed to load editor state from S3:', error);
       }
     } else {
       getFrame(selectedFid)
@@ -367,8 +367,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
           });
           // Background image from the given URL
           fabric.Image.fromURL(
-            `https://memesrc.com${
-              searchDetails.fineTuningFrame ? data.frames_fine_tuning[searchDetails.fineTuningFrame] : data.frame_image
+            `https://memesrc.com${searchDetails.fineTuningFrame ? data.frames_fine_tuning[searchDetails.fineTuningFrame] : data.frame_image
             }`,
             (oImg) => {
               setDefaultFrame(oImg);
@@ -382,58 +381,58 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     }
   }, [resizeCanvas, selectedFid, editor, addText, location]);
 
-//   const loadProjectFromS3 = async () => {
-//     try {
-//         // Generate the file name/path based on the editorProjectId
-//         const fileName = `projects/${editorProjectId}.json`;
+  //   const loadProjectFromS3 = async () => {
+  //     try {
+  //         // Generate the file name/path based on the editorProjectId
+  //         const fileName = `projects/${editorProjectId}.json`;
 
-//         // Fetch the serialized canvas state from S3 under the user's protected folder
-//         const serializedCanvas = await Storage.get(fileName, { level: 'protected' });
+  //         // Fetch the serialized canvas state from S3 under the user's protected folder
+  //         const serializedCanvas = await Storage.get(fileName, { level: 'protected' });
 
-//         if (serializedCanvas) {
-//             // Fetch the actual content from S3. 
-//             // Storage.get provides a pre-signed URL, so we need to fetch the actual content.
-//             const response = await fetch(serializedCanvas);
-//             const canvasStateJSON = await response.json();
-            
-//             editor.canvas.loadFromJSON(canvasStateJSON, () => {
-//                 const oImg = editor.canvas.backgroundImage;
-//                 const imageAspectRatio = oImg.width / oImg.height;
-//                 setEditorAspectRatio(imageAspectRatio);
-//                 const [desiredHeight, desiredWidth] = calculateEditorSize(imageAspectRatio);
-//                 setCanvasSize({ height: desiredHeight, width: desiredWidth });
+  //         if (serializedCanvas) {
+  //             // Fetch the actual content from S3. 
+  //             // Storage.get provides a pre-signed URL, so we need to fetch the actual content.
+  //             const response = await fetch(serializedCanvas);
+  //             const canvasStateJSON = await response.json();
 
-//                 // Scale the image to fit the canvas
-//                 const scale = desiredWidth / oImg.width;
-//                 oImg.scale(desiredWidth / oImg.width);
-//                 editor.canvas.forEachObject(obj => {
-//                   obj.left *= scale;
-//                   obj.top *= scale;
-//                   obj.scaleY *= scale;
-//                   obj.scaleX *= scale;
-//                 })
+  //             editor.canvas.loadFromJSON(canvasStateJSON, () => {
+  //                 const oImg = editor.canvas.backgroundImage;
+  //                 const imageAspectRatio = oImg.width / oImg.height;
+  //                 setEditorAspectRatio(imageAspectRatio);
+  //                 const [desiredHeight, desiredWidth] = calculateEditorSize(imageAspectRatio);
+  //                 setCanvasSize({ height: desiredHeight, width: desiredWidth });
 
-//                 // Center the image within the canvas
-//                 oImg.set({ left: 0, top: 0 });
-//                 const minWidth = 750;
-//                 const x = (oImg.width > minWidth) ? oImg.width : minWidth;
-//                 setImageScale(x / desiredWidth);
-//                 resizeCanvas(desiredWidth, desiredHeight);
+  //                 // Scale the image to fit the canvas
+  //                 const scale = desiredWidth / oImg.width;
+  //                 oImg.scale(desiredWidth / oImg.width);
+  //                 editor.canvas.forEachObject(obj => {
+  //                   obj.left *= scale;
+  //                   obj.top *= scale;
+  //                   obj.scaleY *= scale;
+  //                   obj.scaleX *= scale;
+  //                 })
 
-//                 editor?.canvas.setBackgroundImage(oImg);
-//                 addText(defaultSubtitle === false ? "Bottom Text" : defaultSubtitle, false);
-//                 setImageLoaded(true);
+  //                 // Center the image within the canvas
+  //                 oImg.set({ left: 0, top: 0 });
+  //                 const minWidth = 750;
+  //                 const x = (oImg.width > minWidth) ? oImg.width : minWidth;
+  //                 setImageScale(x / desiredWidth);
+  //                 resizeCanvas(desiredWidth, desiredHeight);
 
-//                 // Rendering the canvas after applying all changes
-//                 editor.canvas.renderAll();
-//             });
-//         } else {
-//             console.error('No saved editor state found for the project in S3.');
-//         }
-//     } catch (error) {
-//         console.error('Failed to load editor state from S3:', error);
-//     }
-// };
+  //                 editor?.canvas.setBackgroundImage(oImg);
+  //                 addText(defaultSubtitle === false ? "Bottom Text" : defaultSubtitle, false);
+  //                 setImageLoaded(true);
+
+  //                 // Rendering the canvas after applying all changes
+  //                 editor.canvas.renderAll();
+  //             });
+  //         } else {
+  //             console.error('No saved editor state found for the project in S3.');
+  //         }
+  //     } catch (error) {
+  //         console.error('Failed to load editor state from S3:', error);
+  //     }
+  // };
 
   // Look up data for the fid and set defaults
   useEffect(() => {
@@ -465,7 +464,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       resizeCanvas(desiredWidth, desiredHeight)
       editor?.canvas.setBackgroundImage(oImg);
       // if (defaultSubtitle) {
-        addText(defaultSubtitle)
+      addText(defaultSubtitle)
       // }
       setImageLoaded(true)
     }
@@ -511,16 +510,16 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       quality: 0.6,
       multiplier: imageScale
     });
-  
+
     fetch(resultImage)
       .then(res => res.blob())
       .then(blob => {
         setImageBlob(blob);
-        
+
         API.get('publicapi', '/uuid').then(uuid => {
           const filename = `${uuid}.jpg`;
           setGeneratedImageFilename(filename);
-  
+
           // Save public version of the image
           Storage.put(`${uuid}.jpg`, blob, {
             resumable: true,
@@ -539,7 +538,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
               console.error('Unexpected error while uploading', err);
             }
           });
-  
+
           // Save protected version of the image
           const protectedFilename = `projects/${editorProjectId}-preview.jpg`;
           Storage.put(protectedFilename, blob, {
@@ -553,11 +552,11 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
               console.error('Unexpected error while uploading protected version', err);
             }
           });
-  
+
         }).catch(err => console.log(`UUID Gen Fetch Error: ${err}`));
       });
   }
-  
+
   const showColorPicker = (event, index) => {
     setPickingColor(index);
     setColorPickerShowing(index);
@@ -619,7 +618,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     searchDetails.setFineTuningFrame(value)
     setEditorStates(prevHistory => [...prevHistory, serializedCanvas]);
     setBgEditorStates(prevHistory => [...prevHistory, oImg]);
-}
+  }
 
 
   const handleStyle = (index, customStyles) => {
@@ -650,17 +649,17 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const TIMEOUT = 60 * 1000;   // 1 minute
 
   async function checkMagicResult(id) {
-      try {
-          const result = await API.graphql(graphqlOperation(`query MyQuery {
+    try {
+      const result = await API.graphql(graphqlOperation(`query MyQuery {
             getMagicResult(id: "${id}") {
               results
             }
           }`));
-          return result.data.getMagicResult?.results;
-      } catch (error) {
-          console.error("Error fetching magic result:", error);
-          return null;
-      }
+      return result.data.getMagicResult?.results;
+    } catch (error) {
+      console.error("Error fetching magic result:", error);
+      return null;
+    }
   }
 
   const toggleDrawingMode = (tool) => {
@@ -799,17 +798,17 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         const response = await API.post('publicapi', '/inpaint', {
           body: data
         });
-    
+
         const magicResultId = response.magicResultId;
-    
+
         const startTime = Date.now();
-    
+
         const pollInterval = setInterval(async () => {
           const results = await checkMagicResult(magicResultId);
           if (results || (Date.now() - startTime) >= TIMEOUT) {
             clearInterval(pollInterval);
             setLoadingInpaintingResult(false);  // Stop the loading spinner
-    
+
             if (results) {
               const imageUrls = JSON.parse(results);
               setReturnedImages([...returnedImages, ...imageUrls]);
@@ -823,19 +822,19 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
             }
           }
         }, QUERY_INTERVAL);
-    
+
       } catch (error) {
         setLoadingInpaintingResult(false);
         if (error.response?.data?.error?.name === "InsufficientCredits") {
-            setSeverity('error');
-            setMessage('Insufficient Credits');
-            setOpen(true);
-            originalCanvas.getObjects().forEach((obj) => {
-                if (obj instanceof fabric.Path) {
-                    editor.canvas.remove(obj);
-                }
-            });
-            setHasFabricPaths(false);
+          setSeverity('error');
+          setMessage('Insufficient Credits');
+          setOpen(true);
+          originalCanvas.getObjects().forEach((obj) => {
+            if (obj instanceof fabric.Path) {
+              editor.canvas.remove(obj);
+            }
+          });
+          setHasFabricPaths(false);
         }
         console.log(error.response.data);
         alert(`Error: ${JSON.stringify(error.response.data)}`);
@@ -845,48 +844,48 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
   const handleAddCanvasBackground = (imgUrl) => {
     try {
-        setOpenSelectResult(false);
+      setOpenSelectResult(false);
 
-        fabric.Image.fromURL(imgUrl, (returnedImage) => {
-            if (!returnedImage) {
-                throw new Error('Failed to load image from URL');
-            }
+      fabric.Image.fromURL(imgUrl, (returnedImage) => {
+        if (!returnedImage) {
+          throw new Error('Failed to load image from URL');
+        }
 
-            editor.canvas.getObjects().forEach((obj) => {
-              if (obj instanceof fabric.Path) {
-                editor.canvas.remove(obj)
-              }
-            });
-
-            setHasFabricPaths(false);
-
-            setSelectedImage();
-            setReturnedImages([]);
-
-            const originalHeight = editor.canvas.height;
-            const originalWidth = editor.canvas.width;
-            const scale = Math.min(1024 / originalWidth, 1024 / originalHeight);
-            returnedImage.scale(1 / scale);
-            editor.canvas.setBackgroundImage(returnedImage);
-            setBgEditorStates(prevHistory => [...prevHistory, returnedImage]);
-            editor.canvas.backgroundImage.center();
-            editor.canvas.renderAll();
-
-            setEditorTool('captions');
-            toggleDrawingMode('captions');
-            setMagicPrompt('Everyday scene as cinematic cinestill sample');
-            // setPromptEnabled('erase');
-            addToHistory();
-        }, {
-            crossOrigin: "anonymous"
+        editor.canvas.getObjects().forEach((obj) => {
+          if (obj instanceof fabric.Path) {
+            editor.canvas.remove(obj)
+          }
         });
 
+        setHasFabricPaths(false);
+
+        setSelectedImage();
+        setReturnedImages([]);
+
+        const originalHeight = editor.canvas.height;
+        const originalWidth = editor.canvas.width;
+        const scale = Math.min(1024 / originalWidth, 1024 / originalHeight);
+        returnedImage.scale(1 / scale);
+        editor.canvas.setBackgroundImage(returnedImage);
+        setBgEditorStates(prevHistory => [...prevHistory, returnedImage]);
+        editor.canvas.backgroundImage.center();
+        editor.canvas.renderAll();
+
+        setEditorTool('captions');
+        toggleDrawingMode('captions');
+        setMagicPrompt('Everyday scene as cinematic cinestill sample');
+        // setPromptEnabled('erase');
+        addToHistory();
+      }, {
+        crossOrigin: "anonymous"
+      });
+
     } catch (error) {
-        setSeverity('error');
-        setMessage(`An error occurred: ${error.message}`);
-        setOpen(true);
+      setSeverity('error');
+      setMessage(`An error occurred: ${error.message}`);
+      setOpen(true);
     }
-};
+  };
 
 
 
@@ -924,73 +923,73 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   // }
   const addToHistory = async () => {
     try {
-        // Save the current state of the canvas for local undo/redo before any scaling or modifications
-        const serializedCanvas = JSON.stringify(editor.canvas);
-        const backgroundImage = editor.canvas.backgroundImage;
-        
-        setFutureStates([]);
-        setBgFutureStates([]);
+      // Save the current state of the canvas for local undo/redo before any scaling or modifications
+      const serializedCanvas = JSON.stringify(editor.canvas);
+      const backgroundImage = editor.canvas.backgroundImage;
 
-        setEditorStates(prevHistory => [...prevHistory, serializedCanvas]);
-        setBgEditorStates(prevHistory => [...prevHistory, backgroundImage]);
+      setFutureStates([]);
+      setBgFutureStates([]);
 
-        // Scale the image to fit the canvas
-        const oImg = editor.canvas.backgroundImage;
-        const imageAspectRatio = oImg.width / oImg.height;
-        const [desiredHeight, desiredWidth] = calculateEditorSize(imageAspectRatio);
-        const scale = desiredWidth / oImg.width;
-        
-        oImg.scale(scale);
-        editor.canvas.forEachObject(obj => {
-            obj.left /= scale;
-            obj.top /= scale;
-            obj.scaleY /= scale;
-            obj.scaleX /= scale;
-        });
+      setEditorStates(prevHistory => [...prevHistory, serializedCanvas]);
+      setBgEditorStates(prevHistory => [...prevHistory, backgroundImage]);
 
-        // Now, save the scaled state for the S3 storage
-        const scaledSerializedCanvas = JSON.stringify(editor.canvas);
+      // Scale the image to fit the canvas
+      const oImg = editor.canvas.backgroundImage;
+      const imageAspectRatio = oImg.width / oImg.height;
+      const [desiredHeight, desiredWidth] = calculateEditorSize(imageAspectRatio);
+      const scale = desiredWidth / oImg.width;
 
-        // Revert the scaling to ensure local behavior remains consistent
-        editor.canvas.forEachObject(obj => {
-          obj.left *= scale;
-          obj.top *= scale;
-          obj.scaleY *= scale;
-          obj.scaleX *= scale;
-        });
-        
-        // Create a unique file name based on the editorProjectId for JSON state
-        const stateFileName = `projects/${editorProjectId}.json`;
+      oImg.scale(scale);
+      editor.canvas.forEachObject(obj => {
+        obj.left /= scale;
+        obj.top /= scale;
+        obj.scaleY /= scale;
+        obj.scaleX /= scale;
+      });
 
-        // Upload the serialized (scaled) canvas state to S3 under the user's protected folder
-        await Storage.put(stateFileName, scaledSerializedCanvas, {
-            level: 'protected',
-            contentType: 'application/json'
-        });
+      // Now, save the scaled state for the S3 storage
+      const scaledSerializedCanvas = JSON.stringify(editor.canvas);
 
-        // Convert the canvas to a data URL with appropriate quality and multiplier settings
-        const canvasDataURL = editor.canvas.toDataURL({
-            format: 'jpeg',
-            quality: 0.6,
-            multiplier: 1/scale
-        });
+      // Revert the scaling to ensure local behavior remains consistent
+      editor.canvas.forEachObject(obj => {
+        obj.left *= scale;
+        obj.top *= scale;
+        obj.scaleY *= scale;
+        obj.scaleX *= scale;
+      });
 
-        // Convert the data URL to a Blob
-        const canvasBlob = dataURLtoBlob(canvasDataURL);
+      // Create a unique file name based on the editorProjectId for JSON state
+      const stateFileName = `projects/${editorProjectId}.json`;
 
-        // Create a unique file name based on the editorProjectId for the canvas image
-        const canvasImageFileName = `projects/${editorProjectId}-preview.jpg`;
+      // Upload the serialized (scaled) canvas state to S3 under the user's protected folder
+      await Storage.put(stateFileName, scaledSerializedCanvas, {
+        level: 'protected',
+        contentType: 'application/json'
+      });
 
-        // Upload the canvas image to S3 under the user's protected folder
-        await Storage.put(canvasImageFileName, canvasBlob, {
-            level: 'protected',
-            contentType: 'image/jpeg'
-        });
+      // Convert the canvas to a data URL with appropriate quality and multiplier settings
+      const canvasDataURL = editor.canvas.toDataURL({
+        format: 'jpeg',
+        quality: 0.6,
+        multiplier: 1 / scale
+      });
+
+      // Convert the data URL to a Blob
+      const canvasBlob = dataURLtoBlob(canvasDataURL);
+
+      // Create a unique file name based on the editorProjectId for the canvas image
+      const canvasImageFileName = `projects/${editorProjectId}-preview.jpg`;
+
+      // Upload the canvas image to S3 under the user's protected folder
+      await Storage.put(canvasImageFileName, canvasBlob, {
+        level: 'protected',
+        contentType: 'image/jpeg'
+      });
 
     } catch (error) {
-        console.error('Failed to update editor state or canvas image in S3:', error);
+      console.error('Failed to update editor state or canvas image in S3:', error);
     }
-};
+  };
 
 
   function dataURLtoBlob(dataurl) {
@@ -1002,10 +1001,10 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     const n = bstr.length;
     const u8arr = new Uint8Array(n);
     for (let i = 0; i < n; i += 1) {
-        u8arr[i] = bstr.charCodeAt(i);
+      u8arr[i] = bstr.charCodeAt(i);
     }
-    return new Blob([u8arr], {type: mime});
-}
+    return new Blob([u8arr], { type: mime });
+  }
 
 
 
@@ -1196,194 +1195,436 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       <Helmet>
         <title>Edit • memeSRC</title>
       </Helmet>
-      <ParentContainer sx={{ padding: { xs: 1.5, md: 2 } }} id="parent-container">
-        <Grid container justifyContent="center">
-          <Grid
-            container
-            item
-            xs={12}
-            minWidth={{ xs: {}, md: '98vw', lg: '1200px' }}
-            justifyContent="center"
-            marginBottom={8.3}
-          >
-            <Card sx={{ padding: { xs: 1.5, md: 2 } }}>
-              <Grid container item spacing={2} justifyContent="center">
-              <Grid item xs={12} md={5} lg={5} minWidth={{ xs: {}, md: '350px' }} order={{ xs: 3, md: 2 }}>
-                  {/* {user && user.userDetails?.credits > 0 && (
-                    <Grid item xs={12} marginBottom={2}>
-                      <Grid container direction="column" spacing={2}>
-                        {drawingMode ? (
-                          <>
-                            <Grid item>
-                              <TextField
-                                fullWidth
-                                id="prompt"
-                                label="Prompt"
-                                variant="outlined"
-                                value={magicPrompt}
-                                onChange={(event) => setMagicPrompt(event.target.value)}
-                              />
-                            </Grid>
-                            <Grid item>
-                              <Button
-                                variant="contained"
-                                onClick={() => {
-                                  exportDrawing();
-                                  toggleDrawingMode();
-                                }}
-                                fullWidth
-                                sx={{ zIndex: '50' }}
-                                startIcon={<AutoFixHighRounded />}
-                              >
-                                Magic Brush (apply)
-                              </Button>
-                            </Grid>
-                          </>
-                        ) : (
-                          <Grid item>
-                            <Button
-                              variant="contained"
-                              onClick={toggleDrawingMode}
-                              fullWidth
-                              sx={{ zIndex: '50' }}
-                              startIcon={<AutoFixHighRounded />}
-                            >
-                              Magic Brush (select)
-                            </Button>
-                          </Grid>
-                        )}
-                      </Grid>
-                    </Grid>
-                  )} */}
+      <Container maxWidth='xl' disableGutters>
+        <ParentContainer sx={{ padding: { xs: 1.5, md: 2 } }} id="parent-container">
+
+          <Card sx={{ padding: { xs: 1.5, md: 2 } }}>
+            <Grid container spacing={2}>
+
+              {/* Editor */}
+
+              <Grid item xs={12} md={7} lg={7} marginRight={{ xs: '', md: 'auto' }}>
+                <Grid container item mb={1.5}>
+                  <Grid item xs={12}>
+                    <Stack direction='row' width='100%' justifyContent='space-between' alignItems='center'>
+
+                      <ButtonGroup variant="contained" size="small">
+                        <IconButton disabled={(editorStates.length <= 1)} onClick={undo}>
+                          <Undo />
+                        </IconButton>
+                        <IconButton disabled={(futureStates.length === 0)} onClick={redo}>
+                          <Redo />
+                        </IconButton>
+                      </ButtonGroup>
+
+                      <Button
+                        variant="contained"
+                        size="medium"
+                        startIcon={<Save />}
+                        onClick={handleClickDialogOpen}
+                        sx={{ zIndex: '50', backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
+                      >
+                        Save/Copy/Share
+                      </Button>
+
+                    </Stack>
+                  </Grid>
                 </Grid>
-                <Grid
-                  item
-                  xs={12}
-                  md={7}
-                  lg={7}
-                  marginRight={{ xs: '', md: 'auto' }}
-                  marginTop={{ xs: -2.5, md: -1.5 }}
-                  order={{ xs: 4, md: 4 }}
-                >
-                  {surroundingFrames && surroundingFrames.length > 0 && (
-                    <Card>
-                      <Accordion expanded={subtitlesExpanded} disableGutters>
-                        <AccordionSummary sx={{ paddingX: 1.55, textAlign: "center" }} onClick={handleSubtitlesExpand} >
-                          <Typography marginRight="auto" fontWeight="bold" color="#CACACA" fontSize={14.8}>
-                            {subtitlesExpanded ? (
-                              <Close style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
-                            ) : (
-                              <Menu style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
-                            )}
-                            {subtitlesExpanded ? 'Hide' : 'View'} Nearby Subtitles
-                          </Typography>
-                          {/* <Chip size="small" label="New!" color="success" /> */}
-                        </AccordionSummary>
-                        <AccordionDetails sx={{ paddingY: 0, paddingX: 0 }}>
-                          <List sx={{ padding: '.5em 0' }}>
-                            {surroundingFrames &&
-                              surroundingFrames
-                                .filter(
-                                  (result, index, array) =>
-                                    result?.subtitle &&
-                                    (index === 0 ||
-                                      result?.subtitle.replace(/\n/g, ' ') !==
-                                      array[index - 1].subtitle.replace(/\n/g, ' '))
-                                )
-                                .map((result, index) => (
-                                  <ListItem key={result.id ? result.id : `surrounding-subtitle-${index}`} disablePadding sx={{ padding: '0 0 .6em 0' }}>
-                                    <ListItemIcon sx={{ paddingLeft: '0' }}>
-                                      <Fab
-                                        size="small"
-                                        sx={{
-                                          backgroundColor: theme.palette.background.paper,
-                                          boxShadow: 'none',
-                                          marginLeft: '5px',
-                                          '&:hover': {
-                                            xs: { backgroundColor: 'inherit' },
-                                            md: {
-                                              backgroundColor:
-                                                result?.subtitle.replace(/\n/g, ' ') ===
-                                                  defaultSubtitle?.replace(/\n/g, ' ')
-                                                  ? 'rgba(0, 0, 0, 0)'
-                                                  : 'ButtonHighlight',
-                                            },
+                <div style={{ width: '100%', padding: 0, margin: 0, boxSizing: 'border-box', position: 'relative' }} id="canvas-container">
+                  <FabricJSCanvas onReady={onReady} />
+                  {showBrushSize &&
+                    <div style={{
+                      width: brushToolSize,
+                      height: brushToolSize,
+                      position: 'absolute',
+                      left: '50%',
+                      top: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      borderRadius: '50%',
+                      background: 'red',
+                      borderColor: 'black',
+                      borderStyle: 'solid',
+                      borderWidth: '1px',
+                      boxShadow: '0 7px 10px rgba(0, 0, 0, 0.75)'
+                    }} />
+                  }
+                </div>
+
+
+                {/* <button type='button' onClick={addImage}>Add Image</button>
+                                    <button type='button' onClick={saveProject}>Save Project</button>
+                                    <button type='button' onClick={loadProject}>Load Project</button>
+                                    <button type='button' onClick={handleClickDialogOpen}>Save Image</button> */}
+              </Grid>
+
+              {/* Editing Tools */}
+
+              <Grid item xs={12} md={5}>
+                <Stack width='100%' spacing={1}>
+                  <Tabs
+                    value={editorTool}
+                    onChange={(event, value) => {
+                      setEditorTool(value);
+                      toggleDrawingMode(value);
+                    }}
+                    centered
+                    TabIndicatorProps={{
+                      style: {
+                        backgroundColor: 'limegreen',
+                        height: '3px',
+                      }
+                    }}
+                  >
+                    <Tab
+                      style={{
+                        opacity: editorTool === "captions" ? 1 : 0.4,
+                        color: editorTool === "captions" ? "limegreen" : "white"
+                      }}
+                      icon={
+                        <Box display="flex" alignItems="center" marginX={-1}>
+                          <ClosedCaption fontSize='small' sx={{ mr: 1 }} />
+                          Caption Editor
+                        </Box>
+                      }
+                      value="captions"
+                    />
+                    <Tab
+                      style={{
+                        opacity: editorTool === "magicEraser" ? 1 : 0.4,
+                        color: editorTool === "magicEraser" ? "limegreen" : "white"
+                      }}
+                      icon={
+                        <Box display="flex" alignItems="center" marginX={-1}>
+                          <AutoFixHighRounded fontSize='small' sx={{ mr: 1 }} />
+                          Magic Tools
+                        </Box>
+                      }
+                      value="magicEraser"
+                      onClick={(event) => {
+                        if (!user || user?.userDetails?.credits <= 0) {
+                          setMagicToolsPopoverAnchorEl(event.currentTarget);
+                          setEditorTool('captions')
+                        }
+                      }}
+                    />
+                  </Tabs>
+
+                  {editorTool === 'captions' && (
+                    <>
+                      {canvasObjects &&
+                        canvasObjects.map(
+                          (object, index) =>
+                            'text' in object && (
+                              <Grid item xs={12} order={index} key={`grid${index}`} marginBottom={1} style={{ marginLeft: '10px' }}>
+                                <div style={{ display: 'inline', position: 'relative' }} key={`div${index}`}>
+                                  <TextEditorControls
+                                    showColorPicker={(event) => showColorPicker(event, index)}
+                                    colorPickerShowing={colorPickerShowing}
+                                    index={index}
+                                    showFontSizePicker={(event) => showFontSizePicker(event, index)}
+                                    fontSizePickerShowing={fontSizePickerShowing}
+                                    key={`togglebuttons${index}`}
+                                    handleStyle={handleStyle}
+                                  />
+                                </div>
+                                {/* Container to place TextField and Fab button beside each other */}
+                                <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                                  <TextField
+                                    size="small"
+                                    key={`textfield${index}`}
+                                    multiline
+                                    type="text"
+                                    value={canvasObjects[index].text}
+                                    fullWidth
+                                    onFocus={() => handleFocus(index)}
+                                    onBlur={addToHistory}
+                                    onChange={(event) => handleEdit(event, index)}
+                                    placeholder='(type your caption)'
+                                  />
+
+                                  {/* Adjusted style for the Fab button */}
+                                  <Fab
+                                    size="small"
+                                    aria-label="add"
+                                    sx={{
+                                      marginLeft: '10px', // Added margin for spacing
+                                      backgroundColor: theme.palette.background.paper,
+                                      boxShadow: 'none'
+                                    }}
+                                    onClick={() => deleteLayer(index)}
+                                    key={`fab${index}`}
+                                  >
+                                    <HighlightOffRounded color="error" />
+                                  </Fab>
+                                </div>
+                              </Grid>
+                            )
+                        )
+                      }
+                      <Grid item xs={12} order={canvasObjects?.length + 1} key="addLayerButton">
+                        <Button
+                          variant="contained"
+                          onClick={() => addText('text', true)}
+                          fullWidth
+                          sx={{ zIndex: '50', marginY: '20px' }}
+                          startIcon={<AddCircleOutline />}
+                        >
+                          {canvasObjects?.length > 0 ? "Add another caption" : "Add a caption"}
+                        </Button>
+                      </Grid>
+                    </>
+                  )}
+
+                  {editorTool === 'fineTuning' && (
+                    loadingFineTuningFrames ? (
+                      <Stack direction='row' justifyContent='center' alignItems='center' spacing={2}>
+                        <CircularProgress size={30} />
+                        <Typography variant='body1'>Loading frames...</Typography>
+                      </Stack>
+                    ) : (
+                      <Slider
+                        size="small"
+                        defaultValue={4}
+                        min={0}
+                        max={8}
+                        value={fineTuningValue}
+                        aria-label="Small"
+                        valueLabelDisplay="auto"
+                        onChange={(event, value) => {
+                          handleFineTuning(value);
+                          setFineTuningValue(value);
+                        }}
+                        valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
+                        marks
+                        track={false}
+                      />
+                    )
+                  )}
+
+                  {editorTool === 'magicEraser' && (
+                    <>
+                      <Tabs
+                        value={promptEnabled}
+                        onChange={(event, value) => {
+                          setPromptEnabled(value);
+                        }}
+                        centered
+                        TabIndicatorProps={{
+                          style: {
+                            backgroundColor: 'limegreen',
+                            height: '3px'
+                          }
+                        }}
+                      >
+                        <Tab
+                          icon={<AutoFixHigh fontSize='small' />}
+                          label="Eraser"
+                          value="erase"
+                          style={{ color: promptEnabled === 'erase' ? 'limegreen' : undefined }}
+                        />
+                        <Tab
+                          icon={<FormatColorFill fontSize='small' />}
+                          label="Fill"
+                          value="fill"
+                          style={{ color: promptEnabled === 'fill' ? 'limegreen' : undefined }}
+                        />
+                      </Tabs>
+
+                      <Stack direction='row' alignItems='center' spacing={2}>
+                        <Slider
+                          size="small"
+                          min={1}
+                          max={100}
+                          value={brushToolSize}
+                          aria-label="Small"
+                          valueLabelDisplay='auto'
+                          sx={{ marginRight: 0.5 }}
+                          onChange={(event, value) => {
+                            setShowBrushSize(true);
+                            handleBrushToolSize(value);
+                          }}
+                          onChangeCommitted={() => {
+                            setShowBrushSize(false);
+                          }}
+                          track={false}
+                        />
+                        <Button variant='contained' onClick={() => {
+                          setEditorTool('captions');
+                          toggleDrawingMode('captions');
+                        }}>Cancel</Button>
+                        <Button
+                          variant='contained'
+                          style={{
+                            backgroundColor: hasFabricPaths ? 'limegreen' : 'grey',
+                            color: 'white',
+                            opacity: hasFabricPaths ? 1 : 0.5
+                          }}
+                          onClick={() => {
+                            exportDrawing();
+                            // toggleDrawingMode('fineTuning');
+                          }}
+                          disabled={!hasFabricPaths} // Button is disabled if there are no fabric.Path instances
+                        >
+                          Apply
+                        </Button>
+                      </Stack>
+
+                      {promptEnabled === "fill" && (
+                        <TextField
+                          value={magicPrompt}
+                          onChange={(event) => {
+                            setMagicPrompt(event.target.value);
+                          }}
+                          fullWidth
+                          sx={{
+                            mt: 3,
+                            '& .MuiInputLabel-root.Mui-focused': {
+                              color: 'limegreen',
+                            },
+                            '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                              borderColor: 'limegreen',
+                            },
+                          }}
+                          label='Magic Fill Prompt'
+                        />
+                      )}
+                    </>
+                  )}
+
+                </Stack>
+              </Grid>
+
+
+              {/* Surrounding Frames Grid */}
+
+
+              <Grid
+                item
+                xs={12}
+                md={7}
+                lg={7}
+                marginRight={{ xs: '', md: 'auto' }}
+                marginTop={{ xs: -2.5, md: -1.5 }}
+              >
+                {surroundingFrames && surroundingFrames.length > 0 && (
+                  <Card sx={{my: 2}}>
+                    <Accordion expanded={subtitlesExpanded} disableGutters>
+                      <AccordionSummary sx={{ paddingX: 1.55, textAlign: "center" }} onClick={handleSubtitlesExpand} >
+                        <Typography marginRight="auto" fontWeight="bold" color="#CACACA" fontSize={14.8}>
+                          {subtitlesExpanded ? (
+                            <Close style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
+                          ) : (
+                            <Menu style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
+                          )}
+                          {subtitlesExpanded ? 'Hide' : 'View'} Nearby Subtitles
+                        </Typography>
+                        {/* <Chip size="small" label="New!" color="success" /> */}
+                      </AccordionSummary>
+                      <AccordionDetails sx={{ paddingY: 0, paddingX: 0 }}>
+                        <List sx={{ padding: '.5em 0' }}>
+                          {surroundingFrames &&
+                            surroundingFrames
+                              .filter(
+                                (result, index, array) =>
+                                  result?.subtitle &&
+                                  (index === 0 ||
+                                    result?.subtitle.replace(/\n/g, ' ') !==
+                                    array[index - 1].subtitle.replace(/\n/g, ' '))
+                              )
+                              .map((result, index) => (
+                                <ListItem key={result.id ? result.id : `surrounding-subtitle-${index}`} disablePadding sx={{ padding: '0 0 .6em 0' }}>
+                                  <ListItemIcon sx={{ paddingLeft: '0' }}>
+                                    <Fab
+                                      size="small"
+                                      sx={{
+                                        backgroundColor: theme.palette.background.paper,
+                                        boxShadow: 'none',
+                                        marginLeft: '5px',
+                                        '&:hover': {
+                                          xs: { backgroundColor: 'inherit' },
+                                          md: {
+                                            backgroundColor:
+                                              result?.subtitle.replace(/\n/g, ' ') ===
+                                                defaultSubtitle?.replace(/\n/g, ' ')
+                                                ? 'rgba(0, 0, 0, 0)'
+                                                : 'ButtonHighlight',
                                           },
-                                        }}
-                                        onClick={() => handleOpenNavWithoutSavingDialog(result?.fid)}
-                                      >
-                                        {loading ? (
-                                          <CircularProgress size={20} sx={{ color: '#565656' }} />
-                                        ) : result?.subtitle.replace(/\n/g, ' ') ===
-                                          defaultSubtitle.replace(/\n/g, ' ') ? (
-                                          <GpsFixed
-                                            sx={{
-                                              color:
-                                                result?.subtitle.replace(/\n/g, ' ') ===
-                                                  defaultSubtitle?.replace(/\n/g, ' ')
-                                                  ? 'rgb(202, 202, 202)'
-                                                  : 'rgb(89, 89, 89)',
-                                              cursor: 'pointer',
-                                            }}
-                                          />
-                                        ) : (
-                                          <GpsNotFixed sx={{ color: 'rgb(89, 89, 89)', cursor: 'pointer' }} />
-                                        )}
-                                      </Fab>
-                                    </ListItemIcon>
-                                    <ListItemText sx={{ color: 'rgb(173, 173, 173)', fontSize: '4em' }}>
-                                      <Typography
-                                        component="p"
-                                        variant="body2"
-                                        color={
-                                          result?.subtitle.replace(/\n/g, ' ') === defaultSubtitle?.replace(/\n/g, ' ')
-                                            ? 'rgb(202, 202, 202)'
-                                            : ''
-                                        }
-                                        fontWeight={
-                                          result?.subtitle.replace(/\n/g, ' ') === defaultSubtitle?.replace(/\n/g, ' ')
-                                            ? 700
-                                            : 400
-                                        }
-                                      >
-                                        {result?.subtitle.replace(/\n/g, ' ')}
-                                      </Typography>
-                                    </ListItemText>
-                                    <ListItemIcon sx={{ paddingRight: '0', marginLeft: 'auto' }}>
-                                      <Fab
-                                        size="small"
-                                        sx={{
-                                          backgroundColor: theme.palette.background.paper,
-                                          boxShadow: 'none',
-                                          marginRight: '2px',
-                                          '&:hover': {
-                                            xs: { backgroundColor: 'inherit' },
-                                            md: { backgroundColor: 'ButtonHighlight' },
-                                          },
-                                        }}
-                                        onClick={() => {
-                                          navigator.clipboard.writeText(result?.subtitle.replace(/\n/g, ' '));
-                                          handleSnackbarOpen();
-                                        }}
-                                      >
-                                        <ContentCopy sx={{ color: 'rgb(89, 89, 89)' }} />
-                                      </Fab>
-                                      <Fab
-                                        size="small"
-                                        sx={{
-                                          backgroundColor: theme.palette.background.paper,
-                                          boxShadow: 'none',
-                                          marginLeft: 'auto',
-                                          '&:hover': {
-                                            xs: { backgroundColor: 'inherit' },
-                                            md: { backgroundColor: 'ButtonHighlight' },
-                                          },
-                                        }}
-                                        onClick={() => addText(result?.subtitle.replace(/\n/g, ' '), true)}
-                                      >
-                                        <Add sx={{ color: 'rgb(89, 89, 89)', cursor: 'pointer' }} />
-                                      </Fab>
-                                      {/* <Fab
+                                        },
+                                      }}
+                                      onClick={() => handleOpenNavWithoutSavingDialog(result?.fid)}
+                                    >
+                                      {loading ? (
+                                        <CircularProgress size={20} sx={{ color: '#565656' }} />
+                                      ) : result?.subtitle.replace(/\n/g, ' ') ===
+                                        defaultSubtitle.replace(/\n/g, ' ') ? (
+                                        <GpsFixed
+                                          sx={{
+                                            color:
+                                              result?.subtitle.replace(/\n/g, ' ') ===
+                                                defaultSubtitle?.replace(/\n/g, ' ')
+                                                ? 'rgb(202, 202, 202)'
+                                                : 'rgb(89, 89, 89)',
+                                            cursor: 'pointer',
+                                          }}
+                                        />
+                                      ) : (
+                                        <GpsNotFixed sx={{ color: 'rgb(89, 89, 89)', cursor: 'pointer' }} />
+                                      )}
+                                    </Fab>
+                                  </ListItemIcon>
+                                  <ListItemText sx={{ color: 'rgb(173, 173, 173)', fontSize: '4em' }}>
+                                    <Typography
+                                      component="p"
+                                      variant="body2"
+                                      color={
+                                        result?.subtitle.replace(/\n/g, ' ') === defaultSubtitle?.replace(/\n/g, ' ')
+                                          ? 'rgb(202, 202, 202)'
+                                          : ''
+                                      }
+                                      fontWeight={
+                                        result?.subtitle.replace(/\n/g, ' ') === defaultSubtitle?.replace(/\n/g, ' ')
+                                          ? 700
+                                          : 400
+                                      }
+                                    >
+                                      {result?.subtitle.replace(/\n/g, ' ')}
+                                    </Typography>
+                                  </ListItemText>
+                                  <ListItemIcon sx={{ paddingRight: '0', marginLeft: 'auto' }}>
+                                    <Fab
+                                      size="small"
+                                      sx={{
+                                        backgroundColor: theme.palette.background.paper,
+                                        boxShadow: 'none',
+                                        marginRight: '2px',
+                                        '&:hover': {
+                                          xs: { backgroundColor: 'inherit' },
+                                          md: { backgroundColor: 'ButtonHighlight' },
+                                        },
+                                      }}
+                                      onClick={() => {
+                                        navigator.clipboard.writeText(result?.subtitle.replace(/\n/g, ' '));
+                                        handleSnackbarOpen();
+                                      }}
+                                    >
+                                      <ContentCopy sx={{ color: 'rgb(89, 89, 89)' }} />
+                                    </Fab>
+                                    <Fab
+                                      size="small"
+                                      sx={{
+                                        backgroundColor: theme.palette.background.paper,
+                                        boxShadow: 'none',
+                                        marginLeft: 'auto',
+                                        '&:hover': {
+                                          xs: { backgroundColor: 'inherit' },
+                                          md: { backgroundColor: 'ButtonHighlight' },
+                                        },
+                                      }}
+                                      onClick={() => addText(result?.subtitle.replace(/\n/g, ' '), true)}
+                                    >
+                                      <Add sx={{ color: 'rgb(89, 89, 89)', cursor: 'pointer' }} />
+                                    </Fab>
+                                    {/* <Fab
                                                                               size="small"
                                                                               sx={{
                                                                                   backgroundColor: theme.palette.background.paper,
@@ -1399,330 +1640,45 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                                               (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle.replace(/\n/g, " ")) ? <GpsFixed sx={{ color: (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 'rgb(50, 50, 50)' : 'rgb(89, 89, 89)', cursor: "pointer"}} /> : <ArrowForward sx={{ color: "rgb(89, 89, 89)", cursor: "pointer"}} /> 
                                                                           )}
                                                                           </Fab> */}
-                                    </ListItemIcon>
-                                  </ListItem>
-                                ))}
-                          </List>
-                        </AccordionDetails>
-                      </Accordion>
-                    </Card>
-                  )}
-                  <Dialog
-                    componentsProps={{
-                      backdrop: {
-                        style: { backgroundColor: 'rgba(0, 0, 0, 0.3)' }, // Adjust the opacity as needed
-                      },
-                    }}
-                    open={openNavWithoutSavingDialog}
-                    onClose={() => setOpenNavWithoutSavingDialog(false)}
-                    aria-labelledby="alert-dialog-title"
-                    aria-describedby="alert-dialog-description"
-                  >
-                    <DialogTitle id="alert-dialog-title">{"Unsaved Changes"}</DialogTitle>
-                    <DialogContent>
-                      <DialogContentText id="alert-dialog-description">
-                        If you leave this frame, your edits will be lost.
-                      </DialogContentText>
-                    </DialogContent>
-                    <DialogActions>
-                      <Button onClick={() => setOpenNavWithoutSavingDialog(false)} color="primary">
-                        Cancel
-                      </Button>
-                      <Button onClick={() => handleNavigate(selectedNavItemFid)} color="primary" autoFocus>
-                          Leave
-                      </Button>
-                    </DialogActions>
-                  </Dialog>
-                </Grid>
-                <Grid item xs={12} md={7} lg={7} marginRight={{ xs: '', md: 'auto' }} order={{ xs: 2, md: 3 }}>
+                                  </ListItemIcon>
+                                </ListItem>
+                              ))}
+                        </List>
+                      </AccordionDetails>
+                    </Accordion>
+                  </Card>
+                )}
+                <Dialog
+                  componentsProps={{
+                    backdrop: {
+                      style: { backgroundColor: 'rgba(0, 0, 0, 0.3)' }, // Adjust the opacity as needed
+                    },
+                  }}
+                  open={openNavWithoutSavingDialog}
+                  onClose={() => setOpenNavWithoutSavingDialog(false)}
+                  aria-labelledby="alert-dialog-title"
+                  aria-describedby="alert-dialog-description"
+                >
+                  <DialogTitle id="alert-dialog-title">{"Unsaved Changes"}</DialogTitle>
+                  <DialogContent>
+                    <DialogContentText id="alert-dialog-description">
+                      If you leave this frame, your edits will be lost.
+                    </DialogContentText>
+                  </DialogContent>
+                  <DialogActions>
+                    <Button onClick={() => setOpenNavWithoutSavingDialog(false)} color="primary">
+                      Cancel
+                    </Button>
+                    <Button onClick={() => handleNavigate(selectedNavItemFid)} color="primary" autoFocus>
+                      Leave
+                    </Button>
+                  </DialogActions>
+                </Dialog>
+              </Grid>
 
+              {/* Big Share Button */}
 
-                    <Grid item xs={12} md={7} lg={7} order="1">
-                      <Grid container item mb={1.5}>
-                        <Grid item xs={12}>
-                          <Stack direction='row' width='100%' justifyContent='space-between' alignItems='center'>
-                            
-                            <ButtonGroup variant="contained" size="small">
-                              <IconButton disabled={(editorStates.length <= 1)} onClick={undo}>
-                                <Undo />
-                              </IconButton>
-                              <IconButton disabled={(futureStates.length === 0)} onClick={redo}>
-                                <Redo />
-                              </IconButton>
-                            </ButtonGroup>
-
-                            <Button 
-                              variant="contained" 
-                              size="medium" 
-                              startIcon={<Save />} 
-                              onClick={handleClickDialogOpen}
-                              sx={{ zIndex: '50', backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
-                            >
-                              Save/Copy/Share
-                            </Button>
-
-                          </Stack>
-                        </Grid>
-                      </Grid>
-                      <div style={{ width: '100%', padding: 0, margin: 0, boxSizing: 'border-box', position: 'relative' }} id="canvas-container">
-                        <FabricJSCanvas onReady={onReady} />
-                        {showBrushSize &&
-                          <div style={{
-                            width: brushToolSize,
-                            height: brushToolSize,
-                            position: 'absolute',
-                            left: '50%',
-                            top: '50%',
-                            transform: 'translate(-50%, -50%)',
-                            borderRadius: '50%',
-                            background: 'red',
-                            borderColor: 'black',
-                            borderStyle: 'solid',
-                            borderWidth: '1px',
-                            boxShadow: '0 7px 10px rgba(0, 0, 0, 0.75)'
-                          }} />
-                        }
-                      </div>
-                    </Grid>
-                    <Stack width='100%' spacing={1}>
-                      <Tabs
-                        value={editorTool}
-                        onChange={(event, value) => {
-                          setEditorTool(value);
-                          toggleDrawingMode(value);
-                        }}
-                        centered
-                        TabIndicatorProps={{
-                          style: {
-                            backgroundColor: 'limegreen',
-                            height: '3px',
-                          }
-                        }}
-                      >
-                        <Tab
-                          style={{
-                            opacity: editorTool === "captions" ? 1 : 0.4,
-                            color: editorTool === "captions" ? "limegreen" : "white"
-                          }}
-                          icon={
-                            <Box display="flex" alignItems="center" marginX={-1}>
-                              <ClosedCaption fontSize='small' sx={{ mr: 1 }} />
-                              Caption Editor
-                            </Box>
-                          }
-                          value="captions"
-                        />
-                        <Tab
-                          style={{
-                            opacity: editorTool === "magicEraser" ? 1 : 0.4,
-                            color: editorTool === "magicEraser" ? "limegreen" : "white"
-                          }}
-                          icon={
-                            <Box display="flex" alignItems="center" marginX={-1}>
-                              <AutoFixHighRounded fontSize='small' sx={{ mr: 1 }} />
-                              Magic Tools
-                            </Box>
-                          }
-                          value="magicEraser"
-                          onClick={(event) => {
-                            if (!user || user?.userDetails?.credits <= 0) { 
-                              setMagicToolsPopoverAnchorEl(event.currentTarget);
-                              setEditorTool('captions')
-                            }
-                          }}
-                        />
-                      </Tabs>
-
-                      {editorTool === 'captions' && (
-                        <>
-                            {canvasObjects &&
-                              canvasObjects.map(
-                                (object, index) =>
-                                  'text' in object && (
-                                    <Grid item xs={12} order={index} key={`grid${index}`} marginBottom={1} style={{ marginLeft: '10px' }}>
-                                        <div style={{ display: 'inline', position: 'relative' }} key={`div${index}`}>
-                                            <TextEditorControls
-                                                showColorPicker={(event) => showColorPicker(event, index)}
-                                                colorPickerShowing={colorPickerShowing}
-                                                index={index}
-                                                showFontSizePicker={(event) => showFontSizePicker(event, index)}
-                                                fontSizePickerShowing={fontSizePickerShowing}
-                                                key={`togglebuttons${index}`}
-                                                handleStyle={handleStyle}
-                                            />
-                                        </div>
-                                        {/* Container to place TextField and Fab button beside each other */}
-                                        <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                                            <TextField
-                                                size="small"
-                                                key={`textfield${index}`}
-                                                multiline
-                                                type="text"
-                                                value={canvasObjects[index].text}
-                                                fullWidth
-                                                onFocus={() => handleFocus(index)}
-                                                onBlur={addToHistory}
-                                                onChange={(event) => handleEdit(event, index)}
-                                                placeholder='(type your caption)'
-                                            />
-
-                                            {/* Adjusted style for the Fab button */}
-                                            <Fab
-                                                size="small"
-                                                aria-label="add"
-                                                sx={{
-                                                    marginLeft: '10px', // Added margin for spacing
-                                                    backgroundColor: theme.palette.background.paper,
-                                                    boxShadow: 'none'
-                                                }}
-                                                onClick={() => deleteLayer(index)}
-                                                key={`fab${index}`}
-                                            >
-                                                <HighlightOffRounded color="error" />
-                                            </Fab>
-                                        </div>
-                                  </Grid>
-                                )
-                              )
-                            }
-                            <Grid item xs={12} order={canvasObjects?.length+1} key="addLayerButton">
-                              <Button
-                                variant="contained"
-                                onClick={() => addText('text', true)}
-                                fullWidth
-                                sx={{ zIndex: '50', marginY: '20px' }}
-                                startIcon={<AddCircleOutline />}
-                              >
-                                { canvasObjects?.length > 0 ? "Add another caption" : "Add a caption" }
-                              </Button>
-                            </Grid>
-                        </>
-                      )}
-
-                      {editorTool === 'fineTuning' && (
-                        loadingFineTuningFrames ? (
-                          <Stack direction='row' justifyContent='center' alignItems='center' spacing={2}>
-                            <CircularProgress size={30} />
-                            <Typography variant='body1'>Loading frames...</Typography>
-                          </Stack>
-                        ) : (
-                          <Slider
-                            size="small"
-                            defaultValue={4}
-                            min={0}
-                            max={8}
-                            value={fineTuningValue}
-                            aria-label="Small"
-                            valueLabelDisplay="auto"
-                            onChange={(event, value) => {
-                              handleFineTuning(value);
-                              setFineTuningValue(value);
-                            }}
-                            valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
-                            marks
-                            track={false}
-                          />
-                        )
-                      )}
-
-                      {editorTool === 'magicEraser' && (
-                        <>
-                          <Tabs
-                            value={promptEnabled}
-                            onChange={(event, value) => {
-                              setPromptEnabled(value);
-                            }}
-                            centered
-                            TabIndicatorProps={{
-                              style: {
-                                backgroundColor: 'limegreen',
-                                height: '3px'
-                              }
-                            }}
-                          >
-                            <Tab
-                              icon={<AutoFixHigh fontSize='small' />}
-                              label="Eraser"
-                              value="erase"
-                              style={{ color: promptEnabled === 'erase' ? 'limegreen' : undefined }}
-                            />
-                            <Tab
-                              icon={<FormatColorFill fontSize='small' />}
-                              label="Fill"
-                              value="fill"
-                              style={{ color: promptEnabled === 'fill' ? 'limegreen' : undefined }}
-                            />
-                          </Tabs>
-
-                          <Stack direction='row' alignItems='center' spacing={2}>
-                            <Slider
-                              size="small"
-                              min={1}
-                              max={100}
-                              value={brushToolSize}
-                              aria-label="Small"
-                              valueLabelDisplay='auto'
-                              sx={{ marginRight: 0.5 }}
-                              onChange={(event, value) => {
-                                setShowBrushSize(true);
-                                handleBrushToolSize(value);
-                              }}
-                              onChangeCommitted={() => {
-                                setShowBrushSize(false);
-                              }}
-                              track={false}
-                            />
-                            <Button variant='contained' onClick={() => {
-                              setEditorTool('captions');
-                              toggleDrawingMode('captions');
-                            }}>Cancel</Button>
-                            <Button 
-                              variant='contained' 
-                              style={{ 
-                                backgroundColor: hasFabricPaths ? 'limegreen' : 'grey', 
-                                color: 'white',
-                                opacity: hasFabricPaths ? 1 : 0.5
-                              }}
-                              onClick={() => {
-                                exportDrawing();
-                                // toggleDrawingMode('fineTuning');
-                              }}
-                              disabled={!hasFabricPaths} // Button is disabled if there are no fabric.Path instances
-                            >
-                              Apply
-                            </Button>
-                          </Stack>
-
-                          {promptEnabled === "fill" && (
-                            <TextField
-                              value={magicPrompt}
-                              onChange={(event) => {
-                                setMagicPrompt(event.target.value);
-                              }}
-                              fullWidth
-                              sx={{
-                                mt: 3,
-                                '& .MuiInputLabel-root.Mui-focused': {
-                                  color: 'limegreen',
-                                },
-                                '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                  borderColor: 'limegreen',
-                                },
-                              }}
-                              label='Magic Fill Prompt'
-                            />
-                          )}
-                        </>
-                      )}
-
-                    </Stack>
-
-                  {/* <button type='button' onClick={addImage}>Add Image</button>
-                                    <button type='button' onClick={saveProject}>Save Project</button>
-                                    <button type='button' onClick={loadProject}>Load Project</button>
-                                    <button type='button' onClick={handleClickDialogOpen}>Save Image</button> */}
-                </Grid>
-                <Grid item xs={12} marginBottom={2} order={2}>
+              {/* <Grid item xs={12} marginBottom={2} order={2}>
                     <Button
                       variant="contained"
                       onClick={handleClickDialogOpen}
@@ -1733,212 +1689,211 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                     >
                       Save/Copy/Share
                     </Button>
+                  </Grid> */}
+
+            </Grid>
+            <Grid container item spacing={1}>
+              {surroundingFrames &&
+                surroundingFrames.map((result) => (
+                  <Grid item xs={4} sm={4} md={12 / 9} key={result.fid}>
+                    <a style={{ textDecoration: 'none' }}>
+                      <StyledCard style={{ border: fid === result?.fid ? '3px solid orange' : '' }}>
+                        {/* {console.log(`${fid} = ${result?.fid}`)} */}
+                        <StyledCardMedia
+                          component="img"
+                          src={`https://memesrc.com${result?.frame_image}`}
+                          alt={result?.subtitle}
+                          title={result?.subtitle}
+                          onClick={() => {
+                            // editor.canvas._objects = [];
+                            // setSelectedFid(result?.fid);
+                            handleOpenNavWithoutSavingDialog(result?.fid);
+                            // setFineTuningValue(4);
+                          }}
+                        />
+                      </StyledCard>
+                    </a>
                   </Grid>
-                <Grid container item spacing={1} order="5">
-                {surroundingFrames &&
-                    surroundingFrames.map((result) => (
-                      <Grid item xs={4} sm={4} md={12 / 9} key={result.fid}>
-                        <a style={{ textDecoration: 'none' }}>
-                          <StyledCard style={{ border: fid === result?.fid ? '3px solid orange' : '' }}>
-                            {/* {console.log(`${fid} = ${result?.fid}`)} */}
-                            <StyledCardMedia
-                              component="img"
-                              src={`https://memesrc.com${result?.frame_image}`}
-                              alt={result?.subtitle}
-                              title={result?.subtitle}
-                              onClick={() => {
-                                // editor.canvas._objects = [];
-                                // setSelectedFid(result?.fid);
-                                handleOpenNavWithoutSavingDialog(result?.fid);
-                                // setFineTuningValue(4);
-                              }}
-                            />
-                          </StyledCard>
-                        </a>
-                      </Grid>
-                    ))}
-                    <Grid item xs={12}>
-                        {episodeDetails && episodeDetails.length > 0 && (
-                            <Button
-                                variant="contained"
-                                fullWidth
-                                href={`/episode/${episodeDetails[0]}/${episodeDetails[1]}/${episodeDetails[2]}/${episodeDetails[3]}`}
-                            >
-                                View Episode
-                            </Button>
-                        )}
-                    </Grid>
-                </Grid>
+                ))}
+              <Grid item xs={12}>
+                {episodeDetails && episodeDetails.length > 0 && (
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    href={`/episode/${episodeDetails[0]}/${episodeDetails[1]}/${episodeDetails[2]}/${episodeDetails[3]}`}
+                  >
+                    View Episode
+                  </Button>
+                )}
               </Grid>
-            </Card>
-          </Grid>
-        </Grid>
+            </Grid>
+          </Card>
 
-        <Popover
-          open={colorPickerShowing !== false}
-          anchorEl={colorPickerAnchor}
-          onClose={() => setColorPickerShowing(false)}
-          id="colorPicker"
-          anchorOrigin={{
-            vertical: 'bottom',
-            horizontal: 'center',
-          }}
-          transformOrigin={{
-            vertical: 'top',
-            horizontal: 'center',
-          }}
-        >
-          <ColorPickerPopover>
-            <TwitterPickerWrapper
-              onChangeComplete={(color) => changeColor(color, pickingColor)}
-              color={colorPickerColor}
-              colors={[
-                '#FFFFFF',
-                'yellow',
-                'black',
-                'orange',
-                '#8ED1FC',
-                '#0693E3',
-                '#ABB8C3',
-                '#EB144C',
-                '#F78DA7',
-                '#9900EF',
-              ]}
-              width="280px"
-            // TODO: Fix background color to match other cards
-            />
-          </ColorPickerPopover>
-        </Popover>
-
-        <Popover
-          open={fontSizePickerShowing !== false}
-          anchorEl={fontSizePickerAnchor}
-          onClose={() => setFontSizePickerShowing(false)}
-          id="colorPicker"
-          anchorOrigin={{
-            vertical: 'bottom',
-            horizontal: 'center',
-          }}
-          transformOrigin={{
-            vertical: 'top',
-            horizontal: 'center',
-          }}
-        >
-          <StyledLayerControlCard>
-            <Typography variant="body1">Font Size</Typography>
-            <Slider
-              size="small"
-              defaultValue={selectedFontSize}
-              min={1}
-              max={400}
-              aria-label="Small"
-              valueLabelDisplay="auto"
-              onChange={(event) => handleFontSize(event, fontSizePickerShowing)}
-              onFocus={() => handleFocus(fontSizePickerShowing)}
-              onBlur={addToHistory}
-            />
-          </StyledLayerControlCard>
-        </Popover>
-
-        <Dialog
-          open={openDialog}
-          onClose={handleDialogClose}
-          aria-labelledby="responsive-dialog-title"
-          fullWidth
-          PaperProps={{ sx: { xs: { minWidth: '85vw' }, sm: { minWidth: '85vw' }, md: { minWidth: '85vw' } } }}
-          BackdropProps={{ style: { backgroundColor: 'rgb(33, 33, 33, 0.9)' } }}
-        >
-          <DialogTitle id="responsive-dialog-title">Save Image</DialogTitle>
-          <DialogContent
-            sx={{
-              flex: 'none',
-              marginTop: 'auto',
-              overflow: 'hidden',
-              overflowY: 'hidden',
-              paddingBottom: 2,
-              paddingLeft: '12px',
-              paddingRight: '12px',
+          <Popover
+            open={colorPickerShowing !== false}
+            anchorEl={colorPickerAnchor}
+            onClose={() => setColorPickerShowing(false)}
+            id="colorPicker"
+            anchorOrigin={{
+              vertical: 'bottom',
+              horizontal: 'center',
+            }}
+            transformOrigin={{
+              vertical: 'top',
+              horizontal: 'center',
             }}
           >
-            <DialogContentText sx={{ marginTop: 'auto', marginBottom: 'auto' }}>
-              {!imageUploading && (
-                <img
-                  src={`https://i${process.env.REACT_APP_USER_BRANCH === 'prod' ? 'prod' : `-${process.env.REACT_APP_USER_BRANCH}`
-                    }.memesrc.com/${generatedImageFilename}`}
-                  alt="generated meme"
-                />
-              )}
-              {imageUploading && (
-                <center>
-                  <CircularProgress sx={{ margin: '30%' }} />
-                </center>
-              )}
-            </DialogContentText>
-          </DialogContent>
-          <DialogContentText sx={{ paddingX: 4, marginTop: 'auto', paddingBottom: 2 }}>
-              <center>
-                  <p>
-                      ☝️ 
-                      <b style={{ color: '#4CAF50' }}>
-                          {'ontouchstart' in window ? 'Tap and hold ' : 'Right click '} 
-                          the image to save
-                      </b>, 
-                      or use a quick action:
-                  </p>
-              </center>
-          </DialogContentText>
+            <ColorPickerPopover>
+              <TwitterPickerWrapper
+                onChangeComplete={(color) => changeColor(color, pickingColor)}
+                color={colorPickerColor}
+                colors={[
+                  '#FFFFFF',
+                  'yellow',
+                  'black',
+                  'orange',
+                  '#8ED1FC',
+                  '#0693E3',
+                  '#ABB8C3',
+                  '#EB144C',
+                  '#F78DA7',
+                  '#9900EF',
+                ]}
+                width="280px"
+              // TODO: Fix background color to match other cards
+              />
+            </ColorPickerPopover>
+          </Popover>
 
-          <DialogActions sx={{ marginBottom: 'auto', display: 'inline-flex', padding: '0 23px' }}>
-            <Box display="grid" width="100%">
-              {navigator.canShare && (
+          <Popover
+            open={fontSizePickerShowing !== false}
+            anchorEl={fontSizePickerAnchor}
+            onClose={() => setFontSizePickerShowing(false)}
+            id="colorPicker"
+            anchorOrigin={{
+              vertical: 'bottom',
+              horizontal: 'center',
+            }}
+            transformOrigin={{
+              vertical: 'top',
+              horizontal: 'center',
+            }}
+          >
+            <StyledLayerControlCard>
+              <Typography variant="body1">Font Size</Typography>
+              <Slider
+                size="small"
+                defaultValue={selectedFontSize}
+                min={1}
+                max={400}
+                aria-label="Small"
+                valueLabelDisplay="auto"
+                onChange={(event) => handleFontSize(event, fontSizePickerShowing)}
+                onFocus={() => handleFocus(fontSizePickerShowing)}
+                onBlur={addToHistory}
+              />
+            </StyledLayerControlCard>
+          </Popover>
+
+          <Dialog
+            open={openDialog}
+            onClose={handleDialogClose}
+            aria-labelledby="responsive-dialog-title"
+            fullWidth
+            PaperProps={{ sx: { xs: { minWidth: '85vw' }, sm: { minWidth: '85vw' }, md: { minWidth: '85vw' } } }}
+            BackdropProps={{ style: { backgroundColor: 'rgb(33, 33, 33, 0.9)' } }}
+          >
+            <DialogTitle id="responsive-dialog-title">Save Image</DialogTitle>
+            <DialogContent
+              sx={{
+                flex: 'none',
+                marginTop: 'auto',
+                overflow: 'hidden',
+                overflowY: 'hidden',
+                paddingBottom: 2,
+                paddingLeft: '12px',
+                paddingRight: '12px',
+              }}
+            >
+              <DialogContentText sx={{ marginTop: 'auto', marginBottom: 'auto' }}>
+                {!imageUploading && (
+                  <img
+                    src={`https://i${process.env.REACT_APP_USER_BRANCH === 'prod' ? 'prod' : `-${process.env.REACT_APP_USER_BRANCH}`
+                      }.memesrc.com/${generatedImageFilename}`}
+                    alt="generated meme"
+                  />
+                )}
+                {imageUploading && (
+                  <center>
+                    <CircularProgress sx={{ margin: '30%' }} />
+                  </center>
+                )}
+              </DialogContentText>
+            </DialogContent>
+            <DialogContentText sx={{ paddingX: 4, marginTop: 'auto', paddingBottom: 2 }}>
+              <center>
+                <p>
+                  ☝️
+                  <b style={{ color: '#4CAF50' }}>
+                    {'ontouchstart' in window ? 'Tap and hold ' : 'Right click '}
+                    the image to save
+                  </b>,
+                  or use a quick action:
+                </p>
+              </center>
+            </DialogContentText>
+
+            <DialogActions sx={{ marginBottom: 'auto', display: 'inline-flex', padding: '0 23px' }}>
+              <Box display="grid" width="100%">
+                {navigator.canShare && (
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    sx={{ marginBottom: 2, padding: '12px 16px' }}
+                    disabled={imageUploading}
+                    onClick={() => {
+                      navigator.share({
+                        title: 'memeSRC.com',
+                        text: 'Check out this meme I made on memeSRC.com',
+                        files: [shareImageFile],
+                      });
+                    }}
+                    startIcon={<IosShare />}
+                  >
+                    Share
+                  </Button>
+                )}
                 <Button
                   variant="contained"
                   fullWidth
                   sx={{ marginBottom: 2, padding: '12px 16px' }}
                   disabled={imageUploading}
+                  autoFocus
                   onClick={() => {
-                    navigator.share({
-                      title: 'memeSRC.com',
-                      text: 'Check out this meme I made on memeSRC.com',
-                      files: [shareImageFile],
-                    });
+                    const { ClipboardItem } = window;
+                    navigator.clipboard.write([new ClipboardItem({ 'image/png': imageBlob })]);
+                    handleSnackbarOpen();
                   }}
-                  startIcon={<IosShare />}
+                  startIcon={<ContentCopy />}
                 >
-                  Share
+                  Copy
                 </Button>
-              )}
-              <Button
-                variant="contained"
-                fullWidth
-                sx={{ marginBottom: 2, padding: '12px 16px' }}
-                disabled={imageUploading}
-                autoFocus
-                onClick={() => {
-                  const { ClipboardItem } = window;
-                  navigator.clipboard.write([new ClipboardItem({ 'image/png': imageBlob })]);
-                  handleSnackbarOpen();
-                }}
-                startIcon={<ContentCopy />}
-              >
-                Copy
-              </Button>
-              <Button
-                variant="contained"
-                color="error"
-                fullWidth
-                sx={{ marginBottom: 2, padding: '12px 16px' }}
-                autoFocus
-                onClick={handleDialogClose}
-                startIcon={<Close />}
-              >
-                Close
-              </Button>
-            </Box>
-          </DialogActions>
-        </Dialog>
-      </ParentContainer>
-
+                <Button
+                  variant="contained"
+                  color="error"
+                  fullWidth
+                  sx={{ marginBottom: 2, padding: '12px 16px' }}
+                  autoFocus
+                  onClick={handleDialogClose}
+                  startIcon={<Close />}
+                >
+                  Close
+                </Button>
+              </Box>
+            </DialogActions>
+          </Dialog>
+        </ParentContainer>
+      </Container>
       <Snackbar
         open={snackbarOpen}
         autoHideDuration={2000}
@@ -1954,87 +1909,87 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       <LoadingBackdrop open={loadingInpaintingResult} />
 
       <Dialog
-      open={openSelectResult}
-      aria-labelledby="alert-dialog-title"
-      aria-describedby="alert-dialog-description"
-      maxWidth='md'
-      PaperProps={{ style: { margin: '8px', padding: '10px' } }}
-    >
-      <DialogTitle id="alert-dialog-title">
-        {"Magic Results"}
-        <div style={{ fontSize: '0.8em', marginTop: '5px' }}>Pick the best variation:</div>
-      </DialogTitle>
-      <DialogContent style={{ padding: 0 }}>  {/* Reduced padding */}
-        <Grid container>
-        {returnedImages?.map((image, index) => (
-            <Grid 
-                item xs={variationDisplayColumns === 2 ? 6 : 12} 
-                key={`image-key-${index}`} 
-                onClick={() => setSelectedImage(image)} 
+        open={openSelectResult}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description"
+        maxWidth='md'
+        PaperProps={{ style: { margin: '8px', padding: '10px' } }}
+      >
+        <DialogTitle id="alert-dialog-title">
+          {"Magic Results"}
+          <div style={{ fontSize: '0.8em', marginTop: '5px' }}>Pick the best variation:</div>
+        </DialogTitle>
+        <DialogContent style={{ padding: 0 }}>  {/* Reduced padding */}
+          <Grid container>
+            {returnedImages?.map((image, index) => (
+              <Grid
+                item xs={variationDisplayColumns === 2 ? 6 : 12}
+                key={`image-key-${index}`}
+                onClick={() => setSelectedImage(image)}
                 style={{ padding: '5px' }}
-            >
-                <div style={{ 
-                    position: 'relative', 
-                    border: selectedImage === image ? '2px solid green' : '2px solid lightgray', 
-                    borderRadius: '4px' 
+              >
+                <div style={{
+                  position: 'relative',
+                  border: selectedImage === image ? '2px solid green' : '2px solid lightgray',
+                  borderRadius: '4px'
                 }}>
-                    <img
-                        src={image}
-                        alt="placeholder"
-                        style={{ 
-                            width: '100%', 
-                            aspectRatio: `${editorAspectRatio}/1`, 
-                            objectFit: 'cover', 
-                            objectPosition: 'center',
-                            filter: selectedImage && selectedImage !== image ? 'brightness(50%)' : 'none'
-                        }}
-                    />
-                    {selectedImage === image && (
-                        <Fab
-                        size='small'
-                            style={{
-                                position: 'absolute',
-                                top: 10,
-                                left: 10,
-                                backgroundColor: 'green',
-                                color: 'white'
-                            }}
-                        >
-                            <CheckCircleOutline />
-                        </Fab>
-                    )}
+                  <img
+                    src={image}
+                    alt="placeholder"
+                    style={{
+                      width: '100%',
+                      aspectRatio: `${editorAspectRatio}/1`,
+                      objectFit: 'cover',
+                      objectPosition: 'center',
+                      filter: selectedImage && selectedImage !== image ? 'brightness(50%)' : 'none'
+                    }}
+                  />
+                  {selectedImage === image && (
+                    <Fab
+                      size='small'
+                      style={{
+                        position: 'absolute',
+                        top: 10,
+                        left: 10,
+                        backgroundColor: 'green',
+                        color: 'white'
+                      }}
+                    >
+                      <CheckCircleOutline />
+                    </Fab>
+                  )}
                 </div>
-            </Grid>
-        ))}
-        </Grid>
-      </DialogContent>
-      <DialogActions style={{ padding: '8px 16px' }}>
-        <Button 
-          variant='contained' 
-          onClick={() => {
-            setEditorTool('captions')
-            toggleDrawingMode('fineTuning')
-            handleSelectResultCancel()
-          }}
-        >
-          Cancel
-        </Button>
-        <Button 
-          disabled={!selectedImage}
-          onClick={() => { handleAddCanvasBackground(selectedImage) }}
-          variant='contained'
-          style={{
-            backgroundColor: 'limegreen',
-            color: 'white',
-            opacity: selectedImage ? 1 : 0.5, // Adjust opacity based on selectedImage
-            cursor: selectedImage ? 'pointer' : 'not-allowed', // Change cursor style
-          }}
-        >
-          Apply
-        </Button>
-      </DialogActions>
+              </Grid>
+            ))}
+          </Grid>
+        </DialogContent>
+        <DialogActions style={{ padding: '8px 16px' }}>
+          <Button
+            variant='contained'
+            onClick={() => {
+              setEditorTool('captions')
+              toggleDrawingMode('fineTuning')
+              handleSelectResultCancel()
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            disabled={!selectedImage}
+            onClick={() => { handleAddCanvasBackground(selectedImage) }}
+            variant='contained'
+            style={{
+              backgroundColor: 'limegreen',
+              color: 'white',
+              opacity: selectedImage ? 1 : 0.5, // Adjust opacity based on selectedImage
+              cursor: selectedImage ? 'pointer' : 'not-allowed', // Change cursor style
+            }}
+          >
+            Apply
+          </Button>
+        </DialogActions>
 
-      <Fab 
+        <Fab
           size="small"  // Makes the FAB smaller
           style={{
             position: 'absolute',
@@ -2043,12 +1998,12 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
             backgroundColor: '#333', // Dark background color
             color: '#fff', // White text color
             boxShadow: 'none', // Remove box shadow (if any)
-        }}
+          }}
           onClick={() => setVariationDisplayColumns(prev => (prev === 2 ? 1 : 2))}
-      >
+        >
           {variationDisplayColumns === 2 ? <ZoomIn /> : <ZoomOut />}
-      </Fab>
-    </Dialog>
+        </Fab>
+      </Dialog>
     </>
   );
 }
