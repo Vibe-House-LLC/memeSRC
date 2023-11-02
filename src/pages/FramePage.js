@@ -435,9 +435,9 @@ export default function FramePage({ shows = [] }) {
 
           <Grid item xs={12} md={6}>
 
-            {/* <Typography variant='h2' marginBottom={2}>
+            <Typography variant='h2' marginBottom={2}>
               {showTitle}
-            </Typography> */}
+            </Typography>
 
             <Chip
               size='small'
@@ -471,7 +471,7 @@ export default function FramePage({ shows = [] }) {
           </Grid>
           <Grid item xs={12} md={6}>
             {/* <Box sx={{ mt: isMd ? 0 : '1rem', width: isMd ? 'inherit' : '100%' }}> */}
-            <Box sx={{ mt: '1rem', width: '100%' }}>
+            <Box sx={{ width: '100%' }}>
               <Card style={{ boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
                 <CardContent>
                   {/* <Typography variant="h3" component="div" style={{ marginBottom: '0.5rem' }} textAlign='left'>
