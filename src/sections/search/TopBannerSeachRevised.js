@@ -93,7 +93,7 @@ TopBannerSearchRevised.propTypes = searchPropTypes;
 
 
 export default function TopBannerSearchRevised(props) {
-  const { show, searchQuery, frame, setFrame, setFineTuningFrame, setShow } = useSearchDetails();
+  const { show, searchQuery, setSearchQuery, frame, setFrame, setFineTuningFrame, setShow } = useSearchDetails();
   const { search, pathname } = useLocation();
   const { fid, searchTerms } = useParams();
   const [shows, setShows] = useState([]);
@@ -107,11 +107,11 @@ export default function TopBannerSearchRevised(props) {
     if (e) {
       e.preventDefault();
     }
-    const encodedSearchTerms = encodeURI(searchTerm)
-    console.log(`Navigating to: '${`/search/${seriesTitle}/${encodedSearchTerms}`}'`)
-    navigate(`/search/${seriesTitle}/${encodedSearchTerms}`)
+    const encodedSearchTerms = encodeURI(searchQuery)
+    console.log(`Navigating to: '${`/search/${show}/${encodedSearchTerms}`}'`)
+    navigate(`/search/${show}/${encodedSearchTerms}`)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [seriesTitle, searchTerm]);
+  }, [show, searchQuery]);
 
   const navigate = useNavigate();
 
@@ -217,6 +217,7 @@ export default function TopBannerSearchRevised(props) {
                       value = value.replace(/[\u2013\u2014]/g, '-');
 
                       setSearchTerm(value);
+                      setSearchQuery(value);
                     }}
                   />
                 </form>
@@ -303,6 +304,7 @@ export default function TopBannerSearchRevised(props) {
                         value = value.replace(/[\u2013\u2014]/g, '-');
 
                         setSearchTerm(value);
+                        setSearchQuery(value);
                       }}
                     />
                   </form>
@@ -415,6 +417,7 @@ export default function TopBannerSearchRevised(props) {
                         value = value.replace(/[\u2013\u2014]/g, '-');
 
                         setSearchTerm(value);
+                        setSearchQuery(value);
                       }}
                     />
                   </form>
@@ -513,6 +516,7 @@ export default function TopBannerSearchRevised(props) {
                         value = value.replace(/[\u2013\u2014]/g, '-');
 
                         setSearchTerm(value);
+                        setSearchQuery(value);
                       }}
                     />
                   </form>
