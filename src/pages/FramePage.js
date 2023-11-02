@@ -435,9 +435,9 @@ export default function FramePage({ shows = [] }) {
 
           <Grid item xs={12} md={6}>
 
-            <Typography variant='h2' marginBottom={2}>
+            {/* <Typography variant='h2' marginBottom={2}>
               {showTitle}
-            </Typography>
+            </Typography> */}
 
             <Chip
               size='small'
