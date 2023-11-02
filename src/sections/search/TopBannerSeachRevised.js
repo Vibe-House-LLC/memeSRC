@@ -131,6 +131,10 @@ export default function TopBannerSearchRevised(props) {
       console.log(pathname.startsWith("/frame"))
       setFineTuningFrame(null)
     }
+
+    if ((pathname.startsWith("/frame") || pathname.startsWith("/editor"))) {
+      window.scrollTo(0, 0);
+    }
   }, [pathname])
 
   // useEffect(() => {
