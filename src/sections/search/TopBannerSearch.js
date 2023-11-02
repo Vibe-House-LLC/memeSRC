@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { Link, Fab, FormControl, Grid, InputBase, MenuItem, Select, Typography } from "@mui/material";
+import { Link, Fab, FormControl, Grid, InputBase, MenuItem, Select, Typography, Divider } from "@mui/material";
 import { Favorite, MapsUgc, Search, Shuffle } from "@mui/icons-material";
 import { API, graphqlOperation } from 'aws-amplify';
 import { useCallback, useEffect, useState } from "react";
@@ -36,9 +36,9 @@ const StyledSearchInput = styled(InputBase)`
   font-size: 16px;
   color: #FFFFFF;
   background-color: #2b2b2b;
-  border-radius: 12px;
+  border-radius: 7px;
   padding: 8px 12px;
-  height: 50px;
+  height: 40px;
   margin-top: auto;
   margin-bottom: auto;
 `;
@@ -73,8 +73,8 @@ const StyledHeader = styled('header')(() => ({
   lineHeight: 0,
   width: '100%',
   zIndex: '1000',
-  paddingBottom: '20px',
-  paddingTop: '30px'
+  paddingBottom: '10px',
+  paddingTop: '64px'
 }));
 
 async function fetchShows() {
@@ -167,7 +167,7 @@ export default function TopBannerSearch(props) {
   return (
     <>
       <StyledHeader>
-        <Grid container marginY={3} paddingX={2}>
+        <Grid container mb={1.5} paddingX={2}>
           {/* <Grid item marginX={{ xs: 'auto', md: 0 }} marginY='auto'>
             <Grid display='flex' xs={12} marginBottom={{ xs: 3, md: 0 }}>
               <Link to="/" component={RouterLink} sx={{ display: 'contents' }}>
@@ -249,6 +249,7 @@ export default function TopBannerSearch(props) {
           </Grid>
         </Grid>
       </StyledHeader>
+      <Divider sx={{ mb: 2.5 }}/>
       <StyledLeftFooter className="bottomBtn">
         <a href="https://forms.gle/8CETtVbwYoUmxqbi7" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
           <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black", zIndex: '1300' }} size='medium'>

@@ -90,7 +90,7 @@ export default function SearchPage() {
   const params = useParams();
   const { show, setShow, searchQuery, setSearchQuery } = useSearchDetails();
 
-  const [searchTerm, setSearchTerm] = useState(params.searchTerms);
+  const [searchTerm, setSearchTerm] = useState(searchQuery || params.searchTerms);
   const [seriesTitle, setSeriesTitle] = useState(params.seriesId);
   const [loadedSearchTerm, setLoadedSearchTerm] = useState(null);
   const [loadedSeriesTitle, setLoadedSeriesTitle] = useState(null);
