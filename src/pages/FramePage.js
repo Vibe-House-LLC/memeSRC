@@ -731,7 +731,7 @@ export default function FramePage({ shows = [] }) {
                 {surroundingFrames?.map((frame, index) => (
                   <Grid item xs={4} sm={4} md={12 / 9} key={`surrounding-frame-${frame.fid ? frame.fid : index}`}>
                     <a style={{ textDecoration: 'none' }}>
-                      <StyledCard style={{ border: fid === frame ? '3px solid orange' : '' }}>
+                      <StyledCard sx={{...((fid === frame.fid) && { border: '3px solid orange' }), cursor: (fid === frame.fid) ? 'default' : 'pointer'}}>
                         {/* {console.log(`${fid} = ${result?.fid}`)} */}
                         <StyledCardMedia
                           component="img"
