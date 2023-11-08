@@ -260,7 +260,7 @@ export default function FramePage({ shows = [] }) {
         setFrame(fid)
         setSurroundingFrames(data.frames_surrounding);
         const newMiddleIndex = Math.floor(data.frames_fine_tuning.length / 2);
-        const initialFineTuneImage = data.frames_fine_tuning[newMiddleIndex];
+        const initialFineTuneImage = data.frames_fine_tuning[fineTuningFrame || newMiddleIndex];
         setMiddleIndex(newMiddleIndex)
         if (typeof fineTuningFrame === 'number') {
           setSliderValue(fineTuningFrame - newMiddleIndex)
@@ -292,7 +292,7 @@ export default function FramePage({ shows = [] }) {
   // This effect is responsible for setting the display image based on slider value
   useEffect(() => {
     if (fineTuningFrames.length > 0 && middleIndex !== 0) {
-      const displayIndex = fineTuningFrame !== null ? fineTuningFrame : middleIndex + sliderValue;
+      const displayIndex = (typeof fineTuningFrame === 'number') ? fineTuningFrame : middleIndex + sliderValue;
       if (fineTuningFrames[displayIndex]) {
         setDisplayImage(fineTuningFrames[displayIndex].src);
       }
