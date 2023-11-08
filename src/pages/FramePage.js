@@ -175,7 +175,6 @@ export default function FramePage({ shows = [] }) {
 
 
   useEffect(() => {
-    // console.log(displayImage)
     const offScreenCanvas = document.createElement('canvas');
     const ctx = offScreenCanvas.getContext('2d');
 
@@ -278,33 +277,34 @@ export default function FramePage({ shows = [] }) {
     setFineTuningFrame(middleIndex + newSliderValue);
   };
 
-  const renderSurroundingFrames = () => {
-    let returnedElement;
+  /* ------------ This was unused so I've commented it out for now ------------ */
+  // const renderSurroundingFrames = () => {
+  //   let returnedElement;
 
-    if (surroundingFrames) {
-      returnedElement =
-        <Grid container spacing={2}>
-          {surroundingFrames.map((frame, index) => (
-            <Grid item xs={4} sm={4} md={12 / 9} key={frame.fid}>
-              <a style={{ textDecoration: 'none' }}>
-                <StyledCard style={{ border: fid === frame ? '3px solid orange' : '' }}>
-                  <StyledCardMedia
-                    component="img"
-                    alt={`${frame.fid}`}
-                    src={`https://memesrc.com${frame.frame_image}`}
-                    title={frame.subtitle || 'No subtitle'}
-                    onClick={() => {
-                      navigate(`/frame/${frame.fid}`)
-                    }}
-                  />
-                </StyledCard>
-              </a>
-            </Grid>
-          ))}
-        </Grid>
-    }
-    return returnedElement
-  };
+  //   if (surroundingFrames) {
+  //     returnedElement =
+  //       <Grid container spacing={2}>
+  //         {surroundingFrames.map((frame, index) => (
+  //           <Grid item xs={4} sm={4} md={12 / 9} key={frame.fid}>
+  //             <a style={{ textDecoration: 'none' }}>
+  //               <StyledCard style={{ border: fid === frame ? '3px solid orange' : '' }}>
+  //                 <StyledCardMedia
+  //                   component="img"
+  //                   alt={`${frame.fid}`}
+  //                   src={`https://memesrc.com${frame.frame_image}`}
+  //                   title={frame.subtitle || 'No subtitle'}
+  //                   onClick={() => {
+  //                     navigate(`/frame/${frame.fid}`)
+  //                   }}
+  //                 />
+  //               </StyledCard>
+  //             </a>
+  //           </Grid>
+  //         ))}
+  //       </Grid>
+  //   }
+  //   return returnedElement
+  // };
 
   const frameToTimecode = (frameNumber, fps) => {
     const totalSeconds = Math.floor(frameNumber / fps);
