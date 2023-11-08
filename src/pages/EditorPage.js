@@ -367,7 +367,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
           });
           // Background image from the given URL
           fabric.Image.fromURL(
-            `https://memesrc.com${searchDetails.fineTuningFrame ? data.frames_fine_tuning[searchDetails.fineTuningFrame] : data.frame_image
+            `https://memesrc.com${(typeof searchDetails.fineTuningFrame === 'number') ? data.frames_fine_tuning[searchDetails.fineTuningFrame] : data.frame_image
             }`,
             (oImg) => {
               setDefaultFrame(oImg);
