@@ -36,7 +36,7 @@ import {
   Snackbar,
   Alert,
 } from '@mui/material';
-import { Add, ArrowBack, ArrowBackIos, ArrowForward, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu, OpenInBrowser, OpenInNew, Visibility, VisibilityOff } from '@mui/icons-material';
+import { Add, ArrowBack, ArrowBackIos, ArrowForward, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, FormatLineSpacing, FormatSize, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu, OpenInBrowser, OpenInNew, VerticalAlignBottom, VerticalAlignTop, Visibility, VisibilityOff } from '@mui/icons-material';
 import useSearchDetails from '../hooks/useSearchDetails';
 import getFrame from '../utils/frameHandler';
 
@@ -74,6 +74,9 @@ export default function FramePage({ shows = [] }) {
   const [episodeDetails, setEpisodeDetails] = useState();
   const [imgSrc, setImgSrc] = useState();
   const [showText, setShowText] = useState(false);
+  const [fontSizeScaleFactor, setFontSizeScaleFactor] = useState(1);
+  const [fontLineHeightScaleFactor, setFontLineHeightScaleFactor] = useState(1);
+  const [fontBottomMarginScaleFactor, setFontBottomMarginScaleFactor] = useState(1);
 
   const [snackbarOpen, setSnackBarOpen] = useState(false);
 
@@ -171,10 +174,7 @@ export default function FramePage({ shows = [] }) {
   }
 
 
-
-
-
-  useEffect(() => {
+  const updateCanvas = () => {
     const offScreenCanvas = document.createElement('canvas');
     const ctx = offScreenCanvas.getContext('2d');
 
@@ -192,9 +192,9 @@ export default function FramePage({ shows = [] }) {
 
       const scaledFontSizeDesktop = referenceFontSizeDesktop * scaleFactor;
       const scaledFontSizeMobile = referenceFontSizeMobile * scaleFactor;
-      const scaledBottomAnch = isMd ? referenceBottomAnch * scaleFactor : referenceBottomAnchMobile * scaleFactor;
+      const scaledBottomAnch = isMd ? referenceBottomAnch * scaleFactor * -fontBottomMarginScaleFactor : referenceBottomAnchMobile * scaleFactor * -fontBottomMarginScaleFactor;
       const referenceLineHeight = 60;
-      const scaledLineHeight = referenceLineHeight * scaleFactor;
+      const scaledLineHeight = referenceLineHeight * scaleFactor * fontLineHeightScaleFactor;
 
       offScreenCanvas.width = img.width;
       offScreenCanvas.height = img.height;
@@ -203,7 +203,7 @@ export default function FramePage({ shows = [] }) {
 
       if (showText) {
         // Styling the text
-        ctx.font = `700 ${isMd ? `${scaledFontSizeDesktop}px` : `${scaledFontSizeMobile}px`} Arial`;
+        ctx.font = `700 ${isMd ? `${scaledFontSizeDesktop * fontSizeScaleFactor}px` : `${scaledFontSizeMobile * fontSizeScaleFactor}px`} Arial`;
         ctx.textAlign = 'center';
         ctx.fillStyle = 'white';
         ctx.strokeStyle = 'black';
@@ -232,6 +232,11 @@ export default function FramePage({ shows = [] }) {
       // Convert the canvas data to an image URL and set it as the src of the img tag
       setImgSrc(offScreenCanvas.toDataURL());
     };
+  }
+
+
+  useEffect(() => {
+    updateCanvas();
   }, [showText, displayImage, frameData, frameData.subtitle]);
 
   /* -------------------------------------------------------------------------- */
@@ -447,41 +452,116 @@ export default function FramePage({ shows = [] }) {
                   {loading ?
                     <Skeleton variant='text' height={25} width={'max(100px, 50%)'} />
                     :
-                    <Stack direction='row' spacing={1} alignItems='center'>
-                      {showText ?
-                        <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-                          <TextField
-                            autoFocus
-                            multiline
-                            fullWidth
-                            variant="outlined"
-                            size="small"
-                            value={frameData.subtitle}
-                            onChange={(e) => setFrameData({ ...frameData, subtitle: e.target.value })}
-                            sx={{ margin: -1 }}
-                          />
-                          <IconButton size='small' sx={{ marginLeft: 2, marginRight: -1.5 }} onClick={() => { setShowText(!showText) }}>
-                            <VisibilityOff sx={{ fontSize: 20 }} />
-                          </IconButton>
-                        </Box>
-                        :
-                        <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-                          <Box sx={{ flexGrow: 1, cursor: 'pointer' }} onClick={() => setShowText(!showText)}>
-                            <Typography
-                              variant="subtitle1"
-                              style={{ marginBottom: '0rem', whiteSpace: 'pre-line' }}
-                              textAlign='left'
-                              sx={{ color: "text.secondary" }}
-                            >
-                              {frameData.subtitle ? frameData.subtitle : '(no subtitle)'}
-                            </Typography>
+                    <>
+                      <Stack direction='row' spacing={1} alignItems='center'>
+                        {showText ?
+                          <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                            <TextField
+                              autoFocus
+                              multiline
+                              fullWidth
+                              variant="outlined"
+                              size="small"
+                              value={frameData.subtitle}
+                              onChange={(e) => setFrameData({ ...frameData, subtitle: e.target.value })}
+                              sx={{ margin: -1 }}
+                            />
+                            <IconButton size='small' sx={{ marginLeft: 2, marginRight: -1.5 }} onClick={() => { setShowText(!showText) }}>
+                              <VisibilityOff sx={{ fontSize: 20 }} />
+                            </IconButton>
                           </Box>
-                          <IconButton size='small' onClick={() => setShowText(!showText)} sx={{ cursor: 'pointer', marginLeft: 2, marginRight: -1.5 }}>
-                            <Edit sx={{ fontSize: 20 }} />
-                          </IconButton>
-                        </Box>
+                          :
+                          <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                            <Box sx={{ flexGrow: 1, cursor: 'pointer' }} onClick={() => setShowText(!showText)}>
+                              <Typography
+                                variant="subtitle1"
+                                style={{ marginBottom: '0rem', whiteSpace: 'pre-line' }}
+                                textAlign='left'
+                                sx={{ color: "text.secondary" }}
+                              >
+                                {frameData.subtitle ? frameData.subtitle : '(no subtitle)'}
+                              </Typography>
+                            </Box>
+                            <IconButton size='small' onClick={() => setShowText(!showText)} sx={{ cursor: 'pointer', marginLeft: 2, marginRight: -1.5 }}>
+                              <Edit sx={{ fontSize: 20 }} />
+                            </IconButton>
+                          </Box>
+                        }
+                      </Stack>
+                      {true &&
+                        <Stack spacing={2} direction="row" p={0} pt={2} alignItems={'center'}>
+                          <Tooltip title="Font Size">
+                            <IconButton>
+                              <FormatSize alt="Font Size" />
+                            </IconButton>
+                          </Tooltip>
+                          <Slider
+                            size="small"
+                            defaultValue={1}
+                            min={0.01}
+                            max={3}
+                            step={0.01}
+                            value={fontSizeScaleFactor}
+                            onChange={(e, newValue) => {
+                              if (e.type === 'mousedown') {
+                                return;
+                              }
+                              setFontSizeScaleFactor(newValue)}}
+                            // valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
+                            onChangeCommitted={() => updateCanvas()}
+                          />
+                        </Stack>
                       }
-                    </Stack>
+                      {true &&
+                        <Stack spacing={2} direction="row" p={0} pt={2} alignItems={'center'}>
+                          <Tooltip title="Line Height">
+                            <IconButton>
+                              <FormatLineSpacing alt="Line Height" />
+                            </IconButton>
+                          </Tooltip>
+                          <Slider
+                            size="small"
+                            defaultValue={1}
+                            min={0.01}
+                            max={3}
+                            step={0.01}
+                            value={fontLineHeightScaleFactor}
+                            onChange={(e, newValue) => {
+                              if (e.type === 'mousedown') {
+                                return;
+                              }
+                              setFontLineHeightScaleFactor(newValue)}}
+                            // valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
+                            onChangeCommitted={() => updateCanvas()}
+                          />
+                        </Stack>
+                      }
+                      {true &&
+                        <Stack spacing={2} direction="row" p={0} pt={2} alignItems={'center'}>
+                          <Tooltip title="Line Height">
+                            <IconButton>
+                              <VerticalAlignTop alt="Line Height" />
+                            </IconButton>
+                          </Tooltip>
+                          <Slider
+                            size="small"
+                            defaultValue={1}
+                            min={-15}
+                            max={50}
+                            step={0.01}
+                            value={fontBottomMarginScaleFactor}
+                            onChange={(e, newValue) => {
+                              if (e.type === 'mousedown') {
+                                return;
+                              }
+                              setFontBottomMarginScaleFactor(newValue)
+                            }}
+                            // valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
+                            onChangeCommitted={() => updateCanvas()}
+                          />
+                        </Stack>
+                      }
+                    </>
                   }
 
                 </CardContent>
@@ -693,7 +773,7 @@ export default function FramePage({ shows = [] }) {
                 {surroundingFrames?.map((frame, index) => (
                   <Grid item xs={4} sm={4} md={12 / 9} key={`surrounding-frame-${frame.fid ? frame.fid : index}`}>
                     <a style={{ textDecoration: 'none' }}>
-                      <StyledCard sx={{...((fid === frame.fid) && { border: '3px solid orange' }), cursor: (fid === frame.fid) ? 'default' : 'pointer'}}>
+                      <StyledCard sx={{ ...((fid === frame.fid) && { border: '3px solid orange' }), cursor: (fid === frame.fid) ? 'default' : 'pointer' }}>
                         {/* {console.log(`${fid} = ${result?.fid}`)} */}
                         <StyledCardMedia
                           component="img"
