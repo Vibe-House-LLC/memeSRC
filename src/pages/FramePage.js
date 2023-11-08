@@ -64,12 +64,10 @@ export default function FramePage({ shows = [] }) {
   const { fid } = useParams();
   const [frameData, setFrameData] = useState({});
   const [surroundingFrames, setSurroundingFrames] = useState(null);
-  // const [surroundingSubtitles, setSurroundingSubtitles] = useState(null);
   const [sliderValue, setSliderValue] = useState(fineTuningFrame || 0);
   const [middleIndex, setMiddleIndex] = useState(0);
   const [displayImage, setDisplayImage] = useState(`https://memesrc.com/${fid.split('-')[0]}/img/${fid.split('-')[1]}/${fid.split('-')[2]}/${fid}.jpg`);
   const [subtitlesExpanded, setSubtitlesExpanded] = useState(false);
-  // const [subtitlesLoading, setSubtitlesLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [aspectRatio, setAspectRatio] = useState('16/9');
   const [showTitle, setShowTitle] = useState('');
@@ -249,44 +247,18 @@ export default function FramePage({ shows = [] }) {
 
   useEffect(() => {
     setLoading(true)
-    // const getSessionID = async () => {
-    //   let sessionID;
-    //   if ("sessionID" in sessionStorage) {
-    //     sessionID = sessionStorage.getItem("sessionID");
-    //     return Promise.resolve(sessionID);
-    //   }
-    //   return API.get('publicapi', '/uuid')
-    //     .then(generatedSessionID => {
-    //       sessionStorage.setItem("sessionID", generatedSessionID);
-    //       return generatedSessionID;
-    //     })
-    //     .catch(err => {
-    //       console.log(`UUID Gen Fetch Error:  ${err}`);
-    //       throw err;
-    //     });
-    // };
-
-    // getSessionID()
-    // .then(sessionId => {
-    // return getFrame(fid)
-    // })
     getFrame(fid)
       .then(data => {
         setFrameData(data);
         setFrame(fid)
         setSurroundingFrames(data.frames_surrounding);
-        // console.log("FRAME DETAILS:")
-        // console.log(data)
         const newMiddleIndex = Math.floor(data.frames_fine_tuning.length / 2);
         const initialFineTuneImage = data.frames_fine_tuning[newMiddleIndex];
         setMiddleIndex(newMiddleIndex)
-        // console.log(newMiddleIndex);
-        // console.log(fineTuningFrame)
         if (typeof fineTuningFrame === 'number') {
           setSliderValue(fineTuningFrame - newMiddleIndex)
         }
         setDisplayImage(`https://memesrc.com${initialFineTuneImage}`);
-        // setLoading(false)
       })
       .catch(console.error);
   }, [fid]);
@@ -294,9 +266,6 @@ export default function FramePage({ shows = [] }) {
   useEffect(() => {
     if (frameData.frames_fine_tuning && middleIndex !== 0) {
       const displayIndex = fineTuningFrame != null ? fineTuningFrame : middleIndex + sliderValue;
-
-      // console.log(displayIndex);
-      // console.log(fineTuningFrame);
 
       const newDisplayFrame = frameData.frames_fine_tuning[displayIndex];
       setDisplayImage(`https://memesrc.com${newDisplayFrame}`);
@@ -319,7 +288,6 @@ export default function FramePage({ shows = [] }) {
             <Grid item xs={4} sm={4} md={12 / 9} key={frame.fid}>
               <a style={{ textDecoration: 'none' }}>
                 <StyledCard style={{ border: fid === frame ? '3px solid orange' : '' }}>
-                  {/* {console.log(`${fid} = ${result?.fid}`)} */}
                   <StyledCardMedia
                     component="img"
                     alt={`${frame.fid}`}
@@ -470,7 +438,6 @@ export default function FramePage({ shows = [] }) {
             </Card>
           </Grid>
           <Grid item xs={12} md={6}>
-            {/* <Box sx={{ mt: isMd ? 0 : '1rem', width: isMd ? 'inherit' : '100%' }}> */}
             <Box sx={{ width: '100%' }}>
               <Card style={{ boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
                 <CardContent>
@@ -514,9 +481,6 @@ export default function FramePage({ shows = [] }) {
                           </IconButton>
                         </Box>
                       }
-                      {/* <IconButton size='small' onClick={() => { setShowText(!showText) }}>
-                                {showText ? <VisibilityOff sx={{ fontSize: 20 }} /> : <Edit sx={{ fontSize: 20 }} />}
-                              </IconButton> */}
                     </Stack>
                   }
 
@@ -564,7 +528,6 @@ export default function FramePage({ shows = [] }) {
               to={`/editor/${fid}${getCurrentQueryString()}`}
               component={RouterLink}
               sx={{ my: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
-              // sx={{ my: 2 }}
               startIcon={<Edit />}
             >
               Advanced Editor
@@ -582,7 +545,6 @@ export default function FramePage({ shows = [] }) {
                     )}
                     {subtitlesExpanded ? 'Hide' : 'View'} Nearby Subtitles
                   </Typography>
-                  {/* <Chip size="small" label="New!" color="success" /> */}
                 </AccordionSummary>
                 <AccordionDetails sx={{ paddingY: 0, paddingX: 0 }}>
                   <List sx={{ padding: '.5em 0' }}>
