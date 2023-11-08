@@ -63,6 +63,7 @@ export default function FramePage({ shows = [] }) {
   const navigate = useNavigate();
   const { fid } = useParams();
   const [frameData, setFrameData] = useState({});
+  const [fineTuningFrames, setFineTuningFrames] = useState([]);
   const [surroundingFrames, setSurroundingFrames] = useState(null);
   const [sliderValue, setSliderValue] = useState(fineTuningFrame || 0);
   const [middleIndex, setMiddleIndex] = useState(0);
@@ -251,6 +252,8 @@ export default function FramePage({ shows = [] }) {
 
   useEffect(() => {
     setLoading(true)
+    setFineTuningFrames([])
+    console.log(fineTuningFrame)
     getFrame(fid)
       .then(data => {
         setFrameData(data);
@@ -267,14 +270,34 @@ export default function FramePage({ shows = [] }) {
       .catch(console.error);
   }, [fid]);
 
+  // This effect is responsible for preloading images
   useEffect(() => {
-    if (frameData.frames_fine_tuning && middleIndex !== 0) {
-      const displayIndex = fineTuningFrame != null ? fineTuningFrame : middleIndex + sliderValue;
+    if (frameData.frames_fine_tuning) {
+      const preloadImages = async () => {
+        const images = await Promise.all(frameData.frames_fine_tuning.map(frameId => {
+          return new Promise(resolve => {
+            const img = new Image();
+            img.onload = () => resolve(img);
+            img.src = `https://memesrc.com${frameId}`;
+          });
+        }));
 
-      const newDisplayFrame = frameData.frames_fine_tuning[displayIndex];
-      setDisplayImage(`https://memesrc.com${newDisplayFrame}`);
+        setFineTuningFrames(images);
+      };
+
+      preloadImages();
     }
-  }, [sliderValue, frameData, middleIndex]);
+  }, [frameData.frames_fine_tuning]);
+
+  // This effect is responsible for setting the display image based on slider value
+  useEffect(() => {
+    if (fineTuningFrames.length > 0 && middleIndex !== 0) {
+      const displayIndex = fineTuningFrame !== null ? fineTuningFrame : middleIndex + sliderValue;
+      if (fineTuningFrames[displayIndex]) {
+        setDisplayImage(fineTuningFrames[displayIndex].src);
+      }
+    }
+  }, [sliderValue, fineTuningFrames, middleIndex, fineTuningFrame]);
 
   // Use a callback function to handle slider changes
   const handleSliderChange = (newSliderValue) => {
@@ -374,24 +397,33 @@ export default function FramePage({ shows = [] }) {
           </IconButton>
         </div>
 
-        <Stack spacing={2} direction="row" p={0} pr={3} pl={3} alignItems={'center'}>
-          <Tooltip title="Fine Tuning">
-            <IconButton>
-              <HistoryToggleOffRounded alt="Fine Tuning" />
-            </IconButton>
-          </Tooltip>
-          <Slider
-            size="small"
-            defaultValue={4}
-            min={-middleIndex}
-            max={middleIndex}
-            value={sliderValue}
-            step={1}
-            onChange={(e, newValue) => handleSliderChange(newValue)}
-            valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
-            marks
-          />
-        </Stack>
+        {fineTuningFrames && fineTuningFrames?.length > 0 ?
+          <Stack spacing={2} direction="row" p={0} pr={3} pl={3} alignItems={'center'}>
+            <Tooltip title="Fine Tuning">
+              <IconButton>
+                <HistoryToggleOffRounded alt="Fine Tuning" />
+              </IconButton>
+            </Tooltip>
+            <Slider
+              size="small"
+              defaultValue={4}
+              min={-middleIndex}
+              max={middleIndex}
+              value={sliderValue}
+              step={1}
+              onChange={(e, newValue) => handleSliderChange(newValue)}
+              valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
+              marks
+            />
+          </Stack>
+          :
+          <Stack spacing={2} direction="row" py={1.1} justifyContent='center' alignItems={'center'}>
+            <CircularProgress color='success' size={14} />
+            <Typography variant='body2'>
+              Loading fine tuning frames...
+            </Typography>
+          </Stack>
+        }
       </>
     );
   };
@@ -506,7 +538,8 @@ export default function FramePage({ shows = [] }) {
                               if (e.type === 'mousedown') {
                                 return;
                               }
-                              setFontSizeScaleFactor(newValue)}}
+                              setFontSizeScaleFactor(newValue)
+                            }}
                             // valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
                             onChangeCommitted={() => updateCanvas()}
                           />
@@ -530,7 +563,8 @@ export default function FramePage({ shows = [] }) {
                               if (e.type === 'mousedown') {
                                 return;
                               }
-                              setFontLineHeightScaleFactor(newValue)}}
+                              setFontLineHeightScaleFactor(newValue)
+                            }}
                             // valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
                             onChangeCommitted={() => updateCanvas()}
                           />
