@@ -302,6 +302,10 @@ export default function FramePage({ shows = [] }) {
     updateCanvas();
   }, [showText, displayImage, frameData, frameData.subtitle]);
 
+  useEffect(() => {
+    updateCanvas(true)
+  }, [fontSizeScaleFactor, fontLineHeightScaleFactor, fontBottomMarginScaleFactor]);
+
   /* -------------------------------------------------------------------------- */
 
   const isMd = useMediaQuery((theme) => theme.breakpoints.up('md'))
@@ -611,7 +615,6 @@ export default function FramePage({ shows = [] }) {
                                 return;
                               }
                               setFontBottomMarginScaleFactor(newValue)
-                              updateCanvas(true)
                             }}
                             onChangeCommitted={() => updateCanvas()}
                             marks
@@ -651,7 +654,6 @@ export default function FramePage({ shows = [] }) {
                                 return;
                               }
                               setFontSizeScaleFactor(newValue / 25)
-                              updateCanvas(true)
                             }}
                             onChangeCommitted={() => updateCanvas()}
                             marks
@@ -692,7 +694,6 @@ export default function FramePage({ shows = [] }) {
                               }
                               // Divide by scale factor to get the actual value to set
                               setFontLineHeightScaleFactor(newValue);
-                              updateCanvas(true)
                             }}
                             onChangeCommitted={() => updateCanvas()}
                             valueLabelFormat='Line Height'
