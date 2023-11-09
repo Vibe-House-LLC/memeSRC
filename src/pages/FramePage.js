@@ -189,23 +189,34 @@ export default function FramePage({ shows = [] }) {
     img.crossOrigin = "anonymous";
     img.src = displayImage;
     img.onload = function () {
+      // Define the maximum width for the canvas
+      const maxCanvasWidth = 1000; // Adjust this value as needed
+
+      // Calculate the aspect ratio of the image
+      const canvasAspectRatio = img.width / img.height;
+
+      // Calculate the corresponding height for the maximum width
+      const maxCanvasHeight = maxCanvasWidth / canvasAspectRatio;
+
       const referenceWidth = 1000;
-      const referenceFontSizeDesktop = 40;
-      const referenceFontSizeMobile = 40;
-      const referenceBottomAnch = -10;  // Reference distance from bottom for desktop
-      const referenceBottomAnchMobile = 15; // Reference distance for mobile
+      const referenceFontSizeDesktop = 20;
+      const referenceFontSizeMobile = 24;
+      const referenceBottomAnch = 35;  // Reference distance from bottom for desktop
+      const referenceBottomAnchMobile = 35; // Reference distance for mobile
 
       const scaleFactor = img.width / referenceWidth;
 
       const scaledFontSizeDesktop = referenceFontSizeDesktop * scaleFactor;
       const scaledFontSizeMobile = referenceFontSizeMobile * scaleFactor;
-      const scaledBottomAnch = isMd ? referenceBottomAnch * scaleFactor * (isSm ? fontBottomMarginScaleFactor : -fontBottomMarginScaleFactor) : referenceBottomAnchMobile * scaleFactor * (isSm ? fontBottomMarginScaleFactor : -fontBottomMarginScaleFactor);
-      const referenceLineHeight = 60;
+      const scaledBottomAnch = isMd ? referenceBottomAnch * scaleFactor * fontBottomMarginScaleFactor : referenceBottomAnchMobile * scaleFactor * fontBottomMarginScaleFactor;
+      const referenceLineHeight = 24;
       const scaledLineHeight = referenceLineHeight * scaleFactor * fontLineHeightScaleFactor * fontSizeScaleFactor;
 
-      offScreenCanvas.width = img.width;
-      offScreenCanvas.height = img.height;
-      ctx.drawImage(img, 0, 0);
+      // Set the canvas dimensions
+      offScreenCanvas.width = maxCanvasWidth;
+      offScreenCanvas.height = maxCanvasHeight;
+      // Scale the image and draw it on the canvas
+      ctx.drawImage(img, 0, 0, maxCanvasWidth, maxCanvasHeight);
       setLoading(false)
 
       if (showText) {
@@ -218,7 +229,7 @@ export default function FramePage({ shows = [] }) {
 
         const x = offScreenCanvas.width / 2;
         const maxWidth = offScreenCanvas.width - 60; // leaving some margin
-        const lineHeight = 80; // adjust as per your requirements
+        const lineHeight = 24; // adjust as per your requirements
         const startY = offScreenCanvas.height - (2 * lineHeight); // adjust to position the text properly
 
         const text = frameData.subtitle;
@@ -228,7 +239,7 @@ export default function FramePage({ shows = [] }) {
         const totalTextHeight = numOfLines * scaledLineHeight;  // Use scaled line height
 
         // Adjust startY to anchor the text a scaled distance from the bottom
-        const startYAdjusted = offScreenCanvas.height - totalTextHeight - scaledBottomAnch;
+        const startYAdjusted = offScreenCanvas.height - totalTextHeight - scaledBottomAnch + 70;
 
         // Draw the text using the adjusted startY
         wrapText(ctx, text, x, startYAdjusted, maxWidth, scaledLineHeight);
@@ -562,8 +573,8 @@ export default function FramePage({ shows = [] }) {
                             size="small"
                             defaultValue={1}
                             min={1}
-                            max={50}
-                            step={1}
+                            max={10}
+                            step={0.2}
                             value={fontBottomMarginScaleFactor}
                             onChange={(e, newValue) => {
                               if (e.type === 'mousedown') {
@@ -638,17 +649,17 @@ export default function FramePage({ shows = [] }) {
                               }
                             }}
                             size="small"
-                            defaultValue={25} // 1 scaled up by the factor of 25
-                            min={0.25} // 0.01 scaled up by the factor of 25
-                            max={50} // 2 scaled up by the factor of 25
-                            step={1}
-                            value={fontLineHeightScaleFactor * 25} // Scale the value for the slider
+                            defaultValue={1} // 1 scaled up by the factor of 25
+                            min={1} // 0.01 scaled up by the factor of 25
+                            max={5} // 2 scaled up by the factor of 25
+                            step={0.2}
+                            value={fontLineHeightScaleFactor} // Scale the value for the slider
                             onChange={(e, newValue) => {
                               if (e.type === 'mousedown') {
                                 return;
                               }
                               // Divide by scale factor to get the actual value to set
-                              setFontLineHeightScaleFactor(newValue / 25);
+                              setFontLineHeightScaleFactor(newValue);
                               updateCanvas()
                             }}
                             valueLabelFormat='Line Height'
