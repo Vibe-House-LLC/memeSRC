@@ -193,15 +193,15 @@ export default function FramePage({ shows = [] }) {
       const referenceFontSizeDesktop = 40;
       const referenceFontSizeMobile = 40;
       const referenceBottomAnch = -10;  // Reference distance from bottom for desktop
-      const referenceBottomAnchMobile = -10; // Reference distance for mobile
+      const referenceBottomAnchMobile = 15; // Reference distance for mobile
 
       const scaleFactor = img.width / referenceWidth;
 
       const scaledFontSizeDesktop = referenceFontSizeDesktop * scaleFactor;
       const scaledFontSizeMobile = referenceFontSizeMobile * scaleFactor;
-      const scaledBottomAnch = isMd ? referenceBottomAnch * scaleFactor * -fontBottomMarginScaleFactor : referenceBottomAnchMobile * scaleFactor * -fontBottomMarginScaleFactor;
+      const scaledBottomAnch = isMd ? referenceBottomAnch * scaleFactor * (isSm ? fontBottomMarginScaleFactor : -fontBottomMarginScaleFactor) : referenceBottomAnchMobile * scaleFactor * (isSm ? fontBottomMarginScaleFactor : -fontBottomMarginScaleFactor);
       const referenceLineHeight = 60;
-      const scaledLineHeight = referenceLineHeight * scaleFactor * fontLineHeightScaleFactor;
+      const scaledLineHeight = referenceLineHeight * scaleFactor * fontLineHeightScaleFactor * fontSizeScaleFactor;
 
       offScreenCanvas.width = img.width;
       offScreenCanvas.height = img.height;
@@ -528,6 +528,45 @@ export default function FramePage({ shows = [] }) {
                       </Stack>
                       {showText &&
                         <Stack spacing={2} direction="row" p={0} pt={2} alignItems={'center'}>
+                          <Tooltip title="Line Height">
+                            <IconButton>
+                              <VerticalAlignTop alt="Line Height" />
+                            </IconButton>
+                          </Tooltip>
+                          <Slider
+                            componentsProps={{
+                              root: {
+                                style: {
+                                  ...(isSm && { pointerEvents: 'none' })
+                                }
+                              },
+                              thumb: {
+                                style: {
+                                  ...(isSm && { pointerEvents: 'auto' })
+                                }
+                              }
+                            }}
+                            size="small"
+                            defaultValue={1}
+                            min={1}
+                            max={50}
+                            step={1}
+                            value={fontBottomMarginScaleFactor}
+                            onChange={(e, newValue) => {
+                              if (e.type === 'mousedown') {
+                                return;
+                              }
+                              setFontBottomMarginScaleFactor(newValue)
+                              updateCanvas()
+                            }}
+                            marks
+                            valueLabelFormat='Bottom Margin'
+                            valueLabelDisplay
+                          />
+                        </Stack>
+                      }
+                      {showText &&
+                        <Stack spacing={2} direction="row" p={0} pt={2} alignItems={'center'}>
                           <Tooltip title="Font Size">
                             <IconButton>
                               <FormatSize alt="Font Size" />
@@ -547,19 +586,21 @@ export default function FramePage({ shows = [] }) {
                               }
                             }}
                             size="small"
-                            defaultValue={1}
-                            min={0.01}
-                            max={3}
-                            step={0.01}
-                            value={fontSizeScaleFactor}
+                            defaultValue={25} // 1 scaled up by the factor of 25
+                            min={0.25} // 0.01 scaled up by the factor of 25
+                            max={50} // 2 scaled up by the factor of 25
+                            step={1}
+                            value={fontSizeScaleFactor * 25}
                             onChange={(e, newValue) => {
                               if (e.type === 'mousedown') {
                                 return;
                               }
-                              setFontSizeScaleFactor(newValue)
+                              setFontSizeScaleFactor(newValue / 25)
+                              updateCanvas()
                             }}
-                            // valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
-                            onChangeCommitted={() => updateCanvas()}
+                            marks
+                            valueLabelFormat='Font Size'
+                            valueLabelDisplay
                           />
                         </Stack>
                       }
@@ -584,56 +625,22 @@ export default function FramePage({ shows = [] }) {
                               }
                             }}
                             size="small"
-                            defaultValue={1}
-                            min={0.01}
-                            max={3}
-                            step={0.01}
-                            value={fontLineHeightScaleFactor}
+                            defaultValue={25} // 1 scaled up by the factor of 25
+                            min={0.25} // 0.01 scaled up by the factor of 25
+                            max={50} // 2 scaled up by the factor of 25
+                            step={1}
+                            value={fontLineHeightScaleFactor * 25} // Scale the value for the slider
                             onChange={(e, newValue) => {
                               if (e.type === 'mousedown') {
                                 return;
                               }
-                              setFontLineHeightScaleFactor(newValue)
+                              // Divide by scale factor to get the actual value to set
+                              setFontLineHeightScaleFactor(newValue / 25);
+                              updateCanvas()
                             }}
-                            // valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
-                            onChangeCommitted={() => updateCanvas()}
-                          />
-                        </Stack>
-                      }
-                      {showText &&
-                        <Stack spacing={2} direction="row" p={0} pt={2} alignItems={'center'}>
-                          <Tooltip title="Line Height">
-                            <IconButton>
-                              <VerticalAlignTop alt="Line Height" />
-                            </IconButton>
-                          </Tooltip>
-                          <Slider
-                            componentsProps={{
-                              root: {
-                                style: {
-                                  ...(isSm && { pointerEvents: 'none' })
-                                }
-                              },
-                              thumb: {
-                                style: {
-                                  ...(isSm && { pointerEvents: 'auto' })
-                                }
-                              }
-                            }}
-                            size="small"
-                            defaultValue={1}
-                            min={-15}
-                            max={50}
-                            step={0.01}
-                            value={fontBottomMarginScaleFactor}
-                            onChange={(e, newValue) => {
-                              if (e.type === 'mousedown') {
-                                return;
-                              }
-                              setFontBottomMarginScaleFactor(newValue)
-                            }}
-                            // valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
-                            onChangeCommitted={() => updateCanvas()}
+                            valueLabelFormat='Line Height'
+                            valueLabelDisplay
+                            marks
                           />
                         </Stack>
                       }
