@@ -1,6 +1,6 @@
 import { Helmet } from 'react-helmet-async';
 import { Navigate, Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { API } from 'aws-amplify';
 import { styled } from '@mui/material/styles';
 import { useTheme } from '@emotion/react';
@@ -78,6 +78,12 @@ export default function FramePage({ shows = [] }) {
   const [fontSizeScaleFactor, setFontSizeScaleFactor] = useState(1);
   const [fontLineHeightScaleFactor, setFontLineHeightScaleFactor] = useState(1);
   const [fontBottomMarginScaleFactor, setFontBottomMarginScaleFactor] = useState(1);
+
+  /* ---------- This is used to prevent slider activity while scrolling on mobile ---------- */
+
+  const isSm = useMediaQuery((theme) => theme.breakpoints.down('md'));
+
+  /* -------------------------------------------------------------------------- */
 
   const [snackbarOpen, setSnackBarOpen] = useState(false);
 
@@ -520,7 +526,7 @@ export default function FramePage({ shows = [] }) {
                           </Box>
                         }
                       </Stack>
-                      {true &&
+                      {showText &&
                         <Stack spacing={2} direction="row" p={0} pt={2} alignItems={'center'}>
                           <Tooltip title="Font Size">
                             <IconButton>
@@ -528,6 +534,18 @@ export default function FramePage({ shows = [] }) {
                             </IconButton>
                           </Tooltip>
                           <Slider
+                            componentsProps={{
+                              root: {
+                                style: {
+                                  ...(isSm && { pointerEvents: 'none' })
+                                }
+                              },
+                              thumb: {
+                                style: {
+                                  ...(isSm && { pointerEvents: 'auto' })
+                                }
+                              }
+                            }}
                             size="small"
                             defaultValue={1}
                             min={0.01}
@@ -545,7 +563,7 @@ export default function FramePage({ shows = [] }) {
                           />
                         </Stack>
                       }
-                      {true &&
+                      {showText &&
                         <Stack spacing={2} direction="row" p={0} pt={2} alignItems={'center'}>
                           <Tooltip title="Line Height">
                             <IconButton>
@@ -553,6 +571,18 @@ export default function FramePage({ shows = [] }) {
                             </IconButton>
                           </Tooltip>
                           <Slider
+                            componentsProps={{
+                              root: {
+                                style: {
+                                  ...(isSm && { pointerEvents: 'none' })
+                                }
+                              },
+                              thumb: {
+                                style: {
+                                  ...(isSm && { pointerEvents: 'auto' })
+                                }
+                              }
+                            }}
                             size="small"
                             defaultValue={1}
                             min={0.01}
@@ -570,7 +600,7 @@ export default function FramePage({ shows = [] }) {
                           />
                         </Stack>
                       }
-                      {true &&
+                      {showText &&
                         <Stack spacing={2} direction="row" p={0} pt={2} alignItems={'center'}>
                           <Tooltip title="Line Height">
                             <IconButton>
@@ -578,6 +608,18 @@ export default function FramePage({ shows = [] }) {
                             </IconButton>
                           </Tooltip>
                           <Slider
+                            componentsProps={{
+                              root: {
+                                style: {
+                                  ...(isSm && { pointerEvents: 'none' })
+                                }
+                              },
+                              thumb: {
+                                style: {
+                                  ...(isSm && { pointerEvents: 'auto' })
+                                }
+                              }
+                            }}
                             size="small"
                             defaultValue={1}
                             min={-15}
