@@ -199,17 +199,17 @@ export default function FramePage({ shows = [] }) {
       const maxCanvasHeight = maxCanvasWidth / canvasAspectRatio;
 
       const referenceWidth = 1000;
-      const referenceFontSizeDesktop = 20;
-      const referenceFontSizeMobile = 24;
+      const referenceFontSizeDesktop = 40;
+      const referenceFontSizeMobile = 40;
       const referenceBottomAnch = 35;  // Reference distance from bottom for desktop
       const referenceBottomAnchMobile = 35; // Reference distance for mobile
 
-      const scaleFactor = img.width / referenceWidth;
+      const scaleFactor = 1000 / referenceWidth;
 
       const scaledFontSizeDesktop = referenceFontSizeDesktop * scaleFactor;
       const scaledFontSizeMobile = referenceFontSizeMobile * scaleFactor;
       const scaledBottomAnch = isMd ? referenceBottomAnch * scaleFactor * fontBottomMarginScaleFactor : referenceBottomAnchMobile * scaleFactor * fontBottomMarginScaleFactor;
-      const referenceLineHeight = 24;
+      const referenceLineHeight = 50;
       const scaledLineHeight = referenceLineHeight * scaleFactor * fontLineHeightScaleFactor * fontSizeScaleFactor;
 
       // Set the canvas dimensions
@@ -239,7 +239,7 @@ export default function FramePage({ shows = [] }) {
         const totalTextHeight = numOfLines * scaledLineHeight;  // Use scaled line height
 
         // Adjust startY to anchor the text a scaled distance from the bottom
-        const startYAdjusted = offScreenCanvas.height - totalTextHeight - scaledBottomAnch + 70;
+        const startYAdjusted = offScreenCanvas.height - totalTextHeight - scaledBottomAnch + 40;
 
         // Draw the text using the adjusted startY
         wrapText(ctx, text, x, startYAdjusted, maxWidth, scaledLineHeight);
