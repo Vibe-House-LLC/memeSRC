@@ -236,8 +236,21 @@ export default function FramePage({ shows = [] }) {
 
       // console.log(offScreenCanvas.toDataURL())
 
-      // Convert the canvas data to an image URL and set it as the src of the img tag
-      setImgSrc(offScreenCanvas.toDataURL());
+      // Instead of using toDataURL, convert the canvas to a blob
+      offScreenCanvas.toBlob((blob) => {
+        if (blob) {
+          // Create an object URL for the blob
+          const imageUrl = URL.createObjectURL(blob);
+
+          // Use this object URL as the src for the image instead of a data URL
+          setImgSrc(imageUrl);
+
+          // Optionally, revoke the object URL after the image has loaded to release memory
+          img.onload = () => {
+            URL.revokeObjectURL(imageUrl);
+          };
+        }
+      }, 'image/png'); // You can specify the image format
     };
   }
 
