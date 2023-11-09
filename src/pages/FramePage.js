@@ -542,7 +542,23 @@ export default function FramePage({ shows = [] }) {
           </Grid>
           <Grid item xs={12} md={6}>
             <Box sx={{ width: '100%' }}>
-              <Card style={{ boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+            <Card 
+              style={{ boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}
+              onClick={(e) => {
+                // Prevent card click event when clicking on any button or other interactive element inside the card
+                if (e.target.closest('button, a, input, textarea')) {
+                  return;
+                }
+                
+                // If showText is already true, do nothing
+                if (showText) {
+                  return;
+                }
+                
+                // If showText is false, then set it to true to show the TextField
+                setShowText(true);
+              }}
+            >
                 <CardContent sx={{ pt: 3 }}>
                   {/* <Typography variant="h3" component="div" style={{ marginBottom: '0.5rem' }} textAlign='left'>
                          {showTitle}
