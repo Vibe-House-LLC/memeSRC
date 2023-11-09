@@ -181,7 +181,7 @@ export default function FramePage({ shows = [] }) {
   }
 
 
-  const updateCanvas = () => {
+  const updateCanvas = (scaleDown) => {
     const offScreenCanvas = document.createElement('canvas');
     const ctx = offScreenCanvas.getContext('2d');
 
@@ -245,23 +245,55 @@ export default function FramePage({ shows = [] }) {
         wrapText(ctx, text, x, startYAdjusted, maxWidth, scaledLineHeight);
       }
 
-      // console.log(offScreenCanvas.toDataURL())
+      if (scaleDown) {
+        // Create a second canvas
+        const scaledCanvas = document.createElement('canvas');
+        const scaledCtx = scaledCanvas.getContext('2d');
 
-      // Instead of using toDataURL, convert the canvas to a blob
-      offScreenCanvas.toBlob((blob) => {
-        if (blob) {
-          // Create an object URL for the blob
-          const imageUrl = URL.createObjectURL(blob);
+        // Calculate the scaled dimensions
+        const scaledWidth = offScreenCanvas.width / 3;
+        const scaledHeight = offScreenCanvas.height / 3;
 
-          // Use this object URL as the src for the image instead of a data URL
-          setImgSrc(imageUrl);
+        // Set the scaled canvas dimensions
+        scaledCanvas.width = scaledWidth;
+        scaledCanvas.height = scaledHeight;
 
-          // Optionally, revoke the object URL after the image has loaded to release memory
-          img.onload = () => {
-            URL.revokeObjectURL(imageUrl);
-          };
-        }
-      }, 'image/png'); // You can specify the image format
+        // Draw the full-size canvas onto the scaled canvas at the reduced size
+        scaledCtx.drawImage(offScreenCanvas, 0, 0, scaledWidth, scaledHeight);
+
+        // Use the scaled canvas to create the blob
+        scaledCanvas.toBlob((blob) => {
+          if (blob) {
+            // Create an object URL for the blob
+            const imageUrl = URL.createObjectURL(blob);
+
+            // Use this object URL as the src for the image instead of a data URL
+            setImgSrc(imageUrl);
+
+            // Optionally, revoke the object URL after the image has loaded to release memory
+            img.onload = () => {
+              URL.revokeObjectURL(imageUrl);
+            };
+          }
+        }, 'image/png');
+      } else {
+
+        // Instead of using toDataURL, convert the canvas to a blob
+        offScreenCanvas.toBlob((blob) => {
+          if (blob) {
+            // Create an object URL for the blob
+            const imageUrl = URL.createObjectURL(blob);
+
+            // Use this object URL as the src for the image instead of a data URL
+            setImgSrc(imageUrl);
+
+            // Optionally, revoke the object URL after the image has loaded to release memory
+            img.onload = () => {
+              URL.revokeObjectURL(imageUrl);
+            };
+          }
+        }, 'image/png'); // You can specify the image format
+      }
     };
   }
 
@@ -507,7 +539,7 @@ export default function FramePage({ shows = [] }) {
           <Grid item xs={12} md={6}>
             <Box sx={{ width: '100%' }}>
               <Card style={{ boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
-                <CardContent sx={{pt: 3}}>
+                <CardContent sx={{ pt: 3 }}>
                   {/* <Typography variant="h3" component="div" style={{ marginBottom: '0.5rem' }} textAlign='left'>
                          {showTitle}
                         </Typography> */}
@@ -517,7 +549,7 @@ export default function FramePage({ shows = [] }) {
                     <>
                       <Stack direction='row' spacing={1} pl={0.5} alignItems='center'>
                         {showText ?
-                          <Stack direction='row' spacing={2} alignItems='center' sx={{width: '100%'}}>
+                          <Stack direction='row' spacing={2} alignItems='center' sx={{ width: '100%' }}>
                             <IconButton size='small' onClick={() => { setShowText(!showText) }}>
                               <VisibilityOff sx={{ fontSize: 20 }} />
                             </IconButton>
@@ -536,15 +568,15 @@ export default function FramePage({ shows = [] }) {
                             <IconButton size='small' onClick={() => setShowText(!showText)} sx={{ cursor: 'pointer' }}>
                               <Edit sx={{ fontSize: 20 }} />
                             </IconButton>
-                              <Typography
-                                variant="subtitle1"
-                                style={{ marginBottom: '0rem', whiteSpace: 'pre-line' }}
-                                textAlign='left'
-                                sx={{ color: "text.secondary" }}
-                                onClick={() => { setShowText(!showText) }}
-                              >
-                                {frameData.subtitle ? frameData.subtitle : '(no subtitle)'}
-                              </Typography>
+                            <Typography
+                              variant="subtitle1"
+                              style={{ marginBottom: '0rem', whiteSpace: 'pre-line' }}
+                              textAlign='left'
+                              sx={{ color: "text.secondary" }}
+                              onClick={() => { setShowText(!showText) }}
+                            >
+                              {frameData.subtitle ? frameData.subtitle : '(no subtitle)'}
+                            </Typography>
                           </Stack>
                         }
                       </Stack>
@@ -579,8 +611,9 @@ export default function FramePage({ shows = [] }) {
                                 return;
                               }
                               setFontBottomMarginScaleFactor(newValue)
-                              updateCanvas()
+                              updateCanvas(true)
                             }}
+                            onChangeCommitted={() => updateCanvas()}
                             marks
                             valueLabelFormat='Bottom Margin'
                             valueLabelDisplay
@@ -618,8 +651,9 @@ export default function FramePage({ shows = [] }) {
                                 return;
                               }
                               setFontSizeScaleFactor(newValue / 25)
-                              updateCanvas()
+                              updateCanvas(true)
                             }}
+                            onChangeCommitted={() => updateCanvas()}
                             marks
                             valueLabelFormat='Font Size'
                             valueLabelDisplay
@@ -658,8 +692,9 @@ export default function FramePage({ shows = [] }) {
                               }
                               // Divide by scale factor to get the actual value to set
                               setFontLineHeightScaleFactor(newValue);
-                              updateCanvas()
+                              updateCanvas(true)
                             }}
+                            onChangeCommitted={() => updateCanvas()}
                             valueLabelFormat='Line Height'
                             valueLabelDisplay
                             marks
