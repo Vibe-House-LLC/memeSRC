@@ -226,6 +226,7 @@ export default function FramePage({ shows = [] }) {
         ctx.fillStyle = 'white';
         ctx.strokeStyle = 'black';
         ctx.lineWidth = 6;
+        ctx.lineJoin = 'round'; // Add this line to round the joints
 
         const x = offScreenCanvas.width / 2;
         const maxWidth = offScreenCanvas.width - 60; // leaving some margin
