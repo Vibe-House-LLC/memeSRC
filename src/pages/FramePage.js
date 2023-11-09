@@ -1,6 +1,6 @@
 import { Helmet } from 'react-helmet-async';
 import { Navigate, Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { API } from 'aws-amplify';
 import { styled } from '@mui/material/styles';
 import { useTheme } from '@emotion/react';
@@ -36,7 +36,7 @@ import {
   Snackbar,
   Alert,
 } from '@mui/material';
-import { Add, ArrowBack, ArrowBackIos, ArrowForward, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu, OpenInBrowser, OpenInNew, Visibility, VisibilityOff } from '@mui/icons-material';
+import { Add, ArrowBack, ArrowBackIos, ArrowForward, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, FormatLineSpacing, FormatSize, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu, OpenInBrowser, OpenInNew, VerticalAlignBottom, VerticalAlignTop, Visibility, VisibilityOff } from '@mui/icons-material';
 import useSearchDetails from '../hooks/useSearchDetails';
 import getFrame from '../utils/frameHandler';
 
@@ -63,19 +63,27 @@ export default function FramePage({ shows = [] }) {
   const navigate = useNavigate();
   const { fid } = useParams();
   const [frameData, setFrameData] = useState({});
+  const [fineTuningFrames, setFineTuningFrames] = useState([]);
   const [surroundingFrames, setSurroundingFrames] = useState(null);
-  // const [surroundingSubtitles, setSurroundingSubtitles] = useState(null);
   const [sliderValue, setSliderValue] = useState(fineTuningFrame || 0);
   const [middleIndex, setMiddleIndex] = useState(0);
   const [displayImage, setDisplayImage] = useState(`https://memesrc.com/${fid.split('-')[0]}/img/${fid.split('-')[1]}/${fid.split('-')[2]}/${fid}.jpg`);
   const [subtitlesExpanded, setSubtitlesExpanded] = useState(false);
-  // const [subtitlesLoading, setSubtitlesLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [aspectRatio, setAspectRatio] = useState('16/9');
   const [showTitle, setShowTitle] = useState('');
   const [episodeDetails, setEpisodeDetails] = useState();
   const [imgSrc, setImgSrc] = useState();
   const [showText, setShowText] = useState(false);
+  const [fontSizeScaleFactor, setFontSizeScaleFactor] = useState(1);
+  const [fontLineHeightScaleFactor, setFontLineHeightScaleFactor] = useState(1);
+  const [fontBottomMarginScaleFactor, setFontBottomMarginScaleFactor] = useState(1);
+
+  /* ---------- This is used to prevent slider activity while scrolling on mobile ---------- */
+
+  const isSm = useMediaQuery((theme) => theme.breakpoints.down('md'));
+
+  /* -------------------------------------------------------------------------- */
 
   const [snackbarOpen, setSnackBarOpen] = useState(false);
 
@@ -173,11 +181,7 @@ export default function FramePage({ shows = [] }) {
   }
 
 
-
-
-
-  useEffect(() => {
-    // console.log(displayImage)
+  const updateCanvas = (scaleDown) => {
     const offScreenCanvas = document.createElement('canvas');
     const ctx = offScreenCanvas.getContext('2d');
 
@@ -185,28 +189,39 @@ export default function FramePage({ shows = [] }) {
     img.crossOrigin = "anonymous";
     img.src = displayImage;
     img.onload = function () {
+      // Define the maximum width for the canvas
+      const maxCanvasWidth = 1000; // Adjust this value as needed
+
+      // Calculate the aspect ratio of the image
+      const canvasAspectRatio = img.width / img.height;
+
+      // Calculate the corresponding height for the maximum width
+      const maxCanvasHeight = maxCanvasWidth / canvasAspectRatio;
+
       const referenceWidth = 1000;
       const referenceFontSizeDesktop = 40;
       const referenceFontSizeMobile = 40;
-      const referenceBottomAnch = -10;  // Reference distance from bottom for desktop
-      const referenceBottomAnchMobile = -10; // Reference distance for mobile
+      const referenceBottomAnch = 35;  // Reference distance from bottom for desktop
+      const referenceBottomAnchMobile = 35; // Reference distance for mobile
 
-      const scaleFactor = img.width / referenceWidth;
+      const scaleFactor = 1000 / referenceWidth;
 
       const scaledFontSizeDesktop = referenceFontSizeDesktop * scaleFactor;
       const scaledFontSizeMobile = referenceFontSizeMobile * scaleFactor;
-      const scaledBottomAnch = isMd ? referenceBottomAnch * scaleFactor : referenceBottomAnchMobile * scaleFactor;
-      const referenceLineHeight = 60;
-      const scaledLineHeight = referenceLineHeight * scaleFactor;
+      const scaledBottomAnch = isMd ? referenceBottomAnch * scaleFactor * fontBottomMarginScaleFactor : referenceBottomAnchMobile * scaleFactor * fontBottomMarginScaleFactor;
+      const referenceLineHeight = 50;
+      const scaledLineHeight = referenceLineHeight * scaleFactor * fontLineHeightScaleFactor * fontSizeScaleFactor;
 
-      offScreenCanvas.width = img.width;
-      offScreenCanvas.height = img.height;
-      ctx.drawImage(img, 0, 0);
+      // Set the canvas dimensions
+      offScreenCanvas.width = maxCanvasWidth;
+      offScreenCanvas.height = maxCanvasHeight;
+      // Scale the image and draw it on the canvas
+      ctx.drawImage(img, 0, 0, maxCanvasWidth, maxCanvasHeight);
       setLoading(false)
 
       if (showText) {
         // Styling the text
-        ctx.font = `700 ${isMd ? `${scaledFontSizeDesktop}px` : `${scaledFontSizeMobile}px`} Arial`;
+        ctx.font = `700 ${isMd ? `${scaledFontSizeDesktop * fontSizeScaleFactor}px` : `${scaledFontSizeMobile * fontSizeScaleFactor}px`} Arial`;
         ctx.textAlign = 'center';
         ctx.fillStyle = 'white';
         ctx.strokeStyle = 'black';
@@ -214,7 +229,7 @@ export default function FramePage({ shows = [] }) {
 
         const x = offScreenCanvas.width / 2;
         const maxWidth = offScreenCanvas.width - 60; // leaving some margin
-        const lineHeight = 80; // adjust as per your requirements
+        const lineHeight = 24; // adjust as per your requirements
         const startY = offScreenCanvas.height - (2 * lineHeight); // adjust to position the text properly
 
         const text = frameData.subtitle;
@@ -224,18 +239,72 @@ export default function FramePage({ shows = [] }) {
         const totalTextHeight = numOfLines * scaledLineHeight;  // Use scaled line height
 
         // Adjust startY to anchor the text a scaled distance from the bottom
-        const startYAdjusted = offScreenCanvas.height - totalTextHeight - scaledBottomAnch;
+        const startYAdjusted = offScreenCanvas.height - totalTextHeight - scaledBottomAnch + 40;
 
         // Draw the text using the adjusted startY
         wrapText(ctx, text, x, startYAdjusted, maxWidth, scaledLineHeight);
       }
 
-      // console.log(offScreenCanvas.toDataURL())
+      if (scaleDown) {
+        // Create a second canvas
+        const scaledCanvas = document.createElement('canvas');
+        const scaledCtx = scaledCanvas.getContext('2d');
 
-      // Convert the canvas data to an image URL and set it as the src of the img tag
-      setImgSrc(offScreenCanvas.toDataURL());
+        // Calculate the scaled dimensions
+        const scaledWidth = offScreenCanvas.width / 3;
+        const scaledHeight = offScreenCanvas.height / 3;
+
+        // Set the scaled canvas dimensions
+        scaledCanvas.width = scaledWidth;
+        scaledCanvas.height = scaledHeight;
+
+        // Draw the full-size canvas onto the scaled canvas at the reduced size
+        scaledCtx.drawImage(offScreenCanvas, 0, 0, scaledWidth, scaledHeight);
+
+        // Use the scaled canvas to create the blob
+        scaledCanvas.toBlob((blob) => {
+          if (blob) {
+            // Create an object URL for the blob
+            const imageUrl = URL.createObjectURL(blob);
+
+            // Use this object URL as the src for the image instead of a data URL
+            setImgSrc(imageUrl);
+
+            // Optionally, revoke the object URL after the image has loaded to release memory
+            img.onload = () => {
+              URL.revokeObjectURL(imageUrl);
+            };
+          }
+        }, 'image/png');
+      } else {
+
+        // Instead of using toDataURL, convert the canvas to a blob
+        offScreenCanvas.toBlob((blob) => {
+          if (blob) {
+            // Create an object URL for the blob
+            const imageUrl = URL.createObjectURL(blob);
+
+            // Use this object URL as the src for the image instead of a data URL
+            setImgSrc(imageUrl);
+
+            // Optionally, revoke the object URL after the image has loaded to release memory
+            img.onload = () => {
+              URL.revokeObjectURL(imageUrl);
+            };
+          }
+        }, 'image/png'); // You can specify the image format
+      }
     };
+  }
+
+
+  useEffect(() => {
+    updateCanvas();
   }, [showText, displayImage, frameData, frameData.subtitle]);
+
+  useEffect(() => {
+    updateCanvas(true)
+  }, [fontSizeScaleFactor, fontLineHeightScaleFactor, fontBottomMarginScaleFactor]);
 
   /* -------------------------------------------------------------------------- */
 
@@ -249,59 +318,52 @@ export default function FramePage({ shows = [] }) {
 
   useEffect(() => {
     setLoading(true)
-    // const getSessionID = async () => {
-    //   let sessionID;
-    //   if ("sessionID" in sessionStorage) {
-    //     sessionID = sessionStorage.getItem("sessionID");
-    //     return Promise.resolve(sessionID);
-    //   }
-    //   return API.get('publicapi', '/uuid')
-    //     .then(generatedSessionID => {
-    //       sessionStorage.setItem("sessionID", generatedSessionID);
-    //       return generatedSessionID;
-    //     })
-    //     .catch(err => {
-    //       console.log(`UUID Gen Fetch Error:  ${err}`);
-    //       throw err;
-    //     });
-    // };
-
-    // getSessionID()
-    // .then(sessionId => {
-    // return getFrame(fid)
-    // })
+    setFineTuningFrames([])
+    console.log(fineTuningFrame)
     getFrame(fid)
       .then(data => {
         setFrameData(data);
         setFrame(fid)
         setSurroundingFrames(data.frames_surrounding);
-        // console.log("FRAME DETAILS:")
-        // console.log(data)
         const newMiddleIndex = Math.floor(data.frames_fine_tuning.length / 2);
-        const initialFineTuneImage = data.frames_fine_tuning[newMiddleIndex];
+        const initialFineTuneImage = data.frames_fine_tuning[fineTuningFrame || newMiddleIndex];
         setMiddleIndex(newMiddleIndex)
-        // console.log(newMiddleIndex);
-        // console.log(fineTuningFrame)
         if (typeof fineTuningFrame === 'number') {
           setSliderValue(fineTuningFrame - newMiddleIndex)
         }
         setDisplayImage(`https://memesrc.com${initialFineTuneImage}`);
-        // setLoading(false)
       })
       .catch(console.error);
   }, [fid]);
 
+  // This effect is responsible for preloading images
   useEffect(() => {
-    if (frameData.frames_fine_tuning && middleIndex !== 0) {
-      const displayIndex = fineTuningFrame != null ? fineTuningFrame : middleIndex + sliderValue;
+    if (frameData.frames_fine_tuning) {
+      const preloadImages = async () => {
+        const images = await Promise.all(frameData.frames_fine_tuning.map(frameId => {
+          return new Promise(resolve => {
+            const img = new Image();
+            img.onload = () => resolve(img);
+            img.src = `https://memesrc.com${frameId}`;
+          });
+        }));
 
-      // console.log(displayIndex);
-      // console.log(fineTuningFrame);
+        setFineTuningFrames(images);
+      };
 
-      const newDisplayFrame = frameData.frames_fine_tuning[displayIndex];
-      setDisplayImage(`https://memesrc.com${newDisplayFrame}`);
+      preloadImages();
     }
-  }, [sliderValue, frameData, middleIndex]);
+  }, [frameData.frames_fine_tuning]);
+
+  // This effect is responsible for setting the display image based on slider value
+  useEffect(() => {
+    if (fineTuningFrames.length > 0 && middleIndex !== 0) {
+      const displayIndex = (typeof fineTuningFrame === 'number') ? fineTuningFrame : middleIndex + sliderValue;
+      if (fineTuningFrames[displayIndex]) {
+        setDisplayImage(fineTuningFrames[displayIndex].src);
+      }
+    }
+  }, [sliderValue, fineTuningFrames, middleIndex, fineTuningFrame]);
 
   // Use a callback function to handle slider changes
   const handleSliderChange = (newSliderValue) => {
@@ -309,34 +371,34 @@ export default function FramePage({ shows = [] }) {
     setFineTuningFrame(middleIndex + newSliderValue);
   };
 
-  const renderSurroundingFrames = () => {
-    let returnedElement;
+  /* ------------ This was unused so I've commented it out for now ------------ */
+  // const renderSurroundingFrames = () => {
+  //   let returnedElement;
 
-    if (surroundingFrames) {
-      returnedElement =
-        <Grid container spacing={2}>
-          {surroundingFrames.map((frame, index) => (
-            <Grid item xs={4} sm={4} md={12 / 9} key={frame.fid}>
-              <a style={{ textDecoration: 'none' }}>
-                <StyledCard style={{ border: fid === frame ? '3px solid orange' : '' }}>
-                  {/* {console.log(`${fid} = ${result?.fid}`)} */}
-                  <StyledCardMedia
-                    component="img"
-                    alt={`${frame.fid}`}
-                    src={`https://memesrc.com${frame.frame_image}`}
-                    title={frame.subtitle || 'No subtitle'}
-                    onClick={() => {
-                      navigate(`/frame/${frame.fid}`)
-                    }}
-                  />
-                </StyledCard>
-              </a>
-            </Grid>
-          ))}
-        </Grid>
-    }
-    return returnedElement
-  };
+  //   if (surroundingFrames) {
+  //     returnedElement =
+  //       <Grid container spacing={2}>
+  //         {surroundingFrames.map((frame, index) => (
+  //           <Grid item xs={4} sm={4} md={12 / 9} key={frame.fid}>
+  //             <a style={{ textDecoration: 'none' }}>
+  //               <StyledCard style={{ border: fid === frame ? '3px solid orange' : '' }}>
+  //                 <StyledCardMedia
+  //                   component="img"
+  //                   alt={`${frame.fid}`}
+  //                   src={`https://memesrc.com${frame.frame_image}`}
+  //                   title={frame.subtitle || 'No subtitle'}
+  //                   onClick={() => {
+  //                     navigate(`/frame/${frame.fid}`)
+  //                   }}
+  //                 />
+  //               </StyledCard>
+  //             </a>
+  //           </Grid>
+  //         ))}
+  //       </Grid>
+  //   }
+  //   return returnedElement
+  // };
 
   const frameToTimecode = (frameNumber, fps) => {
     const totalSeconds = Math.floor(frameNumber / fps);
@@ -401,24 +463,33 @@ export default function FramePage({ shows = [] }) {
           </IconButton>
         </div>
 
-        <Stack spacing={2} direction="row" p={0} pr={3} pl={3} alignItems={'center'}>
-          <Tooltip title="Fine Tuning">
-            <IconButton>
-              <HistoryToggleOffRounded alt="Fine Tuning" />
-            </IconButton>
-          </Tooltip>
-          <Slider
-            size="small"
-            defaultValue={4}
-            min={-middleIndex}
-            max={middleIndex}
-            value={sliderValue}
-            step={1}
-            onChange={(e, newValue) => handleSliderChange(newValue)}
-            valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
-            marks
-          />
-        </Stack>
+        {fineTuningFrames && fineTuningFrames?.length > 0 ?
+          <Stack spacing={2} direction="row" p={0} pr={3} pl={3} alignItems={'center'}>
+            <Tooltip title="Fine Tuning">
+              <IconButton>
+                <HistoryToggleOffRounded alt="Fine Tuning" />
+              </IconButton>
+            </Tooltip>
+            <Slider
+              size="small"
+              defaultValue={4}
+              min={-middleIndex}
+              max={middleIndex}
+              value={sliderValue}
+              step={1}
+              onChange={(e, newValue) => handleSliderChange(newValue)}
+              valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
+              marks
+            />
+          </Stack>
+          :
+          <Stack spacing={2} direction="row" py={1.1} justifyContent='center' alignItems={'center'}>
+            <CircularProgress color='success' size={14} />
+            <Typography variant='body2'>
+              Loading fine tuning frames...
+            </Typography>
+          </Stack>
+        }
       </>
     );
   };
@@ -470,54 +541,168 @@ export default function FramePage({ shows = [] }) {
             </Card>
           </Grid>
           <Grid item xs={12} md={6}>
-            {/* <Box sx={{ mt: isMd ? 0 : '1rem', width: isMd ? 'inherit' : '100%' }}> */}
             <Box sx={{ width: '100%' }}>
               <Card style={{ boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
-                <CardContent>
+                <CardContent sx={{ pt: 3 }}>
                   {/* <Typography variant="h3" component="div" style={{ marginBottom: '0.5rem' }} textAlign='left'>
                          {showTitle}
                         </Typography> */}
                   {loading ?
                     <Skeleton variant='text' height={25} width={'max(100px, 50%)'} />
                     :
-                    <Stack direction='row' spacing={1} alignItems='center'>
-                      {showText ?
-                        <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-                          <TextField
-                            autoFocus
-                            multiline
-                            fullWidth
-                            variant="outlined"
-                            size="small"
-                            value={frameData.subtitle}
-                            onChange={(e) => setFrameData({ ...frameData, subtitle: e.target.value })}
-                            sx={{ margin: -1 }}
-                          />
-                          <IconButton size='small' sx={{ marginLeft: 2, marginRight: -1.5 }} onClick={() => { setShowText(!showText) }}>
-                            <VisibilityOff sx={{ fontSize: 20 }} />
-                          </IconButton>
-                        </Box>
-                        :
-                        <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-                          <Box sx={{ flexGrow: 1, cursor: 'pointer' }} onClick={() => setShowText(!showText)}>
+                    <>
+                      <Stack direction='row' spacing={1} pl={0.5} alignItems='center'>
+                        {showText ?
+                          <Stack direction='row' spacing={2} alignItems='center' sx={{ width: '100%' }}>
+                            <IconButton size='small' onClick={() => { setShowText(!showText) }}>
+                              <VisibilityOff sx={{ fontSize: 20 }} />
+                            </IconButton>
+                            <TextField
+                              autoFocus
+                              multiline
+                              fullWidth
+                              variant="outlined"
+                              size="small"
+                              value={frameData.subtitle}
+                              onChange={(e) => setFrameData({ ...frameData, subtitle: e.target.value })}
+                            />
+                          </Stack>
+                          :
+                          <Stack direction='row' spacing={1} pl={0.5} alignItems='center'>
+                            <IconButton size='small' onClick={() => setShowText(!showText)} sx={{ cursor: 'pointer' }}>
+                              <Edit sx={{ fontSize: 20 }} />
+                            </IconButton>
                             <Typography
                               variant="subtitle1"
                               style={{ marginBottom: '0rem', whiteSpace: 'pre-line' }}
                               textAlign='left'
                               sx={{ color: "text.secondary" }}
+                              onClick={() => { setShowText(!showText) }}
                             >
                               {frameData.subtitle ? frameData.subtitle : '(no subtitle)'}
                             </Typography>
-                          </Box>
-                          <IconButton size='small' onClick={() => setShowText(!showText)} sx={{ cursor: 'pointer', marginLeft: 2, marginRight: -1.5 }}>
-                            <Edit sx={{ fontSize: 20 }} />
-                          </IconButton>
-                        </Box>
+                          </Stack>
+                        }
+                      </Stack>
+                      {showText &&
+                        <Stack spacing={2} direction="row" p={0} pt={2} alignItems={'center'}>
+                          <Tooltip title="Line Height">
+                            <IconButton>
+                              <VerticalAlignTop alt="Line Height" />
+                            </IconButton>
+                          </Tooltip>
+                          <Slider
+                            componentsProps={{
+                              root: {
+                                style: {
+                                  ...(isSm && { pointerEvents: 'none' })
+                                }
+                              },
+                              thumb: {
+                                style: {
+                                  ...(isSm && { pointerEvents: 'auto' })
+                                }
+                              }
+                            }}
+                            size="small"
+                            defaultValue={1}
+                            min={1}
+                            max={10}
+                            step={0.2}
+                            value={fontBottomMarginScaleFactor}
+                            onChange={(e, newValue) => {
+                              if (e.type === 'mousedown') {
+                                return;
+                              }
+                              setFontBottomMarginScaleFactor(newValue)
+                            }}
+                            onChangeCommitted={() => updateCanvas()}
+                            marks
+                            valueLabelFormat='Bottom Margin'
+                            valueLabelDisplay
+                          />
+                        </Stack>
                       }
-                      {/* <IconButton size='small' onClick={() => { setShowText(!showText) }}>
-                                {showText ? <VisibilityOff sx={{ fontSize: 20 }} /> : <Edit sx={{ fontSize: 20 }} />}
-                              </IconButton> */}
-                    </Stack>
+                      {showText &&
+                        <Stack spacing={2} direction="row" p={0} pt={2} alignItems={'center'}>
+                          <Tooltip title="Font Size">
+                            <IconButton>
+                              <FormatSize alt="Font Size" />
+                            </IconButton>
+                          </Tooltip>
+                          <Slider
+                            componentsProps={{
+                              root: {
+                                style: {
+                                  ...(isSm && { pointerEvents: 'none' })
+                                }
+                              },
+                              thumb: {
+                                style: {
+                                  ...(isSm && { pointerEvents: 'auto' })
+                                }
+                              }
+                            }}
+                            size="small"
+                            defaultValue={25} // 1 scaled up by the factor of 25
+                            min={0.25} // 0.01 scaled up by the factor of 25
+                            max={50} // 2 scaled up by the factor of 25
+                            step={1}
+                            value={fontSizeScaleFactor * 25}
+                            onChange={(e, newValue) => {
+                              if (e.type === 'mousedown') {
+                                return;
+                              }
+                              setFontSizeScaleFactor(newValue / 25)
+                            }}
+                            onChangeCommitted={() => updateCanvas()}
+                            marks
+                            valueLabelFormat='Font Size'
+                            valueLabelDisplay
+                          />
+                        </Stack>
+                      }
+                      {showText &&
+                        <Stack spacing={2} direction="row" p={0} pt={2} alignItems={'center'}>
+                          <Tooltip title="Line Height">
+                            <IconButton>
+                              <FormatLineSpacing alt="Line Height" />
+                            </IconButton>
+                          </Tooltip>
+                          <Slider
+                            componentsProps={{
+                              root: {
+                                style: {
+                                  ...(isSm && { pointerEvents: 'none' })
+                                }
+                              },
+                              thumb: {
+                                style: {
+                                  ...(isSm && { pointerEvents: 'auto' })
+                                }
+                              }
+                            }}
+                            size="small"
+                            defaultValue={1} // 1 scaled up by the factor of 25
+                            min={1} // 0.01 scaled up by the factor of 25
+                            max={5} // 2 scaled up by the factor of 25
+                            step={0.2}
+                            value={fontLineHeightScaleFactor} // Scale the value for the slider
+                            onChange={(e, newValue) => {
+                              if (e.type === 'mousedown') {
+                                return;
+                              }
+                              // Divide by scale factor to get the actual value to set
+                              setFontLineHeightScaleFactor(newValue);
+                            }}
+                            onChangeCommitted={() => updateCanvas()}
+                            valueLabelFormat='Line Height'
+                            valueLabelDisplay
+                            marks
+                          />
+                        </Stack>
+                      }
+                    </>
                   }
 
                 </CardContent>
@@ -564,7 +749,6 @@ export default function FramePage({ shows = [] }) {
               to={`/editor/${fid}${getCurrentQueryString()}`}
               component={RouterLink}
               sx={{ my: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
-              // sx={{ my: 2 }}
               startIcon={<Edit />}
             >
               Advanced Editor
@@ -582,7 +766,6 @@ export default function FramePage({ shows = [] }) {
                     )}
                     {subtitlesExpanded ? 'Hide' : 'View'} Nearby Subtitles
                   </Typography>
-                  {/* <Chip size="small" label="New!" color="success" /> */}
                 </AccordionSummary>
                 <AccordionDetails sx={{ paddingY: 0, paddingX: 0 }}>
                   <List sx={{ padding: '.5em 0' }}>
@@ -731,7 +914,7 @@ export default function FramePage({ shows = [] }) {
                 {surroundingFrames?.map((frame, index) => (
                   <Grid item xs={4} sm={4} md={12 / 9} key={`surrounding-frame-${frame.fid ? frame.fid : index}`}>
                     <a style={{ textDecoration: 'none' }}>
-                      <StyledCard style={{ border: fid === frame ? '3px solid orange' : '' }}>
+                      <StyledCard sx={{ ...((fid === frame.fid) && { border: '3px solid orange' }), cursor: (fid === frame.fid) ? 'default' : 'pointer' }}>
                         {/* {console.log(`${fid} = ${result?.fid}`)} */}
                         <StyledCardMedia
                           component="img"
