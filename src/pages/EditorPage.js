@@ -1489,10 +1489,10 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                           variant="contained"
                           onClick={() => addText('text', true)}
                           fullWidth
-                          sx={{ zIndex: '50', marginY: '20px' }}
+                          sx={{ zIndex: '50', marginTop: '20px' }}
                           startIcon={<AddCircleOutline />}
                         >
-                          {canvasObjects?.length > 0 ? "Add another caption" : "Add a caption"}
+                          Add text layer
                         </Button>
                       </Grid>
                       <Grid item xs={12} order={canvasObjects?.length + 1} key="add-image-layer-button">
@@ -1506,10 +1506,10 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                           variant="contained"
                           onClick={() => fileInputRef.current.click()}
                           fullWidth
-                          sx={{ zIndex: '50', marginY: '20px' }}
+                          sx={{ zIndex: '50', marginBottom: '20px' }}
                           startIcon={<AddPhotoAlternate />}
                         >
-                          Add an image
+                          Add image layer
                         </Button>
                       </Grid>
                     </>
