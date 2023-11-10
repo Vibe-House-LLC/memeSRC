@@ -301,42 +301,46 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         // Introducing a padding factor of 0.9 for a 10% padding effect
         const paddingFactor = 0.9;
         const scale = Math.min(canvasWidth / imgObj.width, canvasHeight / imgObj.height) * paddingFactor;
-
+  
         // Set the image properties, including the scale
         image.set({
           angle: 0,
-          padding: 10,
-          cornersize: 10,
           scaleX: scale,
           scaleY: scale,
           originX: 'center',
           originY: 'center'
         });
         
-        // Add the image to the canvas and center it
+        // Add the image to the canvas
         editor.canvas.add(image);
-        image.center();
+  
+        // Explicitly set the position of the image to the center of the canvas
+        image.set({
+          left: canvasWidth / 2,
+          top: canvasHeight / 2
+        });
+  
+        // Update the image object and canvas state
         image.setCoords();
-
-        // Render the canvas with the new image
         editor.canvas.renderAll();
-
+  
         // Create a new canvas object for the image
         const imageObject = {
           type: 'image',
-          src: event.target.result, // Store the image data or a reference to it
+          src: event.target.result,
           scale,
           angle: 0,
-          left: image.left,
-          top: image.top
+          left: canvasWidth / 2 - (image.width * scale) / 2,
+          top: canvasHeight / 2 - (image.height * scale) / 2
         };
-
+  
         // Update the canvasObjects state with the new image object
         setCanvasObjects(prevObjects => [...prevObjects, imageObject]);
       };
     };
     reader.readAsDataURL(imageFile);
   };
+  
 
 
 
@@ -1194,6 +1198,14 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
           movingCenterX = movingObject.left + (movingObject.width * movingObject.scaleX) / 2;
         }
 
+        // Adjust movingCenterX calculation considering the originX
+        if (movingObject.originX === 'center') {
+          movingCenterX = movingObject.left;
+        } else {
+          movingCenterX = movingObject.left + (movingObject.width * movingObject.scaleX) / 2;
+        }
+
+
         // Get the horizontal center of the canvas
         const canvasCenterX = editor.canvas.width / 2;
 
@@ -1202,9 +1214,10 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
         // If within threshold, snap to center
         if (distanceX < snapThreshold) {
-          if (movingObject.type === 'group') {
+          if (movingObject.originX === 'center') {
             movingObject.set({ left: canvasCenterX });
           } else {
+            // Adjust for objects where the originX is not 'center'
             movingObject.set({ left: canvasCenterX - (movingObject.width * movingObject.scaleX) / 2 });
           }
 
