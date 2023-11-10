@@ -273,18 +273,22 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       selectable: true,
       paintFirst: 'stroke'
     });
+  
     if (editor) {
       if (append) {
-        editor?.canvas.add(text);
+        editor.canvas.add(text);
+        editor.canvas.setActiveObject(text); // Set the text as the active object
         setCanvasObjects([...editor.canvas._objects]);
       } else {
         editor.canvas._objects = [];
-        editor?.canvas.add(text);
+        editor.canvas.add(text);
+        editor.canvas.setActiveObject(text); // Set the text as the active object
         setCanvasObjects([...editor.canvas._objects]);
       }
       addToHistory();
     }
   }, [editor]);
+  
 
   // Function to handle image uploads and add them to the canvas
   const addImageLayer = (imageFile) => {
