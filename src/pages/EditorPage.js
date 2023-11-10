@@ -525,7 +525,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       resizeCanvas(desiredWidth, desiredHeight)
       editor?.canvas.setBackgroundImage(oImg);
       // if (defaultSubtitle) {
-      addText(defaultSubtitle)
+      addText(defaultSubtitle || '')
       // }
       setImageLoaded(true)
     }
