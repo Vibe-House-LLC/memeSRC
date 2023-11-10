@@ -315,8 +315,9 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
           originY: 'center'
         });
         
-        // Add the image to the canvas
+        // Add the image to the canvas and set it as the active object
         editor.canvas.add(image);
+        editor.canvas.setActiveObject(image); // Set the image as the active object
   
         // Explicitly set the position of the image to the center of the canvas
         image.set({
@@ -344,6 +345,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     };
     reader.readAsDataURL(imageFile);
   };
+  
+  
   
 
 
