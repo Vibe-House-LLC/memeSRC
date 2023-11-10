@@ -740,8 +740,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     });
   };
 
-
-
   // ------------------------------------------------------------------------
 
   const QUERY_INTERVAL = 1000; // Every second
@@ -1452,7 +1450,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                 </div>
                               </Grid>
                             )}
-                            {console.log(object)}
                             {object.type === 'image' && (
                               <Grid item xs={12} order={index} marginBottom={1} style={{ marginLeft: '10px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
@@ -1465,6 +1462,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                       deleteLayer={deleteLayer} // Implement this function to handle layer deletion
                                       moveLayerUp={moveLayerUp} // Implement this function to handle moving the layer up
                                       moveLayerDown={moveLayerDown} // Implement this function to handle moving the layer down
+                                      src={object.src}
                                     />
                                   </div>
                                   {/* Button to remove the image layer */}
