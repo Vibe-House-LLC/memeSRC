@@ -1515,7 +1515,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                           Add text layer
                         </Button>
                       </Grid>
-                      <Grid item xs={12} order={canvasObjects?.length + 1} key="add-image-layer-button">
+                      {/* <Grid item xs={12} order={canvasObjects?.length + 1} key="add-image-layer-button">
                         <input
                           type="file"
                           onChange={(e) => addImageLayer(e.target.files[0])}
@@ -1531,7 +1531,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                         >
                           Add image layer
                         </Button>
-                      </Grid>
+                      </Grid> */}
                     </>
                   )}
 
@@ -1668,6 +1668,21 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                 marginRight={{ xs: '', md: 'auto' }}
                 marginTop={{ xs: -2.5, md: -1.5 }}
               >
+
+              {/* Big Share Button */}
+
+              <Grid item xs={12} marginBottom={2} order={2}>
+                <Button
+                  variant="contained"
+                  onClick={handleClickDialogOpen}
+                  fullWidth
+                  sx={{ marginTop: 2, zIndex: '50', backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
+                  startIcon={<Share />}
+                  size="large"
+                >
+                  Save/Copy/Share
+                </Button>
+              </Grid>
                 {surroundingFrames && surroundingFrames.length > 0 && (
                   <Card sx={{my: 2}}>
                     <Accordion expanded={subtitlesExpanded} disableGutters>
@@ -1837,21 +1852,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                   </DialogActions>
                 </Dialog>
               </Grid>
-
-              {/* Big Share Button */}
-
-              {/* <Grid item xs={12} marginBottom={2} order={2}>
-                    <Button
-                      variant="contained"
-                      onClick={handleClickDialogOpen}
-                      fullWidth
-                      sx={{ zIndex: '50', backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
-                      startIcon={<Share />}
-                      size="large"
-                    >
-                      Save/Copy/Share
-                    </Button>
-                  </Grid> */}
 
             </Grid>
             <Grid container item spacing={1}>
