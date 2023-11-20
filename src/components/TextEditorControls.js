@@ -33,7 +33,7 @@ export default function TextEditorControls(props) {
     return (
         <div>
             <div style={{ display: 'flex', alignItems: 'center' }}>
-                <Typography variant="h5" marginY={1}><b>Caption {props.index+1}</b></Typography>
+                <Typography variant="h5" marginY={1}><b>Layer {props.index+1} (caption)</b></Typography>
                 <IconButton
                     size="small"
                     color={editorVisible ? "primary" : "default"}

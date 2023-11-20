@@ -1,4 +1,4 @@
-import { forwardRef, memo, useCallback, useContext, useEffect, useRef, useState } from 'react'
+import { Fragment, forwardRef, memo, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { fabric } from 'fabric';
 import { FabricJSCanvas, useFabricJSEditor } from 'fabricjs-react'
 import { styled } from '@mui/material/styles';
@@ -6,7 +6,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
 import { Accordion, AccordionDetails, AccordionSummary, Backdrop, Button, ButtonGroup, Card, CircularProgress, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, Tab, Tabs, TextField, ToggleButton, ToggleButtonGroup, Typography, useMediaQuery, useTheme } from '@mui/material';
-import { Add, AddCircleOutline, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ClosedCaption, ContentCopy, FolderOpen, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, History, HistoryToggleOffRounded, IosShare, Menu, Redo, Save, Share, Undo, Update, ZoomIn, ZoomOut } from '@mui/icons-material';
+import { Add, AddCircleOutline, AddPhotoAlternate, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ClosedCaption, ContentCopy, FolderOpen, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, History, HistoryToggleOffRounded, IosShare, Menu, Redo, Save, Share, Undo, Update, ZoomIn, ZoomOut } from '@mui/icons-material';
 import { API, Storage, graphqlOperation } from 'aws-amplify';
 import { Box } from '@mui/system';
 import { Helmet } from 'react-helmet-async';
@@ -19,6 +19,7 @@ import getFrame from '../utils/frameHandler';
 import LoadingBackdrop from '../components/LoadingBackdrop';
 import { createEditorProject, updateEditorProject } from '../graphql/mutations';
 import { getEditorProject } from '../graphql/queries';
+import ImageEditorControls from '../components/ImageEditorControls';
 
 const Alert = forwardRef((props, ref) => <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />);
 
@@ -272,18 +273,85 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       selectable: true,
       paintFirst: 'stroke'
     });
+  
     if (editor) {
       if (append) {
-        editor?.canvas.add(text);
+        editor.canvas.add(text);
+        editor.canvas.setActiveObject(text); // Set the text as the active object
         setCanvasObjects([...editor.canvas._objects]);
       } else {
         editor.canvas._objects = [];
-        editor?.canvas.add(text);
+        editor.canvas.add(text);
+        editor.canvas.setActiveObject(text); // Set the text as the active object
         setCanvasObjects([...editor.canvas._objects]);
       }
       addToHistory();
     }
   }, [editor]);
+  
+
+  // Function to handle image uploads and add them to the canvas
+  const addImageLayer = (imageFile) => {
+    const reader = new FileReader();
+    reader.onload = function (event) {
+      const imgObj = new Image();
+      imgObj.src = event.target.result;
+      imgObj.onload = function () {
+        const image = new fabric.Image(imgObj);
+        
+        // Calculate the scale to fit the image within the canvas, maintaining the aspect ratio
+        const canvasWidth = editor.canvas.getWidth();
+        const canvasHeight = editor.canvas.getHeight();
+        // Introducing a padding factor of 0.9 for a 10% padding effect
+        const paddingFactor = 0.9;
+        const scale = Math.min(canvasWidth / imgObj.width, canvasHeight / imgObj.height) * paddingFactor;
+  
+        // Set the image properties, including the scale
+        image.set({
+          angle: 0,
+          scaleX: scale,
+          scaleY: scale,
+          originX: 'center',
+          originY: 'center'
+        });
+        
+        // Add the image to the canvas and set it as the active object
+        editor.canvas.add(image);
+        editor.canvas.setActiveObject(image); // Set the image as the active object
+  
+        // Explicitly set the position of the image to the center of the canvas
+        image.set({
+          left: canvasWidth / 2,
+          top: canvasHeight / 2
+        });
+  
+        // Update the image object and canvas state
+        image.setCoords();
+        editor.canvas.renderAll();
+  
+        // Create a new canvas object for the image
+        const imageObject = {
+          type: 'image',
+          src: event.target.result,
+          scale,
+          angle: 0,
+          left: canvasWidth / 2 - (image.width * scale) / 2,
+          top: canvasHeight / 2 - (image.height * scale) / 2
+        };
+  
+        // Update the canvasObjects state with the new image object
+        setCanvasObjects(prevObjects => [...prevObjects, imageObject]);
+      };
+    };
+    reader.readAsDataURL(imageFile);
+  };
+  
+  
+  
+
+
+
+  const fileInputRef = useRef(null); // Define the ref
 
   const loadEditorDefaults = useCallback(async () => {
     setLoading(true);
@@ -464,7 +532,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       resizeCanvas(desiredWidth, desiredHeight)
       editor?.canvas.setBackgroundImage(oImg);
       // if (defaultSubtitle) {
-      addText(defaultSubtitle)
+      addText(defaultSubtitle || '')
       // }
       setImageLoaded(true)
     }
@@ -642,6 +710,46 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     editor?.canvas.renderAll();
     addToHistory();
   }
+
+  // Function to move a layer up in the stack
+  const moveLayerUp = (index) => {
+    if (index <= 0) return; // Already at the top or invalid index
+
+    const objectToMoveUp = editor.canvas.item(index);
+    if (!objectToMoveUp) return; // Object not found
+    
+    // Move the object one step up in the canvas stack
+    editor.canvas.moveTo(objectToMoveUp, index - 1);
+    editor.canvas.renderAll();
+    addToHistory();
+
+    setCanvasObjects(prevCanvasObjects => {
+      const newCanvasObjects = [...prevCanvasObjects];
+      // Swap the positions of the index with the index above
+      [newCanvasObjects[index], newCanvasObjects[index - 1]] = [newCanvasObjects[index - 1], newCanvasObjects[index]];
+      return newCanvasObjects;
+    });
+  };
+
+  // Function to move a layer down in the stack
+  const moveLayerDown = (index) => {
+    if (index >= editor.canvas._objects.length - 1) return; // Already at the bottom or invalid index
+
+    const objectToMoveDown = editor.canvas.item(index);
+    if (!objectToMoveDown) return; // Object not found
+    
+    // Move the object one step down in the canvas stack
+    editor.canvas.moveTo(objectToMoveDown, index + 1);
+    editor.canvas.renderAll();
+    addToHistory();
+
+    setCanvasObjects(prevCanvasObjects => {
+      const newCanvasObjects = [...prevCanvasObjects];
+      // Swap the positions of the index with the index below
+      [newCanvasObjects[index], newCanvasObjects[index + 1]] = [newCanvasObjects[index + 1], newCanvasObjects[index]];
+      return newCanvasObjects;
+    });
+  };
 
   // ------------------------------------------------------------------------
 
@@ -1097,6 +1205,14 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
           movingCenterX = movingObject.left + (movingObject.width * movingObject.scaleX) / 2;
         }
 
+        // Adjust movingCenterX calculation considering the originX
+        if (movingObject.originX === 'center') {
+          movingCenterX = movingObject.left;
+        } else {
+          movingCenterX = movingObject.left + (movingObject.width * movingObject.scaleX) / 2;
+        }
+
+
         // Get the horizontal center of the canvas
         const canvasCenterX = editor.canvas.width / 2;
 
@@ -1105,9 +1221,10 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
         // If within threshold, snap to center
         if (distanceX < snapThreshold) {
-          if (movingObject.type === 'group') {
+          if (movingObject.originX === 'center') {
             movingObject.set({ left: canvasCenterX });
           } else {
+            // Adjust for objects where the originX is not 'center'
             movingObject.set({ left: canvasCenterX - (movingObject.width * movingObject.scaleX) / 2 });
           }
 
@@ -1312,68 +1429,113 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                   {editorTool === 'captions' && (
                     <>
                       {canvasObjects &&
-                        canvasObjects.map(
-                          (object, index) =>
-                            'text' in object && (
-                              <Grid item xs={12} order={index} key={`grid${index}`} marginBottom={1} style={{ marginLeft: '10px' }}>
-                                <div style={{ display: 'inline', position: 'relative' }} key={`div${index}`}>
+                        canvasObjects.map((object, index) => (
+                          <Fragment key={`layer-${index}`}>
+                            {'text' in object && (
+                              <Grid item xs={12} order={index} marginBottom={1} style={{ marginLeft: '10px' }}>
+                                <div style={{ display: 'inline', position: 'relative' }}>
                                   <TextEditorControls
                                     showColorPicker={(event) => showColorPicker(event, index)}
                                     colorPickerShowing={colorPickerShowing}
                                     index={index}
                                     showFontSizePicker={(event) => showFontSizePicker(event, index)}
                                     fontSizePickerShowing={fontSizePickerShowing}
-                                    key={`togglebuttons${index}`}
                                     handleStyle={handleStyle}
                                   />
                                 </div>
-                                {/* Container to place TextField and Fab button beside each other */}
                                 <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
                                   <TextField
                                     size="small"
-                                    key={`textfield${index}`}
                                     multiline
                                     type="text"
-                                    value={canvasObjects[index].text}
+                                    value={object.text}
                                     fullWidth
                                     onFocus={() => handleFocus(index)}
                                     onBlur={addToHistory}
                                     onChange={(event) => handleEdit(event, index)}
                                     placeholder='(type your caption)'
                                   />
-
-                                  {/* Adjusted style for the Fab button */}
                                   <Fab
                                     size="small"
-                                    aria-label="add"
+                                    aria-label="delete"
                                     sx={{
-                                      marginLeft: '10px', // Added margin for spacing
+                                      marginLeft: '10px',
                                       backgroundColor: theme.palette.background.paper,
                                       boxShadow: 'none'
                                     }}
                                     onClick={() => deleteLayer(index)}
-                                    key={`fab${index}`}
                                   >
                                     <HighlightOffRounded color="error" />
                                   </Fab>
                                 </div>
                               </Grid>
-                            )
-                        )
+                            )}
+                            {object.type === 'image' && (
+                              <Grid item xs={12} order={index} marginBottom={1} style={{ marginLeft: '10px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                                  {/* Placeholder for image layer UI */}
+                                  <div style={{ display: 'inline', position: 'relative' }}>
+                                    {/* Settings for the image layer, such as resizing and repositioning */}
+                                    {/* Implement ImageEditorControls according to your app's functionality */}
+                                    <ImageEditorControls
+                                      index={index}
+                                      deleteLayer={deleteLayer} // Implement this function to handle layer deletion
+                                      moveLayerUp={moveLayerUp} // Implement this function to handle moving the layer up
+                                      moveLayerDown={moveLayerDown} // Implement this function to handle moving the layer down
+                                      src={object.src}
+                                    />
+                                  </div>
+                                  {/* Button to remove the image layer */}
+                                  <Fab
+                                    size="small"
+                                    aria-label="delete"
+                                    sx={{
+                                      marginLeft: '10px',
+                                      backgroundColor: theme.palette.background.paper,
+                                      boxShadow: 'none'
+                                    }}
+                                    onClick={() => deleteLayer(index)}
+                                  >
+                                    <HighlightOffRounded color="error" />
+                                  </Fab>
+                                </div>
+                              </Grid>
+                            )}
+                          </Fragment>
+                        ))
                       }
-                      <Grid item xs={12} order={canvasObjects?.length + 1} key="addLayerButton">
+                      <Grid item xs={12} order={canvasObjects?.length} key="add-text-layer-button">
                         <Button
                           variant="contained"
                           onClick={() => addText('text', true)}
                           fullWidth
-                          sx={{ zIndex: '50', marginY: '20px' }}
+                          sx={{ zIndex: '50', marginTop: '20px' }}
                           startIcon={<AddCircleOutline />}
                         >
-                          {canvasObjects?.length > 0 ? "Add another caption" : "Add a caption"}
+                          Add text layer
                         </Button>
                       </Grid>
+                      {/* <Grid item xs={12} order={canvasObjects?.length + 1} key="add-image-layer-button">
+                        <input
+                          type="file"
+                          onChange={(e) => addImageLayer(e.target.files[0])}
+                          style={{ display: 'none' }}
+                          ref={fileInputRef}
+                        />
+                        <Button
+                          variant="contained"
+                          onClick={() => fileInputRef.current.click()}
+                          fullWidth
+                          sx={{ zIndex: '50', marginBottom: '20px' }}
+                          startIcon={<AddPhotoAlternate />}
+                        >
+                          Add image layer
+                        </Button>
+                      </Grid> */}
                     </>
                   )}
+
+
 
                   {editorTool === 'fineTuning' && (
                     loadingFineTuningFrames ? (
@@ -1506,6 +1668,21 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                 marginRight={{ xs: '', md: 'auto' }}
                 marginTop={{ xs: -2.5, md: -1.5 }}
               >
+
+              {/* Big Share Button */}
+
+              <Grid item xs={12} marginBottom={2} order={2}>
+                <Button
+                  variant="contained"
+                  onClick={handleClickDialogOpen}
+                  fullWidth
+                  sx={{ marginTop: 2, zIndex: '50', backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
+                  startIcon={<Share />}
+                  size="large"
+                >
+                  Save/Copy/Share
+                </Button>
+              </Grid>
                 {surroundingFrames && surroundingFrames.length > 0 && (
                   <Card sx={{my: 2}}>
                     <Accordion expanded={subtitlesExpanded} disableGutters>
@@ -1675,21 +1852,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                   </DialogActions>
                 </Dialog>
               </Grid>
-
-              {/* Big Share Button */}
-
-              {/* <Grid item xs={12} marginBottom={2} order={2}>
-                    <Button
-                      variant="contained"
-                      onClick={handleClickDialogOpen}
-                      fullWidth
-                      sx={{ zIndex: '50', backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
-                      startIcon={<Share />}
-                      size="large"
-                    >
-                      Save/Copy/Share
-                    </Button>
-                  </Grid> */}
 
             </Grid>
             <Grid container item spacing={1}>

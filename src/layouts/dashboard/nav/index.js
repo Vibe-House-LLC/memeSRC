@@ -54,7 +54,7 @@ export default function Nav({ openNav, onCloseNav }) {
           <Link onClick={() => { navigate('/') }}>
             <Logo />
           </Link>
-          <Chip label={process.env.REACT_APP_USER_BRANCH === 'prod' ? `v${process.env.REACT_APP_VERSION}` : `v${process.env.REACT_APP_VERSION}-${process.env.REACT_APP_USER_BRANCH}`} variant="outlined" />
+          <Chip label={process.env.REACT_APP_USER_BRANCH === 'beta' ? `v${process.env.REACT_APP_VERSION}` : `v${process.env.REACT_APP_VERSION}-${process.env.REACT_APP_USER_BRANCH}`} variant="outlined" />
         </Stack>
       </Box>
 
