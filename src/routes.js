@@ -55,6 +55,7 @@ export default function Router() {
       children: [
         { element: <HomePage />, index: true },
         { path: 'search', element: <Navigate to='/' /> },
+        { path: 'edit', element: <EditorNewProjectPage /> },
         { path: 'editor/projects', element: <EditorProjectsPage /> },
         { path: 'editor/new', element: <EditorNewProjectPage /> },
         { path: 'editor/project/:editorProjectId', element: <EditorPage /> },
@@ -65,7 +66,7 @@ export default function Router() {
         { path: '/episode/:seriesId/:seasonNum/:episodeNum', element: <TopBannerSearchRevised><EpisodePage /></TopBannerSearchRevised> },
         { path: '/episode/:seriesId/:seasonNum/:episodeNum/:frameNum', element: <TopBannerSearchRevised><EpisodePage /></TopBannerSearchRevised> },
         { path: '/vote', element: <TopBannerSearchRevised><VotingPage /></TopBannerSearchRevised> },
-        { path: '/upload', element: <ContributorRequest /> },
+        { path: '/contribute', element: <ContributorRequest /> },
         { path: '/pricing', element: <PricingPage /> },
         { path: '/:seriesId', element: <DynamicRouteHandler /> },
       ]

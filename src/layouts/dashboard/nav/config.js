@@ -19,14 +19,20 @@ const navConfig = [
         icon: icon('ic_menu_item'),
       },
       {
+        title: 'edit',
+        path: '/edit',
+        externalLink: false,
+        icon: icon('ic_file'),
+      },
+      {
         title: 'Request',
         path: '/vote',
         externalLink: false,
         icon: icon('ic_kanban')
       },
       {
-        title: 'Upload',
-        path: '/upload',
+        title: 'Contribute',
+        path: '/contribute',
         externalLink: false,
         icon: <FolderShared />
       }

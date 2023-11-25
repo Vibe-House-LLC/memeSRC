@@ -611,19 +611,19 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
             }
           });
 
-          // Save protected version of the image
-          const protectedFilename = `projects/${editorProjectId}-preview.jpg`;
-          Storage.put(protectedFilename, blob, {
-            level: 'protected',
-            resumable: true,
-            contentType: "image/jpeg",
-            progressCallback: (progress) => {
-              console.log(`Uploaded protected version: ${progress.loaded}/${progress.total}`);
-            },
-            errorCallback: (err) => {
-              console.error('Unexpected error while uploading protected version', err);
-            }
-          });
+          // // Save protected version of the image
+          // const protectedFilename = `projects/${editorProjectId}-preview.jpg`;
+          // Storage.put(protectedFilename, blob, {
+          //   level: 'protected',
+          //   resumable: true,
+          //   contentType: "image/jpeg",
+          //   progressCallback: (progress) => {
+          //     console.log(`Uploaded protected version: ${progress.loaded}/${progress.total}`);
+          //   },
+          //   errorCallback: (err) => {
+          //     console.error('Unexpected error while uploading protected version', err);
+          //   }
+          // });
 
         }).catch(err => console.log(`UUID Gen Fetch Error: ${err}`));
       });
@@ -1045,58 +1045,59 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       setEditorStates(prevHistory => [...prevHistory, serializedCanvas]);
       setBgEditorStates(prevHistory => [...prevHistory, backgroundImage]);
 
-      // Scale the image to fit the canvas
-      const oImg = editor.canvas.backgroundImage;
-      const imageAspectRatio = oImg.width / oImg.height;
-      const [desiredHeight, desiredWidth] = calculateEditorSize(imageAspectRatio);
-      const scale = desiredWidth / oImg.width;
+      // TODO: clean up and re-enable this saving logic for projects / templates
+      // // Scale the image to fit the canvas
+      // const oImg = editor.canvas.backgroundImage;
+      // const imageAspectRatio = oImg.width / oImg.height;
+      // const [desiredHeight, desiredWidth] = calculateEditorSize(imageAspectRatio);
+      // const scale = desiredWidth / oImg.width;
 
-      oImg.scale(scale);
-      editor.canvas.forEachObject(obj => {
-        obj.left /= scale;
-        obj.top /= scale;
-        obj.scaleY /= scale;
-        obj.scaleX /= scale;
-      });
+      // oImg.scale(scale);
+      // editor.canvas.forEachObject(obj => {
+      //   obj.left /= scale;
+      //   obj.top /= scale;
+      //   obj.scaleY /= scale;
+      //   obj.scaleX /= scale;
+      // });
 
-      // Now, save the scaled state for the S3 storage
-      const scaledSerializedCanvas = JSON.stringify(editor.canvas);
+      // // Now, save the scaled state for the S3 storage
+      // const scaledSerializedCanvas = JSON.stringify(editor.canvas);
 
-      // Revert the scaling to ensure local behavior remains consistent
-      editor.canvas.forEachObject(obj => {
-        obj.left *= scale;
-        obj.top *= scale;
-        obj.scaleY *= scale;
-        obj.scaleX *= scale;
-      });
+      // // Revert the scaling to ensure local behavior remains consistent
+      // editor.canvas.forEachObject(obj => {
+      //   obj.left *= scale;
+      //   obj.top *= scale;
+      //   obj.scaleY *= scale;
+      //   obj.scaleX *= scale;
+      // });
 
-      // Create a unique file name based on the editorProjectId for JSON state
-      const stateFileName = `projects/${editorProjectId}.json`;
+      // // Create a unique file name based on the editorProjectId for JSON state
+      // const stateFileName = `projects/${editorProjectId}.json`;
 
-      // Upload the serialized (scaled) canvas state to S3 under the user's protected folder
-      await Storage.put(stateFileName, scaledSerializedCanvas, {
-        level: 'protected',
-        contentType: 'application/json'
-      });
+      // // Upload the serialized (scaled) canvas state to S3 under the user's protected folder
+      // await Storage.put(stateFileName, scaledSerializedCanvas, {
+      //   level: 'protected',
+      //   contentType: 'application/json'
+      // });
 
-      // Convert the canvas to a data URL with appropriate quality and multiplier settings
-      const canvasDataURL = editor.canvas.toDataURL({
-        format: 'jpeg',
-        quality: 0.6,
-        multiplier: 1 / scale
-      });
+      // // Convert the canvas to a data URL with appropriate quality and multiplier settings
+      // const canvasDataURL = editor.canvas.toDataURL({
+      //   format: 'jpeg',
+      //   quality: 0.6,
+      //   multiplier: 1 / scale
+      // });
 
-      // Convert the data URL to a Blob
-      const canvasBlob = dataURLtoBlob(canvasDataURL);
+      // // Convert the data URL to a Blob
+      // const canvasBlob = dataURLtoBlob(canvasDataURL);
 
-      // Create a unique file name based on the editorProjectId for the canvas image
-      const canvasImageFileName = `projects/${editorProjectId}-preview.jpg`;
+      // // Create a unique file name based on the editorProjectId for the canvas image
+      // const canvasImageFileName = `projects/${editorProjectId}-preview.jpg`;
 
-      // Upload the canvas image to S3 under the user's protected folder
-      await Storage.put(canvasImageFileName, canvasBlob, {
-        level: 'protected',
-        contentType: 'image/jpeg'
-      });
+      // // Upload the canvas image to S3 under the user's protected folder
+      // await Storage.put(canvasImageFileName, canvasBlob, {
+      //   level: 'protected',
+      //   contentType: 'image/jpeg'
+      // });
 
     } catch (error) {
       console.error('Failed to update editor state or canvas image in S3:', error);
