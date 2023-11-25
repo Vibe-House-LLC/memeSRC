@@ -2,7 +2,7 @@ import { API, graphqlOperation, Storage } from 'aws-amplify';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { Container, Typography, Breadcrumbs, Link, Card, CardActionArea, CardContent, Box, Grid, Paper, Input, Chip } from '@mui/material';
+import { Container, Typography, Breadcrumbs, Link, Card, CardActionArea, CardContent, Box, Grid, Paper, Input, Chip, Alert } from '@mui/material';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import SearchIcon from '@mui/icons-material/Search';
@@ -24,23 +24,26 @@ export default function EditorNewProjectPage() {
   
         // Create an EditorProject object in GraphQL with an empty state value
         try {
-          const projectInput = {
-            title: "Same Project Saving",
-            state: JSON.stringify({}) // empty state value
-          };
+          // TODO: consider uploading to S3 and doing the project loading/saving stuff. 
+          // const projectInput = {
+          //   title: "Same Project Saving",
+          //   state: JSON.stringify({}) // empty state value
+          // };
   
-          const result = await API.graphql(graphqlOperation(createEditorProject, { input: projectInput }));
-          const newProjectId = result.data.createEditorProject.id;
+          // const result = await API.graphql(graphqlOperation(createEditorProject, { input: projectInput }));
+          // const newProjectId = result.data.createEditorProject.id;
 
-          // Upload 'preview' to Storage
-          const key = `projects/${newProjectId}-preview.jpg`;
-          await Storage.put(key, file, {
-            level: 'protected', 
-            contentType: file.type
-          });
+          // // Upload 'preview' to Storage
+          // const key = `projects/${newProjectId}-preview.jpg`;
+          // await Storage.put(key, file, {
+          //   level: 'protected', 
+          //   contentType: file.type
+          // });
 
-          // Navigate to the editor with the newProjectId while passing the uploaded image data
-          navigate(`/editor/project/${newProjectId}`, { state: { uploadedImage: base64data } });
+          // // Navigate to the editor with the newProjectId while passing the uploaded image data
+          // navigate(`/editor/project/${newProjectId}`, { state: { uploadedImage: base64data } });
+
+          navigate(`/editor/project/new`, { state: { uploadedImage: base64data } });
   
         } catch (error) {
           console.error('Failed to create an EditorProject or upload to Storage:', error);
@@ -56,10 +59,16 @@ export default function EditorNewProjectPage() {
       pageTitle="New Project"
       breadcrumbLinks={[
         { path: "/", name: "Home" },
-        { path: "/editor/projects", name: "Editor" },
-        { path: "/editor/new", name: "New" }
+        { name: "Editor" },
+        // { path: "/editor/new", name: "New" }
       ]}
     >
+  <Container sx={{ padding: 0 }}> {/* Adjust padding here */}
+    {/* New Feature Description */}
+    <Alert severity="success" sx={{ mb: -4, mt: -2 }}> {/* Adjust margin here */}
+      You can now edit your own photos with the advanced editor, including <b>Magic Tools</b>!
+    </Alert>
+  </Container>
       <Grid container justifyContent="center" spacing={2} sx={{ mt: 4 }}>
           <Grid item xs={12} sm={6} md={4} lg={3}>
             <label htmlFor="upload-image" style={{ width: '100%', cursor: 'pointer' }}>
