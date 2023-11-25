@@ -1404,7 +1404,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                       }}
                       icon={
                         <Box display="flex" alignItems="center" marginX={-1}>
-                          <AccessTime fontSize='small' sx={{ mr: 1 }} />
+                          <HistoryToggleOffRounded fontSize='small' sx={{ mr: 1 }} />
                           Timing
                         </Box>
                       }
