@@ -6,7 +6,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
 import { Accordion, AccordionDetails, AccordionSummary, Backdrop, Button, ButtonGroup, Card, CircularProgress, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, Tab, Tabs, TextField, ToggleButton, ToggleButtonGroup, Typography, useMediaQuery, useTheme } from '@mui/material';
-import { Add, AddCircleOutline, AddPhotoAlternate, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ClosedCaption, ContentCopy, FolderOpen, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, History, HistoryToggleOffRounded, IosShare, Menu, Redo, Save, Share, Undo, Update, ZoomIn, ZoomOut } from '@mui/icons-material';
+import { AccessTime, Add, AddCircleOutline, AddPhotoAlternate, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ClosedCaption, ContentCopy, FolderOpen, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, History, HistoryToggleOffRounded, IosShare, Menu, MoreTime, Redo, Save, Share, Timelapse, Timeline, Undo, Update, ZoomIn, ZoomOut } from '@mui/icons-material';
 import { API, Storage, graphqlOperation } from 'aws-amplify';
 import { Box } from '@mui/system';
 import { Helmet } from 'react-helmet-async';
@@ -158,6 +158,10 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const handleSnackbarClose = () => {
     setSnackBarOpen(false);
   }
+
+  useEffect(() => {
+    setFineTuningValue(searchDetails.fineTuningFrame);
+  }, [searchDetails])
 
   useEffect(() => {
     if (shows?.length > 0) {
@@ -1392,6 +1396,21 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                       }
                     }}
                   >
+                    {fineTuningFrames.length > 0 && 
+                    <Tab
+                      style={{
+                        opacity: editorTool === "fineTuning" ? 1 : 0.4,
+                        color: editorTool === "fineTuning" ? "limegreen" : "white"
+                      }}
+                      icon={
+                        <Box display="flex" alignItems="center" marginX={-1}>
+                          <AccessTime fontSize='small' sx={{ mr: 1 }} />
+                          Timing
+                        </Box>
+                      }
+                      value="fineTuning"
+                    />
+                    }
                     <Tab
                       style={{
                         opacity: editorTool === "captions" ? 1 : 0.4,
@@ -1400,7 +1419,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                       icon={
                         <Box display="flex" alignItems="center" marginX={-1}>
                           <ClosedCaption fontSize='small' sx={{ mr: 1 }} />
-                          Caption Editor
+                          Captions
                         </Box>
                       }
                       value="captions"
@@ -1413,7 +1432,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                       icon={
                         <Box display="flex" alignItems="center" marginX={-1}>
                           <AutoFixHighRounded fontSize='small' sx={{ mr: 1 }} />
-                          Magic Tools
+                          Magic
                         </Box>
                       }
                       value="magicEraser"
@@ -1538,12 +1557,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
 
                   {editorTool === 'fineTuning' && (
-                    loadingFineTuningFrames ? (
-                      <Stack direction='row' justifyContent='center' alignItems='center' spacing={2}>
-                        <CircularProgress size={30} />
-                        <Typography variant='body1'>Loading frames...</Typography>
-                      </Stack>
-                    ) : (
                       <Slider
                         size="small"
                         defaultValue={4}
@@ -1560,7 +1573,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                         marks
                         track={false}
                       />
-                    )
                   )}
 
                   {editorTool === 'magicEraser' && (
