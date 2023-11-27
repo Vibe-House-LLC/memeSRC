@@ -421,26 +421,27 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                 </Box>
                 {currentThemeTitleText}
               </Typography>
-              {/* {!localStorage.getItem('alertDismisseds7g3fgw34') && (
+              {!localStorage.getItem('alertDismissed-UPLOADS-auir9o89rd') && (
+                <center>
                 <Alert
-                  severity="info"
+                  severity="success"
                   action={
                     <>
                       <Button
                         component={Link}
-                        to="/vote"
+                        to="/edit"
                         variant="outlined"
                         color="inherit"
                         size="small"
                         style={{ marginRight: '5px' }}
                       >
-                        Request
+                        Edit
                       </Button>
                       <IconButton
                         color="inherit"
                         size="small"
                         onClick={() => {
-                          localStorage.setItem('alertDismisseds7g3fgw34', 'true');
+                          localStorage.setItem('alertDismissed-UPLOADS-auir9o89rd', 'true');
                           setAlertOpen(false);
                         }}
                       >
@@ -452,11 +453,13 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                     marginTop: 2,
                     marginBottom: -3,
                     opacity: 0.9,
+                    maxWidth: 400
                   }}
                 >
-                  <b>Movies</b>&nbsp;are&nbsp;now&nbsp;supported!
+                  <b>New:</b> Edit&nbsp;your&nbsp;own&nbsp;pics!
                 </Alert>
-              )} */}
+                </center>
+              )}
             </Grid>
           </Grid>
           <StyledSearchForm onSubmit={(e) => searchFunction(e)}>
