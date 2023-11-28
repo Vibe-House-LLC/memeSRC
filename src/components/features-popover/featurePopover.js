@@ -1,43 +1,63 @@
 import { Button, Checkbox, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, FormControlLabel, List, ListItem, ListItemText, Stack, Typography } from '@mui/material';
 import PropTypes from 'prop-types';
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const listItemStyling = { position: 'relative', pl: '20px', '&::before': { content: '"•"', position: 'absolute', left: 0 } }
 
 export default function FeaturePopover({ children }) {
     const [open, setOpen] = useState(false);
     const [showAgain, setShowAgain] = useState(false);
+    const location = useLocation();
     const navigate = useNavigate();
+    const [path, setPath] = useState();
 
-    const handleClose = () => {
-        if (!showAgain) {
-            // The user did not choose "Don't show me this again"
-            try {
-                sessionStorage.setItem('disableFeaturePopover', true);
-                setOpen(false)
-            } catch (err) {
-                console.log(err)
-            }
-        } else {
-            // The user chose "Don't show me this again"
-            try {
-                localStorage.setItem('disableFeaturePopover', true);
-                setOpen(false)
-            } catch (err) {
-                console.log(err)
-            }
-        }
+    const handleClose = async (pathToSet) => {
+        setOpen(false)
+        setPath(pathToSet)
     }
 
     useEffect(() => {
+        if (!open && path) {
+            if (!showAgain) {
+                // The user did not choose "Don't show me this again"
+                try {
+                    sessionStorage.setItem('disableFeaturePopover', true);
+                    navigate(path)
+                    console.log(open)
+                } catch (err) {
+                    console.log(err)
+                }
+            } else {
+                // The user chose "Don't show me this again"
+                try {
+                    localStorage.setItem('disableFeaturePopover', true);
+                    navigate(path)
+                    console.log(open)
+                } catch (err) {
+                    console.log(err)
+                }
+            }
+        }
+    }, [open, path]);
 
-        // Check to see if they've closed the dialog yet
-        if (!(localStorage.getItem('disableFeaturePopover') || sessionStorage.getItem('disableFeaturePopover'))) {
+    useEffect(() => {
+        if (!localStorage.getItem('disableFeaturePopover') && location.pathname === '/') {
+            console.log('ITS OPENING')
             setOpen(true)
         }
+    }, [location]);
 
-    }, []);
+
+
+    // useEffect(() => {
+
+    //     // Check to see if they've closed the dialog yet
+    //     if (!(localStorage.getItem('disableFeaturePopover') || sessionStorage.getItem('disableFeaturePopover') && !open)) {
+    //         setOpen(true)
+    //     }
+
+    // }, []);
 
 
 
@@ -78,8 +98,7 @@ export default function FeaturePopover({ children }) {
                                     },
                                 }}
                                 onClick={() => {
-                                    navigate('/editor/seinfeld43-8-5-926?magicTools=true')
-                                    handleClose();
+                                    handleClose('/editor/seinfeld43-8-5-926?magicTools=true');
                                 }}
                             >
                                 Try Now
@@ -109,8 +128,7 @@ export default function FeaturePopover({ children }) {
                                     },
                                 }}
                                 onClick={() => {
-                                    navigate('/edit')
-                                    handleClose();
+                                    handleClose('/edit');
                                 }}
                             >
                                 Try Now
@@ -137,8 +155,7 @@ export default function FeaturePopover({ children }) {
                                     },
                                 }}
                                 onClick={() => {
-                                    navigate('/vote')
-                                    handleClose();
+                                    handleClose('/vote');
                                 }}
                             >
                                 Try Now
@@ -165,7 +182,7 @@ export default function FeaturePopover({ children }) {
                     }}
                 >
                     <Stack direction='row' spacing={2} alignItems='center'>
-                    <FormControlLabel control={<Checkbox checked={showAgain} onChange={(event) => { setShowAgain(event.target.checked) }} />} label={`Don't show again`} labelPlacement='start' />
+                        <FormControlLabel control={<Checkbox checked={showAgain} onChange={(event) => { setShowAgain(event.target.checked) }} />} label={`Don't show again`} labelPlacement='start' />
                         <Button variant='contained' color='error' onClick={handleClose}>
                             Close
                         </Button>

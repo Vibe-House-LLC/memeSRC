@@ -2,7 +2,7 @@ import { Fragment, forwardRef, memo, useCallback, useContext, useEffect, useRef,
 import { fabric } from 'fabric';
 import { FabricJSCanvas, useFabricJSEditor } from 'fabricjs-react'
 import { styled } from '@mui/material/styles';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
 import { Accordion, AccordionDetails, AccordionSummary, Backdrop, Button, ButtonGroup, Card, CircularProgress, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, Tab, Tabs, TextField, ToggleButton, ToggleButtonGroup, Typography, useMediaQuery, useTheme } from '@mui/material';
@@ -69,6 +69,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const [hasFabricPaths, setHasFabricPaths] = useState(false);
   const [openNavWithoutSavingDialog, setOpenNavWithoutSavingDialog] = useState(false);
   const [selectedNavItemFid, setSelectedNavItemFid] = useState(null);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // console.log(searchDetails.fineTuningFrame)
   // Get everything ready
@@ -146,6 +147,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   // const images = Array(5).fill("https://placekitten.com/350/350");
   // const isMd = useMediaQuery((theme) => theme.breakpoints.up('md'));
   const [returnedImages, setReturnedImages] = useState([]);
+
+  const magicToolsButtonRef = useRef();
 
   const handleSubtitlesExpand = () => {
     setSubtitlesExpanded(!subtitlesExpanded);
@@ -277,7 +280,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       selectable: true,
       paintFirst: 'stroke'
     });
-  
+
     if (editor) {
       if (append) {
         editor.canvas.add(text);
@@ -292,7 +295,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       addToHistory();
     }
   }, [editor]);
-  
+
 
   // Function to handle image uploads and add them to the canvas
   const addImageLayer = (imageFile) => {
@@ -302,14 +305,14 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       imgObj.src = event.target.result;
       imgObj.onload = function () {
         const image = new fabric.Image(imgObj);
-        
+
         // Calculate the scale to fit the image within the canvas, maintaining the aspect ratio
         const canvasWidth = editor.canvas.getWidth();
         const canvasHeight = editor.canvas.getHeight();
         // Introducing a padding factor of 0.9 for a 10% padding effect
         const paddingFactor = 0.9;
         const scale = Math.min(canvasWidth / imgObj.width, canvasHeight / imgObj.height) * paddingFactor;
-  
+
         // Set the image properties, including the scale
         image.set({
           angle: 0,
@@ -318,21 +321,21 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
           originX: 'center',
           originY: 'center'
         });
-        
+
         // Add the image to the canvas and set it as the active object
         editor.canvas.add(image);
         editor.canvas.setActiveObject(image); // Set the image as the active object
-  
+
         // Explicitly set the position of the image to the center of the canvas
         image.set({
           left: canvasWidth / 2,
           top: canvasHeight / 2
         });
-  
+
         // Update the image object and canvas state
         image.setCoords();
         editor.canvas.renderAll();
-  
+
         // Create a new canvas object for the image
         const imageObject = {
           type: 'image',
@@ -342,16 +345,16 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
           left: canvasWidth / 2 - (image.width * scale) / 2,
           top: canvasHeight / 2 - (image.height * scale) / 2
         };
-  
+
         // Update the canvasObjects state with the new image object
         setCanvasObjects(prevObjects => [...prevObjects, imageObject]);
       };
     };
     reader.readAsDataURL(imageFile);
   };
-  
-  
-  
+
+
+
 
 
 
@@ -721,7 +724,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
     const objectToMoveUp = editor.canvas.item(index);
     if (!objectToMoveUp) return; // Object not found
-    
+
     // Move the object one step up in the canvas stack
     editor.canvas.moveTo(objectToMoveUp, index - 1);
     editor.canvas.renderAll();
@@ -741,7 +744,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
     const objectToMoveDown = editor.canvas.item(index);
     if (!objectToMoveDown) return; // Object not found
-    
+
     // Move the object one step down in the canvas stack
     editor.canvas.moveTo(objectToMoveDown, index + 1);
     editor.canvas.renderAll();
@@ -1284,9 +1287,31 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   }, [promptEnabled])
 
   useEffect(() => {
+
+    if (searchParams.has('magicTools', 'true')) {
+      if (!user || user?.userDetails?.credits <= 0) {
+        setMagicToolsPopoverAnchorEl(magicToolsButtonRef.current);
+        setEditorTool('captions')
+      }
+    }
+
+  }, []);
+
+  useEffect(() => {
     setPromptEnabled('erase')
     setMagicPrompt('Everyday scene as cinematic cinestill sample')
   }, [editorTool])
+
+  useEffect(() => {
+    if (editorLoaded) {
+      if (searchParams.has('magicTools', 'true')) {
+        if (!(!user || user?.userDetails?.credits <= 0)) {
+          setEditorTool('magicEraser');
+          toggleDrawingMode('magicEraser');
+        }
+      }
+    }
+  }, [editorLoaded]);
 
 
   const handleOpenNavWithoutSavingDialog = (fid) => {
@@ -1397,20 +1422,20 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                       }
                     }}
                   >
-                    {fineTuningFrames.length > 0 && 
-                    <Tab
-                      style={{
-                        opacity: editorTool === "fineTuning" ? 1 : 0.4,
-                        color: editorTool === "fineTuning" ? "limegreen" : "white"
-                      }}
-                      icon={
-                        <Box display="flex" alignItems="center" marginX={-1}>
-                          <HistoryToggleOffRounded fontSize='small' sx={{ mr: 1 }} />
-                          Timing
-                        </Box>
-                      }
-                      value="fineTuning"
-                    />
+                    {fineTuningFrames.length > 0 &&
+                      <Tab
+                        style={{
+                          opacity: editorTool === "fineTuning" ? 1 : 0.4,
+                          color: editorTool === "fineTuning" ? "limegreen" : "white"
+                        }}
+                        icon={
+                          <Box display="flex" alignItems="center" marginX={-1}>
+                            <HistoryToggleOffRounded fontSize='small' sx={{ mr: 1 }} />
+                            Timing
+                          </Box>
+                        }
+                        value="fineTuning"
+                      />
                     }
                     <Tab
                       style={{
@@ -1426,6 +1451,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                       value="captions"
                     />
                     <Tab
+                      ref={magicToolsButtonRef}
                       style={{
                         opacity: editorTool === "magicEraser" ? 1 : 0.4,
                         color: editorTool === "magicEraser" ? "limegreen" : "white"
@@ -1558,22 +1584,22 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
 
                   {editorTool === 'fineTuning' && (
-                      <Slider
-                        size="small"
-                        defaultValue={4}
-                        min={0}
-                        max={8}
-                        value={fineTuningValue}
-                        aria-label="Small"
-                        valueLabelDisplay="auto"
-                        onChange={(event, value) => {
-                          handleFineTuning(value);
-                          setFineTuningValue(value);
-                        }}
-                        valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
-                        marks
-                        track={false}
-                      />
+                    <Slider
+                      size="small"
+                      defaultValue={4}
+                      min={0}
+                      max={8}
+                      value={fineTuningValue}
+                      aria-label="Small"
+                      valueLabelDisplay="auto"
+                      onChange={(event, value) => {
+                        handleFineTuning(value);
+                        setFineTuningValue(value);
+                      }}
+                      valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
+                      marks
+                      track={false}
+                    />
                   )}
 
                   {editorTool === 'magicEraser' && (
@@ -1682,22 +1708,22 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                 marginTop={{ xs: -2.5, md: -1.5 }}
               >
 
-              {/* Big Share Button */}
+                {/* Big Share Button */}
 
-              <Grid item xs={12} marginBottom={2} order={2}>
-                <Button
-                  variant="contained"
-                  onClick={handleClickDialogOpen}
-                  fullWidth
-                  sx={{ marginTop: 2, zIndex: '50', backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
-                  startIcon={<Share />}
-                  size="large"
-                >
-                  Save/Copy/Share
-                </Button>
-              </Grid>
+                <Grid item xs={12} marginBottom={2} order={2}>
+                  <Button
+                    variant="contained"
+                    onClick={handleClickDialogOpen}
+                    fullWidth
+                    sx={{ marginTop: 2, zIndex: '50', backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
+                    startIcon={<Share />}
+                    size="large"
+                  >
+                    Save/Copy/Share
+                  </Button>
+                </Grid>
                 {surroundingFrames && surroundingFrames.length > 0 && (
-                  <Card sx={{my: 2}}>
+                  <Card sx={{ my: 2 }}>
                     <Accordion expanded={subtitlesExpanded} disableGutters>
                       <AccordionSummary sx={{ paddingX: 1.55, textAlign: "center" }} onClick={handleSubtitlesExpand} >
                         <Typography marginRight="auto" fontWeight="bold" color="#CACACA" fontSize={14.8}>
