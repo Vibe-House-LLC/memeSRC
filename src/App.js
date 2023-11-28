@@ -8,6 +8,7 @@ import Router from './routes';
 import ThemeProvider from './theme';
 import SnackBar from './utils/Snackbar';
 import StripeWatcher from './utils/StripeWatcher';
+import FeaturePopover from './components/features-popover/featurePopover';
 // components
 // import ScrollToTop from './components/scroll-to-top';
 // import { StyledChart } from './components/chart';
@@ -22,21 +23,23 @@ export default function App() {
   // Return the App
   return (
     <ThemeProvider>
-    
+
       <SnackBar>
         {/* <ScrollToTop /> */}
         {/* <StyledChart /> */}
-          <StripeWatcher>
-            <Suspense fallback={
-              <Backdrop open sx={{ backgroundColor: "white" }}>
-                <CircularProgress />
-              </Backdrop>
-            }>
+        <StripeWatcher>
+          <Suspense fallback={
+            <Backdrop open sx={{ backgroundColor: "white" }}>
+              <CircularProgress />
+            </Backdrop>
+          }>
+            <FeaturePopover>
               <SearchDetailsProvider>
-              <Router />
+                <Router />
               </SearchDetailsProvider>
-            </Suspense>
-          </StripeWatcher>
+            </FeaturePopover>
+          </Suspense>
+        </StripeWatcher>
       </SnackBar>
     </ThemeProvider>
   );
