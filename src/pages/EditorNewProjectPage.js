@@ -132,7 +132,7 @@ export default function EditorNewProjectPage() {
                 <Typography variant="h5" component="div" gutterBottom>
                   Search Images
                 </Typography>
-                <Typography color="text.secondary">Find 35 million on memeSRC</Typography>
+                <Typography color="text.secondary">Find 47 million+ on memeSRC</Typography>
               </Paper>
             </CardActionArea>
           </Grid>
