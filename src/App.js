@@ -8,7 +8,7 @@ import Router from './routes';
 import ThemeProvider from './theme';
 import SnackBar from './utils/Snackbar';
 import StripeWatcher from './utils/StripeWatcher';
-import FeaturePopover from './components/features-popover/featurePopover';
+// import FeaturePopover from './components/features-popover/featurePopover';
 // components
 // import ScrollToTop from './components/scroll-to-top';
 // import { StyledChart } from './components/chart';
@@ -33,11 +33,11 @@ export default function App() {
               <CircularProgress />
             </Backdrop>
           }>
-            <FeaturePopover>
+            {/* <FeaturePopover> */}
               <SearchDetailsProvider>
                 <Router />
               </SearchDetailsProvider>
-            </FeaturePopover>
+            {/* </FeaturePopover> */}
           </Suspense>
         </StripeWatcher>
       </SnackBar>
