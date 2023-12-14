@@ -515,7 +515,7 @@ export default function FramePage({ shows = [] }) {
               size='small'
               icon={<OpenInNew />}
               label={`Season ${fid.split('-')[1]} / Episode ${fid.split('-')[2]}`}
-              onClick={() => navigate(`/episode/${episodeDetails[0]}/${episodeDetails[1]}/${episodeDetails[2]}/${episodeDetails[3]}`)}
+              onClick={() => navigate(`/episode/${episodeDetails[0]}/${episodeDetails[1]}/${episodeDetails[2]}/1`)}
               sx={{
                 marginBottom: '15px',
                 "& .MuiChip-label": {
