@@ -98,7 +98,7 @@ export default function EpisodePage({ setSeriesTitle }) {
             <LoadingButton
               variant='contained'
               fullWidth
-              onClick={() => loadFrames(((((Number(results[0].fid.split('-')[3])) + 1) / 9) - 1) - 250)}
+              onClick={() => loadFrames(((((Number(results[0].fid.split('-')[3])) + 1) / 9) - 1) - 25)}
               disabled={loadingMore}
             >
               {loadingMore ? 'Loading...' : 'Previous Frames'}
