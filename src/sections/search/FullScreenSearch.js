@@ -208,13 +208,6 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
 
   const navigate = useNavigate();
 
-  const resetTheme = () => {
-    setCurrentThemeBackground({ backgroundImage: defaultBackground });
-    setCurrentThemeFontColor(defaultFontColor);
-    setCurrentThemeTitleText(defaultTitleText);
-    setCurrentThemeBragText(defaultBragText);
-  };
-
   // The handleChangeSeries function now only handles theme updates
   const handleChangeSeries = useCallback((newSeriesTitle) => {
     const selectedSeriesProperties = shows.find((object) => object.id === newSeriesTitle);
@@ -228,7 +221,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
         }`
       );
     } else {
-      resetTheme();
+      navigate('/')
     }
   }, [shows]);
 
