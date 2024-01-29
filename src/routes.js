@@ -43,6 +43,7 @@ const ContributorRequest = lazy(() => import('./pages/ContributorRequest'));
 const PricingPage = lazy(() => import('./pages/PricingPage'));
 const MagicPopup = lazy(() => import('./components/magic-popup/MagicPopup'));
 const DynamicRouteHandler = lazy(() => import('./pages/DynamicRouteHandler'));
+const ServerPage = lazy(() => import('./pages/ServerPage'));
 
 // ----------------------------------------------------------------------
 
@@ -69,6 +70,7 @@ export default function Router() {
         { path: '/contribute', element: <ContributorRequest /> },
         { path: '/pricing', element: <PricingPage /> },
         { path: '/:seriesId', element: <DynamicRouteHandler /> },
+        { path: '/server', element: <ServerPage /> }
       ]
     },
     {
