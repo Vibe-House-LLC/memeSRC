@@ -6,6 +6,10 @@ import SvgColor from '../../../components/svg-color';
 
 const icon = (name) => <SvgColor src={`/assets/icons/navbar/${name}.svg`} sx={{ width: 1, height: 1 }} />;
 
+const isElectron = () => {
+  return window && window.process && window.process.type;
+};
+
 const navConfig = [
   {
     sectionTitle: 'General',
@@ -35,7 +39,13 @@ const navConfig = [
         path: '/contribute',
         externalLink: false,
         icon: <FolderShared />
-      }
+      },
+      ...(isElectron() ? [{
+        title: 'Server',
+        path: '/server',
+        externalLink: false,
+        icon: <Settings />
+      }] : [])
     ]
   },
   {
