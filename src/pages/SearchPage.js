@@ -1,11 +1,13 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useContext } from 'react';
 import { API } from 'aws-amplify';
-import { Grid, CircularProgress, Card, Chip } from '@mui/material';
+import { Grid, CircularProgress, Card, Chip, Box } from '@mui/material';
 import styled from '@emotion/styled';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import SearchPageBannerAd from '../ads/SearchPageBannerAd';
 import TopBannerSearch from '../sections/search/TopBannerSearch';
 import useSearchDetails from '../hooks/useSearchDetails';
+import { UserContext } from '../UserContext';
 
 const StyledCircularProgress = styled(CircularProgress)`
   position: absolute;
@@ -97,6 +99,7 @@ export default function SearchPage() {
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [aspectRatio, setAspectRatio] = useState('56.25%'); // Default to 16:9 aspect ratio
+  const { user, setUser } = useContext(UserContext);
 
   const memoizedResults = useMemo(() => results, [results]);
   const memoizedAspectRatio = useMemo(() => aspectRatio, [aspectRatio]);
@@ -191,8 +194,17 @@ export default function SearchPage() {
       <Grid container spacing={2} alignItems="stretch" paddingX={{ xs: 2, md: 6 }}>
         {loading ? (
           <StyledCircularProgress />
-        ) : (
-          memoizedResults &&
+        ) : (<>
+        {user?.userDetails?.subscriptionStatus !== 'active' &&
+            <Grid item xs={12} mt={2}>
+              <center>
+                <Box sx={{ maxWidth: '800px'}}>
+                  <SearchPageBannerAd />
+                </Box>
+              </center>
+            </Grid>
+          }
+          {memoizedResults &&
           memoizedResults.map((result) => (
             <Grid item xs={12} sm={6} md={3} key={result.fid}>
               <Link to={`/frame/${result.fid}`} style={{ textDecoration: 'none' }}>
@@ -237,7 +249,7 @@ export default function SearchPage() {
               </Link>
             </Grid>
           ))
-        )}
+        }</>)}
       </Grid>
     </>
   );
