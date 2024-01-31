@@ -1,7 +1,7 @@
 import PropTypes from 'prop-types';
 import React, { useState, useEffect, useMemo, useCallback, useContext } from 'react';
 import { useParams } from 'react-router-dom';
-import { Grid, CircularProgress, List, ListItem, ListItemText, ListItemAvatar, Avatar, Card, CardActionArea, CardMedia, CardContent, Typography, Chip, Container, Box } from '@mui/material';
+import { Grid, CircularProgress, List, ListItem, ListItemText, ListItemAvatar, Avatar, Card, CardActionArea, CardMedia, CardContent, Typography, Chip, Container, Box, useMediaQuery } from '@mui/material';
 import styled from '@emotion/styled';
 import { Stack } from '@mui/system';
 import { LoadingButton } from '@mui/lab';
@@ -22,6 +22,7 @@ export default function EpisodePage({ setSeriesTitle }) {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [showName, setShowName] = useState('')
+  const isMd = useMediaQuery(theme => theme.breakpoints.up('md'))
 
   const memoizedResults = useMemo(() => results, [results]);
 
@@ -98,7 +99,7 @@ export default function EpisodePage({ setSeriesTitle }) {
       </Typography>
       <Grid container justifyContent='center' py={2}>
         {user?.userDetails?.subscriptionStatus !== 'active' &&
-          <Grid item xs={12}mb={2}>
+          <Grid item xs={12} mb={2}>
             <center>
               <Box sx={{ maxWidth: '800px' }}>
                 <EpisodeViewBannerAd />
@@ -131,7 +132,7 @@ export default function EpisodePage({ setSeriesTitle }) {
                 (idx % 6) - 2 === 0 && idx !== 0 && user?.userDetails?.subscriptionStatus !== 'active'
                   ? (
                     <Grid item xs={12} sm={6} md={3} key={`ad-${result.fid}`}>
-                      <Card sx={{ aspectRatio: '4.13/1' }}>
+                      <Card sx={{ ...(isMd && {aspectRatio: '4.13/1'}) }}>
                         <EpisodeViewResultsAd />
                       </Card>
                     </Grid>
