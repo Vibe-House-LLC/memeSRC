@@ -89,7 +89,7 @@ function LoadingBackdrop({ open, duration = 20 }) {
                 <Typography variant="caption" sx={{ marginTop: 'px', color: 'rgba(255, 255, 255, 0.7)' }}>
                     Wait while memeSRC works its magic
                 </Typography>
-                {user?.userDetails?.subscriptionStatus !== 'active' &&
+                {user?.userDetails?.subscriptionStatus !== 'active' && open &&
                     <Box sx={{ width: '95vw', maxWidth: 400 }}>
                         <MagicToolsLoadingAd />
                     </Box>
