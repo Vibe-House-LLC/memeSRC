@@ -212,7 +212,7 @@ export default function SearchPage() {
                   // Insert the VotingPageAd component every 6 shows
                   (idx % 6) - 2 === 0 && idx !== 0 && user?.userDetails?.subscriptionStatus !== 'active'
                     ? (
-                      <Grid item xs={12} sm={6} md={3} key={`ad-${result.fid}`}>
+                      <Grid item xs={12} sm={6} md={4} lg={3} key={`ad-${result.fid}`}>
                         <StyledCard sx={{aspectRatio: '16/9'}}>
                           <SearchPageResultsAd />
                         </StyledCard>
@@ -220,7 +220,7 @@ export default function SearchPage() {
                     )
                     : null
                 }
-                <Grid item xs={12} sm={6} md={3} key={result.fid}>
+                <Grid item xs={12} sm={6} md={4} lg={3} key={result.fid}>
                   <Link to={`/frame/${result.fid}`} style={{ textDecoration: 'none' }}>
                     <StyledCard>
                       <StyledCardMediaContainer aspectRatio={memoizedAspectRatio}>
