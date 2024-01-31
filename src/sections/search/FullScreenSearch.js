@@ -400,17 +400,18 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   return (
     <>
       <StyledGridContainer container paddingX={3} sx={currentThemeBackground}>
-        <Grid container marginY="auto" justifyContent="center">
+        <Grid container marginY="auto" justifyContent="center" pb={isMd ? 0 : 8}>
           <Grid container justifyContent="center">
             <Grid item textAlign="center" marginBottom={5}>
               <Typography
                 component="h1"
                 variant="h1"
+                fontSize={34}
                 sx={{ color: currentThemeFontColor, textShadow: '1px 1px 3px rgba(0, 0, 0, 0.30);' }}
               >
                 <Box onClick={() => handleChangeSeries('_universal')}>
                   <Logo
-                    sx={{ display: 'inline', width: '150px', height: 'auto', margin: '-18px', color: 'yellow' }}
+                    sx={{ display: 'inline', width: '130px', height: 'auto', margin: '-18px', color: 'yellow' }}
                     color="white"
                   />
                 </Box>
@@ -529,7 +530,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                 <HomePageBannerAd />
               </Box>
             </Stack> */}
-            <Button
+            {/* <Button
               onClick={() => scrollToSection()}
               startIcon="🚀"
               sx={[{ marginTop: '12px', backgroundColor: 'unset', '&:hover': { backgroundColor: 'unset' } }]}
@@ -539,12 +540,12 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
               >
                 Beta: Layer editor and more!
               </Typography>
-            </Button>
+            </Button> */}
           </Grid>
           {user?.userDetails?.subscriptionStatus !== 'active' &&
             <Grid item xs={12} mt={2}>
               <center>
-                <Box sx={{ maxWidth: '800px' }}>
+                <Box sx={{ maxWidth: '800px'}}>
                   <HomePageBannerAd />
                 </Box>
               </center>
