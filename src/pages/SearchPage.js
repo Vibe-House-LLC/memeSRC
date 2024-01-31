@@ -8,6 +8,7 @@ import SearchPageBannerAd from '../ads/SearchPageBannerAd';
 import TopBannerSearch from '../sections/search/TopBannerSearch';
 import useSearchDetails from '../hooks/useSearchDetails';
 import { UserContext } from '../UserContext';
+import SearchPageResultsAd from '../ads/SearchPageResultsAd';
 
 const StyledCircularProgress = styled(CircularProgress)`
   position: absolute;
@@ -195,61 +196,75 @@ export default function SearchPage() {
         {loading ? (
           <StyledCircularProgress />
         ) : (<>
-        {user?.userDetails?.subscriptionStatus !== 'active' &&
+          {user?.userDetails?.subscriptionStatus !== 'active' &&
             <Grid item xs={12} mt={2}>
               <center>
-                <Box sx={{ maxWidth: '800px'}}>
+                <Box sx={{ maxWidth: '800px' }}>
                   <SearchPageBannerAd />
                 </Box>
               </center>
             </Grid>
           }
           {memoizedResults &&
-          memoizedResults.map((result) => (
-            <Grid item xs={12} sm={6} md={3} key={result.fid}>
-              <Link to={`/frame/${result.fid}`} style={{ textDecoration: 'none' }}>
-                <StyledCard>
-                  <StyledCardMediaContainer aspectRatio={memoizedAspectRatio}>
-                    <StyledCardMedia
-                      component="img"
-                      src={`https://memesrc.com${result.frame_image}`}
-                      alt={result.subtitle}
-                      title={result.subtitle}
-                    />
-                  </StyledCardMediaContainer>
-                  <BottomCardCaption>{result.subtitle}</BottomCardCaption>
-                  <BottomCardLabel>
-                    <Chip
-                      size="small"
-                      label={result.series_name}
-                      style={{ backgroundColor: 'white', color: 'black', fontWeight: 'bold' }}
-                      sx={{
-                        '& .MuiChip-label': {
-                          fontWeight: 'bold',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          maxWidth: '110px',
-                        },
-                      }}
-                    />
-                    <Chip
-                      size="small"
-                      label={`S${result.season_number} E${result.episode_number}`}
-                      style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', color: 'white', fontWeight: 'bold' }}
-                      sx={{
-                        marginLeft: '5px',
-                        '& .MuiChip-label': {
-                          fontWeight: 'bold',
-                        },
-                      }}
-                    />
-                  </BottomCardLabel>
-                </StyledCard>
-              </Link>
-            </Grid>
-          ))
-        }</>)}
+            memoizedResults.map((result, idx) => (
+              <>
+                {
+                  // Insert the VotingPageAd component every 6 shows
+                  (idx % 6) - 2 === 0 && idx !== 0 && user?.userDetails?.subscriptionStatus !== 'active'
+                    ? (
+                      <Grid item xs={12} sm={6} md={3} key={`ad-${result.fid}`}>
+                        <StyledCard sx={{aspectRatio: '16/9'}}>
+                          <SearchPageResultsAd />
+                        </StyledCard>
+                      </Grid>
+                    )
+                    : null
+                }
+                <Grid item xs={12} sm={6} md={3} key={result.fid}>
+                  <Link to={`/frame/${result.fid}`} style={{ textDecoration: 'none' }}>
+                    <StyledCard>
+                      <StyledCardMediaContainer aspectRatio={memoizedAspectRatio}>
+                        <StyledCardMedia
+                          component="img"
+                          src={`https://memesrc.com${result.frame_image}`}
+                          alt={result.subtitle}
+                          title={result.subtitle}
+                        />
+                      </StyledCardMediaContainer>
+                      <BottomCardCaption>{result.subtitle}</BottomCardCaption>
+                      <BottomCardLabel>
+                        <Chip
+                          size="small"
+                          label={result.series_name}
+                          style={{ backgroundColor: 'white', color: 'black', fontWeight: 'bold' }}
+                          sx={{
+                            '& .MuiChip-label': {
+                              fontWeight: 'bold',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              maxWidth: '110px',
+                            },
+                          }}
+                        />
+                        <Chip
+                          size="small"
+                          label={`S${result.season_number} E${result.episode_number}`}
+                          style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', color: 'white', fontWeight: 'bold' }}
+                          sx={{
+                            marginLeft: '5px',
+                            '& .MuiChip-label': {
+                              fontWeight: 'bold',
+                            },
+                          }}
+                        />
+                      </BottomCardLabel>
+                    </StyledCard>
+                  </Link>
+                </Grid>
+              </>
+            ))
+          }</>)}
       </Grid>
     </>
   );

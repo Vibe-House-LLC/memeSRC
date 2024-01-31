@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-const SearchPageBannerAd = () => {
+const SearchPageResultsAd = () => {
 
     useEffect(() => {
         // Load the adsbygoogle script
@@ -17,13 +17,13 @@ const SearchPageBannerAd = () => {
 
     return (
         <ins className="adsbygoogle"
-            style={{ display: 'block' }}
-            data-ad-format="auto"
-            data-ad-layout-key="-gw-3+1f-3d+2z"
+            style={{ display: 'block', textAlign: 'center' }}
+            data-ad-format="fluid"
+            data-ad-layout="in-article"
             data-ad-client="ca-pub-1307598869123774"
-            data-ad-slot="1685907131"
+            data-ad-slot="7742133307"
         />
     );
 }
 
-export default SearchPageBannerAd;
+export default SearchPageResultsAd;
