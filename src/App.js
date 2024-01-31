@@ -8,6 +8,7 @@ import Router from './routes';
 import ThemeProvider from './theme';
 import SnackBar from './utils/Snackbar';
 import StripeWatcher from './utils/StripeWatcher';
+// import AutoAdWrapper from './ads/AutoAdWrapper';
 // import FeaturePopover from './components/features-popover/featurePopover';
 // components
 // import ScrollToTop from './components/scroll-to-top';
@@ -34,9 +35,9 @@ export default function App() {
             </Backdrop>
           }>
             {/* <FeaturePopover> */}
-              <SearchDetailsProvider>
+            <SearchDetailsProvider>
                 <Router />
-              </SearchDetailsProvider>
+            </SearchDetailsProvider>
             {/* </FeaturePopover> */}
           </Suspense>
         </StripeWatcher>

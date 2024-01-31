@@ -1,6 +1,6 @@
 import { Helmet } from 'react-helmet-async';
 import { Navigate, Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
-import { useEffect, useRef, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import { API } from 'aws-amplify';
 import { styled } from '@mui/material/styles';
 import { useTheme } from '@emotion/react';
@@ -39,6 +39,8 @@ import {
 import { Add, ArrowBack, ArrowBackIos, ArrowForward, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, FormatLineSpacing, FormatSize, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu, OpenInBrowser, OpenInNew, VerticalAlignBottom, VerticalAlignTop, Visibility, VisibilityOff } from '@mui/icons-material';
 import useSearchDetails from '../hooks/useSearchDetails';
 import getFrame from '../utils/frameHandler';
+import FramePageBottomBannerAd from '../ads/FramePageBottomBannerAd';
+import { UserContext } from '../UserContext';
 
 // import { listGlobalMessages } from '../../../graphql/queries'
 
@@ -59,6 +61,7 @@ const StyledCardMedia = styled('img')`
 `;
 
 export default function FramePage({ shows = [] }) {
+  const { user } = useContext(UserContext)
   const { setFrame, fineTuningFrame, setFineTuningFrame } = useSearchDetails();
   const navigate = useNavigate();
   const { fid } = useParams();
@@ -543,23 +546,23 @@ export default function FramePage({ shows = [] }) {
           </Grid>
           <Grid item xs={12} md={6}>
             <Box sx={{ width: '100%' }}>
-            <Card 
-              style={{ boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}
-              onClick={(e) => {
-                // Prevent card click event when clicking on any button or other interactive element inside the card
-                if (e.target.closest('button, a, input, textarea')) {
-                  return;
-                }
-                
-                // If showText is already true, do nothing
-                if (showText) {
-                  return;
-                }
-                
-                // If showText is false, then set it to true to show the TextField
-                setShowText(true);
-              }}
-            >
+              <Card
+                style={{ boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}
+                onClick={(e) => {
+                  // Prevent card click event when clicking on any button or other interactive element inside the card
+                  if (e.target.closest('button, a, input, textarea')) {
+                    return;
+                  }
+
+                  // If showText is already true, do nothing
+                  if (showText) {
+                    return;
+                  }
+
+                  // If showText is false, then set it to true to show the TextField
+                  setShowText(true);
+                }}
+              >
                 <CardContent sx={{ pt: 3 }}>
                   {/* <Typography variant="h3" component="div" style={{ marginBottom: '0.5rem' }} textAlign='left'>
                          {showTitle}
@@ -960,6 +963,15 @@ export default function FramePage({ shows = [] }) {
               )}
             </Grid>
           </Grid>
+          {user?.userDetails?.subscriptionStatus !== 'active' &&
+            <Grid item xs={12} mt={2}>
+              <center>
+                <Box sx={{ maxWidth: '800px' }}>
+                  <FramePageBottomBannerAd />
+                </Box>
+              </center>
+            </Grid>
+          }
         </Grid>
       </Container >
     </>
