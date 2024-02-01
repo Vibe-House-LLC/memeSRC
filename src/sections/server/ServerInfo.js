@@ -1,9 +1,10 @@
 import { Close, Redo, Sync } from '@mui/icons-material';
 import { LoadingButton } from '@mui/lab';
-import { Alert, Button, Card, Container, Divider, Grid, Stack, Typography, useMediaQuery } from '@mui/material';
+import { Alert, Button, Card, Container, Divider, Grid, Stack, TextField, Typography, useMediaQuery } from '@mui/material';
 import { LineChart } from '@mui/x-charts';
 import PropTypes from 'prop-types';
 import { useEffect, useState } from 'react';
+import IndexTable from './IndexTable';
 
 export default function ServerInfo({ details }) {
     const isSm = useMediaQuery(theme => theme.breakpoints.up('sm'))
@@ -23,6 +24,7 @@ export default function ServerInfo({ details }) {
     );
     const [totalIn, setTotalIn] = useState(0);
     const [totalOut, setTotalOut] = useState(0);
+    const [cidInput, setCidInput] = useState('');
 
     /* -------------------------------- Functions ------------------------------- */
 
@@ -203,10 +205,10 @@ export default function ServerInfo({ details }) {
                         />
                         <Stack direction='row' justifyContent='space-between' px={4.5}>
                             <Typography fontSize={14} fontWeight={800} color='#18f000'>
-                                Total In: {totalIn}
+                                Total In: {totalIn}Kb
                             </Typography>
                             <Typography fontSize={14} fontWeight={800} color='#0080f0'>
-                                Total Out: {totalOut}
+                                Total Out: {totalOut}Kb
                             </Typography>
                         </Stack>
                     </Card>
@@ -221,7 +223,26 @@ export default function ServerInfo({ details }) {
                 </Grid>
                 <Grid item xs={12} md={7}>
                     <Card variant='outlined' sx={{ p: 2 }}>
-                        qsdf
+                        <IndexTable />
+                        <TextField
+                            sx={{
+                                mt: 3
+                            }}
+                            label='CID (Content Identifier)'
+                            value={cidInput}
+                            onChange={(event) => {
+                                setCidInput(event.target.value)
+                            }}
+                            fullWidth
+                            InputProps={{
+                                endAdornment:
+                                    <LoadingButton
+                                        color='inherit'
+                                    >
+                                        Import
+                                    </LoadingButton>
+                            }}
+                        />
                     </Card>
                 </Grid>
             </Grid>
