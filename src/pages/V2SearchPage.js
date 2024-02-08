@@ -7,6 +7,7 @@ import { Helmet } from 'react-helmet-async';
 import zipToImage from '../utils/zipToImage';
 import TopBannerSearch from '../sections/search/TopBannerSearch';
 import useSearchDetails from '../hooks/useSearchDetails';
+import IpfsSearchBar from '../sections/search/ipfs-search-bar';
 
 const StyledCircularProgress = styled(CircularProgress)`
   position: absolute;
@@ -202,7 +203,6 @@ export default function SearchPage() {
       const filename = "1-1.csv";
       const lines = await loadFile(cid, filename);
       if (lines?.length > 0) {
-        console.log(lines?.length)
         setLoadingCsv(false)
         setCsvLines(lines)
       } else {
@@ -232,6 +232,8 @@ export default function SearchPage() {
           const zipUrl = `http://ipfs.davis.pub/ipfs/${urlParamCid}/${result.season}/${result.episode}/thumbnails_${Math.floor(index / 10)}.zip`;
           return zipToImage(zipUrl, `t${index}`).then(imageUrl => ({
             subtitle: result.subtitle_text,
+            episode: result.episode,
+            season: result.season,
             image: imageUrl
           }));
         });
@@ -242,7 +244,6 @@ export default function SearchPage() {
     
       // Await all promises
       const resolvedObjects = await Promise.all(allPromises);
-      console.log(resolvedObjects);
       setNewResults(resolvedObjects); // Assuming setNewResults is defined and accessible
     }
     
@@ -250,6 +251,7 @@ export default function SearchPage() {
 
 
     async function searchText() {
+      setNewResults(null)
       const searchTerm = params.searchTerms
         .trim()
         .toLowerCase();
@@ -286,25 +288,18 @@ export default function SearchPage() {
     if (!loadingCsv && csvLines) {
       searchText();
     }
-  }, [loadingCsv, csvLines]);
+  }, [loadingCsv, csvLines, params?.searchTerms]);
 
   return (
     <>
       <Helmet>
         <title>{`${searchTerm} • Search • memeSRC`}</title>
       </Helmet>
-      {/* <TopBannerSearch
-        searchFunction={handleSearch}
-        setSearchTerm={setSearchTerm}
-        setSeriesTitle={setSeriesTitle}
-        searchTerm={searchTerm}
-        seriesTitle={seriesTitle}
-        resultsLoading={loading}
-      /> */}
+      <IpfsSearchBar />
 
-      {loadingCsv ? 'Loading CSV...' : ''}
+      {loadingCsv ? <StyledCircularProgress /> : ''}
 
-      {newResults && newResults.length > 0 &&
+      {newResults && newResults.length > 0 ?
         <Grid container spacing={2} alignItems="stretch" paddingX={{ xs: 2, md: 6 }}>
           {newResults?.map((result) => (
             <Grid item xs={12} sm={6} md={3} key={result.fid}>
@@ -320,7 +315,7 @@ export default function SearchPage() {
                   </StyledCardMediaContainer>
                   <BottomCardCaption>{result.subtitle}</BottomCardCaption>
                   <BottomCardLabel>
-                    <Chip
+                    {/* <Chip
                       size="small"
                       // label={result.series_name}
                       style={{ backgroundColor: 'white', color: 'black', fontWeight: 'bold' }}
@@ -333,10 +328,10 @@ export default function SearchPage() {
                           maxWidth: '110px',
                         },
                       }}
-                    />
+                    /> */}
                     <Chip
                       size="small"
-                      // label={`S${result.season_number} E${result.episode_number}`}
+                      label={`S${result.season} E${result.episode}`}
                       style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', color: 'white', fontWeight: 'bold' }}
                       sx={{
                         marginLeft: '5px',
@@ -351,6 +346,8 @@ export default function SearchPage() {
             </Grid>
           ))}
         </Grid>
+        :
+        <StyledCircularProgress />
       }
 
 

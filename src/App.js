@@ -8,6 +8,7 @@ import Router from './routes';
 import ThemeProvider from './theme';
 import SnackBar from './utils/Snackbar';
 import StripeWatcher from './utils/StripeWatcher';
+import { V2SearchDetailsProvider } from './contexts/V2SearchDetailsProvider';
 // import FeaturePopover from './components/features-popover/featurePopover';
 // components
 // import ScrollToTop from './components/scroll-to-top';
@@ -34,9 +35,11 @@ export default function App() {
             </Backdrop>
           }>
             {/* <FeaturePopover> */}
-              <SearchDetailsProvider>
+            <SearchDetailsProvider>
+              <V2SearchDetailsProvider>
                 <Router />
-              </SearchDetailsProvider>
+              </V2SearchDetailsProvider>
+            </SearchDetailsProvider>
             {/* </FeaturePopover> */}
           </Suspense>
         </StripeWatcher>
