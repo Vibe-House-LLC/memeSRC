@@ -8,6 +8,8 @@ import zipToImage from '../utils/zipToImage';
 import TopBannerSearch from '../sections/search/TopBannerSearch';
 import useSearchDetails from '../hooks/useSearchDetails';
 import IpfsSearchBar from '../sections/search/ipfs-search-bar';
+import zipToJszipArray from '../utils/zipsToJszipArray';
+import jszipObjToImage from '../utils/jszipObjToImage';
 
 const StyledCircularProgress = styled(CircularProgress)`
   position: absolute;
@@ -220,33 +222,58 @@ export default function SearchPage() {
     async function displayResults(results) {
       const urlParamCid = params.cid; // Assuming 'params' is defined and accessible
       let allPromises = [];
-    
-      // Use array methods instead of loops
+      let allZipLinks = []
+
       results.forEach((result) => {
         const startThumbnailIndex = Math.ceil(result.start_frame / 10);
         const endThumbnailIndex = Math.ceil(result.end_frame / 10);
-    
+
         // Use Array.from to create an array of indices and map over it
         const indices = Array.from({ length: endThumbnailIndex - startThumbnailIndex + 1 }, (_, i) => startThumbnailIndex + i);
-        const resultPromises = indices.map(index => {
-          const zipUrl = `http://ipfs.davis.pub/ipfs/${urlParamCid}/${result.season}/${result.episode}/thumbnails_${Math.floor(index / 10)}.zip`;
-          return zipToImage(zipUrl, `t${index}`).then(imageUrl => ({
-            subtitle: result.subtitle_text,
-            episode: result.episode,
-            season: result.season,
-            image: imageUrl
-          }));
+        indices.forEach(index => {
+          console.log(index)
+          if (!allZipLinks.find(obj => obj.id === Math.floor(index / 10))) {
+            allZipLinks = [
+              ...allZipLinks,
+              {
+                id: Math.floor(index / 10),
+                link: `http://ipfs.davis.pub/ipfs/${urlParamCid}/${result.season}/${result.episode}/thumbnails_${Math.floor(index / 10)}.zip`
+              }
+            ]
+          }
         });
-    
-        // Concatenate resultPromises into allPromises
-        allPromises = allPromises.concat(resultPromises);
       });
-    
-      // Await all promises
-      const resolvedObjects = await Promise.all(allPromises);
-      setNewResults(resolvedObjects); // Assuming setNewResults is defined and accessible
+
+      console.log(allZipLinks)
+
+      zipToJszipArray(allZipLinks).then(async jsZipObjs => {
+        // Use array methods instead of loops
+        results.forEach((result) => {
+          const startThumbnailIndex = Math.ceil(result.start_frame / 10);
+          const endThumbnailIndex = Math.ceil(result.end_frame / 10);
+
+          // Use Array.from to create an array of indices and map over it
+          const indices = Array.from({ length: endThumbnailIndex - startThumbnailIndex + 1 }, (_, i) => startThumbnailIndex + i);
+          const resultPromises = indices.map(index => {
+            const files = jsZipObjs.find(obj => obj.id === Math.floor(index / 10)).files
+            return {
+              subtitle: result.subtitle_text,
+              episode: result.episode,
+              season: result.season,
+              image: jszipObjToImage(`t${index}`, files)
+            };
+          });
+
+          // Concatenate resultPromises into allPromises
+          allPromises = allPromises.concat(resultPromises);
+        });
+
+        // Await all promises
+        // const resolvedObjects = await Promise.all(allPromises);
+        setNewResults(allPromises); // Assuming setNewResults is defined and accessible
+      }).catch(error => console.log(error))
     }
-    
+
 
 
 
