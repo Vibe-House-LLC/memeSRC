@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Grid, CircularProgress, Card, Chip } from '@mui/material';
 import styled from '@emotion/styled';
 import { Link, useParams } from 'react-router-dom';
@@ -70,50 +70,8 @@ const BottomCardLabel = styled.div`
 
 export default function SearchPage() {
   const params = useParams();
-  const { show, setShow, searchQuery, setSearchQuery } = useSearchDetails();
-
-  const [searchTerm, setSearchTerm] = useState(searchQuery || params.searchTerms);
   const [results, setResults] = useState(null);
   const [aspectRatio, setAspectRatio] = useState('56.25%'); // Default to 16:9 aspect ratio
-  const memoizedAspectRatio = useMemo(() => aspectRatio, [aspectRatio]);
-
-
-  /* ---------------------------- Image from Video -------------------------- */
-
-  async function extractFramesFromVideo(videoUrl, frameRequirements) {
-    console.log(`Starting to extract frames from: ${videoUrl}`); // Log the video URL being processed
-    const video = document.createElement('video');
-    video.src = videoUrl;
-    video.crossOrigin = 'anonymous';
-    await video.load();
-
-    return Promise.all(frameRequirements.map(frameReq => 
-      new Promise((resolve, reject) => {
-        console.log(`Seeking to frame: ${frameReq.frameIndex / 10}`); // Log the frame being sought
-        video.currentTime = frameReq.frameIndex / 10;
-        video.addEventListener('seeked', function onSeeked() {
-          console.log(`Frame seeked: ${frameReq.frameIndex / 10}`); // Log after successfully seeking to the frame
-          video.removeEventListener('seeked', onSeeked);
-          const canvas = document.createElement('canvas');
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          canvas.toBlob(blob => {
-            const imageUrl = URL.createObjectURL(blob);
-            console.log(`Frame captured: ${imageUrl}`); // Log the URL of the captured image
-            resolve({
-              subtitle: frameReq.subtitle,
-              episode: frameReq.episode,
-              season: frameReq.season,
-              image: imageUrl
-            });
-          }, 'image/jpeg');
-        }, { once: true });
-      })
-    ));
-  }
-  
 
   /* -------------------------------- New Stuff ------------------------------- */
 
@@ -158,10 +116,15 @@ export default function SearchPage() {
       const filename = "1-1.csv";
       const lines = await loadFile(cid, filename);
       if (lines?.length > 0) {
-        setLoadingCsv(false)
-        setCsvLines(lines)
+        // Decode base64 subtitle and assign to a new property
+        const decodedLines = lines.map(line => ({
+          ...line,
+          subtitle: line.base64_subtitle ? atob(line.base64_subtitle) : "" // Ensure you decode the subtitle and assign it here
+        }));
+        setLoadingCsv(false);
+        setCsvLines(decodedLines); // Use decodedLines with subtitle property
       } else {
-        alert('error')
+        alert('error');
       }
     }
 
@@ -171,51 +134,9 @@ export default function SearchPage() {
   }, []);
 
   useEffect(() => {
-
-    async function displayResults(results) {
-      console.log(`Displaying results...`); // Initial log to indicate the start of the process
-      const urlParamCid = params.cid;
-  
-      // Calculate frame requirements
-      const frameRequirements = results.flatMap(result => {
-        const startThumbnailIndex = Math.ceil(result.start_frame / 10);
-        const endThumbnailIndex = Math.ceil(result.end_frame / 10);
-        return Array.from({ length: endThumbnailIndex - startThumbnailIndex + 1 }, (_, i) => ({
-          videoUrl: `http://ipfs.davis.pub/ipfs/${urlParamCid}/${result.season}/${result.episode}/${Math.floor((startThumbnailIndex + i) / 10)}.mp4`,
-          frameIndex: (startThumbnailIndex + i) % 10 * 10,
-          subtitle: result.subtitle_text,
-          episode: result.episode,
-          season: result.season
-        }));
-      }).slice(0, 50); // Limit to the first 50 frame requirements
-  
-      console.log(`Frame requirements calculated: ${frameRequirements.length}`); // Log the number of frame requirements
-  
-      // Group by MP4 file
-      const groupedByVideoUrl = frameRequirements.reduce((acc, curr) => {
-        (acc[curr.videoUrl] = acc[curr.videoUrl] || []).push(curr);
-        return acc;
-      }, {});
-  
-      const fetchPromises = Object.entries(groupedByVideoUrl).map(([videoUrl, frames]) => 
-        extractFramesFromVideo(videoUrl, frames).catch(error => {
-          console.error("Error processing video: ", error);
-          return []; // Return an empty array in case of error
-        })
-      );
-  
-      Promise.all(fetchPromises).then((allFrames) => {
-        const validFrames = allFrames.flat().filter(frame => frame !== null);
-        console.log(`Frames processed: ${validFrames.length}`); // Log the number of valid frames processed
-        setNewResults(validFrames); // Update state with the loaded frames
-      }).catch(error => console.error("Error processing frames: ", error));
-    }
-
     async function searchText() {
-      setNewResults(null)
-      const searchTerm = params.searchTerms
-        .trim()
-        .toLowerCase();
+      setNewResults(null); // Reset the current results state
+      const searchTerm = params?.searchTerms.trim().toLowerCase();
       if (searchTerm === "") {
         console.log("Search term is empty.");
         return;
@@ -238,13 +159,18 @@ export default function SearchPage() {
         }
       });
 
-      // Sort results by score and limit to top 25
+      // Sort results by score and limit to top 5
       results.sort((a, b) => b.score - a.score);
-      results = results.slice(0, 25);
+      results = results.slice(0, 5);
 
-      displayResults(results);
+      // Directly use the video URL for autoplay videos
+      const videoResults = results.map(result => ({
+        ...result,
+        videoUrl: `http://ipfs.davis.pub/ipfs/${params.cid}/${result.season}/${result.episode}/${Math.floor(result.start_frame / 10 / 10)}.mp4` // Adjust the URL pattern as needed
+      }));
+
+      setNewResults(videoResults); // Update state with the video URLs
     }
-
 
     if (!loadingCsv && csvLines) {
       searchText();
@@ -254,7 +180,7 @@ export default function SearchPage() {
   return (
     <>
       <Helmet>
-        <title>{`${searchTerm} • Search • memeSRC`}</title>
+        <title>{`Search • memeSRC`}</title>
       </Helmet>
       <IpfsSearchBar />
 
@@ -262,34 +188,27 @@ export default function SearchPage() {
 
       {newResults && newResults.length > 0 ?
         <Grid container spacing={2} alignItems="stretch" paddingX={{ xs: 2, md: 6 }}>
-          {newResults?.map((result) => (
-            <Grid item xs={12} sm={6} md={3} key={result.fid}>
-              <Link to={`/frame/${''}`} style={{ textDecoration: 'none' }}>
-                <StyledCard>
-                  <StyledCardMediaContainer aspectRatio={memoizedAspectRatio}>
-                    <StyledCardMedia
-                      component="img"
-                      src={result.image}
-                      alt={result.subtitle}
-                      title={result.subtitle}
-                    />
-                  </StyledCardMediaContainer>
-                  <BottomCardCaption>{result.subtitle}</BottomCardCaption>
-                  <BottomCardLabel>
-                    <Chip
-                      size="small"
-                      label={`S${result.season} E${result.episode}`}
-                      style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', color: 'white', fontWeight: 'bold' }}
-                      sx={{
-                        marginLeft: '5px',
-                        '& .MuiChip-label': {
-                          fontWeight: 'bold',
-                        },
-                      }}
-                    />
-                  </BottomCardLabel>
-                </StyledCard>
-              </Link>
+          {newResults.map((result, index) => (
+            <Grid item xs={12} sm={6} md={3} key={index}>
+              <StyledCard>
+                <StyledCardMediaContainer aspectRatio="56.25%">
+                  <StyledCardMedia
+                    component="video"
+                    src={result.videoUrl}
+                    autoPlay
+                    loop
+                    muted
+                  />
+                </StyledCardMediaContainer>
+                <BottomCardCaption>{result.subtitle}</BottomCardCaption>
+                <BottomCardLabel>
+                  <Chip
+                    size="small"
+                    label={`S${result.season} E${result.episode}`}
+                    style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', color: 'white', fontWeight: 'bold' }}
+                  />
+                </BottomCardLabel>
+              </StyledCard>
             </Grid>
           ))}
         </Grid>
