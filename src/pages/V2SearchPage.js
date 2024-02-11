@@ -166,7 +166,7 @@ export default function SearchPage() {
       // Directly use the video URL for autoplay videos
       const videoResults = results.map(result => ({
         ...result,
-        videoUrl: `http://ipfs.davis.pub/ipfs/${params.cid}/${result.season}/${result.episode}/${Math.floor(result.start_frame / 10 / 10)}.mp4` // Adjust the URL pattern as needed
+        videoUrl: `http://ipfs.davis.pub/ipfs/${params.cid}/${result.season}/${result.episode}/s${parseInt(result.subtitle_index, 10)+1}.mp4` // Adjust the URL pattern as needed
       }));
 
       setNewResults(videoResults); // Update state with the video URLs
