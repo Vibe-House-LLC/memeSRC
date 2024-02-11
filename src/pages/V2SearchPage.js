@@ -1,15 +1,10 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { API } from 'aws-amplify';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Grid, CircularProgress, Card, Chip } from '@mui/material';
 import styled from '@emotion/styled';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import zipToImage from '../utils/zipToImage';
-import TopBannerSearch from '../sections/search/TopBannerSearch';
 import useSearchDetails from '../hooks/useSearchDetails';
 import IpfsSearchBar from '../sections/search/ipfs-search-bar';
-import zipToJszipArray from '../utils/zipsToJszipArray';
-import jszipObjToImage from '../utils/jszipObjToImage';
 
 const StyledCircularProgress = styled(CircularProgress)`
   position: absolute;
@@ -78,93 +73,15 @@ export default function SearchPage() {
   const { show, setShow, searchQuery, setSearchQuery } = useSearchDetails();
 
   const [searchTerm, setSearchTerm] = useState(searchQuery || params.searchTerms);
-  const [seriesTitle, setSeriesTitle] = useState(params.seriesId);
-  const [loadedSearchTerm, setLoadedSearchTerm] = useState(null);
-  const [loadedSeriesTitle, setLoadedSeriesTitle] = useState(null);
   const [results, setResults] = useState(null);
-  const [loading, setLoading] = useState(false);
   const [aspectRatio, setAspectRatio] = useState('56.25%'); // Default to 16:9 aspect ratio
-
-  const memoizedResults = useMemo(() => results, [results]);
   const memoizedAspectRatio = useMemo(() => aspectRatio, [aspectRatio]);
 
-  const navigate = useNavigate();
-
-  const getSessionID = async () => {
-    let sessionID;
-    if ("sessionID" in sessionStorage) {
-      sessionID = sessionStorage.getItem("sessionID");
-      return Promise.resolve(sessionID);
-    }
-    return API.get('publicapi', '/uuid')
-      .then(generatedSessionID => {
-        sessionStorage.setItem("sessionID", generatedSessionID);
-        return generatedSessionID;
-      })
-      .catch(err => {
-        console.log(`UUID Gen Fetch Error:  ${err}`);
-        throw err;
-      });
-  };
-
-  // useEffect(() => {
-  //   if (params && !loading) {
-  //     if (params.seriesId !== loadedSeriesTitle || searchQuery !== loadedSearchTerm) {
-  //       setSearchTerm(searchQuery)
-  //       setLoading(true);
-  //       getSessionID().then(sessionId => {
-  //         const apiName = 'publicapi';
-  //         const path = '/search';
-  //         const myInit = {
-  //           queryStringParameters: {
-  //             q: searchTerm,
-  //             series: seriesTitle,
-  //             sessionId
-  //           }
-  //         }
-  //         API.get(apiName, path, myInit)
-  //           .then(data => {
-  //             setResults(data);
-  //             setSeriesTitle(params.seriesId)
-  //             setLoading(false);
-  //             setLoadedSearchTerm(searchTerm);
-  //             setLoadedSeriesTitle(seriesTitle);
-
-  //             let maxAspectRatio = 0;
-  //             data.forEach(item => {
-  //               const img = new Image();
-  //               img.src = `https://memesrc.com${item.frame_image}`;
-
-  //               img.onload = function (event) {
-  //                 const aspectRatio = event.target.width / event.target.height;
-  //                 if (aspectRatio > maxAspectRatio) {
-  //                   maxAspectRatio = aspectRatio;
-  //                   setAspectRatio(`${100 / maxAspectRatio}%`); // Adjust the value to the max aspect ratio.
-  //                 }
-  //               }
-  //             });
-  //           })
-  //           .catch(error => {
-  //             console.error(error);
-  //             setLoading(false);
-  //           });
-  //       })
-  //     }
-  //   }
-  // }, [params, searchTerm, seriesTitle, loadedSeriesTitle, loadedSearchTerm, loading])
-
-  // const handleSearch = useCallback((e) => {
-  //   if (e) {
-  //     e.preventDefault();
-  //   }
-  //   const encodedSearchTerms = encodeURI(searchTerm)
-  //   setSearchQuery(searchTerm)
-  //   navigate(`/search/${seriesTitle}/${encodedSearchTerms}`)
-  // }, [seriesTitle, searchTerm, navigate]);
 
   /* ---------------------------- Image from Video -------------------------- */
 
   async function extractFramesFromVideo(videoUrl, frameRequirements) {
+    console.log(`Starting to extract frames from: ${videoUrl}`); // Log the video URL being processed
     const video = document.createElement('video');
     video.src = videoUrl;
     video.crossOrigin = 'anonymous';
@@ -172,23 +89,27 @@ export default function SearchPage() {
 
     return Promise.all(frameRequirements.map(frameReq => 
       new Promise((resolve, reject) => {
-        video.currentTime = frameReq.frameIndex / 10; // Adjust based on actual FPS if necessary
+        console.log(`Seeking to frame: ${frameReq.frameIndex / 10}`); // Log the frame being sought
+        video.currentTime = frameReq.frameIndex / 10;
         video.addEventListener('seeked', function onSeeked() {
-          video.removeEventListener('seeked', onSeeked); // Remove event listener to avoid multiple triggers
+          console.log(`Frame seeked: ${frameReq.frameIndex / 10}`); // Log after successfully seeking to the frame
+          video.removeEventListener('seeked', onSeeked);
           const canvas = document.createElement('canvas');
           canvas.width = video.videoWidth;
           canvas.height = video.videoHeight;
           const ctx = canvas.getContext('2d');
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
           canvas.toBlob(blob => {
+            const imageUrl = URL.createObjectURL(blob);
+            console.log(`Frame captured: ${imageUrl}`); // Log the URL of the captured image
             resolve({
               subtitle: frameReq.subtitle,
               episode: frameReq.episode,
               season: frameReq.season,
-              image: URL.createObjectURL(blob)
+              image: imageUrl
             });
           }, 'image/jpeg');
-        }, { once: true }); // Use { once: true } to automatically remove the listener after it fires
+        }, { once: true });
       })
     ));
   }
@@ -252,9 +173,10 @@ export default function SearchPage() {
   useEffect(() => {
 
     async function displayResults(results) {
+      console.log(`Displaying results...`); // Initial log to indicate the start of the process
       const urlParamCid = params.cid;
   
-      // Calculate frame requirements for each result
+      // Calculate frame requirements
       const frameRequirements = results.flatMap(result => {
         const startThumbnailIndex = Math.ceil(result.start_frame / 10);
         const endThumbnailIndex = Math.ceil(result.end_frame / 10);
@@ -267,13 +189,14 @@ export default function SearchPage() {
         }));
       }).slice(0, 50); // Limit to the first 50 frame requirements
   
+      console.log(`Frame requirements calculated: ${frameRequirements.length}`); // Log the number of frame requirements
+  
       // Group by MP4 file
       const groupedByVideoUrl = frameRequirements.reduce((acc, curr) => {
         (acc[curr.videoUrl] = acc[curr.videoUrl] || []).push(curr);
         return acc;
       }, {});
   
-      // Fetch and process each MP4 file only once
       const fetchPromises = Object.entries(groupedByVideoUrl).map(([videoUrl, frames]) => 
         extractFramesFromVideo(videoUrl, frames).catch(error => {
           console.error("Error processing video: ", error);
@@ -283,6 +206,7 @@ export default function SearchPage() {
   
       Promise.all(fetchPromises).then((allFrames) => {
         const validFrames = allFrames.flat().filter(frame => frame !== null);
+        console.log(`Frames processed: ${validFrames.length}`); // Log the number of valid frames processed
         setNewResults(validFrames); // Update state with the loaded frames
       }).catch(error => console.error("Error processing frames: ", error));
     }
@@ -352,20 +276,6 @@ export default function SearchPage() {
                   </StyledCardMediaContainer>
                   <BottomCardCaption>{result.subtitle}</BottomCardCaption>
                   <BottomCardLabel>
-                    {/* <Chip
-                      size="small"
-                      // label={result.series_name}
-                      style={{ backgroundColor: 'white', color: 'black', fontWeight: 'bold' }}
-                      sx={{
-                        '& .MuiChip-label': {
-                          fontWeight: 'bold',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          maxWidth: '110px',
-                        },
-                      }}
-                    /> */}
                     <Chip
                       size="small"
                       label={`S${result.season} E${result.episode}`}
@@ -386,59 +296,6 @@ export default function SearchPage() {
         :
         <StyledCircularProgress />
       }
-
-
-      {/* <Grid container spacing={2} alignItems="stretch" paddingX={{ xs: 2, md: 6 }}>
-        {loading ? (
-          <StyledCircularProgress />
-        ) : (
-          memoizedResults &&
-          memoizedResults.map((result) => (
-            <Grid item xs={12} sm={6} md={3} key={result.fid}>
-              <Link to={`/frame/${result.fid}`} style={{ textDecoration: 'none' }}>
-                <StyledCard>
-                  <StyledCardMediaContainer aspectRatio={memoizedAspectRatio}>
-                    <StyledCardMedia
-                      component="img"
-                      src={`https://memesrc.com${result.frame_image}`}
-                      alt={result.subtitle}
-                      title={result.subtitle}
-                    />
-                  </StyledCardMediaContainer>
-                  <BottomCardCaption>{result.subtitle}</BottomCardCaption>
-                  <BottomCardLabel>
-                    <Chip
-                      size="small"
-                      label={result.series_name}
-                      style={{ backgroundColor: 'white', color: 'black', fontWeight: 'bold' }}
-                      sx={{
-                        '& .MuiChip-label': {
-                          fontWeight: 'bold',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          maxWidth: '110px',
-                        },
-                      }}
-                    />
-                    <Chip
-                      size="small"
-                      label={`S${result.season_number} E${result.episode_number}`}
-                      style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', color: 'white', fontWeight: 'bold' }}
-                      sx={{
-                        marginLeft: '5px',
-                        '& .MuiChip-label': {
-                          fontWeight: 'bold',
-                        },
-                      }}
-                    />
-                  </BottomCardLabel>
-                </StyledCard>
-              </Link>
-            </Grid>
-          ))
-        )}
-      </Grid> */}
     </>
   );
 }
