@@ -162,6 +162,38 @@ export default function SearchPage() {
   //   navigate(`/search/${seriesTitle}/${encodedSearchTerms}`)
   // }, [seriesTitle, searchTerm, navigate]);
 
+  /* ---------------------------- Image from Video -------------------------- */
+
+  function extractFrame(videoUrl, frameNum, fps) {
+    const video = document.createElement('video');
+    video.src = videoUrl;
+    video.crossOrigin = 'anonymous';
+    video.load();
+  
+    return new Promise((resolve, reject) => {
+      video.addEventListener('loadedmetadata', () => {
+        const frameTime = frameNum / fps;
+        video.currentTime = frameTime;
+      });
+  
+      video.addEventListener('seeked', () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob((blob) => {
+          resolve(URL.createObjectURL(blob));
+        }, 'image/jpeg');
+      });
+  
+      video.addEventListener('error', (e) => {
+        reject(new Error(`Failed to load video: ${e.message}`));
+      });
+    });
+  }
+  
+
   /* -------------------------------- New Stuff ------------------------------- */
 
   const [loadingCsv, setLoadingCsv] = useState(true);
@@ -221,61 +253,43 @@ export default function SearchPage() {
 
     async function displayResults(results) {
       const urlParamCid = params.cid; // Assuming 'params' is defined and accessible
+    
       let allPromises = [];
-      let allZipLinks = []
-
+    
       results.forEach((result) => {
         const startThumbnailIndex = Math.ceil(result.start_frame / 10);
         const endThumbnailIndex = Math.ceil(result.end_frame / 10);
-
-        // Use Array.from to create an array of indices and map over it
+    
+        // Calculate the indices for the thumbnails to be extracted
         const indices = Array.from({ length: endThumbnailIndex - startThumbnailIndex + 1 }, (_, i) => startThumbnailIndex + i);
-        indices.forEach(index => {
-          console.log(index)
-          if (!allZipLinks.find(obj => obj.id === Math.floor(index / 10))) {
-            allZipLinks = [
-              ...allZipLinks,
-              {
-                id: Math.floor(index / 10),
-                link: `http://ipfs.davis.pub/ipfs/${urlParamCid}/${result.season}/${result.episode}/thumbnails_${Math.floor(index / 10)}.zip`
-              }
-            ]
-          }
-        });
-      });
-
-      console.log(allZipLinks)
-
-      zipToJszipArray(allZipLinks).then(async jsZipObjs => {
-        // Use array methods instead of loops
-        results.forEach((result) => {
-          const startThumbnailIndex = Math.ceil(result.start_frame / 10);
-          const endThumbnailIndex = Math.ceil(result.end_frame / 10);
-
-          // Use Array.from to create an array of indices and map over it
-          const indices = Array.from({ length: endThumbnailIndex - startThumbnailIndex + 1 }, (_, i) => startThumbnailIndex + i);
-          const resultPromises = indices.map(index => {
-            const files = jsZipObjs.find(obj => obj.id === Math.floor(index / 10)).files
-            return {
+    
+        // Map over the indices to create frame extraction promises
+        const framePromises = indices.map(index => {
+          const videoUrl = `http://ipfs.davis.pub/ipfs/${urlParamCid}/${result.season}/${result.episode}/${Math.floor(index / 10)}.mp4`;
+          return extractFrame(videoUrl, index % 10 * 10, 10) // TODO: add fps to metadata, then use it here. Using default of 10 for now.
+            .then(imageUrl => ({
               subtitle: result.subtitle_text,
               episode: result.episode,
               season: result.season,
-              image: jszipObjToImage(`t${index}`, files)
-            };
-          });
-
-          // Concatenate resultPromises into allPromises
-          allPromises = allPromises.concat(resultPromises);
+              image: imageUrl
+            }))
+            .catch(error => {
+              console.error("Error extracting frame: ", error);
+              return null; // Handle errors or return a placeholder
+            });
         });
-
-        // Await all promises
-        // const resolvedObjects = await Promise.all(allPromises);
-        setNewResults(allPromises); // Assuming setNewResults is defined and accessible
-      }).catch(error => console.log(error))
+    
+        // Concatenate framePromises into allPromises
+        allPromises = allPromises.concat(framePromises);
+      });
+    
+      // Await all promises and update results
+      Promise.all(allPromises).then((resolvedFrames) => {
+        // Filter out any null values if errors occurred
+        const validFrames = resolvedFrames.filter(frame => frame !== null);
+        setNewResults(validFrames); // Update state with the loaded frames
+      }).catch(error => console.error("Error processing frames: ", error));
     }
-
-
-
 
     async function searchText() {
       setNewResults(null)
