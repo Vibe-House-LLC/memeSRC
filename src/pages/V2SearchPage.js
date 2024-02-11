@@ -164,33 +164,33 @@ export default function SearchPage() {
 
   /* ---------------------------- Image from Video -------------------------- */
 
-  function extractFrame(videoUrl, frameNum, fps) {
+  async function extractFramesFromVideo(videoUrl, frameRequirements) {
     const video = document.createElement('video');
     video.src = videoUrl;
     video.crossOrigin = 'anonymous';
-    video.load();
-  
-    return new Promise((resolve, reject) => {
-      video.addEventListener('loadedmetadata', () => {
-        const frameTime = frameNum / fps;
-        video.currentTime = frameTime;
-      });
-  
-      video.addEventListener('seeked', () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        canvas.toBlob((blob) => {
-          resolve(URL.createObjectURL(blob));
-        }, 'image/jpeg');
-      });
-  
-      video.addEventListener('error', (e) => {
-        reject(new Error(`Failed to load video: ${e.message}`));
-      });
-    });
+    await video.load();
+
+    return Promise.all(frameRequirements.map(frameReq => 
+      new Promise((resolve, reject) => {
+        video.currentTime = frameReq.frameIndex / 10; // Adjust based on actual FPS if necessary
+        video.addEventListener('seeked', function onSeeked() {
+          video.removeEventListener('seeked', onSeeked); // Remove event listener to avoid multiple triggers
+          const canvas = document.createElement('canvas');
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          canvas.toBlob(blob => {
+            resolve({
+              subtitle: frameReq.subtitle,
+              episode: frameReq.episode,
+              season: frameReq.season,
+              image: URL.createObjectURL(blob)
+            });
+          }, 'image/jpeg');
+        }, { once: true }); // Use { once: true } to automatically remove the listener after it fires
+      })
+    ));
   }
   
 
@@ -252,41 +252,37 @@ export default function SearchPage() {
   useEffect(() => {
 
     async function displayResults(results) {
-      const urlParamCid = params.cid; // Assuming 'params' is defined and accessible
-    
-      let allPromises = [];
-    
-      results.forEach((result) => {
+      const urlParamCid = params.cid;
+  
+      // Calculate frame requirements for each result
+      const frameRequirements = results.flatMap(result => {
         const startThumbnailIndex = Math.ceil(result.start_frame / 10);
         const endThumbnailIndex = Math.ceil(result.end_frame / 10);
-    
-        // Calculate the indices for the thumbnails to be extracted
-        const indices = Array.from({ length: endThumbnailIndex - startThumbnailIndex + 1 }, (_, i) => startThumbnailIndex + i);
-    
-        // Map over the indices to create frame extraction promises
-        const framePromises = indices.map(index => {
-          const videoUrl = `http://ipfs.davis.pub/ipfs/${urlParamCid}/${result.season}/${result.episode}/${Math.floor(index / 10)}.mp4`;
-          return extractFrame(videoUrl, index % 10 * 10, 10) // TODO: add fps to metadata, then use it here. Using default of 10 for now.
-            .then(imageUrl => ({
-              subtitle: result.subtitle_text,
-              episode: result.episode,
-              season: result.season,
-              image: imageUrl
-            }))
-            .catch(error => {
-              console.error("Error extracting frame: ", error);
-              return null; // Handle errors or return a placeholder
-            });
-        });
-    
-        // Concatenate framePromises into allPromises
-        allPromises = allPromises.concat(framePromises);
-      });
-    
-      // Await all promises and update results
-      Promise.all(allPromises).then((resolvedFrames) => {
-        // Filter out any null values if errors occurred
-        const validFrames = resolvedFrames.filter(frame => frame !== null);
+        return Array.from({ length: endThumbnailIndex - startThumbnailIndex + 1 }, (_, i) => ({
+          videoUrl: `http://ipfs.davis.pub/ipfs/${urlParamCid}/${result.season}/${result.episode}/${Math.floor((startThumbnailIndex + i) / 10)}.mp4`,
+          frameIndex: (startThumbnailIndex + i) % 10 * 10,
+          subtitle: result.subtitle_text,
+          episode: result.episode,
+          season: result.season
+        }));
+      }).slice(0, 50); // Limit to the first 50 frame requirements
+  
+      // Group by MP4 file
+      const groupedByVideoUrl = frameRequirements.reduce((acc, curr) => {
+        (acc[curr.videoUrl] = acc[curr.videoUrl] || []).push(curr);
+        return acc;
+      }, {});
+  
+      // Fetch and process each MP4 file only once
+      const fetchPromises = Object.entries(groupedByVideoUrl).map(([videoUrl, frames]) => 
+        extractFramesFromVideo(videoUrl, frames).catch(error => {
+          console.error("Error processing video: ", error);
+          return []; // Return an empty array in case of error
+        })
+      );
+  
+      Promise.all(fetchPromises).then((allFrames) => {
+        const validFrames = allFrames.flat().filter(frame => frame !== null);
         setNewResults(validFrames); // Update state with the loaded frames
       }).catch(error => console.error("Error processing frames: ", error));
     }
