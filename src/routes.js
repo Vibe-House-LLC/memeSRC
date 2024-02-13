@@ -45,6 +45,9 @@ const PricingPage = lazy(() => import('./pages/PricingPage'));
 const MagicPopup = lazy(() => import('./components/magic-popup/MagicPopup'));
 const DynamicRouteHandler = lazy(() => import('./pages/DynamicRouteHandler'));
 const ServerPage = lazy(() => import('./pages/ServerPage'));
+const IpfsSearchBar = lazy(() => import('./sections/search/ipfs-search-bar'));
+const V2FramePage = lazy(() => import('./pages/V2FramePage'));
+const V2EditorPage = lazy(() => import('./pages/V2EditorPage'));
 
 // ----------------------------------------------------------------------
 
@@ -62,7 +65,15 @@ export default function Router() {
         { path: 'editor/new', element: <EditorNewProjectPage /> },
         { path: 'editor/project/:editorProjectId', element: <EditorPage /> },
         { path: 'search/:seriesId/:searchTerms', element: <SearchPage /> },
-        { path: 'v2/search/:cid/:searchTerms', element: <V2SearchPage /> },
+        {
+          path: 'v2',
+          element: <IpfsSearchBar />,
+          children: [
+            { path: 'search/:cid/:searchTerms', element: <V2SearchPage /> },
+            { path: 'frame/:cid/:subtitleIndex', element: <V2FramePage /> },
+            { path: 'editor/:cid/:subtitleIndex', element: <V2EditorPage /> },
+          ]
+        },
         { path: 'frame/:fid', element: <TopBannerSearchRevised><FramePage /></TopBannerSearchRevised> },
         { path: 'editor/:fid', element: <TopBannerSearchRevised><EditorPage /></TopBannerSearchRevised> },
         { path: 'series/:seriesId', element: <TopBannerSearchRevised><SeriesPage /></TopBannerSearchRevised> },

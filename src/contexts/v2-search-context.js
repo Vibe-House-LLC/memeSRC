@@ -12,6 +12,8 @@ export const V2SearchContext = createContext({
     cid: '',
     setCid: () => { console.log('setCid was called with no provider available'); },
     localCids: null,
-    setLocalCids: () => { console.log('setLocalCids was called with no provider available'); }
+    setLocalCids: () => { console.log('setLocalCids was called with no provider available'); },
+    showObj: null,
+    setShowObj: () => { console.log('setShowObj was called with no provider available'); }
 });
 

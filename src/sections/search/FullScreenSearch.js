@@ -186,7 +186,7 @@ const defaultBackground = `linear-gradient(45deg,
   #00a3e0 0)`;
 
 export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction }) {
-  const { localCids, setLocalCids, cid, setCid, searchQuery: cidSearchQuery, setSearchQuery: setCidSearchQuery } = useSearchDetailsV2()
+  const { localCids, setLocalCids, cid, setCid, searchQuery: cidSearchQuery, setSearchQuery: setCidSearchQuery, setShowObj } = useSearchDetailsV2()
   const [shows, setShows] = useState([]);
   const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -433,6 +433,17 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
     navigate(`/v2/search/${cid}/${encodeURIComponent(searchTerm)}`)
     return false
   }
+
+  useEffect(() => {
+    
+  
+    return () => {
+      setCid(null)
+      setShowObj(null)
+      setSearchQuery(null)
+      console.log('Unset CID')
+    }
+  }, []);
 
   return (
     <>

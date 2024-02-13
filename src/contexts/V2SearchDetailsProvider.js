@@ -13,6 +13,7 @@ export const V2SearchDetailsProvider = ({ children }) => {
     const [frame, setFrame] = useState('');
     const [fineTuningFrame, setFineTuningFrame] = useState();
     const [localCids, setLocalCids] = useState();
+    const [showObj, setShowObj] = useState();
 
     useEffect(() => {
         if (pathname === '/') {
@@ -37,7 +38,9 @@ export const V2SearchDetailsProvider = ({ children }) => {
                 cid,
                 setCid,
                 localCids,
-                setLocalCids
+                setLocalCids,
+                showObj,
+                setShowObj
             }}
         >
             {children}

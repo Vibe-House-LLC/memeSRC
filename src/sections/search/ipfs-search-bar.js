@@ -4,7 +4,7 @@ import { Favorite, MapsUgc, Search, Shuffle } from "@mui/icons-material";
 import { API, graphqlOperation } from 'aws-amplify';
 import { useCallback, useEffect, useState } from "react";
 import { LoadingButton } from "@mui/lab";
-import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
+import { Outlet, Link as RouterLink, useNavigate, useParams } from "react-router-dom";
 import { searchPropTypes } from "./SearchPropTypes";
 import Logo from "../../components/logo/Logo";
 import { listContentMetadata } from '../../graphql/queries';
@@ -75,8 +75,7 @@ const StyledHeader = styled('header')(() => ({
   lineHeight: 0,
   width: '100%',
   zIndex: '1000',
-  paddingBottom: '10px',
-  paddingTop: '64px'
+  paddingBottom: '10px'
 }));
 
 async function fetchShows() {
@@ -96,11 +95,12 @@ IpfsSearchBar.propTypes = searchPropTypes;
 
 
 export default function IpfsSearchBar(props) {
-  const { show, setShow, searchQuery, setSearchQuery, cid = '', setCid, localCids, setLocalCids } = useSearchDetailsV2();
+  const { show, setShow, searchQuery, setSearchQuery, cid = '', setCid, localCids, setLocalCids, showObj, setShowObj } = useSearchDetailsV2();
   const params = useParams();
   const [shows, setShows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingRandom, setLoadingRandom] = useState(false);
+  const { children } = props
 
   /* ----------------------------------- New ---------------------------------- */
 
@@ -112,11 +112,7 @@ export default function IpfsSearchBar(props) {
 
     if (params.cid) {
       setCid(params.cid)
-    }
-
-    return () => {
-      setCid(null)
-      console.log('Unset CID')
+      console.log('SET CID')
     }
   }, [params?.cid]);
 
@@ -153,11 +149,6 @@ export default function IpfsSearchBar(props) {
     if (params.searchTerms) {
       setSearchQuery(params.searchTerms)
       setSearch(params?.searchTerms)
-    }
-
-    return () => {
-      setSearchQuery(null)
-      console.log('Unset CID')
     }
   }, [params?.searchTerms]);
 
@@ -333,6 +324,7 @@ export default function IpfsSearchBar(props) {
         </Grid>
       </StyledHeader>
       <Divider sx={{ mb: 2.5 }} />
+      <Outlet />
       <StyledLeftFooter className="bottomBtn">
         <a href="https://forms.gle/8CETtVbwYoUmxqbi7" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
           <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black", zIndex: '1300' }} size='medium'>

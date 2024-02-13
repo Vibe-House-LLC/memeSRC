@@ -5,6 +5,7 @@ import { Link, useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import useSearchDetails from '../hooks/useSearchDetails';
 import IpfsSearchBar from '../sections/search/ipfs-search-bar';
+import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
 
 const StyledCircularProgress = styled(CircularProgress)`
   position: absolute;
@@ -78,6 +79,7 @@ export default function SearchPage() {
   const [loadingCsv, setLoadingCsv] = useState(true);
   const [csvLines, setCsvLines] = useState();
   const [newResults, setNewResults] = useState();
+  const { showObj, setShowObj, cid } = useSearchDetailsV2();
 
   useEffect(() => {
     async function loadFile(cid, filename) {
@@ -122,7 +124,7 @@ export default function SearchPage() {
           subtitle: line.base64_subtitle ? atob(line.base64_subtitle) : "" // Ensure you decode the subtitle and assign it here
         }));
         setLoadingCsv(false);
-        setCsvLines(decodedLines); // Use decodedLines with subtitle property
+        setShowObj(decodedLines); // Use decodedLines with subtitle property
       } else {
         alert('error');
       }
@@ -144,7 +146,7 @@ export default function SearchPage() {
 
       const searchTerms = searchTerm.split(" ");
       let results = [];
-      csvLines.forEach((line) => {
+      showObj.forEach((line) => {
         let score = 0;
         if (line.subtitle_text.toLowerCase().includes(searchTerm)) {
           score += 10; // Higher score for the entire search term
@@ -172,17 +174,20 @@ export default function SearchPage() {
       setNewResults(videoResults); // Update state with the video URLs
     }
 
-    if (!loadingCsv && csvLines) {
+    if (!loadingCsv && showObj) {
       searchText();
     }
-  }, [loadingCsv, csvLines, params?.searchTerms]);
+  }, [loadingCsv, showObj, params?.searchTerms]);
+
+  useEffect(() => {
+    console.log(newResults)
+  }, [newResults]);
 
   return (
     <>
       <Helmet>
         <title>{`Search • memeSRC`}</title>
       </Helmet>
-      <IpfsSearchBar />
 
       {loadingCsv ? <StyledCircularProgress /> : ''}
 
@@ -190,6 +195,7 @@ export default function SearchPage() {
         <Grid container spacing={2} alignItems="stretch" paddingX={{ xs: 2, md: 6 }}>
           {newResults.map((result, index) => (
             <Grid item xs={12} sm={6} md={3} key={index}>
+              <Link to={`/v2/frame/${cid}/${result.subtitle_index}`} style={{ textDecoration: 'none' }}>
               <StyledCard>
                 <StyledCardMediaContainer aspectRatio="56.25%">
                   <StyledCardMedia
@@ -209,6 +215,7 @@ export default function SearchPage() {
                   />
                 </BottomCardLabel>
               </StyledCard>
+              </Link>
             </Grid>
           ))}
         </Grid>
