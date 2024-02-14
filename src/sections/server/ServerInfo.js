@@ -10,6 +10,8 @@ export default function ServerInfo({ details }) {
     const isSm = useMediaQuery(theme => theme.breakpoints.up('sm'))
     const [connected, setConnected] = useState(false);
     const [handlingConnection, setHandlingConnection] = useState(false);
+    const [lastStatus, setLastStatus] = useState(false);
+
     const [rateIn, setRateIn] = useState([
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -28,13 +30,26 @@ export default function ServerInfo({ details }) {
 
     /* -------------------------------- Functions ------------------------------- */
 
-    const handleConnectServer = (input) => {
-        setHandlingConnection(true)
-        setTimeout(() => {
-            setConnected(input)
-            setHandlingConnection(false)
-        }, 2000)
-    }
+    const handleToggleServer = async () => {
+        setHandlingConnection(true);
+        // Trigger IPC to toggle without waiting for the result here.
+        if (window && window.process && window.process.type) {
+            const electron = window.require('electron');
+            electron.ipcRenderer.invoke('toggle-ipfs-daemon').catch(console.error);
+            // Don't wait for the toggle result or check status here. Let the periodic check handle it.
+        } else {
+            console.log('Not running in Electron.');
+            setHandlingConnection(false); // Reset if not in Electron
+        }
+        // Timeout to stop waiting after 15 seconds, assuming failure if status hasn't changed
+        const timeout = setTimeout(() => {
+            if (connected === lastStatus) { // Status didn't change
+                setHandlingConnection(false);
+                console.log('Timeout: Status change assumed failed.');
+            }
+        }, 15000);
+        return () => clearTimeout(timeout); // Cleanup timeout on component unmount or re-invocation
+    };  
 
     function getRandomNumber(min, max) {
         if (min > max) {
@@ -53,6 +68,33 @@ export default function ServerInfo({ details }) {
         }
         return array;
     }
+
+    const checkServerStatus = async () => {
+        if (window && window.process && window.process.type) {
+            const electron = window.require('electron');
+            try {
+                const status = await electron.ipcRenderer.invoke('check-daemon-status');
+                if (status !== connected) { // Status has changed
+                    setLastStatus(connected); // Update lastStatus to previous connected state before changing connected
+                    setConnected(status);
+                    setHandlingConnection(false); // Stop loading spinner when status changes
+                }
+            } catch (error) {
+                console.error('IPC error:', error);
+                setConnected(false);
+                setHandlingConnection(false);
+            }
+        } else {
+            console.log('Not running in Electron.');
+        }
+    };
+    
+
+    useEffect(() => {
+        checkServerStatus(); // Initial check on mount
+        const statusInterval = setInterval(checkServerStatus, 5000); // Periodic check every 5 seconds
+        return () => clearInterval(statusInterval); // Cleanup on unmount
+    }, []);
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -112,7 +154,7 @@ export default function ServerInfo({ details }) {
                                     <LoadingButton
                                         loading={handlingConnection}
                                         onClick={() => {
-                                            handleConnectServer(false)
+                                            handleToggleServer(false)
                                         }}
                                         color='inherit'
                                         size='small'
@@ -130,7 +172,7 @@ export default function ServerInfo({ details }) {
                                     <LoadingButton
                                         loading={handlingConnection}
                                         onClick={() => {
-                                            handleConnectServer(true)
+                                            handleToggleServer(true)
                                         }}
                                         color='inherit'
                                         size='small'
