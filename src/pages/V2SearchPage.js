@@ -83,7 +83,7 @@ export default function SearchPage() {
 
   useEffect(() => {
     async function loadFile(cid, filename) {
-      const url = `http://ipfs.memesrc.com/ipfs/${cid}/_docs.csv`;
+      const url = `https://ipfs.memesrc.com/ipfs/${cid}/_docs.csv`;
       try {
         const response = await fetch(url);
         if (!response.ok) {
@@ -168,7 +168,7 @@ export default function SearchPage() {
       // Directly use the video URL for autoplay videos
       const videoResults = results.map(result => ({
         ...result,
-        videoUrl: `http://ipfs.memesrc.com/ipfs/${params.cid}/${result.season}/${result.episode}/s${parseInt(result.subtitle_index, 10)+1}.mp4` // Adjust the URL pattern as needed
+        videoUrl: `https://ipfs.memesrc.com/ipfs/${params.cid}/${result.season}/${result.episode}/s${parseInt(result.subtitle_index, 10)+1}.mp4` // Adjust the URL pattern as needed
       }));
 
       setNewResults(videoResults); // Update state with the video URLs

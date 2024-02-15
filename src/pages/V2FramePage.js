@@ -506,7 +506,7 @@ export default function FramePage({ shows = [] }) {
     const files = []
     // Loop through each key in the object
     const fileList = Object.keys(obj).map(async (key) => {
-      const videoUrl = `http://ipfs.memesrc.com/ipfs/${params.cid}/${subtitleObj.season}/${subtitleObj.episode}/${key}`
+      const videoUrl = `https://ipfs.memesrc.com/ipfs/${params.cid}/${subtitleObj.season}/${subtitleObj.episode}/${key}`
 
       const frameBlobs = await extractFramesFromVideo(videoUrl, obj[key], fps)
 
@@ -587,7 +587,7 @@ export default function FramePage({ shows = [] }) {
 
   useEffect(() => {
     async function loadFile(cid, filename) {
-      const url = `http://ipfs.memesrc.com/ipfs/${cid}/_docs.csv`;
+      const url = `https://ipfs.memesrc.com/ipfs/${cid}/_docs.csv`;
       try {
         const response = await fetch(url);
         if (!response.ok) {
@@ -698,7 +698,7 @@ export default function FramePage({ shows = [] }) {
 
 
 
-      // http://ipfs.memesrc.com/ipfs/${params.cid}/${result.season}/${result.episode}/s${parseInt(result.subtitle_index, 10)+1}.mp4
+      // https://ipfs.memesrc.com/ipfs/${params.cid}/${result.season}/${result.episode}/s${parseInt(result.subtitle_index, 10)+1}.mp4
     }
 
   }, [showObj]);
