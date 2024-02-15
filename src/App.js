@@ -8,6 +8,7 @@ import Router from './routes';
 import ThemeProvider from './theme';
 import SnackBar from './utils/Snackbar';
 import StripeWatcher from './utils/StripeWatcher';
+import { V2SearchDetailsProvider } from './contexts/V2SearchDetailsProvider';
 // import AutoAdWrapper from './ads/AutoAdWrapper';
 // import FeaturePopover from './components/features-popover/featurePopover';
 // components
@@ -36,7 +37,9 @@ export default function App() {
           }>
             {/* <FeaturePopover> */}
             <SearchDetailsProvider>
+              <V2SearchDetailsProvider>
                 <Router />
+              </V2SearchDetailsProvider>
             </SearchDetailsProvider>
             {/* </FeaturePopover> */}
           </Suspense>
