@@ -33,7 +33,7 @@ const StyledCardMediaContainer = styled.div`
   background-color: black;
 `;
 
-const StyledCardMedia = styled.img`
+const StyledCardMedia = styled.video`
   width: 100%;
   height: 100%;
   position: absolute;
