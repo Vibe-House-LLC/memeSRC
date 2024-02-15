@@ -1,12 +1,15 @@
 import PropTypes from 'prop-types';
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useContext } from 'react';
 import { useParams } from 'react-router-dom';
-import { Grid, CircularProgress, List, ListItem, ListItemText, ListItemAvatar, Avatar, Card, CardActionArea, CardMedia, CardContent, Typography, Chip, Container } from '@mui/material';
+import { Grid, CircularProgress, List, ListItem, ListItemText, ListItemAvatar, Avatar, Card, CardActionArea, CardMedia, CardContent, Typography, Chip, Container, Box, useMediaQuery } from '@mui/material';
 import styled from '@emotion/styled';
 import { Stack } from '@mui/system';
 import { LoadingButton } from '@mui/lab';
 import { API, graphqlOperation } from 'aws-amplify';
 import { listContentMetadata } from '../graphql/queries';
+import EpisodeViewResultsAd from '../ads/EpisodeViewResultsAd';
+import EpisodeViewBannerAd from '../ads/EpisodeViewBannerAd';
+import { UserContext } from '../UserContext';
 
 // Prop types
 EpisodePage.propTypes = {
@@ -14,10 +17,12 @@ EpisodePage.propTypes = {
 };
 
 export default function EpisodePage({ setSeriesTitle }) {
+  const { user } = useContext(UserContext);
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [showName, setShowName] = useState('')
+  const isMd = useMediaQuery(theme => theme.breakpoints.up('md'))
 
   const memoizedResults = useMemo(() => results, [results]);
 
@@ -86,14 +91,23 @@ export default function EpisodePage({ setSeriesTitle }) {
   // const classes = useStyles();
 
   return (
-    <Container sx={{ paddingX: '16px' }}>
+    <Container maxWidth>
       {/* <Typography variant='h2'>{seriesId}</Typography>
       <Typography variant='h4'>{seriesId}</Typography> */}
       <Typography gutterBottom variant="h3" component="div">
         <b>{showName || seriesId}</b> <Chip label={`S${seasonNum} E${episodeNum}`} />
       </Typography>
-      <Grid container justifyContent='center' style={{ padding: '20px' }}>
-        <Grid item xs={12} sm={3} md={1}>
+      <Grid container justifyContent='center' py={2}>
+        {user?.userDetails?.subscriptionStatus !== 'active' &&
+          <Grid item xs={12} mb={2}>
+            <center>
+              <Box sx={{ maxWidth: '800px' }}>
+                <EpisodeViewBannerAd />
+              </Box>
+            </center>
+          </Grid>
+        }
+        <Grid item xs={12} sm={3} md={4}>
           {!loading &&
             <LoadingButton
               variant='contained'
@@ -110,32 +124,46 @@ export default function EpisodePage({ setSeriesTitle }) {
       {loading ? (
         <CircularProgress />
       ) : (
-        <Grid container spacing={2}>
-          {memoizedResults && memoizedResults.map(result => (
-            <Grid item xs={12} sm={12} md={12} key={result.fid}>
-              <div style={{ display: 'flex', justifyContent: 'center' }}>
-                <Card component="a" href={`/frame/${result.fid}`} style={{ display: 'flex', textDecoration: 'none' }}>
-                  <CardMedia
-                    component="img"
-                    alt={result.subtitle}
-                    style={{ width: '50%', objectFit: 'cover' }}
-                    image={`https://memesrc.com${result.frame_image}`}
-                  />
-                  <CardContent>
-                    <Typography variant="body1" color="textPrimary" component="p">
-                      "{result.subtitle || '(...)'}"
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </div>
-            </Grid>
+        <Grid container spacing={2} alignItems="stretch">
+          {memoizedResults && memoizedResults.map((result, idx) => (
+            <>
+              {
+                // Insert the VotingPageAd component every 6 shows
+                (idx % 6) - 2 === 0 && idx !== 0 && user?.userDetails?.subscriptionStatus !== 'active'
+                  ? (
+                    <Grid item xs={12} sm={6} md={3} key={`ad-${result.fid}`}>
+                      <Card sx={{ ...(isMd && {aspectRatio: '4.13/1'}) }}>
+                        <EpisodeViewResultsAd />
+                      </Card>
+                    </Grid>
+                  )
+                  : null
+              }
+              <Grid item xs={12} sm={6} md={3} key={result.fid}>
+                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                  <Card component="a" href={`/frame/${result.fid}`} style={{ display: 'flex', textDecoration: 'none', aspectRatio: '4.13/1' }}>
+                    <CardMedia
+                      component="img"
+                      alt={result.subtitle}
+                      style={{ width: '50%', objectFit: 'cover' }}
+                      image={`https://memesrc.com${result.frame_image}`}
+                    />
+                    <CardContent sx={{ alignSelf: 'center' }}>
+                      <Typography variant="body1" color="textPrimary" component="p">
+                        "{result.subtitle || '(...)'}"
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </div>
+              </Grid>
+            </>
           ))}
         </Grid>
 
       )}
 
       <Grid container justifyContent='center' style={{ padding: '20px' }}>
-        <Grid item xs={12} sm={3} md={1}>
+        <Grid item xs={12} sm={3} md={4}>
           {!loading &&
             <LoadingButton
               variant='contained'

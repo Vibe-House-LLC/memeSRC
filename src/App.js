@@ -9,6 +9,7 @@ import ThemeProvider from './theme';
 import SnackBar from './utils/Snackbar';
 import StripeWatcher from './utils/StripeWatcher';
 import { V2SearchDetailsProvider } from './contexts/V2SearchDetailsProvider';
+// import AutoAdWrapper from './ads/AutoAdWrapper';
 // import FeaturePopover from './components/features-popover/featurePopover';
 // components
 // import ScrollToTop from './components/scroll-to-top';

@@ -3,10 +3,11 @@ import { Alert, AlertTitle, Button, Fab, Grid, Typography, IconButton, Stack, us
 import { Box } from '@mui/system';
 import { ArrowDownwardRounded, Favorite, MapsUgc, Shuffle } from '@mui/icons-material';
 import { API, graphqlOperation } from 'aws-amplify';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useContext, useEffect, useState } from 'react';
 import { LoadingButton } from '@mui/lab';
 import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
 import CloseIcon from '@mui/icons-material/Close';
+import { UserContext } from '../../UserContext';
 import useSearchDetails from '../../hooks/useSearchDetails';
 import { searchPropTypes } from './SearchPropTypes';
 import Logo from '../../components/logo/Logo';
@@ -195,6 +196,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   const { show, setShow, searchQuery, setSearchQuery } = useSearchDetails();
   const isMd = useMediaQuery((theme) => theme.breakpoints.up('sm'));
   const [addNewCidOpen, setAddNewCidOpen] = useState(false);
+  const { user, setUser } = useContext(UserContext);
 
   const [alertOpen, setAlertOpen] = useState(true);
 
@@ -448,17 +450,18 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   return (
     <>
       <StyledGridContainer container paddingX={3} sx={currentThemeBackground}>
-        <Grid container marginY="auto" justifyContent="center">
+        <Grid container marginY="auto" justifyContent="center" pb={isMd ? 0 : 8}>
           <Grid container justifyContent="center">
             <Grid item textAlign="center" marginBottom={5}>
               <Typography
                 component="h1"
                 variant="h1"
+                fontSize={34}
                 sx={{ color: currentThemeFontColor, textShadow: '1px 1px 3px rgba(0, 0, 0, 0.30);' }}
               >
                 <Box onClick={() => handleChangeSeries('_universal')}>
                   <Logo
-                    sx={{ display: 'inline', width: '150px', height: 'auto', margin: '-18px', color: 'yellow' }}
+                    sx={{ display: 'inline', width: '130px', height: 'auto', margin: '-18px', color: 'yellow' }}
                     color="white"
                   />
                 </Box>
@@ -596,7 +599,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                 <HomePageBannerAd />
               </Box>
             </Stack> */}
-            <Button
+            {/* <Button
               onClick={() => scrollToSection()}
               startIcon="🚀"
               sx={[{ marginTop: '12px', backgroundColor: 'unset', '&:hover': { backgroundColor: 'unset' } }]}
@@ -606,8 +609,17 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
               >
                 Beta: Layer editor and more!
               </Typography>
-            </Button>
+            </Button> */}
           </Grid>
+          {user?.userDetails?.subscriptionStatus !== 'active' &&
+            <Grid item xs={12} mt={2}>
+              <center>
+                <Box sx={{ maxWidth: '800px'}}>
+                  <HomePageBannerAd />
+                </Box>
+              </center>
+            </Grid>
+          }
         </Grid>
         <StyledLeftFooter className="bottomBtn">
           <a

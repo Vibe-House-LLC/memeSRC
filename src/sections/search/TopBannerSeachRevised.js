@@ -491,9 +491,100 @@ export default function TopBannerSearchRevised(props) {
         </>
       }
 
-      {(pathname.startsWith("/episode") || pathname.startsWith("/vote")) &&
+      {pathname.startsWith("/vote") &&
         <>
           <Container maxWidth disableGutters sx={{mt: isMobile ? 2 : 0}}>
+            <StyledHeader>
+              <Grid container mb={1.5} mt={0} paddingX={2}>
+                <Grid item xs={12} md={6} paddingLeft={{ xs: 0, md: 2 }}>
+                  <form onSubmit={e => searchFunction(e)}>
+                    <StyledSearchInput
+                      label="With normal TextField"
+                      id="outlined-start-adornment"
+                      // InputProps={{
+                      //   endAdornment: <InputAdornment position="end"><Typography variant="caption"><Search /></Typography></InputAdornment>,
+                      // }}
+                      endAdornment={<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} />}
+                      sx={{ width: '100%' }}
+                      value={searchTerm}
+                      onChange={(e) => {
+                        let value = e.target.value;
+
+                        // Replace curly single quotes with straight single quotes
+                        value = value.replace(/[\u2018\u2019]/g, "'");
+
+                        // Replace curly double quotes with straight double quotes
+                        value = value.replace(/[\u201C\u201D]/g, '"');
+
+                        // Replace en-dash and em-dash with hyphen
+                        value = value.replace(/[\u2013\u2014]/g, '-');
+
+                        setSearchTerm(value);
+                        setSearchQuery(value);
+                      }}
+                    />
+                  </form>
+                </Grid>
+              </Grid>
+              <Grid container wrap="nowrap" sx={{ overflowX: "scroll", flexWrap: "nowrap", scrollbarWidth: 'none', '&::-webkit-scrollbar': { height: '0 !important', width: '0 !important', display: 'none' } }} paddingX={2}>
+                <Grid item marginLeft={{ md: 6 }}>
+
+                  <FormControl variant="standard" sx={{ minWidth: 120 }}>
+                    <Select
+                      labelId="demo-simple-select-standard-label"
+                      id="demo-simple-select-standard"
+                      value={show}
+                      onChange={(x) => { setShow(x.target.value); }}
+                      label="Age"
+                      size="small"
+                      autoWidth
+                      disableUnderline
+                    >
+
+                      <MenuItem key='_universal' value='_universal' selected>🌈 All Shows & Movies</MenuItem>
+                      {(loading) ? <MenuItem key="loading" value="loading" disabled>Loading...</MenuItem> : shows.map((item) => (
+                        <MenuItem key={item.id} value={item.id}>{item.emoji} {item.title}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item marginLeft={{ xs: 3 }} marginY='auto' display='flex' style={{ whiteSpace: 'nowrap' }}>
+                  <Typography fontSize={13}><a href="/vote" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>Request a show</a></Typography>
+                </Grid>
+                <Grid item marginLeft={{ xs: 3 }} marginY='auto' display='flex' style={{ whiteSpace: 'nowrap' }}>
+                  <Typography fontSize={13}><a href="https://forms.gle/8CETtVbwYoUmxqbi7" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>Report issues</a></Typography>
+                </Grid>
+                <Grid item marginLeft={{ xs: 3 }} marginY='auto' display='flex' style={{ whiteSpace: 'nowrap' }}>
+                  <Typography fontSize={13}><a href="https://memesrc.com/donate" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>Support the team</a></Typography>
+                </Grid>
+              </Grid>
+            </StyledHeader>
+          </Container>
+          <Divider sx={{mb: 2.5}} />
+          <Container maxWidth="xl" sx={{ pt: 0 }} disableGutters>
+            {cloneElement(props.children, { setSeriesTitle, shows })}
+            <StyledLeftFooter className="bottomBtn">
+              <a href="https://forms.gle/8CETtVbwYoUmxqbi7" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
+                <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black", zIndex: '1300' }} size='medium'>
+                  <MapsUgc color="white" />
+                </Fab>
+              </a>
+              <a href="https://memesrc.com/donate" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
+                <Fab color="primary" aria-label="donate" style={{ backgroundColor: "black", zIndex: '1300' }} size='medium'>
+                  <Favorite />
+                </Fab>
+              </a>
+            </StyledLeftFooter>
+            <StyledRightFooter className="bottomBtn">
+              <StyledButton onClick={loadRandomFrame} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
+            </StyledRightFooter>
+          </Container>
+        </>
+      }
+
+{pathname.startsWith("/episode") &&
+        <>
+          <Container maxWidth disableGutters sx={{mt: isMobile ? 8 : 0}}>
             <StyledHeader>
               <Grid container mb={1.5} mt={0} paddingX={2}>
                 <Grid item xs={12} md={6} paddingLeft={{ xs: 0, md: 2 }}>

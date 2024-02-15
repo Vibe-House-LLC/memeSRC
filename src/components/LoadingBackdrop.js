@@ -1,8 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { Backdrop, Typography, Stack, LinearProgress } from '@mui/material';
+import React, { useState, useEffect, useContext } from 'react';
+import { Backdrop, Typography, Stack, LinearProgress, Box } from '@mui/material';
 import Logo from './logo';
+import MagicToolsLoadingAd from '../ads/MagicToolsLoadingAd';
+import { UserContext } from '../UserContext';
 
 function LoadingBackdrop({ open, duration = 20 }) {
+    const { user } = useContext(UserContext)
     const [progress, setProgress] = useState(0);
     const [progressVariant, setProgressVariant] = useState('determinate');
     const [messageIndex, setMessageIndex] = useState(0);
@@ -14,7 +17,7 @@ function LoadingBackdrop({ open, duration = 20 }) {
         // "I'm gettin' too old for this shit.",
         "Hang tight, wrapping up...",
     ];
-    
+
     // Calculate the percentage intervals at which to change messages, excluding the last message
     const messagePercentages = Array.from({ length: messages.length - 2 }, (_, index) => (index + 1) * (100 / (messages.length - 1)));
 
@@ -27,7 +30,7 @@ function LoadingBackdrop({ open, duration = 20 }) {
     }, [open]);
 
     useEffect(() => {
-        if (!open) return () => {};
+        if (!open) return () => { };
 
         const progressUpdatesPerSecond = 2;
         const progressIncrement = 100 / (duration * progressUpdatesPerSecond);
@@ -86,7 +89,15 @@ function LoadingBackdrop({ open, duration = 20 }) {
                 <Typography variant="caption" sx={{ marginTop: 'px', color: 'rgba(255, 255, 255, 0.7)' }}>
                     Wait while memeSRC works its magic
                 </Typography>
+                {user?.userDetails?.subscriptionStatus !== 'active' && open &&
+                    <Box sx={{ width: '95vw', maxWidth: 400 }}>
+                        <MagicToolsLoadingAd />
+                    </Box>
+                }
             </Stack>
+
+
+
         </Backdrop>
     );
 }
