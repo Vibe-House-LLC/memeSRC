@@ -198,13 +198,16 @@ export default function SearchPage() {
               <Link to={`/v2/frame/${cid}/${result.subtitle_index}`} style={{ textDecoration: 'none' }}>
               <StyledCard>
                 <StyledCardMediaContainer aspectRatio="56.25%">
-                  <StyledCardMedia
-                    component="video"
-                    src={result.videoUrl}
-                    autoPlay
-                    loop
-                    muted
-                  />
+                <StyledCardMedia
+                  src={result.videoUrl}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  preload="auto"
+                  onError={(e) => console.error("Error loading thumbnail:", e)}
+                  crossorigin="anonymous"
+                />
                 </StyledCardMediaContainer>
                 <BottomCardCaption>{result.subtitle}</BottomCardCaption>
                 <BottomCardLabel>
