@@ -8,11 +8,11 @@ const NetworkGraph = () => {
     const [totalIn, setTotalIn] = useState(0);
     const [totalOut, setTotalOut] = useState(0);
 
-    function addToFrontAndLimit(array, value) {
-        array.unshift(value); // Add value to the front
-        if (array.length > 30) {
-            array.pop(); // Remove from end if length exceeds 30
+    function addToEndAndLimit(array, value) {
+        if (array.length >= 30) {
+            array.shift(); // Remove from start if length exceeds or equals 30
         }
+        array.push(value); // Add value to the end
         return array;
     }
 
@@ -20,12 +20,12 @@ const NetworkGraph = () => {
         const electron = window.require('electron');
         const fetchStats = () => {
             electron.ipcRenderer.invoke('fetch-bandwidth-stats')
-                .then(({stats}) => {
-                    const newRateIn = parseFloat(stats.RateIn) || 0; // Replace 'RateIn' with the actual key for inbound rate
-                    const newRateOut = parseFloat(stats.RateOut) || 0; // Replace 'RateOut' with the actual key for outbound rate
+                .then(({ stats }) => {
+                    const newRateIn = parseFloat(stats.RateIn) || 0; // Assume these keys are correct for your data
+                    const newRateOut = parseFloat(stats.RateOut) || 0;
 
-                    setRateIn(prevRateIn => addToFrontAndLimit([...prevRateIn], newRateIn));
-                    setRateOut(prevRateOut => addToFrontAndLimit([...prevRateOut], newRateOut));
+                    setRateIn(prevRateIn => addToEndAndLimit([...prevRateIn], newRateIn));
+                    setRateOut(prevRateOut => addToEndAndLimit([...prevRateOut], newRateOut));
                     setTotalIn(prevIn => Math.round((prevIn + newRateIn) * 10) / 10);
                     setTotalOut(prevOut => Math.round((prevOut + newRateOut) * 10) / 10);
                 })
@@ -34,13 +34,9 @@ const NetworkGraph = () => {
                 });
         };
 
-        const interval = setInterval(() => {
-            fetchStats();
-        }, 1000);
+        const interval = setInterval(fetchStats, 1000);
 
-        return () => {
-            clearInterval(interval);
-        };
+        return () => clearInterval(interval);
     }, []);
 
     return (
@@ -57,13 +53,13 @@ const NetworkGraph = () => {
                 series={[
                     {
                         data: rateIn,
-                        label: `Rate In (${rateIn.at(0)}Kb/s)`,
+                        label: `Rate In (${rateIn.at(-1)}Kb/s)`, // Notice the change to `-1` to reference the last item
                         color: '#18f000',
                         curve: "catmullRom",
                     },
                     {
                         data: rateOut,
-                        label: `Rate Out (${rateOut.at(0)}Kb/s)`,
+                        label: `Rate Out (${rateOut.at(-1)}Kb/s)`, // Same here for consistency
                         color: '#0080f0',
                         curve: "catmullRom",
                     }
