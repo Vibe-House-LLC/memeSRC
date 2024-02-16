@@ -70,13 +70,11 @@ export default function ServerInfo({ details }) {
             </Typography>
             <Divider sx={{ mt: 3, mb: 7 }} />
             <Grid container spacing={3}>
-                <Grid item xs={12} md={5}>
-                    <Typography fontSize={28} fontWeight='bold' margin={0} textAlign={isSm ? 'left' : 'center'}>
-                        Network Connection
-                    </Typography>
-                </Grid>
-                <Grid item xs={12} md={7}>
+                <Grid item xs={12} md={6}>
                     <Card variant='outlined' sx={{ p: 2 }}>
+                        <Typography fontSize={28} fontWeight='bold' margin={0} textAlign={isSm ? 'left' : 'center'}>
+                            Network Connection
+                        </Typography>
                         {connected ?
                             <Alert
                                 severity="success"
@@ -113,16 +111,11 @@ export default function ServerInfo({ details }) {
                         <NetworkGraph />
                     </Card>
                 </Grid>
-            </Grid>
-
-            <Grid container spacing={3} mt={4}>
-                <Grid item xs={12} md={5}>
-                    <Typography fontSize={28} fontWeight='bold' margin={0} textAlign={isSm ? 'left' : 'center'}>
-                        Indexes
-                    </Typography>
-                </Grid>
-                <Grid item xs={12} md={7}>
+                <Grid item xs={12} md={6}>
                     <Card variant='outlined' sx={{ p: 2 }}>
+                        <Typography fontSize={28} fontWeight='bold' margin={0} textAlign={isSm ? 'left' : 'center'}>
+                            Indexes
+                        </Typography>
                         <IndexTable />
                         <TextField
                             sx={{ mt: 3 }}
