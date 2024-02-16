@@ -62,21 +62,30 @@ function useBandwidthStats() {
 }
 
 const StatCard = ({ title, value, total, color }) => (
-  <Box sx={{ background: '#121212', borderRadius: '8px', p: '12px', width: 'fit-content' }}>
-    <Typography fontSize={14} fontWeight={800} color={color}>
-      {title}
-    </Typography>
-    <Typography fontSize={18} fontWeight={500} color={color}>
-      {value}/s
-    </Typography>
-    <Typography fontSize={14} color={color} sx={{ opacity: 0.7 }}>
-      Total
-    </Typography>
-    <Typography fontSize={16} color={color} sx={{ opacity: 0.7 }}>
-      {total}
-    </Typography>
-  </Box>
-);
+    <Box
+      sx={{
+        background: '#121212',
+        borderRadius: '8px',
+        p: '12px',
+        flexGrow: 1, // Add flexGrow to make the components fill the space
+        flexBasis: 0, // Set flexBasis to 0 to allow components to expand
+        minWidth: 0, // Ensure minWidth is 0 to allow flexBasis to take effect
+        '&:not(:last-child)': {
+          marginRight: '8px', // Add margin between cards
+        },
+      }}
+    >
+      <Typography fontSize={14} fontWeight={800} color={color}>
+        {title}
+      </Typography>
+      <Typography fontSize={18} fontWeight={500} color={color}>
+        {value}/s
+      </Typography>
+      <Typography fontSize={12} color={color} sx={{ opacity: 0.7 }}>
+        Total: {total}
+      </Typography>
+    </Box>
+  );
 
 const formatBytes = (bytes) => {
   if (bytes === 0) return '0 Bytes';
@@ -91,35 +100,6 @@ const NetworkGraph = () => {
 
   return (
     <>
-      <LineChart
-        xAxis={[
-          {
-            id: 'Seconds',
-            data: Array.from({ length: 30 }, (_, i) => i),
-            scaleType: 'linear',
-            valueFormatter: (seconds) => `${seconds}s`,
-          },
-        ]}
-        series={[
-          {
-            data: rateIn,
-            label: 'Rate In',
-            color: '#0080f0',
-            curve: 'catmullRom',
-          },
-          {
-            data: rateOut,
-            label: 'Rate Out',
-            color: '#18f000',
-            curve: 'catmullRom',
-          },
-        ]}
-        sx={{
-          width: '100%',
-          '.MuiMarkElement-root': { display: 'none' },
-        }}
-        height={200}
-      />
       <Stack direction="row" justifyContent="space-around" px={4.5} mt={2} spacing={4}>
         <StatCard
           title="Incoming"
@@ -134,6 +114,42 @@ const NetworkGraph = () => {
           color="#18f000"
         />
       </Stack>
+      <LineChart
+        xAxis={[
+          {
+            id: 'Seconds',
+            data: Array.from({ length: 30 }, (_, i) => i),
+            scaleType: 'linear',
+            valueFormatter: (seconds) => `${seconds}s`,
+          },
+        ]}
+        series={[
+          {
+            data: rateIn,
+            label: 'Incoming',
+            color: '#0080f0',
+            curve: 'catmullRom',
+          },
+          {
+            data: rateOut,
+            label: 'Outgoing',
+            color: '#18f000',
+            curve: 'catmullRom',
+          },
+        ]}
+        sx={{
+          width: '100%',
+          '.MuiMarkElement-root': { display: 'none' },
+        }}
+        slotProps={{
+            legend: {
+              direction: 'row',
+              position: { vertical: 'bottom', horizontal: 'middle' },
+              padding: 0,
+            },
+          }}
+        height={200}
+      />
     </>
   );
 };
