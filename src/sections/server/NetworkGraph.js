@@ -1,4 +1,4 @@
-import React, { useEffect, useReducer, useCallback } from 'react';
+import React, { useEffect, useReducer } from 'react';
 import { LineChart } from '@mui/x-charts';
 import { Stack, Typography, Box } from '@mui/material';
 
@@ -10,24 +10,23 @@ const initialState = {
 };
 
 function reducer(state, action) {
-    switch (action.type) {
-      case 'updateStats': {
-        const { newRateIn, newRateOut } = action.payload;
-        const updatedRateIn = addToEndAndLimit(state.rateIn, newRateIn);
-        const updatedRateOut = addToEndAndLimit(state.rateOut, newRateOut);
-        return {
-          ...state,
-          rateIn: updatedRateIn,
-          rateOut: updatedRateOut,
-          totalIn: Math.round((state.totalIn + newRateIn) * 10) / 10,
-          totalOut: Math.round((state.totalOut + newRateOut) * 10) / 10,
-        };
-      }
-      default:
-        return state;
+  switch (action.type) {
+    case 'updateStats': {
+      const { newRateIn, newRateOut } = action.payload;
+      const updatedRateIn = addToEndAndLimit(state.rateIn, newRateIn);
+      const updatedRateOut = addToEndAndLimit(state.rateOut, newRateOut);
+      return {
+        ...state,
+        rateIn: updatedRateIn,
+        rateOut: updatedRateOut,
+        totalIn: state.totalIn + newRateIn,
+        totalOut: state.totalOut + newRateOut,
+      };
     }
+    default:
+      return state;
   }
-  
+}
 
 function addToEndAndLimit(array, value) {
   const newArray = array.length >= 30 ? array.slice(1) : array;
@@ -68,16 +67,24 @@ const StatCard = ({ title, value, total, color }) => (
       {title}
     </Typography>
     <Typography fontSize={18} fontWeight={500} color={color}>
-      {value}
+      {value}/s
     </Typography>
     <Typography fontSize={14} color={color} sx={{ opacity: 0.7 }}>
       Total
     </Typography>
     <Typography fontSize={16} color={color} sx={{ opacity: 0.7 }}>
-      {total}Kb
+      {total}
     </Typography>
   </Box>
 );
+
+const formatBytes = (bytes) => {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log2(bytes) / Math.log2(k));
+  return `${parseFloat((bytes / (k ** i)).toFixed(2))} ${sizes[i]}`;
+};
 
 const NetworkGraph = () => {
   const { rateIn, rateOut, totalIn, totalOut } = useBandwidthStats();
@@ -114,8 +121,18 @@ const NetworkGraph = () => {
         height={200}
       />
       <Stack direction="row" justifyContent="space-around" px={4.5} mt={2} spacing={4}>
-        <StatCard title="Current Rate" value={`${rateIn.at(-1)}Kb/s`} total={totalIn} color="#0080f0" />
-        <StatCard title="Current Rate" value={`${rateOut.at(-1)}Kb/s`} total={totalOut} color="#18f000" />
+        <StatCard
+          title="Incoming"
+          value={formatBytes(rateIn.at(-1) * 1024)}
+          total={formatBytes(totalIn * 1024)}
+          color="#0080f0"
+        />
+        <StatCard
+          title="Outgoing"
+          value={formatBytes(rateOut.at(-1) * 1024)}
+          total={formatBytes(totalOut * 1024)}
+          color="#18f000"
+        />
       </Stack>
     </>
   );
