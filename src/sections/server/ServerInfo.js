@@ -72,43 +72,45 @@ export default function ServerInfo({ details }) {
             <Grid container spacing={3}>
                 <Grid item xs={12} md={6}>
                     <Card variant='outlined' sx={{ p: 2 }}>
-                        <Typography fontSize={28} fontWeight='bold' margin={0} textAlign={isSm ? 'left' : 'center'}>
-                            Network Connection
-                        </Typography>
-                        {connected ?
-                            <Alert
-                                severity="success"
-                                action={
-                                    <LoadingButton
-                                        loading={handlingConnection}
-                                        onClick={() => handleToggleServer(false)}
-                                        color='inherit'
-                                        size='small'
-                                    >
-                                        Disconnect
-                                    </LoadingButton>
-                                }
-                            >
-                                Server is connected!
-                            </Alert>
-                            :
-                            <Alert
-                                severity="error"
-                                action={
-                                    <LoadingButton
-                                        loading={handlingConnection}
-                                        onClick={() => handleToggleServer(true)}
-                                        color='inherit'
-                                        size='small'
-                                    >
-                                        Connect
-                                    </LoadingButton>
-                                }
-                            >
-                                Server is disconnected
-                            </Alert>
-                        }
-                        <NetworkGraph />
+                        <Stack spacing={2}>
+                            <Typography fontSize={28} fontWeight='bold' textAlign={isSm ? 'left' : 'center'}>
+                                Network Connection
+                            </Typography>
+                            {connected ?
+                                <Alert
+                                    severity="success"
+                                    action={
+                                        <LoadingButton
+                                            loading={handlingConnection}
+                                            onClick={() => handleToggleServer(false)}
+                                            color='inherit'
+                                            size='small'
+                                        >
+                                            Disconnect
+                                        </LoadingButton>
+                                    }
+                                >
+                                    Server is connected!
+                                </Alert>
+                                :
+                                <Alert
+                                    severity="error"
+                                    action={
+                                        <LoadingButton
+                                            loading={handlingConnection}
+                                            onClick={() => handleToggleServer(true)}
+                                            color='inherit'
+                                            size='small'
+                                        >
+                                            Connect
+                                        </LoadingButton>
+                                    }
+                                >
+                                    Server is disconnected
+                                </Alert>
+                            }
+                            <NetworkGraph />
+                        </Stack>
                     </Card>
                 </Grid>
                 <Grid item xs={12} md={6}>
