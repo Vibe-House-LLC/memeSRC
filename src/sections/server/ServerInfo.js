@@ -1,34 +1,16 @@
-import { Close, Redo, Sync } from '@mui/icons-material';
+import React, { useEffect, useState } from 'react';
+import { Alert, Card, Container, Divider, Grid, Stack, TextField, Typography, useMediaQuery } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
-import { Alert, Button, Card, Container, Divider, Grid, Stack, TextField, Typography, useMediaQuery } from '@mui/material';
-import { LineChart } from '@mui/x-charts';
 import PropTypes from 'prop-types';
-import { useEffect, useState } from 'react';
+import NetworkGraph from './NetworkGraph'; // Make sure this import is correct based on your file structure
 import IndexTable from './IndexTable';
 
 export default function ServerInfo({ details }) {
-    const isSm = useMediaQuery(theme => theme.breakpoints.up('sm'))
+    const isSm = useMediaQuery(theme => theme.breakpoints.up('sm'));
     const [connected, setConnected] = useState(false);
     const [handlingConnection, setHandlingConnection] = useState(false);
     const [lastStatus, setLastStatus] = useState(false);
-
-    const [rateIn, setRateIn] = useState([
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-    ]
-    );
-    const [rateOut, setRateOut] = useState([
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-    ]
-    );
-    const [totalIn, setTotalIn] = useState(0);
-    const [totalOut, setTotalOut] = useState(0);
     const [cidInput, setCidInput] = useState('');
-
-    /* -------------------------------- Functions ------------------------------- */
 
     const handleToggleServer = async () => {
         setHandlingConnection(true);
@@ -48,26 +30,9 @@ export default function ServerInfo({ details }) {
                 console.log('Timeout: Status change assumed failed.');
             }
         }, 15000);
-        return () => clearTimeout(timeout); // Cleanup timeout on component unmount or re-invocation
-    };  
 
-    function getRandomNumber(min, max) {
-        if (min > max) {
-            throw new Error("Minimum value should not be greater than maximum value.");
-        }
-
-        const range = max - min;
-        const randomNumber = min + Math.random() * range;
-        return Math.round(randomNumber * 10) / 10;
-    }
-
-    function addToFrontAndLimit(array, value) {
-        array.unshift(value); // Add value to the front
-        while (array.length > 30) {
-            array.pop(); // Remove from end if length exceeds 30
-        }
-        return array;
-    }
+        return () => clearTimeout(timeout);
+    };
 
     const checkServerStatus = async () => {
         if (window && window.process && window.process.type) {
@@ -85,50 +50,15 @@ export default function ServerInfo({ details }) {
                 setHandlingConnection(false);
             }
         } else {
-            console.log('Not running in Electron.');
+            console.log('Not running in Electron environment.');
         }
     };
-    
 
     useEffect(() => {
-        checkServerStatus(); // Initial check on mount
-        const statusInterval = setInterval(checkServerStatus, 5000); // Periodic check every 5 seconds
-        return () => clearInterval(statusInterval); // Cleanup on unmount
+        checkServerStatus();
+        const statusInterval = setInterval(checkServerStatus, 5000);
+        return () => clearInterval(statusInterval);
     }, []);
-
-    useEffect(() => {
-        const interval = setInterval(() => {
-            const newNumber = getRandomNumber(0.3, 11.7);
-            setRateIn(prevRateIn => {
-                const newRateIn = addToFrontAndLimit([...prevRateIn], newNumber);
-                return newRateIn;
-            });
-            setTotalIn(prevIn => {
-                const newTotal = prevIn + newNumber
-                return Math.round(newTotal * 10) / 10
-            })
-        }, 1000);
-
-        return () => clearInterval(interval); // Clean up the interval on unmount
-    }, []);
-
-    useEffect(() => {
-        const interval = setInterval(() => {
-            const newNumber = getRandomNumber(0.3, 11.7);
-            setRateOut(prevRateOut => {
-                const newRateOut = addToFrontAndLimit([...prevRateOut], newNumber);
-                return newRateOut;
-            });
-            setTotalOut(prevOut => {
-                const newTotal = prevOut + newNumber
-                return Math.round(newTotal * 10) / 10
-            })
-        }, 1000);
-
-        return () => clearInterval(interval); // Clean up the interval on unmount
-    }, []);
-
-    /* -------------------------------------------------------------------------- */
 
     return (
         <Container maxWidth='lg'>
@@ -153,9 +83,7 @@ export default function ServerInfo({ details }) {
                                 action={
                                     <LoadingButton
                                         loading={handlingConnection}
-                                        onClick={() => {
-                                            handleToggleServer(false)
-                                        }}
+                                        onClick={() => handleToggleServer(false)}
                                         color='inherit'
                                         size='small'
                                     >
@@ -171,9 +99,7 @@ export default function ServerInfo({ details }) {
                                 action={
                                     <LoadingButton
                                         loading={handlingConnection}
-                                        onClick={() => {
-                                            handleToggleServer(true)
-                                        }}
+                                        onClick={() => handleToggleServer(true)}
                                         color='inherit'
                                         size='small'
                                     >
@@ -184,75 +110,7 @@ export default function ServerInfo({ details }) {
                                 Server is disconnected
                             </Alert>
                         }
-
-                        <LineChart
-                            // xAxis={[{ data: [0, 0, 0, 0, 0, 10] }]}
-                            xAxis={[
-                                {
-                                    id: 'Seconds',
-                                    data: [
-                                        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
-                                        11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
-                                        21, 22, 23, 24, 25, 26, 27, 28, 29, 30
-                                    ],
-                                    scaleType: 'string',
-                                    valueFormatter: (seconds) => `${seconds}s`,
-                                },
-                            ]}
-                            series={[
-                                {
-                                    data: rateIn,
-                                    label: `Rate In (${rateIn.at(0)}Kb/s)`,
-                                    color: '#18f000',
-                                    curve: "catmullRom",
-                                }
-                            ]}
-                            sx={{
-                                width: '100%',
-                                '.MuiMarkElement-root': {
-                                    display: 'none'
-                                },
-                            }}
-                            height={200}
-                        />
-                        <LineChart
-                            // xAxis={[{ data: [0, 0, 0, 0, 0, 10] }]}
-                            xAxis={[
-                                {
-                                    id: 'Seconds',
-                                    data: [
-                                        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
-                                        11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
-                                        21, 22, 23, 24, 25, 26, 27, 28, 29, 30
-                                    ],
-                                    scaleType: 'string',
-                                    valueFormatter: (seconds) => `${seconds}s`,
-                                },
-                            ]}
-                            series={[
-                                {
-                                    data: rateOut,
-                                    label: `Rate Out (${rateOut.at(0)}Kb/s)`,
-                                    color: '#0080f0',
-                                    curve: "catmullRom",
-                                }
-                            ]}
-                            sx={{
-                                width: '100%',
-                                '.MuiMarkElement-root': {
-                                    display: 'none'
-                                },
-                            }}
-                            height={200}
-                        />
-                        <Stack direction='row' justifyContent='space-between' px={4.5}>
-                            <Typography fontSize={14} fontWeight={800} color='#18f000'>
-                                Total In: {totalIn}Kb
-                            </Typography>
-                            <Typography fontSize={14} fontWeight={800} color='#0080f0'>
-                                Total Out: {totalOut}Kb
-                            </Typography>
-                        </Stack>
+                        <NetworkGraph />
                     </Card>
                 </Grid>
             </Grid>
@@ -267,31 +125,22 @@ export default function ServerInfo({ details }) {
                     <Card variant='outlined' sx={{ p: 2 }}>
                         <IndexTable />
                         <TextField
-                            sx={{
-                                mt: 3
-                            }}
+                            sx={{ mt: 3 }}
                             label='CID (Content Identifier)'
                             value={cidInput}
-                            onChange={(event) => {
-                                setCidInput(event.target.value)
-                            }}
+                            onChange={(event) => setCidInput(event.target.value)}
                             fullWidth
                             InputProps={{
-                                endAdornment:
-                                    <LoadingButton
-                                        color='inherit'
-                                    >
-                                        Import
-                                    </LoadingButton>
+                                endAdornment: <LoadingButton color='inherit'>Import</LoadingButton>
                             }}
                         />
                     </Card>
                 </Grid>
             </Grid>
         </Container>
-    )
+    );
 }
 
 ServerInfo.propTypes = {
-    details: PropTypes.object
-}
+    details: PropTypes.object,
+};
