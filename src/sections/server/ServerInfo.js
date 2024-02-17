@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Card, Container, Divider, Grid, Stack, TextField, Typography, useMediaQuery } from '@mui/material';
+import { Alert, Button, Card, Container, Divider, Grid, Stack, TextField, Typography, useMediaQuery } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
 import PropTypes from 'prop-types';
 import NetworkGraph from './NetworkGraph';
@@ -7,7 +7,7 @@ import IndexTable from './IndexTable';
 
 export default function ServerInfo({ details }) {
     const isSm = useMediaQuery(theme => theme.breakpoints.up('sm'));
-    const isLg = useMediaQuery(theme => theme.breakpoints.up('lg')); // New breakpoint check for larger displays
+    const isLg = useMediaQuery(theme => theme.breakpoints.up('lg'));
     const [connected, setConnected] = useState(false);
     const [handlingConnection, setHandlingConnection] = useState(false);
     const [lastStatus, setLastStatus] = useState(false);
@@ -19,7 +19,6 @@ export default function ServerInfo({ details }) {
         if (window && window.process && window.process.type) {
             const electron = window.require('electron');
             electron.ipcRenderer.invoke('toggle-ipfs-daemon').catch(console.error);
-            // Don't wait for the toggle result or check status here. Let the periodic check handle it.
         } else {
             console.log('Not running in Electron.');
             setHandlingConnection(false); // Reset if not in Electron
@@ -41,9 +40,9 @@ export default function ServerInfo({ details }) {
             try {
                 const status = await electron.ipcRenderer.invoke('check-daemon-status');
                 if (status !== connected) { // Status has changed
-                    setLastStatus(connected); // Update lastStatus to previous connected state before changing connected
+                    setLastStatus(connected);
                     setConnected(status);
-                    setHandlingConnection(false); // Stop loading spinner when status changes
+                    setHandlingConnection(false);
                 }
             } catch (error) {
                 console.error('IPC error:', error);
@@ -61,8 +60,35 @@ export default function ServerInfo({ details }) {
         return () => clearInterval(statusInterval);
     }, []);
 
+    if (!connected) {
+        // Render only the disconnected message and button if not connected
+        return (
+            <Container
+                maxWidth="sm"
+                sx={{
+                    height: '100vh',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                }}
+            >
+                <Typography variant="h4" textAlign="center" gutterBottom>
+                    Server Disconnected
+                </Typography>
+                <LoadingButton
+                    loading={handlingConnection}
+                    onClick={() => handleToggleServer(true)}
+                    variant="contained"
+                >
+                    Start Server
+                </LoadingButton>
+            </Container>
+        );
+    }
+
+    // Original component rendering when connected
     return (
-        // Change maxWidth to 'xl' for even wider screens or false to remove max width entirely
         <Container maxWidth={isLg ? false : 'lg'}>
             <Typography variant='h2'>
                 memeSRC Server Settings
