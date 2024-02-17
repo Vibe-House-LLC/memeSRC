@@ -14,7 +14,7 @@ function reducer(state, action) {
     case 'updateStats': {
       const { newRateIn, newRateOut, stats } = action.payload;
       // Use raw byte values directly, no need to parseFloat
-      const updatedRateIn = addToEndAndLimit(state.rateIn, newRateIn);
+      const updatedRateIn = addToEndAndLimit(state.rateIn, newRateIn*-1);
       const updatedRateOut = addToEndAndLimit(state.rateOut, newRateOut);
       return {
         ...state,
@@ -77,7 +77,7 @@ const StatCard = ({ title, value, total, color }) => (
       {title}
     </Typography>
     <Typography fontSize={18} fontWeight={500} color={color}>
-      {formatBytes(value)} /s
+      {formatBytes(value*-1)} /s
     </Typography>
     <Typography fontSize={12} color={color} sx={{ opacity: 0.7 }}>
       Total: {formatBytes(total)}
@@ -108,47 +108,49 @@ const NetworkGraph = () => {
         />
         <StatCard
           title="Outgoing"
-          value={rateOut[rateOut.length - 1]} // Use the most recent rate for display
+          value={rateOut[rateOut.length - 1]*-1} // Use the most recent rate for display
           total={totalOut}
           color="#18f000"
         />
       </Stack>
       <LineChart
-        xAxis={[
-          {
-            id: 'Seconds',
-            data: Array.from({ length: 30 }, (_, i) => i),
-            scaleType: 'linear',
-            valueFormatter: (seconds) => `${seconds}s`,
-          },
-        ]}
-        series={[
-          {
-            data: rateIn,
-            label: 'Incoming',
-            color: '#0080f0',
-            curve: 'catmullRom',
-          },
-          {
-            data: rateOut,
-            label: 'Outgoing',
-            color: '#18f000',
-            curve: 'catmullRom',
-          },
-        ]}
-        sx={{
-          width: '100%',
-          '.MuiMarkElement-root': { display: 'none' },
-        }}
-        slotProps={{
-            legend: {
-              direction: 'row',
-              position: { vertical: 'bottom', horizontal: 'middle' },
-              padding: 0,
-            },
-          }}
-        height={200}
-      />
+  xAxis={[
+    {
+      data: Array.from({ length: 30 }, (_, i) => i),
+      scaleType: 'linear',
+      valueFormatter: (seconds) => `${seconds}s`,
+    },
+  ]}
+  series={[
+    {
+      data: rateIn,
+      label: 'Incoming',
+      color: '#0080f0',
+      curve: 'catmullRom',
+      area: true, // Enable area fill
+    },
+    {
+      data: rateOut,
+      label: 'Outgoing',
+      color: '#18f000',
+      curve: 'catmullRom',
+      area: true, // Enable area fill
+    },
+  ]}
+  height={200}
+  sx={{
+    width: '100%',
+    '.MuiMarkElement-root': { display: 'none' },
+  }}
+  slotProps={{
+    legend: {
+      direction: 'row',
+      position: { vertical: 'bottom', horizontal: 'middle' },
+      padding: 0,
+    },
+  }}
+/>
+
     </>
   );
 };
