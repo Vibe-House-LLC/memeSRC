@@ -49,12 +49,12 @@ const PinningButton = styled(Button, {
 const IndexTable = () => {
     const [rows, setRows] = useState([]);
     const [loadingCIDs, setLoadingCIDs] = useState(() => {
-        const savedLoading = localStorage.getItem('loadingCIDs');
+        const savedLoading = sessionStorage.getItem('loadingCIDs');
         return savedLoading ? JSON.parse(savedLoading) : {};
     });
 
     useEffect(() => {
-        localStorage.setItem('loadingCIDs', JSON.stringify(loadingCIDs));
+        sessionStorage.setItem('loadingCIDs', JSON.stringify(loadingCIDs));
     }, [loadingCIDs]);
 
     useEffect(() => {
