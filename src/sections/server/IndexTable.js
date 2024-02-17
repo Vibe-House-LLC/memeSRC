@@ -4,16 +4,18 @@ import { DataGrid } from '@mui/x-data-grid';
 import Button from '@mui/material/Button';
 import { styled } from '@mui/material/styles';
 
+const LOADING_STATE_KEY_PREFIX = 'pin_button_loading_state_';
+
 // Function to fetch the title for a given item
 const fetchTitle = async (item) => {
     const url = `https://ipfs.memesrc.com/ipfs/${item.cid}/00_metadata.json`;
     try {
         const response = await fetch(url);
         const metadata = await response.json();
-        return metadata.title || '(missing)'; // Check for 'title', return '(missing)' if not found
+        return metadata.title || '(missing)';
     } catch (error) {
         console.error('Failed to fetch title:', error);
-        return '(missing)'; // Return '(missing)' in case of any error
+        return '(missing)';
     }
 };
 
@@ -25,31 +27,41 @@ const checkPinStatus = async (cid) => {
         return result.success && result.isPinned;
     } catch (error) {
         console.error(`Failed to check pin status for CID ${cid}:`, error);
-        return false; // Assume not pinned in case of error
+        return false;
     }
 };
 
-// Styled button for pinning actions with dynamic styling based on pin status
 const PinningButton = styled(Button, {
-    shouldForwardProp: (prop) => prop !== 'pinned', // Prevent 'pinned' prop from being forwarded to the DOM element
+    shouldForwardProp: (prop) => prop !== 'pinned',
 })(({ theme, pinned }) => ({
-    width: '100px', // Ensure consistent width
+    width: '100px',
     height: '32px',
     fontSize: '0.75rem',
     textTransform: 'none',
     color: theme.palette.getContrastText(pinned ? theme.palette.success.main : theme.palette.grey[500]),
-    backgroundColor: pinned ? theme.palette.success.main : theme.palette.grey[500], // Use grey for unpinned
-    opacity: pinned ? 1 : 0.75, // Adjust opacity for unpinned if needed
+    backgroundColor: pinned ? theme.palette.success.main : theme.palette.grey[500],
+    opacity: pinned ? 1 : 0.75,
     '&:hover': {
-        backgroundColor: pinned ? theme.palette.success.dark : theme.palette.grey[700], // Darker grey on hover for unpinned
+        backgroundColor: pinned ? theme.palette.success.dark : theme.palette.grey[700],
     },
 }));
 
-
 const IndexTable = () => {
     const [rows, setRows] = useState([]);
+    const [loadingStates, setLoadingStates] = useState({});
 
     useEffect(() => {
+        // Load loading states from sessionStorage
+        const storedLoadingStates = {};
+        for (let i = 0; i < sessionStorage.length; i+=1) {
+            const key = sessionStorage.key(i);
+            if (key.startsWith(LOADING_STATE_KEY_PREFIX)) {
+                storedLoadingStates[key.substring(LOADING_STATE_KEY_PREFIX.length)] = true;
+            }
+        }
+        setLoadingStates(storedLoadingStates);
+
+        // Fetch items and update rows
         const directory = '/memesrc/index';
         const electron = window.require('electron');
         electron.ipcRenderer.invoke('list-directory-contents', directory)
@@ -75,10 +87,16 @@ const IndexTable = () => {
             });
     }, []);
 
-    // Toggle pin status
     const togglePin = async (rowId, shouldPin) => {
         const row = rows.find(row => row.id === rowId);
         if (!row) return;
+
+        // Set loading state
+        setLoadingStates(prevLoadingStates => ({
+            ...prevLoadingStates,
+            [rowId]: true,
+        }));
+        sessionStorage.setItem(LOADING_STATE_KEY_PREFIX + rowId, true);
 
         const electron = window.require('electron');
         const action = shouldPin ? 'pin-item' : 'unpin-item';
@@ -91,6 +109,14 @@ const IndexTable = () => {
         } else {
             console.error(`Failed to ${shouldPin ? 'pin' : 'unpin'} CID ${row.cid}:`, result.message);
         }
+
+        // Clear loading state
+        setLoadingStates(prevLoadingStates => {
+            const nextState = { ...prevLoadingStates };
+            delete nextState[rowId];
+            sessionStorage.removeItem(LOADING_STATE_KEY_PREFIX + rowId);
+            return nextState;
+        });
     };
 
     const columns = [
@@ -103,19 +129,20 @@ const IndexTable = () => {
                 <PinningButton
                     variant="contained"
                     pinned={params.value}
+                    disabled={loadingStates[params.row.id]}
                     onClick={(event) => {
-                        event.stopPropagation(); // Prevent click from reaching the row
+                        event.stopPropagation();
                         togglePin(params.row.id, !params.value);
                     }}>
-                    {params.value ? 'Pinned' : 'Pin'}
+                    {loadingStates[params.row.id] ? 'Loading...' : params.value ? 'Pinned' : 'Pin'}
                 </PinningButton>
             ),
         },
         { field: 'index_name', headerName: 'Name', width: 200 },
         { field: 'cid', headerName: 'CID', width: 330 },
         { field: 'name', headerName: 'IPFS Path', width: 150 },
-        { field: 'size', headerName: 'Size', width: 130, type: 'string' }, // Note the type change to string
-        { field: 'cumulative_size', headerName: 'Total Size', width: 180, type: 'string' }, // Note the type change to string
+        { field: 'size', headerName: 'Size', width: 130, type: 'string' },
+        { field: 'cumulative_size', headerName: 'Total Size', width: 180, type: 'string' },
     ];
 
     return (
