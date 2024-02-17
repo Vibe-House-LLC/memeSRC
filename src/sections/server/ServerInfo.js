@@ -4,6 +4,7 @@ import { LoadingButton } from '@mui/lab';
 import PropTypes from 'prop-types';
 import NetworkGraph from './NetworkGraph';
 import IndexTable from './IndexTable';
+import CidInput from './CidInput';
 
 export default function ServerInfo({ details }) {
     const isSm = useMediaQuery(theme => theme.breakpoints.up('sm'));
@@ -143,22 +144,12 @@ export default function ServerInfo({ details }) {
                     </Card>
                 </Grid>
                 <Grid item xs={12} lg={6}>
-                    {/* Update for responsive design */}
                     <Card variant='outlined' sx={{ p: 2 }}>
                         <Typography fontSize={28} fontWeight='bold' margin={0} textAlign={isSm ? 'left' : 'center'}>
                             Indexes
                         </Typography>
                         <IndexTable />
-                        <TextField
-                            sx={{ mt: 3 }}
-                            label='CID (Content Identifier)'
-                            value={cidInput}
-                            onChange={(event) => setCidInput(event.target.value)}
-                            fullWidth
-                            InputProps={{
-                                endAdornment: <LoadingButton color='inherit'>Import</LoadingButton>
-                            }}
-                        />
+                        <CidInput onImport={(cid) => console.log('Import CID:', cid)} />
                     </Card>
                 </Grid>
             </Grid>
