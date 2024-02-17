@@ -125,7 +125,7 @@ const IndexTable = () => {
                             event.stopPropagation();
                             togglePin(params.row.id, !params.value);
                         }}>
-                        {params.value ? 'Pinned' : 'Pin'}
+                        {params.value ? 'Pinned' : 'Unpinned'}
                     </PinningButton>
                 );
             },
