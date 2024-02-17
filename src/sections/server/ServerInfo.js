@@ -2,11 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { Alert, Card, Container, Divider, Grid, Stack, TextField, Typography, useMediaQuery } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
 import PropTypes from 'prop-types';
-import NetworkGraph from './NetworkGraph'; // Make sure this import is correct based on your file structure
+import NetworkGraph from './NetworkGraph';
 import IndexTable from './IndexTable';
 
 export default function ServerInfo({ details }) {
     const isSm = useMediaQuery(theme => theme.breakpoints.up('sm'));
+    const isLg = useMediaQuery(theme => theme.breakpoints.up('lg')); // New breakpoint check for larger displays
     const [connected, setConnected] = useState(false);
     const [handlingConnection, setHandlingConnection] = useState(false);
     const [lastStatus, setLastStatus] = useState(false);
@@ -61,7 +62,8 @@ export default function ServerInfo({ details }) {
     }, []);
 
     return (
-        <Container maxWidth='lg'>
+        // Change maxWidth to 'xl' for even wider screens or false to remove max width entirely
+        <Container maxWidth={isLg ? false : 'lg'}>
             <Typography variant='h2'>
                 memeSRC Server Settings
             </Typography>
@@ -70,7 +72,8 @@ export default function ServerInfo({ details }) {
             </Typography>
             <Divider sx={{ mt: 3, mb: 7 }} />
             <Grid container spacing={3}>
-                <Grid item xs={12} md={6}>
+                <Grid item xs={12} lg={6}>
+                    {/* Update for responsive design */}
                     <Card variant='outlined' sx={{ p: 2 }}>
                         <Stack spacing={2}>
                             <Typography fontSize={28} fontWeight='bold' textAlign={isSm ? 'left' : 'center'}>
@@ -113,7 +116,8 @@ export default function ServerInfo({ details }) {
                         </Stack>
                     </Card>
                 </Grid>
-                <Grid item xs={12} md={6}>
+                <Grid item xs={12} lg={6}>
+                    {/* Update for responsive design */}
                     <Card variant='outlined' sx={{ p: 2 }}>
                         <Typography fontSize={28} fontWeight='bold' margin={0} textAlign={isSm ? 'left' : 'center'}>
                             Indexes
