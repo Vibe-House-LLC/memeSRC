@@ -2,11 +2,10 @@ import React, { useEffect, useState } from 'react';
 import Box from '@mui/material/Box';
 import { DataGrid } from '@mui/x-data-grid';
 import Button from '@mui/material/Button';
+import CircularProgress from '@mui/material/CircularProgress';
 import { styled } from '@mui/material/styles';
 
-const LOADING_STATE_KEY_PREFIX = 'pin_button_loading_state_';
-
-// Function to fetch the title for a given item
+// Function to fetch the title for a given item (remains unchanged)
 const fetchTitle = async (item) => {
     const url = `https://ipfs.memesrc.com/ipfs/${item.cid}/00_metadata.json`;
     try {
@@ -19,7 +18,7 @@ const fetchTitle = async (item) => {
     }
 };
 
-// Function to check the pin status of an item
+// Function to check the pin status of an item (remains unchanged)
 const checkPinStatus = async (cid) => {
     const electron = window.require('electron');
     try {
@@ -31,6 +30,7 @@ const checkPinStatus = async (cid) => {
     }
 };
 
+// Styled button for pinning actions with dynamic styling based on pin status
 const PinningButton = styled(Button, {
     shouldForwardProp: (prop) => prop !== 'pinned',
 })(({ theme, pinned }) => ({
@@ -48,20 +48,16 @@ const PinningButton = styled(Button, {
 
 const IndexTable = () => {
     const [rows, setRows] = useState([]);
-    const [loadingStates, setLoadingStates] = useState({});
+    const [loadingCIDs, setLoadingCIDs] = useState(() => {
+        const savedLoading = localStorage.getItem('loadingCIDs');
+        return savedLoading ? JSON.parse(savedLoading) : {};
+    });
 
     useEffect(() => {
-        // Load loading states from sessionStorage
-        const storedLoadingStates = {};
-        for (let i = 0; i < sessionStorage.length; i+=1) {
-            const key = sessionStorage.key(i);
-            if (key.startsWith(LOADING_STATE_KEY_PREFIX)) {
-                storedLoadingStates[key.substring(LOADING_STATE_KEY_PREFIX.length)] = true;
-            }
-        }
-        setLoadingStates(storedLoadingStates);
+        localStorage.setItem('loadingCIDs', JSON.stringify(loadingCIDs));
+    }, [loadingCIDs]);
 
-        // Fetch items and update rows
+    useEffect(() => {
         const directory = '/memesrc/index';
         const electron = window.require('electron');
         electron.ipcRenderer.invoke('list-directory-contents', directory)
@@ -91,16 +87,17 @@ const IndexTable = () => {
         const row = rows.find(row => row.id === rowId);
         if (!row) return;
 
-        // Set loading state
-        setLoadingStates(prevLoadingStates => ({
-            ...prevLoadingStates,
-            [rowId]: true,
-        }));
-        sessionStorage.setItem(LOADING_STATE_KEY_PREFIX + rowId, true);
+        setLoadingCIDs(prev => ({ ...prev, [row.cid]: true }));
 
         const electron = window.require('electron');
         const action = shouldPin ? 'pin-item' : 'unpin-item';
         const result = await electron.ipcRenderer.invoke(action, row.cid);
+
+        setLoadingCIDs(prev => {
+            const updated = { ...prev };
+            delete updated[row.cid];
+            return updated;
+        });
 
         if (result.success) {
             const updatedRows = rows.map(r => r.id === rowId ? { ...r, isPinned: shouldPin } : r);
@@ -109,14 +106,6 @@ const IndexTable = () => {
         } else {
             console.error(`Failed to ${shouldPin ? 'pin' : 'unpin'} CID ${row.cid}:`, result.message);
         }
-
-        // Clear loading state
-        setLoadingStates(prevLoadingStates => {
-            const nextState = { ...prevLoadingStates };
-            delete nextState[rowId];
-            sessionStorage.removeItem(LOADING_STATE_KEY_PREFIX + rowId);
-            return nextState;
-        });
     };
 
     const columns = [
@@ -124,25 +113,28 @@ const IndexTable = () => {
             field: 'isPinned',
             headerName: 'Pinning',
             width: 130,
-            type: 'boolean',
-            renderCell: (params) => (
-                <PinningButton
-                    variant="contained"
-                    pinned={params.value}
-                    disabled={loadingStates[params.row.id]}
-                    onClick={(event) => {
-                        event.stopPropagation();
-                        togglePin(params.row.id, !params.value);
-                    }}>
-                    {loadingStates[params.row.id] ? 'Loading...' : params.value ? 'Pinned' : 'Pin'}
-                </PinningButton>
-            ),
+            renderCell: (params) => {
+                const isLoading = loadingCIDs[params.row.cid];
+                return isLoading ? (
+                    <CircularProgress size={24} />
+                ) : (
+                    <PinningButton
+                        variant="contained"
+                        pinned={params.value}
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            togglePin(params.row.id, !params.value);
+                        }}>
+                        {params.value ? 'Pinned' : 'Pin'}
+                    </PinningButton>
+                );
+            },
         },
         { field: 'index_name', headerName: 'Name', width: 200 },
         { field: 'cid', headerName: 'CID', width: 330 },
         { field: 'name', headerName: 'IPFS Path', width: 150 },
-        { field: 'size', headerName: 'Size', width: 130, type: 'string' },
-        { field: 'cumulative_size', headerName: 'Total Size', width: 180, type: 'string' },
+        { field: 'size', headerName: 'Size', width: 130, type: 'number' },
+        { field: 'cumulative_size', headerName: 'Total Size', width: 180, type: 'number' },
     ];
 
     return (
