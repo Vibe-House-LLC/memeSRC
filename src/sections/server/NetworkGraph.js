@@ -12,15 +12,16 @@ const initialState = {
 function reducer(state, action) {
   switch (action.type) {
     case 'updateStats': {
-      const { newRateIn, newRateOut } = action.payload;
+      const { newRateIn, newRateOut, stats } = action.payload;
+      // Use raw byte values directly, no need to parseFloat
       const updatedRateIn = addToEndAndLimit(state.rateIn, newRateIn);
       const updatedRateOut = addToEndAndLimit(state.rateOut, newRateOut);
       return {
         ...state,
         rateIn: updatedRateIn,
         rateOut: updatedRateOut,
-        totalIn: state.totalIn + newRateIn,
-        totalOut: state.totalOut + newRateOut,
+        totalIn: stats.TotalIn, // Use raw byte values directly
+        totalOut: stats.TotalOut, // Use raw byte values directly
       };
     }
     default:
@@ -42,12 +43,9 @@ function useBandwidthStats() {
       try {
         const electron = window.require('electron');
         const { stats } = await electron.ipcRenderer.invoke('fetch-bandwidth-stats');
-        const newRateIn = parseFloat(stats.RateIn) || 0;
-        const newRateOut = parseFloat(stats.RateOut) || 0;
-
         dispatch({
           type: 'updateStats',
-          payload: { newRateIn, newRateOut },
+          payload: { newRateIn: stats.RateIn, newRateOut: stats.RateOut, stats },
         });
       } catch (error) {
         console.error('Failed to fetch bandwidth stats:', error);
@@ -62,36 +60,37 @@ function useBandwidthStats() {
 }
 
 const StatCard = ({ title, value, total, color }) => (
-    <Box
-      sx={{
-        background: '#121212',
-        borderRadius: '8px',
-        p: '12px',
-        flexGrow: 1, // Add flexGrow to make the components fill the space
-        flexBasis: 0, // Set flexBasis to 0 to allow components to expand
-        minWidth: 0, // Ensure minWidth is 0 to allow flexBasis to take effect
-        '&:not(:last-child)': {
-          marginRight: '8px', // Add margin between cards
-        },
-      }}
-    >
-      <Typography fontSize={14} fontWeight={800} color={color}>
-        {title}
-      </Typography>
-      <Typography fontSize={18} fontWeight={500} color={color}>
-        {value}/s
-      </Typography>
-      <Typography fontSize={12} color={color} sx={{ opacity: 0.7 }}>
-        Total: {total}
-      </Typography>
-    </Box>
-  );
+  <Box
+    sx={{
+      background: '#121212',
+      borderRadius: '8px',
+      p: '12px',
+      flexGrow: 1,
+      flexBasis: 0,
+      minWidth: 0,
+      '&:not(:last-child)': {
+        marginRight: '8px',
+      },
+    }}
+  >
+    <Typography fontSize={14} fontWeight={800} color={color}>
+      {title}
+    </Typography>
+    <Typography fontSize={18} fontWeight={500} color={color}>
+      {formatBytes(value)} /s
+    </Typography>
+    <Typography fontSize={12} color={color} sx={{ opacity: 0.7 }}>
+      Total: {formatBytes(total)}
+    </Typography>
+  </Box>
+);
 
 const formatBytes = (bytes) => {
   if (bytes === 0) return '0 Bytes';
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
   const i = Math.floor(Math.log2(bytes) / Math.log2(k));
+  // Replace Math.pow with the ** operator
   return `${parseFloat((bytes / (k ** i)).toFixed(2))} ${sizes[i]}`;
 };
 
@@ -103,14 +102,14 @@ const NetworkGraph = () => {
       <Stack direction="row" justifyContent="space-around" px={4.5} mt={2} spacing={4}>
         <StatCard
           title="Incoming"
-          value={formatBytes(rateIn.at(-1) * 1024)}
-          total={formatBytes(totalIn * 1024)}
+          value={rateIn[rateIn.length - 1]} // Use the most recent rate for display
+          total={totalIn}
           color="#0080f0"
         />
         <StatCard
           title="Outgoing"
-          value={formatBytes(rateOut.at(-1) * 1024)}
-          total={formatBytes(totalOut * 1024)}
+          value={rateOut[rateOut.length - 1]} // Use the most recent rate for display
+          total={totalOut}
           color="#18f000"
         />
       </Stack>

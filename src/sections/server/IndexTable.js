@@ -30,7 +30,9 @@ const checkPinStatus = async (cid) => {
 };
 
 // Styled button for pinning actions with dynamic styling based on pin status
-const PinningButton = styled(Button)(({ theme, pinned }) => ({
+const PinningButton = styled(Button, {
+    shouldForwardProp: (prop) => prop !== 'pinned', // Prevent 'pinned' prop from being forwarded to the DOM element
+})(({ theme, pinned }) => ({
     width: '100px', // Ensure consistent width
     height: '32px',
     fontSize: '0.75rem',
@@ -112,8 +114,8 @@ const IndexTable = () => {
         { field: 'index_name', headerName: 'Name', width: 200 },
         { field: 'cid', headerName: 'CID', width: 330 },
         { field: 'name', headerName: 'IPFS Path', width: 150 },
-        { field: 'size', headerName: 'Size', width: 130, type: 'number' },
-        { field: 'cumulative_size', headerName: 'Total Size', width: 180, type: 'number' },
+        { field: 'size', headerName: 'Size', width: 130, type: 'string' }, // Note the type change to string
+        { field: 'cumulative_size', headerName: 'Total Size', width: 180, type: 'string' }, // Note the type change to string
     ];
 
     return (
