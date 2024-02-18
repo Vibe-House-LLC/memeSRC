@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Button, Card, Container, Divider, Grid, Stack, TextField, Typography, useMediaQuery } from '@mui/material';
+import { Alert, Button, Card, Container, Dialog, DialogActions, DialogContent, DialogTitle, Divider, Grid, Stack, Typography, useMediaQuery } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
 import PropTypes from 'prop-types';
+import AddIcon from '@mui/icons-material/Add'; // Import the Add icon
 import NetworkGraph from './NetworkGraph';
 import IndexTable from './IndexTable';
 import CidInput from './CidInput';
@@ -12,22 +13,19 @@ export default function ServerInfo({ details }) {
     const isLg = useMediaQuery(theme => theme.breakpoints.up('lg'));
     const [connected, setConnected] = useState(false);
     const [handlingConnection, setHandlingConnection] = useState(false);
-    const [lastStatus, setLastStatus] = useState(false);
-    const [cidInput, setCidInput] = useState('');
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
 
     const handleToggleServer = async () => {
         setHandlingConnection(true);
-        // Trigger IPC to toggle without waiting for the result here.
         if (window && window.process && window.process.type) {
             const electron = window.require('electron');
             electron.ipcRenderer.invoke('toggle-ipfs-daemon').catch(console.error);
         } else {
             console.log('Not running in Electron.');
-            setHandlingConnection(false); // Reset if not in Electron
+            setHandlingConnection(false);
         }
-        // Timeout to stop waiting after 15 seconds, assuming failure if status hasn't changed
         const timeout = setTimeout(() => {
-            if (connected === lastStatus) { // Status didn't change
+            if (connected === !handlingConnection) {
                 setHandlingConnection(false);
                 console.log('Timeout: Status change assumed failed.');
             }
@@ -41,8 +39,7 @@ export default function ServerInfo({ details }) {
             const electron = window.require('electron');
             try {
                 const status = await electron.ipcRenderer.invoke('check-daemon-status');
-                if (status !== connected) { // Status has changed
-                    setLastStatus(connected);
+                if (status !== connected) {
                     setConnected(status);
                     setHandlingConnection(false);
                 }
@@ -62,8 +59,10 @@ export default function ServerInfo({ details }) {
         return () => clearInterval(statusInterval);
     }, []);
 
+    const handleDialogOpen = () => setIsDialogOpen(true);
+    const handleDialogClose = () => setIsDialogOpen(false);
+
     if (!connected) {
-        // Render only the disconnected message and button if not connected
         return (
             <Container
                 maxWidth="sm"
@@ -80,7 +79,7 @@ export default function ServerInfo({ details }) {
                 </Typography>
                 <LoadingButton
                     loading={handlingConnection}
-                    onClick={() => handleToggleServer(true)}
+                    onClick={handleToggleServer}
                     variant="contained"
                 >
                     Start Server
@@ -89,7 +88,6 @@ export default function ServerInfo({ details }) {
         );
     }
 
-    // Original component rendering when connected
     return (
         <Container maxWidth={isLg ? false : 'lg'}>
             <Typography variant='h2'>
@@ -101,45 +99,26 @@ export default function ServerInfo({ details }) {
             <Divider sx={{ mt: 3, mb: 7 }} />
             <Grid container spacing={3}>
                 <Grid item xs={12} lg={6}>
-                    {/* Update for responsive design */}
                     <Card variant='outlined' sx={{ p: 2 }}>
                         <Stack spacing={2}>
                             <Typography fontSize={28} fontWeight='bold' textAlign={isSm ? 'left' : 'center'}>
                                 Network Connection
                             </Typography>
-                            {connected ?
-                                <Alert
-                                    severity="success"
-                                    action={
-                                        <LoadingButton
-                                            loading={handlingConnection}
-                                            onClick={() => handleToggleServer(false)}
-                                            color='inherit'
-                                            size='small'
-                                        >
-                                            Disconnect
-                                        </LoadingButton>
-                                    }
-                                >
-                                    Server is connected!
-                                </Alert>
-                                :
-                                <Alert
-                                    severity="error"
-                                    action={
-                                        <LoadingButton
-                                            loading={handlingConnection}
-                                            onClick={() => handleToggleServer(true)}
-                                            color='inherit'
-                                            size='small'
-                                        >
-                                            Connect
-                                        </LoadingButton>
-                                    }
-                                >
-                                    Server is disconnected
-                                </Alert>
-                            }
+                            <Alert
+                                severity="success"
+                                action={
+                                    <LoadingButton
+                                        loading={handlingConnection}
+                                        onClick={handleToggleServer}
+                                        color='inherit'
+                                        size='small'
+                                    >
+                                        Disconnect
+                                    </LoadingButton>
+                                }
+                            >
+                                Server is connected!
+                            </Alert>
                             <NetworkGraph />
                         </Stack>
                     </Card>
@@ -150,11 +129,30 @@ export default function ServerInfo({ details }) {
                             Indexes
                         </Typography>
                         <IndexTable />
-                        <CidInput onImport={(cid) => console.log('Import CID:', cid)} />
-                        <CreateIndex />
+                        <Button
+                            variant="contained"
+                            onClick={handleDialogOpen}
+                            startIcon={<AddIcon />}
+                            sx={{ mt: 2, width: '100%' }} // Make button full width and add icon
+                        >
+                            Add Index
+                        </Button>
                     </Card>
                 </Grid>
             </Grid>
+            <Dialog open={isDialogOpen} onClose={handleDialogClose} aria-labelledby="form-dialog-title">
+                <DialogTitle id="form-dialog-title">Add Index</DialogTitle>
+                <DialogContent>
+                    <CidInput onImport={(cid) => console.log('Import CID:', cid)} />
+                    <Divider textAlign="center" sx={{ my: 2 }}>Or</Divider>
+                    <CreateIndex />
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleDialogClose} color="primary">
+                        Cancel
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Container>
     );
 }
