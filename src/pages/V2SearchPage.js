@@ -180,7 +180,10 @@ try {
       
       if (!videoFile) throw new Error(`File not found in ZIP: ${videoPath}`);
       
-      const videoUrl = URL.createObjectURL(videoFile);
+      // Create a new Blob with the correct MIME type
+      const videoBlob = new Blob([videoFile], { type: 'video/mp4' });
+      const videoUrl = URL.createObjectURL(videoBlob);
+
       console.log(`videoUrl for result ${index}:`, videoUrl); // Direct logging
       return { ...result, videoUrl };
     } catch (error) {
