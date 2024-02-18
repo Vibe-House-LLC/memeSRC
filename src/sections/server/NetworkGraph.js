@@ -114,43 +114,42 @@ const NetworkGraph = () => {
         />
       </Stack>
       <LineChart
-  xAxis={[
-    {
-      data: Array.from({ length: 30 }, (_, i) => i),
-      scaleType: 'linear',
-      valueFormatter: (seconds) => `${seconds}s`,
-    },
-  ]}
-  series={[
-    {
-      data: rateIn,
-      label: 'Incoming',
-      color: '#0080f0',
-      curve: 'catmullRom',
-      area: true, // Enable area fill
-    },
-    {
-      data: rateOut,
-      label: 'Outgoing',
-      color: '#18f000',
-      curve: 'catmullRom',
-      area: true, // Enable area fill
-    },
-  ]}
-  height={200}
-  sx={{
-    width: '100%',
-    '.MuiMarkElement-root': { display: 'none' },
-  }}
-  slotProps={{
-    legend: {
-      direction: 'row',
-      position: { vertical: 'bottom', horizontal: 'middle' },
-      padding: 0,
-    },
-  }}
-/>
-
+        xAxis={[
+          {
+            data: Array.from({ length: 30 }, (_, i) => i),
+            scaleType: 'linear',
+            valueFormatter: (seconds) => `${seconds}s`,
+          },
+        ]}
+        series={[
+          {
+            data: rateIn,
+            label: 'Incoming',
+            color: '#0080f0',
+            curve: 'catmullRom',
+            area: true, // Enable area fill
+          },
+          {
+            data: rateOut,
+            label: 'Outgoing',
+            color: '#18f000',
+            curve: 'catmullRom',
+            area: true, // Enable area fill
+          },
+        ]}
+        height={300} 
+        sx={{
+          width: '100%',
+          '.MuiMarkElement-root': { display: 'none' },
+        }}
+        slotProps={{
+          legend: {
+            direction: 'row',
+            position: { vertical: 'bottom', horizontal: 'middle' },
+            padding: 0,
+          },
+        }}
+      />
     </>
   );
 };
