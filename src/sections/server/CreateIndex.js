@@ -23,7 +23,7 @@ function CreateIndex({ onProcessComplete }) {
             console.error('Failed in starting processing steps:', error);
             setIsProcessing(false);
         }
-    }, [folderPath, ffmpegPath, id]);
+    }, [folderPath, id]);
 
     useEffect(() => {
         const electron = window.require('electron');
