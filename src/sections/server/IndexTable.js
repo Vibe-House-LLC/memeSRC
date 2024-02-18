@@ -131,7 +131,7 @@ const IndexTable = () => {
             },
         },
         { field: 'index_name', headerName: 'Name', width: 200 },
-        { field: 'cid', headerName: 'CID', width: 330 },
+        { field: 'cid', headerName: 'CID', width: 500 },
         { field: 'name', headerName: 'IPFS Path', width: 150 },
         { field: 'size', headerName: 'Size', width: 130, type: 'number' },
         { field: 'cumulative_size', headerName: 'Total Size', width: 180, type: 'number' },
