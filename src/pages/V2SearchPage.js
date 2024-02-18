@@ -166,7 +166,7 @@ export default function SearchPage() {
 // Load the ZIP file and extract the relevant video file
 try {
   const videoResultsPromises = results.map(async (result, index) => {
-    const groupIndex = Math.floor((parseInt(result.subtitle_index, 10) + 1) / 25);
+    const groupIndex = Math.floor((parseInt(result.subtitle_index, 10) + 1) / 15);
     const zipUrl = `https://ipfs.memesrc.com/ipfs/${params.cid}/${result.season}/${result.episode}/s${groupIndex}.zip`;
 
     try {
