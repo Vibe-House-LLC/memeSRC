@@ -5,6 +5,7 @@ import PropTypes from 'prop-types';
 import NetworkGraph from './NetworkGraph';
 import IndexTable from './IndexTable';
 import CidInput from './CidInput';
+import CreateIndex from './CreateIndex';
 
 export default function ServerInfo({ details }) {
     const isSm = useMediaQuery(theme => theme.breakpoints.up('sm'));
@@ -150,6 +151,7 @@ export default function ServerInfo({ details }) {
                         </Typography>
                         <IndexTable />
                         <CidInput onImport={(cid) => console.log('Import CID:', cid)} />
+                        <CreateIndex />
                     </Card>
                 </Grid>
             </Grid>
