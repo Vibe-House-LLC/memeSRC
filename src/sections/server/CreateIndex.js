@@ -3,7 +3,6 @@ import { Box, Button, TextField } from '@mui/material';
 
 function CreateIndex({ onProcessComplete }) {
     const [folderPath, setFolderPath] = useState('');
-    const [ffmpegPath, setFfmpegPath] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
     const [id, setId] = useState('');
 
@@ -14,7 +13,6 @@ function CreateIndex({ onProcessComplete }) {
             const electron = window.require('electron');
             const ipcArguments = {
                 inputPath: folderPath,
-                ffmpegPath,
                 id
             };
 
