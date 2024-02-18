@@ -5,7 +5,7 @@ import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import { styled } from '@mui/material/styles';
 
-// Function to fetch the title for a given item (remains unchanged)
+// Function to fetch the title for a given item
 const fetchTitle = async (item) => {
     const url = `https://ipfs.memesrc.com/ipfs/${item.cid}/00_metadata.json`;
     try {
@@ -18,7 +18,7 @@ const fetchTitle = async (item) => {
     }
 };
 
-// Function to check the pin status of an item (remains unchanged)
+// Function to check the pin status of an item
 const checkPinStatus = async (cid) => {
     const electron = window.require('electron');
     try {
@@ -57,14 +57,19 @@ const IndexTable = () => {
         sessionStorage.setItem('loadingCIDs', JSON.stringify(loadingCIDs));
     }, [loadingCIDs]);
 
-    useEffect(() => {
+    const fetchAndUpdateRows = () => {
         const directory = '/memesrc/index';
         const electron = window.require('electron');
         electron.ipcRenderer.invoke('list-directory-contents', directory)
             .then(async items => {
-                const formattedRows = await Promise.all(items.map(async (item, index) => {
+                const newLoadingCIDs = { ...loadingCIDs };
+                const promises = items.map(async (item, index) => {
                     const title = await fetchTitle(item);
                     const isPinned = await checkPinStatus(item.cid);
+                    // Use the safer approach for checking property existence
+                    if (isPinned && Object.prototype.hasOwnProperty.call(newLoadingCIDs, item.cid)) {
+                        delete newLoadingCIDs[item.cid];
+                    }
                     return {
                         id: index,
                         index_name: title,
@@ -74,14 +79,26 @@ const IndexTable = () => {
                         cumulative_size: parseInt(item.cumulative_size, 10),
                         isPinned,
                     };
-                }));
-
-                setRows(formattedRows);
+                });
+                return Promise.all(promises).then((formattedRows) => {
+                    setRows(formattedRows);
+                    // Update only if there are changes
+                    if (Object.keys(loadingCIDs).length !== Object.keys(newLoadingCIDs).length) {
+                        setLoadingCIDs(newLoadingCIDs);
+                        sessionStorage.setItem('loadingCIDs', JSON.stringify(newLoadingCIDs));
+                    }
+                });
             })
             .catch(error => {
                 console.error('Failed to list directory contents:', error);
             });
-    }, []);
+    };    
+
+    useEffect(() => {
+        fetchAndUpdateRows(); // Initial fetch
+        const interval = setInterval(fetchAndUpdateRows, 5000); // Set interval for periodic update
+        return () => clearInterval(interval); // Cleanup on unmount
+    }, []); // Dependencies are intentionally left blank to avoid re-triggering
 
     const togglePin = async (rowId, shouldPin) => {
         const row = rows.find(row => row.id === rowId);
