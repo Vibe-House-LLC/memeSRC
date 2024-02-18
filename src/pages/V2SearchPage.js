@@ -3,6 +3,7 @@ import { Grid, CircularProgress, Card, Chip } from '@mui/material';
 import styled from '@emotion/styled';
 import { Link, useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import JSZip from 'jszip';
 import useSearchDetails from '../hooks/useSearchDetails';
 import IpfsSearchBar from '../sections/search/ipfs-search-bar';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
@@ -71,8 +72,6 @@ const BottomCardLabel = styled.div`
 
 export default function SearchPage() {
   const params = useParams();
-  const [results, setResults] = useState(null);
-  const [aspectRatio, setAspectRatio] = useState('56.25%'); // Default to 16:9 aspect ratio
 
   /* -------------------------------- New Stuff ------------------------------- */
 
@@ -161,23 +160,50 @@ export default function SearchPage() {
         }
       });
 
-      // Sort results by score and limit to top 5
       results.sort((a, b) => b.score - a.score);
       results = results.slice(0, 5);
 
-      // Directly use the video URL for autoplay videos
-      const videoResults = results.map(result => ({
-        ...result,
-        videoUrl: `https://ipfs.memesrc.com/ipfs/${params.cid}/${result.season}/${result.episode}/s${parseInt(result.subtitle_index, 10)+1}.mp4` // Adjust the URL pattern as needed
-      }));
+// Load the ZIP file and extract the relevant video file
+try {
+  const videoResultsPromises = results.map(async (result, index) => {
+    const groupIndex = Math.floor((parseInt(result.subtitle_index, 10) + 1) / 25);
+    const zipUrl = `https://ipfs.memesrc.com/ipfs/${params.cid}/${result.season}/${result.episode}/s${groupIndex}.zip`;
 
-      setNewResults(videoResults); // Update state with the video URLs
+    try {
+      const zipResponse = await fetch(zipUrl);
+      if (!zipResponse.ok) throw new Error(`Failed to fetch ZIP: ${zipResponse.statusText}`);
+      const zipBlob = await zipResponse.blob();
+      const zip = await JSZip.loadAsync(zipBlob);
+      
+      const videoPath = `s${parseInt(result.subtitle_index, 10) + 1}.mp4`;
+      const videoFile = zip.file(videoPath) ? await zip.file(videoPath).async("blob") : null;
+      
+      if (!videoFile) throw new Error(`File not found in ZIP: ${videoPath}`);
+      
+      const videoUrl = URL.createObjectURL(videoFile);
+      console.log(`videoUrl for result ${index}:`, videoUrl); // Direct logging
+      return { ...result, videoUrl };
+    } catch (error) {
+      console.error("Error loading or processing ZIP file for result:", JSON.stringify(result), error);
+      return { ...result, videoUrl: "", error: error.toString() };
+    }
+  });
+
+  const videoResults = await Promise.all(videoResultsPromises);
+  console.log("videoResults with videoUrls:", videoResults); // Ensure logging here
+  setNewResults(videoResults); // Update state with the video URLs
+} catch (error) {
+  console.error("Error preparing video results:", error);
+}
+
+
     }
 
     if (!loadingCsv && showObj) {
       searchText();
     }
   }, [loadingCsv, showObj, params?.searchTerms]);
+
 
   useEffect(() => {
     console.log(newResults)
@@ -205,7 +231,7 @@ export default function SearchPage() {
                   muted
                   playsInline
                   preload="auto"
-                  onError={(e) => console.error("Error loading thumbnail:", e)}
+                  onError={(e) => console.error("Error loading thumbnail:", JSON.stringify(result))}
                   crossorigin="anonymous"
                 />
                 </StyledCardMediaContainer>
