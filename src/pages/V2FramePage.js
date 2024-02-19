@@ -651,10 +651,10 @@ export default function FramePage({ shows = [] }) {
       const endFrame = 847
 
       const fps = 10
-      const videoLength = 10
+      const videoLength = 25
       const framesPerContainer = (videoLength * fps)
 
-      // Video files are 10 seconds long, and 10 frames per second
+      // Video files are 25 seconds long, and 10 frames per second
 
       // eslint-disable-next-line camelcase
       const startFile = Math.floor(start_frame / framesPerContainer)
@@ -684,8 +684,8 @@ export default function FramePage({ shows = [] }) {
       
       // eslint-disable-next-line camelcase
       for (let frameId = parseInt(start_frame, 10); frameId <= parseInt(end_frame, 10); frameId += 1) {
-        const fileNumber = Math.floor(frameId / 100) + 1;
-        const frameNumber = frameId % 100;
+        const fileNumber = Math.floor(frameId / framesPerContainer) + 1;
+        const frameNumber = frameId % framesPerContainer;
         const fileName = `${fileNumber}.mp4`;
         fileFrameGroups[fileName] = fileFrameGroups[fileName] || [];
         fileFrameGroups[fileName].push(frameNumber);
