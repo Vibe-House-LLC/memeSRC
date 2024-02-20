@@ -618,7 +618,7 @@ export default function FramePage({ shows = [] }) {
 
       // eslint-disable-next-line camelcase
       for (let frameId = parseInt(start_frame, 10); frameId <= parseInt(end_frame, 10); frameId += 1) {
-        const fileNumber = Math.floor(frameId / framesPerContainer) + 1;
+        const fileNumber = Math.floor(frameId / framesPerContainer);
         const frameNumber = frameId % framesPerContainer;
         const fileName = `${fileNumber}.mp4`;
         fileFrameGroups[fileName] = fileFrameGroups[fileName] || [];
@@ -673,7 +673,7 @@ export default function FramePage({ shows = [] }) {
               margin: '-10px'
             }}
             onClick={() => {
-              navigate(`/v2/frame/${params?.cid}/${Number(params?.subtitleIndex) + 1}`)
+              navigate(`/v2/frame/${params?.cid}/${Number(params?.subtitleIndex) - 1}`)
             }}
           >
             <ArrowBackIos style={{ fontSize: '2rem' }} />
@@ -691,7 +691,7 @@ export default function FramePage({ shows = [] }) {
               margin: '-10px'
             }}
             onClick={() => {
-              navigate(`/v2/frame/${params?.cid}/${Number(params?.subtitleIndex) - 1}`)
+              navigate(`/v2/frame/${params?.cid}/${Number(params?.subtitleIndex) + 1}`)
             }}
           >
             <ArrowForwardIos style={{ fontSize: '2rem' }} />
