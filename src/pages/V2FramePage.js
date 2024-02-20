@@ -643,8 +643,6 @@ export default function FramePage({ shows = [] }) {
       console.log(Math.floor(frames.length / 2))
       setSelectedFrameIndex(selectedFrameIndex || Math.floor(frames.length / 2))
       setDisplayImage(selectedFrameIndex ? frames[selectedFrameIndex] : frames[Math.floor(frames.length / 2)])
-    } else {
-      setSelectedFrameIndex()
     }
   }, [frames]);
 
@@ -711,7 +709,7 @@ export default function FramePage({ shows = [] }) {
               size="small"
               defaultValue={selectedFrameIndex || Math.floor(frames.length / 2)}
               min={0}
-              max={frames.length}
+              max={frames.length - 1}
               value={selectedFrameIndex}
               step={1}
               onChange={(e, newValue) => handleSliderChange(newValue)}
@@ -999,7 +997,7 @@ export default function FramePage({ shows = [] }) {
               size="medium"
               fullWidth
               variant="contained"
-              // to={`/editor/${fid}${getCurrentQueryString()}`}
+              to={`/v2/editor/${params?.cid}/${params?.subtitleIndex}`}
               component={RouterLink}
               sx={{ my: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
               startIcon={<Edit />}
