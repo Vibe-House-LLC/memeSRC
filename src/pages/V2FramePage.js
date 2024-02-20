@@ -618,7 +618,7 @@ export default function FramePage({ shows = [] }) {
 
       // eslint-disable-next-line camelcase
       for (let frameId = parseInt(start_frame, 10); frameId <= parseInt(end_frame, 10); frameId += 1) {
-        const fileNumber = Math.floor(frameId / framesPerContainer) + 1;
+        const fileNumber = Math.floor(frameId / framesPerContainer);
         const frameNumber = frameId % framesPerContainer;
         const fileName = `${fileNumber}.mp4`;
         fileFrameGroups[fileName] = fileFrameGroups[fileName] || [];
