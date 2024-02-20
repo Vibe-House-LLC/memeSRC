@@ -95,7 +95,7 @@ IpfsSearchBar.propTypes = searchPropTypes;
 
 
 export default function IpfsSearchBar(props) {
-  const { show, setShow, searchQuery, setSearchQuery, cid = '', setCid, localCids, setLocalCids, showObj, setShowObj } = useSearchDetailsV2();
+  const { show, setShow, searchQuery, setSearchQuery, cid = '', setCid, localCids, setLocalCids, showObj, setShowObj, selectedFrameIndex, setSelectedFrameIndex } = useSearchDetailsV2();
   const params = useParams();
   const [shows, setShows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -168,6 +168,10 @@ export default function IpfsSearchBar(props) {
       }
     }
   }
+
+  useEffect(() => {
+    setSelectedFrameIndex()
+  }, [params?.subtitleIndex]);
 
 
   /* -------------------------------------------------------------------------- */

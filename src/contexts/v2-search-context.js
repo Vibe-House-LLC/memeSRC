@@ -14,6 +14,8 @@ export const V2SearchContext = createContext({
     localCids: null,
     setLocalCids: () => { console.log('setLocalCids was called with no provider available'); },
     showObj: null,
-    setShowObj: () => { console.log('setShowObj was called with no provider available'); }
+    setShowObj: () => { console.log('setShowObj was called with no provider available'); },
+    selectedFrameIndex: null,
+    setSelectedFrameIndex: () => { console.log('setSelectedFrameIndex was called with no provider available'); }
 });
 

@@ -20,6 +20,7 @@ import LoadingBackdrop from '../components/LoadingBackdrop';
 import { createEditorProject, updateEditorProject } from '../graphql/mutations';
 import { getEditorProject } from '../graphql/queries';
 import ImageEditorControls from '../components/ImageEditorControls';
+import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
 
 const Alert = forwardRef((props, ref) => <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />);
 
@@ -1335,6 +1336,261 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
   // ------------------------------------------------------------------------
 
+  /* -------------------------------- New Stuff ------------------------------- */
+
+
+
+
+  const { showObj, setShowObj, cid, selectedFrameIndex, setSelectedFrameIndex } = useSearchDetailsV2();
+  const [loadingCsv, setLoadingCsv] = useState();
+  const [frames, setFrames] = useState();
+  const params = useParams();
+  const [loadedSubtitle, setLoadedSubtitle] = useState('');
+  const [loadedSeason, setLoadedSeason] = useState('');
+  const [loadedEpisode, setLoadedEpisode] = useState('');
+
+  /* -------------------------------- Functions ------------------------------- */
+
+  async function loopThroughKeys(obj, fps, subtitleObj) {
+    const files = []
+    // Loop through each key in the object
+    const fileList = Object.keys(obj).map(async (key) => {
+      const videoUrl = `https://ipfs.memesrc.com/ipfs/${params.cid}/${subtitleObj.season}/${subtitleObj.episode}/${key}`
+
+      const frameBlobs = await extractFramesFromVideo(videoUrl, obj[key], fps)
+
+      // console.log(frameBlobs)
+
+
+      return [
+        ...frameBlobs
+      ]
+    })
+
+    const images = await Promise.all(fileList)
+
+    console.log(images.flat())
+
+    setFrames(images.flat())
+  }
+
+  async function extractFramesFromVideo(videoUrl, frameNumbers, assumedFps = 30) {
+    return new Promise((resolve, reject) => {
+      // Create a video element
+      const video = document.createElement('video');
+      video.src = videoUrl;
+      video.muted = true;
+      video.crossOrigin = "anonymous"; // Handle CORS policy
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      const blobs = [];
+      let currentFrameIndex = 0;
+
+      video.addEventListener('loadedmetadata', () => {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+
+        // Function to capture a frame at a specific index
+        const captureFrame = (frameIndex) => {
+          const frameTime = frameIndex / assumedFps;
+          video.currentTime = frameTime;
+        };
+
+        video.addEventListener('seeked', async () => {
+          if (currentFrameIndex < frameNumbers.length) {
+            // Draw the video frame to the canvas
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            // Convert the canvas to a blob
+            canvas.toBlob((blob) => {
+              const objUrl = URL.createObjectURL(blob)
+              blobs.push(objUrl);
+              currentFrameIndex += 1;
+              if (currentFrameIndex < frameNumbers.length) {
+                // Capture the next frame
+                captureFrame(frameNumbers[currentFrameIndex] - 1); // Adjust for 0-based indexing
+              } else {
+                // Resolve the promise when all frames are loaded
+                resolve(blobs);
+              }
+            }, 'image/jpeg'); // Specify the format and quality if needed
+          }
+        });
+
+        // Start capturing frames
+        captureFrame(frameNumbers[currentFrameIndex] - 1); // Adjust for 0-based indexing
+      });
+
+      video.addEventListener('error', (e) => {
+        reject(new Error('Error loading video'));
+      });
+    });
+  }
+
+  /* -------------------------------------------------------------------------- */
+
+  useEffect(() => {
+    async function loadFile(cid, filename) {
+      const url = `https://ipfs.memesrc.com/ipfs/${cid}/_docs.csv`;
+      try {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        const text = await response.text();
+        const lines = text.split("\n");
+        const headers = lines[0].split(",").map((header) => header.trim());
+        return lines.slice(1).map((line) => {
+          const values = line.split(",").map((value) => value.trim());
+          return headers.reduce((obj, header, index) => {
+            obj[header] = values[index] ? values[index] : "";
+            if (header === "subtitle_text" && obj[header]) {
+              obj.base64_subtitle = obj[header]; // Store the base64 version
+              obj[header] = atob(obj[header]); // Decode to regular text
+            }
+            return obj;
+          }, {});
+        });
+      } catch (error) {
+        console.error("Failed to load file:", error);
+        return [];
+      }
+    }
+
+    async function initialize(cid = null) {
+      const selectedCid = cid
+      if (!selectedCid) {
+        alert("Please enter a valid CID.");
+        return;
+      }
+      const filename = "1-1.csv";
+      const lines = await loadFile(cid, filename);
+      if (lines?.length > 0) {
+        // Decode base64 subtitle and assign to a new property
+        const decodedLines = lines.map(line => ({
+          ...line,
+          subtitle: line.base64_subtitle ? atob(line.base64_subtitle) : "" // Ensure you decode the subtitle and assign it here
+        }));
+        setLoadingCsv(false);
+        setShowObj(decodedLines); // Use decodedLines with subtitle property
+      } else {
+        alert('error');
+      }
+    }
+
+    if (!showObj) {
+      initialize(params.cid);
+    }
+  }, [showObj]);
+
+
+  useEffect(() => {
+    if (showObj && params?.subtitleIndex) {
+      setFrames()
+      const subtitleObj = showObj.find(obj => obj.subtitle_index === params?.subtitleIndex)
+
+      // eslint-disable-next-line camelcase
+      const { season, episode, subtitle_index, subtitle_text, start_frame, end_frame } = subtitleObj
+
+      setLoadedSeason(season)
+      setLoadedEpisode(episode)
+      setLoadedSubtitle(subtitle_text)
+
+      const startFrame = 190
+      const endFrame = 847
+
+      const fps = 10
+      const videoLength = 25
+      const framesPerContainer = (videoLength * fps)
+
+      // Video files are 25 seconds long, and 10 frames per second
+
+      // eslint-disable-next-line camelcase
+      const startFile = Math.floor(start_frame / framesPerContainer)
+
+      // eslint-disable-next-line camelcase
+      const endFile = Math.floor(end_frame / framesPerContainer)
+      console.log('start_frame', start_frame)
+      console.log('startFile', startFile)
+      console.log('end_frame', end_frame)
+      console.log('startFile', endFile)
+      // eslint-disable-next-line camelcase
+      const startIndex = start_frame % framesPerContainer
+      console.log('startIndex', startIndex)
+      // eslint-disable-next-line camelcase
+      const endIndex = end_frame % framesPerContainer
+      console.log('endIndex', endIndex)
+
+      const listBetween = (x, y) => Array.from({ length: y - x + 1 }, (_, i) => x + i);
+
+      const fileNameArray = listBetween(startFile, endFile)
+      console.log('fileNameArray', fileNameArray)
+      // eslint-disable-next-line camelcase
+      const frameNumberArray = listBetween(start_frame, end_frame);
+      console.log('frameNumberArray', frameNumberArray)
+
+      const fileFrameGroups = {};
+
+      // eslint-disable-next-line camelcase
+      for (let frameId = parseInt(start_frame, 10); frameId <= parseInt(end_frame, 10); frameId += 1) {
+        const fileNumber = Math.floor(frameId / framesPerContainer) + 1;
+        const frameNumber = frameId % framesPerContainer;
+        const fileName = `${fileNumber}.mp4`;
+        fileFrameGroups[fileName] = fileFrameGroups[fileName] || [];
+        fileFrameGroups[fileName].push(frameNumber);
+      }
+
+
+      console.log('fileFrameGroups', fileFrameGroups)
+      loopThroughKeys(fileFrameGroups, fps, subtitleObj)
+
+
+
+
+      // https://ipfs.memesrc.com/ipfs/${params.cid}/${result.season}/${result.episode}/s${parseInt(result.subtitle_index, 10)+1}.mp4
+    }
+
+  }, [showObj, params?.subtitleIndex]);
+
+  useEffect(() => {
+    if (frames && frames.length > 0) {
+      console.log(frames.length)
+      console.log(Math.floor(frames.length / 2))
+      setSelectedFrameIndex(selectedFrameIndex || Math.floor(frames.length / 2))
+
+      // setLoadedSeriesTitle(data.series_name);
+      // setSurroundingFrames(data.frames_surrounding);
+      // const episodeDetails = selectedFid.split('-');
+      // setEpisodeDetails(episodeDetails);
+      // Pre load fine tuning frames
+      // loadImg(data.frames_fine_tuning, oImgBuild).then((images) => {
+      //   setFineTuningFrames(images);
+      // });
+      // Background image from the given URL
+      fabric.Image.fromURL(
+        selectedFrameIndex ? frames[selectedFrameIndex] : frames[Math.floor(frames.length / 2)],
+        (oImg) => {
+          setDefaultFrame(oImg);
+          setDefaultSubtitle(loadedSubtitle);
+          setLoading(false);
+        },
+        { crossOrigin: 'anonymous' }
+      );
+    }
+  }, [frames]);
+
+  const handleSliderChange = (newSliderValue) => {
+    setSelectedFrameIndex(newSliderValue);
+    fabric.Image.fromURL(
+      frames[newSliderValue],
+      (oImg) => {
+        setDefaultFrame(oImg);
+        setDefaultSubtitle(loadedSubtitle);
+        setLoading(false);
+      },
+      { crossOrigin: 'anonymous' }
+    );
+  };
+
 
   // Outputs
   return (
@@ -1422,7 +1678,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                       }
                     }}
                   >
-                    {fineTuningFrames.length > 0 &&
+                    {frames?.length > 0 &&
                       <Tab
                         style={{
                           opacity: editorTool === "fineTuning" ? 1 : 0.4,
@@ -1585,21 +1841,16 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
                   {editorTool === 'fineTuning' && (
                     <Slider
-                      size="small"
-                      defaultValue={4}
-                      min={0}
-                      max={8}
-                      value={fineTuningValue}
-                      aria-label="Small"
-                      valueLabelDisplay="auto"
-                      onChange={(event, value) => {
-                        handleFineTuning(value);
-                        setFineTuningValue(value);
-                      }}
-                      valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
-                      marks
-                      track={false}
-                    />
+                    size="small"
+                    defaultValue={selectedFrameIndex || Math.floor(frames.length / 2)}
+                    min={0}
+                    max={frames.length - 1}
+                    value={selectedFrameIndex}
+                    step={1}
+                    onChange={(e, newValue) => handleSliderChange(newValue)}
+                    valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
+                    marks
+                  />
                   )}
 
                   {editorTool === 'magicEraser' && (
