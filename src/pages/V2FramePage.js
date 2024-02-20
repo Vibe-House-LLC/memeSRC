@@ -673,7 +673,7 @@ export default function FramePage({ shows = [] }) {
               margin: '-10px'
             }}
             onClick={() => {
-              navigate(`/v2/frame/${params?.cid}/${Number(params?.subtitleIndex) + 1}`)
+              navigate(`/v2/frame/${params?.cid}/${Number(params?.subtitleIndex) - 1}`)
             }}
           >
             <ArrowBackIos style={{ fontSize: '2rem' }} />
@@ -691,7 +691,7 @@ export default function FramePage({ shows = [] }) {
               margin: '-10px'
             }}
             onClick={() => {
-              navigate(`/v2/frame/${params?.cid}/${Number(params?.subtitleIndex) - 1}`)
+              navigate(`/v2/frame/${params?.cid}/${Number(params?.subtitleIndex) + 1}`)
             }}
           >
             <ArrowForwardIos style={{ fontSize: '2rem' }} />
