@@ -235,7 +235,7 @@ export default function FramePage({ shows = [] }) {
         const lineHeight = 24; // adjust as per your requirements
         const startY = offScreenCanvas.height - (2 * lineHeight); // adjust to position the text properly
 
-        const text = frameData.subtitle;
+        const text = loadedSubtitle;
 
         // Calculate number of lines without drawing
         const numOfLines = wrapText(ctx, text, x, startY, maxWidth, scaledLineHeight, false);
@@ -301,9 +301,7 @@ export default function FramePage({ shows = [] }) {
   }
 
 
-  useEffect(() => {
-    updateCanvas();
-  }, [showText, displayImage, frameData, frameData.subtitle]);
+
 
   useEffect(() => {
     updateCanvas(true)
@@ -369,10 +367,7 @@ export default function FramePage({ shows = [] }) {
   // }, [sliderValue, fineTuningFrames, middleIndex, fineTuningFrame]);
 
   // Use a callback function to handle slider changes
-  const handleSliderChange = (newSliderValue) => {
-    setSliderValue(newSliderValue);
-    setFineTuningFrame(middleIndex + newSliderValue);
-  };
+
 
   /* ------------ This was unused so I've commented it out for now ------------ */
   // const renderSurroundingFrames = () => {
@@ -420,85 +415,25 @@ export default function FramePage({ shows = [] }) {
     return `${hoursStr}:${minutesStr}:${secondsStr}`;
   };
 
-  // const renderFineTuningFrames = () => {
-  //   return (
-  //     <>
-  //       <div style={{ position: 'relative' }}>
-  //         <CardMedia
-  //           component={loading ? () => <Skeleton variant='rectangular' sx={{ width: '100%', height: 'auto', aspectRatio }} /> : 'img'}
-  //           alt={`Fine-tuning ${sliderValue}`}
-  //           image={imgSrc}
-  //           id='frameImage'
-  //         />
-  //         <IconButton
-  //           style={{
-  //             position: 'absolute',
-  //             top: '50%',
-  //             left: '2%', // Reduced left margin
-  //             transform: 'translateY(-50%)',
-  //             backgroundColor: 'transparent',
-  //             color: 'white',
-  //             padding: '20px', // Increase padding to make the button easier to press
-  //             margin: '-10px'
-  //           }}
-  //           onClick={() => {
-  //             navigate(`/frame/${surroundingFrames[3].fid}`)
-  //           }}
-  //         >
-  //           <ArrowBackIos style={{ fontSize: '2rem' }} /> {/* Increased icon size */}
-  //         </IconButton>
-  //         <IconButton
-  //           style={{
-  //             position: 'absolute',
-  //             top: '50%',
-  //             right: '2%', // Reduced right margin
-  //             transform: 'translateY(-50%)',
-  //             backgroundColor: 'transparent',
-  //             color: 'white',
-  //             padding: '20px', // Increase padding to make the button easier to press
-  //             margin: '-10px'
-  //           }}
-  //           onClick={() => {
-  //             navigate(`/frame/${surroundingFrames[5].fid}`)
-  //           }}
-  //         >
-  //           <ArrowForwardIos style={{ fontSize: '2rem' }} /> {/* Increased icon size */}
-  //         </IconButton>
-  //       </div>
 
-  //       {fineTuningFrames && fineTuningFrames?.length > 0 ?
-  //         <Stack spacing={2} direction="row" p={0} pr={3} pl={3} alignItems={'center'}>
-  //           <Tooltip title="Fine Tuning">
-  //             <IconButton>
-  //               <HistoryToggleOffRounded alt="Fine Tuning" />
-  //             </IconButton>
-  //           </Tooltip>
-  //           <Slider
-  //             size="small"
-  //             defaultValue={4}
-  //             min={-middleIndex}
-  //             max={middleIndex}
-  //             value={sliderValue}
-  //             step={1}
-  //             onChange={(e, newValue) => handleSliderChange(newValue)}
-  //             valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
-  //             marks
-  //           />
-  //         </Stack>
-  //         :
-  //         <Stack spacing={2} direction="row" py={1.1} justifyContent='center' alignItems={'center'}>
-  //           <CircularProgress color='success' size={14} />
-  //           <Typography variant='body2'>
-  //             Loading fine tuning frames...
-  //           </Typography>
-  //         </Stack>
-  //       }
-  //     </>
-  //   );
-  // };
 
 
   /* -------------------------------- New Stuff ------------------------------- */
+
+
+
+
+  const { showObj, setShowObj, cid, selectedFrameIndex, setSelectedFrameIndex } = useSearchDetailsV2();
+  const [loadingCsv, setLoadingCsv] = useState();
+  const [frames, setFrames] = useState();
+  const params = useParams();
+  const [loadedSubtitle, setLoadedSubtitle] = useState('');
+  const [loadedSeason, setLoadedSeason] = useState('');
+  const [loadedEpisode, setLoadedEpisode] = useState('');
+
+  useEffect(() => {
+    updateCanvas();
+  }, [showText, displayImage, frameData, loadedSubtitle]);
 
   /* -------------------------------- Functions ------------------------------- */
 
@@ -512,7 +447,7 @@ export default function FramePage({ shows = [] }) {
 
       // console.log(frameBlobs)
 
-      
+
       return [
         ...frameBlobs
       ]
@@ -522,7 +457,7 @@ export default function FramePage({ shows = [] }) {
 
     console.log(images.flat())
 
-    setImgSrc(images.flat()[0])
+    setFrames(images.flat())
   }
 
   async function extractFramesFromVideo(videoUrl, frameNumbers, assumedFps = 30) {
@@ -578,12 +513,6 @@ export default function FramePage({ shows = [] }) {
   }
 
   /* -------------------------------------------------------------------------- */
-
-
-  const { showObj, setShowObj, cid } = useSearchDetailsV2();
-  const [loadingCsv, setLoadingCsv] = useState();
-  const [frames, setFrames] = useState();
-  const params = useParams();
 
   useEffect(() => {
     async function loadFile(cid, filename) {
@@ -641,11 +570,16 @@ export default function FramePage({ shows = [] }) {
 
 
   useEffect(() => {
-    if (showObj) {
+    if (showObj && params?.subtitleIndex) {
+      setFrames()
       const subtitleObj = showObj.find(obj => obj.subtitle_index === params?.subtitleIndex)
 
       // eslint-disable-next-line camelcase
       const { season, episode, subtitle_index, subtitle_text, start_frame, end_frame } = subtitleObj
+
+      setLoadedSeason(season)
+      setLoadedEpisode(episode)
+      setLoadedSubtitle(subtitle_text)
 
       const startFrame = 190
       const endFrame = 847
@@ -681,7 +615,7 @@ export default function FramePage({ shows = [] }) {
       console.log('frameNumberArray', frameNumberArray)
 
       const fileFrameGroups = {};
-      
+
       // eslint-disable-next-line camelcase
       for (let frameId = parseInt(start_frame, 10); frameId <= parseInt(end_frame, 10); frameId += 1) {
         const fileNumber = Math.floor(frameId / framesPerContainer) + 1;
@@ -690,7 +624,7 @@ export default function FramePage({ shows = [] }) {
         fileFrameGroups[fileName] = fileFrameGroups[fileName] || [];
         fileFrameGroups[fileName].push(frameNumber);
       }
-      
+
 
       console.log('fileFrameGroups', fileFrameGroups)
       loopThroughKeys(fileFrameGroups, fps, subtitleObj)
@@ -701,7 +635,101 @@ export default function FramePage({ shows = [] }) {
       // https://ipfs.memesrc.com/ipfs/${params.cid}/${result.season}/${result.episode}/s${parseInt(result.subtitle_index, 10)+1}.mp4
     }
 
-  }, [showObj]);
+  }, [showObj, params?.subtitleIndex]);
+
+  useEffect(() => {
+    if (frames && frames.length > 0) {
+      console.log(frames.length)
+      console.log(Math.floor(frames.length / 2))
+      setSelectedFrameIndex(selectedFrameIndex || Math.floor(frames.length / 2))
+      setDisplayImage(selectedFrameIndex ? frames[selectedFrameIndex] : frames[Math.floor(frames.length / 2)])
+    } else {
+      setSelectedFrameIndex()
+    }
+  }, [frames]);
+
+  const handleSliderChange = (newSliderValue) => {
+    setSelectedFrameIndex(newSliderValue);
+    setDisplayImage(frames[newSliderValue]);
+  };
+
+  const renderFineTuningFrames = (imgSrc) => {
+    return (
+      <>
+        <div style={{ position: 'relative' }}>
+          <CardMedia
+            component={!imgSrc ? () => <Skeleton variant='rectangular' sx={{ width: '100%', height: 'auto', aspectRatio }} /> : 'img'}
+            alt={`Fine-tuning ${sliderValue}`}
+            image={imgSrc}
+            id='frameImage'
+          />
+          <IconButton
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '2%', // Reduced left margin
+              transform: 'translateY(-50%)',
+              backgroundColor: 'transparent',
+              color: 'white',
+              padding: '20px', // Increase padding to make the button easier to press
+              margin: '-10px'
+            }}
+            onClick={() => {
+              navigate(`/v2/frame/${params?.cid}/${Number(params?.subtitleIndex) + 1}`)
+            }}
+          >
+            <ArrowBackIos style={{ fontSize: '2rem' }} />
+          </IconButton>
+          <IconButton
+            disabled={Number(params?.subtitleIndex) - 1 === 0}
+            style={{
+              position: 'absolute',
+              top: '50%',
+              right: '2%', // Reduced right margin
+              transform: 'translateY(-50%)',
+              backgroundColor: 'transparent',
+              color: 'white',
+              padding: '20px', // Increase padding to make the button easier to press
+              margin: '-10px'
+            }}
+            onClick={() => {
+              navigate(`/v2/frame/${params?.cid}/${Number(params?.subtitleIndex) - 1}`)
+            }}
+          >
+            <ArrowForwardIos style={{ fontSize: '2rem' }} />
+          </IconButton>
+        </div>
+
+        {frames && frames?.length > 0 ?
+          <Stack spacing={2} direction="row" p={0} pr={3} pl={3} alignItems={'center'}>
+            <Tooltip title="Fine Tuning">
+              <IconButton>
+                <HistoryToggleOffRounded alt="Fine Tuning" />
+              </IconButton>
+            </Tooltip>
+            <Slider
+              size="small"
+              defaultValue={selectedFrameIndex || Math.floor(frames.length / 2)}
+              min={0}
+              max={frames.length}
+              value={selectedFrameIndex}
+              step={1}
+              onChange={(e, newValue) => handleSliderChange(newValue)}
+              valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
+              marks
+            />
+          </Stack>
+          :
+          <Stack spacing={2} direction="row" py={1.1} justifyContent='center' alignItems={'center'}>
+            <CircularProgress color='success' size={14} />
+            <Typography variant='body2'>
+              Loading fine tuning frames...
+            </Typography>
+          </Stack>
+        }
+      </>
+    );
+  };
 
 
   return (
@@ -712,7 +740,7 @@ export default function FramePage({ shows = [] }) {
 
       <Container maxWidth="xl" sx={{ pt: 2 }}>
         <Grid container spacing={2} direction="row" alignItems="center">
-          <img src={imgSrc} alt='alt' />
+          {/* <img src={imgSrc} alt='alt' /> */}
           <Grid item xs={12} md={6}>
 
             <Typography variant='h2' marginBottom={2}>
@@ -722,8 +750,8 @@ export default function FramePage({ shows = [] }) {
             <Chip
               size='small'
               icon={<OpenInNew />}
-              // label={`Season ${fid.split('-')[1]} / Episode ${fid.split('-')[2]}`}
-              onClick={() => navigate(`/episode/${episodeDetails[0]}/${episodeDetails[1]}/${episodeDetails[2]}/1`)}
+              label={`Season ${loadedSeason}`}
+              // onClick={() => navigate(`/episode/${episodeDetails[0]}/${episodeDetails[1]}/${episodeDetails[2]}/1`)}
               sx={{
                 marginBottom: '15px',
                 "& .MuiChip-label": {
@@ -734,8 +762,8 @@ export default function FramePage({ shows = [] }) {
             <Chip
               size='small'
               icon={<BrowseGallery />}
-              // label={frameToTimecode(fid.split('-')[3], 9)}
-              onClick={() => navigate(`/episode/${episodeDetails[0]}/${episodeDetails[1]}/${episodeDetails[2]}/${episodeDetails[3]}`)}
+              label={`Episode ${loadedEpisode}`}
+              // onClick={() => navigate(`/episode/${episodeDetails[0]}/${episodeDetails[1]}/${episodeDetails[2]}/${episodeDetails[3]}`)}
               sx={{
                 marginBottom: '15px',
                 marginLeft: '5px',
@@ -746,7 +774,7 @@ export default function FramePage({ shows = [] }) {
             />
 
             <Card>
-              {/* {renderFineTuningFrames()} */}
+              {renderFineTuningFrames(imgSrc)}
             </Card>
           </Grid>
           <Grid item xs={12} md={6}>
@@ -788,8 +816,8 @@ export default function FramePage({ shows = [] }) {
                               fullWidth
                               variant="outlined"
                               size="small"
-                              value={frameData.subtitle}
-                              onChange={(e) => setFrameData({ ...frameData, subtitle: e.target.value })}
+                              value={loadedSubtitle}
+                              onChange={(e) => setLoadedSubtitle(e.target.value)}
                             />
                           </Stack>
                           :
@@ -804,7 +832,7 @@ export default function FramePage({ shows = [] }) {
                               sx={{ color: "text.secondary" }}
                               onClick={() => { setShowText(!showText) }}
                             >
-                              {frameData.subtitle ? frameData.subtitle : '(no subtitle)'}
+                              {loadedSubtitle || '(no subtitle)'}
                             </Typography>
                           </Stack>
                         }
@@ -979,7 +1007,7 @@ export default function FramePage({ shows = [] }) {
               Advanced Editor
             </Button>
           </Grid>
-          <Grid item xs={12} md={6}>
+          {/* <Grid item xs={12} md={6}>
             <Card sx={{ mt: 0 }}>
               <Accordion expanded={subtitlesExpanded} disableGutters>
                 <AccordionSummary sx={{ paddingX: 1.55 }} onClick={handleSubtitlesExpand} textAlign="center">
@@ -1088,7 +1116,7 @@ export default function FramePage({ shows = [] }) {
                 </AccordionDetails>
               </Accordion>
             </Card>
-          </Grid>
+          </Grid> */}
 
           <Snackbar
             open={snackbarOpen}
@@ -1102,7 +1130,7 @@ export default function FramePage({ shows = [] }) {
             </Alert>
           </Snackbar>
 
-          <Grid item xs={12}>
+          {/* <Grid item xs={12}>
             <Typography variant="h6">Surrounding Frames</Typography>
             {loading ?
               <Grid container spacing={2} mt={0}>
@@ -1140,7 +1168,7 @@ export default function FramePage({ shows = [] }) {
                   <Grid item xs={4} sm={4} md={12 / 9} key={`surrounding-frame-${frame.fid ? frame.fid : index}`}>
                     <a style={{ textDecoration: 'none' }}>
                       <StyledCard sx={{ ...((fid === frame.fid) && { border: '3px solid orange' }), cursor: (fid === frame.fid) ? 'default' : 'pointer' }}>
-                        {/* {console.log(`${fid} = ${result?.fid}`)} */}
+                        
                         <StyledCardMedia
                           component="img"
                           alt={`${frame.fid}`}
@@ -1167,7 +1195,7 @@ export default function FramePage({ shows = [] }) {
                 </Button>
               )}
             </Grid>
-          </Grid>
+          </Grid> */}
         </Grid>
       </Container >
     </>
