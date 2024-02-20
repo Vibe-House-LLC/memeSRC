@@ -7,6 +7,15 @@ function CreateIndex({ onProcessComplete }) {
     const [progress, setProgress] = useState(0);
     const [id, setId] = useState('');
 
+    // Function to invoke directory selection dialog in Electron
+    const selectDirectory = async () => {
+        const electron = window.require('electron');
+        const path = await electron.ipcRenderer.invoke('open-directory-dialog');
+        if (path) {
+            setFolderPath(path);
+        }
+    };
+
     const handleProcessStart = useCallback(async () => {
         setIsProcessing(true);
         setProgress(0); // Reset progress to 0
@@ -28,15 +37,17 @@ function CreateIndex({ onProcessComplete }) {
                     const response = await electron.ipcRenderer.invoke('fetch-processing-status', id);
                     if (response.success && response.status) {
                         const percentComplete = response.status.percent_complete;
-                        console.log("percentComplete", percentComplete)
+                        console.log("percentComplete", percentComplete);
                         setProgress(Math.round(percentComplete));
                         if (percentComplete >= 100) {
                             clearInterval(progressInterval);
+                            setIsProcessing(false);
                         }
                     }
                 } catch (error) {
                     console.error('Failed to fetch processing status:', error);
                     clearInterval(progressInterval);
+                    setIsProcessing(false);
                 }
             }, 5000); // Update progress every 5 seconds
         } catch (error) {
@@ -86,14 +97,16 @@ function CreateIndex({ onProcessComplete }) {
     return (
         <>
             <Box sx={{ padding: '20px', mt: 3 }}>
-                <TextField
-                    label="Folder Path"
-                    variant="outlined"
-                    fullWidth
-                    margin="normal"
-                    value={folderPath}
-                    onChange={(e) => setFolderPath(e.target.value)}
-                />
+                <Button
+                    variant="contained"
+                    onClick={selectDirectory}
+                    sx={{ mb: 2 }}
+                >
+                    Select Folder
+                </Button>
+                <div>
+                    Selected Folder: {folderPath}
+                </div>
                 <TextField
                     label="Output Folder ID"
                     variant="outlined"
