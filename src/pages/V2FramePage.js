@@ -39,7 +39,7 @@ import {
 } from '@mui/material';
 import { Add, ArrowBack, ArrowBackIos, ArrowForward, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, FormatLineSpacing, FormatSize, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu, OpenInBrowser, OpenInNew, VerticalAlignBottom, VerticalAlignTop, Visibility, VisibilityOff } from '@mui/icons-material';
 import useSearchDetails from '../hooks/useSearchDetails';
-import getFrame from '../utils/frameHandler';
+import fetchFrameInfo from '../utils/frameHandlerV2';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
 
 // import { listGlobalMessages } from '../../../graphql/queries'
@@ -434,6 +434,12 @@ export default function FramePage({ shows = [] }) {
   useEffect(() => {
     updateCanvas();
   }, [showText, displayImage, frameData, loadedSubtitle]);
+
+  useEffect(() => {
+    fetchFrameInfo(params.cid, params.season, params.episode, params.frame).then(info => {
+      console.log("frame info:", info)
+    })
+  }, [])
 
   /* -------------------------------- Functions ------------------------------- */
 

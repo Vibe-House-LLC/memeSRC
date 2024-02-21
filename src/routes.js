@@ -70,7 +70,7 @@ export default function Router() {
           element: <IpfsSearchBar />,
           children: [
             { path: 'search/:cid/:searchTerms', element: <V2SearchPage /> },
-            { path: 'frame/:cid/:subtitleIndex', element: <V2FramePage /> },
+            { path: 'frame/:cid/:season/:episode/:frame', element: <V2FramePage /> },
             { path: 'editor/:cid/:subtitleIndex', element: <V2EditorPage /> },
           ]
         },
