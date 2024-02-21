@@ -466,7 +466,7 @@ export default function FramePage({ shows = [] }) {
     setFrames(images.flat())
   }
 
-  async function extractFramesFromVideo(videoUrl, frameNumbers, assumedFps = 30) {
+  async function extractFramesFromVideo(videoUrl, frameNumbers, assumedFps = 10) {
     return new Promise((resolve, reject) => {
       // Create a video element
       const video = document.createElement('video');

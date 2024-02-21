@@ -33,7 +33,7 @@ export async function extractVideoFrames(cid, season, episode, frameStart, frame
     return images.flat();
 }
 
-export async function extractFramesFromVideo(videoUrl, frameNumbers, assumedFps = 30) {
+export async function extractFramesFromVideo(videoUrl, frameNumbers, assumedFps = 10) {
   return new Promise((resolve, reject) => {
     // Create a video element
     const video = document.createElement('video');
