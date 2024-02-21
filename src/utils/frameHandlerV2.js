@@ -1,7 +1,6 @@
-// Import the extractVideoFrames function from videoFrameExtractor.js
 import { extractVideoFrames } from './videoFrameExtractor';
 
-const fetchFrameImageUrls = async (cid, season, episode, frameStart, frameEnd, fps = 30) => {
+const fetchFrameImageUrls = async (cid, season, episode, frameStart, frameEnd, fps = 10) => {
   // Call the extractVideoFrames function to get blob URLs for frames
   return extractVideoFrames(cid, season, episode, frameStart, frameEnd, fps);
 };
@@ -29,7 +28,6 @@ const fetchCSV = async (url) => {
 const findSubtitleForFrame = (csvData, season, episode, frame) => {
   console.log('finding subtitle for ', season, episode, frame);
   for (let i = 1; i < csvData.length; i += 1) {
-    // Adjusted for ESLint
     const [csvSeason, csvEpisode, , subtitleText, startFrame, endFrame] = csvData[i];
     if (
       season === parseInt(csvSeason, 10) &&
@@ -37,31 +35,52 @@ const findSubtitleForFrame = (csvData, season, episode, frame) => {
       frame >= parseInt(startFrame, 10) &&
       frame <= parseInt(endFrame, 10)
     ) {
-      return subtitleText;
+      return { subtitle: subtitleText, index: i, startFrame: parseInt(startFrame, 10), endFrame: parseInt(endFrame, 10) };
     }
   }
-  return null; // No subtitle for this frame
+  return { subtitle: null, index: null, startFrame: null, endFrame: null }; // No subtitle for this frame
 };
 
-// Update the fetchFrameInfo function to include frame image URL fetching
 const fetchFrameInfo = async (cid, season, episode, frame) => {
   try {
-    // Parse args as integers
     season = parseInt(season, 10);
     episode = parseInt(episode, 10);
     frame = parseInt(frame, 10);
 
-    // Fetching series name from metadata
     const metadataUrl = `https://ipfs.memesrc.com/ipfs/${cid}/00_metadata.json`;
     const metadata = await fetchJSON(metadataUrl);
     const seriesName = metadata.index_name;
 
-    // Fetching subtitles from CSV
     const csvUrl = `https://ipfs.memesrc.com/ipfs/${cid}/${season}/${episode}/_docs.csv`;
     const csvData = await fetchCSV(csvUrl);
 
-    // Finding the relevant subtitle for the main frame
-    const mainSubtitle = findSubtitleForFrame(csvData, season, episode, frame);
+    const { subtitle: mainSubtitle, index: mainSubtitleIndex, startFrame: mainStartFrame, endFrame: mainEndFrame } = findSubtitleForFrame(csvData, season, episode, frame);
+
+    // Fetch surrounding subtitles with images
+    const subtitlesSurroundingPromises = [];
+    const startIndex = Math.max(1, mainSubtitleIndex - 5);
+    const endIndex = Math.min(csvData.length - 1, mainSubtitleIndex + 5);
+    for (let i = startIndex; i <= endIndex; i += 1) {
+      if (i !== mainSubtitleIndex) {
+        const [,, , subtitleText, startFrame, endFrame] = csvData[i];
+        const middleFrame = Math.round((parseInt(startFrame, 10) + parseInt(endFrame, 10)) / 2);
+        subtitlesSurroundingPromises.push(
+          fetchFrameImageUrls(cid, season, episode, middleFrame, middleFrame, 10).then(
+            (frameImages) => {
+              const frameImage = frameImages.length > 0 ? frameImages[0] : 'No image available';
+              return {
+                subtitle: subtitleText,
+                frame: middleFrame,
+                frameImage,
+              };
+            }
+          )
+        );
+      }
+    }
+
+    // Resolve all promises for surrounding subtitles with images
+    const subtitlesSurrounding = await Promise.all(subtitlesSurroundingPromises);
 
     // Initialize promises array for surrounding frames
     const surroundingFramePromises = [];
@@ -70,9 +89,8 @@ const fetchFrameInfo = async (cid, season, episode, frame) => {
       if (offset !== 0) {
         const surroundingFrame = frame + offset;
         const surroundingSubtitle = findSubtitleForFrame(csvData, season, episode, surroundingFrame);
-        // Add promise to the array without awaiting here
         surroundingFramePromises.push(
-          fetchFrameImageUrls(cid, season, episode, surroundingFrame, surroundingFrame, 30).then(
+          fetchFrameImageUrls(cid, season, episode, surroundingFrame, surroundingFrame, 10).then(
             (surroundingFrameImages) => {
               const surroundingFrameImage =
                 surroundingFrameImages.length > 0 ? surroundingFrameImages[0] : 'No image available';
@@ -90,21 +108,20 @@ const fetchFrameInfo = async (cid, season, episode, frame) => {
     // Resolve all promises for surrounding frames
     const framesSurrounding = await Promise.all(surroundingFramePromises);
 
-    // Fetch the main frame image URL and frames for fine tuning concurrently
     const [mainFrameImages, framesFineTuning] = await Promise.all([
-      fetchFrameImageUrls(cid, season, episode, frame, frame, 30),
-      fetchFrameImageUrls(cid, season, episode, frame - 5, frame + 5, 30),
+      extractVideoFrames(cid, season, episode, frame, frame, 10),
+      extractVideoFrames(cid, season, episode, frame - 5, frame + 5, 10),
     ]);
 
     const mainFrameImage = mainFrameImages.length > 0 ? mainFrameImages[0] : 'No image available';
 
-    // Constructing return object
     return {
       series_name: seriesName,
       subtitle: mainSubtitle || 'No subtitle for this frame.',
       frame_image: mainFrameImage,
       frames_surrounding: framesSurrounding,
       frames_fine_tuning: framesFineTuning,
+      subtitles_surrounding: subtitlesSurrounding,
       source: 'IPFS',
     };
   } catch (error) {
