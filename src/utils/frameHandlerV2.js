@@ -17,9 +17,26 @@ const fetchJSON = async (url) => {
     return csvText.split('\n').map(row => row.split(','));
   };
   
+  // Helper function to find subtitle info for a frame
+  const findSubtitleForFrame = (csvData, season, episode, frame) => {
+    console.log("finding subtitle for ", season, episode, frame)
+    for (let i = 1; i < csvData.length; i += 1) { // Adjusted for ESLint
+      const [csvSeason, csvEpisode, , subtitleText, startFrame, endFrame] = csvData[i];
+      if (season === parseInt(csvSeason, 10) && episode === parseInt(csvEpisode, 10) && frame >= parseInt(startFrame, 10) && frame <= parseInt(endFrame, 10)) {
+        return subtitleText;
+      }
+    }
+    return null; // No subtitle for this frame
+  };
+  
   // Main function to fetch frame information
   const fetchFrameInfo = async (cid, season, episode, frame) => {
     try {
+      // Parse args as integers
+      season = parseInt(season, 10)
+      episode = parseInt(episode, 10)
+      frame = parseInt(frame, 10)
+
       // Fetching series name from metadata
       const metadataUrl = `https://ipfs.memesrc.com/ipfs/${cid}/00_metadata.json`;
       const metadata = await fetchJSON(metadataUrl);
@@ -28,25 +45,31 @@ const fetchJSON = async (url) => {
       // Fetching subtitles from CSV
       const csvUrl = `https://ipfs.memesrc.com/ipfs/${cid}/${season}/${episode}/_docs.csv`;
       const csvData = await fetchCSV(csvUrl);
-      let subtitleInfo = null;
   
-      // Finding the relevant subtitle for the frame
-      for (let i = 1; i < csvData.length; i+=1) { // Skipping header row
-        const [csvSeason, csvEpisode, subtitleIndex, subtitleText, startFrame, endFrame] = csvData[i];
-        if (season === csvSeason && episode === csvEpisode && frame >= startFrame && frame <= endFrame) {
-          subtitleInfo = {
-            subtitle: subtitleText,
-            frame_image: `https://ifps.memesrc.com/${cid}/${season}/${episode}/s${subtitleIndex}.zip`,
-          };
-          break;
+      // Finding the relevant subtitle for the main frame
+      const mainSubtitle = findSubtitleForFrame(csvData, season, episode, frame);
+  
+      // Constructing framesSurrounding array
+      const framesSurrounding = [];
+      for (let offset = -50; offset <= 50; offset += 10) {
+        // Only add frames that are not the main frame itself
+        if (offset !== 0) {
+          const surroundingFrame = frame + offset;
+          const surroundingSubtitle = findSubtitleForFrame(csvData, season, episode, surroundingFrame);
+          framesSurrounding.push({
+            frame: surroundingFrame,
+            frameImage: `TODO`, // Placeholder for the frame image URL
+            subtitle: surroundingSubtitle,
+          });
         }
       }
   
       // Constructing return object
       return {
-        series_name: seriesName,
-        subtitle: subtitleInfo ? subtitleInfo.subtitle : "No subtitle for this frame.",
-        frame_image: subtitleInfo ? subtitleInfo.frame_image : null,
+        seriesName, // Adjusted for camelCase
+        subtitle: mainSubtitle || "No subtitle for this frame.", // Simplified conditional
+        frameImage: `TODO`, // Placeholder for the main frame image URL, adjusted for camelCase
+        framesSurrounding, // Adjusted for camelCase
         source: "IPFS",
       };
     } catch (error) {
@@ -56,3 +79,4 @@ const fetchJSON = async (url) => {
   };
   
   export default fetchFrameInfo;
+  
