@@ -39,7 +39,7 @@ import {
 } from '@mui/material';
 import { Add, ArrowBack, ArrowBackIos, ArrowForward, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, FormatLineSpacing, FormatSize, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu, OpenInBrowser, OpenInNew, VerticalAlignBottom, VerticalAlignTop, Visibility, VisibilityOff } from '@mui/icons-material';
 import useSearchDetails from '../hooks/useSearchDetails';
-import getFrame from '../utils/frameHandler';
+import fetchFrameInfo from '../utils/frameHandlerV2';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
 
 // import { listGlobalMessages } from '../../../graphql/queries'
@@ -63,18 +63,17 @@ const StyledCardMedia = styled('img')`
 export default function FramePage({ shows = [] }) {
   const { setFrame, fineTuningFrame, setFineTuningFrame } = useSearchDetails();
   const navigate = useNavigate();
-  const { fid } = useParams();
   const [frameData, setFrameData] = useState({});
   const [fineTuningFrames, setFineTuningFrames] = useState([]);
   const [surroundingFrames, setSurroundingFrames] = useState(null);
+  const [surroundingSubtitles, setSurroundingSubtitles] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const {cid, season, episode, frame} = useParams();
   const [sliderValue, setSliderValue] = useState(fineTuningFrame || 0);
-  const [middleIndex, setMiddleIndex] = useState(0);
   const [displayImage, setDisplayImage] = useState();
   const [subtitlesExpanded, setSubtitlesExpanded] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [aspectRatio, setAspectRatio] = useState('16/9');
   const [showTitle, setShowTitle] = useState('');
-  const [episodeDetails, setEpisodeDetails] = useState();
   const [imgSrc, setImgSrc] = useState();
   const [showText, setShowText] = useState(false);
   const [fontSizeScaleFactor, setFontSizeScaleFactor] = useState(1);
@@ -102,34 +101,6 @@ export default function FramePage({ shows = [] }) {
   const handleSnackbarClose = () => {
     setSnackBarOpen(false);
   }
-
-  // const getCurrentQueryString = () => {
-  //   const currentUrl = window.location.href;
-  //   const queryStringStartIndex = currentUrl.indexOf('?');
-
-  //   // Check if a query string is found; if not, return an empty string
-  //   if (queryStringStartIndex !== -1) {
-  //     return currentUrl.substring(queryStringStartIndex);
-  //   }
-
-  //   return '';
-  // };
-
-  // useEffect(() => {
-  //   // Ensure `fid` and `shows` are defined
-  //   if (fid && shows && shows.length > 0) {
-  //     const foundShow = shows.find((obj) => obj.id === fid.split('-')[0]);
-
-  //     setEpisodeDetails(fid.split('-'))
-
-  //     // Check if a matching show was found
-  //     if (foundShow) {
-  //       setShowTitle(`${foundShow.emoji} ${foundShow.title}`);
-  //     } else {
-  //       console.error(`Show with ID ${fid.split('-')[0]} not found.`);
-  //     }
-  //   }
-  // }, [fid, shows]);
 
   /* ---------------------------- Subtitle Function --------------------------- */
 
@@ -300,7 +271,31 @@ export default function FramePage({ shows = [] }) {
     };
   }
 
+  useEffect(() => {
+    const loadFrameInfo = async () => {
+      setLoading(true);
+      try {
+        const info = await fetchFrameInfo(cid, season, episode, frame);
+        setFrameData(info.frameData);
+        setFineTuningFrames(info.frames_fine_tuning);
+        setSurroundingFrames(info.frames_surrounding);
+        setSurroundingSubtitles(info.subtitles_surrounding);
+        setFrames(info.frames_fine_tuning);
+        setLoadedSubtitle(info.subtitle);
+        setLoadedSeason(season);
+        setLoadedEpisode(episode);
+        console.log("Just ran setFrame with this: ", info.frames_fine_tuning)
+        // Update any additional state with the fetched info
+      } catch (error) {
+        console.error("Failed to fetch frame info:", error);
+        // Handle error (e.g., set error state, show error message)
+      } finally {
+        setLoading(false);
+      }
+    };
 
+    loadFrameInfo();
+  }, [cid, season, episode, frame]);
 
 
   useEffect(() => {
@@ -314,89 +309,6 @@ export default function FramePage({ shows = [] }) {
   const handleSubtitlesExpand = async () => {
     setSubtitlesExpanded(!subtitlesExpanded);
   };
-
-
-
-  // useEffect(() => {
-  //   setLoading(true)
-  //   setFineTuningFrames([])
-  //   console.log(fineTuningFrame)
-  //   getFrame(fid)
-  //     .then(data => {
-  //       setFrameData(data);
-  //       setFrame(fid)
-  //       setSurroundingFrames(data.frames_surrounding);
-  //       const newMiddleIndex = Math.floor(data.frames_fine_tuning.length / 2);
-  //       const initialFineTuneImage = data.frames_fine_tuning[fineTuningFrame || newMiddleIndex];
-  //       setMiddleIndex(newMiddleIndex)
-  //       if (typeof fineTuningFrame === 'number') {
-  //         setSliderValue(fineTuningFrame - newMiddleIndex)
-  //       }
-  //       setDisplayImage(`https://memesrc.com${initialFineTuneImage}`);
-  //     })
-  //     .catch(console.error);
-  // }, [fid]);
-
-  // // This effect is responsible for preloading images
-  // useEffect(() => {
-  //   if (frameData.frames_fine_tuning) {
-  //     const preloadImages = async () => {
-  //       const images = await Promise.all(frameData.frames_fine_tuning.map(frameId => {
-  //         return new Promise(resolve => {
-  //           const img = new Image();
-  //           img.onload = () => resolve(img);
-  //           img.src = `https://memesrc.com${frameId}`;
-  //         });
-  //       }));
-
-  //       setFineTuningFrames(images);
-  //     };
-
-  //     preloadImages();
-  //   }
-  // }, [frameData.frames_fine_tuning]);
-
-  // This effect is responsible for setting the display image based on slider value
-  // useEffect(() => {
-  //   if (fineTuningFrames.length > 0 && middleIndex !== 0) {
-  //     const displayIndex = (typeof fineTuningFrame === 'number') ? fineTuningFrame : middleIndex + sliderValue;
-  //     if (fineTuningFrames[displayIndex]) {
-  //       setDisplayImage(fineTuningFrames[displayIndex].src);
-  //     }
-  //   }
-  // }, [sliderValue, fineTuningFrames, middleIndex, fineTuningFrame]);
-
-  // Use a callback function to handle slider changes
-
-
-  /* ------------ This was unused so I've commented it out for now ------------ */
-  // const renderSurroundingFrames = () => {
-  //   let returnedElement;
-
-  //   if (surroundingFrames) {
-  //     returnedElement =
-  //       <Grid container spacing={2}>
-  //         {surroundingFrames.map((frame, index) => (
-  //           <Grid item xs={4} sm={4} md={12 / 9} key={frame.fid}>
-  //             <a style={{ textDecoration: 'none' }}>
-  //               <StyledCard style={{ border: fid === frame ? '3px solid orange' : '' }}>
-  //                 <StyledCardMedia
-  //                   component="img"
-  //                   alt={`${frame.fid}`}
-  //                   src={`https://memesrc.com${frame.frame_image}`}
-  //                   title={frame.subtitle || 'No subtitle'}
-  //                   onClick={() => {
-  //                     navigate(`/frame/${frame.fid}`)
-  //                   }}
-  //                 />
-  //               </StyledCard>
-  //             </a>
-  //           </Grid>
-  //         ))}
-  //       </Grid>
-  //   }
-  //   return returnedElement
-  // };
 
   const frameToTimecode = (frameNumber, fps) => {
     const totalSeconds = Math.floor(frameNumber / fps);
@@ -415,227 +327,22 @@ export default function FramePage({ shows = [] }) {
     return `${hoursStr}:${minutesStr}:${secondsStr}`;
   };
 
-
-
-
-  /* -------------------------------- New Stuff ------------------------------- */
-
-
-
-
-  const { showObj, setShowObj, cid, selectedFrameIndex, setSelectedFrameIndex } = useSearchDetailsV2();
+  const { showObj, setShowObj, selectedFrameIndex, setSelectedFrameIndex } = useSearchDetailsV2();
   const [loadingCsv, setLoadingCsv] = useState();
   const [frames, setFrames] = useState();
-  const params = useParams();
-  const [loadedSubtitle, setLoadedSubtitle] = useState('');
-  const [loadedSeason, setLoadedSeason] = useState('');
-  const [loadedEpisode, setLoadedEpisode] = useState('');
+  const [loadedSubtitle, setLoadedSubtitle] = useState('');  // TODO
+  const [loadedSeason, setLoadedSeason] = useState('');  // TODO
+  const [loadedEpisode, setLoadedEpisode] = useState('');  // TODO
 
   useEffect(() => {
     updateCanvas();
   }, [showText, displayImage, frameData, loadedSubtitle]);
 
-  /* -------------------------------- Functions ------------------------------- */
-
-  async function loopThroughKeys(obj, fps, subtitleObj) {
-    const files = []
-    // Loop through each key in the object
-    const fileList = Object.keys(obj).map(async (key) => {
-      const videoUrl = `https://ipfs.memesrc.com/ipfs/${params.cid}/${subtitleObj.season}/${subtitleObj.episode}/${key}`
-
-      const frameBlobs = await extractFramesFromVideo(videoUrl, obj[key], fps)
-
-      // console.log(frameBlobs)
-
-
-      return [
-        ...frameBlobs
-      ]
+  useEffect(() => {
+    fetchFrameInfo(cid, season, episode, frame).then(info => {
+      console.log("frame info:", info)
     })
-
-    const images = await Promise.all(fileList)
-
-    console.log(images.flat())
-
-    setFrames(images.flat())
-  }
-
-  async function extractFramesFromVideo(videoUrl, frameNumbers, assumedFps = 30) {
-    return new Promise((resolve, reject) => {
-      // Create a video element
-      const video = document.createElement('video');
-      video.src = videoUrl;
-      video.muted = true;
-      video.crossOrigin = "anonymous"; // Handle CORS policy
-      const canvas = document.createElement('canvas');
-      const context = canvas.getContext('2d');
-      const blobs = [];
-      let currentFrameIndex = 0;
-
-      video.addEventListener('loadedmetadata', () => {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-
-        // Function to capture a frame at a specific index
-        const captureFrame = (frameIndex) => {
-          const frameTime = frameIndex / assumedFps;
-          video.currentTime = frameTime;
-        };
-
-        video.addEventListener('seeked', async () => {
-          if (currentFrameIndex < frameNumbers.length) {
-            // Draw the video frame to the canvas
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
-            // Convert the canvas to a blob
-            canvas.toBlob((blob) => {
-              const objUrl = URL.createObjectURL(blob)
-              blobs.push(objUrl);
-              currentFrameIndex += 1;
-              if (currentFrameIndex < frameNumbers.length) {
-                // Capture the next frame
-                captureFrame(frameNumbers[currentFrameIndex] - 1); // Adjust for 0-based indexing
-              } else {
-                // Resolve the promise when all frames are loaded
-                resolve(blobs);
-              }
-            }, 'image/jpeg'); // Specify the format and quality if needed
-          }
-        });
-
-        // Start capturing frames
-        captureFrame(frameNumbers[currentFrameIndex] - 1); // Adjust for 0-based indexing
-      });
-
-      video.addEventListener('error', (e) => {
-        reject(new Error('Error loading video'));
-      });
-    });
-  }
-
-  /* -------------------------------------------------------------------------- */
-
-  useEffect(() => {
-    async function loadFile(cid, filename) {
-      const url = `https://ipfs.memesrc.com/ipfs/${cid}/_docs.csv`;
-      try {
-        const response = await fetch(url);
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-        const text = await response.text();
-        const lines = text.split("\n");
-        const headers = lines[0].split(",").map((header) => header.trim());
-        return lines.slice(1).map((line) => {
-          const values = line.split(",").map((value) => value.trim());
-          return headers.reduce((obj, header, index) => {
-            obj[header] = values[index] ? values[index] : "";
-            if (header === "subtitle_text" && obj[header]) {
-              obj.base64_subtitle = obj[header]; // Store the base64 version
-              obj[header] = atob(obj[header]); // Decode to regular text
-            }
-            return obj;
-          }, {});
-        });
-      } catch (error) {
-        console.error("Failed to load file:", error);
-        return [];
-      }
-    }
-
-    async function initialize(cid = null) {
-      const selectedCid = cid
-      if (!selectedCid) {
-        alert("Please enter a valid CID.");
-        return;
-      }
-      const filename = "1-1.csv";
-      const lines = await loadFile(cid, filename);
-      if (lines?.length > 0) {
-        // Decode base64 subtitle and assign to a new property
-        const decodedLines = lines.map(line => ({
-          ...line,
-          subtitle: line.base64_subtitle ? atob(line.base64_subtitle) : "" // Ensure you decode the subtitle and assign it here
-        }));
-        setLoadingCsv(false);
-        setShowObj(decodedLines); // Use decodedLines with subtitle property
-      } else {
-        alert('error');
-      }
-    }
-
-    if (!showObj) {
-      initialize(params.cid);
-    }
-  }, [showObj]);
-
-
-  useEffect(() => {
-    if (showObj && params?.subtitleIndex) {
-      setFrames()
-      const subtitleObj = showObj.find(obj => obj.subtitle_index === params?.subtitleIndex)
-
-      // eslint-disable-next-line camelcase
-      const { season, episode, subtitle_index, subtitle_text, start_frame, end_frame } = subtitleObj
-
-      setLoadedSeason(season)
-      setLoadedEpisode(episode)
-      setLoadedSubtitle(subtitle_text)
-
-      const startFrame = 190
-      const endFrame = 847
-
-      const fps = 10
-      const videoLength = 25
-      const framesPerContainer = (videoLength * fps)
-
-      // Video files are 25 seconds long, and 10 frames per second
-
-      // eslint-disable-next-line camelcase
-      const startFile = Math.floor(start_frame / framesPerContainer)
-
-      // eslint-disable-next-line camelcase
-      const endFile = Math.floor(end_frame / framesPerContainer)
-      console.log('start_frame', start_frame)
-      console.log('startFile', startFile)
-      console.log('end_frame', end_frame)
-      console.log('startFile', endFile)
-      // eslint-disable-next-line camelcase
-      const startIndex = start_frame % framesPerContainer
-      console.log('startIndex', startIndex)
-      // eslint-disable-next-line camelcase
-      const endIndex = end_frame % framesPerContainer
-      console.log('endIndex', endIndex)
-
-      const listBetween = (x, y) => Array.from({ length: y - x + 1 }, (_, i) => x + i);
-
-      const fileNameArray = listBetween(startFile, endFile)
-      console.log('fileNameArray', fileNameArray)
-      // eslint-disable-next-line camelcase
-      const frameNumberArray = listBetween(start_frame, end_frame);
-      console.log('frameNumberArray', frameNumberArray)
-
-      const fileFrameGroups = {};
-
-      // eslint-disable-next-line camelcase
-      for (let frameId = parseInt(start_frame, 10); frameId <= parseInt(end_frame, 10); frameId += 1) {
-        const fileNumber = Math.floor(frameId / framesPerContainer);
-        const frameNumber = frameId % framesPerContainer;
-        const fileName = `${fileNumber}.mp4`;
-        fileFrameGroups[fileName] = fileFrameGroups[fileName] || [];
-        fileFrameGroups[fileName].push(frameNumber);
-      }
-
-
-      console.log('fileFrameGroups', fileFrameGroups)
-      loopThroughKeys(fileFrameGroups, fps, subtitleObj)
-
-
-
-
-      // https://ipfs.memesrc.com/ipfs/${params.cid}/${result.season}/${result.episode}/s${parseInt(result.subtitle_index, 10)+1}.mp4
-    }
-
-  }, [showObj, params?.subtitleIndex]);
+  }, [])
 
   useEffect(() => {
     if (frames && frames.length > 0) {
@@ -673,13 +380,13 @@ export default function FramePage({ shows = [] }) {
               margin: '-10px'
             }}
             onClick={() => {
-              navigate(`/v2/frame/${params?.cid}/${Number(params?.subtitleIndex) - 1}`)
+              navigate(`/v2/frame/${cid}/${season}/${episode}/${Number(frame) - 10}`)
             }}
           >
             <ArrowBackIos style={{ fontSize: '2rem' }} />
           </IconButton>
           <IconButton
-            disabled={Number(params?.subtitleIndex) - 1 === 0}
+            disabled={Number(frame) - 1 === 0}
             style={{
               position: 'absolute',
               top: '50%',
@@ -691,7 +398,7 @@ export default function FramePage({ shows = [] }) {
               margin: '-10px'
             }}
             onClick={() => {
-              navigate(`/v2/frame/${params?.cid}/${Number(params?.subtitleIndex) + 1}`)
+              navigate(`/v2/frame/${cid}/${season}/${episode}/${Number(frame) + 10}`)
             }}
           >
             <ArrowForwardIos style={{ fontSize: '2rem' }} />
@@ -997,7 +704,7 @@ export default function FramePage({ shows = [] }) {
               size="medium"
               fullWidth
               variant="contained"
-              to={`/v2/editor/${params?.cid}/${params?.subtitleIndex}`}
+              to={`/v2/editor/${cid}/${season}/${episode}/${frame}`}
               component={RouterLink}
               sx={{ my: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
               startIcon={<Edit />}
@@ -1005,7 +712,7 @@ export default function FramePage({ shows = [] }) {
               Advanced Editor
             </Button>
           </Grid>
-          {/* <Grid item xs={12} md={6}>
+          <Grid item xs={12} md={6}>
             <Card sx={{ mt: 0 }}>
               <Accordion expanded={subtitlesExpanded} disableGutters>
                 <AccordionSummary sx={{ paddingX: 1.55 }} onClick={handleSubtitlesExpand} textAlign="center">
@@ -1020,15 +727,8 @@ export default function FramePage({ shows = [] }) {
                 </AccordionSummary>
                 <AccordionDetails sx={{ paddingY: 0, paddingX: 0 }}>
                   <List sx={{ padding: '.5em 0' }}>
-                    {surroundingFrames &&
-                      surroundingFrames
-                        .filter(
-                          (result, index, array) =>
-                            result?.subtitle &&
-                            (index === 0 ||
-                              result?.subtitle.replace(/\n/g, ' ') !==
-                              array[index - 1].subtitle.replace(/\n/g, ' '))
-                        )
+                    {surroundingSubtitles &&
+                      surroundingSubtitles
                         .map((result) => (
                           <ListItem key={result?.id} disablePadding sx={{ padding: '0 0 .6em 0' }}>
                             <ListItemIcon sx={{ paddingLeft: '0' }}>
@@ -1049,7 +749,7 @@ export default function FramePage({ shows = [] }) {
                                     },
                                   },
                                 }}
-                                onClick={() => navigate(`/frame/${result?.fid}`)}
+                                onClick={() => navigate(`/v2/frame/${cid}/${season}/${episode}//${result?.frame}`)}
                               >
                                 {loading ? (
                                   <CircularProgress size={20} sx={{ color: '#565656' }} />
@@ -1114,7 +814,7 @@ export default function FramePage({ shows = [] }) {
                 </AccordionDetails>
               </Accordion>
             </Card>
-          </Grid> */}
+          </Grid>
 
           <Snackbar
             open={snackbarOpen}
@@ -1128,7 +828,7 @@ export default function FramePage({ shows = [] }) {
             </Alert>
           </Snackbar>
 
-          {/* <Grid item xs={12}>
+          <Grid item xs={12}>
             <Typography variant="h6">Surrounding Frames</Typography>
             {loading ?
               <Grid container spacing={2} mt={0}>
@@ -1162,18 +862,18 @@ export default function FramePage({ shows = [] }) {
               </Grid>
               :
               <Grid container spacing={2} mt={0}>
-                {surroundingFrames?.map((frame, index) => (
-                  <Grid item xs={4} sm={4} md={12 / 9} key={`surrounding-frame-${frame.fid ? frame.fid : index}`}>
+                {surroundingFrames?.map((surroundingFrame, index) => (
+                  <Grid item xs={4} sm={4} md={12 / 9} key={`surrounding-frame-${surroundingFrame.frame ? surroundingFrame.frame : index}`}>
                     <a style={{ textDecoration: 'none' }}>
-                      <StyledCard sx={{ ...((fid === frame.fid) && { border: '3px solid orange' }), cursor: (fid === frame.fid) ? 'default' : 'pointer' }}>
+                      <StyledCard sx={{ ...((frame === surroundingFrame.frame) && { border: '3px solid orange' }), cursor: (frame === surroundingFrame.frame) ? 'default' : 'pointer' }}>
                         
                         <StyledCardMedia
                           component="img"
-                          alt={`${frame.fid}`}
-                          src={`https://memesrc.com${frame.frame_image}`}
-                          title={frame.subtitle || 'No subtitle'}
+                          alt={`${surroundingFrame.frame}`}
+                          src={`${surroundingFrame.frameImage}`}
+                          title={surroundingFrame.subtitle || 'No subtitle'}
                           onClick={() => {
-                            // navigate(`/frame/${frame.fid}${getCurrentQueryString()}`)
+                            navigate(`/v2/frame/${cid}/${season}/${episode}/${surroundingFrame.frame}`)
                           }}
                         />
                       </StyledCard>
@@ -1183,17 +883,15 @@ export default function FramePage({ shows = [] }) {
               </Grid>
             }
             <Grid item xs={12} mt={3}>
-              {episodeDetails && (
-                <Button
+              <Button
                   variant="contained"
                   fullWidth
-                  href={`/episode/${episodeDetails[0]}/${episodeDetails[1]}/${episodeDetails[2]}/${episodeDetails[3]}`}
+                  href={`/v2/episode/${cid}/${season}/${episode}/${frame}`}
                 >
                   View Episode
                 </Button>
-              )}
             </Grid>
-          </Grid> */}
+          </Grid>
         </Grid>
       </Container >
     </>

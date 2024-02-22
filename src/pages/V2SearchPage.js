@@ -224,7 +224,7 @@ try {
         <Grid container spacing={2} alignItems="stretch" paddingX={{ xs: 2, md: 6 }}>
           {newResults.map((result, index) => (
             <Grid item xs={12} sm={6} md={3} key={index}>
-              <Link to={`/v2/frame/${cid}/${result.subtitle_index}`} style={{ textDecoration: 'none' }}>
+              <Link to={`/v2/frame/${cid}/${result.season}/${result.episode}/${Math.floor((parseInt(result.start_frame, 10) + parseInt(result.end_frame, 10)) / 2)}`} style={{ textDecoration: 'none' }}>
               <StyledCard>
                 <StyledCardMediaContainer aspectRatio="56.25%">
                 <StyledCardMedia

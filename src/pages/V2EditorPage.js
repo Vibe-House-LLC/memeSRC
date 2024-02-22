@@ -21,6 +21,7 @@ import { createEditorProject, updateEditorProject } from '../graphql/mutations';
 import { getEditorProject } from '../graphql/queries';
 import ImageEditorControls from '../components/ImageEditorControls';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
+import fetchFrameInfo from '../utils/frameHandlerV2';
 
 const Alert = forwardRef((props, ref) => <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />);
 
@@ -106,7 +107,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const [loading, setLoading] = useState(true)
 
   const [fineTuningValue, setFineTuningValue] = useState(searchDetails.fineTuningFrame || 4);
-  const [episodeDetails, setEpisodeDetails] = useState();
   const [openDialog, setOpenDialog] = useState(false);
   const [imageUploading, setImageUploading] = useState();
   const [imageBlob, setImageBlob] = useState();
@@ -373,7 +373,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         // You can set a default subtitle or any other properties here if needed
         setLoadedSeriesTitle("");
         setSurroundingFrames([]);
-        setEpisodeDetails([])
         setDefaultSubtitle(false)
         setLoading(false);
       }, { crossOrigin: 'anonymous' });
@@ -435,8 +434,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         .then((data) => {
           setLoadedSeriesTitle(data.series_name);
           setSurroundingFrames(data.frames_surrounding);
-          const episodeDetails = selectedFid.split('-');
-          setEpisodeDetails(episodeDetails);
           // Pre load fine tuning frames
           loadImg(data.frames_fine_tuning, oImgBuild).then((images) => {
             setFineTuningFrames(images);
@@ -456,59 +453,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         .catch((err) => console.log(err));
     }
   }, [resizeCanvas, selectedFid, editor, addText, location]);
-
-  //   const loadProjectFromS3 = async () => {
-  //     try {
-  //         // Generate the file name/path based on the editorProjectId
-  //         const fileName = `projects/${editorProjectId}.json`;
-
-  //         // Fetch the serialized canvas state from S3 under the user's protected folder
-  //         const serializedCanvas = await Storage.get(fileName, { level: 'protected' });
-
-  //         if (serializedCanvas) {
-  //             // Fetch the actual content from S3. 
-  //             // Storage.get provides a pre-signed URL, so we need to fetch the actual content.
-  //             const response = await fetch(serializedCanvas);
-  //             const canvasStateJSON = await response.json();
-
-  //             editor.canvas.loadFromJSON(canvasStateJSON, () => {
-  //                 const oImg = editor.canvas.backgroundImage;
-  //                 const imageAspectRatio = oImg.width / oImg.height;
-  //                 setEditorAspectRatio(imageAspectRatio);
-  //                 const [desiredHeight, desiredWidth] = calculateEditorSize(imageAspectRatio);
-  //                 setCanvasSize({ height: desiredHeight, width: desiredWidth });
-
-  //                 // Scale the image to fit the canvas
-  //                 const scale = desiredWidth / oImg.width;
-  //                 oImg.scale(desiredWidth / oImg.width);
-  //                 editor.canvas.forEachObject(obj => {
-  //                   obj.left *= scale;
-  //                   obj.top *= scale;
-  //                   obj.scaleY *= scale;
-  //                   obj.scaleX *= scale;
-  //                 })
-
-  //                 // Center the image within the canvas
-  //                 oImg.set({ left: 0, top: 0 });
-  //                 const minWidth = 750;
-  //                 const x = (oImg.width > minWidth) ? oImg.width : minWidth;
-  //                 setImageScale(x / desiredWidth);
-  //                 resizeCanvas(desiredWidth, desiredHeight);
-
-  //                 editor?.canvas.setBackgroundImage(oImg);
-  //                 addText(defaultSubtitle === false ? "Bottom Text" : defaultSubtitle, false);
-  //                 setImageLoaded(true);
-
-  //                 // Rendering the canvas after applying all changes
-  //                 editor.canvas.renderAll();
-  //             });
-  //         } else {
-  //             console.error('No saved editor state found for the project in S3.');
-  //         }
-  //     } catch (error) {
-  //         console.error('Failed to load editor state from S3:', error);
-  //     }
-  // };
 
   // Look up data for the fid and set defaults
   useEffect(() => {
@@ -555,30 +499,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     return [calculatedHeight, calculatedWidth]
   }
 
-  // Handle events
-  // const saveProject = () => {
-  //     const canvasJson = editor.canvas.toJSON(['hoverCursor', 'selectable']);
-  //     const key = selectedFid ? `project-${selectedFid}` : 'project-example';
-  //     localStorage.setItem(key, JSON.stringify(canvasJson));
-  // };
-
-  // const loadProject = () => {
-  //     const key = selectedFid ? `project-${selectedFid}` : 'project-example';
-  //     const canvasJson = localStorage.getItem(key);
-  //     editor.canvas.loadFromJSON(canvasJson, () => {
-  //         editor.canvas.backgroundImage.scaleToHeight(canvasSize.height);
-  //         editor.canvas.backgroundImage.scaleToWidth(canvasSize.width);
-  //         editor.canvas.renderAll();
-  //     });
-  //     updateEditorSize();
-  // };
-
-  // const addImage = () => {
-  //     fabric.Image.fromURL('/assets/illustrations/illustration_avatar.png', (oImg) => {
-  //         editor?.canvas.add(oImg);
-  //     })
-  // }
-
   const saveImage = () => {
     setImageUploading(true);
     const resultImage = editor.canvas.toDataURL({
@@ -614,20 +534,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
               console.error('Unexpected error while uploading', err);
             }
           });
-
-          // // Save protected version of the image
-          // const protectedFilename = `projects/${editorProjectId}-preview.jpg`;
-          // Storage.put(protectedFilename, blob, {
-          //   level: 'protected',
-          //   resumable: true,
-          //   contentType: "image/jpeg",
-          //   progressCallback: (progress) => {
-          //     console.log(`Uploaded protected version: ${progress.loaded}/${progress.total}`);
-          //   },
-          //   errorCallback: (err) => {
-          //     console.error('Unexpected error while uploading protected version', err);
-          //   }
-          // });
 
         }).catch(err => console.log(`UUID Gen Fetch Error: ${err}`));
       });
@@ -817,16 +723,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     tempCanvasDrawing.setWidth(1024);
     tempCanvasDrawing.setHeight(1024);
 
-    // const solidRect = new fabric.Rect({
-    //     left: 0,
-    //     top: 0,
-    //     width: tempCanvasDrawing.getWidth(),
-    //     height: tempCanvasDrawing.getHeight(),
-    //     fill: 'black',
-    //     selectable: false,
-    //     evented: false,
-    // });
-
     tempCanvasDrawing.backgroundColor = 'black'
 
     // tempCanvasDrawing.add(solidRect);
@@ -883,15 +779,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     const dataURLBgImage = tempCanvasDrawing.toDataURL('image/png');
 
 
-    // Delay the downloads using setTimeout
-    // setTimeout(() => {
-    //     downloadDataURL(dataURLBgImage, 'background_image.png');
-    // }, 500);
-
-    // setTimeout(() => {
-    //     downloadDataURL(dataURLDrawing, 'drawing.png');
-    // }, 1000);
-
     if (dataURLBgImage && dataURLDrawing) {
       //   const dataURLBgImage = fabricImage.toDataURL('image/png');
 
@@ -900,15 +787,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         mask: dataURLDrawing,
         prompt: magicPrompt,
       };
-
-      // Delay the downloads using setTimeout
-      //   setTimeout(() => {
-      //     downloadDataURL(dataURLBgImage, 'background_image.png');
-      //   }, 500);
-
-      //   setTimeout(() => {
-      //     downloadDataURL(dataURLDrawing, 'drawing.png');
-      //   }, 1000);
 
       try {
         const response = await API.post('publicapi', '/inpaint', {
@@ -1048,60 +926,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
       setEditorStates(prevHistory => [...prevHistory, serializedCanvas]);
       setBgEditorStates(prevHistory => [...prevHistory, backgroundImage]);
-
-      // TODO: clean up and re-enable this saving logic for projects / templates
-      // // Scale the image to fit the canvas
-      // const oImg = editor.canvas.backgroundImage;
-      // const imageAspectRatio = oImg.width / oImg.height;
-      // const [desiredHeight, desiredWidth] = calculateEditorSize(imageAspectRatio);
-      // const scale = desiredWidth / oImg.width;
-
-      // oImg.scale(scale);
-      // editor.canvas.forEachObject(obj => {
-      //   obj.left /= scale;
-      //   obj.top /= scale;
-      //   obj.scaleY /= scale;
-      //   obj.scaleX /= scale;
-      // });
-
-      // // Now, save the scaled state for the S3 storage
-      // const scaledSerializedCanvas = JSON.stringify(editor.canvas);
-
-      // // Revert the scaling to ensure local behavior remains consistent
-      // editor.canvas.forEachObject(obj => {
-      //   obj.left *= scale;
-      //   obj.top *= scale;
-      //   obj.scaleY *= scale;
-      //   obj.scaleX *= scale;
-      // });
-
-      // // Create a unique file name based on the editorProjectId for JSON state
-      // const stateFileName = `projects/${editorProjectId}.json`;
-
-      // // Upload the serialized (scaled) canvas state to S3 under the user's protected folder
-      // await Storage.put(stateFileName, scaledSerializedCanvas, {
-      //   level: 'protected',
-      //   contentType: 'application/json'
-      // });
-
-      // // Convert the canvas to a data URL with appropriate quality and multiplier settings
-      // const canvasDataURL = editor.canvas.toDataURL({
-      //   format: 'jpeg',
-      //   quality: 0.6,
-      //   multiplier: 1 / scale
-      // });
-
-      // // Convert the data URL to a Blob
-      // const canvasBlob = dataURLtoBlob(canvasDataURL);
-
-      // // Create a unique file name based on the editorProjectId for the canvas image
-      // const canvasImageFileName = `projects/${editorProjectId}-preview.jpg`;
-
-      // // Upload the canvas image to S3 under the user's protected folder
-      // await Storage.put(canvasImageFileName, canvasBlob, {
-      //   level: 'protected',
-      //   contentType: 'image/jpeg'
-      // });
 
     } catch (error) {
       console.error('Failed to update editor state or canvas image in S3:', error);
@@ -1271,11 +1095,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
   const loadFineTuningFrames = () => {
     setLoadingFineTuningFrames(false)
-    // if (loadingFineTuningFrames) {
-    //   setTimeout(() => {
-    //     setLoadingFineTuningFrames(false)
-    //   }, [1000])
-    // }
   }
 
   // This is going to handle toggling our default prompt and no prompt when the user switches between erase and fill.
@@ -1315,17 +1134,17 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   }, [editorLoaded]);
 
 
-  const handleOpenNavWithoutSavingDialog = (fid) => {
+  const handleOpenNavWithoutSavingDialog = (cid, season, episode, frame) => {
     if (editorStates.length > 1) {
-      setSelectedNavItemFid(fid);
+      setSelectedNavItemFid(frame);
       setOpenNavWithoutSavingDialog(true);
     } else {
-      handleNavigate(fid);
+      handleNavigate(cid, season, episode, frame);
     }
   };
 
-  const handleNavigate = (fid) => {
-    navigate(`/editor/${fid}`);
+  const handleNavigate = (cid, season, episode, frame) => {
+    navigate(`/v2/editor/${cid}/${season}/${episode}/${frame}`);
     setOpenNavWithoutSavingDialog(false);
     editor.canvas.discardActiveObject().requestRenderAll();
     setFutureStates([]);
@@ -1339,217 +1158,50 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   /* -------------------------------- New Stuff ------------------------------- */
 
 
+  const {cid, season, episode, frame} = useParams();
 
-
-  const { showObj, setShowObj, cid, selectedFrameIndex, setSelectedFrameIndex } = useSearchDetailsV2();
+  const { showObj, setShowObj, selectedFrameIndex, setSelectedFrameIndex } = useSearchDetailsV2();
   const [loadingCsv, setLoadingCsv] = useState();
   const [frames, setFrames] = useState();
   const params = useParams();
   const [loadedSubtitle, setLoadedSubtitle] = useState('');
   const [loadedSeason, setLoadedSeason] = useState('');
   const [loadedEpisode, setLoadedEpisode] = useState('');
+  const [surroundingSubtitles, setSurroundingSubtitles] = useState(null);
 
-  /* -------------------------------- Functions ------------------------------- */
+  useEffect(() => {
+    const loadFrameInfo = async () => {
+      setLoading(true);
+      try {
+        const info = await fetchFrameInfo(cid, season, episode, frame);
+        // setFrameData(info.frameData);
+        setFineTuningFrames(info.frames_fine_tuning);
+        setSurroundingFrames(info.frames_surrounding);
+        setSurroundingSubtitles(info.subtitles_surrounding);
+        setFrames(info.frames_fine_tuning);
+        setDefaultSubtitle(info.subtitle)
+        setLoadedSubtitle(info.subtitle);
+        setLoadedSeason(season);
+        setLoadedEpisode(episode);
+        console.log("Just ran setFrame with this: ", info.frames_fine_tuning)
+        // Update any additional state with the fetched info
+      } catch (error) {
+        console.error("Failed to fetch frame info:", error);
+        // Handle error (e.g., set error state, show error message)
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  async function loopThroughKeys(obj, fps, subtitleObj) {
-    const files = []
-    // Loop through each key in the object
-    const fileList = Object.keys(obj).map(async (key) => {
-      const videoUrl = `https://ipfs.memesrc.com/ipfs/${params.cid}/${subtitleObj.season}/${subtitleObj.episode}/${key}`
+    loadFrameInfo();
+  }, [cid, season, episode, frame]);
 
-      const frameBlobs = await extractFramesFromVideo(videoUrl, obj[key], fps)
-
-      // console.log(frameBlobs)
-
-
-      return [
-        ...frameBlobs
-      ]
-    })
-
-    const images = await Promise.all(fileList)
-
-    console.log(images.flat())
-
-    setFrames(images.flat())
-  }
-
-  async function extractFramesFromVideo(videoUrl, frameNumbers, assumedFps = 30) {
-    return new Promise((resolve, reject) => {
-      // Create a video element
-      const video = document.createElement('video');
-      video.src = videoUrl;
-      video.muted = true;
-      video.crossOrigin = "anonymous"; // Handle CORS policy
-      const canvas = document.createElement('canvas');
-      const context = canvas.getContext('2d');
-      const blobs = [];
-      let currentFrameIndex = 0;
-
-      video.addEventListener('loadedmetadata', () => {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-
-        // Function to capture a frame at a specific index
-        const captureFrame = (frameIndex) => {
-          const frameTime = frameIndex / assumedFps;
-          video.currentTime = frameTime;
-        };
-
-        video.addEventListener('seeked', async () => {
-          if (currentFrameIndex < frameNumbers.length) {
-            // Draw the video frame to the canvas
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
-            // Convert the canvas to a blob
-            canvas.toBlob((blob) => {
-              const objUrl = URL.createObjectURL(blob)
-              blobs.push(objUrl);
-              currentFrameIndex += 1;
-              if (currentFrameIndex < frameNumbers.length) {
-                // Capture the next frame
-                captureFrame(frameNumbers[currentFrameIndex] - 1); // Adjust for 0-based indexing
-              } else {
-                // Resolve the promise when all frames are loaded
-                resolve(blobs);
-              }
-            }, 'image/jpeg'); // Specify the format and quality if needed
-          }
-        });
-
-        // Start capturing frames
-        captureFrame(frameNumbers[currentFrameIndex] - 1); // Adjust for 0-based indexing
-      });
-
-      video.addEventListener('error', (e) => {
-        reject(new Error('Error loading video'));
-      });
-    });
-  }
+  // setFrames
+  // setLoadedSubtitle
+  // setLoadedSeason
+  // setLoadedEpisode
 
   /* -------------------------------------------------------------------------- */
-
-  useEffect(() => {
-    async function loadFile(cid, filename) {
-      const url = `https://ipfs.memesrc.com/ipfs/${cid}/_docs.csv`;
-      try {
-        const response = await fetch(url);
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-        const text = await response.text();
-        const lines = text.split("\n");
-        const headers = lines[0].split(",").map((header) => header.trim());
-        return lines.slice(1).map((line) => {
-          const values = line.split(",").map((value) => value.trim());
-          return headers.reduce((obj, header, index) => {
-            obj[header] = values[index] ? values[index] : "";
-            if (header === "subtitle_text" && obj[header]) {
-              obj.base64_subtitle = obj[header]; // Store the base64 version
-              obj[header] = atob(obj[header]); // Decode to regular text
-            }
-            return obj;
-          }, {});
-        });
-      } catch (error) {
-        console.error("Failed to load file:", error);
-        return [];
-      }
-    }
-
-    async function initialize(cid = null) {
-      const selectedCid = cid
-      if (!selectedCid) {
-        alert("Please enter a valid CID.");
-        return;
-      }
-      const filename = "1-1.csv";
-      const lines = await loadFile(cid, filename);
-      if (lines?.length > 0) {
-        // Decode base64 subtitle and assign to a new property
-        const decodedLines = lines.map(line => ({
-          ...line,
-          subtitle: line.base64_subtitle ? atob(line.base64_subtitle) : "" // Ensure you decode the subtitle and assign it here
-        }));
-        setLoadingCsv(false);
-        setShowObj(decodedLines); // Use decodedLines with subtitle property
-      } else {
-        alert('error');
-      }
-    }
-
-    if (!showObj) {
-      initialize(params.cid);
-    }
-  }, [showObj]);
-
-
-  useEffect(() => {
-    if (showObj && params?.subtitleIndex) {
-      setFrames()
-      const subtitleObj = showObj.find(obj => obj.subtitle_index === params?.subtitleIndex)
-
-      // eslint-disable-next-line camelcase
-      const { season, episode, subtitle_index, subtitle_text, start_frame, end_frame } = subtitleObj
-
-      setLoadedSeason(season)
-      setLoadedEpisode(episode)
-      setLoadedSubtitle(subtitle_text)
-
-      const startFrame = 190
-      const endFrame = 847
-
-      const fps = 10
-      const videoLength = 25
-      const framesPerContainer = (videoLength * fps)
-
-      // Video files are 25 seconds long, and 10 frames per second
-
-      // eslint-disable-next-line camelcase
-      const startFile = Math.floor(start_frame / framesPerContainer)
-
-      // eslint-disable-next-line camelcase
-      const endFile = Math.floor(end_frame / framesPerContainer)
-      console.log('start_frame', start_frame)
-      console.log('startFile', startFile)
-      console.log('end_frame', end_frame)
-      console.log('startFile', endFile)
-      // eslint-disable-next-line camelcase
-      const startIndex = start_frame % framesPerContainer
-      console.log('startIndex', startIndex)
-      // eslint-disable-next-line camelcase
-      const endIndex = end_frame % framesPerContainer
-      console.log('endIndex', endIndex)
-
-      const listBetween = (x, y) => Array.from({ length: y - x + 1 }, (_, i) => x + i);
-
-      const fileNameArray = listBetween(startFile, endFile)
-      console.log('fileNameArray', fileNameArray)
-      // eslint-disable-next-line camelcase
-      const frameNumberArray = listBetween(start_frame, end_frame);
-      console.log('frameNumberArray', frameNumberArray)
-
-      const fileFrameGroups = {};
-
-      // eslint-disable-next-line camelcase
-      for (let frameId = parseInt(start_frame, 10); frameId <= parseInt(end_frame, 10); frameId += 1) {
-        const fileNumber = Math.floor(frameId / framesPerContainer);
-        const frameNumber = frameId % framesPerContainer;
-        const fileName = `${fileNumber}.mp4`;
-        fileFrameGroups[fileName] = fileFrameGroups[fileName] || [];
-        fileFrameGroups[fileName].push(frameNumber);
-      }
-
-
-      console.log('fileFrameGroups', fileFrameGroups)
-      loopThroughKeys(fileFrameGroups, fps, subtitleObj)
-
-
-
-
-      // https://ipfs.memesrc.com/ipfs/${params.cid}/${result.season}/${result.episode}/s${parseInt(result.subtitle_index, 10)+1}.mp4
-    }
-
-  }, [showObj, params?.subtitleIndex]);
 
   useEffect(() => {
     if (frames && frames.length > 0) {
@@ -1557,14 +1209,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       console.log(Math.floor(frames.length / 2))
       setSelectedFrameIndex(selectedFrameIndex || Math.floor(frames.length / 2))
 
-      // setLoadedSeriesTitle(data.series_name);
-      // setSurroundingFrames(data.frames_surrounding);
-      // const episodeDetails = selectedFid.split('-');
-      // setEpisodeDetails(episodeDetails);
-      // Pre load fine tuning frames
-      // loadImg(data.frames_fine_tuning, oImgBuild).then((images) => {
-      //   setFineTuningFrames(images);
-      // });
       // Background image from the given URL
       fabric.Image.fromURL(
         selectedFrameIndex ? frames[selectedFrameIndex] : frames[Math.floor(frames.length / 2)],
@@ -1989,15 +1633,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                       </AccordionSummary>
                       <AccordionDetails sx={{ paddingY: 0, paddingX: 0 }}>
                         <List sx={{ padding: '.5em 0' }}>
-                          {surroundingFrames &&
-                            surroundingFrames
-                              .filter(
-                                (result, index, array) =>
-                                  result?.subtitle &&
-                                  (index === 0 ||
-                                    result?.subtitle.replace(/\n/g, ' ') !==
-                                    array[index - 1].subtitle.replace(/\n/g, ' '))
-                              )
+                          {surroundingSubtitles &&
+                            surroundingSubtitles
                               .map((result, index) => (
                                 <ListItem key={result.id ? result.id : `surrounding-subtitle-${index}`} disablePadding sx={{ padding: '0 0 .6em 0' }}>
                                   <ListItemIcon sx={{ paddingLeft: '0' }}>
@@ -2018,7 +1655,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                           },
                                         },
                                       }}
-                                      onClick={() => handleOpenNavWithoutSavingDialog(result?.fid)}
+                                      onClick={() => handleOpenNavWithoutSavingDialog(cid, season, episode, result.frame)}
                                     >
                                       {loading ? (
                                         <CircularProgress size={20} sx={{ color: '#565656' }} />
@@ -2136,7 +1773,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                     <Button onClick={() => setOpenNavWithoutSavingDialog(false)} color="primary">
                       Cancel
                     </Button>
-                    <Button onClick={() => handleNavigate(selectedNavItemFid)} color="primary" autoFocus>
+                    <Button onClick={() => handleNavigate(cid, season, episode, selectedNavItemFid)} color="primary" autoFocus>
                       Leave
                     </Button>
                   </DialogActions>
@@ -2145,22 +1782,18 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
             </Grid>
             <Grid container item spacing={1}>
-              {surroundingFrames &&
-                surroundingFrames.map((result) => (
-                  <Grid item xs={4} sm={4} md={12 / 9} key={result.fid}>
+            {surroundingFrames?.map((surroundingFrame, index) => (
+                  <Grid item xs={4} sm={4} md={12 / 9} key={`surrounding-frame-${surroundingFrame.frame ? surroundingFrame.frame : index}`}>
                     <a style={{ textDecoration: 'none' }}>
-                      <StyledCard style={{ border: fid === result?.fid ? '3px solid orange' : '' }}>
-                        {/* {console.log(`${fid} = ${result?.fid}`)} */}
+                      <StyledCard sx={{ ...((frame === surroundingFrame.frame) && { border: '3px solid orange' }), cursor: (frame === surroundingFrame.frame) ? 'default' : 'pointer' }}>
+                        
                         <StyledCardMedia
                           component="img"
-                          src={`https://memesrc.com${result?.frame_image}`}
-                          alt={result?.subtitle}
-                          title={result?.subtitle}
+                          alt={`${surroundingFrame.frame}`}
+                          src={`${surroundingFrame.frameImage}`}
+                          title={surroundingFrame.subtitle || 'No subtitle'}
                           onClick={() => {
-                            // editor.canvas._objects = [];
-                            // setSelectedFid(result?.fid);
-                            handleOpenNavWithoutSavingDialog(result?.fid);
-                            // setFineTuningValue(4);
+                            navigate(`/v2/editor/${cid}/${season}/${episode}/${surroundingFrame.frame}`)
                           }}
                         />
                       </StyledCard>
@@ -2168,15 +1801,13 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                   </Grid>
                 ))}
               <Grid item xs={12}>
-                {episodeDetails && episodeDetails.length > 0 && (
-                  <Button
+                <Button
                     variant="contained"
                     fullWidth
-                    href={`/episode/${episodeDetails[0]}/${episodeDetails[1]}/${episodeDetails[2]}/${episodeDetails[3]}`}
+                    href={`/v2/episode/${cid}/${season}/${episode}/${frame}`}
                   >
                     View Episode
                   </Button>
-                )}
               </Grid>
             </Grid>
           </Card>
