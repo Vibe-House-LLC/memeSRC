@@ -304,7 +304,7 @@ export default function FramePage({ shows = [] }) {
     };
   
     const loadSurroundingSubtitles = async () => {
-      try {
+    try {
         // Fetch only the surrounding subtitles
         const subtitlesSurrounding = (await fetchFrameInfo(cid, season, episode, frame, { subtitlesSurrounding: true })).subtitles_surrounding;
         console.log("setSurroundingSubtitles", subtitlesSurrounding)
@@ -343,7 +343,18 @@ export default function FramePage({ shows = [] }) {
       }
     };
     
-  
+    // Make sure the values are cleared before loading new ones: 
+    // TODO: make the 'main image' show a skeleton while loading (incl. between navigations)
+    setLoading(true);
+    setFrame(null);
+    setFrameData(null);
+    setDisplayImage(null);
+    setLoadedSubtitle([]);
+    setFineTuningFrames([]);
+    setFrames([]);
+    setSurroundingSubtitles([]);
+    setSurroundingFrames(new Array(9).fill(undefined));
+
     // Sequentially call the functions to ensure loading states and data fetching are managed efficiently
     loadInitialFrameInfo().then(() => {
       loadFineTuningFrames(); // Load fine-tuning frames
