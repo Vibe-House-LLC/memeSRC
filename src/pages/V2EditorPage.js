@@ -21,7 +21,7 @@ import { createEditorProject, updateEditorProject } from '../graphql/mutations';
 import { getEditorProject } from '../graphql/queries';
 import ImageEditorControls from '../components/ImageEditorControls';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
-import fetchFrameInfo from '../utils/frameHandlerV2';
+import { fetchFrameInfo } from '../utils/frameHandlerV2';
 
 const Alert = forwardRef((props, ref) => <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />);
 
