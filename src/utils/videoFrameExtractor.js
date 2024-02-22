@@ -39,6 +39,7 @@ export async function extractFramesFromVideo(videoUrl, frameNumbers, assumedFps 
     const video = document.createElement('video');
     video.src = videoUrl;
     video.autoplay = true;
+    video.playsInline = true;
     video.muted = true;
     video.crossOrigin = 'anonymous'; // Handle CORS policy
     const canvas = document.createElement('canvas');
