@@ -731,7 +731,7 @@ export default function FramePage({ shows = [] }) {
               size="medium"
               fullWidth
               variant="contained"
-              to={`/v2/editor/${cid}/${frame}`}
+              to={`/v2/editor/${cid}/${season}/${episode}/${frame}`}
               component={RouterLink}
               sx={{ my: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
               startIcon={<Edit />}

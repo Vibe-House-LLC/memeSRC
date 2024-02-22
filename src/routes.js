@@ -71,7 +71,7 @@ export default function Router() {
           children: [
             { path: 'search/:cid/:searchTerms', element: <V2SearchPage /> },
             { path: 'frame/:cid/:season/:episode/:frame', element: <V2FramePage /> },
-            { path: 'editor/:cid/:subtitleIndex', element: <V2EditorPage /> },
+            { path: 'editor/:cid/:season/:episode/:frame', element: <V2EditorPage /> },
           ]
         },
         { path: 'frame/:fid', element: <TopBannerSearchRevised><FramePage /></TopBannerSearchRevised> },
@@ -147,7 +147,7 @@ export default function Router() {
     },
     {
       path: '*',
-      element: <Navigate to="/404" replace />,
+      element: <Page404 />,
     },
   ]);
 
