@@ -1,181 +1,112 @@
+import React, { useState, useEffect, useContext } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { CircularProgress, Container, Grid, Typography, Card, CardMedia, CardContent, Button } from '@mui/material';
 import PropTypes from 'prop-types';
-import React, { useState, useEffect, useMemo, useCallback, useContext } from 'react';
-import { useParams } from 'react-router-dom';
-import { Grid, CircularProgress, List, ListItem, ListItemText, ListItemAvatar, Avatar, Card, CardActionArea, CardMedia, CardContent, Typography, Chip, Container, Box, useMediaQuery } from '@mui/material';
-import styled from '@emotion/styled';
-import { Stack } from '@mui/system';
-import { LoadingButton } from '@mui/lab';
-import { API, graphqlOperation } from 'aws-amplify';
-import { listContentMetadata } from '../graphql/queries';
-import EpisodeViewResultsAd from '../ads/EpisodeViewResultsAd';
-import EpisodeViewBannerAd from '../ads/EpisodeViewBannerAd';
+import { extractVideoFrames } from '../utils/videoFrameExtractor'; // Ensure this import path matches your project structure
 import { UserContext } from '../UserContext';
 
-// Prop types
+// Define prop types for the component
 V2EpisodePage.propTypes = {
-  setSeriesTitle: PropTypes.func
+  setSeriesTitle: PropTypes.func,
 };
 
+// The main component
 export default function V2EpisodePage({ setSeriesTitle }) {
   const { user } = useContext(UserContext);
+  const navigate = useNavigate();
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [showName, setShowName] = useState('')
-  const isMd = useMediaQuery(theme => theme.breakpoints.up('md'))
-
-  const memoizedResults = useMemo(() => results, [results]);
-
-  const { seriesId, seasonNum, episodeNum, frameNum } = useParams();
-
-  const getSessionID = async () => {
-    let sessionID;
-    if ("sessionID" in sessionStorage) {
-      sessionID = sessionStorage.getItem("sessionID");
-      return Promise.resolve(sessionID);
-    }
-    return API.get('publicapi', '/uuid')
-      .then(generatedSessionID => {
-        sessionStorage.setItem("sessionID", generatedSessionID);
-        return generatedSessionID;
-      })
-      .catch(err => {
-        console.log(`UUID Gen Fetch Error:  ${err}`);
-        throw err;
-      });
-  };
-
-  const loadFrames = useCallback((startInput) => {
-    const start = Math.max(Number(startInput), 0);
-    const apiEpisodeLookupUrl = `https://api.memesrc.com/?series=${seriesId}&season=${seasonNum}&episode=${episodeNum}&start=${start}`;
-    setLoadingMore(true);
-    getSessionID().then(sessionID => {
-      fetch(`${apiEpisodeLookupUrl}&sessionID=${sessionID}`)
-        .then(response => response.json())
-        .then(data => {
-          setSeriesTitle(data[1].series_name);
-          // Combine old and new results, and de-duplicate based on fid
-          const allResultsMap = new Map([...results, ...data].map(result => [result.fid, result]));
-          const allResults = [...allResultsMap.values()];
-
-          // Sort all results based on the number part of fid
-          allResults.sort((a, b) => {
-            const numA = Number(a.fid.split('-')[3]);
-            const numB = Number(b.fid.split('-')[3]);
-            return numA - numB;
-          });
-          setResults(allResults);
-          setLoading(false);
-          setLoadingMore(false);
-        })
-        .catch(error => {
-          console.error(error);
-          setLoading(false);
-          setLoadingMore(false);
-        });
-    }).catch(err => console.log(`Error with sessionID: ${err}`));
-  }, [seriesId, seasonNum, episodeNum, results, setSeriesTitle]);
+  const { cid, season, episode, frame } = useParams();
+  const fps = 10; // Frames per second
 
   useEffect(() => {
-    loadFrames(((Number(frameNum) + 1) / 9) - 1);
-    API.graphql({
-      ...graphqlOperation(listContentMetadata, { filter: {}, limit: 50 }),
-      authMode: "API_KEY"
-    }).then(result => {
-      setShowName(result.data.listContentMetadata.items.find(obj => obj.id === seriesId).title)
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    const fetchSubtitlesAndFrames = async () => {
+      setLoading(true);
+      
+      const subtitlesUrl = `https://ipfs.memesrc.com/ipfs/${cid}/${season}/${episode}/_docs.csv`;
+      const subtitlesResponse = await fetch(subtitlesUrl);
+      const subtitlesCsv = await subtitlesResponse.text();
+      
+      const subtitles = subtitlesCsv.split('\n').slice(1).map(line => {
+        const parts = line.split(',');
+        return {
+          season: parts[0],
+          episode: parts[1],
+          subtitle_index: parseInt(parts[2], 10),
+          subtitle_text: parts[3], // Assuming Base64 encoded
+          start_frame: parseInt(parts[4], 10),
+          end_frame: parseInt(parts[5], 10),
+        };
+      });
 
+      const startFrame = parseInt(frame, 10);
+      const endFrame = startFrame + (fps * 10) - 1; // Fetching 100 frames for 10 seconds
 
-  // const classes = useStyles();
+      const frames = await extractVideoFrames(cid, season, episode, startFrame, endFrame, fps);
+
+      // Select one frame per second to display
+      const selectedFrames = frames.filter((_, index) => index % fps === 0);
+
+      const frameResults = selectedFrames.map((frameUrl, index) => {
+        const frameId = startFrame + (index * fps);
+        const subtitle = subtitles.find(sub => frameId >= sub.start_frame && frameId <= sub.end_frame);
+        return {
+          fid: frameId.toString(),
+          frame_image: frameUrl,
+          subtitle: subtitle ? subtitle.subtitle_text : null,
+        };
+      });
+
+      setResults(frameResults);
+      setLoading(false);
+    };
+
+    fetchSubtitlesAndFrames().catch(console.error);
+  }, [cid, season, episode, frame, fps]);
+
+  const navigateFrames = (direction) => {
+    const currentFrame = parseInt(frame, 10);
+    // Navigate in 100-frame increments to move 10 seconds
+    const newFrame = direction === 'prev' ? Math.max(currentFrame - 100, 0) : currentFrame + 100;
+    navigate(`/v2/episode/${cid}/${season}/${episode}/${newFrame}`);
+  };
 
   return (
-    <Container maxWidth>
-      {/* <Typography variant='h2'>{seriesId}</Typography>
-      <Typography variant='h4'>{seriesId}</Typography> */}
+    <Container maxWidth="lg">
       <Typography gutterBottom variant="h3" component="div">
-        <b>{showName || seriesId}</b> <Chip label={`S${seasonNum} E${episodeNum}`} />
+        {cid} <span>Season {season}, Episode {episode}</span>
       </Typography>
-      <Grid container justifyContent='center' py={2}>
-        {user?.userDetails?.subscriptionStatus !== 'active' &&
-          <Grid item xs={12} mb={2}>
-            <center>
-              <Box sx={{ maxWidth: '800px' }}>
-                <EpisodeViewBannerAd />
-              </Box>
-            </center>
-          </Grid>
-        }
-        <Grid item xs={12} sm={3} md={4}>
-          {!loading &&
-            <LoadingButton
-              variant='contained'
-              fullWidth
-              onClick={() => loadFrames(((((Number(results[0].fid.split('-')[3])) + 1) / 9) - 1) - 25)}
-              disabled={loadingMore}
-            >
-              {loadingMore ? 'Loading...' : 'Previous Frames'}
-            </LoadingButton>
-          }
-        </Grid>
+      <Grid container spacing={2} justifyContent="center" style={{ marginBottom: '20px' }}>
+        <Button variant="contained" onClick={() => navigateFrames('prev')} disabled={parseInt(frame, 10) === 0}>
+          Previous 10 Seconds
+        </Button>
+        <Button variant="contained" onClick={() => navigateFrames('next')} style={{ marginLeft: '20px' }}>
+          Next 10 Seconds
+        </Button>
       </Grid>
-
       {loading ? (
         <CircularProgress />
       ) : (
-        <Grid container spacing={2} alignItems="stretch">
-          {memoizedResults && memoizedResults.map((result, idx) => (
-            <>
-              {
-                // Insert the VotingPageAd component every 6 shows
-                (idx % 6) - 2 === 0 && idx !== 0 && user?.userDetails?.subscriptionStatus !== 'active'
-                  ? (
-                    <Grid item xs={12} sm={6} md={3} key={`ad-${result.fid}`}>
-                      <Card sx={{ ...(isMd && {aspectRatio: '4.13/1'}) }}>
-                        <EpisodeViewResultsAd />
-                      </Card>
-                    </Grid>
-                  )
-                  : null
-              }
-              <Grid item xs={12} sm={6} md={3} key={result.fid}>
-                <div style={{ display: 'flex', justifyContent: 'center' }}>
-                  <Card component="a" href={`/frame/${result.fid}`} style={{ display: 'flex', textDecoration: 'none', aspectRatio: '4.13/1' }}>
-                    <CardMedia
-                      component="img"
-                      alt={result.subtitle}
-                      style={{ width: '50%', objectFit: 'cover' }}
-                      image={`https://memesrc.com${result.frame_image}`}
-                    />
-                    <CardContent sx={{ alignSelf: 'center' }}>
-                      <Typography variant="body1" color="textPrimary" component="p">
-                        "{result.subtitle || '(...)'}"
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </div>
-              </Grid>
-            </>
+        <Grid container spacing={2}>
+          {results.map((result, index) => (
+            <Grid item xs={12} sm={6} md={4} key={index}>
+              <Card>
+                <CardMedia
+                  component="img"
+                  height="140"
+                  image={result.frame_image}
+                  alt={`Frame ${result.fid}`}
+                />
+                <CardContent>
+                  <Typography variant="body2" color="textSecondary">
+                    {result.subtitle ? atob(result.subtitle) : 'No subtitle'}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
           ))}
         </Grid>
-
       )}
-
-      <Grid container justifyContent='center' style={{ padding: '20px' }}>
-        <Grid item xs={12} sm={3} md={4}>
-          {!loading &&
-            <LoadingButton
-              variant='contained'
-              fullWidth
-              onClick={() => loadFrames(((((Number(results[results.length - 1].fid.split('-')[3])) + 1) / 9) - 1))}
-              disabled={loadingMore}
-            >
-              {loadingMore ? 'Loading...' : 'Next Frames'}
-            </LoadingButton>
-          }
-        </Grid>
-      </Grid>
     </Container>
   );
 }
