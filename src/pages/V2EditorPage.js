@@ -1134,17 +1134,17 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   }, [editorLoaded]);
 
 
-  const handleOpenNavWithoutSavingDialog = (fid) => {
+  const handleOpenNavWithoutSavingDialog = (cid, season, episode, frame) => {
     if (editorStates.length > 1) {
-      setSelectedNavItemFid(fid);
+      setSelectedNavItemFid(frame);
       setOpenNavWithoutSavingDialog(true);
     } else {
-      handleNavigate(fid);
+      handleNavigate(cid, season, episode, frame);
     }
   };
 
-  const handleNavigate = (fid) => {
-    navigate(`/editor/${fid}`);
+  const handleNavigate = (cid, season, episode, frame) => {
+    navigate(`/v2/editor/${cid}/${season}/${episode}/${frame}`);
     setOpenNavWithoutSavingDialog(false);
     editor.canvas.discardActiveObject().requestRenderAll();
     setFutureStates([]);
@@ -1655,7 +1655,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                           },
                                         },
                                       }}
-                                      onClick={() => handleOpenNavWithoutSavingDialog(result?.fid)}
+                                      onClick={() => handleOpenNavWithoutSavingDialog(cid, season, episode, result.frame)}
                                     >
                                       {loading ? (
                                         <CircularProgress size={20} sx={{ color: '#565656' }} />
@@ -1773,7 +1773,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                     <Button onClick={() => setOpenNavWithoutSavingDialog(false)} color="primary">
                       Cancel
                     </Button>
-                    <Button onClick={() => handleNavigate(selectedNavItemFid)} color="primary" autoFocus>
+                    <Button onClick={() => handleNavigate(cid, season, episode, selectedNavItemFid)} color="primary" autoFocus>
                       Leave
                     </Button>
                   </DialogActions>
@@ -1793,7 +1793,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                           src={`${surroundingFrame.frameImage}`}
                           title={surroundingFrame.subtitle || 'No subtitle'}
                           onClick={() => {
-                            navigate(`/v2/frame/${cid}/${season}/${episode}/${surroundingFrame.frame}`)
+                            navigate(`/v2/editor/${cid}/${season}/${episode}/${surroundingFrame.frame}`)
                           }}
                         />
                       </StyledCard>

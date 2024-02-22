@@ -749,7 +749,7 @@ export default function FramePage({ shows = [] }) {
                                     },
                                   },
                                 }}
-                                onClick={() => navigate(`/v2/frame/${cid}/${season}/${episode}//${result?.fid}`)}
+                                onClick={() => navigate(`/v2/frame/${cid}/${season}/${episode}//${result?.frame}`)}
                               >
                                 {loading ? (
                                   <CircularProgress size={20} sx={{ color: '#565656' }} />
