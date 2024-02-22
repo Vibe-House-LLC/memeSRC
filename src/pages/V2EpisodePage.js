@@ -40,7 +40,7 @@ export default function V2EpisodePage({ setSeriesTitle }) {
       });
 
       const startFrame = parseInt(frame, 10);
-      const endFrame = startFrame + (fps * 100) - 1; // Fetching frames for 100 seconds
+      const endFrame = startFrame + (fps * 10) - 1; // Fetching frames for 100 seconds
 
       const frames = await extractVideoFrames(cid, season, episode, startFrame, endFrame, fps);
 
@@ -65,7 +65,7 @@ export default function V2EpisodePage({ setSeriesTitle }) {
 
   const navigateFrames = (direction) => {
     const currentFrame = parseInt(frame, 10);
-    const newFrame = direction === 'prev' ? Math.max(currentFrame - (fps * 100), 0) : currentFrame + (fps * 100);
+    const newFrame = direction === 'prev' ? Math.max(currentFrame - (fps * 10), 0) : currentFrame + (fps * 10);
     navigate(`/v2/episode/${cid}/${season}/${episode}/${newFrame}`);
   };
 
@@ -77,7 +77,7 @@ export default function V2EpisodePage({ setSeriesTitle }) {
       </Typography>
       {parseInt(frame, 10) !== 0 && (
         <Button disabled={loading} fullWidth={!isMd} variant="contained" onClick={() => navigateFrames('prev')} sx={{ mb: 4 }} style={{ marginTop: '20px' }}>
-          Previous 100 Seconds
+          Previous Frames
         </Button>
       )}
       {loading ? (
@@ -113,7 +113,7 @@ export default function V2EpisodePage({ setSeriesTitle }) {
       )}
       <br />
       <Button disabled={loading} fullWidth={!isMd} variant="contained" onClick={() => navigateFrames('next')} sx={{ mt: 2 }} style={{ marginBottom: '20px' }}>
-        Next 100 Seconds
+        Next Frames
       </Button>
     </Container>
   );
