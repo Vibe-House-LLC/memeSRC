@@ -107,7 +107,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const [loading, setLoading] = useState(true)
 
   const [fineTuningValue, setFineTuningValue] = useState(searchDetails.fineTuningFrame || 4);
-  const [episodeDetails, setEpisodeDetails] = useState();
   const [openDialog, setOpenDialog] = useState(false);
   const [imageUploading, setImageUploading] = useState();
   const [imageBlob, setImageBlob] = useState();
@@ -374,7 +373,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         // You can set a default subtitle or any other properties here if needed
         setLoadedSeriesTitle("");
         setSurroundingFrames([]);
-        setEpisodeDetails([])
         setDefaultSubtitle(false)
         setLoading(false);
       }, { crossOrigin: 'anonymous' });
@@ -436,8 +434,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         .then((data) => {
           setLoadedSeriesTitle(data.series_name);
           setSurroundingFrames(data.frames_surrounding);
-          const episodeDetails = selectedFid.split('-');
-          setEpisodeDetails(episodeDetails);
           // Pre load fine tuning frames
           loadImg(data.frames_fine_tuning, oImgBuild).then((images) => {
             setFineTuningFrames(images);
@@ -1805,15 +1801,13 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                   </Grid>
                 ))}
               <Grid item xs={12}>
-                {episodeDetails && episodeDetails.length > 0 && (
-                  <Button
+                <Button
                     variant="contained"
                     fullWidth
-                    href={`/episode/${episodeDetails[0]}/${episodeDetails[1]}/${episodeDetails[2]}/${episodeDetails[3]}`}
+                    href={`/episode/${cid}/${season}/${episode}/${frame}`}
                   >
                     View Episode
                   </Button>
-                )}
               </Grid>
             </Grid>
           </Card>
