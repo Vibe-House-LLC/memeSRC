@@ -48,6 +48,7 @@ const ServerPage = lazy(() => import('./pages/ServerPage'));
 const IpfsSearchBar = lazy(() => import('./sections/search/ipfs-search-bar'));
 const V2FramePage = lazy(() => import('./pages/V2FramePage'));
 const V2EditorPage = lazy(() => import('./pages/V2EditorPage'));
+const V2EpisodePage = lazy(() => import('./pages/V2EpisodePage'));
 
 // ----------------------------------------------------------------------
 
@@ -72,6 +73,7 @@ export default function Router() {
             { path: 'search/:cid/:searchTerms', element: <V2SearchPage /> },
             { path: 'frame/:cid/:season/:episode/:frame', element: <V2FramePage /> },
             { path: 'editor/:cid/:season/:episode/:frame', element: <V2EditorPage /> },
+            { path: 'episode/:cid/:season/:episode/:frame', element: <V2EpisodePage /> },
           ]
         },
         { path: 'frame/:fid', element: <TopBannerSearchRevised><FramePage /></TopBannerSearchRevised> },
