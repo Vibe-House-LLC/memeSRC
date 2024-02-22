@@ -324,16 +324,20 @@ export default function FramePage({ shows = [] }) {
     
         // Instead of waiting for all promises to resolve, handle each promise individually
         surroundingFramePromises.forEach((promise, index) => {
-          promise.then(frame => {
+          promise.then(resolvedFrame => {
+            resolvedFrame.cid = cid;
+            resolvedFrame.season = parseInt(season, 10);
+            resolvedFrame.episode = parseInt(episode, 10);
+            // resolvedFrame.frame = parseInt(frame, 10);
             // Update the state with each frame as it becomes available
             // Use a function to ensure the state is correctly updated based on the previous state
             setSurroundingFrames(prevFrames => {
               // Create a new array that includes the newly resolved frame
               const updatedFrames = [...prevFrames];
-              updatedFrames[index] = frame; // This ensures that frames are kept in order
+              updatedFrames[index] = resolvedFrame; // This ensures that frames are kept in order
               return updatedFrames;
             });
-            console.log("Loaded Frame: ", frame);
+            console.log("Loaded Frame: ", resolvedFrame);
           }).catch(error => {
             console.error("Failed to fetch a frame:", error);
           });
@@ -349,11 +353,11 @@ export default function FramePage({ shows = [] }) {
     setFrame(null);
     setFrameData(null);
     setDisplayImage(null);
-    setLoadedSubtitle([]);
+    setLoadedSubtitle(null);
     setFineTuningFrames([]);
     setFrames([]);
     setSurroundingSubtitles([]);
-    setSurroundingFrames(new Array(9).fill(undefined));
+    setSurroundingFrames(new Array(9).fill('loading'));
 
     // Sequentially call the functions to ensure loading states and data fetching are managed efficiently
     loadInitialFrameInfo().then(() => {
@@ -894,34 +898,42 @@ export default function FramePage({ shows = [] }) {
           <Grid item xs={12}>
             <Typography variant="h6">Surrounding Frames</Typography>
             <Grid container spacing={2} mt={0}>
-  {surroundingFrames.map((surroundingFrame, index) => (
-    <Grid item xs={4} sm={4} md={12 / 9} key={`surrounding-frame-${surroundingFrame ? surroundingFrame.frame : index}`}>
-      {surroundingFrame ? (
-        // Render the actual content if the surrounding frame data is available
-        <a style={{ textDecoration: 'none' }}>
-          <StyledCard 
-            sx={{ 
-              ...((frame === surroundingFrame.frame) && { border: '3px solid orange' }), 
-              cursor: (frame === surroundingFrame.frame) ? 'default' : 'pointer' 
-            }}>
-            <StyledCardMedia
-              component="img"
-              alt={`${surroundingFrame.frame}`}
-              src={`${surroundingFrame.frameImage}`}
-              title={surroundingFrame.subtitle || 'No subtitle'}
-              onClick={() => {
-                navigate(`/v2/frame/${cid}/${season}/${episode}/${surroundingFrame.frame}`);
-              }}
-            />
-          </StyledCard>
-        </a>
-      ) : (
-        // Render a skeleton if the data is not yet available (undefined)
-        <Skeleton variant='rounded' sx={{ width: '100%', height: 'auto', aspectRatio }} />
-      )}
-    </Grid>
-  ))}
-</Grid>
+              {surroundingFrames.filter((frame, index, self) => {
+                const identifier = `${frame?.cid}-${frame?.season}-${frame?.episode}-${frame?.frame}`;
+                console.log("identifier", identifier)
+                return (self.findIndex(f => `${f?.cid}-${f?.season}-${f?.episode}-${f?.frame}` === identifier) === index) || frame === 'loading';
+              }).map((surroundingFrame, index) => (
+                // .filter(frame => {
+                //   console.log("frame", frame)
+                //     return frame?.cid === parseInt(cid, 10) && frame?.season === parseInt(season, 10) && frame?.episode === parseInt(episode, 10) && frame?.frame === parseInt(frame, 10);
+                //   })
+                <Grid item xs={4} sm={4} md={12 / 9} key={`surrounding-frame-${surroundingFrame?.frame || index}`}>
+                  {surroundingFrame !== 'loading' ? (
+                    // Render the actual content if the surrounding frame data is available
+                    <a style={{ textDecoration: 'none' }}>
+                      <StyledCard 
+                        sx={{ 
+                          ...((parseInt(frame, 10) === surroundingFrame.frame) && { border: '3px solid orange' }), 
+                          cursor: (parseInt(frame, 10) === surroundingFrame.frame) ? 'default' : 'pointer' 
+                        }}>
+                        <StyledCardMedia
+                          component="img"
+                          alt={`${surroundingFrame.frame}`}
+                          src={`${surroundingFrame.frameImage}`}
+                          title={surroundingFrame.subtitle || 'No subtitle'}
+                          onClick={() => {
+                            navigate(`/v2/frame/${cid}/${season}/${episode}/${surroundingFrame.frame}`);
+                          }}
+                        />
+                      </StyledCard>
+                    </a>
+                  ) : (
+                    // Render a skeleton if the data is not yet available (undefined)
+                    <Skeleton variant='rounded' sx={{ width: '100%', height: 'auto', aspectRatio }} />
+                  )}
+                </Grid>
+              ))}
+            </Grid>
 
             <Grid item xs={12} mt={3}>
               <Button
