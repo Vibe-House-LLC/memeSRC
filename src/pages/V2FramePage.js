@@ -310,33 +310,6 @@ export default function FramePage({ shows = [] }) {
     setSubtitlesExpanded(!subtitlesExpanded);
   };
 
-  const renderSurroundingFrames = () => {
-    let returnedElement;
-
-    if (surroundingFrames) {
-      returnedElement =
-        <Grid container spacing={2}>
-          {surroundingFrames.map((surroundingFrameInfo, index) => (
-            <Grid item xs={4} sm={4} md={12 / 9} key={surroundingFrameInfo.frame}>
-              <a style={{ textDecoration: 'none' }}>
-                <StyledCard style={{ border: frame === surroundingFrameInfo.frame ? '3px solid orange' : '' }}>
-                  <StyledCardMedia
-                    component="img"
-                    alt={`${surroundingFrameInfo.frame}`}
-                    src={`${surroundingFrameInfo.frameImage}`}
-                    title={surroundingFrameInfo.subtitle || 'No subtitle'}
-                    onClick={() => {
-                      navigate(`/v2/frame/${cid}/${season}/${episode}/${surroundingFrameInfo.frame}`)
-                    }}
-                  />
-                </StyledCard>
-              </a>
-            </Grid>
-          ))}
-        </Grid>
-    }
-    return returnedElement
-  };
   const frameToTimecode = (frameNumber, fps) => {
     const totalSeconds = Math.floor(frameNumber / fps);
 
