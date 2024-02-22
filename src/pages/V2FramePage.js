@@ -326,7 +326,7 @@ export default function FramePage({ shows = [] }) {
                     src={`${surroundingFrameInfo.frameImage}`}
                     title={surroundingFrameInfo.subtitle || 'No subtitle'}
                     onClick={() => {
-                      navigate(`/frame/${surroundingFrameInfo.frame}`)
+                      navigate(`/v2/frame/${cid}/${season}/${episode}/${surroundingFrameInfo.frame}`)
                     }}
                   />
                 </StyledCard>
@@ -407,7 +407,7 @@ export default function FramePage({ shows = [] }) {
               margin: '-10px'
             }}
             onClick={() => {
-              navigate(`/v2/frame/${cid}/${Number(frame) - 1}`)
+              navigate(`/v2/frame/${cid}/${season}/${episode}/${Number(frame) - 10}`)
             }}
           >
             <ArrowBackIos style={{ fontSize: '2rem' }} />
@@ -425,7 +425,7 @@ export default function FramePage({ shows = [] }) {
               margin: '-10px'
             }}
             onClick={() => {
-              navigate(`/v2/frame/${cid}/${Number(frame) + 1}`)
+              navigate(`/v2/frame/${cid}/${season}/${episode}/${Number(frame) + 10}`)
             }}
           >
             <ArrowForwardIos style={{ fontSize: '2rem' }} />
@@ -776,7 +776,7 @@ export default function FramePage({ shows = [] }) {
                                     },
                                   },
                                 }}
-                                onClick={() => navigate(`/frame/${result?.fid}`)}
+                                onClick={() => navigate(`/v2/frame/${cid}/${season}/${episode}//${result?.fid}`)}
                               >
                                 {loading ? (
                                   <CircularProgress size={20} sx={{ color: '#565656' }} />
@@ -900,7 +900,7 @@ export default function FramePage({ shows = [] }) {
                           src={`${surroundingFrame.frameImage}`}
                           title={surroundingFrame.subtitle || 'No subtitle'}
                           onClick={() => {
-                            // navigate(`/frame/${frame.fid}${getCurrentQueryString()}`)
+                            navigate(`/v2/frame/${cid}/${season}/${episode}/${surroundingFrame.frame}`)
                           }}
                         />
                       </StyledCard>
