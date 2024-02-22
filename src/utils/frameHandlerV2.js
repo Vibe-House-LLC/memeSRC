@@ -88,17 +88,21 @@ const fetchFramesSurroundingPromises = (cid, season, episode, frame) => {
     if (offset === 0 || Math.abs(offset) <= 40) { // Include the current frame and 4 on either side
       const surroundingFrame = frame + offset;
       surroundingFramePromises.push(
-        extractVideoFrames(cid, season, episode, surroundingFrame, surroundingFrame, 10).then(
-          (frameImages) => ({
-            frame: surroundingFrame,
-            frameImagePromise: Promise.resolve(frameImages.length > 0 ? frameImages[0] : 'No image available'),
+        extractVideoFrames(cid, season, episode, surroundingFrame, surroundingFrame, 10)
+          .then(frameImages => {
+            // Ensure the promise resolves to an object with the expected structure
+            return {
+              frame: surroundingFrame,
+              frameImage: frameImages.length > 0 ? frameImages[0] : 'No image available',
+              // Add other keys if necessary
+            };
           })
-        )
       );
     }
   }
   return surroundingFramePromises;
 };
+
 
 // Full implementation of fetchFrameInfo with conditional features
 const fetchFrameInfo = async (cid, season, episode, frame, options = {}) => {

@@ -65,7 +65,7 @@ export default function FramePage({ shows = [] }) {
   const navigate = useNavigate();
   const [frameData, setFrameData] = useState({});
   const [fineTuningFrames, setFineTuningFrames] = useState([]);
-  const [surroundingFrames, setSurroundingFrames] = useState(null);
+  const [surroundingFrames, setSurroundingFrames] = useState([]);
   const [surroundingSubtitles, setSurroundingSubtitles] = useState(null);
   const [loading, setLoading] = useState(false);
   const {cid, season, episode, frame} = useParams();
@@ -318,14 +318,31 @@ export default function FramePage({ shows = [] }) {
       try {
         // Fetch surrounding frames; these calls already assume fetching of images and possibly their subtitles
         const surroundingFramePromises = fetchFramesSurroundingPromises(cid, season, episode, frame);
-        Promise.all(surroundingFramePromises).then(surroundingFrames => {
-          setSurroundingFrames(surroundingFrames.map(frame => frame.frameImagePromise)); // Assuming this is correct based on your initial setup
-          console.log("Surrounding Frames: ", surroundingFrames);
+    
+        // Initialize an array to keep track of the frames as they load
+        const surroundingFrames = [];
+    
+        // Instead of waiting for all promises to resolve, handle each promise individually
+        surroundingFramePromises.forEach((promise, index) => {
+          promise.then(frame => {
+            // Update the state with each frame as it becomes available
+            // Use a function to ensure the state is correctly updated based on the previous state
+            setSurroundingFrames(prevFrames => {
+              // Create a new array that includes the newly resolved frame
+              const updatedFrames = [...prevFrames];
+              updatedFrames[index] = frame; // This ensures that frames are kept in order
+              return updatedFrames;
+            });
+            console.log("Loaded Frame: ", frame);
+          }).catch(error => {
+            console.error("Failed to fetch a frame:", error);
+          });
         });
       } catch (error) {
         console.error("Failed to fetch surrounding frames:", error);
       }
     };
+    
   
     // Sequentially call the functions to ensure loading states and data fetching are managed efficiently
     loadInitialFrameInfo().then(() => {
@@ -865,58 +882,36 @@ export default function FramePage({ shows = [] }) {
 
           <Grid item xs={12}>
             <Typography variant="h6">Surrounding Frames</Typography>
-            {loading ?
-              <Grid container spacing={2} mt={0}>
-                <Grid item xs={4} sm={4} md={12 / 9}>
-                  <Skeleton variant='rounded' sx={{ width: '100%', height: 'auto', aspectRatio }} />
-                </Grid>
-                <Grid item xs={4} sm={4} md={12 / 9}>
-                  <Skeleton variant='rounded' sx={{ width: '100%', height: 'auto', aspectRatio }} />
-                </Grid>
-                <Grid item xs={4} sm={4} md={12 / 9}>
-                  <Skeleton variant='rounded' sx={{ width: '100%', height: 'auto', aspectRatio }} />
-                </Grid>
-                <Grid item xs={4} sm={4} md={12 / 9}>
-                  <Skeleton variant='rounded' sx={{ width: '100%', height: 'auto', aspectRatio }} />
-                </Grid>
-                <Grid item xs={4} sm={4} md={12 / 9}>
-                  <Skeleton variant='rounded' sx={{ width: '100%', height: 'auto', aspectRatio }} />
-                </Grid>
-                <Grid item xs={4} sm={4} md={12 / 9}>
-                  <Skeleton variant='rounded' sx={{ width: '100%', height: 'auto', aspectRatio }} />
-                </Grid>
-                <Grid item xs={4} sm={4} md={12 / 9}>
-                  <Skeleton variant='rounded' sx={{ width: '100%', height: 'auto', aspectRatio }} />
-                </Grid>
-                <Grid item xs={4} sm={4} md={12 / 9}>
-                  <Skeleton variant='rounded' sx={{ width: '100%', height: 'auto', aspectRatio }} />
-                </Grid>
-                <Grid item xs={4} sm={4} md={12 / 9}>
-                  <Skeleton variant='rounded' sx={{ width: '100%', height: 'auto', aspectRatio }} />
-                </Grid>
-              </Grid>
-              :
-              <Grid container spacing={2} mt={0}>
-                {surroundingFrames?.map((surroundingFrame, index) => (
-                  <Grid item xs={4} sm={4} md={12 / 9} key={`surrounding-frame-${surroundingFrame.frame ? surroundingFrame.frame : index}`}>
-                    <a style={{ textDecoration: 'none' }}>
-                      <StyledCard sx={{ ...((frame === surroundingFrame.frame) && { border: '3px solid orange' }), cursor: (frame === surroundingFrame.frame) ? 'default' : 'pointer' }}>
-                        
-                        <StyledCardMedia
-                          component="img"
-                          alt={`${surroundingFrame.frame}`}
-                          src={`${surroundingFrame.frameImage}`}
-                          title={surroundingFrame.subtitle || 'No subtitle'}
-                          onClick={() => {
-                            navigate(`/v2/frame/${cid}/${season}/${episode}/${surroundingFrame.frame}`)
-                          }}
-                        />
-                      </StyledCard>
-                    </a>
-                  </Grid>
-                ))}
-              </Grid>
-            }
+            <Grid container spacing={2} mt={0}>
+  {surroundingFrames.map((surroundingFrame, index) => (
+    <Grid item xs={4} sm={4} md={12 / 9} key={`surrounding-frame-${surroundingFrame ? surroundingFrame.frame : index}`}>
+      {surroundingFrame ? (
+        // Render the actual content if the surrounding frame data is available
+        <a style={{ textDecoration: 'none' }}>
+          <StyledCard 
+            sx={{ 
+              ...((frame === surroundingFrame.frame) && { border: '3px solid orange' }), 
+              cursor: (frame === surroundingFrame.frame) ? 'default' : 'pointer' 
+            }}>
+            <StyledCardMedia
+              component="img"
+              alt={`${surroundingFrame.frame}`}
+              src={`${surroundingFrame.frameImage}`}
+              title={surroundingFrame.subtitle || 'No subtitle'}
+              onClick={() => {
+                navigate(`/v2/frame/${cid}/${season}/${episode}/${surroundingFrame.frame}`);
+              }}
+            />
+          </StyledCard>
+        </a>
+      ) : (
+        // Render a skeleton if the data is not yet available (undefined)
+        <Skeleton variant='rounded' sx={{ width: '100%', height: 'auto', aspectRatio }} />
+      )}
+    </Grid>
+  ))}
+</Grid>
+
             <Grid item xs={12} mt={3}>
               <Button
                   variant="contained"
