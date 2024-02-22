@@ -5,6 +5,16 @@ const fetchFrameImageUrls = async (cid, season, episode, frameStart, frameEnd, f
   return extractVideoFrames(cid, season, episode, frameStart, frameEnd, fps);
 };
 
+// Utility function to decode base64-encoded text
+const decodeBase64 = (base64String) => {
+  try {
+    return atob(base64String); // Decode base64 string to plain text
+  } catch (error) {
+    console.error('Failed to decode base64 string:', error);
+    return null; // Return null in case of error
+  }
+};
+
 // Utility function to fetch JSON data from a given URL
 const fetchJSON = async (url) => {
   const response = await fetch(url);
@@ -24,18 +34,19 @@ const fetchCSV = async (url) => {
   return csvText.split('\n').map((row) => row.split(','));
 };
 
-// Modified Helper function to find subtitle info for a frame and return both text and index
+// Modified Helper function to find subtitle info for a frame and decode base64 subtitle
 const findSubtitleForFrame = (csvData, season, episode, frame) => {
   console.log('finding subtitle for ', season, episode, frame);
   for (let i = 1; i < csvData.length; i += 1) {
-    const [csvSeason, csvEpisode, , subtitleText, startFrame, endFrame] = csvData[i];
+    const [csvSeason, csvEpisode, , encodedSubtitleText, startFrame, endFrame] = csvData[i];
     if (
       season === parseInt(csvSeason, 10) &&
       episode === parseInt(csvEpisode, 10) &&
       frame >= parseInt(startFrame, 10) &&
       frame <= parseInt(endFrame, 10)
     ) {
-      return { subtitle: subtitleText, index: i }; // Return both text and index
+      const subtitleText = decodeBase64(encodedSubtitleText); // Decode subtitle text from base64
+      return { subtitle: subtitleText, index: i }; // Return decoded text and index
     }
   }
   return { subtitle: null, index: -1 }; // Return null and -1 if not found
