@@ -68,21 +68,22 @@ const fetchFrameInfo = async (cid, season, episode, frame) => {
     // Adjusted to handle the returned object with subtitle and index
     const { subtitle: mainSubtitle, index: mainSubtitleIndex } = findSubtitleForFrame(csvData, season, episode, frame);
 
-    // Fetch surrounding subtitles with images, adjusted to use mainSubtitleIndex
+    // Fetch surrounding subtitles with images, adjusted to use mainSubtitleIndex and decode base64
     const subtitlesSurroundingPromises = [];
     if (mainSubtitleIndex !== -1) { // Ensure mainSubtitleIndex was found
       const startIndex = Math.max(1, mainSubtitleIndex - 5);
       const endIndex = Math.min(csvData.length - 1, mainSubtitleIndex + 5);
       for (let i = startIndex; i <= endIndex; i += 1) {
         if (i !== mainSubtitleIndex) {
-          const [,, , subtitleText, startFrame, endFrame] = csvData[i];
+          const [,, , encodedSubtitleText, startFrame, endFrame] = csvData[i];
+          const subtitleText = decodeBase64(encodedSubtitleText); // Decode subtitle text from base64 here
           const middleFrame = Math.round((parseInt(startFrame, 10) + parseInt(endFrame, 10)) / 2);
           subtitlesSurroundingPromises.push(
             fetchFrameImageUrls(cid, season, episode, middleFrame, middleFrame, 10).then(
               (frameImages) => {
                 const frameImage = frameImages.length > 0 ? frameImages[0] : 'No image available';
                 return {
-                  subtitle: subtitleText,
+                  subtitle: subtitleText, // Use decoded subtitle text
                   frame: middleFrame,
                   frameImage,
                 };
