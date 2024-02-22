@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { CircularProgress, Container, Typography, Card, CardMedia, CardContent, Button } from '@mui/material';
+import { CircularProgress, Container, Typography, Card, CardMedia, CardContent, Button, Grid, useMediaQuery } from '@mui/material';
 import PropTypes from 'prop-types';
 import { extractVideoFrames } from '../utils/videoFrameExtractor';
 import { UserContext } from '../UserContext';
+
 
 V2EpisodePage.propTypes = {
   setSeriesTitle: PropTypes.func,
@@ -16,15 +17,16 @@ export default function V2EpisodePage({ setSeriesTitle }) {
   const [loading, setLoading] = useState(true);
   const { cid, season, episode, frame } = useParams();
   const fps = 10; // Frames per second
+  const isMd = useMediaQuery(theme => theme.breakpoints.up('md'))
 
   useEffect(() => {
     const fetchSubtitlesAndFrames = async () => {
       setLoading(true);
-      
+
       const subtitlesUrl = `https://ipfs.memesrc.com/ipfs/${cid}/${season}/${episode}/_docs.csv`;
       const subtitlesResponse = await fetch(subtitlesUrl);
       const subtitlesCsv = await subtitlesResponse.text();
-      
+
       const subtitles = subtitlesCsv.split('\n').slice(1).map(line => {
         const parts = line.split(',');
         return {
@@ -69,36 +71,48 @@ export default function V2EpisodePage({ setSeriesTitle }) {
 
   return (
     <Container maxWidth="lg">
+
+      <Typography gutterBottom fontSize={isMd ? 24 : 15} component="div" style={{ marginTop: '20px' }}>
+        {cid} <br /><span style={{fontSize: isMd ? 20 : 14}}>Season {season}, Episode {episode}</span>
+      </Typography>
       {parseInt(frame, 10) !== 0 && (
-        <Button variant="contained" onClick={() => navigateFrames('prev')} style={{ marginTop: '20px' }}>
+        <Button disabled={loading} fullWidth={!isMd} variant="contained" onClick={() => navigateFrames('prev')} sx={{ mb: 4 }} style={{ marginTop: '20px' }}>
           Previous 100 Seconds
         </Button>
       )}
-      <Typography gutterBottom variant="h3" component="div" style={{ marginTop: '20px' }}>
-        {cid} <span>Season {season}, Episode {episode}</span>
-      </Typography>
       {loading ? (
-        <CircularProgress />
+        <center>
+          <CircularProgress />
+        </center>
       ) : (
-        <div style={{ display: 'flex', overflowX: 'scroll', marginBottom: '20px' }}>
-          {results.map((result, index) => (
-            <Card key={index} style={{ minWidth: '300px', marginRight: '20px' }}>
-              <CardMedia
-                component="img"
-                height="140"
-                image={result.frame_image}
-                alt={`Frame ${result.fid}`}
-              />
-              <CardContent>
-                <Typography variant="body2" color="textSecondary">
-                  {result.subtitle ? atob(result.subtitle) : 'No subtitle'}
-                </Typography>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+
+        <Container maxWidth="md">
+
+          <Grid container spacing={2} alignContent="stretch">
+            {results.map((result, index) => (
+              <Grid item xs={12} key={result.fid}>
+                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                  <Card component="a" href={`/frame/${result.fid}`} style={{ display: 'flex', textDecoration: 'none', width: '100%' }}>
+                    <CardMedia
+                      component="img"
+                      style={{ width: '50%', objectFit: 'contain' }}
+                      image={result.frame_image}
+                      alt={`Frame ${result.fid}`}
+                    />
+                    <CardContent sx={{ alignSelf: 'center' }}>
+                      <Typography variant="body1" color="textPrimary" component="p">
+                        {result.subtitle ? atob(result.subtitle) : 'No subtitle'}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </div>
+              </Grid>
+            ))}
+          </Grid>
+        </Container>
       )}
-      <Button variant="contained" onClick={() => navigateFrames('next')} style={{ marginBottom: '20px' }}>
+      <br />
+      <Button disabled={loading} fullWidth={!isMd} variant="contained" onClick={() => navigateFrames('next')} sx={{ mt: 2 }} style={{ marginBottom: '20px' }}>
         Next 100 Seconds
       </Button>
     </Container>

@@ -886,7 +886,7 @@ export default function FramePage({ shows = [] }) {
               <Button
                   variant="contained"
                   fullWidth
-                  href={`/episode/${cid}/${season}/${episode}/${frame}`}
+                  href={`/v2/episode/${cid}/${season}/${episode}/${frame}`}
                 >
                   View Episode
                 </Button>
