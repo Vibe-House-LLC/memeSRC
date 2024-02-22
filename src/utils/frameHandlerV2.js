@@ -88,24 +88,24 @@ const fetchFrameInfo = async (cid, season, episode, frame) => {
     // Initialize promises array for surrounding frames
     const surroundingFramePromises = [];
 
-    for (let offset = -50; offset <= 50; offset += 10) {
-      if (offset !== 0) {
-        const surroundingFrame = frame + offset;
-        const surroundingSubtitle = findSubtitleForFrame(csvData, season, episode, surroundingFrame);
-        surroundingFramePromises.push(
-          fetchFrameImageUrls(cid, season, episode, surroundingFrame, surroundingFrame, 10).then(
-            (surroundingFrameImages) => {
-              const surroundingFrameImage =
-                surroundingFrameImages.length > 0 ? surroundingFrameImages[0] : 'No image available';
-              return {
-                frame: surroundingFrame,
-                frameImage: surroundingFrameImage,
-                subtitle: surroundingSubtitle.subtitle, // Adjusted to access subtitle property
-              };
-            }
-          )
-        );
-      }
+    for (let offset = -40; offset <= 40; offset += 10) {
+        if (offset === 0 || Math.abs(offset) <= 40) { // Include the current frame and 4 on either side
+            const surroundingFrame = frame + offset;
+            const surroundingSubtitle = findSubtitleForFrame(csvData, season, episode, surroundingFrame);
+            surroundingFramePromises.push(
+              fetchFrameImageUrls(cid, season, episode, surroundingFrame, surroundingFrame, 10).then(
+                (surroundingFrameImages) => {
+                  const surroundingFrameImage =
+                    surroundingFrameImages.length > 0 ? surroundingFrameImages[0] : 'No image available';
+                  return {
+                    frame: surroundingFrame,
+                    frameImage: surroundingFrameImage,
+                    subtitle: surroundingSubtitle.subtitle, // Adjusted to access subtitle property
+                  };
+                }
+              )
+            );
+        }
     }
 
     // Resolve all promises for surrounding frames
