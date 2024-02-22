@@ -24,7 +24,7 @@ const fetchCSV = async (url) => {
   return csvText.split('\n').map((row) => row.split(','));
 };
 
-// Helper function to find subtitle info for a frame
+// Modified Helper function to find subtitle info for a frame and return both text and index
 const findSubtitleForFrame = (csvData, season, episode, frame) => {
   console.log('finding subtitle for ', season, episode, frame);
   for (let i = 1; i < csvData.length; i += 1) {
@@ -35,10 +35,10 @@ const findSubtitleForFrame = (csvData, season, episode, frame) => {
       frame >= parseInt(startFrame, 10) &&
       frame <= parseInt(endFrame, 10)
     ) {
-      return { subtitle: subtitleText, index: i, startFrame: parseInt(startFrame, 10), endFrame: parseInt(endFrame, 10) };
+      return { subtitle: subtitleText, index: i }; // Return both text and index
     }
   }
-  return { subtitle: null, index: null, startFrame: null, endFrame: null }; // No subtitle for this frame
+  return { subtitle: null, index: -1 }; // Return null and -1 if not found
 };
 
 const fetchFrameInfo = async (cid, season, episode, frame) => {
@@ -54,28 +54,31 @@ const fetchFrameInfo = async (cid, season, episode, frame) => {
     const csvUrl = `https://ipfs.memesrc.com/ipfs/${cid}/${season}/${episode}/_docs.csv`;
     const csvData = await fetchCSV(csvUrl);
 
-    const { subtitle: mainSubtitle, index: mainSubtitleIndex, startFrame: mainStartFrame, endFrame: mainEndFrame } = findSubtitleForFrame(csvData, season, episode, frame);
+    // Adjusted to handle the returned object with subtitle and index
+    const { subtitle: mainSubtitle, index: mainSubtitleIndex } = findSubtitleForFrame(csvData, season, episode, frame);
 
-    // Fetch surrounding subtitles with images
+    // Fetch surrounding subtitles with images, adjusted to use mainSubtitleIndex
     const subtitlesSurroundingPromises = [];
-    const startIndex = Math.max(1, mainSubtitleIndex - 5);
-    const endIndex = Math.min(csvData.length - 1, mainSubtitleIndex + 5);
-    for (let i = startIndex; i <= endIndex; i += 1) {
-      if (i !== mainSubtitleIndex) {
-        const [,, , subtitleText, startFrame, endFrame] = csvData[i];
-        const middleFrame = Math.round((parseInt(startFrame, 10) + parseInt(endFrame, 10)) / 2);
-        subtitlesSurroundingPromises.push(
-          fetchFrameImageUrls(cid, season, episode, middleFrame, middleFrame, 10).then(
-            (frameImages) => {
-              const frameImage = frameImages.length > 0 ? frameImages[0] : 'No image available';
-              return {
-                subtitle: subtitleText,
-                frame: middleFrame,
-                frameImage,
-              };
-            }
-          )
-        );
+    if (mainSubtitleIndex !== -1) { // Ensure mainSubtitleIndex was found
+      const startIndex = Math.max(1, mainSubtitleIndex - 5);
+      const endIndex = Math.min(csvData.length - 1, mainSubtitleIndex + 5);
+      for (let i = startIndex; i <= endIndex; i += 1) {
+        if (i !== mainSubtitleIndex) {
+          const [,, , subtitleText, startFrame, endFrame] = csvData[i];
+          const middleFrame = Math.round((parseInt(startFrame, 10) + parseInt(endFrame, 10)) / 2);
+          subtitlesSurroundingPromises.push(
+            fetchFrameImageUrls(cid, season, episode, middleFrame, middleFrame, 10).then(
+              (frameImages) => {
+                const frameImage = frameImages.length > 0 ? frameImages[0] : 'No image available';
+                return {
+                  subtitle: subtitleText,
+                  frame: middleFrame,
+                  frameImage,
+                };
+              }
+            )
+          );
+        }
       }
     }
 
@@ -97,7 +100,7 @@ const fetchFrameInfo = async (cid, season, episode, frame) => {
               return {
                 frame: surroundingFrame,
                 frameImage: surroundingFrameImage,
-                subtitle: surroundingSubtitle,
+                subtitle: surroundingSubtitle.subtitle, // Adjusted to access subtitle property
               };
             }
           )
