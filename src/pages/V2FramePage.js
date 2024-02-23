@@ -414,9 +414,9 @@ export default function FramePage({ shows = [] }) {
   useEffect(() => {
     if (frames && frames.length > 0) {
       console.log(frames.length)
-      console.log(Math.floor(frames.length / 2))
-      setSelectedFrameIndex(selectedFrameIndex || Math.floor(frames.length / 2))
-      setDisplayImage(selectedFrameIndex ? frames[selectedFrameIndex] : frames[Math.floor(frames.length / 2)])
+      console.log(Math.round(frames.length / 2))
+      setSelectedFrameIndex(selectedFrameIndex || Math.round(frames.length / 2))
+      setDisplayImage(selectedFrameIndex ? frames[selectedFrameIndex] : frames[Math.round(frames.length / 2)])
     }
   }, [frames]);
 
@@ -481,7 +481,7 @@ export default function FramePage({ shows = [] }) {
             </Tooltip>
             <Slider
               size="small"
-              defaultValue={selectedFrameIndex || Math.floor(frames.length / 2)}
+              defaultValue={selectedFrameIndex || Math.round(frames.length / 2)}
               min={0}
               max={frames.length - 1}
               value={selectedFrameIndex}
