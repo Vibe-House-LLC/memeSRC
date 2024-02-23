@@ -148,7 +148,7 @@ const fetchFrameInfo = async (cid, season, episode, frame, options = {}) => {
         for (let i = startIndex; i <= endIndex; i += 1) {
           const [,, , encodedSubtitleText, startFrame, endFrame] = csvData[i];
           const subtitleText = decodeBase64(encodedSubtitleText); // Decode subtitle text from base64 here
-          const middleFrame = Math.round((parseInt(startFrame, 10) + parseInt(endFrame, 10)) / 2);
+          const middleFrame = Math.floor((parseInt(startFrame, 10) + parseInt(endFrame, 10)) / 2);
           subtitlesSurroundingPromises.push(
             fetchFrameImageUrls(cid, season, episode, middleFrame, middleFrame, 10).then(
               (frameImages) => {
