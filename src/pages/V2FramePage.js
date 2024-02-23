@@ -279,7 +279,7 @@ export default function FramePage({ shows = [] }) {
         const initialInfo = await fetchFrameInfo(cid, season, episode, frame, { mainImage: true });
         console.log("initialInfo: ", initialInfo);
         setFrame(initialInfo.frame_image);
-        setFrameData(initialInfo.frame_image);
+        setFrameData(initialInfo);
         setDisplayImage(initialInfo.frame_image);
         setLoadedSubtitle(initialInfo.subtitle);
         setLoadedSeason(season);
@@ -900,7 +900,6 @@ export default function FramePage({ shows = [] }) {
             <Grid container spacing={2} mt={0}>
               {surroundingFrames.filter((frame, index, self) => {
                 const identifier = `${frame?.cid}-${frame?.season}-${frame?.episode}-${frame?.frame}`;
-                console.log("identifier", identifier)
                 return (self.findIndex(f => `${f?.cid}-${f?.season}-${f?.episode}-${f?.frame}` === identifier) === index) || frame === 'loading';
               }).map((surroundingFrame, index) => (
                 // .filter(frame => {

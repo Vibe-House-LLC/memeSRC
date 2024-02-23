@@ -1,8 +1,8 @@
 import { extractVideoFrames } from './videoFrameExtractor';
 
-const fetchFrameImageUrls = async (cid, season, episode, frameStart, frameEnd, fps = 10) => {
+const fetchFrameImageUrls = async (cid, season, episode, frameStart, frameEnd, fps = 10, scaleFactor = 1.0) => {
   // Call the extractVideoFrames function to get blob URLs for frames
-  return extractVideoFrames(cid, season, episode, frameStart, frameEnd, fps);
+  return extractVideoFrames(cid, season, episode, frameStart, frameEnd, fps, scaleFactor);
 };
 
 // Utility function to decode base64-encoded text
@@ -88,7 +88,7 @@ const fetchFramesSurroundingPromises = (cid, season, episode, frame) => {
     if (offset === 0 || Math.abs(offset) <= 40) { // Include the current frame and 4 on either side
       const surroundingFrame = frame + offset;
       surroundingFramePromises.push(
-        extractVideoFrames(cid, season, episode, surroundingFrame, surroundingFrame, 10)
+        extractVideoFrames(cid, season, episode, surroundingFrame, surroundingFrame, 10, 0.1)
           .then(frameImages => {
             // Ensure the promise resolves to an object with the expected structure
             return {
@@ -143,26 +143,24 @@ const fetchFrameInfo = async (cid, season, episode, frame, options = {}) => {
       // Fetch surrounding subtitles with images, adjusted to use mainSubtitleIndex and decode base64
       const subtitlesSurroundingPromises = [];
       if (mainSubtitleIndex !== -1) { // Ensure mainSubtitleIndex was found
-        const startIndex = Math.max(1, mainSubtitleIndex - 5);
-        const endIndex = Math.min(csvData.length - 1, mainSubtitleIndex + 5);
+        const startIndex = Math.max(1, mainSubtitleIndex - 3);
+        const endIndex = Math.min(csvData.length - 1, mainSubtitleIndex + 3);
         for (let i = startIndex; i <= endIndex; i += 1) {
-          if (i !== mainSubtitleIndex) {
-            const [,, , encodedSubtitleText, startFrame, endFrame] = csvData[i];
-            const subtitleText = decodeBase64(encodedSubtitleText); // Decode subtitle text from base64 here
-            const middleFrame = Math.round((parseInt(startFrame, 10) + parseInt(endFrame, 10)) / 2);
-            subtitlesSurroundingPromises.push(
-              fetchFrameImageUrls(cid, season, episode, middleFrame, middleFrame, 10).then(
-                (frameImages) => {
-                  const frameImage = frameImages.length > 0 ? frameImages[0] : 'No image available';
-                  return {
-                    subtitle: subtitleText, // Use decoded subtitle text
-                    frame: middleFrame,
-                    frameImage,
-                  };
-                }
-              )
-            );
-          }
+          const [,, , encodedSubtitleText, startFrame, endFrame] = csvData[i];
+          const subtitleText = decodeBase64(encodedSubtitleText); // Decode subtitle text from base64 here
+          const middleFrame = Math.round((parseInt(startFrame, 10) + parseInt(endFrame, 10)) / 2);
+          subtitlesSurroundingPromises.push(
+            fetchFrameImageUrls(cid, season, episode, middleFrame, middleFrame, 10).then(
+              (frameImages) => {
+                const frameImage = frameImages.length > 0 ? frameImages[0] : 'No image available';
+                return {
+                  subtitle: subtitleText, // Use decoded subtitle text
+                  frame: middleFrame,
+                  frameImage,
+                };
+              }
+            )
+          );
         }
       }
 

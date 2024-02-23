@@ -1,4 +1,4 @@
-export async function extractVideoFrames(cid, season, episode, frameStart, frameEnd, fps) {
+export async function extractVideoFrames(cid, season, episode, frameStart, frameEnd, fps, scaleFactor) {
     // Calculate frames per container based on video length and fps
     const videoLength = 25; // Assuming a fixed value, adjust as necessary
     const framesPerContainer = videoLength * fps;
@@ -21,7 +21,7 @@ export async function extractVideoFrames(cid, season, episode, frameStart, frame
     const fileList = Object.keys(fileFrameGroups).map(async (key) => {
       const videoUrl = `https://ipfs.memesrc.com/ipfs/${cid}/${season}/${episode}/${key}`;
   
-      const frameBlobs = await extractFramesFromVideo(videoUrl, fileFrameGroups[key], fps);
+      const frameBlobs = await extractFramesFromVideo(videoUrl, fileFrameGroups[key], fps, scaleFactor);
   
       return [...frameBlobs];
     });
@@ -33,7 +33,7 @@ export async function extractVideoFrames(cid, season, episode, frameStart, frame
     return images.flat();
 }
 
-export async function extractFramesFromVideo(videoUrl, frameNumbers, assumedFps = 10) {
+export async function extractFramesFromVideo(videoUrl, frameNumbers, assumedFps = 10, scaleFactor=1.0) {
   return new Promise((resolve, reject) => {
     const video = document.createElement('video');
     video.src = videoUrl;
@@ -47,8 +47,8 @@ export async function extractFramesFromVideo(videoUrl, frameNumbers, assumedFps 
     let currentFrameIndex = 0;
 
     video.addEventListener('loadedmetadata', () => {
-      canvas.width = video.videoWidth/1.2;    // Reduce the resolution a bit for testing performance
-      canvas.height = video.videoHeight/1.2;  // Reduce the resolution a bit for testing performance
+      canvas.width = video.videoWidth*scaleFactor;    // Reduce the resolution a bit for testing performance
+      canvas.height = video.videoHeight*scaleFactor;  // Reduce the resolution a bit for testing performance
 
       const captureFrame = (frameIndex) => {
         const frameTime = frameIndex / assumedFps;
