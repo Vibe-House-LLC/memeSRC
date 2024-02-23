@@ -75,7 +75,7 @@ const fetchFramesFineTuning = async (cid, season, episode, frame) => {
   season = parseInt(season, 10);
   episode = parseInt(episode, 10);
   frame = parseInt(frame, 10);
-  return extractVideoFrames(cid, season, episode, frame - 5, frame + 5, 10);
+  return extractVideoFrames(cid, season, episode, frame - 4, frame + 6, 10);
 };
 
 // Function to fetch frames_surrounding as an array of promises for image extraction
@@ -121,7 +121,7 @@ const fetchFrameInfo = async (cid, season, episode, frame, options = {}) => {
     const { subtitle: mainSubtitle, index: mainSubtitleIndex } = findSubtitleForFrame(csvData, season, episode, frame);
     let mainFrameImage = 'No image available';
     let framesFineTuning = [];
-    let subtitlesSurrounding = [];
+    const subtitlesSurrounding = [];
     let framesSurrounding = [];
 
     // Fetch the main frame image and subtitle only if no specific options are set or the relevant option is true
@@ -149,23 +149,17 @@ const fetchFrameInfo = async (cid, season, episode, frame, options = {}) => {
           const [,, , encodedSubtitleText, startFrame, endFrame] = csvData[i];
           const subtitleText = decodeBase64(encodedSubtitleText); // Decode subtitle text from base64 here
           const middleFrame = Math.floor((parseInt(startFrame, 10) + parseInt(endFrame, 10)) / 2);
-          subtitlesSurroundingPromises.push(
-            fetchFrameImageUrls(cid, season, episode, middleFrame, middleFrame, 10).then(
-              (frameImages) => {
-                const frameImage = frameImages.length > 0 ? frameImages[0] : 'No image available';
-                return {
-                  subtitle: subtitleText, // Use decoded subtitle text
-                  frame: middleFrame,
-                  frameImage,
-                };
-              }
-            )
+          subtitlesSurrounding.push(
+            {
+              subtitle: subtitleText, // Use decoded subtitle text
+              frame: middleFrame,
+            }
           );
         }
       }
 
       // Resolve all promises for surrounding subtitles with images
-      subtitlesSurrounding = await Promise.all(subtitlesSurroundingPromises);
+      // subtitlesSurrounding = await Promise.all(subtitlesSurroundingPromises);
     }
 
     // Fetch frames_surrounding as an array of promises for image extraction if requested
