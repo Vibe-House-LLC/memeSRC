@@ -354,7 +354,7 @@ export default function FramePage({ shows = [] }) {
     setFrameData(null);
     setDisplayImage(null);
     setLoadedSubtitle(null);
-    setSelectedFrameIndex(6);
+    setSelectedFrameIndex(5);
     setFineTuningFrames([]);
     setFrames([]);
     setSurroundingSubtitles([]);
