@@ -58,9 +58,8 @@ const IndexTable = () => {
     }, [loadingCIDs]);
 
     const fetchAndUpdateRows = () => {
-        const directory = '/memesrc/index';
         const electron = window.require('electron');
-        electron.ipcRenderer.invoke('list-directory-contents', directory)
+        electron.ipcRenderer.invoke('list-indexes')
             .then(async items => {
                 const newLoadingCIDs = { ...loadingCIDs };
                 const promises = items.map(async (item, index) => {
