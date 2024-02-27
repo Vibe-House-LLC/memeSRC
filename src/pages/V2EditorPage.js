@@ -1279,6 +1279,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         console.error("Failed to fetch surrounding frames:", error);
       }
     };
+
+    window.scrollTo(0, 0);
     
     // Make sure the values are cleared before loading new ones: 
     // TODO: make the 'main image' show a skeleton while loading (incl. between navigations)
