@@ -1,4 +1,4 @@
-export async function extractVideoFrames(cid, season, episode, frameStart, frameEnd, fps) {
+export async function extractVideoFrames(cid, season, episode, frameStart, frameEnd, fps, scaleFactor) {
     // Calculate frames per container based on video length and fps
     const videoLength = 25; // Assuming a fixed value, adjust as necessary
     const framesPerContainer = videoLength * fps;
@@ -21,7 +21,7 @@ export async function extractVideoFrames(cid, season, episode, frameStart, frame
     const fileList = Object.keys(fileFrameGroups).map(async (key) => {
       const videoUrl = `https://ipfs.memesrc.com/ipfs/${cid}/${season}/${episode}/${key}`;
   
-      const frameBlobs = await extractFramesFromVideo(videoUrl, fileFrameGroups[key], fps);
+      const frameBlobs = await extractFramesFromVideo(videoUrl, fileFrameGroups[key], fps, scaleFactor);
   
       return [...frameBlobs];
     });
@@ -33,25 +33,23 @@ export async function extractVideoFrames(cid, season, episode, frameStart, frame
     return images.flat();
 }
 
-export async function extractFramesFromVideo(videoUrl, frameNumbers, assumedFps = 10) {
+export async function extractFramesFromVideo(videoUrl, frameNumbers, assumedFps = 10, scaleFactor=1.0) {
   return new Promise((resolve, reject) => {
-    // Create a video element
     const video = document.createElement('video');
     video.src = videoUrl;
     video.autoplay = true;
     video.playsInline = true;
     video.muted = true;
-    video.crossOrigin = 'anonymous'; // Handle CORS policy
+    video.crossOrigin = 'anonymous';
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
     const blobs = [];
     let currentFrameIndex = 0;
 
     video.addEventListener('loadedmetadata', () => {
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+      canvas.width = video.videoWidth*scaleFactor;    // Reduce the resolution a bit for testing performance
+      canvas.height = video.videoHeight*scaleFactor;  // Reduce the resolution a bit for testing performance
 
-      // Function to capture a frame at a specific index
       const captureFrame = (frameIndex) => {
         const frameTime = frameIndex / assumedFps;
         video.currentTime = frameTime;
@@ -59,21 +57,24 @@ export async function extractFramesFromVideo(videoUrl, frameNumbers, assumedFps 
 
       video.addEventListener('seeked', async () => {
         if (currentFrameIndex < frameNumbers.length) {
-          // Draw the video frame to the canvas
           context.drawImage(video, 0, 0, canvas.width, canvas.height);
-          // Convert the canvas to a blob
           canvas.toBlob((blob) => {
             const objUrl = URL.createObjectURL(blob);
             blobs.push(objUrl);
             currentFrameIndex += 1;
             if (currentFrameIndex < frameNumbers.length) {
-              // Capture the next frame
-              captureFrame(frameNumbers[currentFrameIndex] - 1); // Adjust for 0-based indexing
+              captureFrame(frameNumbers[currentFrameIndex] - 1);
             } else {
-              // Resolve the promise when all frames are loaded
+              // Once all frames are extracted, pause the video
+              video.pause();
+              // video.removeAttribute('src'); // Empty the source
+              // video.load(); // Load the empty source to stop the video
+              // video.remove(); // Remove the video element
+              // canvas.width = 0; // Clear the canvas width
+              // canvas.height = 0; // Clear the canvas height
               resolve(blobs);
             }
-          }, 'image/jpeg'); // Specify the format and quality if needed
+          }, 'image/jpeg');
         }
       });
 

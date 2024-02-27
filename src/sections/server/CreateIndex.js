@@ -19,42 +19,53 @@ function CreateIndex({ onProcessComplete }) {
     const handleProcessStart = useCallback(async () => {
         setIsProcessing(true);
         setProgress(0); // Reset progress to 0
-
+    
         try {
             const electron = window.require('electron');
+            const ipcRenderer = electron.ipcRenderer;
             const ipcArguments = {
                 inputPath: folderPath,
                 id
             };
-
+    
             // Start the Python script without waiting for it to finish
-            electron.ipcRenderer.send('start-python-script', ipcArguments);
-            console.log('Python script execution started');
-
-            // Set up an interval to periodically check the processing status
-            const progressInterval = setInterval(async () => {
-                try {
-                    const response = await electron.ipcRenderer.invoke('fetch-processing-status', id);
-                    if (response.success && response.status) {
-                        const percentComplete = response.status.percent_complete;
-                        console.log("percentComplete", percentComplete);
-                        setProgress(Math.round(percentComplete));
-                        if (percentComplete >= 100) {
-                            clearInterval(progressInterval);
-                            setIsProcessing(false);
-                        }
-                    }
-                } catch (error) {
-                    console.error('Failed to fetch processing status:', error);
-                    clearInterval(progressInterval);
-                    setIsProcessing(false);
-                }
-            }, 5000); // Update progress every 5 seconds
+            // ipcRenderer.send('start-python-script', ipcArguments);
+            // console.log('Python script execution started');
+    
+            // Call the test JavaScript processing IPC handler
+            ipcRenderer.send('test-javascript-processing', ipcArguments);
+            ipcRenderer.once('javascript-processing-result', (event, response) => {
+                console.log('JavaScript processing result:', response);
+            });
+            ipcRenderer.once('javascript-processing-error', (event, error) => {
+                console.error('JavaScript processing error:', error);
+            });
+    
+            // // Set up an interval to periodically check the processing status
+            // const progressInterval = setInterval(async () => {
+            //     try {
+            //         const response = await ipcRenderer.invoke('fetch-processing-status', id);
+            //         if (response.success && response.status) {
+            //             const percentComplete = response.status.percent_complete;
+            //             console.log("percentComplete", percentComplete);
+            //             setProgress(Math.round(percentComplete));
+            //             if (percentComplete >= 100) {
+            //                 clearInterval(progressInterval);
+            //                 setIsProcessing(false);
+            //             }
+            //         }
+            //     } catch (error) {
+            //         console.error('Failed to fetch processing status:', error);
+            //         clearInterval(progressInterval);
+            //         setIsProcessing(false);
+            //     }
+            // }, 5000); // Update progress every 5 seconds
         } catch (error) {
             console.error('Failed in starting processing steps:', error);
             setIsProcessing(false);
         }
     }, [folderPath, id]);
+    
 
     useEffect(() => {
         const electron = window.require('electron');

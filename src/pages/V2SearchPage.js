@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Grid, CircularProgress, Card, Chip } from '@mui/material';
 import styled from '@emotion/styled';
 import { Link, useParams } from 'react-router-dom';
@@ -60,8 +60,8 @@ const BottomCardCaption = styled.div`
 
 const BottomCardLabel = styled.div`
   position: absolute;
-  top: 10px; // Adjust as needed
-  left: 10px; // Adjust as needed
+  top: 10px;
+  left: 10px;
   padding: 3px 5px;
   white-space: nowrap;
   overflow: hidden;
@@ -79,6 +79,44 @@ export default function SearchPage() {
   const [csvLines, setCsvLines] = useState();
   const [newResults, setNewResults] = useState();
   const { showObj, setShowObj, cid } = useSearchDetailsV2();
+
+  // Ref to keep track of video elements
+  const videoRefs = useRef([]);
+
+  // Add videos to the refs array
+  const addVideoRef = (element) => {
+    if (element && !videoRefs.current.includes(element)) {
+      videoRefs.current.push(element);
+    }
+  };
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(entry => {
+          // If the video is in the viewport, play it, otherwise pause
+          if (entry.isIntersecting) {
+            entry.target.play();
+          } else {
+            entry.target.pause();
+          }
+        });
+      },
+      {
+        // Use whatever root margin you see fit
+        rootMargin: '0px',
+        threshold: 0.1 // Adjust this threshold to when you want the callback to be executed
+      }
+    );
+
+    // Observe each video
+    videoRefs.current.forEach(video => observer.observe(video));
+
+    // Cleanup function to unobserve videos when the component is unmounted or newResults change
+    return () => {
+      videoRefs.current.forEach(video => observer.unobserve(video));
+    };
+  }, [newResults]); // Depend on newResults so this runs whenever the results change
 
   useEffect(() => {
     async function loadFile(cid, filename) {
@@ -161,7 +199,7 @@ export default function SearchPage() {
       });
 
       results.sort((a, b) => b.score - a.score);
-      results = results.slice(0, 5);
+      results = results.slice(0, 25);
 
 // Load the ZIP file and extract the relevant video file
 try {
@@ -214,45 +252,58 @@ try {
 
   return (
     <>
-      <Helmet>
-        <title>{`Search • memeSRC`}</title>
-      </Helmet>
-
-      {loadingCsv ? <StyledCircularProgress /> : ''}
-
       {newResults && newResults.length > 0 ?
         <Grid container spacing={2} alignItems="stretch" paddingX={{ xs: 2, md: 6 }}>
           {newResults.map((result, index) => (
             <Grid item xs={12} sm={6} md={3} key={index}>
               <Link to={`/v2/frame/${cid}/${result.season}/${result.episode}/${Math.floor((parseInt(result.start_frame, 10) + parseInt(result.end_frame, 10)) / 2)}`} style={{ textDecoration: 'none' }}>
-              <StyledCard>
-                <StyledCardMediaContainer aspectRatio="56.25%">
-                <StyledCardMedia
-                  src={result.videoUrl}
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  preload="auto"
-                  onError={(e) => console.error("Error loading thumbnail:", JSON.stringify(result))}
-                  crossorigin="anonymous"
-                />
-                </StyledCardMediaContainer>
-                <BottomCardCaption>{result.subtitle}</BottomCardCaption>
-                <BottomCardLabel>
-                  <Chip
-                    size="small"
-                    label={`S${result.season} E${result.episode}`}
-                    style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', color: 'white', fontWeight: 'bold' }}
-                  />
-                </BottomCardLabel>
-              </StyledCard>
+                <StyledCard
+                  // onMouseEnter={(e) => {
+                  //   e.currentTarget.querySelector('video').play();
+                  // }}
+                  // onMouseLeave={(e) => {
+                  //   e.currentTarget.querySelector('video').pause();
+                  // }}
+                  // onTouchStart={(e) => {
+                  //   // Play the video for the current card
+                  //   const currentVideo = e.currentTarget.querySelector('video');
+                  //   currentVideo.play();
+                
+                  //   // Pause all other videos
+                  //   videoRefs.current.forEach(video => {
+                  //     if (video !== currentVideo) {
+                  //       video.pause();
+                  //     }
+                  //   });
+                  // }}
+                >
+
+                  <StyledCardMediaContainer aspectRatio="56.25%">
+                    <StyledCardMedia
+                      ref={addVideoRef}
+                      src={result.videoUrl}
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      preload="auto"
+                      onError={(e) => console.error("Error loading video:", JSON.stringify(result))}
+                    />
+                  </StyledCardMediaContainer>
+                  <BottomCardCaption>{result.subtitle}</BottomCardCaption>
+                  <BottomCardLabel>
+                    <Chip
+                      size="small"
+                      label={`S${result.season} E${result.episode}`}
+                      style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', color: 'white', fontWeight: 'bold' }}
+                    />
+                  </BottomCardLabel>
+                </StyledCard>
               </Link>
             </Grid>
           ))}
         </Grid>
-        :
-        <StyledCircularProgress />
+        : <StyledCircularProgress />
       }
     </>
   );

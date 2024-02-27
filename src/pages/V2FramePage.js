@@ -39,7 +39,7 @@ import {
 } from '@mui/material';
 import { Add, ArrowBack, ArrowBackIos, ArrowForward, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, FormatLineSpacing, FormatSize, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu, OpenInBrowser, OpenInNew, VerticalAlignBottom, VerticalAlignTop, Visibility, VisibilityOff } from '@mui/icons-material';
 import useSearchDetails from '../hooks/useSearchDetails';
-import fetchFrameInfo from '../utils/frameHandlerV2';
+import { fetchFrameInfo, fetchFramesFineTuning, fetchFramesSurroundingPromises } from '../utils/frameHandlerV2';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
 
 // import { listGlobalMessages } from '../../../graphql/queries'
@@ -65,7 +65,7 @@ export default function FramePage({ shows = [] }) {
   const navigate = useNavigate();
   const [frameData, setFrameData] = useState({});
   const [fineTuningFrames, setFineTuningFrames] = useState([]);
-  const [surroundingFrames, setSurroundingFrames] = useState(null);
+  const [surroundingFrames, setSurroundingFrames] = useState([]);
   const [surroundingSubtitles, setSurroundingSubtitles] = useState(null);
   const [loading, setLoading] = useState(false);
   const {cid, season, episode, frame} = useParams();
@@ -272,30 +272,104 @@ export default function FramePage({ shows = [] }) {
   }
 
   useEffect(() => {
-    const loadFrameInfo = async () => {
+    const loadInitialFrameInfo = async () => {
       setLoading(true);
       try {
-        const info = await fetchFrameInfo(cid, season, episode, frame);
-        setFrameData(info.frameData);
-        setFineTuningFrames(info.frames_fine_tuning);
-        setSurroundingFrames(info.frames_surrounding);
-        setSurroundingSubtitles(info.subtitles_surrounding);
-        setFrames(info.frames_fine_tuning);
-        setLoadedSubtitle(info.subtitle);
+        // Fetch initial frame information including the main image and subtitle
+        const initialInfo = await fetchFrameInfo(cid, season, episode, frame, { mainImage: true });
+        console.log("initialInfo: ", initialInfo);
+        setFrame(initialInfo.frame_image);
+        setFrameData(initialInfo);
+        setDisplayImage(initialInfo.frame_image);
+        setLoadedSubtitle(initialInfo.subtitle);
         setLoadedSeason(season);
         setLoadedEpisode(episode);
-        console.log("Just ran setFrame with this: ", info.frames_fine_tuning)
-        // Update any additional state with the fetched info
       } catch (error) {
-        console.error("Failed to fetch frame info:", error);
-        // Handle error (e.g., set error state, show error message)
+        console.error("Failed to fetch initial frame info:", error);
       } finally {
         setLoading(false);
       }
     };
+  
+    const loadFineTuningFrames = async () => {
+      try {
+        // Fetch fine-tuning frames based on the current frame
+        const fineTuningFrames = await fetchFramesFineTuning(cid, season, episode, frame);
+        setFineTuningFrames(fineTuningFrames);
+        setFrames(fineTuningFrames);
+        console.log("Fine Tuning Frames: ", fineTuningFrames);
+      } catch (error) {
+        console.error("Failed to fetch fine tuning frames:", error);
+      }
+    };
+  
+    const loadSurroundingSubtitles = async () => {
+    try {
+        // Fetch only the surrounding subtitles
+        const subtitlesSurrounding = (await fetchFrameInfo(cid, season, episode, frame, { subtitlesSurrounding: true })).subtitles_surrounding;
+        console.log("setSurroundingSubtitles", subtitlesSurrounding)
+        setSurroundingSubtitles(subtitlesSurrounding);
+      } catch (error) {
+        console.error("Failed to fetch surrounding subtitles:", error);
+      }
+    };
+  
+    const loadSurroundingFrames = async () => {
+      try {
+        // Fetch surrounding frames; these calls already assume fetching of images and possibly their subtitles
+        const surroundingFramePromises = fetchFramesSurroundingPromises(cid, season, episode, frame);
+    
+        // Initialize an array to keep track of the frames as they load
+        const surroundingFrames = [];
+    
+        // Instead of waiting for all promises to resolve, handle each promise individually
+        surroundingFramePromises.forEach((promise, index) => {
+          promise.then(resolvedFrame => {
+            resolvedFrame.cid = cid;
+            resolvedFrame.season = parseInt(season, 10);
+            resolvedFrame.episode = parseInt(episode, 10);
+            // resolvedFrame.frame = parseInt(frame, 10);
+            // Update the state with each frame as it becomes available
+            // Use a function to ensure the state is correctly updated based on the previous state
+            setSurroundingFrames(prevFrames => {
+              // Create a new array that includes the newly resolved frame
+              const updatedFrames = [...prevFrames];
+              updatedFrames[index] = resolvedFrame; // This ensures that frames are kept in order
+              return updatedFrames;
+            });
+            console.log("Loaded Frame: ", resolvedFrame);
+          }).catch(error => {
+            console.error("Failed to fetch a frame:", error);
+          });
+        });
+      } catch (error) {
+        console.error("Failed to fetch surrounding frames:", error);
+      }
+    };
+    
+    // Make sure the values are cleared before loading new ones: 
+    // TODO: make the 'main image' show a skeleton while loading (incl. between navigations)
+    setLoading(true);
+    setFrame(null);
+    setFrameData(null);
+    setDisplayImage(null);
+    setLoadedSubtitle(null);
+    setSelectedFrameIndex(5);
+    setFineTuningFrames([]);
+    setFrames([]);
+    setSurroundingSubtitles([]);
+    setSurroundingFrames(new Array(9).fill('loading'));
 
-    loadFrameInfo();
+    // Sequentially call the functions to ensure loading states and data fetching are managed efficiently
+    loadInitialFrameInfo().then(() => {
+      loadFineTuningFrames(); // Load fine-tuning frames
+      loadSurroundingSubtitles(); // Separately load surrounding subtitles
+      loadSurroundingFrames(); // Load surrounding frames and their subtitles (if available)
+    });
+  
   }, [cid, season, episode, frame]);
+  
+  
 
 
   useEffect(() => {
@@ -337,12 +411,6 @@ export default function FramePage({ shows = [] }) {
   useEffect(() => {
     updateCanvas();
   }, [showText, displayImage, frameData, loadedSubtitle]);
-
-  useEffect(() => {
-    fetchFrameInfo(cid, season, episode, frame).then(info => {
-      console.log("frame info:", info)
-    })
-  }, [])
 
   useEffect(() => {
     if (frames && frames.length > 0) {
@@ -742,23 +810,23 @@ export default function FramePage({ shows = [] }) {
                                     xs: { backgroundColor: 'inherit' },
                                     md: {
                                       backgroundColor:
-                                        result?.subtitle.replace(/\n/g, ' ') ===
+                                        result?.subtitle?.replace(/\n/g, ' ') ===
                                           frameData?.subtitle?.replace(/\n/g, ' ')
                                           ? 'rgba(0, 0, 0, 0)'
                                           : 'ButtonHighlight',
                                     },
                                   },
                                 }}
-                                onClick={() => navigate(`/v2/frame/${cid}/${season}/${episode}//${result?.frame}`)}
+                                onClick={() => navigate(`/v2/frame/${cid}/${season}/${episode}/${result?.frame}`)}
                               >
                                 {loading ? (
                                   <CircularProgress size={20} sx={{ color: '#565656' }} />
-                                ) : result?.subtitle.replace(/\n/g, ' ') ===
+                                ) : result?.subtitle?.replace(/\n/g, ' ') ===
                                   frameData?.subtitle?.replace(/\n/g, ' ') ? (
                                   <GpsFixed
                                     sx={{
                                       color:
-                                        result?.subtitle.replace(/\n/g, ' ') ===
+                                        result?.subtitle?.replace(/\n/g, ' ') ===
                                           frameData?.subtitle?.replace(/\n/g, ' ')
                                           ? 'rgb(202, 202, 202)'
                                           : 'rgb(89, 89, 89)',
@@ -775,17 +843,17 @@ export default function FramePage({ shows = [] }) {
                                 component="p"
                                 variant="body2"
                                 color={
-                                  result?.subtitle.replace(/\n/g, ' ') === frameData?.subtitle?.replace(/\n/g, ' ')
+                                  result?.subtitle?.replace(/\n/g, ' ') === frameData?.subtitle?.replace(/\n/g, ' ')
                                     ? 'rgb(202, 202, 202)'
                                     : ''
                                 }
                                 fontWeight={
-                                  result?.subtitle.replace(/\n/g, ' ') === frameData?.subtitle?.replace(/\n/g, ' ')
+                                  result?.subtitle?.replace(/\n/g, ' ') === frameData?.subtitle?.replace(/\n/g, ' ')
                                     ? 700
                                     : 400
                                 }
                               >
-                                {result?.subtitle.replace(/\n/g, ' ')}
+                                {result?.subtitle?.replace(/\n/g, ' ')}
                               </Typography>
                             </ListItemText>
                             <ListItemIcon sx={{ paddingRight: '0', marginLeft: 'auto' }}>
@@ -830,58 +898,43 @@ export default function FramePage({ shows = [] }) {
 
           <Grid item xs={12}>
             <Typography variant="h6">Surrounding Frames</Typography>
-            {loading ?
-              <Grid container spacing={2} mt={0}>
-                <Grid item xs={4} sm={4} md={12 / 9}>
-                  <Skeleton variant='rounded' sx={{ width: '100%', height: 'auto', aspectRatio }} />
-                </Grid>
-                <Grid item xs={4} sm={4} md={12 / 9}>
-                  <Skeleton variant='rounded' sx={{ width: '100%', height: 'auto', aspectRatio }} />
-                </Grid>
-                <Grid item xs={4} sm={4} md={12 / 9}>
-                  <Skeleton variant='rounded' sx={{ width: '100%', height: 'auto', aspectRatio }} />
-                </Grid>
-                <Grid item xs={4} sm={4} md={12 / 9}>
-                  <Skeleton variant='rounded' sx={{ width: '100%', height: 'auto', aspectRatio }} />
-                </Grid>
-                <Grid item xs={4} sm={4} md={12 / 9}>
-                  <Skeleton variant='rounded' sx={{ width: '100%', height: 'auto', aspectRatio }} />
-                </Grid>
-                <Grid item xs={4} sm={4} md={12 / 9}>
-                  <Skeleton variant='rounded' sx={{ width: '100%', height: 'auto', aspectRatio }} />
-                </Grid>
-                <Grid item xs={4} sm={4} md={12 / 9}>
-                  <Skeleton variant='rounded' sx={{ width: '100%', height: 'auto', aspectRatio }} />
-                </Grid>
-                <Grid item xs={4} sm={4} md={12 / 9}>
-                  <Skeleton variant='rounded' sx={{ width: '100%', height: 'auto', aspectRatio }} />
-                </Grid>
-                <Grid item xs={4} sm={4} md={12 / 9}>
-                  <Skeleton variant='rounded' sx={{ width: '100%', height: 'auto', aspectRatio }} />
-                </Grid>
-              </Grid>
-              :
-              <Grid container spacing={2} mt={0}>
-                {surroundingFrames?.map((surroundingFrame, index) => (
-                  <Grid item xs={4} sm={4} md={12 / 9} key={`surrounding-frame-${surroundingFrame.frame ? surroundingFrame.frame : index}`}>
+            <Grid container spacing={2} mt={0}>
+              {surroundingFrames.filter((frame, index, self) => {
+                const identifier = `${frame?.cid}-${frame?.season}-${frame?.episode}-${frame?.frame}`;
+                return (self.findIndex(f => `${f?.cid}-${f?.season}-${f?.episode}-${f?.frame}` === identifier) === index) || frame === 'loading';
+              }).map((surroundingFrame, index) => (
+                // .filter(frame => {
+                //   console.log("frame", frame)
+                //     return frame?.cid === parseInt(cid, 10) && frame?.season === parseInt(season, 10) && frame?.episode === parseInt(episode, 10) && frame?.frame === parseInt(frame, 10);
+                //   })
+                <Grid item xs={4} sm={4} md={12 / 9} key={`surrounding-frame-${surroundingFrame?.frame || index}`}>
+                  {surroundingFrame !== 'loading' ? (
+                    // Render the actual content if the surrounding frame data is available
                     <a style={{ textDecoration: 'none' }}>
-                      <StyledCard sx={{ ...((frame === surroundingFrame.frame) && { border: '3px solid orange' }), cursor: (frame === surroundingFrame.frame) ? 'default' : 'pointer' }}>
-                        
+                      <StyledCard 
+                        sx={{ 
+                          ...((parseInt(frame, 10) === surroundingFrame.frame) && { border: '3px solid orange' }), 
+                          cursor: (parseInt(frame, 10) === surroundingFrame.frame) ? 'default' : 'pointer' 
+                        }}>
                         <StyledCardMedia
                           component="img"
                           alt={`${surroundingFrame.frame}`}
                           src={`${surroundingFrame.frameImage}`}
                           title={surroundingFrame.subtitle || 'No subtitle'}
                           onClick={() => {
-                            navigate(`/v2/frame/${cid}/${season}/${episode}/${surroundingFrame.frame}`)
+                            navigate(`/v2/frame/${cid}/${season}/${episode}/${surroundingFrame.frame}`);
                           }}
                         />
                       </StyledCard>
                     </a>
-                  </Grid>
-                ))}
-              </Grid>
-            }
+                  ) : (
+                    // Render a skeleton if the data is not yet available (undefined)
+                    <Skeleton variant='rounded' sx={{ width: '100%', height: 'auto', aspectRatio }} />
+                  )}
+                </Grid>
+              ))}
+            </Grid>
+
             <Grid item xs={12} mt={3}>
               <Button
                   variant="contained"
