@@ -5,7 +5,7 @@ import { styled } from '@mui/material/styles';
 import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
-import { Accordion, AccordionDetails, AccordionSummary, Backdrop, Button, ButtonGroup, Card, CircularProgress, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, Tab, Tabs, TextField, ToggleButton, ToggleButtonGroup, Typography, useMediaQuery, useTheme } from '@mui/material';
+import { Accordion, AccordionDetails, AccordionSummary, Backdrop, Button, ButtonGroup, Card, CircularProgress, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Skeleton, Slider, Snackbar, Stack, Tab, Tabs, TextField, ToggleButton, ToggleButtonGroup, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { AccessTime, Add, AddCircleOutline, AddPhotoAlternate, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ClosedCaption, ContentCopy, FolderOpen, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, History, HistoryToggleOffRounded, IosShare, Menu, MoreTime, Redo, Save, Share, Timelapse, Timeline, Undo, Update, ZoomIn, ZoomOut } from '@mui/icons-material';
 import { API, Storage, graphqlOperation } from 'aws-amplify';
 import { Box } from '@mui/system';
@@ -1291,7 +1291,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     setFineTuningFrames([]);
     setFrames([]);
     setSurroundingSubtitles([]);
-    // setSurroundingFrames(new Array(9).fill('loading'));
+    setSurroundingFrames(new Array(9).fill('loading'));
 
     // Sequentially call the functions to ensure loading states and data fetching are managed efficiently
     loadInitialFrameInfo().then(() => {
@@ -1851,20 +1851,29 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
             <Grid container item spacing={1}>
             {surroundingFrames?.map((surroundingFrame, index) => (
                   <Grid item xs={4} sm={4} md={12 / 9} key={`surrounding-frame-${surroundingFrame?.frame ? surroundingFrame?.frame : index}`}>
+                    {surroundingFrame !== 'loading' ? (
+                    // Render the actual content if the surrounding frame data is available
                     <a style={{ textDecoration: 'none' }}>
-                      <StyledCard sx={{ ...((frame === surroundingFrame?.frame) && { border: '3px solid orange' }), cursor: (frame === surroundingFrame?.frame) ? 'default' : 'pointer' }}>
-                        
+                      <StyledCard 
+                        sx={{ 
+                          ...((parseInt(frame, 10) === surroundingFrame.frame) && { border: '3px solid orange' }), 
+                          cursor: (parseInt(frame, 10) === surroundingFrame.frame) ? 'default' : 'pointer' 
+                        }}>
                         <StyledCardMedia
                           component="img"
-                          alt={`${surroundingFrame?.frame}`}
-                          src={`${surroundingFrame?.frameImage}`}
-                          title={surroundingFrame?.subtitle || 'No subtitle'}
+                          alt={`${surroundingFrame.frame}`}
+                          src={`${surroundingFrame.frameImage}`}
+                          title={surroundingFrame.subtitle || 'No subtitle'}
                           onClick={() => {
-                            navigate(`/v2/editor/${cid}/${season}/${episode}/${surroundingFrame?.frame}`)
+                            navigate(`/v2/frame/${cid}/${season}/${episode}/${surroundingFrame.frame}`);
                           }}
                         />
                       </StyledCard>
                     </a>
+                  ) : (
+                    // Render a skeleton if the data is not yet available (undefined)
+                    <Skeleton variant='rounded' sx={{ width: '100%', height: 'auto', aspectRatio: `${editorAspectRatio === 1 ? (16/9) : editorAspectRatio}/1`}} />
+                  )}
                   </Grid>
                 ))}
               <Grid item xs={12}>
