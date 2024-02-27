@@ -21,7 +21,8 @@ import { createEditorProject, updateEditorProject } from '../graphql/mutations';
 import { getEditorProject } from '../graphql/queries';
 import ImageEditorControls from '../components/ImageEditorControls';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
-import { fetchFrameInfo } from '../utils/frameHandlerV2';
+
+import { fetchFrameInfo, fetchFramesFineTuning, fetchFramesSurroundingPromises } from '../utils/frameHandlerV2';
 
 const Alert = forwardRef((props, ref) => <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />);
 
@@ -87,7 +88,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   });
   const [fineTuningFrames, setFineTuningFrames] = useState([]);
   const [canvasObjects, setCanvasObjects] = useState();
-  const [surroundingFrames, setSurroundingFrames] = useState();
+  const [surroundingFrames, setSurroundingFrames] = useState([]);
   const [selectedFid, setSelectedFid] = useState(fid);
   const [defaultSubtitle, setDefaultSubtitle] = useState(null);
   const [colorPickerShowing, setColorPickerShowing] = useState(false);
@@ -354,11 +355,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     reader.readAsDataURL(imageFile);
   };
 
-
-
-
-
-
   const fileInputRef = useRef(null); // Define the ref
 
   const loadEditorDefaults = useCallback(async () => {
@@ -433,7 +429,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       getFrame(selectedFid)
         .then((data) => {
           setLoadedSeriesTitle(data.series_name);
-          setSurroundingFrames(data.frames_surrounding);
+          // loadSurroundingFrames();
+          // setSurroundingFrames(data.frames_surrounding);
           // Pre load fine tuning frames
           loadImg(data.frames_fine_tuning, oImgBuild).then((images) => {
             setFineTuningFrames(images);
@@ -1133,7 +1130,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     }
   }, [editorLoaded]);
 
-
   const handleOpenNavWithoutSavingDialog = (cid, season, episode, frame) => {
     if (editorStates.length > 1) {
       setSelectedNavItemFid(frame);
@@ -1168,33 +1164,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const [loadedSeason, setLoadedSeason] = useState('');
   const [loadedEpisode, setLoadedEpisode] = useState('');
   const [surroundingSubtitles, setSurroundingSubtitles] = useState(null);
-
-  useEffect(() => {
-    const loadFrameInfo = async () => {
-      setLoading(true);
-      try {
-        const info = await fetchFrameInfo(cid, season, episode, frame);
-        // setFrameData(info.frameData);
-        setFineTuningFrames(info.frames_fine_tuning);
-        setSurroundingFrames(info.frames_surrounding);
-        setSurroundingSubtitles(info.subtitles_surrounding);
-        setFrames(info.frames_fine_tuning);
-        setDefaultSubtitle(info.subtitle)
-        setLoadedSubtitle(info.subtitle);
-        setLoadedSeason(season);
-        setLoadedEpisode(episode);
-        console.log("Just ran setFrame with this: ", info.frames_fine_tuning)
-        // Update any additional state with the fetched info
-      } catch (error) {
-        console.error("Failed to fetch frame info:", error);
-        // Handle error (e.g., set error state, show error message)
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadFrameInfo();
-  }, [cid, season, episode, frame]);
 
   // setFrames
   // setLoadedSubtitle
@@ -1234,6 +1203,104 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       { crossOrigin: 'anonymous' }
     );
   };
+
+  useEffect(() => {
+    const loadInitialFrameInfo = async () => {
+      setLoading(true);
+      try {
+        // Fetch initial frame information including the main image and subtitle
+        const initialInfo = await fetchFrameInfo(cid, season, episode, frame, { mainImage: true });
+        console.log("initialInfo: ", initialInfo);
+        // setFrame(initialInfo.frame_image);
+        // setFrameData(initialInfo);
+        // setDisplayImage(initialInfo.frame_image);
+        setLoadedSubtitle(initialInfo.subtitle);
+        setLoadedSeason(season);
+        setLoadedEpisode(episode);
+      } catch (error) {
+        console.error("Failed to fetch initial frame info:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+  
+    const loadFineTuningFrames = async () => {
+      try {
+        // Fetch fine-tuning frames based on the current frame
+        const fineTuningFrames = await fetchFramesFineTuning(cid, season, episode, frame);
+        setFineTuningFrames(fineTuningFrames);
+        setFrames(fineTuningFrames);
+        console.log("Fine Tuning Frames: ", fineTuningFrames);
+      } catch (error) {
+        console.error("Failed to fetch fine tuning frames:", error);
+      }
+    };
+  
+    const loadSurroundingSubtitles = async () => {
+    try {
+        // Fetch only the surrounding subtitles
+        const subtitlesSurrounding = (await fetchFrameInfo(cid, season, episode, frame, { subtitlesSurrounding: true })).subtitles_surrounding;
+        console.log("setSurroundingSubtitles", subtitlesSurrounding)
+        setSurroundingSubtitles(subtitlesSurrounding);
+      } catch (error) {
+        console.error("Failed to fetch surrounding subtitles:", error);
+      }
+    };
+  
+    const loadSurroundingFrames = async () => {
+      try {
+        // Fetch surrounding frames; these calls already assume fetching of images and possibly their subtitles
+        const surroundingFramePromises = fetchFramesSurroundingPromises(cid, season, episode, frame);
+    
+        // Initialize an array to keep track of the frames as they load
+        const surroundingFrames = [];
+    
+        // Instead of waiting for all promises to resolve, handle each promise individually
+        surroundingFramePromises.forEach((promise, index) => {
+          promise.then(resolvedFrame => {
+            resolvedFrame.cid = cid;
+            resolvedFrame.season = parseInt(season, 10);
+            resolvedFrame.episode = parseInt(episode, 10);
+            // resolvedFrame.frame = parseInt(frame, 10);
+            // Update the state with each frame as it becomes available
+            // Use a function to ensure the state is correctly updated based on the previous state
+            setSurroundingFrames(prevFrames => {
+              // Create a new array that includes the newly resolved frame
+              const updatedFrames = [...prevFrames];
+              updatedFrames[index] = resolvedFrame; // This ensures that frames are kept in order
+              return updatedFrames;
+            });
+            console.log("Loaded Frame: ", resolvedFrame);
+          }).catch(error => {
+            console.error("Failed to fetch a frame:", error);
+          });
+        });
+      } catch (error) {
+        console.error("Failed to fetch surrounding frames:", error);
+      }
+    };
+    
+    // Make sure the values are cleared before loading new ones: 
+    // TODO: make the 'main image' show a skeleton while loading (incl. between navigations)
+    setLoading(true);
+    // setFrame(null);
+    // setFrameData(null);
+    // setDisplayImage(null);
+    setLoadedSubtitle(null);
+    setSelectedFrameIndex(5);
+    setFineTuningFrames([]);
+    setFrames([]);
+    setSurroundingSubtitles([]);
+    // setSurroundingFrames(new Array(9).fill('loading'));
+
+    // Sequentially call the functions to ensure loading states and data fetching are managed efficiently
+    loadInitialFrameInfo().then(() => {
+      loadFineTuningFrames(); // Load fine-tuning frames
+      loadSurroundingSubtitles(); // Separately load surrounding subtitles
+      loadSurroundingFrames(); // Load surrounding frames and their subtitles (if available)
+    });
+  
+  }, [cid, season, episode, frame]);
 
 
   // Outputs
@@ -1660,7 +1727,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                       {loading ? (
                                         <CircularProgress size={20} sx={{ color: '#565656' }} />
                                       ) : result?.subtitle.replace(/\n/g, ' ') ===
-                                        defaultSubtitle.replace(/\n/g, ' ') ? (
+                                        defaultSubtitle?.replace(/\n/g, ' ') ? (
                                         <GpsFixed
                                           sx={{
                                             color:
@@ -1783,17 +1850,17 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
             </Grid>
             <Grid container item spacing={1}>
             {surroundingFrames?.map((surroundingFrame, index) => (
-                  <Grid item xs={4} sm={4} md={12 / 9} key={`surrounding-frame-${surroundingFrame.frame ? surroundingFrame.frame : index}`}>
+                  <Grid item xs={4} sm={4} md={12 / 9} key={`surrounding-frame-${surroundingFrame?.frame ? surroundingFrame?.frame : index}`}>
                     <a style={{ textDecoration: 'none' }}>
-                      <StyledCard sx={{ ...((frame === surroundingFrame.frame) && { border: '3px solid orange' }), cursor: (frame === surroundingFrame.frame) ? 'default' : 'pointer' }}>
+                      <StyledCard sx={{ ...((frame === surroundingFrame?.frame) && { border: '3px solid orange' }), cursor: (frame === surroundingFrame?.frame) ? 'default' : 'pointer' }}>
                         
                         <StyledCardMedia
                           component="img"
-                          alt={`${surroundingFrame.frame}`}
-                          src={`${surroundingFrame.frameImage}`}
-                          title={surroundingFrame.subtitle || 'No subtitle'}
+                          alt={`${surroundingFrame?.frame}`}
+                          src={`${surroundingFrame?.frameImage}`}
+                          title={surroundingFrame?.subtitle || 'No subtitle'}
                           onClick={() => {
-                            navigate(`/v2/editor/${cid}/${season}/${episode}/${surroundingFrame.frame}`)
+                            navigate(`/v2/editor/${cid}/${season}/${episode}/${surroundingFrame?.frame}`)
                           }}
                         />
                       </StyledCard>
