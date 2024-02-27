@@ -42,7 +42,7 @@ export default function V2EpisodePage({ setSeriesTitle }) {
       const startFrame = parseInt(frame, 10);
       const endFrame = startFrame + (fps * 10) - 1; // Fetching frames for 10 seconds
 
-      const frames = await extractVideoFrames(cid, season, episode, startFrame, endFrame, fps);
+      const frames = await extractVideoFrames(cid, season, episode, startFrame, endFrame, fps, 0.2);
 
       const selectedFrames = frames.filter((_, index) => index % fps === 0);
 

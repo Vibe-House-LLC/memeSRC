@@ -199,7 +199,7 @@ export default function SearchPage() {
       });
 
       results.sort((a, b) => b.score - a.score);
-      results = results.slice(0, 25);
+      results = results.slice(0, 10);
 
 // Load the ZIP file and extract the relevant video file
 try {
