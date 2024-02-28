@@ -82,7 +82,7 @@ export default function EpisodePage({ setSeriesTitle }) {
       ...graphqlOperation(contentMetadataByStatus, { filter: {}, limit: 50, status: 1 }),
       authMode: "API_KEY"
     }).then(result => {
-      setShowName(result.data.listContentMetadata.items.find(obj => obj.id === seriesId).title)
+      setShowName(result.data.contentMetadataByStatus.items.find(obj => obj.id === seriesId).title)
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

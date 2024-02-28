@@ -83,7 +83,7 @@ async function fetchShows() {
     ...graphqlOperation(contentMetadataByStatus, { filter: {}, limit: 50, status: 1 }),
     authMode: "API_KEY"
   });
-  const sortedMetadata = result.data.listContentMetadata.items.sort((a, b) => {
+  const sortedMetadata = result.data.contentMetadataByStatus.items.sort((a, b) => {
     if (a.title < b.title) return -1;
     if (a.title > b.title) return 1;
     return 0;
