@@ -602,6 +602,11 @@ export const onCreateContentMetadata = /* GraphQL */ `
       colorSecondary
       emoji
       status
+      version
+      users {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       __typename
@@ -621,6 +626,11 @@ export const onUpdateContentMetadata = /* GraphQL */ `
       colorSecondary
       emoji
       status
+      version
+      users {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       __typename
@@ -640,6 +650,11 @@ export const onDeleteContentMetadata = /* GraphQL */ `
       colorSecondary
       emoji
       status
+      version
+      users {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       __typename
@@ -746,6 +761,10 @@ export const onCreateUserDetails = /* GraphQL */ `
         nextToken
         __typename
       }
+      contentMetadatas {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       userDetailsStripeCustomerInfoId
@@ -793,6 +812,10 @@ export const onUpdateUserDetails = /* GraphQL */ `
         nextToken
         __typename
       }
+      contentMetadatas {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       userDetailsStripeCustomerInfoId
@@ -837,6 +860,10 @@ export const onDeleteUserDetails = /* GraphQL */ `
       subscriptionStatus
       magicSubscription
       userNotifications {
+        nextToken
+        __typename
+      }
+      contentMetadatas {
         nextToken
         __typename
       }
@@ -1518,6 +1545,144 @@ export const onDeleteEditorProject = /* GraphQL */ `
       createdAt
       updatedAt
       editorProjectUserId
+      __typename
+    }
+  }
+`;
+export const onCreateUserMetadata = /* GraphQL */ `
+  subscription OnCreateUserMetadata(
+    $filter: ModelSubscriptionUserMetadataFilterInput
+  ) {
+    onCreateUserMetadata(filter: $filter) {
+      id
+      contentMetadataId
+      userDetailsId
+      contentMetadata {
+        id
+        title
+        description
+        frameCount
+        colorMain
+        colorSecondary
+        emoji
+        status
+        version
+        createdAt
+        updatedAt
+        __typename
+      }
+      userDetails {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onUpdateUserMetadata = /* GraphQL */ `
+  subscription OnUpdateUserMetadata(
+    $filter: ModelSubscriptionUserMetadataFilterInput
+  ) {
+    onUpdateUserMetadata(filter: $filter) {
+      id
+      contentMetadataId
+      userDetailsId
+      contentMetadata {
+        id
+        title
+        description
+        frameCount
+        colorMain
+        colorSecondary
+        emoji
+        status
+        version
+        createdAt
+        updatedAt
+        __typename
+      }
+      userDetails {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onDeleteUserMetadata = /* GraphQL */ `
+  subscription OnDeleteUserMetadata(
+    $filter: ModelSubscriptionUserMetadataFilterInput
+  ) {
+    onDeleteUserMetadata(filter: $filter) {
+      id
+      contentMetadataId
+      userDetailsId
+      contentMetadata {
+        id
+        title
+        description
+        frameCount
+        colorMain
+        colorSecondary
+        emoji
+        status
+        version
+        createdAt
+        updatedAt
+        __typename
+      }
+      userDetails {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      createdAt
+      updatedAt
       __typename
     }
   }

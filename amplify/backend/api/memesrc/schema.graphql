@@ -115,7 +115,10 @@ type ContentMetadata @model @auth(
   colorMain: String,
   colorSecondary: String,
   emoji: String,
-  status: Int
+  status: Int @index
+  version: Int
+  users: [UserDetails] @manyToMany(relationName: "UserMetadata")
+
 }
 
 type HomepageSection @model @auth(
@@ -158,6 +161,7 @@ type UserDetails @model @auth(
   subscriptionStatus: String,
   magicSubscription: String,
   userNotifications: [UserNotification] @hasMany
+  contentMetadatas: [ContentMetadata] @manyToMany(relationName: "UserMetadata")
 }
 
 type StripeCustomer @model @auth(

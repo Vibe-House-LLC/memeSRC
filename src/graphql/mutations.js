@@ -654,6 +654,11 @@ export const createContentMetadata = /* GraphQL */ `
       colorSecondary
       emoji
       status
+      version
+      users {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       __typename
@@ -674,6 +679,11 @@ export const updateContentMetadata = /* GraphQL */ `
       colorSecondary
       emoji
       status
+      version
+      users {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       __typename
@@ -694,6 +704,11 @@ export const deleteContentMetadata = /* GraphQL */ `
       colorSecondary
       emoji
       status
+      version
+      users {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       __typename
@@ -804,6 +819,10 @@ export const createUserDetails = /* GraphQL */ `
         nextToken
         __typename
       }
+      contentMetadatas {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       userDetailsStripeCustomerInfoId
@@ -852,6 +871,10 @@ export const updateUserDetails = /* GraphQL */ `
         nextToken
         __typename
       }
+      contentMetadatas {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       userDetailsStripeCustomerInfoId
@@ -897,6 +920,10 @@ export const deleteUserDetails = /* GraphQL */ `
       subscriptionStatus
       magicSubscription
       userNotifications {
+        nextToken
+        __typename
+      }
+      contentMetadatas {
         nextToken
         __typename
       }
@@ -1599,6 +1626,147 @@ export const deleteEditorProject = /* GraphQL */ `
       createdAt
       updatedAt
       editorProjectUserId
+      __typename
+    }
+  }
+`;
+export const createUserMetadata = /* GraphQL */ `
+  mutation CreateUserMetadata(
+    $input: CreateUserMetadataInput!
+    $condition: ModelUserMetadataConditionInput
+  ) {
+    createUserMetadata(input: $input, condition: $condition) {
+      id
+      contentMetadataId
+      userDetailsId
+      contentMetadata {
+        id
+        title
+        description
+        frameCount
+        colorMain
+        colorSecondary
+        emoji
+        status
+        version
+        createdAt
+        updatedAt
+        __typename
+      }
+      userDetails {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const updateUserMetadata = /* GraphQL */ `
+  mutation UpdateUserMetadata(
+    $input: UpdateUserMetadataInput!
+    $condition: ModelUserMetadataConditionInput
+  ) {
+    updateUserMetadata(input: $input, condition: $condition) {
+      id
+      contentMetadataId
+      userDetailsId
+      contentMetadata {
+        id
+        title
+        description
+        frameCount
+        colorMain
+        colorSecondary
+        emoji
+        status
+        version
+        createdAt
+        updatedAt
+        __typename
+      }
+      userDetails {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const deleteUserMetadata = /* GraphQL */ `
+  mutation DeleteUserMetadata(
+    $input: DeleteUserMetadataInput!
+    $condition: ModelUserMetadataConditionInput
+  ) {
+    deleteUserMetadata(input: $input, condition: $condition) {
+      id
+      contentMetadataId
+      userDetailsId
+      contentMetadata {
+        id
+        title
+        description
+        frameCount
+        colorMain
+        colorSecondary
+        emoji
+        status
+        version
+        createdAt
+        updatedAt
+        __typename
+      }
+      userDetails {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      createdAt
+      updatedAt
       __typename
     }
   }

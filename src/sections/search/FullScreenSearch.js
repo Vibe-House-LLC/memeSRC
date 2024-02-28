@@ -11,7 +11,7 @@ import { UserContext } from '../../UserContext';
 import useSearchDetails from '../../hooks/useSearchDetails';
 import { searchPropTypes } from './SearchPropTypes';
 import Logo from '../../components/logo/Logo';
-import { listContentMetadata, listHomepageSections } from '../../graphql/queries';
+import { contentMetadataByStatus, listContentMetadata, listHomepageSections } from '../../graphql/queries';
 import HomePageSection from './HomePageSection';
 import HomePageBannerAd from '../../ads/HomePageBannerAd';
 import useSearchDetailsV2 from '../../hooks/useSearchDetailsV2';
@@ -146,10 +146,10 @@ const StyledRightFooter = styled('footer')`
 
 async function fetchShows() {
   const result = await API.graphql({
-    ...graphqlOperation(listContentMetadata, { filter: {}, limit: 50 }),
+    ...graphqlOperation(contentMetadataByStatus, { filter: {}, limit: 50, status: 1 }),
     authMode: 'API_KEY',
   });
-  const sortedMetadata = result.data.listContentMetadata.items.sort((a, b) => {
+  const sortedMetadata = result.data.contentMetadataByStatus.items.sort((a, b) => {
     if (a.title < b.title) return -1;
     if (a.title > b.title) return 1;
     return 0;

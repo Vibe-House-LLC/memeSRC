@@ -7,7 +7,7 @@ import { LoadingButton } from "@mui/lab";
 import { Outlet, Link as RouterLink, useNavigate, useParams } from "react-router-dom";
 import { searchPropTypes } from "./SearchPropTypes";
 import Logo from "../../components/logo/Logo";
-import { listContentMetadata } from '../../graphql/queries';
+import { contentMetadataByStatus, listContentMetadata } from '../../graphql/queries';
 import useSearchDetails from "../../hooks/useSearchDetails";
 import useSearchDetailsV2 from "../../hooks/useSearchDetailsV2";
 import AddCidPopup from "../../components/ipfs/add-cid-popup";
@@ -80,7 +80,7 @@ const StyledHeader = styled('header')(() => ({
 
 async function fetchShows() {
   const result = await API.graphql({
-    ...graphqlOperation(listContentMetadata, { filter: {}, limit: 50 }),
+    ...graphqlOperation(contentMetadataByStatus, { filter: {}, limit: 50, status: 1 }),
     authMode: "API_KEY"
   });
   const sortedMetadata = result.data.listContentMetadata.items.sort((a, b) => {

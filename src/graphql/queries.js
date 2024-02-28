@@ -398,6 +398,11 @@ export const getContentMetadata = /* GraphQL */ `
       colorSecondary
       emoji
       status
+      version
+      users {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       __typename
@@ -420,6 +425,41 @@ export const listContentMetadata = /* GraphQL */ `
         colorSecondary
         emoji
         status
+        version
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const contentMetadataByStatus = /* GraphQL */ `
+  query ContentMetadataByStatus(
+    $status: Int!
+    $sortDirection: ModelSortDirection
+    $filter: ModelContentMetadataFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    contentMetadataByStatus(
+      status: $status
+      sortDirection: $sortDirection
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        title
+        description
+        frameCount
+        colorMain
+        colorSecondary
+        emoji
+        status
+        version
         createdAt
         updatedAt
         __typename
@@ -512,6 +552,10 @@ export const getUserDetails = /* GraphQL */ `
       subscriptionStatus
       magicSubscription
       userNotifications {
+        nextToken
+        __typename
+      }
+      contentMetadatas {
         nextToken
         __typename
       }
@@ -910,6 +954,126 @@ export const listEditorProjects = /* GraphQL */ `
         createdAt
         updatedAt
         editorProjectUserId
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const getUserMetadata = /* GraphQL */ `
+  query GetUserMetadata($id: ID!) {
+    getUserMetadata(id: $id) {
+      id
+      contentMetadataId
+      userDetailsId
+      contentMetadata {
+        id
+        title
+        description
+        frameCount
+        colorMain
+        colorSecondary
+        emoji
+        status
+        version
+        createdAt
+        updatedAt
+        __typename
+      }
+      userDetails {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const listUserMetadata = /* GraphQL */ `
+  query ListUserMetadata(
+    $filter: ModelUserMetadataFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listUserMetadata(filter: $filter, limit: $limit, nextToken: $nextToken) {
+      items {
+        id
+        contentMetadataId
+        userDetailsId
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const userMetadataByContentMetadataId = /* GraphQL */ `
+  query UserMetadataByContentMetadataId(
+    $contentMetadataId: ID!
+    $sortDirection: ModelSortDirection
+    $filter: ModelUserMetadataFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    userMetadataByContentMetadataId(
+      contentMetadataId: $contentMetadataId
+      sortDirection: $sortDirection
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        contentMetadataId
+        userDetailsId
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const userMetadataByUserDetailsId = /* GraphQL */ `
+  query UserMetadataByUserDetailsId(
+    $userDetailsId: ID!
+    $sortDirection: ModelSortDirection
+    $filter: ModelUserMetadataFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    userMetadataByUserDetailsId(
+      userDetailsId: $userDetailsId
+      sortDirection: $sortDirection
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        contentMetadataId
+        userDetailsId
+        createdAt
+        updatedAt
         __typename
       }
       nextToken
