@@ -246,6 +246,14 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
     getData();
   }, []);
 
+  useEffect(() => {
+    if (user) {
+      API.get('publicapi', '/user/update/getSavedMetadata').then(response => {
+        console.log(response)
+      }).catch(err => console.log(err))
+    }
+  }, [user]);
+
   // This useEffect ensures the theme is applied based on the seriesId once the data is loaded
   useEffect(() => {
     // Check if shows have been loaded
@@ -437,8 +445,8 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   }
 
   useEffect(() => {
-    
-  
+
+
     return () => {
       setCid(null)
       setShowObj(null)
@@ -614,7 +622,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
           {user?.userDetails?.subscriptionStatus !== 'active' &&
             <Grid item xs={12} mt={2}>
               <center>
-                <Box sx={{ maxWidth: '800px'}}>
+                <Box sx={{ maxWidth: '800px' }}>
                   <HomePageBannerAd />
                 </Box>
               </center>

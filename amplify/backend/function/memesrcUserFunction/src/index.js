@@ -312,6 +312,57 @@ async function makeRequest(query) {
   };
 }
 
+async function makeRequestWithVariables(query, passedVars = {}) {
+  const endpoint = new URL(GRAPHQL_ENDPOINT);
+
+  const signer = new SignatureV4({
+    credentials: defaultProvider(),
+    region: AWS_REGION,
+    service: 'appsync',
+    sha256: Sha256
+  });
+
+  const variables = passedVars;
+
+  const requestToBeSigned = new HttpRequest({
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      host: endpoint.host
+    },
+    hostname: endpoint.host,
+    body: JSON.stringify({ query, variables }), // Pass the query and variables
+    path: endpoint.pathname
+  });
+
+  const signed = await signer.sign(requestToBeSigned);
+  const request = new Request(endpoint, signed);
+
+  let statusCode = 200;
+  let body;
+  let response;
+
+  try {
+    response = await fetch(request);
+    body = await response.json();
+    if (body.errors) statusCode = 400;
+  } catch (error) {
+    statusCode = 500;
+    body = {
+      errors: [
+        {
+          message: error.message
+        }
+      ]
+    };
+  }
+
+  return {
+    statusCode,
+    body
+  };
+}
+
 async function getAllUserVotes(params) {
   let allVotes = [];
   let nextToken = null;
@@ -1486,6 +1537,180 @@ export const handler = async (event) => {
     response = {
       statusCode: 200,
       body: 'The notification has been marked as unread.'
+    }
+  }
+
+  // Return list of users saved metadata objects
+  if (path === `/${process.env.ENV}/public/user/update/getSavedMetadata`) {
+    const getUsersMetadataQuery = `
+      query getUserDetails($id: ID!, $nextToken: String) {
+        getUserDetails(id: $id) {
+          contentMetadatas(nextToken: $nextToken) {
+            items {
+              contentMetadata {
+                version
+                updatedAt
+                title
+                status
+                id
+                frameCount
+                emoji
+                description
+                createdAt
+                colorSecondary
+                colorMain
+              }
+            }
+            nextToken
+          }
+        }
+      }
+    `;
+    console.log('getUsersMetadataQuery', getUsersMetadataQuery);
+
+    async function fetchAllContentMetadatas(id) {
+      let allItems = []; // Array to hold all contentMetadata items
+      let nextToken = null; // Variable to track the nextToken
+
+      // Function to recursively fetch contentMetadatas
+      async function fetchPage(nt) {
+        try {
+          // Adjust your makeRequestWithVariables function to accept nextToken if provided
+          const response = await makeRequestWithVariables(getUsersMetadataQuery, { id: id, nextToken: nt });
+          const contentMetadatas = response?.body.data?.getUserDetails?.contentMetadatas;
+
+          // Concatenate the new items to the allItems array
+          allItems = allItems.concat(contentMetadatas.items.map(item => item.contentMetadata));
+
+          // If there's a nextToken, recursively call fetchPage again
+          if (contentMetadatas.nextToken) {
+            await fetchPage(contentMetadatas.nextToken);
+          }
+        } catch (error) {
+          console.error('Failed to fetch contentMetadatas:', error);
+          throw new Error('Failed to fetch contentMetadatas');
+        }
+      }
+
+      await fetchPage(nextToken); // Start the recursive fetching
+
+      return allItems; // Return all fetched items
+    }
+
+    try {
+      const getUsersMetadataRequest = await fetchAllContentMetadatas(userSub);
+      console.log('getUsersMetadataRequest', JSON.stringify(getUsersMetadataRequest));
+
+      // If this works it will return an array of the objects in the body
+      response = {
+        statusCode: 200,
+        body: getUsersMetadataRequest
+      }
+    } catch (error) {
+      console.log(error);
+      response = {
+        statusCode: 500,
+        body: {
+          errorCode: 'FAILED_TO_LIST_USERS_SAVED_METADATA',
+          message: 'Something went wrong attempting to pull saved metadata.',
+        }
+      }
+    }
+  }
+
+  if (path === `/${process.env.ENV}/public/user/update/saveMetadata`) {
+    /* ----------------------------- GraphQL Queries ---------------------------- */
+    const getContentMetadataQuery = `
+    query getContentMetadata($id: ID!) {
+      getContentMetadata(id: $id) {
+        id
+      }
+    }
+    `;
+    console.log('getContentMetadataQuery', getContentMetadataQuery);
+
+    const createContentMetadataQuery = `
+      mutation createContentMetadata($colorMain: String, $colorSecondary: String, $description: String, $emoji: String, $frameCount: Int, $id: ID!, $status: Int, $title: String, $version: Int) {
+        createContentMetadata(input: {colorMain: $colorMain, colorSecondary: $colorSecondary, description: $description, emoji: $emoji, frameCount: $frameCount, id: $id, status: $status, title: $title, version: $version}) {
+          colorMain
+          colorSecondary
+          createdAt
+          description
+          emoji
+          frameCount
+          id
+          status
+          title
+          updatedAt
+          version
+        }
+      }
+    `
+    console.log('createContentMetadataQuery', createContentMetadataQuery)
+
+    const createUserMetadataQuery = `
+      mutation MyMutation($contentMetadataId: ID, $userDetailsId: ID) {
+        createUserMetadata(input: {contentMetadataId: $contentMetadataId, userDetailsId: $userDetailsId}) {
+          id
+        }
+      }
+    `
+    console.log('createUserMetadataQuery', createUserMetadataQuery)
+
+    /* --------------------------- Variables From Body -------------------------- */
+
+    const cid = body?.cid
+    const colorMain = body?.colorMain
+    const colorSecondary = body?.colorSecondary
+    const description = body?.description
+    const emoji = body?.emoji
+    const frameCount = body?.frameCount
+    const title = body?.title
+
+    try {
+      if (cid) {
+        // First lets make sure the id doesn't exist.
+        const getContentMetadataRequest = await makeRequestWithVariables(getContentMetadataQuery, { id: cid })
+        console.log('getContentMetadataRequest', JSON.stringify(getContentMetadataRequest));
+
+        if (!getContentMetadataRequest?.body?.data?.getContentMetadata?.id) {
+          // There was not a match
+          
+          // Lets make a new one.
+          const createContentMetadataRequest = await makeRequestWithVariables(createContentMetadataQuery, { id: cid, colorMain, colorSecondary, description, emoji, frameCount, title, status: 0, version: 2 });
+          console.log('createContentMetadataRequest', JSON.stringify(createContentMetadataRequest));
+
+          // Now assuming that worked, let's make the connection to the user.
+          const createUserMetadataRequest = await makeRequestWithVariables(createUserMetadataQuery, { contentMetadataId: cid, userDetailsId: userSub });
+          console.log('createUserMetadataRequest', JSON.stringify(createUserMetadataRequest));
+
+          // Now lets return the data so that it can be added to their list on the front end.
+          response = {
+            statusCode: 200,
+            body: {
+              ...createContentMetadataRequest?.body?.data?.createContentMetadata
+            }
+          }
+        } else {
+          // There was a match
+          response = {
+            statusCode: 200,
+            body: {
+              alreadyExists: true
+            }
+          }
+        }
+      }
+      
+    } catch (error) {
+      console.log(error);
+      response = {
+        statusCode: 500,
+        body: {
+          errorCode: 'FAILED_TO_SAVE_METADATA',
+          message: 'Something went wrong attempting to pull saved metadata.',
+        }
+      }
     }
   }
 
