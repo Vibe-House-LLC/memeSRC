@@ -371,7 +371,19 @@ export default function FramePage({ shows = [] }) {
   
   }, [cid, season, episode, frame]);
   
-  
+  function frameToTimeCode(frame, frameRate = 10) {
+    const totalSeconds = frame / frameRate;
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds - (hours * 3600)) / 60);
+    const seconds = Math.floor(totalSeconds % 60);
+
+    // Format numbers to have at least two digits
+    const formattedHours = hours.toString().padStart(2, '0');
+    const formattedMinutes = minutes.toString().padStart(2, '0');
+    const formattedSeconds = seconds.toString().padStart(2, '0');
+
+    return `${formattedHours}:${formattedMinutes}:${formattedSeconds}`;
+}
 
 
   useEffect(() => {
@@ -513,7 +525,7 @@ export default function FramePage({ shows = [] }) {
         <title> Frame Details | memeSRC 2.0 </title>
       </Helmet>
 
-      <Container maxWidth="xl" sx={{ pt: 2 }}>
+      <Container maxWidth="xl" sx={{ pt: 0 }}>
         <Grid container spacing={2} direction="row" alignItems="center">
           {/* <img src={imgSrc} alt='alt' /> */}
           <Grid item xs={12} md={6}>
@@ -525,8 +537,8 @@ export default function FramePage({ shows = [] }) {
             <Chip
               size='small'
               icon={<OpenInNew />}
-              label={`Season ${loadedSeason}`}
-              // onClick={() => navigate(`/episode/${episodeDetails[0]}/${episodeDetails[1]}/${episodeDetails[2]}/1`)}
+              label={`Season ${season} / Episode ${episode}`}
+              onClick={() => navigate(`/v2/episode/${cid}/${season}/${episode}/1`)}
               sx={{
                 marginBottom: '15px',
                 "& .MuiChip-label": {
@@ -537,8 +549,9 @@ export default function FramePage({ shows = [] }) {
             <Chip
               size='small'
               icon={<BrowseGallery />}
-              label={`Episode ${loadedEpisode}`}
-              // onClick={() => navigate(`/episode/${episodeDetails[0]}/${episodeDetails[1]}/${episodeDetails[2]}/${episodeDetails[3]}`)}
+              // TODO: I'm assuming there's probably some easy math to put the time code here
+              label={`${frameToTimeCode(frame)}`}
+              onClick={() => navigate(`/v2/episode/${cid}/${season}/${episode}/${frame}`)}
               sx={{
                 marginBottom: '15px',
                 marginLeft: '5px',

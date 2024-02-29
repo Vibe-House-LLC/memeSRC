@@ -11,7 +11,7 @@ import { UserContext } from '../../UserContext';
 import useSearchDetails from '../../hooks/useSearchDetails';
 import { searchPropTypes } from './SearchPropTypes';
 import Logo from '../../components/logo/Logo';
-import { listContentMetadata, listHomepageSections } from '../../graphql/queries';
+import { contentMetadataByStatus, listContentMetadata, listHomepageSections } from '../../graphql/queries';
 import HomePageSection from './HomePageSection';
 import HomePageBannerAd from '../../ads/HomePageBannerAd';
 import useSearchDetailsV2 from '../../hooks/useSearchDetailsV2';
@@ -146,10 +146,10 @@ const StyledRightFooter = styled('footer')`
 
 async function fetchShows() {
   const result = await API.graphql({
-    ...graphqlOperation(listContentMetadata, { filter: {}, limit: 50 }),
+    ...graphqlOperation(contentMetadataByStatus, { filter: {}, limit: 50, status: 1 }),
     authMode: 'API_KEY',
   });
-  const sortedMetadata = result.data.listContentMetadata.items.sort((a, b) => {
+  const sortedMetadata = result.data.contentMetadataByStatus.items.sort((a, b) => {
     if (a.title < b.title) return -1;
     if (a.title > b.title) return 1;
     return 0;
@@ -187,7 +187,7 @@ const defaultBackground = `linear-gradient(45deg,
   #00a3e0 0)`;
 
 export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction }) {
-  const { localCids, setLocalCids, cid, setCid, searchQuery: cidSearchQuery, setSearchQuery: setCidSearchQuery, setShowObj } = useSearchDetailsV2()
+  const { localCids, setLocalCids, savedCids, cid, setCid, searchQuery: cidSearchQuery, setSearchQuery: setCidSearchQuery, setShowObj, loadingSavedCids } = useSearchDetailsV2()
   const [shows, setShows] = useState([]);
   const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -216,7 +216,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
 
   // The handleChangeSeries function now only handles theme updates
   const handleChangeSeries = useCallback((newSeriesTitle) => {
-    const selectedSeriesProperties = shows.find((object) => object.id === newSeriesTitle);
+    const selectedSeriesProperties = shows.find((object) => object.id === newSeriesTitle) || savedCids.find((object) => object.id === newSeriesTitle);
 
     if (selectedSeriesProperties) {
       setCurrentThemeBackground({ backgroundColor: `${selectedSeriesProperties.colorMain}` });
@@ -229,13 +229,14 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
     } else {
       navigate('/')
     }
-  }, [shows]);
+  }, [shows, savedCids]);
 
   // This useEffect handles the data fetching
   useEffect(() => {
     async function getData() {
       // Get shows
       const fetchedShows = await fetchShows();
+      console.log(fetchedShows)
       setShows(fetchedShows);
       setLoading(false);
 
@@ -401,33 +402,33 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
     });
   }, [navigate, seriesTitle]);
 
-  useEffect(() => {
-    // Function to check and parse the local storage value
-    const checkAndParseLocalStorage = (key) => {
-      const storedValue = localStorage.getItem(key);
-      if (!storedValue) {
-        return null;
-      }
+  // useEffect(() => {
+  //   // Function to check and parse the local storage value
+  //   const checkAndParseLocalStorage = (key) => {
+  //     const storedValue = localStorage.getItem(key);
+  //     if (!storedValue) {
+  //       return null;
+  //     }
 
-      try {
-        const parsedValue = JSON.parse(storedValue);
-        return Array.isArray(parsedValue) ? parsedValue : null;
-      } catch (e) {
-        // If parsing fails, return null
-        return null;
-      }
-    };
+  //     try {
+  //       const parsedValue = JSON.parse(storedValue);
+  //       return Array.isArray(parsedValue) ? parsedValue : null;
+  //     } catch (e) {
+  //       // If parsing fails, return null
+  //       return null;
+  //     }
+  //   };
 
-    if (!localCids) {
-      // Attempt to retrieve and parse the 'custom_cids' from local storage
-      const savedCids = checkAndParseLocalStorage('custom_cids');
+  //   if (!localCids) {
+  //     // Attempt to retrieve and parse the 'custom_cids' from local storage
+  //     const savedCids = checkAndParseLocalStorage('custom_cids');
 
-      // If savedCids is an array, use it; otherwise, default to an empty array
-      setLocalCids(savedCids || []);
-    }
-    console.log(localCids)
+  //     // If savedCids is an array, use it; otherwise, default to an empty array
+  //     setLocalCids(savedCids || []);
+  //   }
+  //   console.log(localCids)
 
-  }, [localCids]);
+  // }, [localCids]);
 
   const searchCid = (e) => {
     e.preventDefault()
@@ -437,8 +438,8 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   }
 
   useEffect(() => {
-    
-  
+
+
     return () => {
       setCid(null)
       setShowObj(null)
@@ -508,7 +509,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
               )}
             </Grid>
           </Grid>
-          <StyledSearchForm onSubmit={(e) => cid ? searchCid(e) : searchFunction(e)}>
+          <StyledSearchForm onSubmit={(e) => searchFunction(e)}>
             <Grid container justifyContent="center">
               <Grid item sm={3.5} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
                 <StyledSearchSelector
@@ -518,19 +519,12 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                     if (selectedId === 'addNewCid') {
                       setAddNewCidOpen(true)
                     } else {
-                      const savedCid = localCids.find(obj => obj.cid === selectedId)
-                      if (savedCid) {
-                        setCid(selectedId)
-                        handleChangeSeries('_universal')
-                      } else {
-                        const newSeriesTitle = e.target.value;
-                        setCid()
-                        setSeriesTitle(newSeriesTitle); // Update the series title based on the selection
-                        handleChangeSeries(newSeriesTitle); // Update the theme
-                        navigate(newSeriesTitle === '_universal' ? '/' : `/${newSeriesTitle}`); // Navigate
-                      }
+                      const newSeriesTitle = e.target.value;
+                      setCid()
+                      setSeriesTitle(newSeriesTitle); // Update the series title based on the selection
+                      handleChangeSeries(newSeriesTitle); // Update the theme
+                      navigate(newSeriesTitle === '_universal' ? '/' : `/${newSeriesTitle}`); // Navigate
                     }
-
                   }}
                   value={cid || seriesTitle}
                 >
@@ -549,8 +543,9 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                     ))
                   )}
                   <option disabled value=''>IPFS</option>
-                  {!loading && localCids && localCids.map(obj =>
-                    <option key={obj.cid} value={obj.cid}>{obj.title}</option>
+                  {user && loadingSavedCids && <option disabled value=''>Loading saved CIDs...</option>}
+                  {!loading && savedCids && savedCids.map(obj =>
+                    <option key={obj.id} value={obj.id}>{obj.emoji} {obj.title}</option>
                   )}
                   <option key='addNew' value='addNewCid'>+ Add New CID</option>
                 </StyledSearchSelector>
@@ -614,7 +609,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
           {user?.userDetails?.subscriptionStatus !== 'active' &&
             <Grid item xs={12} mt={2}>
               <center>
-                <Box sx={{ maxWidth: '800px'}}>
+                <Box sx={{ maxWidth: '800px' }}>
                   <HomePageBannerAd />
                 </Box>
               </center>

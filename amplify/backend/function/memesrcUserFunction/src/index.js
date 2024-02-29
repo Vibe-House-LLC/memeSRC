@@ -312,6 +312,57 @@ async function makeRequest(query) {
   };
 }
 
+async function makeRequestWithVariables(query, passedVars = {}) {
+  const endpoint = new URL(GRAPHQL_ENDPOINT);
+
+  const signer = new SignatureV4({
+    credentials: defaultProvider(),
+    region: AWS_REGION,
+    service: 'appsync',
+    sha256: Sha256
+  });
+
+  const variables = passedVars;
+
+  const requestToBeSigned = new HttpRequest({
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      host: endpoint.host
+    },
+    hostname: endpoint.host,
+    body: JSON.stringify({ query, variables }), // Pass the query and variables
+    path: endpoint.pathname
+  });
+
+  const signed = await signer.sign(requestToBeSigned);
+  const request = new Request(endpoint, signed);
+
+  let statusCode = 200;
+  let body;
+  let response;
+
+  try {
+    response = await fetch(request);
+    body = await response.json();
+    if (body.errors) statusCode = 400;
+  } catch (error) {
+    statusCode = 500;
+    body = {
+      errors: [
+        {
+          message: error.message
+        }
+      ]
+    };
+  }
+
+  return {
+    statusCode,
+    body
+  };
+}
+
 async function getAllUserVotes(params) {
   let allVotes = [];
   let nextToken = null;
@@ -1486,6 +1537,206 @@ export const handler = async (event) => {
     response = {
       statusCode: 200,
       body: 'The notification has been marked as unread.'
+    }
+  }
+
+  // Return list of users saved metadata objects
+  if (path === `/${process.env.ENV}/public/user/update/getSavedMetadata`) {
+    const getUsersMetadataQuery = `
+      query getUserDetails($id: ID!, $nextToken: String) {
+        getUserDetails(id: $id) {
+          v2ContentMetadatas(nextToken: $nextToken) {
+            items {
+              v2ContentMetadata {
+                version
+                updatedAt
+                title
+                status
+                id
+                frameCount
+                emoji
+                description
+                createdAt
+                colorSecondary
+                colorMain
+              }
+            }
+            nextToken
+          }
+        }
+      }
+    `;
+    console.log('getUsersMetadataQuery', getUsersMetadataQuery);
+
+    async function fetchAllContentMetadatas(id) {
+      let allItems = []; // Array to hold all contentMetadata items
+      let nextToken = null; // Variable to track the nextToken
+
+      // Function to recursively fetch contentMetadatas
+      async function fetchPage(nt) {
+        try {
+          // Adjust your makeRequestWithVariables function to accept nextToken if provided
+          const response = await makeRequestWithVariables(getUsersMetadataQuery, { id: id, nextToken: nt });
+          const contentMetadatas = response?.body.data?.getUserDetails?.v2ContentMetadatas;
+
+          // Concatenate the new items to the allItems array
+          allItems = allItems.concat(contentMetadatas.items.map(item => item.v2ContentMetadata));
+
+          // If there's a nextToken, recursively call fetchPage again
+          if (contentMetadatas.nextToken) {
+            await fetchPage(contentMetadatas.nextToken);
+          }
+        } catch (error) {
+          console.error('Failed to fetch contentMetadatas:', error);
+          throw new Error('Failed to fetch contentMetadatas');
+        }
+      }
+
+      await fetchPage(nextToken); // Start the recursive fetching
+
+      return allItems; // Return all fetched items
+    }
+
+    try {
+      const getUsersMetadataRequest = await fetchAllContentMetadatas(userSub);
+      console.log('getUsersMetadataRequest', JSON.stringify(getUsersMetadataRequest));
+
+      // If this works it will return an array of the objects in the body
+      response = {
+        statusCode: 200,
+        body: getUsersMetadataRequest
+      }
+    } catch (error) {
+      console.log(error);
+      response = {
+        statusCode: 500,
+        body: {
+          errorCode: 'FAILED_TO_LIST_USERS_SAVED_METADATA',
+          message: 'Something went wrong attempting to pull saved metadata.',
+        }
+      }
+    }
+  }
+
+  if (path === `/${process.env.ENV}/public/user/update/saveMetadata`) {
+    /* ----------------------------- GraphQL Queries ---------------------------- */
+    const getContentMetadataQuery = `
+    query getV2ContentMetadata($id: ID!) {
+      getV2ContentMetadata(id: $id) {
+        colorMain
+        colorSecondary
+        createdAt
+        description
+        emoji
+        frameCount
+        id
+        status
+        title
+        updatedAt
+        version
+      }
+    }
+    `;
+    console.log('getContentMetadataQuery', getContentMetadataQuery);
+
+    const createContentMetadataQuery = `
+      mutation createV2ContentMetadata($colorMain: String, $colorSecondary: String, $description: String, $emoji: String, $frameCount: Int, $id: ID!, $status: Int, $title: String!, $version: Int) {
+        createV2ContentMetadata(input: {colorMain: $colorMain, colorSecondary: $colorSecondary, description: $description, emoji: $emoji, frameCount: $frameCount, id: $id, status: $status, title: $title, version: $version}) {
+          colorMain
+          colorSecondary
+          createdAt
+          description
+          emoji
+          frameCount
+          id
+          status
+          title
+          updatedAt
+          version
+        }
+      }
+    `
+    console.log('createContentMetadataQuery', createContentMetadataQuery)
+
+    const createUserMetadataQuery = `
+      mutation createUserV2Metadata($v2ContentMetadataId: ID!, $userDetailsId: ID!) {
+        createUserV2Metadata(input: {v2ContentMetadataId: $v2ContentMetadataId, userDetailsId: $userDetailsId}) {
+          id
+        }
+      }
+    `
+    console.log('createUserMetadataQuery', createUserMetadataQuery)
+
+    /* --------------------------- Variables From Body -------------------------- */
+
+    const cid = body?.cid
+
+
+    /* ----------------------------- Fetch Metadata ----------------------------- */
+
+    const metadataUrl = `https://ipfs.memesrc.com/ipfs/${cid}/00_metadata.json`
+    console.log('metadataUrl', metadataUrl)
+
+    try {
+
+      // Get the metadata
+      const requestOptions = {
+        method: "GET",
+        redirect: "follow"
+      };
+      const metadataResponse = await fetch(metadataUrl, requestOptions);
+      const result = await metadataResponse.json();
+      console.log('METADATA: ', JSON.stringify(result))
+
+
+      if (cid && typeof result === 'object') {
+        // First lets make sure the id doesn't exist.
+        const getContentMetadataRequest = await makeRequestWithVariables(getContentMetadataQuery, { id: cid })
+        console.log('getContentMetadataRequest', JSON.stringify(getContentMetadataRequest));
+
+        if (!getContentMetadataRequest?.body?.data?.getV2ContentMetadata?.id) {
+          // There was not a match
+
+          // Lets make a new one.
+          const createContentMetadataRequest = await makeRequestWithVariables(createContentMetadataQuery, { id: cid, ...result, status: 0, version: 2 });
+          console.log('createContentMetadataRequest', JSON.stringify(createContentMetadataRequest));
+
+          // Now assuming that worked, let's make the connection to the user.
+          const createUserMetadataRequest = await makeRequestWithVariables(createUserMetadataQuery, { v2ContentMetadataId: cid, userDetailsId: userSub });
+          console.log('createUserMetadataRequest', JSON.stringify(createUserMetadataRequest));
+
+          // Now lets return the data so that it can be added to their list on the front end.
+          response = {
+            statusCode: 200,
+            body: {
+              ...createContentMetadataRequest?.body?.data?.createV2ContentMetadata
+            }
+          }
+        } else {
+          // There was a match
+
+          // Let's make the connection to the user.
+          const createUserMetadataRequest = await makeRequestWithVariables(createUserMetadataQuery, { v2ContentMetadataId: cid, userDetailsId: userSub });
+          console.log('createUserMetadataRequest', JSON.stringify(createUserMetadataRequest));
+
+          response = {
+            statusCode: 200,
+            body: {
+              ...getContentMetadataRequest?.body?.data?.getV2ContentMetadata
+            }
+          }
+        }
+      }
+
+    } catch (error) {
+      console.log(error);
+      response = {
+        statusCode: 500,
+        body: {
+          errorCode: 'FAILED_TO_SAVE_METADATA',
+          message: 'Something went wrong attempting to pull saved metadata.',
+        }
+      }
     }
   }
 

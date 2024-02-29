@@ -602,6 +602,11 @@ export const onCreateContentMetadata = /* GraphQL */ `
       colorSecondary
       emoji
       status
+      version
+      users {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       __typename
@@ -621,6 +626,11 @@ export const onUpdateContentMetadata = /* GraphQL */ `
       colorSecondary
       emoji
       status
+      version
+      users {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       __typename
@@ -640,8 +650,187 @@ export const onDeleteContentMetadata = /* GraphQL */ `
       colorSecondary
       emoji
       status
+      version
+      users {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
+      __typename
+    }
+  }
+`;
+export const onCreateV2ContentMetadata = /* GraphQL */ `
+  subscription OnCreateV2ContentMetadata(
+    $filter: ModelSubscriptionV2ContentMetadataFilterInput
+  ) {
+    onCreateV2ContentMetadata(filter: $filter) {
+      id
+      title
+      description
+      frameCount
+      colorMain
+      colorSecondary
+      emoji
+      status
+      version
+      users {
+        nextToken
+        __typename
+      }
+      alias {
+        id
+        createdAt
+        updatedAt
+        aliasV2ContentMetadataId
+        __typename
+      }
+      createdAt
+      updatedAt
+      v2ContentMetadataAliasId
+      __typename
+    }
+  }
+`;
+export const onUpdateV2ContentMetadata = /* GraphQL */ `
+  subscription OnUpdateV2ContentMetadata(
+    $filter: ModelSubscriptionV2ContentMetadataFilterInput
+  ) {
+    onUpdateV2ContentMetadata(filter: $filter) {
+      id
+      title
+      description
+      frameCount
+      colorMain
+      colorSecondary
+      emoji
+      status
+      version
+      users {
+        nextToken
+        __typename
+      }
+      alias {
+        id
+        createdAt
+        updatedAt
+        aliasV2ContentMetadataId
+        __typename
+      }
+      createdAt
+      updatedAt
+      v2ContentMetadataAliasId
+      __typename
+    }
+  }
+`;
+export const onDeleteV2ContentMetadata = /* GraphQL */ `
+  subscription OnDeleteV2ContentMetadata(
+    $filter: ModelSubscriptionV2ContentMetadataFilterInput
+  ) {
+    onDeleteV2ContentMetadata(filter: $filter) {
+      id
+      title
+      description
+      frameCount
+      colorMain
+      colorSecondary
+      emoji
+      status
+      version
+      users {
+        nextToken
+        __typename
+      }
+      alias {
+        id
+        createdAt
+        updatedAt
+        aliasV2ContentMetadataId
+        __typename
+      }
+      createdAt
+      updatedAt
+      v2ContentMetadataAliasId
+      __typename
+    }
+  }
+`;
+export const onCreateAlias = /* GraphQL */ `
+  subscription OnCreateAlias($filter: ModelSubscriptionAliasFilterInput) {
+    onCreateAlias(filter: $filter) {
+      id
+      v2ContentMetadata {
+        id
+        title
+        description
+        frameCount
+        colorMain
+        colorSecondary
+        emoji
+        status
+        version
+        createdAt
+        updatedAt
+        v2ContentMetadataAliasId
+        __typename
+      }
+      createdAt
+      updatedAt
+      aliasV2ContentMetadataId
+      __typename
+    }
+  }
+`;
+export const onUpdateAlias = /* GraphQL */ `
+  subscription OnUpdateAlias($filter: ModelSubscriptionAliasFilterInput) {
+    onUpdateAlias(filter: $filter) {
+      id
+      v2ContentMetadata {
+        id
+        title
+        description
+        frameCount
+        colorMain
+        colorSecondary
+        emoji
+        status
+        version
+        createdAt
+        updatedAt
+        v2ContentMetadataAliasId
+        __typename
+      }
+      createdAt
+      updatedAt
+      aliasV2ContentMetadataId
+      __typename
+    }
+  }
+`;
+export const onDeleteAlias = /* GraphQL */ `
+  subscription OnDeleteAlias($filter: ModelSubscriptionAliasFilterInput) {
+    onDeleteAlias(filter: $filter) {
+      id
+      v2ContentMetadata {
+        id
+        title
+        description
+        frameCount
+        colorMain
+        colorSecondary
+        emoji
+        status
+        version
+        createdAt
+        updatedAt
+        v2ContentMetadataAliasId
+        __typename
+      }
+      createdAt
+      updatedAt
+      aliasV2ContentMetadataId
       __typename
     }
   }
@@ -746,6 +935,14 @@ export const onCreateUserDetails = /* GraphQL */ `
         nextToken
         __typename
       }
+      contentMetadatas {
+        nextToken
+        __typename
+      }
+      v2ContentMetadatas {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       userDetailsStripeCustomerInfoId
@@ -793,6 +990,14 @@ export const onUpdateUserDetails = /* GraphQL */ `
         nextToken
         __typename
       }
+      contentMetadatas {
+        nextToken
+        __typename
+      }
+      v2ContentMetadatas {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       userDetailsStripeCustomerInfoId
@@ -837,6 +1042,14 @@ export const onDeleteUserDetails = /* GraphQL */ `
       subscriptionStatus
       magicSubscription
       userNotifications {
+        nextToken
+        __typename
+      }
+      contentMetadatas {
+        nextToken
+        __typename
+      }
+      v2ContentMetadatas {
         nextToken
         __typename
       }
@@ -1518,6 +1731,285 @@ export const onDeleteEditorProject = /* GraphQL */ `
       createdAt
       updatedAt
       editorProjectUserId
+      __typename
+    }
+  }
+`;
+export const onCreateUserMetadata = /* GraphQL */ `
+  subscription OnCreateUserMetadata(
+    $filter: ModelSubscriptionUserMetadataFilterInput
+  ) {
+    onCreateUserMetadata(filter: $filter) {
+      id
+      contentMetadataId
+      userDetailsId
+      contentMetadata {
+        id
+        title
+        description
+        frameCount
+        colorMain
+        colorSecondary
+        emoji
+        status
+        version
+        createdAt
+        updatedAt
+        __typename
+      }
+      userDetails {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onUpdateUserMetadata = /* GraphQL */ `
+  subscription OnUpdateUserMetadata(
+    $filter: ModelSubscriptionUserMetadataFilterInput
+  ) {
+    onUpdateUserMetadata(filter: $filter) {
+      id
+      contentMetadataId
+      userDetailsId
+      contentMetadata {
+        id
+        title
+        description
+        frameCount
+        colorMain
+        colorSecondary
+        emoji
+        status
+        version
+        createdAt
+        updatedAt
+        __typename
+      }
+      userDetails {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onDeleteUserMetadata = /* GraphQL */ `
+  subscription OnDeleteUserMetadata(
+    $filter: ModelSubscriptionUserMetadataFilterInput
+  ) {
+    onDeleteUserMetadata(filter: $filter) {
+      id
+      contentMetadataId
+      userDetailsId
+      contentMetadata {
+        id
+        title
+        description
+        frameCount
+        colorMain
+        colorSecondary
+        emoji
+        status
+        version
+        createdAt
+        updatedAt
+        __typename
+      }
+      userDetails {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onCreateUserV2Metadata = /* GraphQL */ `
+  subscription OnCreateUserV2Metadata(
+    $filter: ModelSubscriptionUserV2MetadataFilterInput
+  ) {
+    onCreateUserV2Metadata(filter: $filter) {
+      id
+      v2ContentMetadataId
+      userDetailsId
+      v2ContentMetadata {
+        id
+        title
+        description
+        frameCount
+        colorMain
+        colorSecondary
+        emoji
+        status
+        version
+        createdAt
+        updatedAt
+        v2ContentMetadataAliasId
+        __typename
+      }
+      userDetails {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onUpdateUserV2Metadata = /* GraphQL */ `
+  subscription OnUpdateUserV2Metadata(
+    $filter: ModelSubscriptionUserV2MetadataFilterInput
+  ) {
+    onUpdateUserV2Metadata(filter: $filter) {
+      id
+      v2ContentMetadataId
+      userDetailsId
+      v2ContentMetadata {
+        id
+        title
+        description
+        frameCount
+        colorMain
+        colorSecondary
+        emoji
+        status
+        version
+        createdAt
+        updatedAt
+        v2ContentMetadataAliasId
+        __typename
+      }
+      userDetails {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onDeleteUserV2Metadata = /* GraphQL */ `
+  subscription OnDeleteUserV2Metadata(
+    $filter: ModelSubscriptionUserV2MetadataFilterInput
+  ) {
+    onDeleteUserV2Metadata(filter: $filter) {
+      id
+      v2ContentMetadataId
+      userDetailsId
+      v2ContentMetadata {
+        id
+        title
+        description
+        frameCount
+        colorMain
+        colorSecondary
+        emoji
+        status
+        version
+        createdAt
+        updatedAt
+        v2ContentMetadataAliasId
+        __typename
+      }
+      userDetails {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      createdAt
+      updatedAt
       __typename
     }
   }

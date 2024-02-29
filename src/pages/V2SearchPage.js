@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Grid, CircularProgress, Card, Chip } from '@mui/material';
+import { Grid, CircularProgress, Card, Chip, Typography } from '@mui/material';
 import styled from '@emotion/styled';
 import { Link, useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -79,6 +79,7 @@ export default function SearchPage() {
   const [csvLines, setCsvLines] = useState();
   const [newResults, setNewResults] = useState();
   const { showObj, setShowObj, cid } = useSearchDetailsV2();
+  const [loadingResults, setLoadingResults] = useState(true);
 
   // Ref to keep track of video elements
   const videoRefs = useRef([]);
@@ -175,6 +176,7 @@ export default function SearchPage() {
   useEffect(() => {
     async function searchText() {
       setNewResults(null); // Reset the current results state
+      setLoadingResults(true)
       const searchTerm = params?.searchTerms.trim().toLowerCase();
       if (searchTerm === "") {
         console.log("Search term is empty.");
@@ -201,41 +203,42 @@ export default function SearchPage() {
       results.sort((a, b) => b.score - a.score);
       results = results.slice(0, 10);
 
-// Load the ZIP file and extract the relevant video file
-try {
-  const videoResultsPromises = results.map(async (result, index) => {
-    const groupIndex = Math.floor((parseInt(result.subtitle_index, 10) + 1) / 15);
-    const zipUrl = `https://ipfs.memesrc.com/ipfs/${params.cid}/${result.season}/${result.episode}/s${groupIndex}.zip`;
+      // Load the ZIP file and extract the relevant video file
+      try {
+        const videoResultsPromises = results.map(async (result, index) => {
+          const groupIndex = Math.floor((parseInt(result.subtitle_index, 10) + 1) / 15);
+          const zipUrl = `https://ipfs.memesrc.com/ipfs/${params.cid}/${result.season}/${result.episode}/s${groupIndex}.zip`;
 
-    try {
-      const zipResponse = await fetch(zipUrl);
-      if (!zipResponse.ok) throw new Error(`Failed to fetch ZIP: ${zipResponse.statusText}`);
-      const zipBlob = await zipResponse.blob();
-      const zip = await JSZip.loadAsync(zipBlob);
-      
-      const videoPath = `s${parseInt(result.subtitle_index, 10) + 1}.mp4`;
-      const videoFile = zip.file(videoPath) ? await zip.file(videoPath).async("blob") : null;
-      
-      if (!videoFile) throw new Error(`File not found in ZIP: ${videoPath}`);
-      
-      // Create a new Blob with the correct MIME type
-      const videoBlob = new Blob([videoFile], { type: 'video/mp4' });
-      const videoUrl = URL.createObjectURL(videoBlob);
+          try {
+            const zipResponse = await fetch(zipUrl);
+            if (!zipResponse.ok) throw new Error(`Failed to fetch ZIP: ${zipResponse.statusText}`);
+            const zipBlob = await zipResponse.blob();
+            const zip = await JSZip.loadAsync(zipBlob);
 
-      console.log(`videoUrl for result ${index}:`, videoUrl); // Direct logging
-      return { ...result, videoUrl };
-    } catch (error) {
-      console.error("Error loading or processing ZIP file for result:", JSON.stringify(result), error);
-      return { ...result, videoUrl: "", error: error.toString() };
-    }
-  });
+            const videoPath = `s${parseInt(result.subtitle_index, 10) + 1}.mp4`;
+            const videoFile = zip.file(videoPath) ? await zip.file(videoPath).async("blob") : null;
 
-  const videoResults = await Promise.all(videoResultsPromises);
-  console.log("videoResults with videoUrls:", videoResults); // Ensure logging here
-  setNewResults(videoResults); // Update state with the video URLs
-} catch (error) {
-  console.error("Error preparing video results:", error);
-}
+            if (!videoFile) throw new Error(`File not found in ZIP: ${videoPath}`);
+
+            // Create a new Blob with the correct MIME type
+            const videoBlob = new Blob([videoFile], { type: 'video/mp4' });
+            const videoUrl = URL.createObjectURL(videoBlob);
+
+            console.log(`videoUrl for result ${index}:`, videoUrl); // Direct logging
+            return { ...result, videoUrl };
+          } catch (error) {
+            console.error("Error loading or processing ZIP file for result:", JSON.stringify(result), error);
+            return { ...result, videoUrl: "", error: error.toString() };
+          }
+        });
+
+        const videoResults = await Promise.all(videoResultsPromises);
+        console.log("videoResults with videoUrls:", videoResults); // Ensure logging here
+        setNewResults(videoResults); // Update state with the video URLs
+        setLoadingResults(false)
+      } catch (error) {
+        console.error("Error preparing video results:", error);
+      }
 
 
     }
@@ -258,24 +261,24 @@ try {
             <Grid item xs={12} sm={6} md={3} key={index}>
               <Link to={`/v2/frame/${cid}/${result.season}/${result.episode}/${Math.floor((parseInt(result.start_frame, 10) + parseInt(result.end_frame, 10)) / 2)}`} style={{ textDecoration: 'none' }}>
                 <StyledCard
-                  // onMouseEnter={(e) => {
-                  //   e.currentTarget.querySelector('video').play();
-                  // }}
-                  // onMouseLeave={(e) => {
-                  //   e.currentTarget.querySelector('video').pause();
-                  // }}
-                  // onTouchStart={(e) => {
-                  //   // Play the video for the current card
-                  //   const currentVideo = e.currentTarget.querySelector('video');
-                  //   currentVideo.play();
-                
-                  //   // Pause all other videos
-                  //   videoRefs.current.forEach(video => {
-                  //     if (video !== currentVideo) {
-                  //       video.pause();
-                  //     }
-                  //   });
-                  // }}
+                // onMouseEnter={(e) => {
+                //   e.currentTarget.querySelector('video').play();
+                // }}
+                // onMouseLeave={(e) => {
+                //   e.currentTarget.querySelector('video').pause();
+                // }}
+                // onTouchStart={(e) => {
+                //   // Play the video for the current card
+                //   const currentVideo = e.currentTarget.querySelector('video');
+                //   currentVideo.play();
+
+                //   // Pause all other videos
+                //   videoRefs.current.forEach(video => {
+                //     if (video !== currentVideo) {
+                //       video.pause();
+                //     }
+                //   });
+                // }}
                 >
 
                   <StyledCardMediaContainer aspectRatio="56.25%">
@@ -303,7 +306,17 @@ try {
             </Grid>
           ))}
         </Grid>
-        : <StyledCircularProgress />
+        :
+        <>
+          {newResults?.length <= 0 && !loadingResults ?
+            <Typography textAlign='center' fontSize={30} fontWeight={700} my={8}>
+              No Results
+            </Typography>
+            :
+            <StyledCircularProgress />
+          }
+
+        </>
       }
     </>
   );

@@ -4,18 +4,19 @@ import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import FullScreenSearch from '../sections/search/FullScreenSearch';
 import useSearchDetails from '../hooks/useSearchDetails';
+import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
 
 const prepSessionID = async () => {
   let sessionID;
   if (!("sessionID" in sessionStorage)) {
     API.get('publicapi', '/uuid')
       .then(generatedSessionID => {
-          sessionStorage.setItem("sessionID", generatedSessionID);
-          return generatedSessionID;
+        sessionStorage.setItem("sessionID", generatedSessionID);
+        return generatedSessionID;
       })
       .catch(err => {
-          console.log(`UUID Gen Fetch Error:  ${err}`);
-          throw err;
+        console.log(`UUID Gen Fetch Error:  ${err}`);
+        throw err;
       });
   }
 };
@@ -24,6 +25,7 @@ export default function SearchPage() {
   const { setSearchQuery } = useSearchDetails();
   const [searchTerm, setSearchTerm] = useState('');
   const [seriesTitle, setSeriesTitle] = useState('_universal');
+  const { savedCids, setSearchQuery: setV2SearchQuery } = useSearchDetailsV2()
 
   const navigate = useNavigate();
 
@@ -36,14 +38,26 @@ export default function SearchPage() {
   }, [])
 
   const handleSearch = useCallback((e) => {
-    if(e) {
+    if (e) {
       e.preventDefault();
     }
-    setSearchQuery(searchTerm)
-    const encodedSearchTerms = encodeURI(searchTerm)
-    console.log(`Navigating to: '${`/search/${seriesTitle}/${encodedSearchTerms}`}'`)
-    navigate(`/search/${seriesTitle}/${encodedSearchTerms}`)
-  }, [seriesTitle, searchTerm, navigate]);
+    console.log(seriesTitle)
+
+    const v2 = savedCids?.find(obj => obj.id === seriesTitle)
+
+    if (v2) {
+      setV2SearchQuery(searchTerm)
+      const encodedSearchTerms = encodeURI(searchTerm)
+      console.log(`Navigating to: '${`/v2/search/${seriesTitle}/${encodedSearchTerms}`}'`)
+      navigate(`/v2/search/${seriesTitle}/${encodedSearchTerms}`)
+    } else {
+      setSearchQuery(searchTerm)
+      const encodedSearchTerms = encodeURI(searchTerm)
+      console.log(`Navigating to: '${`/search/${seriesTitle}/${encodedSearchTerms}`}'`)
+      navigate(`/search/${seriesTitle}/${encodedSearchTerms}`)
+    }
+
+  }, [seriesTitle, searchTerm, navigate, savedCids]);
 
   return (
     <>

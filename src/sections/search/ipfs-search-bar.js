@@ -1,16 +1,17 @@
 import styled from "@emotion/styled";
-import { Link, Fab, FormControl, Grid, InputBase, MenuItem, Select, Typography, Divider } from "@mui/material";
-import { Favorite, MapsUgc, Search, Shuffle } from "@mui/icons-material";
+import { Link, Fab, FormControl, Grid, InputBase, MenuItem, Select, Typography, Divider, Box, Stack, Container } from "@mui/material";
+import { ArrowBack, Favorite, MapsUgc, Search, Shuffle } from "@mui/icons-material";
 import { API, graphqlOperation } from 'aws-amplify';
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
 import { LoadingButton } from "@mui/lab";
-import { Outlet, Link as RouterLink, useNavigate, useParams } from "react-router-dom";
+import { Outlet, Link as RouterLink, useLocation, useNavigate, useParams } from "react-router-dom";
 import { searchPropTypes } from "./SearchPropTypes";
 import Logo from "../../components/logo/Logo";
-import { listContentMetadata } from '../../graphql/queries';
+import { contentMetadataByStatus, listContentMetadata } from '../../graphql/queries';
 import useSearchDetails from "../../hooks/useSearchDetails";
 import useSearchDetailsV2 from "../../hooks/useSearchDetailsV2";
 import AddCidPopup from "../../components/ipfs/add-cid-popup";
+import { UserContext } from "../../UserContext";
 
 // Define constants for colors and fonts
 const PRIMARY_COLOR = '#4285F4';
@@ -80,10 +81,10 @@ const StyledHeader = styled('header')(() => ({
 
 async function fetchShows() {
   const result = await API.graphql({
-    ...graphqlOperation(listContentMetadata, { filter: {}, limit: 50 }),
+    ...graphqlOperation(contentMetadataByStatus, { filter: {}, limit: 50, status: 1 }),
     authMode: "API_KEY"
   });
-  const sortedMetadata = result.data.listContentMetadata.items.sort((a, b) => {
+  const sortedMetadata = result.data.contentMetadataByStatus.items.sort((a, b) => {
     if (a.title < b.title) return -1;
     if (a.title > b.title) return 1;
     return 0;
@@ -95,12 +96,15 @@ IpfsSearchBar.propTypes = searchPropTypes;
 
 
 export default function IpfsSearchBar(props) {
-  const { show, setShow, searchQuery, setSearchQuery, cid = '', setCid, localCids, setLocalCids, showObj, setShowObj, selectedFrameIndex, setSelectedFrameIndex } = useSearchDetailsV2();
+  const { show, setShow, searchQuery, setSearchQuery, cid = '', setCid, localCids, setLocalCids, showObj, setShowObj, selectedFrameIndex, setSelectedFrameIndex, savedCids, loadingSavedCids } = useSearchDetailsV2();
+  const { setShow: setV1Show, setSeriesTitle: setV1SeriesTitle } = useSearchDetails();
   const params = useParams();
   const [shows, setShows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingRandom, setLoadingRandom] = useState(false);
   const { children } = props
+  const { pathname } = useLocation();
+  const { user } = useContext(UserContext)
 
   /* ----------------------------------- New ---------------------------------- */
 
@@ -132,18 +136,7 @@ export default function IpfsSearchBar(props) {
         return null;
       }
     };
-
-    if (!localCids) {
-      // Attempt to retrieve and parse the 'custom_cids' from local storage
-      const savedCids = checkAndParseLocalStorage('custom_cids');
-
-      // If savedCids is an array, use it; otherwise, default to an empty array
-      setLocalCids(savedCids || []);
-    }
-    console.log(localCids)
-
-  }, [localCids]); // Empty dependency array means this effect runs once on mount
-
+  });
 
   useEffect(() => {
     if (params.searchTerms) {
@@ -160,10 +153,11 @@ export default function IpfsSearchBar(props) {
     if (data?.addNew) {
       setAddNewCidOpen(true)
     } else {
-      const savedCid = localCids.find(obj => obj.cid === data)
+      const savedCid = savedCids?.find(obj => obj.id === data)
       if (savedCid) {
-        navigate(`/v2/search/${savedCid.cid}/${encodeURIComponent(search)}`)
+        navigate(`/v2/search/${savedCid.id}/${encodeURIComponent(search)}`)
       } else {
+        setV1Show(data)
         navigate(`/search/${data}/${encodeURIComponent(search)}`)
       }
     }
@@ -309,10 +303,13 @@ export default function IpfsSearchBar(props) {
                 <Divider />
                 <MenuItem disabled value=''>IPFS</MenuItem>
                 <Divider />
-                {!loading && localCids && localCids.map(obj => 
-                  <MenuItem key={obj.cid} value={obj.cid}>{obj.title}</MenuItem>
+                {user && loadingSavedCids &&
+                  <MenuItem value='' disabled>Loading saved CIDs...</MenuItem>
+                }
+                {!loading && savedCids && savedCids.map(obj =>
+                  <MenuItem key={obj.id} value={obj.id}>{obj.emoji} {obj.title}</MenuItem>
                 )}
-                <MenuItem key='addNew' value={{addNew: true}}>+ Add New CID</MenuItem>
+                <MenuItem key='addNew' value={{ addNew: true }}>+ Add New CID</MenuItem>
               </Select>
             </FormControl>
           </Grid>
@@ -328,6 +325,62 @@ export default function IpfsSearchBar(props) {
         </Grid>
       </StyledHeader>
       <Divider sx={{ mb: 2.5 }} />
+
+      {pathname.startsWith("/v2/frame") &&
+        <Container maxWidth='xl' disableGutters sx={{ px: 1 }}>
+          <Box
+            sx={{ width: '100%', px: 2 }}
+          >
+            <Link
+              component={RouterLink}
+              to={search ? `/v2/search/${cid}/${search}` : "/"}
+              sx={{
+                color: 'white',
+                textDecoration: 'none',
+                '&:hover': {
+                  textDecoration: 'underline',
+                },
+              }}
+            >
+              <Stack direction='row' alignItems='center'>
+                <ArrowBack fontSize="small" />
+                <Typography variant="body1" ml={1}>
+                  Back to {search ? 'search results' : 'home'}
+                </Typography>
+              </Stack>
+            </Link>
+          </Box>
+          <Typography variant='h2' mt={1} pl={2}>
+              {savedCids ? `${savedCids.find(obj => obj.id === cid)?.emoji} ${savedCids.find(obj => obj.id === cid)?.title}` : ''}
+            </Typography>
+        </Container>
+      }
+      {pathname.startsWith("/v2/editor") &&
+        <Container maxWidth='xl' disableGutters sx={{ px: 1 }}>
+          <Box
+            sx={{ width: '100%', px: 2 }}
+          >
+            <Link
+              component={RouterLink}
+              to={search ? `/v2/frame/${cid}/${params?.season}/${params?.episode}/${params?.frame}` : "/"}
+              sx={{
+                color: 'white',
+                textDecoration: 'none',
+                '&:hover': {
+                  textDecoration: 'underline',
+                },
+              }}
+            >
+              <Stack direction='row' alignItems='center'>
+                <ArrowBack fontSize="small" />
+                <Typography variant="body1" ml={1}>
+                  Back to frame
+                </Typography>
+              </Stack>
+            </Link>
+          </Box>
+        </Container>
+      }
       <Outlet />
       <StyledLeftFooter className="bottomBtn">
         <a href="https://forms.gle/8CETtVbwYoUmxqbi7" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>

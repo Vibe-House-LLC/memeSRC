@@ -1,20 +1,25 @@
 import PropTypes from 'prop-types';
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { useLocation } from 'react-router-dom';
+import { API } from 'aws-amplify';
 import { V2SearchContext } from "./v2-search-context";
+import { UserContext } from '../UserContext';
 
 
 
 export const V2SearchDetailsProvider = ({ children }) => {
     const { pathname } = useLocation();
+    const { user } = useContext(UserContext)
     const [show, setShow] = useState('_universal');
     const [cid, setCid] = useState();
     const [searchQuery, setSearchQuery] = useState('');
     const [frame, setFrame] = useState('');
     const [fineTuningFrame, setFineTuningFrame] = useState();
     const [localCids, setLocalCids] = useState();
+    const [savedCids, setSavedCids] = useState();
     const [showObj, setShowObj] = useState();
     const [selectedFrameIndex, setSelectedFrameIndex] = useState();
+    const [loadingSavedCids, setLoadingSavedCids] = useState(true);
 
     useEffect(() => {
         if (pathname === '/') {
@@ -24,6 +29,21 @@ export const V2SearchDetailsProvider = ({ children }) => {
             setFineTuningFrame(null)
         }
     }, [pathname])
+
+    useEffect(() => {
+        if (user && !savedCids) {
+            setLoadingSavedCids(true)
+          API.get('publicapi', '/user/update/getSavedMetadata').then(response => {
+            console.log('SAVED METADATA', response)
+            setSavedCids(response)
+          }).catch(err => console.log(err))
+        } else if (!user) {
+            setSavedCids([])
+            setLoadingSavedCids(false)
+        } else {
+            setLoadingSavedCids(false)
+        }
+      }, [user, savedCids]);
 
     return (
         <V2SearchContext.Provider
@@ -43,7 +63,10 @@ export const V2SearchDetailsProvider = ({ children }) => {
                 showObj,
                 setShowObj,
                 selectedFrameIndex,
-                setSelectedFrameIndex
+                setSelectedFrameIndex,
+                savedCids,
+                setSavedCids,
+                loadingSavedCids
             }}
         >
             {children}
