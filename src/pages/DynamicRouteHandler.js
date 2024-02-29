@@ -4,11 +4,13 @@ import { API, graphqlOperation } from 'aws-amplify';
 import { getContentMetadata, getV2ContentMetadata } from '../graphql/queries'; // Import the getContentMetadata
 import SeriesPage from './SeriesPage';
 import HomePage from './HomePage';
+import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
 
 const DynamicRouteHandler = () => {
   const { seriesId } = useParams();
   const [loading, setLoading] = useState(true);
   const [metadata, setMetadata] = useState(null);
+  const { loadingSavedCids } = useSearchDetailsV2();
 
   useEffect(() => {
 
@@ -63,7 +65,7 @@ const DynamicRouteHandler = () => {
     })
   }, [seriesId]);
 
-  if (loading) {
+  if (loading || loadingSavedCids) {
     return <div>Loading...</div>;
   }
 

@@ -2,13 +2,16 @@ import styled from "@emotion/styled";
 import { Link, Fab, FormControl, Grid, InputBase, MenuItem, Select, Typography, Divider } from "@mui/material";
 import { Favorite, MapsUgc, Search, Shuffle } from "@mui/icons-material";
 import { API, graphqlOperation } from 'aws-amplify';
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
 import { LoadingButton } from "@mui/lab";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { searchPropTypes } from "./SearchPropTypes";
 import Logo from "../../components/logo/Logo";
 import { contentMetadataByStatus, listContentMetadata } from '../../graphql/queries';
 import useSearchDetails from "../../hooks/useSearchDetails";
+import useSearchDetailsV2 from "../../hooks/useSearchDetailsV2";
+import AddCidPopup from "../../components/ipfs/add-cid-popup";
+import { UserContext } from "../../UserContext";
 
 // Define constants for colors and fonts
 const PRIMARY_COLOR = '#4285F4';
@@ -99,6 +102,9 @@ export default function TopBannerSearch(props) {
   const [loading, setLoading] = useState(true);
   const [loadingRandom, setLoadingRandom] = useState(false);
   const { searchTerm, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction, resultsLoading } = props
+  const { savedCids, loadingSavedCids } = useSearchDetailsV2();
+  const [addNewCidOpen, setAddNewCidOpen] = useState(false);
+  const { user } = useContext(UserContext)
 
   const navigate = useNavigate();
 
@@ -164,6 +170,20 @@ export default function TopBannerSearch(props) {
     })
   }, [navigate, seriesTitle]);
 
+  const handleSelectSeries = (data) => {
+    if (data?.addNew) {
+      setAddNewCidOpen(true)
+    } else {
+      const savedCid = savedCids?.find(obj => obj.id === data)
+      if (savedCid) {
+        navigate(`/v2/search/${savedCid.id}/${encodeURIComponent(searchQuery)}`)
+      } else {
+        setShow(data);
+        setSeriesTitle(data);
+      }
+    }
+  }
+
   return (
     <>
       <StyledHeader>
@@ -212,19 +232,12 @@ export default function TopBannerSearch(props) {
         <Grid container wrap="nowrap" sx={{ overflowX: "scroll", flexWrap: "nowrap", scrollbarWidth: 'none', '&::-webkit-scrollbar': { height: '0 !important', width: '0 !important', display: 'none' } }} paddingX={2}>
           <Grid item marginLeft={{ md: 6 }}>
 
-            <FormControl
-              disabled={resultsLoading}
-              variant="standard"
-              sx={{ minWidth: 120 }}
-            >
+            <FormControl variant="standard" sx={{ minWidth: 120 }}>
               <Select
                 labelId="demo-simple-select-standard-label"
                 id="demo-simple-select-standard"
                 value={show}
-                onChange={(x) => { 
-                  setSeriesTitle(x.target.value);
-                  setShow(x.target.value)
-                }}
+                onChange={(x) => { handleSelectSeries(x.target.value) }}
                 label="Age"
                 size="small"
                 autoWidth
@@ -235,6 +248,16 @@ export default function TopBannerSearch(props) {
                 {(loading) ? <MenuItem key="loading" value="loading" disabled>Loading...</MenuItem> : shows.map((item) => (
                   <MenuItem key={item.id} value={item.id}>{item.emoji} {item.title}</MenuItem>
                 ))}
+                <Divider />
+                <MenuItem disabled value=''>IPFS</MenuItem>
+                <Divider />
+                {user && loadingSavedCids &&
+                  <MenuItem value='' disabled>Loading saved CIDs...</MenuItem>
+                }
+                {!loading && savedCids && savedCids.map(obj =>
+                  <MenuItem key={obj.id} value={obj.id}>{obj.emoji} {obj.title}</MenuItem>
+                )}
+                <MenuItem key='addNew' value={{ addNew: true }}>+ Add New CID</MenuItem>
               </Select>
             </FormControl>
           </Grid>
@@ -249,7 +272,7 @@ export default function TopBannerSearch(props) {
           </Grid>
         </Grid>
       </StyledHeader>
-      <Divider sx={{ mb: 2.5 }}/>
+      <Divider sx={{ mb: 2.5 }} />
       <StyledLeftFooter className="bottomBtn">
         <a href="https://forms.gle/8CETtVbwYoUmxqbi7" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
           <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black", zIndex: '1300' }} size='medium'>
@@ -265,6 +288,7 @@ export default function TopBannerSearch(props) {
       <StyledRightFooter className="bottomBtn">
         <StyledButton onClick={loadRandomFrame} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
       </StyledRightFooter>
+      <AddCidPopup open={addNewCidOpen} setOpen={setAddNewCidOpen} />
     </>
   )
 }

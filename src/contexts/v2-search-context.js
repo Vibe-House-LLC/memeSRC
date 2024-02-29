@@ -18,6 +18,7 @@ export const V2SearchContext = createContext({
     selectedFrameIndex: null,
     setSelectedFrameIndex: () => { console.log('setSelectedFrameIndex was called with no provider available'); },
     savedCids: null,
-    setSavedCids: () => { console.log('setSavedCids was called with no provider available'); }
+    setSavedCids: () => { console.log('setSavedCids was called with no provider available'); },
+    loadingSavedCids: true,
 });
 

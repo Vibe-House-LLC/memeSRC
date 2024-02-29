@@ -187,7 +187,7 @@ const defaultBackground = `linear-gradient(45deg,
   #00a3e0 0)`;
 
 export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction }) {
-  const { localCids, setLocalCids, savedCids, cid, setCid, searchQuery: cidSearchQuery, setSearchQuery: setCidSearchQuery, setShowObj } = useSearchDetailsV2()
+  const { localCids, setLocalCids, savedCids, cid, setCid, searchQuery: cidSearchQuery, setSearchQuery: setCidSearchQuery, setShowObj, loadingSavedCids } = useSearchDetailsV2()
   const [shows, setShows] = useState([]);
   const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -509,7 +509,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
               )}
             </Grid>
           </Grid>
-          <StyledSearchForm onSubmit={(e) => cid ? searchCid(e) : searchFunction(e)}>
+          <StyledSearchForm onSubmit={(e) => searchFunction(e)}>
             <Grid container justifyContent="center">
               <Grid item sm={3.5} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
                 <StyledSearchSelector
@@ -543,6 +543,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                     ))
                   )}
                   <option disabled value=''>IPFS</option>
+                  {user && loadingSavedCids && <option disabled value=''>Loading saved CIDs...</option>}
                   {!loading && savedCids && savedCids.map(obj =>
                     <option key={obj.id} value={obj.id}>{obj.emoji} {obj.title}</option>
                   )}
