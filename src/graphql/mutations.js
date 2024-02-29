@@ -715,6 +715,192 @@ export const deleteContentMetadata = /* GraphQL */ `
     }
   }
 `;
+export const createV2ContentMetadata = /* GraphQL */ `
+  mutation CreateV2ContentMetadata(
+    $input: CreateV2ContentMetadataInput!
+    $condition: ModelV2ContentMetadataConditionInput
+  ) {
+    createV2ContentMetadata(input: $input, condition: $condition) {
+      id
+      title
+      description
+      frameCount
+      colorMain
+      colorSecondary
+      emoji
+      status
+      version
+      users {
+        nextToken
+        __typename
+      }
+      alias {
+        id
+        createdAt
+        updatedAt
+        aliasV2ContentMetadataId
+        __typename
+      }
+      createdAt
+      updatedAt
+      v2ContentMetadataAliasId
+      __typename
+    }
+  }
+`;
+export const updateV2ContentMetadata = /* GraphQL */ `
+  mutation UpdateV2ContentMetadata(
+    $input: UpdateV2ContentMetadataInput!
+    $condition: ModelV2ContentMetadataConditionInput
+  ) {
+    updateV2ContentMetadata(input: $input, condition: $condition) {
+      id
+      title
+      description
+      frameCount
+      colorMain
+      colorSecondary
+      emoji
+      status
+      version
+      users {
+        nextToken
+        __typename
+      }
+      alias {
+        id
+        createdAt
+        updatedAt
+        aliasV2ContentMetadataId
+        __typename
+      }
+      createdAt
+      updatedAt
+      v2ContentMetadataAliasId
+      __typename
+    }
+  }
+`;
+export const deleteV2ContentMetadata = /* GraphQL */ `
+  mutation DeleteV2ContentMetadata(
+    $input: DeleteV2ContentMetadataInput!
+    $condition: ModelV2ContentMetadataConditionInput
+  ) {
+    deleteV2ContentMetadata(input: $input, condition: $condition) {
+      id
+      title
+      description
+      frameCount
+      colorMain
+      colorSecondary
+      emoji
+      status
+      version
+      users {
+        nextToken
+        __typename
+      }
+      alias {
+        id
+        createdAt
+        updatedAt
+        aliasV2ContentMetadataId
+        __typename
+      }
+      createdAt
+      updatedAt
+      v2ContentMetadataAliasId
+      __typename
+    }
+  }
+`;
+export const createAlias = /* GraphQL */ `
+  mutation CreateAlias(
+    $input: CreateAliasInput!
+    $condition: ModelAliasConditionInput
+  ) {
+    createAlias(input: $input, condition: $condition) {
+      id
+      v2ContentMetadata {
+        id
+        title
+        description
+        frameCount
+        colorMain
+        colorSecondary
+        emoji
+        status
+        version
+        createdAt
+        updatedAt
+        v2ContentMetadataAliasId
+        __typename
+      }
+      createdAt
+      updatedAt
+      aliasV2ContentMetadataId
+      __typename
+    }
+  }
+`;
+export const updateAlias = /* GraphQL */ `
+  mutation UpdateAlias(
+    $input: UpdateAliasInput!
+    $condition: ModelAliasConditionInput
+  ) {
+    updateAlias(input: $input, condition: $condition) {
+      id
+      v2ContentMetadata {
+        id
+        title
+        description
+        frameCount
+        colorMain
+        colorSecondary
+        emoji
+        status
+        version
+        createdAt
+        updatedAt
+        v2ContentMetadataAliasId
+        __typename
+      }
+      createdAt
+      updatedAt
+      aliasV2ContentMetadataId
+      __typename
+    }
+  }
+`;
+export const deleteAlias = /* GraphQL */ `
+  mutation DeleteAlias(
+    $input: DeleteAliasInput!
+    $condition: ModelAliasConditionInput
+  ) {
+    deleteAlias(input: $input, condition: $condition) {
+      id
+      v2ContentMetadata {
+        id
+        title
+        description
+        frameCount
+        colorMain
+        colorSecondary
+        emoji
+        status
+        version
+        createdAt
+        updatedAt
+        v2ContentMetadataAliasId
+        __typename
+      }
+      createdAt
+      updatedAt
+      aliasV2ContentMetadataId
+      __typename
+    }
+  }
+`;
 export const createHomepageSection = /* GraphQL */ `
   mutation CreateHomepageSection(
     $input: CreateHomepageSectionInput!
@@ -823,6 +1009,10 @@ export const createUserDetails = /* GraphQL */ `
         nextToken
         __typename
       }
+      v2ContentMetadatas {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       userDetailsStripeCustomerInfoId
@@ -875,6 +1065,10 @@ export const updateUserDetails = /* GraphQL */ `
         nextToken
         __typename
       }
+      v2ContentMetadatas {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       userDetailsStripeCustomerInfoId
@@ -924,6 +1118,10 @@ export const deleteUserDetails = /* GraphQL */ `
         __typename
       }
       contentMetadatas {
+        nextToken
+        __typename
+      }
+      v2ContentMetadatas {
         nextToken
         __typename
       }
@@ -1745,6 +1943,150 @@ export const deleteUserMetadata = /* GraphQL */ `
         version
         createdAt
         updatedAt
+        __typename
+      }
+      userDetails {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const createUserV2Metadata = /* GraphQL */ `
+  mutation CreateUserV2Metadata(
+    $input: CreateUserV2MetadataInput!
+    $condition: ModelUserV2MetadataConditionInput
+  ) {
+    createUserV2Metadata(input: $input, condition: $condition) {
+      id
+      v2ContentMetadataId
+      userDetailsId
+      v2ContentMetadata {
+        id
+        title
+        description
+        frameCount
+        colorMain
+        colorSecondary
+        emoji
+        status
+        version
+        createdAt
+        updatedAt
+        v2ContentMetadataAliasId
+        __typename
+      }
+      userDetails {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const updateUserV2Metadata = /* GraphQL */ `
+  mutation UpdateUserV2Metadata(
+    $input: UpdateUserV2MetadataInput!
+    $condition: ModelUserV2MetadataConditionInput
+  ) {
+    updateUserV2Metadata(input: $input, condition: $condition) {
+      id
+      v2ContentMetadataId
+      userDetailsId
+      v2ContentMetadata {
+        id
+        title
+        description
+        frameCount
+        colorMain
+        colorSecondary
+        emoji
+        status
+        version
+        createdAt
+        updatedAt
+        v2ContentMetadataAliasId
+        __typename
+      }
+      userDetails {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const deleteUserV2Metadata = /* GraphQL */ `
+  mutation DeleteUserV2Metadata(
+    $input: DeleteUserV2MetadataInput!
+    $condition: ModelUserV2MetadataConditionInput
+  ) {
+    deleteUserV2Metadata(input: $input, condition: $condition) {
+      id
+      v2ContentMetadataId
+      userDetailsId
+      v2ContentMetadata {
+        id
+        title
+        description
+        frameCount
+        colorMain
+        colorSecondary
+        emoji
+        status
+        version
+        createdAt
+        updatedAt
+        v2ContentMetadataAliasId
         __typename
       }
       userDetails {

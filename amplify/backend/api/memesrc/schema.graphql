@@ -121,6 +121,37 @@ type ContentMetadata @model @auth(
 
 }
 
+type V2ContentMetadata @model @auth(
+  rules: [
+    { allow: groups, groups: ["admins", "mods"] },
+    { allow: private, operations: [read] },
+    { allow: public, operations: [read]}
+  ]
+) {
+  id: ID!,
+  title: String!,
+  description: String,
+  frameCount: Int,
+  colorMain: String,
+  colorSecondary: String,
+  emoji: String,
+  status: Int @index
+  version: Int
+  users: [UserDetails] @manyToMany(relationName: "UserV2Metadata")
+  alias: Alias @hasOne
+}
+
+type Alias @model @auth(
+  rules: [
+    { allow: groups, groups: ["admins", "mods"] },
+    { allow: private, operations: [read] },
+    { allow: public, operations: [read]}
+  ]
+) {
+  id: ID!,
+  v2ContentMetadata: V2ContentMetadata @belongsTo
+}
+
 type HomepageSection @model @auth(
   rules: [
     { allow: groups, groups: ["admins", "mods"] },
@@ -162,6 +193,7 @@ type UserDetails @model @auth(
   magicSubscription: String,
   userNotifications: [UserNotification] @hasMany
   contentMetadatas: [ContentMetadata] @manyToMany(relationName: "UserMetadata")
+  v2ContentMetadatas: [V2ContentMetadata] @manyToMany(relationName: "UserV2Metadata")
 }
 
 type StripeCustomer @model @auth(

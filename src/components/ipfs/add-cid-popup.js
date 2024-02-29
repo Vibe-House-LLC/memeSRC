@@ -2,45 +2,35 @@ import { Button, Container, Dialog, DialogActions, DialogContent, DialogTitle, T
 import { Stack } from '@mui/system';
 import PropTypes from 'prop-types';
 import { useState } from 'react';
+import { LoadingButton } from '@mui/lab';
+import { API } from 'aws-amplify';
 import useSearchDetailsV2 from '../../hooks/useSearchDetailsV2';
 
 export default function AddCidPopup({ open = false, setOpen = () => { } }) {
-    const [title, setTitle] = useState('');
     const [cid, setCid] = useState('');
+    const [saving, setSaving] = useState(false);
 
-    const { localCids, setLocalCids } = useSearchDetailsV2();
+    const { localCids, setLocalCids, savedCids, setSavedCids } = useSearchDetailsV2();
 
     const handleClose = () => {
-        setTitle('')
         setCid('')
         setOpen(false)
     }
 
     const handleSaveCid = () => {
-        if (localCids && typeof localCids === 'object') {
-            const newLocalCids = [
-                ...localCids,
-                {
-                    title,
-                    cid
-                }
-            ]
-
-            localStorage.setItem('custom_cids', JSON.stringify(newLocalCids))
-            setLocalCids(newLocalCids)
-        } else {
-            const newLocalCids = [
-                {
-                    title,
-                    cid
-                }
-            ]
-
-            localStorage.setItem('custom_cids', JSON.stringify(newLocalCids))
-            setLocalCids(newLocalCids)
-        }
-
-        handleClose()
+        setSaving(true)
+        API.post('publicapi', '/user/update/saveMetadata', { body: { cid } }).then(response => {
+            console.log('SAVED METADATA', response)
+            setSavedCids([
+                ...savedCids,
+                { ...response }
+            ])
+            setSaving(false)
+            handleClose();
+        }).catch(err => {
+            setSaving(false)
+            console.log(err)
+        })
     }
 
     return (
@@ -66,14 +56,7 @@ export default function AddCidPopup({ open = false, setOpen = () => { } }) {
                 <Container maxWidth='lg'>
                     <Stack pt={2} spacing={2}>
                         <TextField
-                            label='Series Title'
-                            value={title}
-                            onChange={(event) => {
-                                setTitle(event.target.value)
-                            }}
-                            fullWidth
-                        />
-                        <TextField
+                            disabled={saving}
                             label='CID'
                             value={cid}
                             onChange={(event) => {
@@ -85,10 +68,10 @@ export default function AddCidPopup({ open = false, setOpen = () => { } }) {
                 </Container>
             </DialogContent>
             <DialogActions>
-                <Button color='error' onClick={handleClose}>Cancel</Button>
-                <Button color='success' onClick={handleSaveCid}>
+                <Button disabled={saving} color='error' onClick={handleClose}>Cancel</Button>
+                <LoadingButton loading={saving} color='success' onClick={handleSaveCid}>
                     Save
-                </Button>
+                </LoadingButton>
             </DialogActions>
         </Dialog>
     )

@@ -1545,9 +1545,9 @@ export const handler = async (event) => {
     const getUsersMetadataQuery = `
       query getUserDetails($id: ID!, $nextToken: String) {
         getUserDetails(id: $id) {
-          contentMetadatas(nextToken: $nextToken) {
+          v2ContentMetadatas(nextToken: $nextToken) {
             items {
-              contentMetadata {
+              v2ContentMetadata {
                 version
                 updatedAt
                 title
@@ -1577,10 +1577,10 @@ export const handler = async (event) => {
         try {
           // Adjust your makeRequestWithVariables function to accept nextToken if provided
           const response = await makeRequestWithVariables(getUsersMetadataQuery, { id: id, nextToken: nt });
-          const contentMetadatas = response?.body.data?.getUserDetails?.contentMetadatas;
+          const contentMetadatas = response?.body.data?.getUserDetails?.v2ContentMetadatas;
 
           // Concatenate the new items to the allItems array
-          allItems = allItems.concat(contentMetadatas.items.map(item => item.contentMetadata));
+          allItems = allItems.concat(contentMetadatas.items.map(item => item.v2ContentMetadata));
 
           // If there's a nextToken, recursively call fetchPage again
           if (contentMetadatas.nextToken) {
@@ -1621,17 +1621,27 @@ export const handler = async (event) => {
   if (path === `/${process.env.ENV}/public/user/update/saveMetadata`) {
     /* ----------------------------- GraphQL Queries ---------------------------- */
     const getContentMetadataQuery = `
-    query getContentMetadata($id: ID!) {
-      getContentMetadata(id: $id) {
+    query getV2ContentMetadata($id: ID!) {
+      getV2ContentMetadata(id: $id) {
+        colorMain
+        colorSecondary
+        createdAt
+        description
+        emoji
+        frameCount
         id
+        status
+        title
+        updatedAt
+        version
       }
     }
     `;
     console.log('getContentMetadataQuery', getContentMetadataQuery);
 
     const createContentMetadataQuery = `
-      mutation createContentMetadata($colorMain: String, $colorSecondary: String, $description: String, $emoji: String, $frameCount: Int, $id: ID!, $status: Int, $title: String, $version: Int) {
-        createContentMetadata(input: {colorMain: $colorMain, colorSecondary: $colorSecondary, description: $description, emoji: $emoji, frameCount: $frameCount, id: $id, status: $status, title: $title, version: $version}) {
+      mutation createV2ContentMetadata($colorMain: String, $colorSecondary: String, $description: String, $emoji: String, $frameCount: Int, $id: ID!, $status: Int, $title: String!, $version: Int) {
+        createV2ContentMetadata(input: {colorMain: $colorMain, colorSecondary: $colorSecondary, description: $description, emoji: $emoji, frameCount: $frameCount, id: $id, status: $status, title: $title, version: $version}) {
           colorMain
           colorSecondary
           createdAt
@@ -1649,8 +1659,8 @@ export const handler = async (event) => {
     console.log('createContentMetadataQuery', createContentMetadataQuery)
 
     const createUserMetadataQuery = `
-      mutation MyMutation($contentMetadataId: ID, $userDetailsId: ID) {
-        createUserMetadata(input: {contentMetadataId: $contentMetadataId, userDetailsId: $userDetailsId}) {
+      mutation createUserV2Metadata($v2ContentMetadataId: ID!, $userDetailsId: ID!) {
+        createUserV2Metadata(input: {v2ContentMetadataId: $v2ContentMetadataId, userDetailsId: $userDetailsId}) {
           id
         }
       }
@@ -1660,48 +1670,64 @@ export const handler = async (event) => {
     /* --------------------------- Variables From Body -------------------------- */
 
     const cid = body?.cid
-    const colorMain = body?.colorMain
-    const colorSecondary = body?.colorSecondary
-    const description = body?.description
-    const emoji = body?.emoji
-    const frameCount = body?.frameCount
-    const title = body?.title
+
+
+    /* ----------------------------- Fetch Metadata ----------------------------- */
+
+    const metadataUrl = `https://ipfs.memesrc.com/ipfs/${cid}/00_metadata.json`
+    console.log('metadataUrl', metadataUrl)
 
     try {
-      if (cid) {
+
+      // Get the metadata
+      const requestOptions = {
+        method: "GET",
+        redirect: "follow"
+      };
+      const metadataResponse = await fetch(metadataUrl, requestOptions);
+      const result = await metadataResponse.json();
+      console.log('METADATA: ', JSON.stringify(result))
+
+
+      if (cid && typeof result === 'object') {
         // First lets make sure the id doesn't exist.
         const getContentMetadataRequest = await makeRequestWithVariables(getContentMetadataQuery, { id: cid })
         console.log('getContentMetadataRequest', JSON.stringify(getContentMetadataRequest));
 
-        if (!getContentMetadataRequest?.body?.data?.getContentMetadata?.id) {
+        if (!getContentMetadataRequest?.body?.data?.getV2ContentMetadata?.id) {
           // There was not a match
-          
+
           // Lets make a new one.
-          const createContentMetadataRequest = await makeRequestWithVariables(createContentMetadataQuery, { id: cid, colorMain, colorSecondary, description, emoji, frameCount, title, status: 0, version: 2 });
+          const createContentMetadataRequest = await makeRequestWithVariables(createContentMetadataQuery, { id: cid, ...result, status: 0, version: 2 });
           console.log('createContentMetadataRequest', JSON.stringify(createContentMetadataRequest));
 
           // Now assuming that worked, let's make the connection to the user.
-          const createUserMetadataRequest = await makeRequestWithVariables(createUserMetadataQuery, { contentMetadataId: cid, userDetailsId: userSub });
+          const createUserMetadataRequest = await makeRequestWithVariables(createUserMetadataQuery, { v2ContentMetadataId: cid, userDetailsId: userSub });
           console.log('createUserMetadataRequest', JSON.stringify(createUserMetadataRequest));
 
           // Now lets return the data so that it can be added to their list on the front end.
           response = {
             statusCode: 200,
             body: {
-              ...createContentMetadataRequest?.body?.data?.createContentMetadata
+              ...createContentMetadataRequest?.body?.data?.createV2ContentMetadata
             }
           }
         } else {
           // There was a match
+
+          // Let's make the connection to the user.
+          const createUserMetadataRequest = await makeRequestWithVariables(createUserMetadataQuery, { v2ContentMetadataId: cid, userDetailsId: userSub });
+          console.log('createUserMetadataRequest', JSON.stringify(createUserMetadataRequest));
+
           response = {
             statusCode: 200,
             body: {
-              alreadyExists: true
+              ...getContentMetadataRequest?.body?.data?.getV2ContentMetadata
             }
           }
         }
       }
-      
+
     } catch (error) {
       console.log(error);
       response = {
