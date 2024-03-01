@@ -25,10 +25,18 @@ export default function AddCidPopup({ open = false, setOpen = () => { } }) {
         setSaving(true)
         API.post('publicapi', '/user/update/saveMetadata', { body: { cid } }).then(response => {
             console.log('SAVED METADATA', response)
-            setSavedCids([
-                ...savedCids,
-                { ...response }
-            ])
+            if (!response?.alreadySaved && !response?.errorCode) {
+                setSavedCids([
+                    ...savedCids,
+                    { ...response }
+                ])
+            } else if (response?.alreadySaved) {
+                // TODO: Handle letting the user know that they have already saved this CID
+            } else if (response?.errorCode) {
+                // TODO: Handle letting the user know that there was an error
+            } else {
+                // TODO: This would be an extreme error. Let the user know.
+            }
             setSaving(false)
             handleClose();
         }).catch(err => {
