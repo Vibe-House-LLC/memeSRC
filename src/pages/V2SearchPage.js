@@ -206,7 +206,7 @@ export default function SearchPage() {
       // Load the ZIP file and extract the relevant video file
       try {
         const videoResultsPromises = results.map(async (result, index) => {
-          const groupIndex = Math.floor((parseInt(result.subtitle_index, 10) + 1) / 15);
+          const groupIndex = Math.floor((parseInt(result.subtitle_index, 10)) / 15);
           const zipUrl = `https://ipfs.memesrc.com/ipfs/${params.cid}/${result.season}/${result.episode}/s${groupIndex}.zip`;
 
           try {
@@ -215,7 +215,7 @@ export default function SearchPage() {
             const zipBlob = await zipResponse.blob();
             const zip = await JSZip.loadAsync(zipBlob);
 
-            const videoPath = `s${parseInt(result.subtitle_index, 10) + 1}.mp4`;
+            const videoPath = `s${parseInt(result.subtitle_index, 10)}.mp4`;
             const videoFile = zip.file(videoPath) ? await zip.file(videoPath).async("blob") : null;
 
             if (!videoFile) throw new Error(`File not found in ZIP: ${videoPath}`);
@@ -259,7 +259,7 @@ export default function SearchPage() {
         <Grid container spacing={2} alignItems="stretch" paddingX={{ xs: 2, md: 6 }}>
           {newResults.map((result, index) => (
             <Grid item xs={12} sm={6} md={3} key={index}>
-              <Link to={`/v2/frame/${cid}/${result.season}/${result.episode}/${Math.floor((parseInt(result.start_frame, 10) + parseInt(result.end_frame, 10)) / 2)}`} style={{ textDecoration: 'none' }}>
+              <Link to={`/v2/frame/${cid}/${result.season}/${result.episode}/${Math.round((parseInt(result.start_frame, 10) + parseInt(result.end_frame, 10)) / 2)}`} style={{ textDecoration: 'none' }}>
                 <StyledCard
                 // onMouseEnter={(e) => {
                 //   e.currentTarget.querySelector('video').play();
