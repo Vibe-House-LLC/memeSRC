@@ -92,7 +92,7 @@ export default function V2EpisodePage({ setSeriesTitle }) {
             {results.map((result, index) => (
               <Grid item xs={12} key={result.fid}>
                 <div style={{ display: 'flex', justifyContent: 'center' }}>
-                  <Card component="a" href={`/frame/${result.fid}`} style={{ display: 'flex', textDecoration: 'none', width: '100%' }}>
+                  <Card component="a" href={`/v2/frame/${cid}/${season}/${episode}/${result.fid}`} style={{ display: 'flex', textDecoration: 'none', width: '100%' }}>
                     <CardMedia
                       component="img"
                       style={{ width: '50%', objectFit: 'contain' }}
