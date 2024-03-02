@@ -1227,7 +1227,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     const loadFineTuningFrames = async () => {
       try {
         // Fetch fine-tuning frames based on the current frame
-        const fineTuningFrames = await fetchFramesFineTuning(cid, season, episode, frame);
+        const fineTuningFrameIndexes = Array.from({length: 11}, (_, i) => frame - 5 + i); // Adjust as needed
+        const fineTuningFrames = await fetchFramesFineTuning(cid, season, episode, fineTuningFrameIndexes);
         setFineTuningFrames(fineTuningFrames);
         setFrames(fineTuningFrames);
         console.log("Fine Tuning Frames: ", fineTuningFrames);
@@ -1251,29 +1252,17 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       try {
         // Fetch surrounding frames; these calls already assume fetching of images and possibly their subtitles
         const surroundingFramePromises = fetchFramesSurroundingPromises(cid, season, episode, frame);
-    
-        // Initialize an array to keep track of the frames as they load
-        const surroundingFrames = [];
-    
-        // Instead of waiting for all promises to resolve, handle each promise individually
-        surroundingFramePromises.forEach((promise, index) => {
-          promise.then(resolvedFrame => {
-            resolvedFrame.cid = cid;
-            resolvedFrame.season = parseInt(season, 10);
-            resolvedFrame.episode = parseInt(episode, 10);
-            // resolvedFrame.frame = parseInt(frame, 10);
-            // Update the state with each frame as it becomes available
-            // Use a function to ensure the state is correctly updated based on the previous state
-            setSurroundingFrames(prevFrames => {
-              // Create a new array that includes the newly resolved frame
-              const updatedFrames = [...prevFrames];
-              updatedFrames[index] = resolvedFrame; // This ensures that frames are kept in order
-              return updatedFrames;
-            });
-            console.log("Loaded Frame: ", resolvedFrame);
-          }).catch(error => {
-            console.error("Failed to fetch a frame:", error);
-          });
+        
+        Promise.all(surroundingFramePromises).then(surroundingFrames => {
+          setSurroundingFrames(surroundingFrames.map(frame => ({
+            ...frame,
+            cid,
+            season: parseInt(season, 10),
+            episode: parseInt(episode, 10),
+          })));
+          console.log("Loaded Surrounding Frames: ", surroundingFrames);
+        }).catch(error => {
+          console.error("Failed to fetch surrounding frames:", error);
         });
       } catch (error) {
         console.error("Failed to fetch surrounding frames:", error);

@@ -5,9 +5,8 @@ import PropTypes from 'prop-types';
 import { extractVideoFrames } from '../utils/videoFrameExtractor';
 import { UserContext } from '../UserContext';
 
-
 V2EpisodePage.propTypes = {
-  setSeriesTitle: PropTypes.func,
+  setSeriesTitle: PropTypes.func.isRequired,
 };
 
 export default function V2EpisodePage({ setSeriesTitle }) {
@@ -17,7 +16,7 @@ export default function V2EpisodePage({ setSeriesTitle }) {
   const [loading, setLoading] = useState(true);
   const { cid, season, episode, frame } = useParams();
   const fps = 10; // Frames per second
-  const isMd = useMediaQuery(theme => theme.breakpoints.up('md'))
+  const isMd = useMediaQuery(theme => theme.breakpoints.up('md'));
 
   useEffect(() => {
     const fetchSubtitlesAndFrames = async () => {
@@ -39,15 +38,16 @@ export default function V2EpisodePage({ setSeriesTitle }) {
         };
       });
 
-      const startFrame = parseInt(frame, 10);
-      const endFrame = startFrame + (fps * 10) - 1; // Fetching frames for 10 seconds
+      // Generate frame indexes to fetch based on fps stepping
+      const frameIndexes = [];
+      for (let i = 0; i < fps * 60; i += fps) {
+        frameIndexes.push(parseInt(frame, 10) + i);
+      }
 
-      const frames = await extractVideoFrames(cid, season, episode, startFrame, endFrame, fps, 0.2);
+      const frames = await extractVideoFrames(cid, season, episode, frameIndexes, fps, 0.2);
 
-      const selectedFrames = frames.filter((_, index) => index % fps === 0);
-
-      const frameResults = selectedFrames.map((frameUrl, index) => {
-        const frameId = startFrame + (index * fps);
+      const frameResults = frameIndexes.map((frameId, index) => {
+        const frameUrl = frames[index];
         const subtitle = subtitles.find(sub => frameId >= sub.start_frame && frameId <= sub.end_frame);
         return {
           fid: frameId.toString(),
@@ -65,13 +65,12 @@ export default function V2EpisodePage({ setSeriesTitle }) {
 
   const navigateFrames = (direction) => {
     const currentFrame = parseInt(frame, 10);
-    const newFrame = direction === 'prev' ? Math.max(currentFrame - (fps * 10), 0) : currentFrame + (fps * 10);
+    const newFrame = direction === 'prev' ? Math.max(currentFrame - fps * 10, 0) : currentFrame + fps * 10;
     navigate(`/v2/episode/${cid}/${season}/${episode}/${newFrame}`);
   };
 
   return (
     <Container maxWidth="lg">
-
       <Typography gutterBottom fontSize={isMd ? 24 : 15} component="div" style={{ marginTop: '20px' }}>
         {cid} <br /><span style={{fontSize: isMd ? 20 : 14}}>Season {season}, Episode {episode}</span>
       </Typography>
@@ -85,11 +84,9 @@ export default function V2EpisodePage({ setSeriesTitle }) {
           <CircularProgress />
         </center>
       ) : (
-
         <Container maxWidth="md">
-
           <Grid container spacing={2} alignContent="stretch">
-            {results.map((result, index) => (
+            {results.map((result) => (
               <Grid item xs={12} key={result.fid}>
                 <div style={{ display: 'flex', justifyContent: 'center' }}>
                   <Card component="a" href={`/v2/frame/${cid}/${season}/${episode}/${result.fid}`} style={{ display: 'flex', textDecoration: 'none', width: '100%' }}>
