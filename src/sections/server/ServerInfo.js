@@ -2,18 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { Alert, Button, Card, Container, Dialog, DialogActions, DialogContent, DialogTitle, Divider, Grid, Stack, Typography, useMediaQuery } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
 import PropTypes from 'prop-types';
-import AddIcon from '@mui/icons-material/Add'; // Import the Add icon
 import NetworkGraph from './NetworkGraph';
 import IndexTable from './IndexTable';
-import CidInput from './CidInput';
-import CreateIndex from './CreateIndex';
 
 export default function ServerInfo({ details }) {
     const isSm = useMediaQuery(theme => theme.breakpoints.up('sm'));
     const isLg = useMediaQuery(theme => theme.breakpoints.up('lg'));
     const [connected, setConnected] = useState(false);
     const [handlingConnection, setHandlingConnection] = useState(false);
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
 
     const handleToggleServer = async () => {
         setHandlingConnection(true);
@@ -58,9 +54,6 @@ export default function ServerInfo({ details }) {
         const statusInterval = setInterval(checkServerStatus, 5000);
         return () => clearInterval(statusInterval);
     }, []);
-
-    const handleDialogOpen = () => setIsDialogOpen(true);
-    const handleDialogClose = () => setIsDialogOpen(false);
 
     if (!connected) {
         return (
@@ -125,34 +118,10 @@ export default function ServerInfo({ details }) {
                 </Grid>
                 <Grid item xs={12} lg={6}>
                     <Card variant='outlined' sx={{ p: 2 }}>
-                        <Typography fontSize={28} fontWeight='bold' margin={0} textAlign={isSm ? 'left' : 'center'}>
-                            Indexes
-                        </Typography>
                         <IndexTable />
-                        <Button
-                            variant="contained"
-                            onClick={handleDialogOpen}
-                            startIcon={<AddIcon />}
-                            sx={{ mt: 2, width: '100%' }} // Make button full width and add icon
-                        >
-                            Add Index
-                        </Button>
                     </Card>
                 </Grid>
             </Grid>
-            <Dialog open={isDialogOpen} onClose={handleDialogClose} aria-labelledby="form-dialog-title">
-                <DialogTitle id="form-dialog-title">Add Index</DialogTitle>
-                <DialogContent>
-                    <CidInput onImport={(cid) => console.log('Import CID:', cid)} />
-                    <Divider textAlign="center" sx={{ my: 2 }}>Or</Divider>
-                    <CreateIndex />
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={handleDialogClose} color="primary">
-                        Cancel
-                    </Button>
-                </DialogActions>
-            </Dialog>
         </Container>
     );
 }

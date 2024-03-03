@@ -4,6 +4,10 @@ import { DataGrid } from '@mui/x-data-grid';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import { styled } from '@mui/material/styles';
+import AddIcon from '@mui/icons-material/Add';
+import { Dialog, DialogActions, DialogContent, DialogTitle, Divider, Typography, useMediaQuery } from '@mui/material';
+import CidInput from './CidInput';
+import CreateIndex from './CreateIndex';
 
 // Function to fetch the title for a given item
 const fetchTitle = async (item) => {
@@ -48,10 +52,13 @@ const PinningButton = styled(Button, {
 
 const IndexTable = () => {
     const [rows, setRows] = useState([]);
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [loadingCIDs, setLoadingCIDs] = useState(() => {
         const savedLoading = sessionStorage.getItem('loadingCIDs');
         return savedLoading ? JSON.parse(savedLoading) : {};
     });
+
+    const isSm = useMediaQuery(theme => theme.breakpoints.up('sm'));
 
     useEffect(() => {
         sessionStorage.setItem('loadingCIDs', JSON.stringify(loadingCIDs));
@@ -153,18 +160,65 @@ const IndexTable = () => {
         { field: 'cumulative_size', headerName: 'Total Size', width: 180, type: 'number' },
     ];
 
+    const handleDialogOpen = () => setIsDialogOpen(true);
+    const handleDialogClose = () => setIsDialogOpen(false);
+
     return (
-        <Box sx={{ width: '100%' }}>
-            <DataGrid
-                rows={rows}
-                columns={columns}
-                pageSize={5}
-                rowsPerPageOptions={[5]}
-                checkboxSelection
-                disableSelectionOnClick
-                autoHeight
-            />
+      <>
+        <Box
+        sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            width: '100%',
+            marginBottom: 2, // Adjust as needed for spacing below the title and button
+        }}
+        >
+        <Typography fontSize={28} fontWeight="bold" margin={0}>
+            Indexes
+        </Typography>
+        <Button
+            variant="contained"
+            onClick={handleDialogOpen}
+            startIcon={<AddIcon />}
+            sx={{}} // Adjust button styling as needed
+        >
+            Add Index
+        </Button>
         </Box>
+        <Box sx={{ width: '100%' }}>
+          <DataGrid
+            rows={rows}
+            columns={columns}
+            pageSize={5}
+            rowsPerPageOptions={[5]}
+            checkboxSelection
+            disableSelectionOnClick
+            autoHeight
+          />
+        </Box>
+        <Button
+            variant="contained"
+            onClick={handleDialogOpen}
+            startIcon={<AddIcon />}
+            sx={{ mt: 2, width: '100%' }} // Make button full width and add icon
+        >
+            Add Index
+        </Button>
+        <Dialog open={isDialogOpen} onClose={handleDialogClose} aria-labelledby="form-dialog-title">
+            <DialogTitle id="form-dialog-title">Add Index</DialogTitle>
+            <DialogContent>
+                <CidInput onImport={(cid) => console.log('Import CID:', cid)} />
+                <Divider textAlign="center" sx={{ my: 2 }}>Or</Divider>
+                <CreateIndex />
+            </DialogContent>
+            <DialogActions>
+                <Button onClick={handleDialogClose} color="primary">
+                    Cancel
+                </Button>
+            </DialogActions>
+        </Dialog>
+      </>
     );
 };
 
