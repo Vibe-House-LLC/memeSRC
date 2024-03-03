@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Box, Button, TextField, LinearProgress } from '@mui/material';
+import ProcessingDialog from './ProcessingDialog';
 
 function CreateIndex({ onProcessComplete }) {
     const [folderPath, setFolderPath] = useState('');
@@ -13,6 +14,8 @@ function CreateIndex({ onProcessComplete }) {
     const [isProcessing, setIsProcessing] = useState(false);
     const [progress, setProgress] = useState(0);
 
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+
     const selectDirectory = async () => {
         const electron = window.require('electron');
         const path = await electron.ipcRenderer.invoke('open-directory-dialog');
@@ -23,6 +26,7 @@ function CreateIndex({ onProcessComplete }) {
 
     const handleProcessStart = useCallback(async () => {
         setIsProcessing(true);
+        setIsDialogOpen(true); // Open the dialog
         setProgress(0); // Reset progress to 0
 
         const electron = window.require('electron');
@@ -122,12 +126,12 @@ function CreateIndex({ onProcessComplete }) {
                 <Button color="primary" variant="contained" disabled={isProcessing || !folderPath || !id} onClick={handleProcessStart} sx={{ mt: 2 }}>
                     Start Processing
                 </Button>
-                {isProcessing && (
-                    <>
-                        <LinearProgress variant="determinate" value={Math.round(progress)} sx={{ mt: 2, mb: 1 }} />
-                        <p>Processing... {progress}%</p>
-                    </>
-                )}
+                <ProcessingDialog
+                    isOpen={isDialogOpen}
+                    progress={progress}
+                    metadata={{ title, description }}
+                    onDismiss={() => setIsDialogOpen(false)}
+                />
             </Box>
         </>
     );
