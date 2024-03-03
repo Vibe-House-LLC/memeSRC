@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Box, Button, TextField, LinearProgress } from '@mui/material';
 
 function CreateIndex({ onProcessComplete }) {
@@ -13,7 +13,6 @@ function CreateIndex({ onProcessComplete }) {
     const [isProcessing, setIsProcessing] = useState(false);
     const [progress, setProgress] = useState(0);
 
-    // Function to invoke directory selection dialog in Electron
     const selectDirectory = async () => {
         const electron = window.require('electron');
         const path = await electron.ipcRenderer.invoke('open-directory-dialog');
@@ -25,39 +24,86 @@ function CreateIndex({ onProcessComplete }) {
     const handleProcessStart = useCallback(async () => {
         setIsProcessing(true);
         setProgress(0); // Reset progress to 0
-    
-        try {
-            const electron = window.require('electron');
-            const ipcRenderer = electron.ipcRenderer;
-            const ipcArguments = {
-                inputPath: folderPath,
-                id,
-                title,
-                description,
-                frameCount,
-                colorMain,
-                colorSecondary,
-                emoji
-            };
-    
-            ipcRenderer.send('test-javascript-processing', ipcArguments);
-            ipcRenderer.once('javascript-processing-result', (event, response) => {
-                console.log('JavaScript processing result:', response);
-                setIsProcessing(false);
-                setProgress(100); // Assume process is complete for now
-                if (onProcessComplete) {
-                    onProcessComplete(response);
-                }
-            });
-            ipcRenderer.once('javascript-processing-error', (event, error) => {
-                console.error('JavaScript processing error:', error);
-                setIsProcessing(false);
-            });
-        } catch (error) {
-            console.error('Failed in starting processing steps:', error);
+
+        const electron = window.require('electron');
+        const ipcRenderer = electron.ipcRenderer;
+        const ipcArguments = {
+            inputPath: folderPath,
+            id,
+            title,
+            description,
+            frameCount,
+            colorMain,
+            colorSecondary,
+            emoji,
+        };
+
+        ipcRenderer.send('test-javascript-processing', ipcArguments);
+
+        ipcRenderer.once('javascript-processing-result', (event, response) => {
+            console.log('JavaScript processing result:', response);
             setIsProcessing(false);
-        }
+            setProgress(100); // Assume process is complete for now
+            if (onProcessComplete) {
+                onProcessComplete(response);
+            }
+        });
+
+        ipcRenderer.once('javascript-processing-error', (event, error) => {
+            console.error('JavaScript processing error:', error);
+            setIsProcessing(false);
+        });
     }, [folderPath, id, title, description, frameCount, colorMain, colorSecondary, emoji, onProcessComplete]);
+
+    useEffect(() => {
+        let progressInterval;
+        if (isProcessing) {
+            const electron = window.require('electron');
+            progressInterval = setInterval(async () => {
+                try {
+                    const response = await electron.ipcRenderer.invoke('fetch-processing-status', id);
+                    if (response.success && response.status) {
+                        let totalPercent = 0;
+                        let count = 0;
+                        Object.keys(response.status).forEach(season => {
+                            Object.values(response.status[season]).forEach(status => {
+                                switch (status) {
+                                    case 'done':
+                                        totalPercent += 100;
+                                        break;
+                                    case 'indexing':
+                                        totalPercent += 50;
+                                        break;
+                                    default:
+                                        // Assuming 'pending' or any other status implies 0% complete
+                                        break;
+                                }
+                                count += 1;
+                            });
+                        });
+                        const percentComplete = count > 0 ? totalPercent / count : 0;
+                        setProgress(Math.round(percentComplete));
+                        if (percentComplete >= 100) {
+                            clearInterval(progressInterval);
+                            setIsProcessing(false); // Ensure processing state is updated when complete
+                            if (onProcessComplete) {
+                                onProcessComplete(response);
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('Failed to fetch processing status:', error);
+                    clearInterval(progressInterval);
+                }
+            }, 5000); // Update progress every 5 seconds
+        }
+    
+        return () => {
+            if (progressInterval) {
+                clearInterval(progressInterval);
+            }
+        };
+    }, [id, isProcessing, onProcessComplete]);    
 
     return (
         <>
