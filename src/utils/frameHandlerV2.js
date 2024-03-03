@@ -73,7 +73,7 @@ const fetchFramesFineTuning = async (cid, season, episode, frame) => {
   episode = parseInt(episode, 10);
   frame = parseInt(frame, 10);
   // Generate an array of frame indexes for fine-tuning
-  const frameIndexes = Array.from({length: 11}, (_, i) => frame - 4 + i);
+  const frameIndexes = Array.from({length: 11}, (_, i) => frame - 5 + i);
   return extractVideoFrames(cid, season, episode, frameIndexes, 10);
 };
 
@@ -83,8 +83,8 @@ const fetchFramesSurroundingPromises = (cid, season, episode, frame) => {
   episode = parseInt(episode, 10);
   frame = parseInt(frame, 10);
   
-  const offsets = [-40, -30, -20, -10, 0, 10, 20, 30, 40]; // Assuming you want these offsets
-  const scaleFactor = 0.1; // Adjust based on your needs
+  const offsets = [-40, -30, -20, -10, 0, 10, 20, 30, 40];
+  const scaleFactor = 0.2;
 
   const surroundingFramePromises = offsets.map(offset => {
     const surroundingFrameIndex = frame + offset;
