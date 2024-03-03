@@ -44,14 +44,10 @@ export default function V2EpisodePage({ setSeriesTitle }) {
         frameIndexes.push(parseInt(frame, 10) + i);
       }
 
-      const frames = await extractVideoFrames(cid, season, episode, frameIndexes, fps, 0.2);
-
       const frameResults = frameIndexes.map((frameId, index) => {
-        const frameUrl = frames[index];
         const subtitle = subtitles.find(sub => frameId >= sub.start_frame && frameId <= sub.end_frame);
         return {
           fid: frameId.toString(),
-          frame_image: frameUrl,
           subtitle: subtitle ? subtitle.subtitle_text : null,
         };
       });
