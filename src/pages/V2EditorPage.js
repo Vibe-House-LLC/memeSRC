@@ -1227,8 +1227,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     const loadFineTuningFrames = async () => {
       try {
         // Fetch fine-tuning frames based on the current frame
-        const fineTuningFrameIndexes = Array.from({length: 11}, (_, i) => frame - 5 + i); // Adjust as needed
-        const fineTuningFrames = await fetchFramesFineTuning(cid, season, episode, fineTuningFrameIndexes);
+        const fineTuningFrames = await fetchFramesFineTuning(cid, season, episode, frame);
         setFineTuningFrames(fineTuningFrames);
         setFrames(fineTuningFrames);
         console.log("Fine Tuning Frames: ", fineTuningFrames);

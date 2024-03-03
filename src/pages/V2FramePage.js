@@ -294,8 +294,7 @@ export default function FramePage({ shows = [] }) {
     const loadFineTuningFrames = async () => {
       try {
         // Since fetchFramesFineTuning now expects an array, calculate the array of indexes for fine-tuning
-        const fineTuningFrameIndexes = Array.from({length: 11}, (_, i) => frame - 5 + i); // Adjust as needed
-        const fineTuningFrames = await fetchFramesFineTuning(cid, season, episode, fineTuningFrameIndexes);
+        const fineTuningFrames = await fetchFramesFineTuning(cid, season, episode, frame);
         setFineTuningFrames(fineTuningFrames);
         setFrames(fineTuningFrames);
         console.log("Fine Tuning Frames: ", fineTuningFrames);
