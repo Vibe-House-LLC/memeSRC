@@ -317,17 +317,29 @@ export default function FramePage({ shows = [] }) {
       try {
         // Fetch surrounding frames; these calls already assume fetching of images and possibly their subtitles
         const surroundingFramePromises = fetchFramesSurroundingPromises(cid, season, episode, frame);
-        
-        Promise.all(surroundingFramePromises).then(surroundingFrames => {
-          setSurroundingFrames(surroundingFrames.map(frame => ({
-            ...frame,
-            cid,
-            season: parseInt(season, 10),
-            episode: parseInt(episode, 10),
-          })));
-          console.log("Loaded Surrounding Frames: ", surroundingFrames);
-        }).catch(error => {
-          console.error("Failed to fetch surrounding frames:", error);
+    
+        // Initialize an array to keep track of the frames as they load
+        const surroundingFrames = [];
+    
+        // Instead of waiting for all promises to resolve, handle each promise individually
+        surroundingFramePromises.forEach((promise, index) => {
+          promise.then(resolvedFrame => {
+            resolvedFrame.cid = cid;
+            resolvedFrame.season = parseInt(season, 10);
+            resolvedFrame.episode = parseInt(episode, 10);
+            // resolvedFrame.frame = parseInt(frame, 10);
+            // Update the state with each frame as it becomes available
+            // Use a function to ensure the state is correctly updated based on the previous state
+            setSurroundingFrames(prevFrames => {
+              // Create a new array that includes the newly resolved frame
+              const updatedFrames = [...prevFrames];
+              updatedFrames[index] = resolvedFrame; // This ensures that frames are kept in order
+              return updatedFrames;
+            });
+            console.log("Loaded Frame: ", resolvedFrame);
+          }).catch(error => {
+            console.error("Failed to fetch a frame:", error);
+          });
         });
       } catch (error) {
         console.error("Failed to fetch surrounding frames:", error);
