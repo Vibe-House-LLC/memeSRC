@@ -1620,6 +1620,32 @@ export const handler = async (event) => {
 
   if (path === `/${process.env.ENV}/public/user/update/saveMetadata`) {
     /* ----------------------------- GraphQL Queries ---------------------------- */
+    const getUsersMetadataQuery = `
+      query getUserDetails($id: ID!, $nextToken: String) {
+        getUserDetails(id: $id) {
+          v2ContentMetadatas(nextToken: $nextToken) {
+            items {
+              v2ContentMetadata {
+                version
+                updatedAt
+                title
+                status
+                id
+                frameCount
+                emoji
+                description
+                createdAt
+                colorSecondary
+                colorMain
+              }
+            }
+            nextToken
+          }
+        }
+      }
+    `;
+    console.log('getUsersMetadataQuery', getUsersMetadataQuery);
+
     const getContentMetadataQuery = `
     query getV2ContentMetadata($id: ID!) {
       getV2ContentMetadata(id: $id) {
@@ -1689,7 +1715,7 @@ export const handler = async (event) => {
       console.log('METADATA: ', JSON.stringify(result))
 
 
-      if (cid && typeof result === 'object') {
+      if (cid && result && typeof result === 'object') {
         // First lets make sure the id doesn't exist.
         const getContentMetadataRequest = await makeRequestWithVariables(getContentMetadataQuery, { id: cid })
         console.log('getContentMetadataRequest', JSON.stringify(getContentMetadataRequest));
@@ -1697,8 +1723,20 @@ export const handler = async (event) => {
         if (!getContentMetadataRequest?.body?.data?.getV2ContentMetadata?.id) {
           // There was not a match
 
+          const newMetadataDetails = {
+            id: cid,
+            colorMain: result.colorMain || '#000000',
+            colorSecondary: result.colorSecondary || '#FFFFFF',
+            description: result.description || 'N/A',
+            emoji: result.emoji || '',
+            frameCount: result.frameCount || 0,
+            status: 0,
+            title: result.title || 'N/A',
+            version: 2
+          }
+
           // Lets make a new one.
-          const createContentMetadataRequest = await makeRequestWithVariables(createContentMetadataQuery, { id: cid, ...result, status: 0, version: 2 });
+          const createContentMetadataRequest = await makeRequestWithVariables(createContentMetadataQuery, { ...newMetadataDetails });
           console.log('createContentMetadataRequest', JSON.stringify(createContentMetadataRequest));
 
           // Now assuming that worked, let's make the connection to the user.
@@ -1715,16 +1753,61 @@ export const handler = async (event) => {
         } else {
           // There was a match
 
-          // Let's make the connection to the user.
-          const createUserMetadataRequest = await makeRequestWithVariables(createUserMetadataQuery, { v2ContentMetadataId: cid, userDetailsId: userSub });
-          console.log('createUserMetadataRequest', JSON.stringify(createUserMetadataRequest));
+          // Lets make sure the user doesn't already have this added to their details.
+          async function fetchAllContentMetadatas(id) {
+            let allItems = []; // Array to hold all contentMetadata items
+            let nextToken = null; // Variable to track the nextToken
+      
+            // Function to recursively fetch contentMetadatas
+            async function fetchPage(nt) {
+              try {
+                // Adjust your makeRequestWithVariables function to accept nextToken if provided
+                const response = await makeRequestWithVariables(getUsersMetadataQuery, { id: id, nextToken: nt });
+                const contentMetadatas = response?.body.data?.getUserDetails?.v2ContentMetadatas;
+      
+                // Concatenate the new items to the allItems array
+                allItems = allItems.concat(contentMetadatas.items.map(item => item.v2ContentMetadata));
+      
+                // If there's a nextToken, recursively call fetchPage again
+                if (contentMetadatas.nextToken) {
+                  await fetchPage(contentMetadatas.nextToken);
+                }
+              } catch (error) {
+                console.error('Failed to fetch contentMetadatas:', error);
+                throw new Error('Failed to fetch contentMetadatas');
+              }
+            }
+      
+            await fetchPage(nextToken); // Start the recursive fetching
+      
+            return allItems; // Return all fetched items
+          }
+      
+          const getUsersMetadataRequest = await fetchAllContentMetadatas(userSub);
+          console.log('getUsersMetadataRequest', JSON.stringify(getUsersMetadataRequest));
 
-          response = {
-            statusCode: 200,
-            body: {
-              ...getContentMetadataRequest?.body?.data?.getV2ContentMetadata
+          const foundMetadata = getUsersMetadataRequest?.find(obj => obj.id === cid);
+
+          if (!foundMetadata) {
+            // We didn't find the object with that ID in their data. Let's make the connection to the user.
+            const createUserMetadataRequest = await makeRequestWithVariables(createUserMetadataQuery, { v2ContentMetadataId: cid, userDetailsId: userSub });
+            console.log('createUserMetadataRequest', JSON.stringify(createUserMetadataRequest));
+
+            response = {
+              statusCode: 200,
+              body: {
+                ...getContentMetadataRequest?.body?.data?.getV2ContentMetadata
+              }
+            }
+          } else {
+            response = {
+              statusCode: 200,
+              body: {
+                alreadySaved: true
+              }
             }
           }
+          
         }
       }
 
@@ -1740,7 +1823,117 @@ export const handler = async (event) => {
     }
   }
 
-  // console.log(response);
+  if (path === `/${process.env.ENV}/public/user/update/removeMetadata`) {
+    /* ----------------------------- GraphQL Queries ---------------------------- */
+    const getUsersMetadataQuery = `
+      query getUserDetails($id: ID!, $nextToken: String) {
+        getUserDetails(id: $id) {
+          v2ContentMetadatas(nextToken: $nextToken) {
+            items {
+              id
+              v2ContentMetadata {
+                version
+                updatedAt
+                title
+                status
+                id
+                frameCount
+                emoji
+                description
+                createdAt
+                colorSecondary
+                colorMain
+              }
+            }
+            nextToken
+          }
+        }
+      }
+    `;
+    console.log('getUsersMetadataQuery', getUsersMetadataQuery);
+
+    const deleteUsersMetadataQuery = `
+      mutation deleteUserV2Metadata($id: ID!) {
+        deleteUserV2Metadata(input: {id: $id}) {
+          id
+        }
+      }    
+    `
+
+    /* --------------------------- Variables From Body -------------------------- */
+
+    const cid = body?.cid
+
+    try {
+      // Lets make sure the user doesn't already have this added to their details.
+      async function fetchAllContentMetadatas(id) {
+        let allItems = []; // Array to hold all contentMetadata items
+        let nextToken = null; // Variable to track the nextToken
+  
+        // Function to recursively fetch contentMetadatas
+        async function fetchPage(nt) {
+          try {
+            // Adjust your makeRequestWithVariables function to accept nextToken if provided
+            const response = await makeRequestWithVariables(getUsersMetadataQuery, { id: id, nextToken: nt });
+            const contentMetadatas = response?.body.data?.getUserDetails?.v2ContentMetadatas;
+  
+            // Concatenate the new items to the allItems array
+            allItems = allItems.concat(contentMetadatas.items.map(item => item));
+  
+            // If there's a nextToken, recursively call fetchPage again
+            if (contentMetadatas.nextToken) {
+              await fetchPage(contentMetadatas.nextToken);
+            }
+          } catch (error) {
+            console.error('Failed to fetch contentMetadatas:', error);
+            throw new Error('Failed to fetch contentMetadatas');
+          }
+        }
+  
+        await fetchPage(nextToken); // Start the recursive fetching
+  
+        return allItems; // Return all fetched items
+      }
+  
+      const getUsersMetadataRequest = await fetchAllContentMetadatas(userSub);
+      console.log('getUsersMetadataRequest', JSON.stringify(getUsersMetadataRequest));
+
+      const foundMetadata = getUsersMetadataRequest?.find(obj => obj.v2ContentMetadata.id === cid);
+
+      if (foundMetadata?.id) {
+        // We didn't find the object with that ID in their data. Let's make the connection to the user.
+        const deleteUserMetadataRequest = await makeRequestWithVariables(deleteUsersMetadataQuery, { id: foundMetadata.id });
+        console.log('deleteUserMetadataRequest', JSON.stringify(deleteUserMetadataRequest));
+        response = {
+          statusCode: 200,
+          body: {
+            removed: true,
+            id: deleteUserMetadataRequest?.body?.data?.deleteUserV2Metadata?.id
+          }
+        }
+      } else {
+        response = {
+          statusCode: 200,
+          body: {
+            removed: false,
+            message: 'The ID was not found in your saved metedatas.'
+          }
+        }
+      }
+
+    } catch (error) {
+      console.log(error);
+      response = {
+        statusCode: 500,
+        body: {
+          errorCode: 'FAILED_TO_DELETE_METADATA',
+          message: 'Something went wrong attempting to delete a saved metadata item.',
+        }
+      }
+    }
+  }
+
+  console.log('THE RESPONSE: ', JSON.stringify(response));
 
   return {
     statusCode: response.statusCode,
