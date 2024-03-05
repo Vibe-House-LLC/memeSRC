@@ -17,6 +17,7 @@ export async function extractVideoFrames(cid, season, episode, frameIndexes, fps
   // Extract frames for each video file
   const fileList = Object.keys(fileFrameGroups).map(async (key) => {
       const videoUrl = `https://ipfs.memesrc.com/ipfs/${cid}/${season}/${episode}/${key}`;
+      console.log(videoUrl)
       const frameBlobs = await extractFramesFromVideo(videoUrl, fileFrameGroups[key], fps, scaleFactor);
       return frameBlobs;
   });
@@ -39,7 +40,7 @@ export async function extractFramesFromVideo(videoUrl, frameNumbers, assumedFps 
     const blobs = [];
     let currentFrameIndex = 0;
 
-    video.addEventListener('loadedmetadata', () => {
+    video.addEventListener('canplaythrough', () => {
       canvas.width = video.videoWidth*scaleFactor;    // Reduce the resolution a bit for testing performance
       canvas.height = video.videoHeight*scaleFactor;  // Reduce the resolution a bit for testing performance
       
@@ -47,9 +48,11 @@ export async function extractFramesFromVideo(videoUrl, frameNumbers, assumedFps 
         const frameTime = frameIndex / assumedFps;
         console.log("frameTime", frameTime)
         video.currentTime = frameTime;
+        video.pause();
       };
 
       video.addEventListener('seeked', async () => {
+        console.log('CURRENT TIME: ', video.currentTime)
         if (currentFrameIndex < frameNumbers.length) {
           context.drawImage(video, 0, 0, canvas.width, canvas.height);
           canvas.toBlob((blob) => {
