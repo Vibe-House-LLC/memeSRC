@@ -715,6 +715,51 @@ export const deleteContentMetadata = /* GraphQL */ `
     }
   }
 `;
+export const createFavorite = /* GraphQL */ `
+  mutation CreateFavorite(
+    $input: CreateFavoriteInput!
+    $condition: ModelFavoriteConditionInput
+  ) {
+    createFavorite(input: $input, condition: $condition) {
+      id
+      owner
+      cid
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const updateFavorite = /* GraphQL */ `
+  mutation UpdateFavorite(
+    $input: UpdateFavoriteInput!
+    $condition: ModelFavoriteConditionInput
+  ) {
+    updateFavorite(input: $input, condition: $condition) {
+      id
+      owner
+      cid
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const deleteFavorite = /* GraphQL */ `
+  mutation DeleteFavorite(
+    $input: DeleteFavoriteInput!
+    $condition: ModelFavoriteConditionInput
+  ) {
+    deleteFavorite(input: $input, condition: $condition) {
+      id
+      owner
+      cid
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
 export const createV2ContentMetadata = /* GraphQL */ `
   mutation CreateV2ContentMetadata(
     $input: CreateV2ContentMetadataInput!
