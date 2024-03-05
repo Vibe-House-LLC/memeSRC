@@ -17,6 +17,7 @@ export async function extractVideoFrames(cid, season, episode, frameIndexes, fps
   // Extract frames for each video file
   const fileList = Object.keys(fileFrameGroups).map(async (key) => {
       const videoUrl = `https://ipfs.memesrc.com/ipfs/${cid}/${season}/${episode}/${key}`;
+      console.log(videoUrl)
       const frameBlobs = await extractFramesFromVideo(videoUrl, fileFrameGroups[key], fps, scaleFactor);
       return frameBlobs;
   });
@@ -47,6 +48,7 @@ export async function extractFramesFromVideo(videoUrl, frameNumbers, assumedFps 
         const frameTime = frameIndex / assumedFps;
         console.log("frameTime", frameTime)
         video.currentTime = frameTime;
+        video.pause();
       };
 
       video.addEventListener('seeked', async () => {
