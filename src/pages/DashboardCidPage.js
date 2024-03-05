@@ -55,7 +55,7 @@ const data = [
 ];
 
 
-export default function DashboardAliasPage() {
+export default function DashboardCidPage() {
   const [loading, setLoading] = useState(true);
   const [metadatas, setMetadatas] = useState([]);
 

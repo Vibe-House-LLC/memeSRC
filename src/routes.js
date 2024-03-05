@@ -13,7 +13,8 @@ const InpaintingPage = lazy(() => import('./pages/InpaintingPage'));
 const FramePage = lazy(() => import('./pages/FramePage'));
 const TopBannerSearchRevised = lazy(() => import('./sections/search/TopBannerSeachRevised'));
 const DashboardSeriesPage = lazy(() => import('./pages/DashboardSeriesPage'));
-const DashboardAliasPage = lazy(() => import('./pages/DashboardAliasPage'));
+const DashboardCidPage = lazy(() => import('./pages/DashboardCidPage'));
+const DashboardAliasPageRevised = lazy(() => import('./pages/DashboardAliasPageRevised'));
 const DashboardLayout = lazy(() => import('./layouts/dashboard'));
 const BlogPage = lazy(() => import('./pages/BlogPage'));
 const LoginForm = lazy(() => import('./sections/auth/login/LoginForm'));
@@ -106,7 +107,8 @@ export default function Router() {
         { path: 'metadata', element: <MetadataPage /> },
         { path: 'homepagesections', element: <HomepageSectionPage /> },
         { path: 'series', element: <DashboardSeriesPage /> },
-        { path: 'aliasmanagement', element: <DashboardAliasPage /> },
+        { path: 'cidmanagement', element: <DashboardCidPage /> },
+        { path: 'aliasmanagement', element: <DashboardAliasPageRevised /> },
         { path: 'sourcemedia', element: <SourceMediaList /> },
         { path: 'sourcemedia/files/:sourceMediaId', element: <SourceMediaFileList /> },
         { path: 'addseries', element: <AddSeriesPage /> },
