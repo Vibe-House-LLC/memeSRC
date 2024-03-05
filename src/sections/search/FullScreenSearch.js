@@ -189,26 +189,38 @@ async function fetchShows() {
     authMode: 'API_KEY',
   });
 
-  const loadedV1Shows = result?.data?.contentMetadataByStatus?.items || []
-  const loadedV2Shows = aliases?.data?.listAliases?.items || []
+  const loadedV1Shows = result?.data?.contentMetadataByStatus?.items || [];
+  let loadedV2Shows = aliases?.data?.listAliases?.items || [];
 
-  const combinedShows = loadedV1Shows?.map(v1Show => {
-    const foundReplacement = loadedV2Shows.find(obj => obj.id === v1Show.id)
+  const usedV2ShowIds = [];
 
-    if (foundReplacement) {
-      return { ...foundReplacement?.v2ContentMetadata, id: foundReplacement.id, cid: foundReplacement?.v2ContentMetadata?.id }
+  const combinedShows = loadedV1Shows.map(v1Show => {
+    const foundIndex = loadedV2Shows.findIndex(obj => obj.id === v1Show.id);
+    if (foundIndex > -1) {
+      const foundReplacement = loadedV2Shows[foundIndex];
+      usedV2ShowIds.push(foundReplacement.id);
+      return { ...foundReplacement.v2ContentMetadata, id: foundReplacement.id, cid: foundReplacement.v2ContentMetadata.id };
     }
-    
-    return v1Show
+    return v1Show;
   });
 
-  console.log(combinedShows)
+  // Remove used V2 shows from the loadedV2Shows array
+  loadedV2Shows = loadedV2Shows.filter(obj => !usedV2ShowIds.includes(obj.id));
 
-  const sortedMetadata = combinedShows.sort((a, b) => {
+  // Combine the remaining V2 shows with the combinedShows
+  const finalShows = [...combinedShows, ...loadedV2Shows.map(v2Show => ({
+    ...v2Show.v2ContentMetadata,
+    id: v2Show.id,
+    cid: v2Show.v2ContentMetadata.id
+  }))];
+
+  // Sort the final list of shows by title
+  const sortedMetadata = finalShows.sort((a, b) => {
     if (a.title < b.title) return -1;
     if (a.title > b.title) return 1;
     return 0;
   });
+
   return sortedMetadata;
 }
 
