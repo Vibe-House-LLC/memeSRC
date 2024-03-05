@@ -1,5 +1,5 @@
 import { Add } from "@mui/icons-material";
-import { Button, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, TableCell, TableRow, TextField } from "@mui/material";
+import { Button, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, TableCell, TableRow, TextField, Typography } from "@mui/material";
 import { API, graphqlOperation } from "aws-amplify";
 import { useContext, useState } from "react";
 import { LoadingButton } from "@mui/lab";
@@ -74,7 +74,8 @@ export default function AliasTableRow({ row }) {
                 sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
             >
                 <TableCell align='left'>
-                    {row?.title}
+                    <Typography fontSize={18}>{row?.title}</Typography>
+                    <Typography fontSize={12}>{row?.id}</Typography>
                 </TableCell>
                 <TableCell align='right'>
                     <IconButton onClick={() => { setOpen(true) }}>

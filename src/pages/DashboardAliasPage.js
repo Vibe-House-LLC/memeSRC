@@ -73,6 +73,10 @@ export default function DashboardAliasPage() {
   return (
     <>
       <Container maxWidth='md'>
+        <Typography fontSize={30} fontWeight={700}>
+          Alias Management
+        </Typography>
+        <Divider sx={{ my: 3 }} />
         <TableContainer component={Paper}>
           <Table sx={{ minWidth: 650 }} aria-label="simple table">
             <TableHead>
