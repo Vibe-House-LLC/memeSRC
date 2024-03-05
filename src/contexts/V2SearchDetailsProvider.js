@@ -33,18 +33,18 @@ export const V2SearchDetailsProvider = ({ children }) => {
 
     useEffect(() => {
         console.log('USER: ', user)
-        if (user && !savedCids) {
+        console.log((!savedCids))
+        if (user) {
             setLoadingSavedCids(true)
-          API.get('publicapi', '/user/update/getSavedMetadata').then(response => {
-            console.log('SAVED METADATA', response)
-            setSavedCids(response)
-          }).catch(err => console.log(err))
-        } else if (!user) {
-            setLoadingSavedCids(false)
+            API.get('publicapi', '/user/update/getSavedMetadata').then(response => {
+                console.log('SAVED METADATA', response)
+                setSavedCids(response)
+                setLoadingSavedCids(false)
+            }).catch(err => console.log(err))
         } else {
             setLoadingSavedCids(false)
         }
-      }, [user, savedCids]);
+    }, [user]);
 
     return (
         <V2SearchContext.Provider
