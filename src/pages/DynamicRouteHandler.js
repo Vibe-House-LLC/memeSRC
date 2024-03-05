@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
 import { API, graphqlOperation } from 'aws-amplify';
-import { getContentMetadata, getV2ContentMetadata } from '../graphql/queries'; // Import the getContentMetadata
+import { getAlias, getContentMetadata, getV2ContentMetadata } from '../graphql/queries'; // Import the getContentMetadata
 import SeriesPage from './SeriesPage';
 import HomePage from './HomePage';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
@@ -34,25 +34,42 @@ const DynamicRouteHandler = () => {
 
     // First lets try to grab the metadata from v2
     API.graphql({
-      query: getV2ContentMetadata,
+      query: getAlias,
       variables: { id: seriesId },
-      authMode: 'API_KEY',
-    }).then(response => {
-      if (response?.data?.getV2ContentMetadata) {
-        setMetadata(response?.data?.getV2ContentMetadata)
+      authMode: 'API_KEY'
+    }).then(aliasResponse => {
+      if (aliasResponse?.data?.getAlias?.v2ContentMetadata) {
+        console.log('METADATA LOADED FROM ALIAS')
+        setMetadata(aliasResponse?.data?.getAlias?.v2ContentMetadata)
         setLoading(false)
       } else {
-        // That wasn't there, so lets check V2
         API.graphql({
-          query: getContentMetadata,
+          query: getV2ContentMetadata,
           variables: { id: seriesId },
           authMode: 'API_KEY',
         }).then(response => {
-          if (response?.data?.getContentMetadata) {
-            setMetadata(response?.data?.getContentMetadata)
+          if (response?.data?.getV2ContentMetadata) {
+            console.log('METADATA LOADED FROM CID')
+            setMetadata(response?.data?.getV2ContentMetadata)
             setLoading(false)
           } else {
-            setLoading(false)
+            // That wasn't there, so lets check V2
+            API.graphql({
+              query: getContentMetadata,
+              variables: { id: seriesId },
+              authMode: 'API_KEY',
+            }).then(response => {
+              if (response?.data?.getContentMetadata) {
+                console.log('METADATA LOADED FROM V1 METADATA')
+                setMetadata(response?.data?.getContentMetadata)
+                setLoading(false)
+              } else {
+                setLoading(false)
+              }
+            }).catch(error => {
+              console.log(error)
+              setLoading(false)
+            })
           }
         }).catch(error => {
           console.log(error)

@@ -37,9 +37,9 @@ export default function App() {
           }>
             {/* <FeaturePopover> */}
             <SearchDetailsProvider>
-              <V2SearchDetailsProvider>
+              
                 <Router />
-              </V2SearchDetailsProvider>
+              
             </SearchDetailsProvider>
             {/* </FeaturePopover> */}
           </Suspense>

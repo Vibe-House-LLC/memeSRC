@@ -7,6 +7,7 @@ import JSZip from 'jszip';
 import useSearchDetails from '../hooks/useSearchDetails';
 import IpfsSearchBar from '../sections/search/ipfs-search-bar';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
+import getV2Metadata from '../utils/getV2Metadata';
 
 const StyledCircularProgress = styled(CircularProgress)`
   position: absolute;
@@ -168,9 +169,11 @@ export default function SearchPage() {
       }
     }
 
-    initialize(params.cid);
-
-
+    getV2Metadata(params.cid).then(metadata => {
+      initialize(metadata.id);
+    }).catch(error => {
+      alert(error)
+    })
   }, []);
 
   useEffect(() => {
@@ -205,9 +208,10 @@ export default function SearchPage() {
 
       // Load the ZIP file and extract the relevant video file
       try {
+        const metadataCid = (await getV2Metadata(params.cid)).id
         const videoResultsPromises = results.map(async (result, index) => {
           const groupIndex = Math.floor((parseInt(result.subtitle_index, 10)) / 15);
-          const zipUrl = `https://ipfs.memesrc.com/ipfs/${params.cid}/${result.season}/${result.episode}/s${groupIndex}.zip`;
+          const zipUrl = `https://ipfs.memesrc.com/ipfs/${metadataCid}/${result.season}/${result.episode}/s${groupIndex}.zip`;
 
           try {
             const zipResponse = await fetch(zipUrl);

@@ -16,7 +16,7 @@ export const V2SearchDetailsProvider = ({ children }) => {
     const [frame, setFrame] = useState('');
     const [fineTuningFrame, setFineTuningFrame] = useState();
     const [localCids, setLocalCids] = useState();
-    const [savedCids, setSavedCids] = useState();
+    const [savedCids, setSavedCids] = useState([]);
     const [showObj, setShowObj] = useState();
     const [selectedFrameIndex, setSelectedFrameIndex] = useState();
     const [loadingSavedCids, setLoadingSavedCids] = useState(true);
@@ -24,6 +24,7 @@ export const V2SearchDetailsProvider = ({ children }) => {
     useEffect(() => {
         if (pathname === '/') {
             setShow('_universal')
+            setCid()
         }
         if (!(pathname.startsWith('/frame') || pathname.startsWith('/editor'))) {
             setFineTuningFrame(null)
@@ -31,19 +32,19 @@ export const V2SearchDetailsProvider = ({ children }) => {
     }, [pathname])
 
     useEffect(() => {
-        if (user && !savedCids) {
+        console.log('USER: ', user)
+        console.log((!savedCids))
+        if (user) {
             setLoadingSavedCids(true)
-          API.get('publicapi', '/user/update/getSavedMetadata').then(response => {
-            console.log('SAVED METADATA', response)
-            setSavedCids(response)
-          }).catch(err => console.log(err))
-        } else if (!user) {
-            setSavedCids([])
-            setLoadingSavedCids(false)
+            API.get('publicapi', '/user/update/getSavedMetadata').then(response => {
+                console.log('SAVED METADATA', response)
+                setSavedCids(response)
+                setLoadingSavedCids(false)
+            }).catch(err => console.log(err))
         } else {
             setLoadingSavedCids(false)
         }
-      }, [user, savedCids]);
+    }, [user]);
 
     return (
         <V2SearchContext.Provider

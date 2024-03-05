@@ -41,6 +41,7 @@ import { Add, ArrowBack, ArrowBackIos, ArrowForward, ArrowForwardIos, BrowseGall
 import useSearchDetails from '../hooks/useSearchDetails';
 import { fetchFrameInfo, fetchFramesFineTuning, fetchFramesSurroundingPromises } from '../utils/frameHandlerV2';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
+import getV2Metadata from '../utils/getV2Metadata';
 
 // import { listGlobalMessages } from '../../../graphql/queries'
 
@@ -68,7 +69,8 @@ export default function FramePage({ shows = [] }) {
   const [surroundingFrames, setSurroundingFrames] = useState([]);
   const [surroundingSubtitles, setSurroundingSubtitles] = useState(null);
   const [loading, setLoading] = useState(false);
-  const {cid, season, episode, frame} = useParams();
+  const { cid, season, episode, frame } = useParams();
+  const [confirmedCid, setConfirmedCid] = useState();
   const [sliderValue, setSliderValue] = useState(fineTuningFrame || 0);
   const [displayImage, setDisplayImage] = useState();
   const [subtitlesExpanded, setSubtitlesExpanded] = useState(false);
@@ -85,6 +87,14 @@ export default function FramePage({ shows = [] }) {
   const isSm = useMediaQuery((theme) => theme.breakpoints.down('md'));
 
   /* -------------------------------------------------------------------------- */
+
+  useEffect(() => {
+    getV2Metadata(cid).then(metadata => {
+      setConfirmedCid(metadata.id)
+    }).catch(error => {
+      console.log(error)
+    })
+  }, [cid]);
 
   const [snackbarOpen, setSnackBarOpen] = useState(false);
 
@@ -272,106 +282,107 @@ export default function FramePage({ shows = [] }) {
   }
 
   useEffect(() => {
-    const loadInitialFrameInfo = async () => {
-      setLoading(true);
-      try {
-        // Fetch initial frame information including the main image and subtitle
-        const initialInfo = await fetchFrameInfo(cid, season, episode, frame, { mainImage: true });
-        console.log("initialInfo: ", initialInfo);
-        setFrame(initialInfo.frame_image);
-        setFrameData(initialInfo);
-        setDisplayImage(initialInfo.frame_image);
-        setLoadedSubtitle(initialInfo.subtitle);
-        setLoadedSeason(season);
-        setLoadedEpisode(episode);
-      } catch (error) {
-        console.error("Failed to fetch initial frame info:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-  
-    const loadFineTuningFrames = async () => {
-      try {
-        // Since fetchFramesFineTuning now expects an array, calculate the array of indexes for fine-tuning
-        const fineTuningFrames = await fetchFramesFineTuning(cid, season, episode, frame);
-        setFineTuningFrames(fineTuningFrames);
-        setFrames(fineTuningFrames);
-        console.log("Fine Tuning Frames: ", fineTuningFrames);
-      } catch (error) {
-        console.error("Failed to fetch fine tuning frames:", error);
-      }
-    };
-  
-    const loadSurroundingSubtitles = async () => {
-    try {
-        // Fetch only the surrounding subtitles
-        const subtitlesSurrounding = (await fetchFrameInfo(cid, season, episode, frame, { subtitlesSurrounding: true })).subtitles_surrounding;
-        setSurroundingSubtitles(subtitlesSurrounding);
-      } catch (error) {
-        console.error("Failed to fetch surrounding subtitles:", error);
-      }
-    };
-  
-    const loadSurroundingFrames = async () => {
-      try {
-        // Fetch surrounding frames; these calls already assume fetching of images and possibly their subtitles
-        const surroundingFramePromises = fetchFramesSurroundingPromises(cid, season, episode, frame);
-    
-        // Initialize an array to keep track of the frames as they load
-        const surroundingFrames = [];
-    
-        // Instead of waiting for all promises to resolve, handle each promise individually
-        surroundingFramePromises.forEach((promise, index) => {
-          promise.then(resolvedFrame => {
-            resolvedFrame.cid = cid;
-            resolvedFrame.season = parseInt(season, 10);
-            resolvedFrame.episode = parseInt(episode, 10);
-            // resolvedFrame.frame = parseInt(frame, 10);
-            // Update the state with each frame as it becomes available
-            // Use a function to ensure the state is correctly updated based on the previous state
-            setSurroundingFrames(prevFrames => {
-              // Create a new array that includes the newly resolved frame
-              const updatedFrames = [...prevFrames];
-              updatedFrames[index] = resolvedFrame; // This ensures that frames are kept in order
-              return updatedFrames;
-            });
-            console.log("Loaded Frame: ", resolvedFrame);
-          }).catch(error => {
-            console.error("Failed to fetch a frame:", error);
-          });
-        });
-      } catch (error) {
-        console.error("Failed to fetch surrounding frames:", error);
-      }
-    };
-    
+    if (confirmedCid) {
+      const loadInitialFrameInfo = async () => {
+        setLoading(true);
+        try {
+          // Fetch initial frame information including the main image and subtitle
+          const initialInfo = await fetchFrameInfo(confirmedCid, season, episode, frame, { mainImage: true });
+          console.log("initialInfo: ", initialInfo);
+          setFrame(initialInfo.frame_image);
+          setFrameData(initialInfo);
+          setDisplayImage(initialInfo.frame_image);
+          setLoadedSubtitle(initialInfo.subtitle);
+          setLoadedSeason(season);
+          setLoadedEpisode(episode);
+        } catch (error) {
+          console.error("Failed to fetch initial frame info:", error);
+        } finally {
+          setLoading(false);
+        }
+      };
 
-  
-    window.scrollTo(0, 0);
-    
-    // Clear values before loading new ones
-    setLoading(true);
-    setFrame(null);
-    setFrameData(null);
-    setDisplayImage(null);
-    setLoadedSubtitle(null);
-    setSelectedFrameIndex(5);
-    setFineTuningFrames([]);
-    setFrames([]);
-    setSurroundingSubtitles([]);
-    setSurroundingFrames(new Array(9).fill('loading'));
-  
-    // Call the loading functions
-    loadInitialFrameInfo().then(() => {
-      loadFineTuningFrames(); // Load fine-tuning frames
-      loadSurroundingSubtitles(); // Load surrounding subtitles
-      loadSurroundingFrames(); // Load surrounding frames
-    });
-  
-  }, [cid, season, episode, frame]);
-  
-  
+      const loadFineTuningFrames = async () => {
+        try {
+          // Since fetchFramesFineTuning now expects an array, calculate the array of indexes for fine-tuning
+          const fineTuningFrames = await fetchFramesFineTuning(confirmedCid, season, episode, frame);
+          setFineTuningFrames(fineTuningFrames);
+          setFrames(fineTuningFrames);
+          console.log("Fine Tuning Frames: ", fineTuningFrames);
+        } catch (error) {
+          console.error("Failed to fetch fine tuning frames:", error);
+        }
+      };
+
+      const loadSurroundingSubtitles = async () => {
+        try {
+          // Fetch only the surrounding subtitles
+          const subtitlesSurrounding = (await fetchFrameInfo(confirmedCid, season, episode, frame, { subtitlesSurrounding: true })).subtitles_surrounding;
+          setSurroundingSubtitles(subtitlesSurrounding);
+        } catch (error) {
+          console.error("Failed to fetch surrounding subtitles:", error);
+        }
+      };
+
+      const loadSurroundingFrames = async () => {
+        try {
+          // Fetch surrounding frames; these calls already assume fetching of images and possibly their subtitles
+          const surroundingFramePromises = fetchFramesSurroundingPromises(confirmedCid, season, episode, frame);
+
+          // Initialize an array to keep track of the frames as they load
+          const surroundingFrames = [];
+
+          // Instead of waiting for all promises to resolve, handle each promise individually
+          surroundingFramePromises.forEach((promise, index) => {
+            promise.then(resolvedFrame => {
+              resolvedFrame.cid = confirmedCid;
+              resolvedFrame.season = parseInt(season, 10);
+              resolvedFrame.episode = parseInt(episode, 10);
+              // resolvedFrame.frame = parseInt(frame, 10);
+              // Update the state with each frame as it becomes available
+              // Use a function to ensure the state is correctly updated based on the previous state
+              setSurroundingFrames(prevFrames => {
+                // Create a new array that includes the newly resolved frame
+                const updatedFrames = [...prevFrames];
+                updatedFrames[index] = resolvedFrame; // This ensures that frames are kept in order
+                return updatedFrames;
+              });
+              console.log("Loaded Frame: ", resolvedFrame);
+            }).catch(error => {
+              console.error("Failed to fetch a frame:", error);
+            });
+          });
+        } catch (error) {
+          console.error("Failed to fetch surrounding frames:", error);
+        }
+      };
+
+
+
+      window.scrollTo(0, 0);
+
+      // Clear values before loading new ones
+      setLoading(true);
+      setFrame(null);
+      setFrameData(null);
+      setDisplayImage(null);
+      setLoadedSubtitle(null);
+      setSelectedFrameIndex(5);
+      setFineTuningFrames([]);
+      setFrames([]);
+      setSurroundingSubtitles([]);
+      setSurroundingFrames(new Array(9).fill('loading'));
+
+      // Call the loading functions
+      loadInitialFrameInfo().then(() => {
+        loadFineTuningFrames(); // Load fine-tuning frames
+        loadSurroundingSubtitles(); // Load surrounding subtitles
+        loadSurroundingFrames(); // Load surrounding frames
+      });
+    }
+  }, [confirmedCid, season, episode, frame]);
+
+
   function frameToTimeCode(frame, frameRate = 10) {
     const totalSeconds = frame / frameRate;
     const hours = Math.floor(totalSeconds / 3600);
@@ -384,7 +395,7 @@ export default function FramePage({ shows = [] }) {
     const formattedSeconds = seconds.toString().padStart(2, '0');
 
     return `${formattedHours}:${formattedMinutes}:${formattedSeconds}`;
-}
+  }
 
 
   useEffect(() => {
@@ -927,10 +938,10 @@ export default function FramePage({ shows = [] }) {
                   {surroundingFrame !== 'loading' ? (
                     // Render the actual content if the surrounding frame data is available
                     <a style={{ textDecoration: 'none' }}>
-                      <StyledCard 
-                        sx={{ 
-                          ...((parseInt(frame, 10) === surroundingFrame.frame) && { border: '3px solid orange' }), 
-                          cursor: (parseInt(frame, 10) === surroundingFrame.frame) ? 'default' : 'pointer' 
+                      <StyledCard
+                        sx={{
+                          ...((parseInt(frame, 10) === surroundingFrame.frame) && { border: '3px solid orange' }),
+                          cursor: (parseInt(frame, 10) === surroundingFrame.frame) ? 'default' : 'pointer'
                         }}>
                         <StyledCardMedia
                           component="img"
@@ -953,12 +964,12 @@ export default function FramePage({ shows = [] }) {
 
             <Grid item xs={12} mt={3}>
               <Button
-                  variant="contained"
-                  fullWidth
-                  href={`/v2/episode/${cid}/${season}/${episode}/${frame}`}
-                >
-                  View Episode
-                </Button>
+                variant="contained"
+                fullWidth
+                href={`/v2/episode/${cid}/${season}/${episode}/${frame}`}
+              >
+                View Episode
+              </Button>
             </Grid>
           </Grid>
         </Grid>

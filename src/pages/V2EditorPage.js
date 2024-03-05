@@ -23,6 +23,7 @@ import ImageEditorControls from '../components/ImageEditorControls';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
 
 import { fetchFrameInfo, fetchFramesFineTuning, fetchFramesSurroundingPromises } from '../utils/frameHandlerV2';
+import getV2Metadata from '../utils/getV2Metadata';
 
 const Alert = forwardRef((props, ref) => <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />);
 
@@ -1154,8 +1155,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   /* -------------------------------- New Stuff ------------------------------- */
 
 
-  const {cid, season, episode, frame} = useParams();
-
+  const { cid, season, episode, frame } = useParams();
+  const [confirmedCid, setConfirmedCid] = useState();
   const { showObj, setShowObj, selectedFrameIndex, setSelectedFrameIndex } = useSearchDetailsV2();
   const [loadingCsv, setLoadingCsv] = useState();
   const [frames, setFrames] = useState();
@@ -1164,6 +1165,14 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const [loadedSeason, setLoadedSeason] = useState('');
   const [loadedEpisode, setLoadedEpisode] = useState('');
   const [surroundingSubtitles, setSurroundingSubtitles] = useState(null);
+
+  useEffect(() => {
+    getV2Metadata(cid).then(metadata => {
+      setConfirmedCid(metadata.id)
+    }).catch(error => {
+      console.log(error)
+    })
+  }, [cid]);
 
   // setFrames
   // setLoadedSubtitle
@@ -1205,92 +1214,93 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   };
 
   useEffect(() => {
-    const loadInitialFrameInfo = async () => {
-      setLoading(true);
-      try {
-        // Fetch initial frame information including the main image and subtitle
-        const initialInfo = await fetchFrameInfo(cid, season, episode, frame, { mainImage: true });
-        console.log("initialInfo: ", initialInfo);
-        // setFrame(initialInfo.frame_image);
-        // setFrameData(initialInfo);
-        // setDisplayImage(initialInfo.frame_image);
-        setLoadedSubtitle(initialInfo.subtitle);
-        setLoadedSeason(season);
-        setLoadedEpisode(episode);
-      } catch (error) {
-        console.error("Failed to fetch initial frame info:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-  
-    const loadFineTuningFrames = async () => {
-      try {
-        // Fetch fine-tuning frames based on the current frame
-        const fineTuningFrames = await fetchFramesFineTuning(cid, season, episode, frame);
-        setFineTuningFrames(fineTuningFrames);
-        setFrames(fineTuningFrames);
-        console.log("Fine Tuning Frames: ", fineTuningFrames);
-      } catch (error) {
-        console.error("Failed to fetch fine tuning frames:", error);
-      }
-    };
-  
-    const loadSurroundingSubtitles = async () => {
-    try {
-        // Fetch only the surrounding subtitles
-        const subtitlesSurrounding = (await fetchFrameInfo(cid, season, episode, frame, { subtitlesSurrounding: true })).subtitles_surrounding;
-        console.log("setSurroundingSubtitles", subtitlesSurrounding)
-        setSurroundingSubtitles(subtitlesSurrounding);
-      } catch (error) {
-        console.error("Failed to fetch surrounding subtitles:", error);
-      }
-    };
-  
-    const loadSurroundingFrames = async () => {
-      try {
-        // Fetch surrounding frames; these calls already assume fetching of images and possibly their subtitles
-        const surroundingFramePromises = fetchFramesSurroundingPromises(cid, season, episode, frame);
-        
-        Promise.all(surroundingFramePromises).then(surroundingFrames => {
-          setSurroundingFrames(surroundingFrames.map(frame => ({
-            ...frame,
-            cid,
-            season: parseInt(season, 10),
-            episode: parseInt(episode, 10),
-          })));
-          console.log("Loaded Surrounding Frames: ", surroundingFrames);
-        }).catch(error => {
+    if (confirmedCid) {
+      const loadInitialFrameInfo = async () => {
+        setLoading(true);
+        try {
+          // Fetch initial frame information including the main image and subtitle
+          const initialInfo = await fetchFrameInfo(confirmedCid, season, episode, frame, { mainImage: true });
+          console.log("initialInfo: ", initialInfo);
+          // setFrame(initialInfo.frame_image);
+          // setFrameData(initialInfo);
+          // setDisplayImage(initialInfo.frame_image);
+          setLoadedSubtitle(initialInfo.subtitle);
+          setLoadedSeason(season);
+          setLoadedEpisode(episode);
+        } catch (error) {
+          console.error("Failed to fetch initial frame info:", error);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      const loadFineTuningFrames = async () => {
+        try {
+          // Fetch fine-tuning frames based on the current frame
+          const fineTuningFrames = await fetchFramesFineTuning(confirmedCid, season, episode, frame);
+          setFineTuningFrames(fineTuningFrames);
+          setFrames(fineTuningFrames);
+          console.log("Fine Tuning Frames: ", fineTuningFrames);
+        } catch (error) {
+          console.error("Failed to fetch fine tuning frames:", error);
+        }
+      };
+
+      const loadSurroundingSubtitles = async () => {
+        try {
+          // Fetch only the surrounding subtitles
+          const subtitlesSurrounding = (await fetchFrameInfo(confirmedCid, season, episode, frame, { subtitlesSurrounding: true })).subtitles_surrounding;
+          console.log("setSurroundingSubtitles", subtitlesSurrounding)
+          setSurroundingSubtitles(subtitlesSurrounding);
+        } catch (error) {
+          console.error("Failed to fetch surrounding subtitles:", error);
+        }
+      };
+
+      const loadSurroundingFrames = async () => {
+        try {
+          // Fetch surrounding frames; these calls already assume fetching of images and possibly their subtitles
+          const surroundingFramePromises = fetchFramesSurroundingPromises(confirmedCid, season, episode, frame);
+
+          Promise.all(surroundingFramePromises).then(surroundingFrames => {
+            setSurroundingFrames(surroundingFrames.map(frame => ({
+              ...frame,
+              confirmedCid,
+              season: parseInt(season, 10),
+              episode: parseInt(episode, 10),
+            })));
+            console.log("Loaded Surrounding Frames: ", surroundingFrames);
+          }).catch(error => {
+            console.error("Failed to fetch surrounding frames:", error);
+          });
+        } catch (error) {
           console.error("Failed to fetch surrounding frames:", error);
-        });
-      } catch (error) {
-        console.error("Failed to fetch surrounding frames:", error);
-      }
-    };
+        }
+      };
 
-    window.scrollTo(0, 0);
-    
-    // Make sure the values are cleared before loading new ones: 
-    // TODO: make the 'main image' show a skeleton while loading (incl. between navigations)
-    setLoading(true);
-    // setFrame(null);
-    // setFrameData(null);
-    // setDisplayImage(null);
-    setLoadedSubtitle(null);
-    setSelectedFrameIndex(5);
-    setFineTuningFrames([]);
-    setFrames([]);
-    setSurroundingSubtitles([]);
-    setSurroundingFrames(new Array(9).fill('loading'));
+      window.scrollTo(0, 0);
 
-    // Sequentially call the functions to ensure loading states and data fetching are managed efficiently
-    loadInitialFrameInfo().then(() => {
-      loadFineTuningFrames(); // Load fine-tuning frames
-      loadSurroundingSubtitles(); // Separately load surrounding subtitles
-      loadSurroundingFrames(); // Load surrounding frames and their subtitles (if available)
-    });
-  
-  }, [cid, season, episode, frame]);
+      // Make sure the values are cleared before loading new ones: 
+      // TODO: make the 'main image' show a skeleton while loading (incl. between navigations)
+      setLoading(true);
+      // setFrame(null);
+      // setFrameData(null);
+      // setDisplayImage(null);
+      setLoadedSubtitle(null);
+      setSelectedFrameIndex(5);
+      setFineTuningFrames([]);
+      setFrames([]);
+      setSurroundingSubtitles([]);
+      setSurroundingFrames(new Array(9).fill('loading'));
+
+      // Sequentially call the functions to ensure loading states and data fetching are managed efficiently
+      loadInitialFrameInfo().then(() => {
+        loadFineTuningFrames(); // Load fine-tuning frames
+        loadSurroundingSubtitles(); // Separately load surrounding subtitles
+        loadSurroundingFrames(); // Load surrounding frames and their subtitles (if available)
+      });
+    }
+  }, [confirmedCid, season, episode, frame]);
 
 
   // Outputs
@@ -1542,16 +1552,16 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
                   {editorTool === 'fineTuning' && (
                     <Slider
-                    size="small"
-                    defaultValue={selectedFrameIndex || Math.floor(frames.length / 2)}
-                    min={0}
-                    max={frames.length - 1}
-                    value={selectedFrameIndex}
-                    step={1}
-                    onChange={(e, newValue) => handleSliderChange(newValue)}
-                    valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
-                    marks
-                  />
+                      size="small"
+                      defaultValue={selectedFrameIndex || Math.floor(frames.length / 2)}
+                      min={0}
+                      max={frames.length - 1}
+                      value={selectedFrameIndex}
+                      step={1}
+                      onChange={(e, newValue) => handleSliderChange(newValue)}
+                      valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
+                      marks
+                    />
                   )}
 
                   {editorTool === 'magicEraser' && (
@@ -1839,15 +1849,15 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
             </Grid>
             <Grid container item spacing={1}>
-            {surroundingFrames?.map((surroundingFrame, index) => (
-                  <Grid item xs={4} sm={4} md={12 / 9} key={`surrounding-frame-${surroundingFrame?.frame ? surroundingFrame?.frame : index}`}>
-                    {surroundingFrame !== 'loading' ? (
+              {surroundingFrames?.map((surroundingFrame, index) => (
+                <Grid item xs={4} sm={4} md={12 / 9} key={`surrounding-frame-${surroundingFrame?.frame ? surroundingFrame?.frame : index}`}>
+                  {surroundingFrame !== 'loading' ? (
                     // Render the actual content if the surrounding frame data is available
                     <a style={{ textDecoration: 'none' }}>
-                      <StyledCard 
-                        sx={{ 
-                          ...((parseInt(frame, 10) === surroundingFrame.frame) && { border: '3px solid orange' }), 
-                          cursor: (parseInt(frame, 10) === surroundingFrame.frame) ? 'default' : 'pointer' 
+                      <StyledCard
+                        sx={{
+                          ...((parseInt(frame, 10) === surroundingFrame.frame) && { border: '3px solid orange' }),
+                          cursor: (parseInt(frame, 10) === surroundingFrame.frame) ? 'default' : 'pointer'
                         }}>
                         <StyledCardMedia
                           component="img"
@@ -1862,18 +1872,18 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                     </a>
                   ) : (
                     // Render a skeleton if the data is not yet available (undefined)
-                    <Skeleton variant='rounded' sx={{ width: '100%', height: 'auto', aspectRatio: `${editorAspectRatio === 1 ? (16/9) : editorAspectRatio}/1`}} />
+                    <Skeleton variant='rounded' sx={{ width: '100%', height: 'auto', aspectRatio: `${editorAspectRatio === 1 ? (16 / 9) : editorAspectRatio}/1` }} />
                   )}
-                  </Grid>
-                ))}
+                </Grid>
+              ))}
               <Grid item xs={12}>
                 <Button
-                    variant="contained"
-                    fullWidth
-                    href={`/v2/episode/${cid}/${season}/${episode}/${frame}`}
-                  >
-                    View Episode
-                  </Button>
+                  variant="contained"
+                  fullWidth
+                  href={`/v2/episode/${cid}/${season}/${episode}/${frame}`}
+                >
+                  View Episode
+                </Button>
               </Grid>
             </Grid>
           </Card>

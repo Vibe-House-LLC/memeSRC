@@ -4,6 +4,7 @@ import { CircularProgress, Container, Typography, Card, CardMedia, CardContent, 
 import PropTypes from 'prop-types';
 import { extractVideoFrames } from '../utils/videoFrameExtractor';
 import { UserContext } from '../UserContext';
+import getV2Metadata from '../utils/getV2Metadata';
 
 V2EpisodePage.propTypes = {
   setSeriesTitle: PropTypes.func.isRequired,
@@ -15,54 +16,65 @@ export default function V2EpisodePage({ setSeriesTitle }) {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const { cid, season, episode, frame } = useParams();
+  const [confirmedCid, setConfirmedCid] = useState();
   const fps = 10; // Frames per second
   const isMd = useMediaQuery(theme => theme.breakpoints.up('md'));
 
   useEffect(() => {
-    const fetchSubtitlesAndFrames = async () => {
-      setLoading(true);
+    getV2Metadata(cid).then(metadata => {
+      setConfirmedCid(metadata.id)
+    }).catch(error => {
+      console.log(error)
+    })
+  }, [cid]);
 
-      const subtitlesUrl = `https://ipfs.memesrc.com/ipfs/${cid}/${season}/${episode}/_docs.csv`;
-      const subtitlesResponse = await fetch(subtitlesUrl);
-      const subtitlesCsv = await subtitlesResponse.text();
+  useEffect(() => {
+    if (confirmedCid) {
+      const fetchSubtitlesAndFrames = async () => {
+        setLoading(true);
 
-      const subtitles = subtitlesCsv.split('\n').slice(1).map(line => {
-        const parts = line.split(',');
-        return {
-          season: parts[0],
-          episode: parts[1],
-          subtitle_index: parseInt(parts[2], 10),
-          subtitle_text: parts[3],
-          start_frame: parseInt(parts[4], 10),
-          end_frame: parseInt(parts[5], 10),
-        };
-      });
+        const subtitlesUrl = `https://ipfs.memesrc.com/ipfs/${confirmedCid}/${season}/${episode}/_docs.csv`;
+        const subtitlesResponse = await fetch(subtitlesUrl);
+        const subtitlesCsv = await subtitlesResponse.text();
 
-      // Generate frame indexes to fetch based on fps stepping
-      const frameIndexes = [];
-      for (let i = 0; i < fps * 60; i += fps) {
-        frameIndexes.push(parseInt(frame, 10) + i);
-      }
+        const subtitles = subtitlesCsv.split('\n').slice(1).map(line => {
+          const parts = line.split(',');
+          return {
+            season: parts[0],
+            episode: parts[1],
+            subtitle_index: parseInt(parts[2], 10),
+            subtitle_text: parts[3],
+            start_frame: parseInt(parts[4], 10),
+            end_frame: parseInt(parts[5], 10),
+          };
+        });
 
-      const frames = await extractVideoFrames(cid, season, episode, frameIndexes, fps, 0.4);
+        // Generate frame indexes to fetch based on fps stepping
+        const frameIndexes = [];
+        for (let i = 0; i < fps * 60; i += fps) {
+          frameIndexes.push(parseInt(frame, 10) + i);
+        }
 
-      const frameResults = frameIndexes.map((frameId, index) => {
-        const frameUrl = frames[index];
-        const subtitle = subtitles.find(sub => frameId >= sub.start_frame && frameId <= sub.end_frame);
-        return {
-          fid: frameId.toString(),
-          frame_image: frameUrl,
-          subtitle: subtitle ? subtitle.subtitle_text : null,
-        };
-      });
-      console.log("frameResults", frameResults)
+        const frames = await extractVideoFrames(confirmedCid, season, episode, frameIndexes, fps, 0.4);
 
-      setResults(frameResults);
-      setLoading(false);
-    };
+        const frameResults = frameIndexes.map((frameId, index) => {
+          const frameUrl = frames[index];
+          const subtitle = subtitles.find(sub => frameId >= sub.start_frame && frameId <= sub.end_frame);
+          return {
+            fid: frameId.toString(),
+            frame_image: frameUrl,
+            subtitle: subtitle ? subtitle.subtitle_text : null,
+          };
+        });
+        console.log("frameResults", frameResults)
 
-    fetchSubtitlesAndFrames().catch(console.error);
-  }, [cid, season, episode, frame, fps]);
+        setResults(frameResults);
+        setLoading(false);
+      };
+
+      fetchSubtitlesAndFrames().catch(console.error);
+    }
+  }, [confirmedCid, season, episode, frame, fps]);
 
   const navigateFrames = (direction) => {
     const currentFrame = parseInt(frame, 10);
@@ -73,7 +85,7 @@ export default function V2EpisodePage({ setSeriesTitle }) {
   return (
     <Container maxWidth="lg">
       <Typography gutterBottom fontSize={isMd ? 24 : 15} component="div" style={{ marginTop: '20px' }}>
-        {cid} <br /><span style={{fontSize: isMd ? 20 : 14}}>Season {season}, Episode {episode}</span>
+        {cid} <br /><span style={{ fontSize: isMd ? 20 : 14 }}>Season {season}, Episode {episode}</span>
       </Typography>
       {parseInt(frame, 10) !== 0 && (
         <Button disabled={loading} fullWidth={!isMd} variant="contained" onClick={() => navigateFrames('prev')} sx={{ mb: 4 }} style={{ marginTop: '20px' }}>
