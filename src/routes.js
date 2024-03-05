@@ -15,6 +15,7 @@ const TopBannerSearchRevised = lazy(() => import('./sections/search/TopBannerSea
 const DashboardSeriesPage = lazy(() => import('./pages/DashboardSeriesPage'));
 const DashboardCidPage = lazy(() => import('./pages/DashboardCidPage'));
 const DashboardAliasPageRevised = lazy(() => import('./pages/DashboardAliasPageRevised'));
+const FavoritesPage = lazy(() => import('./pages/FavoritesPage'));
 const DashboardLayout = lazy(() => import('./layouts/dashboard'));
 const BlogPage = lazy(() => import('./pages/BlogPage'));
 const LoginForm = lazy(() => import('./sections/auth/login/LoginForm'));
@@ -69,6 +70,7 @@ export default function Router() {
         { path: 'editor/new', element: <EditorNewProjectPage /> },
         { path: 'editor/project/:editorProjectId', element: <EditorPage /> },
         { path: 'search/:seriesId/:searchTerms', element: <SearchPage /> },
+        { path: 'favorites', element: <FavoritesPage /> },
         {
           path: 'v2',
           element: <IpfsSearchBar />,

@@ -469,6 +469,38 @@ export const contentMetadataByStatus = /* GraphQL */ `
     }
   }
 `;
+export const getFavorite = /* GraphQL */ `
+  query GetFavorite($id: ID!) {
+    getFavorite(id: $id) {
+      id
+      owner
+      cid
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const listFavorites = /* GraphQL */ `
+  query ListFavorites(
+    $filter: ModelFavoriteFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listFavorites(filter: $filter, limit: $limit, nextToken: $nextToken) {
+      items {
+        id
+        owner
+        cid
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
 export const getV2ContentMetadata = /* GraphQL */ `
   query GetV2ContentMetadata($id: ID!) {
     getV2ContentMetadata(id: $id) {

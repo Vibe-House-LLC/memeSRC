@@ -661,6 +661,51 @@ export const onDeleteContentMetadata = /* GraphQL */ `
     }
   }
 `;
+export const onCreateFavorite = /* GraphQL */ `
+  subscription OnCreateFavorite(
+    $filter: ModelSubscriptionFavoriteFilterInput
+    $owner: String
+  ) {
+    onCreateFavorite(filter: $filter, owner: $owner) {
+      id
+      owner
+      cid
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onUpdateFavorite = /* GraphQL */ `
+  subscription OnUpdateFavorite(
+    $filter: ModelSubscriptionFavoriteFilterInput
+    $owner: String
+  ) {
+    onUpdateFavorite(filter: $filter, owner: $owner) {
+      id
+      owner
+      cid
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onDeleteFavorite = /* GraphQL */ `
+  subscription OnDeleteFavorite(
+    $filter: ModelSubscriptionFavoriteFilterInput
+    $owner: String
+  ) {
+    onDeleteFavorite(filter: $filter, owner: $owner) {
+      id
+      owner
+      cid
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
 export const onCreateV2ContentMetadata = /* GraphQL */ `
   subscription OnCreateV2ContentMetadata(
     $filter: ModelSubscriptionV2ContentMetadataFilterInput

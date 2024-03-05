@@ -118,7 +118,15 @@ type ContentMetadata @model @auth(
   status: Int @index
   version: Int
   users: [UserDetails] @manyToMany(relationName: "UserMetadata")
+}
 
+type Favorite @model @auth(rules: [
+    { allow: owner, operations: [read, create, delete] }
+  ]
+) {
+  id: ID!
+  owner: String
+  cid: String!
 }
 
 type V2ContentMetadata @model @auth(
