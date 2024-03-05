@@ -12,6 +12,7 @@ import useSearchDetails from "../../hooks/useSearchDetails";
 import useSearchDetailsV2 from "../../hooks/useSearchDetailsV2";
 import AddCidPopup from "../../components/ipfs/add-cid-popup";
 import { UserContext } from "../../UserContext";
+import fetchShows from "../../utils/fetchShows";
 
 // Define constants for colors and fonts
 const PRIMARY_COLOR = '#4285F4';
@@ -78,19 +79,6 @@ const StyledHeader = styled('header')(() => ({
   zIndex: '1000',
   paddingBottom: '10px'
 }));
-
-async function fetchShows() {
-  const result = await API.graphql({
-    ...graphqlOperation(contentMetadataByStatus, { filter: {}, limit: 50, status: 1 }),
-    authMode: "API_KEY"
-  });
-  const sortedMetadata = result.data.contentMetadataByStatus.items.sort((a, b) => {
-    if (a.title < b.title) return -1;
-    if (a.title > b.title) return 1;
-    return 0;
-  });
-  return sortedMetadata;
-}
 
 IpfsSearchBar.propTypes = searchPropTypes;
 
@@ -174,6 +162,7 @@ export default function IpfsSearchBar(props) {
     async function getData() {
       // Get shows
       const shows = await fetchShows();
+      console.log(shows)
       setShows(shows);
       setLoading(false);
     }
@@ -351,7 +340,7 @@ export default function IpfsSearchBar(props) {
             </Link>
           </Box>
           <Typography variant='h2' mt={1} pl={2}>
-              {savedCids ? `${savedCids.find(obj => obj.id === cid)?.emoji} ${savedCids.find(obj => obj.id === cid)?.title}` : ''}
+              {savedCids ? `${shows.find(obj => obj.id === cid)?.emoji || savedCids.find(obj => obj.id === cid)?.emoji} ${shows.find(obj => obj.id === cid)?.title || savedCids.find(obj => obj.id === cid)?.title}` : ''}
             </Typography>
         </Container>
       }
