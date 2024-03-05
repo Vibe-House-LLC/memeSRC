@@ -24,6 +24,7 @@ export const V2SearchDetailsProvider = ({ children }) => {
     useEffect(() => {
         if (pathname === '/') {
             setShow('_universal')
+            setCid()
         }
         if (!(pathname.startsWith('/frame') || pathname.startsWith('/editor'))) {
             setFineTuningFrame(null)

@@ -141,7 +141,7 @@ export default function IpfsSearchBar(props) {
     if (data?.addNew) {
       setAddNewCidOpen(true)
     } else {
-      const savedCid = savedCids?.find(obj => obj.id === data)
+      const savedCid = shows?.find(obj => obj.id === data && obj.version === 2) || savedCids?.find(obj => obj.id === data)
       if (savedCid) {
         navigate(`/v2/search/${savedCid.id}/${encodeURIComponent(search)}`)
       } else {

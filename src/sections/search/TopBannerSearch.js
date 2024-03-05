@@ -12,6 +12,7 @@ import useSearchDetails from "../../hooks/useSearchDetails";
 import useSearchDetailsV2 from "../../hooks/useSearchDetailsV2";
 import AddCidPopup from "../../components/ipfs/add-cid-popup";
 import { UserContext } from "../../UserContext";
+import fetchShows from "../../utils/fetchShows";
 
 // Define constants for colors and fonts
 const PRIMARY_COLOR = '#4285F4';
@@ -79,19 +80,6 @@ const StyledHeader = styled('header')(() => ({
   paddingBottom: '10px',
   paddingTop: '64px'
 }));
-
-async function fetchShows() {
-  const result = await API.graphql({
-    ...graphqlOperation(contentMetadataByStatus, { filter: {}, limit: 50, status: 1 }),
-    authMode: "API_KEY"
-  });
-  const sortedMetadata = result.data.contentMetadataByStatus.items.sort((a, b) => {
-    if (a.title < b.title) return -1;
-    if (a.title > b.title) return 1;
-    return 0;
-  });
-  return sortedMetadata;
-}
 
 TopBannerSearch.propTypes = searchPropTypes;
 
@@ -174,7 +162,7 @@ export default function TopBannerSearch(props) {
     if (data?.addNew) {
       setAddNewCidOpen(true)
     } else {
-      const savedCid = savedCids?.find(obj => obj.id === data)
+      const savedCid = shows?.find(obj => obj.id === data && obj.version === 2) || savedCids?.find(obj => obj.id === data)
       if (savedCid) {
         navigate(`/v2/search/${savedCid.id}/${encodeURIComponent(searchQuery)}`)
       } else {
