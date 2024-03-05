@@ -45,7 +45,7 @@ export default async function fetchShows() {
   });
 
   const loadedV1Shows = result?.data?.contentMetadataByStatus?.items || [];
-  let loadedV2Shows = aliases?.data?.listAliases?.items || [];
+  let loadedV2Shows = aliases?.data?.listAliases?.items.filter(obj => obj?.v2ContentMetadata) || [];
 
   const usedV2ShowIds = [];
 
