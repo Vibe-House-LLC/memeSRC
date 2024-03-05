@@ -16,7 +16,7 @@ export const V2SearchDetailsProvider = ({ children }) => {
     const [frame, setFrame] = useState('');
     const [fineTuningFrame, setFineTuningFrame] = useState();
     const [localCids, setLocalCids] = useState();
-    const [savedCids, setSavedCids] = useState();
+    const [savedCids, setSavedCids] = useState([]);
     const [showObj, setShowObj] = useState();
     const [selectedFrameIndex, setSelectedFrameIndex] = useState();
     const [loadingSavedCids, setLoadingSavedCids] = useState(true);
@@ -31,6 +31,7 @@ export const V2SearchDetailsProvider = ({ children }) => {
     }, [pathname])
 
     useEffect(() => {
+        console.log('USER: ', user)
         if (user && !savedCids) {
             setLoadingSavedCids(true)
           API.get('publicapi', '/user/update/getSavedMetadata').then(response => {
@@ -38,7 +39,6 @@ export const V2SearchDetailsProvider = ({ children }) => {
             setSavedCids(response)
           }).catch(err => console.log(err))
         } else if (!user) {
-            setSavedCids([])
             setLoadingSavedCids(false)
         } else {
             setLoadingSavedCids(false)

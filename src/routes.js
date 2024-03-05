@@ -2,6 +2,7 @@ import { Navigate, useRoutes } from 'react-router-dom';
 import { lazy } from 'react';
 import EditorNewProjectPage from './pages/EditorNewProjectPage';
 import EditorProjectsPage from './pages/EditorProjectsPage';
+import { V2SearchDetailsProvider } from './contexts/V2SearchDetailsProvider';
 
 
 // ----------------------------------------------------------------------
@@ -57,7 +58,7 @@ export default function Router() {
   const routes = useRoutes([
     {
       path: '/',
-      element: <GuestAuth><MagicPopup><DashboardLayout /></MagicPopup></GuestAuth>,
+      element: <GuestAuth><MagicPopup><V2SearchDetailsProvider><DashboardLayout /></V2SearchDetailsProvider></MagicPopup></GuestAuth>,
       children: [
         { element: <HomePage />, index: true },
         { path: 'search', element: <Navigate to='/' /> },

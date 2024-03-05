@@ -17,6 +17,41 @@ import HomePageBannerAd from '../../ads/HomePageBannerAd';
 import useSearchDetailsV2 from '../../hooks/useSearchDetailsV2';
 import AddCidPopup from '../../components/ipfs/add-cid-popup';
 
+/* --------------------------------- GraphQL -------------------------------- */
+
+const listAliases = /* GraphQL */ `
+  query ListAliases(
+    $filter: ModelAliasFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listAliases(filter: $filter, limit: $limit, nextToken: $nextToken) {
+      items {
+        id
+        createdAt
+        updatedAt
+        aliasV2ContentMetadataId
+        v2ContentMetadata {
+          colorMain
+          colorSecondary
+          createdAt
+          description
+          emoji
+          frameCount
+          title
+          updatedAt
+          status
+          id
+          version
+        }
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+
 // Define constants for colors and fonts
 const PRIMARY_COLOR = '#4285F4';
 const SECONDARY_COLOR = '#0F9D58';
@@ -149,7 +184,27 @@ async function fetchShows() {
     ...graphqlOperation(contentMetadataByStatus, { filter: {}, limit: 50, status: 1 }),
     authMode: 'API_KEY',
   });
-  const sortedMetadata = result.data.contentMetadataByStatus.items.sort((a, b) => {
+  const aliases = await API.graphql({
+    ...graphqlOperation(listAliases, { filter: {}, limit: 50 }),
+    authMode: 'API_KEY',
+  });
+
+  const loadedV1Shows = result?.data?.contentMetadataByStatus?.items || []
+  const loadedV2Shows = aliases?.data?.listAliases?.items || []
+
+  const combinedShows = loadedV1Shows?.map(v1Show => {
+    const foundReplacement = loadedV2Shows.find(obj => obj.id === v1Show.id)
+
+    if (foundReplacement) {
+      return { ...foundReplacement?.v2ContentMetadata, id: foundReplacement.id, cid: foundReplacement?.v2ContentMetadata?.id }
+    }
+    
+    return v1Show
+  });
+
+  console.log(combinedShows)
+
+  const sortedMetadata = combinedShows.sort((a, b) => {
     if (a.title < b.title) return -1;
     if (a.title > b.title) return 1;
     return 0;
@@ -186,9 +241,8 @@ const defaultBackground = `linear-gradient(45deg,
   #00ab84 0, #00ab84 87.5% /* 7*12.5% */,
   #00a3e0 0)`;
 
-export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction }) {
+export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction, shows, setShows }) {
   const { localCids, setLocalCids, savedCids, cid, setCid, searchQuery: cidSearchQuery, setSearchQuery: setCidSearchQuery, setShowObj, loadingSavedCids } = useSearchDetailsV2()
-  const [shows, setShows] = useState([]);
   const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingRandom, setLoadingRandom] = useState(false);
