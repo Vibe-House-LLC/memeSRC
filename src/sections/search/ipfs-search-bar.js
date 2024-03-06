@@ -289,7 +289,7 @@ export default function IpfsSearchBar(props) {
                 {(loading) ? <MenuItem key="loading" value="loading" disabled>Loading...</MenuItem> : shows.map((item) => (
                   <MenuItem key={item.id} value={item.id}>{item.emoji} {item.title}</MenuItem>
                 ))}
-                <Divider />
+                {/* <Divider />
                 <MenuItem disabled value=''>IPFS</MenuItem>
                 <Divider />
                 {user && loadingSavedCids &&
@@ -298,7 +298,7 @@ export default function IpfsSearchBar(props) {
                 {!loading && savedCids && savedCids.map(obj =>
                   <MenuItem key={obj.id} value={obj.id}>{obj.emoji} {obj.title}</MenuItem>
                 )}
-                <MenuItem key='addNew' value={{ addNew: true }}>+ Add New CID</MenuItem>
+                <MenuItem key='addNew' value={{ addNew: true }}>+ Add New CID</MenuItem> */}
               </Select>
             </FormControl>
           </Grid>

@@ -242,10 +242,10 @@ export default function TopBannerSearch(props) {
                 {user && loadingSavedCids &&
                   <MenuItem value='' disabled>Loading saved CIDs...</MenuItem>
                 }
-                {!loading && savedCids && savedCids.map(obj =>
+                {/* {!loading && savedCids && savedCids.map(obj =>
                   <MenuItem key={obj.id} value={obj.id}>{obj.emoji} {obj.title}</MenuItem>
                 )}
-                <MenuItem key='addNew' value={{ addNew: true }}>+ Add New CID</MenuItem>
+                <MenuItem key='addNew' value={{ addNew: true }}>+ Add New CID</MenuItem> */}
               </Select>
             </FormControl>
           </Grid>

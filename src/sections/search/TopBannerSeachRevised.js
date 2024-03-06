@@ -254,7 +254,7 @@ export default function TopBannerSearchRevised(props) {
                     {(loading) ? <MenuItem key="loading" value="loading" disabled>Loading...</MenuItem> : shows.map((item) => (
                       <MenuItem key={item.id} value={item.id}>{item.emoji} {item.title}</MenuItem>
                     ))}
-                    <Divider />
+                    {/* <Divider />
                     <MenuItem disabled value=''>IPFS</MenuItem>
                     <Divider />
                     {user && loadingSavedCids &&
@@ -263,7 +263,7 @@ export default function TopBannerSearchRevised(props) {
                     {!loading && savedCids && savedCids.map(obj =>
                       <MenuItem key={obj.id} value={obj.id}>{obj.emoji} {obj.title}</MenuItem>
                     )}
-                    <MenuItem key='addNew' value={{ addNew: true }}>+ Add New CID</MenuItem>
+                    <MenuItem key='addNew' value={{ addNew: true }}>+ Add New CID</MenuItem> */}
                   </Select>
                 </FormControl>
               </Grid>
@@ -351,7 +351,7 @@ export default function TopBannerSearchRevised(props) {
                     {(loading) ? <MenuItem key="loading" value="loading" disabled>Loading...</MenuItem> : shows.map((item) => (
                       <MenuItem key={item.id} value={item.id}>{item.emoji} {item.title}</MenuItem>
                     ))}
-                    <Divider />
+                    {/* <Divider />
                     <MenuItem disabled value=''>IPFS</MenuItem>
                     <Divider />
                     {user && loadingSavedCids &&
@@ -360,7 +360,7 @@ export default function TopBannerSearchRevised(props) {
                     {!loading && savedCids && savedCids.map(obj =>
                       <MenuItem key={obj.id} value={obj.id}>{obj.emoji} {obj.title}</MenuItem>
                     )}
-                    <MenuItem key='addNew' value={{ addNew: true }}>+ Add New CID</MenuItem>
+                    <MenuItem key='addNew' value={{ addNew: true }}>+ Add New CID</MenuItem> */}
                   </Select>
                 </FormControl>
                 </Grid>
@@ -474,7 +474,7 @@ export default function TopBannerSearchRevised(props) {
                     {(loading) ? <MenuItem key="loading" value="loading" disabled>Loading...</MenuItem> : shows.map((item) => (
                       <MenuItem key={item.id} value={item.id}>{item.emoji} {item.title}</MenuItem>
                     ))}
-                    <Divider />
+                    {/* <Divider />
                     <MenuItem disabled value=''>IPFS</MenuItem>
                     <Divider />
                     {user && loadingSavedCids &&
@@ -483,7 +483,7 @@ export default function TopBannerSearchRevised(props) {
                     {!loading && savedCids && savedCids.map(obj =>
                       <MenuItem key={obj.id} value={obj.id}>{obj.emoji} {obj.title}</MenuItem>
                     )}
-                    <MenuItem key='addNew' value={{ addNew: true }}>+ Add New CID</MenuItem>
+                    <MenuItem key='addNew' value={{ addNew: true }}>+ Add New CID</MenuItem> */}
                   </Select>
                 </FormControl>
                 </Grid>
@@ -583,16 +583,16 @@ export default function TopBannerSearchRevised(props) {
                     {(loading) ? <MenuItem key="loading" value="loading" disabled>Loading...</MenuItem> : shows.map((item) => (
                       <MenuItem key={item.id} value={item.id}>{item.emoji} {item.title}</MenuItem>
                     ))}
-                    <Divider />
+                    {/* <Divider />
                     <MenuItem disabled value=''>IPFS</MenuItem>
-                    <Divider />
-                    {user && loadingSavedCids &&
+                    <Divider /> */}
+                    {/* {user && loadingSavedCids &&
                       <MenuItem value='' disabled>Loading saved CIDs...</MenuItem>
                     }
                     {!loading && savedCids && savedCids.map(obj =>
                       <MenuItem key={obj.id} value={obj.id}>{obj.emoji} {obj.title}</MenuItem>
                     )}
-                    <MenuItem key='addNew' value={{ addNew: true }}>+ Add New CID</MenuItem>
+                    <MenuItem key='addNew' value={{ addNew: true }}>+ Add New CID</MenuItem> */}
                   </Select>
                 </FormControl>
                 </Grid>
@@ -632,7 +632,7 @@ export default function TopBannerSearchRevised(props) {
 
       {pathname.startsWith("/episode") &&
         <>
-          <Container maxWidth disableGutters sx={{ mt: isMobile ? 8 : 0 }}>
+          <Container maxWidth disableGutters sx={{ mt: isMobile ? 8 : 8 }}>
             <StyledHeader>
               <Grid container mb={1.5} mt={0} paddingX={2}>
                 <Grid item xs={12} md={6} paddingLeft={{ xs: 0, md: 2 }}>
@@ -684,7 +684,7 @@ export default function TopBannerSearchRevised(props) {
                     {(loading) ? <MenuItem key="loading" value="loading" disabled>Loading...</MenuItem> : shows.map((item) => (
                       <MenuItem key={item.id} value={item.id}>{item.emoji} {item.title}</MenuItem>
                     ))}
-                    <Divider />
+                    {/* <Divider />
                     <MenuItem disabled value=''>IPFS</MenuItem>
                     <Divider />
                     {user && loadingSavedCids &&
@@ -693,7 +693,7 @@ export default function TopBannerSearchRevised(props) {
                     {!loading && savedCids && savedCids.map(obj =>
                       <MenuItem key={obj.id} value={obj.id}>{obj.emoji} {obj.title}</MenuItem>
                     )}
-                    <MenuItem key='addNew' value={{ addNew: true }}>+ Add New CID</MenuItem>
+                    <MenuItem key='addNew' value={{ addNew: true }}>+ Add New CID</MenuItem> */}
                   </Select>
                 </FormControl>
                 </Grid>

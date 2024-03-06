@@ -575,12 +575,12 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                       </option>
                     ))
                   )}
-                  <option disabled value=''>IPFS</option>
+                  {/* <option disabled value=''>IPFS</option>
                   {user && loadingSavedCids && <option disabled value=''>Loading saved CIDs...</option>}
                   {!loading && savedCids && savedCids.map(obj =>
                     <option key={obj.id} value={obj.id}>{obj.emoji} {obj.title}</option>
                   )}
-                  <option key='addNew' value='addNewCid'>+ Add New CID</option>
+                  <option key='addNew' value='addNewCid'>+ Add New CID</option> */}
                 </StyledSearchSelector>
               </Grid>
               <Grid item sm={7} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
