@@ -46,33 +46,33 @@ export async function extractFramesFromVideo(videoUrl, frameNumbers, assumedFps 
       
       const captureFrame = (frameIndex) => {
         const frameTime = frameIndex / assumedFps;
-        console.log("frameTime", frameTime)
+        console.log("frameTime", frameTime);
         video.currentTime = frameTime;
-        video.pause();
       };
-
+    
       video.addEventListener('seeked', async () => {
-        console.log('CURRENT TIME: ', video.currentTime)
-        if (currentFrameIndex < frameNumbers.length) {
-          context.drawImage(video, 0, 0, canvas.width, canvas.height);
-          canvas.toBlob((blob) => {
-            const objUrl = URL.createObjectURL(blob);
-            blobs.push(objUrl);
-            currentFrameIndex += 1;
-            if (currentFrameIndex < frameNumbers.length) {
-              captureFrame(frameNumbers[currentFrameIndex]);
-            } else {
-              // Once all frames are extracted, pause the video
-              video.pause();
-              resolve(blobs);
-            }
-          }, 'image/jpeg');
-        }
+        setTimeout(async () => { // Add a delay to give the frame time to "load"
+          video.pause();
+          console.log('CURRENT TIME: ', video.currentTime);
+          if (currentFrameIndex < frameNumbers.length) {
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            canvas.toBlob((blob) => {
+              const objUrl = URL.createObjectURL(blob);
+              blobs.push(objUrl);
+              currentFrameIndex += 1;
+              if (currentFrameIndex < frameNumbers.length) {
+                captureFrame(frameNumbers[currentFrameIndex]);
+              } else {
+                resolve(blobs);
+              }
+            }, 'image/jpeg');
+          }
+        }, 100);
       });
-
+    
       // Start capturing frames
       captureFrame(frameNumbers[currentFrameIndex] - 1);
-    });
+    });    
 
     video.addEventListener('error', (e) => {
       reject(new Error('Error loading video'));
