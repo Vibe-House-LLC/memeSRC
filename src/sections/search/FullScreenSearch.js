@@ -229,9 +229,12 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   const [currentThemeBragText, setCurrentThemeBragText] = useState(metadata?.frameCount ? `Search over ${metadata?.frameCount.toLocaleString('en-US')} frames from ${metadata?.title}` : defaultBragText);
   const [currentThemeTitleText, setCurrentThemeTitleText] = useState(metadata?.title || defaultTitleText);
   const [currentThemeFontColor, setCurrentThemeFontColor] = useState(metadata?.colorSecondary || defaultFontColor);
-  const [currentThemeBackground, setCurrentThemeBackground] = useState({
-    backgroundImage: metadata?.colorMain || defaultBackground,
-  });
+  const [currentThemeBackground, setCurrentThemeBackground] = useState(metadata?.colorMain ? { backgroundColor: `${metadata?.colorMain}`}
+  :
+  {
+    backgroundImage: defaultBackground,
+  } 
+  );
 
   const { sectionIndex, seriesId } = useParams();
 
@@ -254,6 +257,10 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
     //   navigate('/')
     // }
   }, [shows, savedCids]);
+
+  useEffect(() => {
+    console.log(metadata)
+  }, [metadata]);
 
   // This useEffect handles the data fetching
   useEffect(() => {
