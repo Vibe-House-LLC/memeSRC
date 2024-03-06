@@ -67,7 +67,7 @@ export async function extractFramesFromVideo(videoUrl, frameNumbers, assumedFps 
               }
             }, 'image/jpeg');
           }
-        }, 100);
+        }, 200);
       });
     
       // Start capturing frames
