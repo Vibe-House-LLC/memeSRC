@@ -16,6 +16,7 @@ import HomePageSection from './HomePageSection';
 import HomePageBannerAd from '../../ads/HomePageBannerAd';
 import useSearchDetailsV2 from '../../hooks/useSearchDetailsV2';
 import AddCidPopup from '../../components/ipfs/add-cid-popup';
+import fetchShows from '../../utils/fetchShows';
 
 /* --------------------------------- GraphQL -------------------------------- */
 
@@ -179,51 +180,6 @@ const StyledRightFooter = styled('footer')`
   z-index: 1300;
 `;
 
-async function fetchShows() {
-  const result = await API.graphql({
-    ...graphqlOperation(contentMetadataByStatus, { filter: {}, limit: 50, status: 1 }),
-    authMode: 'API_KEY',
-  });
-  const aliases = await API.graphql({
-    ...graphqlOperation(listAliases, { filter: {}, limit: 50 }),
-    authMode: 'API_KEY',
-  });
-
-  const loadedV1Shows = result?.data?.contentMetadataByStatus?.items || [];
-  let loadedV2Shows = aliases?.data?.listAliases?.items || [];
-
-  const usedV2ShowIds = [];
-
-  const combinedShows = loadedV1Shows.map(v1Show => {
-    const foundIndex = loadedV2Shows.findIndex(obj => obj.id === v1Show.id);
-    if (foundIndex > -1) {
-      const foundReplacement = loadedV2Shows[foundIndex];
-      usedV2ShowIds.push(foundReplacement.id);
-      return { ...foundReplacement.v2ContentMetadata, id: foundReplacement.id, cid: foundReplacement.v2ContentMetadata.id };
-    }
-    return v1Show;
-  });
-
-  // Remove used V2 shows from the loadedV2Shows array
-  loadedV2Shows = loadedV2Shows.filter(obj => !usedV2ShowIds.includes(obj.id));
-
-  // Combine the remaining V2 shows with the combinedShows
-  const finalShows = [...combinedShows, ...loadedV2Shows.map(v2Show => ({
-    ...v2Show.v2ContentMetadata,
-    id: v2Show.id,
-    cid: v2Show.v2ContentMetadata.id
-  }))];
-
-  // Sort the final list of shows by title
-  const sortedMetadata = finalShows.sort((a, b) => {
-    if (a.title < b.title) return -1;
-    if (a.title > b.title) return 1;
-    return 0;
-  });
-
-  return sortedMetadata;
-}
-
 async function fetchSections() {
   const result = await API.graphql({
     ...graphqlOperation(listHomepageSections, { filter: {}, limit: 10 }),
@@ -253,7 +209,7 @@ const defaultBackground = `linear-gradient(45deg,
   #00ab84 0, #00ab84 87.5% /* 7*12.5% */,
   #00a3e0 0)`;
 
-export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction, shows, setShows }) {
+export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction, shows, setShows, metadata }) {
   const { localCids, setLocalCids, savedCids, cid, setCid, searchQuery: cidSearchQuery, setSearchQuery: setCidSearchQuery, setShowObj, loadingSavedCids } = useSearchDetailsV2()
   const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -263,18 +219,22 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   const isMd = useMediaQuery((theme) => theme.breakpoints.up('sm'));
   const [addNewCidOpen, setAddNewCidOpen] = useState(false);
   const { user, setUser } = useContext(UserContext);
+  const { pathname } = useLocation();
 
   const [alertOpen, setAlertOpen] = useState(true);
 
   const location = useLocation();
 
   // Theme States
-  const [currentThemeBragText, setCurrentThemeBragText] = useState(defaultBragText);
-  const [currentThemeTitleText, setCurrentThemeTitleText] = useState(defaultTitleText);
-  const [currentThemeFontColor, setCurrentThemeFontColor] = useState(defaultFontColor);
-  const [currentThemeBackground, setCurrentThemeBackground] = useState({
+  const [currentThemeBragText, setCurrentThemeBragText] = useState(metadata?.frameCount ? `Search over ${metadata?.frameCount.toLocaleString('en-US')} frames from ${metadata?.title}` : defaultBragText);
+  const [currentThemeTitleText, setCurrentThemeTitleText] = useState(metadata?.title || defaultTitleText);
+  const [currentThemeFontColor, setCurrentThemeFontColor] = useState(metadata?.colorSecondary || defaultFontColor);
+  const [currentThemeBackground, setCurrentThemeBackground] = useState(metadata?.colorMain ? { backgroundColor: `${metadata?.colorMain}`}
+  :
+  {
     backgroundImage: defaultBackground,
-  });
+  } 
+  );
 
   const { sectionIndex, seriesId } = useParams();
 
@@ -284,18 +244,23 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   const handleChangeSeries = useCallback((newSeriesTitle) => {
     const selectedSeriesProperties = shows.find((object) => object.id === newSeriesTitle) || savedCids.find((object) => object.id === newSeriesTitle);
 
-    if (selectedSeriesProperties) {
-      setCurrentThemeBackground({ backgroundColor: `${selectedSeriesProperties.colorMain}` });
-      setCurrentThemeFontColor(selectedSeriesProperties.colorSecondary);
-      setCurrentThemeTitleText(selectedSeriesProperties.title);
-      setCurrentThemeBragText(
-        `Search over ${selectedSeriesProperties.frameCount.toLocaleString('en-US')} frames from ${selectedSeriesProperties.title
-        }`
-      );
-    } else {
+    if (!selectedSeriesProperties) {
+      // setCurrentThemeBackground({ backgroundColor: `${selectedSeriesProperties.colorMain}` });
+      // setCurrentThemeFontColor(selectedSeriesProperties.colorSecondary);
+      // setCurrentThemeTitleText(selectedSeriesProperties.title);
+      // setCurrentThemeBragText(
+      //   `Search over ${selectedSeriesProperties.frameCount.toLocaleString('en-US')} frames from ${selectedSeriesProperties.title}`
+      // );
       navigate('/')
     }
+    // else {
+    //   navigate('/')
+    // }
   }, [shows, savedCids]);
+
+  useEffect(() => {
+    console.log(metadata)
+  }, [metadata]);
 
   // This useEffect handles the data fetching
   useEffect(() => {
@@ -507,12 +472,14 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
 
 
     return () => {
-      setCid(null)
-      setShowObj(null)
-      setSearchQuery(null)
-      console.log('Unset CID')
+      if (pathname === '/') {
+        setCid(null)
+        setShowObj(null)
+        setSearchQuery(null)
+        console.log('Unset CID')
+      }
     }
-  }, []);
+  }, [pathname]);
 
   return (
     <>

@@ -21,7 +21,7 @@ const prepSessionID = async () => {
   }
 };
 
-export default function SearchPage() {
+export default function SearchPage({ metadata }) {
   const { setSearchQuery } = useSearchDetails();
   const [searchTerm, setSearchTerm] = useState('');
   const [seriesTitle, setSeriesTitle] = useState('_universal');
@@ -73,6 +73,7 @@ export default function SearchPage() {
         seriesTitle={seriesTitle}
         shows={shows}
         setShows={setShows}
+        metadata={metadata}
       />
     </>
   );
