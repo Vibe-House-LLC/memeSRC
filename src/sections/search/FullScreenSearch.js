@@ -17,6 +17,7 @@ import HomePageBannerAd from '../../ads/HomePageBannerAd';
 import useSearchDetailsV2 from '../../hooks/useSearchDetailsV2';
 import AddCidPopup from '../../components/ipfs/add-cid-popup';
 import fetchShows from '../../utils/fetchShows';
+import useLoadRandomFrame from '../../utils/loadRandomFrame';
 
 /* --------------------------------- GraphQL -------------------------------- */
 
@@ -213,13 +214,14 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   const { localCids, setLocalCids, savedCids, cid, setCid, searchQuery: cidSearchQuery, setSearchQuery: setCidSearchQuery, setShowObj, loadingSavedCids } = useSearchDetailsV2()
   const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [loadingRandom, setLoadingRandom] = useState(false);
+  // const [loadingRandom, setLoadingRandom] = useState(false);
   const [scrollToSections, setScrollToSections] = useState();
   const { show, setShow, searchQuery, setSearchQuery } = useSearchDetails();
   const isMd = useMediaQuery((theme) => theme.breakpoints.up('sm'));
   const [addNewCidOpen, setAddNewCidOpen] = useState(false);
   const { user, setUser } = useContext(UserContext);
   const { pathname } = useLocation();
+  const { loadRandomFrame, loadingRandom, error } = useLoadRandomFrame();
 
   const [alertOpen, setAlertOpen] = useState(true);
 
@@ -299,7 +301,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
 
 
   useEffect(() => {
-    document.addEventListener('scroll', () => {
+    const handleScroll = () => {
       // Find the height of the entire document
       const { body } = document;
       const html = document.documentElement;
@@ -349,7 +351,15 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
           }
         });
       });
-    });
+    };
+
+    // Add event listener
+    document.addEventListener('scroll', handleScroll);
+
+    // Return a cleanup function to remove the event listener
+    return () => {
+      document.removeEventListener('scroll', handleScroll);
+    };
   }, []);
 
   useEffect(() => {
@@ -406,32 +416,32 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       });
   };
 
-  const loadRandomFrame = useCallback(() => {
-    setLoadingRandom(true);
-    getSessionID().then((sessionId) => {
-      const apiName = 'publicapi';
-      const path = '/random';
-      const myInit = {
-        queryStringParameters: {
-          series: show,
-          sessionId,
-        },
-      };
+  // const loadRandomFrame = useCallback(() => {
+  //   setLoadingRandom(true);
+  //   getSessionID().then((sessionId) => {
+  //     const apiName = 'publicapi';
+  //     const path = '/random';
+  //     const myInit = {
+  //       queryStringParameters: {
+  //         series: show,
+  //         sessionId,
+  //       },
+  //     };
 
-      API.get(apiName, path, myInit)
-        .then((response) => {
-          const fid = response.frame_id;
-          console.log(fid);
-          navigate(`/frame/${fid}`);
-          setSearchQuery(null)
-          setLoadingRandom(false);
-        })
-        .catch((error) => {
-          console.error(error);
-          setLoadingRandom(false);
-        });
-    });
-  }, [navigate, seriesTitle]);
+  //     API.get(apiName, path, myInit)
+  //       .then((response) => {
+  //         const fid = response.frame_id;
+  //         console.log(fid);
+  //         navigate(`/frame/${fid}`);
+  //         setSearchQuery(null)
+  //         setLoadingRandom(false);
+  //       })
+  //       .catch((error) => {
+  //         console.error(error);
+  //         setLoadingRandom(false);
+  //       });
+  //   });
+  // }, [navigate, seriesTitle]);
 
   // useEffect(() => {
   //   // Function to check and parse the local storage value
@@ -678,7 +688,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
         </StyledLeftFooter>
         <StyledRightFooter className="bottomBtn">
           <StyledButton
-            onClick={loadRandomFrame}
+            onClick={() => { loadRandomFrame(show) }}
             loading={loadingRandom}
             startIcon={<Shuffle />}
             variant="contained"

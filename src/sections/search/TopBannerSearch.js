@@ -13,6 +13,7 @@ import useSearchDetailsV2 from "../../hooks/useSearchDetailsV2";
 import AddCidPopup from "../../components/ipfs/add-cid-popup";
 import { UserContext } from "../../UserContext";
 import fetchShows from "../../utils/fetchShows";
+import useLoadRandomFrame from "../../utils/loadRandomFrame";
 
 // Define constants for colors and fonts
 const PRIMARY_COLOR = '#4285F4';
@@ -88,7 +89,7 @@ export default function TopBannerSearch(props) {
   const { show, setShow, searchQuery, setSearchQuery } = useSearchDetails();
   const [shows, setShows] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [loadingRandom, setLoadingRandom] = useState(false);
+  const { loadRandomFrame, loadingRandom, error } = useLoadRandomFrame();
   const { searchTerm, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction, resultsLoading } = props
   const { savedCids, loadingSavedCids } = useSearchDetailsV2();
   const [addNewCidOpen, setAddNewCidOpen] = useState(false);
@@ -131,32 +132,6 @@ export default function TopBannerSearch(props) {
         throw err;
       });
   };
-
-  const loadRandomFrame = useCallback(() => {
-    setLoadingRandom(true);
-    getSessionID().then(sessionId => {
-      const apiName = 'publicapi';
-      const path = '/random';
-      const myInit = {
-        queryStringParameters: {
-          series: show,
-          sessionId
-        }
-      }
-
-      API.get(apiName, path, myInit)
-        .then(response => {
-          const fid = response.frame_id;
-          console.log(fid)
-          navigate(`/frame/${fid}`);
-          setLoadingRandom(false);
-        })
-        .catch(error => {
-          console.error(error);
-          setLoadingRandom(false);
-        });
-    })
-  }, [navigate, seriesTitle]);
 
   const handleSelectSeries = (data) => {
     if (data?.addNew) {
@@ -274,7 +249,7 @@ export default function TopBannerSearch(props) {
         </a>
       </StyledLeftFooter>
       <StyledRightFooter className="bottomBtn">
-        <StyledButton onClick={loadRandomFrame} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
+        <StyledButton onClick={() => { loadRandomFrame(show) }} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
       </StyledRightFooter>
       <AddCidPopup open={addNewCidOpen} setOpen={setAddNewCidOpen} />
     </>
