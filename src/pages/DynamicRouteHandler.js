@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
 import { API, graphqlOperation } from 'aws-amplify';
+import { CircularProgress } from '@mui/material';
 import { getAlias, getContentMetadata, getV2ContentMetadata } from '../graphql/queries'; // Import the getContentMetadata
 import SeriesPage from './SeriesPage';
 import HomePage from './HomePage';
@@ -11,6 +12,7 @@ const DynamicRouteHandler = () => {
   const [loading, setLoading] = useState(true);
   const [metadata, setMetadata] = useState(null);
   const { loadingSavedCids } = useSearchDetailsV2();
+  const [error, setError] = useState(false);
 
   useEffect(() => {
 
@@ -33,6 +35,8 @@ const DynamicRouteHandler = () => {
     // fetchContentMetadata();
 
     // First lets try to grab the metadata from v2
+    setMetadata()
+    setError(false)
     API.graphql({
       query: getAlias,
       variables: { id: seriesId },
@@ -65,22 +69,31 @@ const DynamicRouteHandler = () => {
                 setLoading(false)
               } else {
                 setLoading(false)
+                setError(true)
               }
             }).catch(error => {
               console.log(error)
               setLoading(false)
+              setError(true)
             })
           }
         }).catch(error => {
           console.log(error)
           setLoading(false)
+          setError(true)
         })
       }
     }).catch(error => {
       console.log(error)
       setLoading(false)
+      setError(true)
     })
   }, [seriesId]);
+
+  useEffect(() => {
+    console.log('LOADING: ', loading)
+    console.log('LOADING SAVED CIDS', loadingSavedCids)
+  }, [loading, loadingSavedCids]);
 
   if (loading || loadingSavedCids) {
     return <div>Loading...</div>;
@@ -88,10 +101,10 @@ const DynamicRouteHandler = () => {
 
   if (metadata) {
     // return <SeriesPage seriesData={seriesData} />; // Pass seriesData as prop to SeriesPage
-    return <HomePage />
+    return <HomePage metadata={metadata} />
   }
-
-  return <Navigate to="/404" replace />;
+  
+  return error ? <Navigate to="/404" replace /> : <center><CircularProgress /></center>;
 };
 
 export default DynamicRouteHandler;

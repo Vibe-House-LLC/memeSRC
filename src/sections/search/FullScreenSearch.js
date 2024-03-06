@@ -209,7 +209,7 @@ const defaultBackground = `linear-gradient(45deg,
   #00ab84 0, #00ab84 87.5% /* 7*12.5% */,
   #00a3e0 0)`;
 
-export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction, shows, setShows }) {
+export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction, shows, setShows, metadata }) {
   const { localCids, setLocalCids, savedCids, cid, setCid, searchQuery: cidSearchQuery, setSearchQuery: setCidSearchQuery, setShowObj, loadingSavedCids } = useSearchDetailsV2()
   const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -219,17 +219,18 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   const isMd = useMediaQuery((theme) => theme.breakpoints.up('sm'));
   const [addNewCidOpen, setAddNewCidOpen] = useState(false);
   const { user, setUser } = useContext(UserContext);
+  const { pathname } = useLocation();
 
   const [alertOpen, setAlertOpen] = useState(true);
 
   const location = useLocation();
 
   // Theme States
-  const [currentThemeBragText, setCurrentThemeBragText] = useState(defaultBragText);
-  const [currentThemeTitleText, setCurrentThemeTitleText] = useState(defaultTitleText);
-  const [currentThemeFontColor, setCurrentThemeFontColor] = useState(defaultFontColor);
+  const [currentThemeBragText, setCurrentThemeBragText] = useState(metadata?.frameCount ? `Search over ${metadata?.frameCount.toLocaleString('en-US')} frames from ${metadata?.title}` : defaultBragText);
+  const [currentThemeTitleText, setCurrentThemeTitleText] = useState(metadata?.title || defaultTitleText);
+  const [currentThemeFontColor, setCurrentThemeFontColor] = useState(metadata?.colorSecondary || defaultFontColor);
   const [currentThemeBackground, setCurrentThemeBackground] = useState({
-    backgroundImage: defaultBackground,
+    backgroundImage: metadata?.colorMain || defaultBackground,
   });
 
   const { sectionIndex, seriesId } = useParams();
@@ -240,17 +241,18 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   const handleChangeSeries = useCallback((newSeriesTitle) => {
     const selectedSeriesProperties = shows.find((object) => object.id === newSeriesTitle) || savedCids.find((object) => object.id === newSeriesTitle);
 
-    if (selectedSeriesProperties) {
-      setCurrentThemeBackground({ backgroundColor: `${selectedSeriesProperties.colorMain}` });
-      setCurrentThemeFontColor(selectedSeriesProperties.colorSecondary);
-      setCurrentThemeTitleText(selectedSeriesProperties.title);
-      setCurrentThemeBragText(
-        `Search over ${selectedSeriesProperties.frameCount.toLocaleString('en-US')} frames from ${selectedSeriesProperties.title
-        }`
-      );
-    } else {
+    if (!selectedSeriesProperties) {
+      // setCurrentThemeBackground({ backgroundColor: `${selectedSeriesProperties.colorMain}` });
+      // setCurrentThemeFontColor(selectedSeriesProperties.colorSecondary);
+      // setCurrentThemeTitleText(selectedSeriesProperties.title);
+      // setCurrentThemeBragText(
+      //   `Search over ${selectedSeriesProperties.frameCount.toLocaleString('en-US')} frames from ${selectedSeriesProperties.title}`
+      // );
       navigate('/')
     }
+    // else {
+    //   navigate('/')
+    // }
   }, [shows, savedCids]);
 
   // This useEffect handles the data fetching
@@ -463,12 +465,14 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
 
 
     return () => {
-      setCid(null)
-      setShowObj(null)
-      setSearchQuery(null)
-      console.log('Unset CID')
+      if (pathname === '/') {
+        setCid(null)
+        setShowObj(null)
+        setSearchQuery(null)
+        console.log('Unset CID')
+      }
     }
-  }, []);
+  }, [pathname]);
 
   return (
     <>
