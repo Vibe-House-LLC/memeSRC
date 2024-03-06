@@ -35,67 +35,71 @@ const DynamicRouteHandler = () => {
     // fetchContentMetadata();
 
     // First lets try to grab the metadata from v2
-    setMetadata()
-    setError(false)
-    API.graphql({
-      query: getAlias,
-      variables: { id: seriesId },
-      authMode: 'API_KEY'
-    }).then(aliasResponse => {
-      if (aliasResponse?.data?.getAlias?.v2ContentMetadata) {
-        console.log('METADATA LOADED FROM ALIAS')
-        setMetadata(aliasResponse?.data?.getAlias?.v2ContentMetadata)
-        setLoading(false)
-      } else {
-        API.graphql({
-          query: getV2ContentMetadata,
-          variables: { id: seriesId },
-          authMode: 'API_KEY',
-        }).then(response => {
-          if (response?.data?.getV2ContentMetadata) {
-            console.log('METADATA LOADED FROM CID')
-            setMetadata(response?.data?.getV2ContentMetadata)
-            setLoading(false)
-          } else {
-            // That wasn't there, so lets check V2
-            API.graphql({
-              query: getContentMetadata,
-              variables: { id: seriesId },
-              authMode: 'API_KEY',
-            }).then(response => {
-              if (response?.data?.getContentMetadata) {
-                console.log('METADATA LOADED FROM V1 METADATA')
-                setMetadata(response?.data?.getContentMetadata)
-                setLoading(false)
-              } else {
+    console.log(seriesId)
+    if (seriesId) {
+      setLoading(true)
+      setError(false)
+      API.graphql({
+        query: getAlias,
+        variables: { id: seriesId },
+        authMode: 'API_KEY'
+      }).then(aliasResponse => {
+        if (aliasResponse?.data?.getAlias?.v2ContentMetadata) {
+          console.log('METADATA LOADED FROM ALIAS')
+          setMetadata(aliasResponse?.data?.getAlias?.v2ContentMetadata)
+          setLoading(false)
+        } else {
+          API.graphql({
+            query: getV2ContentMetadata,
+            variables: { id: seriesId },
+            authMode: 'API_KEY',
+          }).then(response => {
+            if (response?.data?.getV2ContentMetadata) {
+              console.log('METADATA LOADED FROM CID')
+              setMetadata(response?.data?.getV2ContentMetadata)
+              setLoading(false)
+            } else {
+              // That wasn't there, so lets check V2
+              API.graphql({
+                query: getContentMetadata,
+                variables: { id: seriesId },
+                authMode: 'API_KEY',
+              }).then(response => {
+                if (response?.data?.getContentMetadata) {
+                  console.log('METADATA LOADED FROM V1 METADATA')
+                  setMetadata(response?.data?.getContentMetadata)
+                  setLoading(false)
+                } else {
+                  setLoading(false)
+                  setError(true)
+                }
+              }).catch(error => {
+                console.log(error)
                 setLoading(false)
                 setError(true)
-              }
-            }).catch(error => {
-              console.log(error)
-              setLoading(false)
-              setError(true)
-            })
-          }
-        }).catch(error => {
-          console.log(error)
-          setLoading(false)
-          setError(true)
-        })
-      }
-    }).catch(error => {
-      console.log(error)
-      setLoading(false)
-      setError(true)
-    })
+              })
+            }
+          }).catch(error => {
+            console.log(error)
+            setLoading(false)
+            setError(true)
+          })
+        }
+      }).catch(error => {
+        console.log(error)
+        setLoading(false)
+        setError(true)
+      })
+    }
   }, [seriesId]);
 
   useEffect(() => {
-    console.log('LOADING: ', loading)
-    console.log('LOADING SAVED CIDS', loadingSavedCids)
-  }, [loading, loadingSavedCids]);
+    // console.log('LOADING: ', loading)
+    // console.log('LOADING SAVED CIDS', loadingSavedCids)
+    // console.log('METADATA: ', metadata)
+  }, [loading, loadingSavedCids, metadata]);
 
-  if (loading || loadingSavedCids) {
+  if (loading) {
     return <div>Loading...</div>;
   }
 
@@ -103,7 +107,7 @@ const DynamicRouteHandler = () => {
     // return <SeriesPage seriesData={seriesData} />; // Pass seriesData as prop to SeriesPage
     return <HomePage metadata={metadata} />
   }
-  
+
   return error ? <Navigate to="/404" replace /> : <center><CircularProgress /></center>;
 };
 
