@@ -81,6 +81,7 @@ export default function FramePage({ shows = [] }) {
   const [fontSizeScaleFactor, setFontSizeScaleFactor] = useState(1);
   const [fontLineHeightScaleFactor, setFontLineHeightScaleFactor] = useState(1);
   const [fontBottomMarginScaleFactor, setFontBottomMarginScaleFactor] = useState(1);
+  const [enableFineTuningFrames, setEnableFineTuningFrames] = useState(false);
 
   /* ---------- This is used to prevent slider activity while scrolling on mobile ---------- */
 
@@ -302,17 +303,7 @@ export default function FramePage({ shows = [] }) {
         }
       };
 
-      const loadFineTuningFrames = async () => {
-        try {
-          // Since fetchFramesFineTuning now expects an array, calculate the array of indexes for fine-tuning
-          const fineTuningFrames = await fetchFramesFineTuning(confirmedCid, season, episode, frame);
-          setFineTuningFrames(fineTuningFrames);
-          setFrames(fineTuningFrames);
-          console.log("Fine Tuning Frames: ", fineTuningFrames);
-        } catch (error) {
-          console.error("Failed to fetch fine tuning frames:", error);
-        }
-      };
+
 
       const loadSurroundingSubtitles = async () => {
         try {
@@ -375,12 +366,25 @@ export default function FramePage({ shows = [] }) {
 
       // Call the loading functions
       loadInitialFrameInfo().then(() => {
-        loadFineTuningFrames(); // Load fine-tuning frames
+        // loadFineTuningFrames(); // Load fine-tuning frames
         loadSurroundingSubtitles(); // Load surrounding subtitles
         loadSurroundingFrames(); // Load surrounding frames
       });
     }
   }, [confirmedCid, season, episode, frame]);
+
+
+  const loadFineTuningFrames = async () => {
+    try {
+      // Since fetchFramesFineTuning now expects an array, calculate the array of indexes for fine-tuning
+      const fineTuningFrames = await fetchFramesFineTuning(confirmedCid, season, episode, frame);
+      setFineTuningFrames(fineTuningFrames);
+      setFrames(fineTuningFrames);
+      console.log("Fine Tuning Frames: ", fineTuningFrames);
+    } catch (error) {
+      console.error("Failed to fetch fine tuning frames:", error);
+    }
+  };
 
 
   function frameToTimeCode(frame, frameRate = 10) {
@@ -498,34 +502,58 @@ export default function FramePage({ shows = [] }) {
             <ArrowForwardIos style={{ fontSize: '2rem' }} />
           </IconButton>
         </div>
-
-        {frames && frames?.length > 0 ?
-          <Stack spacing={2} direction="row" p={0} pr={3} pl={3} alignItems={'center'}>
-            <Tooltip title="Fine Tuning">
-              <IconButton>
-                <HistoryToggleOffRounded alt="Fine Tuning" />
-              </IconButton>
-            </Tooltip>
-            <Slider
-              size="small"
-              defaultValue={selectedFrameIndex || Math.floor(frames.length / 2)}
-              min={0}
-              max={frames.length - 1}
-              value={selectedFrameIndex}
-              step={1}
-              onChange={(e, newValue) => handleSliderChange(newValue)}
-              valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
-              marks
-            />
-          </Stack>
+        {enableFineTuningFrames ?
+          <>
+            {frames && frames?.length > 0 ?
+              <Stack spacing={2} direction="row" p={0} pr={3} pl={3} alignItems={'center'}>
+                <Tooltip title="Fine Tuning">
+                  <IconButton>
+                    <HistoryToggleOffRounded alt="Fine Tuning" />
+                  </IconButton>
+                </Tooltip>
+                <Slider
+                  size="small"
+                  defaultValue={selectedFrameIndex || Math.floor(frames.length / 2)}
+                  min={0}
+                  max={frames.length - 1}
+                  value={selectedFrameIndex}
+                  step={1}
+                  onChange={(e, newValue) => handleSliderChange(newValue)}
+                  valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
+                  marks
+                />
+              </Stack>
+              :
+              <Stack spacing={2} direction="row" py={1.1} justifyContent='center' alignItems={'center'}>
+                <CircularProgress color='success' size={14} />
+                <Typography variant='body2'>
+                  Loading fine tuning frames...
+                </Typography>
+              </Stack>
+            }
+          </>
           :
-          <Stack spacing={2} direction="row" py={1.1} justifyContent='center' alignItems={'center'}>
-            <CircularProgress color='success' size={14} />
-            <Typography variant='body2'>
-              Loading fine tuning frames...
-            </Typography>
-          </Stack>
+          <>
+            <center>
+              <Button
+                size='small'
+                variant='success'
+                sx={{
+                  fontSize: 12,
+                  py: 0.3,
+                  my: 1
+                }}
+                onClick={() => {
+                  loadFineTuningFrames();
+                  setEnableFineTuningFrames(true)
+                }}
+              >
+                Load Fine Tuning Frames
+              </Button>
+            </center>
+          </>
         }
+
       </>
     );
   };

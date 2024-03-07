@@ -248,7 +248,12 @@ export default function SearchPage() {
     }
 
     if (!loadingCsv && showObj) {
-      searchText();
+      if (params?.searchTerms) {
+        searchText();
+      } else {
+        setLoadingResults(false)
+        setNewResults([])
+      }
     }
   }, [loadingCsv, showObj, params?.searchTerms]);
 

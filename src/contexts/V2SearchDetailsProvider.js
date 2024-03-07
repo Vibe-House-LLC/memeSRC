@@ -19,7 +19,7 @@ export const V2SearchDetailsProvider = ({ children }) => {
     const [savedCids, setSavedCids] = useState([]);
     const [showObj, setShowObj] = useState();
     const [selectedFrameIndex, setSelectedFrameIndex] = useState();
-    const [loadingSavedCids, setLoadingSavedCids] = useState(true);
+    const [loadingSavedCids, setLoadingSavedCids] = useState(false);
 
     useEffect(() => {
         if (pathname === '/') {
@@ -31,20 +31,20 @@ export const V2SearchDetailsProvider = ({ children }) => {
         }
     }, [pathname])
 
-    useEffect(() => {
-        console.log('USER: ', user)
-        console.log((!savedCids))
-        if (user) {
-            setLoadingSavedCids(true)
-            API.get('publicapi', '/user/update/getSavedMetadata').then(response => {
-                console.log('SAVED METADATA', response)
-                setSavedCids(response)
-                setLoadingSavedCids(false)
-            }).catch(err => console.log(err))
-        } else {
-            setLoadingSavedCids(false)
-        }
-    }, [user]);
+    // useEffect(() => {
+    //     console.log('USER: ', user)
+    //     console.log((!savedCids))
+    //     if (user) {
+    //         setLoadingSavedCids(true)
+    //         API.get('publicapi', '/user/update/getSavedMetadata').then(response => {
+    //             console.log('SAVED METADATA', response)
+    //             setSavedCids(response)
+    //             setLoadingSavedCids(false)
+    //         }).catch(err => console.log(err))
+    //     } else {
+    //         setLoadingSavedCids(false)
+    //     }
+    // }, [user]);
 
     return (
         <V2SearchContext.Provider

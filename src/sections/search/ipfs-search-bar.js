@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { Link, Fab, FormControl, Grid, InputBase, MenuItem, Select, Typography, Divider, Box, Stack, Container } from "@mui/material";
-import { ArrowBack, Favorite, MapsUgc, Search, Shuffle } from "@mui/icons-material";
+import { ArrowBack, Close, Favorite, MapsUgc, Search, Shuffle } from "@mui/icons-material";
 import { API, graphqlOperation } from 'aws-amplify';
 import { useCallback, useContext, useEffect, useState } from "react";
 import { LoadingButton } from "@mui/lab";
@@ -13,6 +13,7 @@ import useSearchDetailsV2 from "../../hooks/useSearchDetailsV2";
 import AddCidPopup from "../../components/ipfs/add-cid-popup";
 import { UserContext } from "../../UserContext";
 import fetchShows from "../../utils/fetchShows";
+import useLoadRandomFrame from "../../utils/loadRandomFrame";
 
 // Define constants for colors and fonts
 const PRIMARY_COLOR = '#4285F4';
@@ -89,10 +90,10 @@ export default function IpfsSearchBar(props) {
   const params = useParams();
   const [shows, setShows] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [loadingRandom, setLoadingRandom] = useState(false);
   const { children } = props
   const { pathname } = useLocation();
-  const { user } = useContext(UserContext)
+  const { user } = useContext(UserContext);
+  const { loadRandomFrame, loadingRandom, error } = useLoadRandomFrame();
 
   /* ----------------------------------- New ---------------------------------- */
 
@@ -186,32 +187,6 @@ export default function IpfsSearchBar(props) {
       });
   };
 
-  const loadRandomFrame = useCallback(() => {
-    setLoadingRandom(true);
-    getSessionID().then(sessionId => {
-      const apiName = 'publicapi';
-      const path = '/random';
-      const myInit = {
-        queryStringParameters: {
-          series: show,
-          sessionId
-        }
-      }
-
-      API.get(apiName, path, myInit)
-        .then(response => {
-          const fid = response.frame_id;
-          console.log(fid)
-          navigate(`/frame/${fid}`);
-          setLoadingRandom(false);
-        })
-        .catch(error => {
-          console.error(error);
-          setLoadingRandom(false);
-        });
-    })
-  }, [navigate]);
-
   const searchFunction = (searchEvent) => {
     searchEvent.preventDefault();
     console.log(search)
@@ -242,7 +217,7 @@ export default function IpfsSearchBar(props) {
                 // InputProps={{
                 //   endAdornment: <InputAdornment position="end"><Typography variant="caption"><Search /></Typography></InputAdornment>,
                 // }}
-                endAdornment={<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} />}
+                endAdornment={<>{search && <Close onClick={() => { setSearch('') }} sx={{cursor: 'pointer', mr: 1}} />}<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} /></>}
                 sx={{ width: '100%' }}
                 value={search}
                 onChange={(e) => {
@@ -289,7 +264,7 @@ export default function IpfsSearchBar(props) {
                 {(loading) ? <MenuItem key="loading" value="loading" disabled>Loading...</MenuItem> : shows.map((item) => (
                   <MenuItem key={item.id} value={item.id}>{item.emoji} {item.title}</MenuItem>
                 ))}
-                <Divider />
+                {/* <Divider />
                 <MenuItem disabled value=''>IPFS</MenuItem>
                 <Divider />
                 {user && loadingSavedCids &&
@@ -298,7 +273,7 @@ export default function IpfsSearchBar(props) {
                 {!loading && savedCids && savedCids.map(obj =>
                   <MenuItem key={obj.id} value={obj.id}>{obj.emoji} {obj.title}</MenuItem>
                 )}
-                <MenuItem key='addNew' value={{ addNew: true }}>+ Add New CID</MenuItem>
+                <MenuItem key='addNew' value={{ addNew: true }}>+ Add New CID</MenuItem> */}
               </Select>
             </FormControl>
           </Grid>
@@ -384,7 +359,7 @@ export default function IpfsSearchBar(props) {
         </a>
       </StyledLeftFooter>
       <StyledRightFooter className="bottomBtn">
-        <StyledButton onClick={loadRandomFrame} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
+        <StyledButton onClick={() => { loadRandomFrame(cid) }} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
       </StyledRightFooter>
       <AddCidPopup open={addNewCidOpen} setOpen={setAddNewCidOpen} />
     </>

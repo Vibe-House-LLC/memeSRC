@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { Box, Button, Container, Divider, Fab, FormControl, Grid, InputBase, Link, MenuItem, Select, Stack, Typography, useMediaQuery } from "@mui/material";
-import { ArrowBack, Favorite, MapsUgc, Search, Shuffle } from "@mui/icons-material";
+import { ArrowBack, Close, Favorite, MapsUgc, Search, Shuffle } from "@mui/icons-material";
 import { API, graphqlOperation } from 'aws-amplify';
 import { cloneElement, useCallback, useContext, useEffect, useState } from "react";
 import { LoadingButton } from "@mui/lab";
@@ -13,6 +13,7 @@ import useSearchDetailsV2 from "../../hooks/useSearchDetailsV2";
 import AddCidPopup from "../../components/ipfs/add-cid-popup";
 import { UserContext } from "../../UserContext";
 import fetchShows from "../../utils/fetchShows";
+import useLoadRandomFrame from "../../utils/loadRandomFrame";
 
 // Define constants for colors and fonts
 const PRIMARY_COLOR = '#4285F4';
@@ -90,7 +91,7 @@ export default function TopBannerSearchRevised(props) {
   const { fid, searchTerms } = useParams();
   const [shows, setShows] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [loadingRandom, setLoadingRandom] = useState(false);
+  const { loadRandomFrame, loadingRandom, error } = useLoadRandomFrame();
   const [searchTerm, setSearchTerm] = useState(searchQuery);
   const [seriesTitle, setSeriesTitle] = useState('_universal');
   const [addNewCidOpen, setAddNewCidOpen] = useState(false);
@@ -153,32 +154,6 @@ export default function TopBannerSearchRevised(props) {
       });
   };
 
-  const loadRandomFrame = useCallback(() => {
-    setLoadingRandom(true);
-    getSessionID().then(sessionId => {
-      const apiName = 'publicapi';
-      const path = '/random';
-      const myInit = {
-        queryStringParameters: {
-          series: show,
-          sessionId
-        }
-      }
-
-      API.get(apiName, path, myInit)
-        .then(response => {
-          const fid = response.frame_id;
-          console.log(fid)
-          navigate(`/frame/${fid}`);
-          setLoadingRandom(false);
-        })
-        .catch(error => {
-          console.error(error);
-          setLoadingRandom(false);
-        });
-    })
-  }, [navigate, seriesTitle]);
-
   const handleBackToFramePage = () => {
     navigate(`/frame/${frame || fid}`)
     setFrame(null)
@@ -213,7 +188,7 @@ export default function TopBannerSearchRevised(props) {
                     // InputProps={{
                     //   endAdornment: <InputAdornment position="end"><Typography variant="caption"><Search /></Typography></InputAdornment>,
                     // }}
-                    endAdornment={<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} />}
+                    endAdornment={<>{(searchTerm || searchTerms) && <Close onClick={() => { setSearchTerm(''); setSearchQuery(''); }} sx={{cursor: 'pointer', mr: 1}} />}<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} /></>}
                     sx={{ width: '100%' }}
                     value={searchTerm || searchTerms}
                     onChange={(e) => {
@@ -254,7 +229,7 @@ export default function TopBannerSearchRevised(props) {
                     {(loading) ? <MenuItem key="loading" value="loading" disabled>Loading...</MenuItem> : shows.map((item) => (
                       <MenuItem key={item.id} value={item.id}>{item.emoji} {item.title}</MenuItem>
                     ))}
-                    <Divider />
+                    {/* <Divider />
                     <MenuItem disabled value=''>IPFS</MenuItem>
                     <Divider />
                     {user && loadingSavedCids &&
@@ -263,7 +238,7 @@ export default function TopBannerSearchRevised(props) {
                     {!loading && savedCids && savedCids.map(obj =>
                       <MenuItem key={obj.id} value={obj.id}>{obj.emoji} {obj.title}</MenuItem>
                     )}
-                    <MenuItem key='addNew' value={{ addNew: true }}>+ Add New CID</MenuItem>
+                    <MenuItem key='addNew' value={{ addNew: true }}>+ Add New CID</MenuItem> */}
                   </Select>
                 </FormControl>
               </Grid>
@@ -292,7 +267,7 @@ export default function TopBannerSearchRevised(props) {
             </a>
           </StyledLeftFooter>
           <StyledRightFooter className="bottomBtn">
-            <StyledButton onClick={loadRandomFrame} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
+            <StyledButton onClick={() => { loadRandomFrame(show) }} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
           </StyledRightFooter>
         </>
       }
@@ -310,7 +285,7 @@ export default function TopBannerSearchRevised(props) {
                       // InputProps={{
                       //   endAdornment: <InputAdornment position="end"><Typography variant="caption"><Search /></Typography></InputAdornment>,
                       // }}
-                      endAdornment={<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} />}
+                      endAdornment={<>{(searchTerm || searchTerms) && <Close onClick={() => { setSearchTerm(''); setSearchQuery(''); }} sx={{cursor: 'pointer', mr: 1}} />}<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} /></>}
                       sx={{ width: '100%' }}
                       value={searchTerm}
                       onChange={(e) => {
@@ -351,7 +326,7 @@ export default function TopBannerSearchRevised(props) {
                     {(loading) ? <MenuItem key="loading" value="loading" disabled>Loading...</MenuItem> : shows.map((item) => (
                       <MenuItem key={item.id} value={item.id}>{item.emoji} {item.title}</MenuItem>
                     ))}
-                    <Divider />
+                    {/* <Divider />
                     <MenuItem disabled value=''>IPFS</MenuItem>
                     <Divider />
                     {user && loadingSavedCids &&
@@ -360,7 +335,7 @@ export default function TopBannerSearchRevised(props) {
                     {!loading && savedCids && savedCids.map(obj =>
                       <MenuItem key={obj.id} value={obj.id}>{obj.emoji} {obj.title}</MenuItem>
                     )}
-                    <MenuItem key='addNew' value={{ addNew: true }}>+ Add New CID</MenuItem>
+                    <MenuItem key='addNew' value={{ addNew: true }}>+ Add New CID</MenuItem> */}
                   </Select>
                 </FormControl>
                 </Grid>
@@ -414,7 +389,7 @@ export default function TopBannerSearchRevised(props) {
               </a>
             </StyledLeftFooter>
             <StyledRightFooter className="bottomBtn">
-              <StyledButton onClick={loadRandomFrame} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
+              <StyledButton onClick={() => { loadRandomFrame(show) }} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
             </StyledRightFooter>
           </Container>
         </>
@@ -433,7 +408,7 @@ export default function TopBannerSearchRevised(props) {
                       // InputProps={{
                       //   endAdornment: <InputAdornment position="end"><Typography variant="caption"><Search /></Typography></InputAdornment>,
                       // }}
-                      endAdornment={<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} />}
+                      endAdornment={<>{(searchTerm || searchTerms) && <Close onClick={() => { setSearchTerm(''); setSearchQuery(''); }} sx={{cursor: 'pointer', mr: 1}} />}<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} /></>}
                       sx={{ width: '100%' }}
                       value={searchTerm}
                       onChange={(e) => {
@@ -474,7 +449,7 @@ export default function TopBannerSearchRevised(props) {
                     {(loading) ? <MenuItem key="loading" value="loading" disabled>Loading...</MenuItem> : shows.map((item) => (
                       <MenuItem key={item.id} value={item.id}>{item.emoji} {item.title}</MenuItem>
                     ))}
-                    <Divider />
+                    {/* <Divider />
                     <MenuItem disabled value=''>IPFS</MenuItem>
                     <Divider />
                     {user && loadingSavedCids &&
@@ -483,7 +458,7 @@ export default function TopBannerSearchRevised(props) {
                     {!loading && savedCids && savedCids.map(obj =>
                       <MenuItem key={obj.id} value={obj.id}>{obj.emoji} {obj.title}</MenuItem>
                     )}
-                    <MenuItem key='addNew' value={{ addNew: true }}>+ Add New CID</MenuItem>
+                    <MenuItem key='addNew' value={{ addNew: true }}>+ Add New CID</MenuItem> */}
                   </Select>
                 </FormControl>
                 </Grid>
@@ -542,7 +517,7 @@ export default function TopBannerSearchRevised(props) {
                       // InputProps={{
                       //   endAdornment: <InputAdornment position="end"><Typography variant="caption"><Search /></Typography></InputAdornment>,
                       // }}
-                      endAdornment={<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} />}
+                      endAdornment={<>{(searchTerm || searchTerms) && <Close onClick={() => { setSearchTerm(''); setSearchQuery(''); }} sx={{cursor: 'pointer', mr: 1}} />}<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} /></>}
                       sx={{ width: '100%' }}
                       value={searchTerm}
                       onChange={(e) => {
@@ -583,16 +558,16 @@ export default function TopBannerSearchRevised(props) {
                     {(loading) ? <MenuItem key="loading" value="loading" disabled>Loading...</MenuItem> : shows.map((item) => (
                       <MenuItem key={item.id} value={item.id}>{item.emoji} {item.title}</MenuItem>
                     ))}
-                    <Divider />
+                    {/* <Divider />
                     <MenuItem disabled value=''>IPFS</MenuItem>
-                    <Divider />
-                    {user && loadingSavedCids &&
+                    <Divider /> */}
+                    {/* {user && loadingSavedCids &&
                       <MenuItem value='' disabled>Loading saved CIDs...</MenuItem>
                     }
                     {!loading && savedCids && savedCids.map(obj =>
                       <MenuItem key={obj.id} value={obj.id}>{obj.emoji} {obj.title}</MenuItem>
                     )}
-                    <MenuItem key='addNew' value={{ addNew: true }}>+ Add New CID</MenuItem>
+                    <MenuItem key='addNew' value={{ addNew: true }}>+ Add New CID</MenuItem> */}
                   </Select>
                 </FormControl>
                 </Grid>
@@ -624,7 +599,7 @@ export default function TopBannerSearchRevised(props) {
               </a>
             </StyledLeftFooter>
             <StyledRightFooter className="bottomBtn">
-              <StyledButton onClick={loadRandomFrame} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
+              <StyledButton onClick={() => { loadRandomFrame(show) }} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
             </StyledRightFooter>
           </Container>
         </>
@@ -632,7 +607,7 @@ export default function TopBannerSearchRevised(props) {
 
       {pathname.startsWith("/episode") &&
         <>
-          <Container maxWidth disableGutters sx={{ mt: isMobile ? 8 : 0 }}>
+          <Container maxWidth disableGutters sx={{ mt: isMobile ? 8 : 8 }}>
             <StyledHeader>
               <Grid container mb={1.5} mt={0} paddingX={2}>
                 <Grid item xs={12} md={6} paddingLeft={{ xs: 0, md: 2 }}>
@@ -643,7 +618,7 @@ export default function TopBannerSearchRevised(props) {
                       // InputProps={{
                       //   endAdornment: <InputAdornment position="end"><Typography variant="caption"><Search /></Typography></InputAdornment>,
                       // }}
-                      endAdornment={<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} />}
+                      endAdornment={<>{(searchTerm || searchTerms) && <Close onClick={() => { setSearchTerm(''); setSearchQuery(''); }} sx={{cursor: 'pointer', mr: 1}} />}<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} /></>}
                       sx={{ width: '100%' }}
                       value={searchTerm}
                       onChange={(e) => {
@@ -684,7 +659,7 @@ export default function TopBannerSearchRevised(props) {
                     {(loading) ? <MenuItem key="loading" value="loading" disabled>Loading...</MenuItem> : shows.map((item) => (
                       <MenuItem key={item.id} value={item.id}>{item.emoji} {item.title}</MenuItem>
                     ))}
-                    <Divider />
+                    {/* <Divider />
                     <MenuItem disabled value=''>IPFS</MenuItem>
                     <Divider />
                     {user && loadingSavedCids &&
@@ -693,7 +668,7 @@ export default function TopBannerSearchRevised(props) {
                     {!loading && savedCids && savedCids.map(obj =>
                       <MenuItem key={obj.id} value={obj.id}>{obj.emoji} {obj.title}</MenuItem>
                     )}
-                    <MenuItem key='addNew' value={{ addNew: true }}>+ Add New CID</MenuItem>
+                    <MenuItem key='addNew' value={{ addNew: true }}>+ Add New CID</MenuItem> */}
                   </Select>
                 </FormControl>
                 </Grid>
@@ -725,7 +700,7 @@ export default function TopBannerSearchRevised(props) {
               </a>
             </StyledLeftFooter>
             <StyledRightFooter className="bottomBtn">
-              <StyledButton onClick={loadRandomFrame} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
+              <StyledButton onClick={() => { loadRandomFrame(show) }} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
             </StyledRightFooter>
           </Container>
         </>

@@ -69,12 +69,14 @@ export default function Router() {
         { path: 'editor/projects', element: <EditorProjectsPage /> },
         { path: 'editor/new', element: <EditorNewProjectPage /> },
         { path: 'editor/project/:editorProjectId', element: <EditorPage /> },
+        { path: 'search/:seriesId', element: <SearchPage /> },
         { path: 'search/:seriesId/:searchTerms', element: <SearchPage /> },
         { path: 'favorites', element: <FavoritesPage /> },
         {
           path: 'v2',
           element: <IpfsSearchBar />,
           children: [
+            { path: 'search/:cid', element: <V2SearchPage /> },
             { path: 'search/:cid/:searchTerms', element: <V2SearchPage /> },
             { path: 'frame/:cid/:season/:episode/:frame', element: <V2FramePage /> },
             { path: 'editor/:cid/:season/:episode/:frame', element: <V2EditorPage /> },
