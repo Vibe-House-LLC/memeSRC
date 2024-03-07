@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { Link, Fab, FormControl, Grid, InputBase, MenuItem, Select, Typography, Divider, Box, Stack, Container } from "@mui/material";
-import { ArrowBack, Favorite, MapsUgc, Search, Shuffle } from "@mui/icons-material";
+import { ArrowBack, Close, Favorite, MapsUgc, Search, Shuffle } from "@mui/icons-material";
 import { API, graphqlOperation } from 'aws-amplify';
 import { useCallback, useContext, useEffect, useState } from "react";
 import { LoadingButton } from "@mui/lab";
@@ -217,7 +217,7 @@ export default function IpfsSearchBar(props) {
                 // InputProps={{
                 //   endAdornment: <InputAdornment position="end"><Typography variant="caption"><Search /></Typography></InputAdornment>,
                 // }}
-                endAdornment={<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} />}
+                endAdornment={<>{search && <Close onClick={() => { setSearch('') }} sx={{cursor: 'pointer', mr: 1}} />}<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} /></>}
                 sx={{ width: '100%' }}
                 value={search}
                 onChange={(e) => {

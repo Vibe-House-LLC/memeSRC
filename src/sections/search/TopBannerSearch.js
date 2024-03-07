@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { Link, Fab, FormControl, Grid, InputBase, MenuItem, Select, Typography, Divider } from "@mui/material";
-import { Favorite, MapsUgc, Search, Shuffle } from "@mui/icons-material";
+import { Close, Favorite, MapsUgc, Search, Shuffle } from "@mui/icons-material";
 import { API, graphqlOperation } from 'aws-amplify';
 import { useCallback, useContext, useEffect, useState } from "react";
 import { LoadingButton } from "@mui/lab";
@@ -171,7 +171,7 @@ export default function TopBannerSearch(props) {
                 // InputProps={{
                 //   endAdornment: <InputAdornment position="end"><Typography variant="caption"><Search /></Typography></InputAdornment>,
                 // }}
-                endAdornment={<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} />}
+                endAdornment={<>{(searchTerm) && <Close onClick={() => { setSearchTerm(''); }} sx={{cursor: 'pointer', mr: 1}} />}<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} /></>}
                 sx={{ width: '100%' }}
                 value={searchTerm}
                 onChange={(e) => {

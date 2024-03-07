@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { Box, Button, Container, Divider, Fab, FormControl, Grid, InputBase, Link, MenuItem, Select, Stack, Typography, useMediaQuery } from "@mui/material";
-import { ArrowBack, Favorite, MapsUgc, Search, Shuffle } from "@mui/icons-material";
+import { ArrowBack, Close, Favorite, MapsUgc, Search, Shuffle } from "@mui/icons-material";
 import { API, graphqlOperation } from 'aws-amplify';
 import { cloneElement, useCallback, useContext, useEffect, useState } from "react";
 import { LoadingButton } from "@mui/lab";
@@ -188,7 +188,7 @@ export default function TopBannerSearchRevised(props) {
                     // InputProps={{
                     //   endAdornment: <InputAdornment position="end"><Typography variant="caption"><Search /></Typography></InputAdornment>,
                     // }}
-                    endAdornment={<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} />}
+                    endAdornment={<>{(searchTerm || searchTerms) && <Close onClick={() => { setSearchTerm(''); setSearchQuery(''); }} sx={{cursor: 'pointer', mr: 1}} />}<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} /></>}
                     sx={{ width: '100%' }}
                     value={searchTerm || searchTerms}
                     onChange={(e) => {
@@ -285,7 +285,7 @@ export default function TopBannerSearchRevised(props) {
                       // InputProps={{
                       //   endAdornment: <InputAdornment position="end"><Typography variant="caption"><Search /></Typography></InputAdornment>,
                       // }}
-                      endAdornment={<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} />}
+                      endAdornment={<>{(searchTerm || searchTerms) && <Close onClick={() => { setSearchTerm(''); setSearchQuery(''); }} sx={{cursor: 'pointer', mr: 1}} />}<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} /></>}
                       sx={{ width: '100%' }}
                       value={searchTerm}
                       onChange={(e) => {
@@ -408,7 +408,7 @@ export default function TopBannerSearchRevised(props) {
                       // InputProps={{
                       //   endAdornment: <InputAdornment position="end"><Typography variant="caption"><Search /></Typography></InputAdornment>,
                       // }}
-                      endAdornment={<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} />}
+                      endAdornment={<>{(searchTerm || searchTerms) && <Close onClick={() => { setSearchTerm(''); setSearchQuery(''); }} sx={{cursor: 'pointer', mr: 1}} />}<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} /></>}
                       sx={{ width: '100%' }}
                       value={searchTerm}
                       onChange={(e) => {
@@ -517,7 +517,7 @@ export default function TopBannerSearchRevised(props) {
                       // InputProps={{
                       //   endAdornment: <InputAdornment position="end"><Typography variant="caption"><Search /></Typography></InputAdornment>,
                       // }}
-                      endAdornment={<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} />}
+                      endAdornment={<>{(searchTerm || searchTerms) && <Close onClick={() => { setSearchTerm(''); setSearchQuery(''); }} sx={{cursor: 'pointer', mr: 1}} />}<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} /></>}
                       sx={{ width: '100%' }}
                       value={searchTerm}
                       onChange={(e) => {
@@ -618,7 +618,7 @@ export default function TopBannerSearchRevised(props) {
                       // InputProps={{
                       //   endAdornment: <InputAdornment position="end"><Typography variant="caption"><Search /></Typography></InputAdornment>,
                       // }}
-                      endAdornment={<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} />}
+                      endAdornment={<>{(searchTerm || searchTerms) && <Close onClick={() => { setSearchTerm(''); setSearchQuery(''); }} sx={{cursor: 'pointer', mr: 1}} />}<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} /></>}
                       sx={{ width: '100%' }}
                       value={searchTerm}
                       onChange={(e) => {
