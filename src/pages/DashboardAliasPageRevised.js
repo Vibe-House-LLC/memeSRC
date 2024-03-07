@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { Container, Divider, IconButton, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography, Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField } from "@mui/material";
 import { API, graphqlOperation } from 'aws-amplify';
 import { Add, Edit, Delete } from "@mui/icons-material";
-import { listAliases } from '../graphql/queries';
-import { createAlias, updateAlias, deleteAlias } from '../graphql/mutations';
+import { getV2ContentMetadata, listAliases } from '../graphql/queries';
+import { createAlias, updateAlias, deleteAlias, createV2ContentMetadata } from '../graphql/mutations';
+import { SnackbarContext } from '../SnackbarContext';
 
 /* Utility Functions */
 
@@ -39,7 +40,7 @@ const AliasFormDialog = ({ open, onClose, onSubmit, initialValues }) => {
     <Dialog open={open} onClose={onClose}>
       <DialogTitle>{initialValues.id ? 'Update Alias' : 'Create Alias'}</DialogTitle>
       <DialogContent>
-        { !initialValues.id && ( // Show this field only when creating a new alias
+        {!initialValues.id && ( // Show this field only when creating a new alias
           <TextField
             autoFocus
             margin="dense"
@@ -97,6 +98,7 @@ const AliasManagementPageRevised = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [currentAlias, setCurrentAlias] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
+  const { setOpen: setSnackbarOpen, setMessage, setSeverity } = useContext(SnackbarContext)
 
   useEffect(() => {
     fetchAliases().then(data => {
@@ -156,19 +158,59 @@ const AliasManagementPageRevised = () => {
     try {
       const input = {
         // Define your input here as before
-        id: aliasData.id, 
+        id: aliasData.id,
         aliasV2ContentMetadataId: aliasData.aliasV2ContentMetadataId,
         // Add other fields as necessary
       };
-  
+
+      let newMetadataCreated;
+
+      const doesMetadataExist = await API.graphql(graphqlOperation(getV2ContentMetadata, { id: aliasData.aliasV2ContentMetadataId }))
+      // If the metadata doesn't exist, try to fetch it and add it.
+      // If the metadata cannot be loaded, the enitire function will stop before any damage is done.
+      if (!doesMetadataExist?.data?.getV2ContentMetadata?.id) {
+        // Get the metadata
+        const metadataUrl = `https://ipfs.memesrc.com/ipfs/${aliasData.aliasV2ContentMetadataId}/00_metadata.json`
+        const requestOptions = {
+          method: "GET",
+          redirect: "follow"
+        };
+        const metadataResponse = await fetch(metadataUrl, requestOptions);
+        const result = await metadataResponse.json();
+        console.log(result)
+        const newMetadataDetails = {
+          id: aliasData.aliasV2ContentMetadataId,
+          colorMain: result.colorMain || '#000000',
+          colorSecondary: result.colorSecondary || '#FFFFFF',
+          description: result.description || 'N/A',
+          emoji: result.emoji || '',
+          frameCount: result.frameCount || 0,
+          status: 0,
+          title: result.title || 'N/A',
+          version: 2
+        }
+
+        newMetadataCreated = await API.graphql(graphqlOperation(createV2ContentMetadata, { input: { ...newMetadataDetails } }))
+        console.log(newMetadataCreated)
+      }
+
       if (isEditing) {
         await API.graphql(graphqlOperation(updateAlias, { input }));
+        setMessage(`${newMetadataCreated ? 'Metadata has been created and the ' : 'The '}alias has been updated!`)
+        setSeverity('success')
+        setSnackbarOpen(true)
       } else {
         await API.graphql(graphqlOperation(createAlias, { input }));
+        setMessage(`The alias ${newMetadataCreated ? 'and metadata have' : 'has'} been created!`)
+        setSeverity('success')
+        setSnackbarOpen(true)
       }
       refreshAliases();
     } catch (error) {
       console.error("Error submitting form:", error);
+      setMessage('Metadata could not be fetched')
+      setSeverity('error')
+      setSnackbarOpen(true)
     } finally {
       handleCloseDialog();
     }
