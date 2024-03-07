@@ -1,10 +1,10 @@
 import styled from "@emotion/styled";
-import { Link, Fab, FormControl, Grid, InputBase, MenuItem, Select, Typography, Divider } from "@mui/material";
-import { Close, Favorite, MapsUgc, Search, Shuffle } from "@mui/icons-material";
+import { Link, Fab, FormControl, Grid, InputBase, MenuItem, Select, Typography, Divider, Box, Stack, Container } from "@mui/material";
+import { ArrowBack, Close, Favorite, MapsUgc, Search, Shuffle } from "@mui/icons-material";
 import { API, graphqlOperation } from 'aws-amplify';
 import { useCallback, useContext, useEffect, useState } from "react";
 import { LoadingButton } from "@mui/lab";
-import { Link as RouterLink, useNavigate } from "react-router-dom";
+import { Outlet, Link as RouterLink, useLocation, useNavigate, useParams } from "react-router-dom";
 import { searchPropTypes } from "./SearchPropTypes";
 import Logo from "../../components/logo/Logo";
 import { contentMetadataByStatus, listContentMetadata } from '../../graphql/queries';
@@ -78,43 +78,97 @@ const StyledHeader = styled('header')(() => ({
   lineHeight: 0,
   width: '100%',
   zIndex: '1000',
-  paddingBottom: '10px',
-  paddingTop: '64px'
+  paddingBottom: '10px'
 }));
 
-TopBannerSearch.propTypes = searchPropTypes;
+IpfsSearchBar.propTypes = searchPropTypes;
 
 
-export default function TopBannerSearch(props) {
-  const { show, setShow, searchQuery, setSearchQuery } = useSearchDetails();
+export default function IpfsSearchBar(props) {
+  const { show, setShow, searchQuery, setSearchQuery, cid = '', setCid, localCids, setLocalCids, showObj, setShowObj, selectedFrameIndex, setSelectedFrameIndex, savedCids, loadingSavedCids } = useSearchDetailsV2();
+  const { setShow: setV1Show, setSeriesTitle: setV1SeriesTitle } = useSearchDetails();
+  const params = useParams();
   const [shows, setShows] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { children } = props
+  const { pathname } = useLocation();
+  const { user } = useContext(UserContext);
   const { loadRandomFrame, loadingRandom, error } = useLoadRandomFrame();
-  const { searchTerm, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction, resultsLoading } = props
-  const { savedCids, loadingSavedCids } = useSearchDetailsV2();
-  const [addNewCidOpen, setAddNewCidOpen] = useState(false);
-  const { user } = useContext(UserContext)
 
+  /* ----------------------------------- New ---------------------------------- */
+
+  const [search, setSearch] = useState(searchQuery || '');
+  const [addNewCidOpen, setAddNewCidOpen] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+
+    if (params.cid) {
+      setCid(params.cid)
+      console.log('SET CID')
+    }
+  }, [params?.cid]);
+
+  useEffect(() => {
+    // Function to check and parse the local storage value
+    const checkAndParseLocalStorage = (key) => {
+      const storedValue = localStorage.getItem(key);
+      if (!storedValue) {
+        return null;
+      }
+
+      try {
+        const parsedValue = JSON.parse(storedValue);
+        return Array.isArray(parsedValue) ? parsedValue : null;
+      } catch (e) {
+        // If parsing fails, return null
+        return null;
+      }
+    };
+  });
+
+  useEffect(() => {
+    if (params.searchTerms) {
+      setSearchQuery(params.searchTerms)
+      setSearch(params?.searchTerms)
+    }
+  }, [params?.searchTerms]);
+
+  useEffect(() => {
+    console.log(cid)
+  }, [cid]);
+
+  const handleSelectSeries = (data) => {
+    if (data?.addNew) {
+      setAddNewCidOpen(true)
+    } else {
+      const savedCid = shows?.find(obj => obj.id === data && obj.version === 2) || savedCids?.find(obj => obj.id === data)
+      if (savedCid) {
+        navigate(`/v2/search/${savedCid.id}/${encodeURIComponent(search)}`)
+      } else {
+        setV1Show(data)
+        navigate(`/search/${data}/${encodeURIComponent(search)}`)
+      }
+    }
+  }
+
+  useEffect(() => {
+    setSelectedFrameIndex()
+  }, [params?.subtitleIndex]);
+
+
+  /* -------------------------------------------------------------------------- */
 
   useEffect(() => {
     async function getData() {
       // Get shows
       const shows = await fetchShows();
+      console.log(shows)
       setShows(shows);
       setLoading(false);
     }
     getData();
   }, []);
-
-  useEffect(() => {
-    console.log(resultsLoading)
-  }, [resultsLoading])
-
-  useEffect(() => {
-    searchFunction()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.seriesTitle])
 
   const getSessionID = async () => {
     let sessionID;
@@ -133,18 +187,11 @@ export default function TopBannerSearch(props) {
       });
   };
 
-  const handleSelectSeries = (data) => {
-    if (data?.addNew) {
-      setAddNewCidOpen(true)
-    } else {
-      const savedCid = shows?.find(obj => obj.id === data && obj.version === 2) || savedCids?.find(obj => obj.id === data)
-      if (savedCid) {
-        navigate(`/v2/search/${savedCid.id}/${encodeURIComponent(searchQuery)}`)
-      } else {
-        setShow(data);
-        setSeriesTitle(data);
-      }
-    }
+  const searchFunction = (searchEvent) => {
+    searchEvent.preventDefault();
+    console.log(search)
+    navigate(`/v2/search/${cid}/${encodeURIComponent(search)}`)
+    return false
   }
 
   return (
@@ -167,13 +214,12 @@ export default function TopBannerSearch(props) {
               <StyledSearchInput
                 label="With normal TextField"
                 id="outlined-start-adornment"
-                disabled={resultsLoading}
                 // InputProps={{
                 //   endAdornment: <InputAdornment position="end"><Typography variant="caption"><Search /></Typography></InputAdornment>,
                 // }}
-                endAdornment={<>{(searchTerm) && <Close onClick={() => { setSearchTerm(''); }} sx={{cursor: 'pointer', mr: 1}} />}<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} /></>}
+                endAdornment={<>{search && <Close onClick={() => { setSearch('') }} sx={{cursor: 'pointer', mr: 1}} />}<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} /></>}
                 sx={{ width: '100%' }}
-                value={searchTerm}
+                value={search}
                 onChange={(e) => {
                   let value = e.target.value;
 
@@ -186,7 +232,8 @@ export default function TopBannerSearch(props) {
                   // Replace en-dash and em-dash with hyphen
                   value = value.replace(/[\u2013\u2014]/g, '-');
 
-                  setSearchTerm(value);
+                  // setSearchTerm(value);
+                  setSearch(value)
                 }}
               />
             </form>
@@ -195,29 +242,35 @@ export default function TopBannerSearch(props) {
         <Grid container wrap="nowrap" sx={{ overflowX: "scroll", flexWrap: "nowrap", scrollbarWidth: 'none', '&::-webkit-scrollbar': { height: '0 !important', width: '0 !important', display: 'none' } }} paddingX={2}>
           <Grid item marginLeft={{ md: 6 }}>
 
-            <FormControl variant="standard" sx={{ minWidth: 120 }}>
+            <FormControl
+              // disabled={resultsLoading}
+              variant="standard"
+              sx={{ minWidth: 120 }}
+            >
               <Select
                 labelId="demo-simple-select-standard-label"
                 id="demo-simple-select-standard"
-                value={show}
-                onChange={(x) => { handleSelectSeries(x.target.value) }}
+                value={cid}
+                onChange={(x) => {
+                  handleSelectSeries(x.target.value)
+                }}
                 label="Age"
                 size="small"
                 autoWidth
                 disableUnderline
               >
-
-                <MenuItem key='_universal' value='_universal' selected>🌈 All Shows & Movies</MenuItem>
+                {console.log(cid)}
+                <MenuItem key='_universal' value='_universal'>🌈 All Shows & Movies</MenuItem>
                 {(loading) ? <MenuItem key="loading" value="loading" disabled>Loading...</MenuItem> : shows.map((item) => (
                   <MenuItem key={item.id} value={item.id}>{item.emoji} {item.title}</MenuItem>
                 ))}
-                <Divider />
+                {/* <Divider />
                 <MenuItem disabled value=''>IPFS</MenuItem>
                 <Divider />
                 {user && loadingSavedCids &&
                   <MenuItem value='' disabled>Loading saved CIDs...</MenuItem>
                 }
-                {/* {!loading && savedCids && savedCids.map(obj =>
+                {!loading && savedCids && savedCids.map(obj =>
                   <MenuItem key={obj.id} value={obj.id}>{obj.emoji} {obj.title}</MenuItem>
                 )}
                 <MenuItem key='addNew' value={{ addNew: true }}>+ Add New CID</MenuItem> */}
@@ -236,6 +289,63 @@ export default function TopBannerSearch(props) {
         </Grid>
       </StyledHeader>
       <Divider sx={{ mb: 2.5 }} />
+
+      {pathname.startsWith("/v2/frame") &&
+        <Container maxWidth='xl' disableGutters sx={{ px: 1 }}>
+          <Box
+            sx={{ width: '100%', px: 2 }}
+          >
+            <Link
+              component={RouterLink}
+              to={search ? `/v2/search/${cid}/${search}` : "/"}
+              sx={{
+                color: 'white',
+                textDecoration: 'none',
+                '&:hover': {
+                  textDecoration: 'underline',
+                },
+              }}
+            >
+              <Stack direction='row' alignItems='center'>
+                <ArrowBack fontSize="small" />
+                <Typography variant="body1" ml={1}>
+                  Back to {search ? 'search results' : 'home'}
+                </Typography>
+              </Stack>
+            </Link>
+          </Box>
+          <Typography variant='h2' mt={1} pl={2}>
+              {savedCids ? `${shows.find(obj => obj.id === cid)?.emoji || savedCids.find(obj => obj.id === cid)?.emoji} ${shows.find(obj => obj.id === cid)?.title || savedCids.find(obj => obj.id === cid)?.title}` : ''}
+            </Typography>
+        </Container>
+      }
+      {pathname.startsWith("/v2/editor") &&
+        <Container maxWidth='xl' disableGutters sx={{ px: 1 }}>
+          <Box
+            sx={{ width: '100%', px: 2 }}
+          >
+            <Link
+              component={RouterLink}
+              to={search ? `/v2/frame/${cid}/${params?.season}/${params?.episode}/${params?.frame}` : "/"}
+              sx={{
+                color: 'white',
+                textDecoration: 'none',
+                '&:hover': {
+                  textDecoration: 'underline',
+                },
+              }}
+            >
+              <Stack direction='row' alignItems='center'>
+                <ArrowBack fontSize="small" />
+                <Typography variant="body1" ml={1}>
+                  Back to frame
+                </Typography>
+              </Stack>
+            </Link>
+          </Box>
+        </Container>
+      }
+      <Outlet />
       <StyledLeftFooter className="bottomBtn">
         <a href="https://forms.gle/8CETtVbwYoUmxqbi7" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
           <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black", zIndex: '1300' }} size='medium'>
@@ -249,7 +359,7 @@ export default function TopBannerSearch(props) {
         </a>
       </StyledLeftFooter>
       <StyledRightFooter className="bottomBtn">
-        <StyledButton onClick={() => { loadRandomFrame(show) }} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
+        <StyledButton onClick={() => { loadRandomFrame(cid) }} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
       </StyledRightFooter>
       <AddCidPopup open={addNewCidOpen} setOpen={setAddNewCidOpen} />
     </>

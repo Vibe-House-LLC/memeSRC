@@ -11,9 +11,48 @@ import { UserContext } from '../../UserContext';
 import useSearchDetails from '../../hooks/useSearchDetails';
 import { searchPropTypes } from './SearchPropTypes';
 import Logo from '../../components/logo/Logo';
-import { listContentMetadata, listHomepageSections } from '../../graphql/queries';
+import { contentMetadataByStatus, listContentMetadata, listHomepageSections } from '../../graphql/queries';
 import HomePageSection from './HomePageSection';
 import HomePageBannerAd from '../../ads/HomePageBannerAd';
+import useSearchDetailsV2 from '../../hooks/useSearchDetailsV2';
+import AddCidPopup from '../../components/ipfs/add-cid-popup';
+import fetchShows from '../../utils/fetchShows';
+import useLoadRandomFrame from '../../utils/loadRandomFrame';
+
+/* --------------------------------- GraphQL -------------------------------- */
+
+const listAliases = /* GraphQL */ `
+  query ListAliases(
+    $filter: ModelAliasFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listAliases(filter: $filter, limit: $limit, nextToken: $nextToken) {
+      items {
+        id
+        createdAt
+        updatedAt
+        aliasV2ContentMetadataId
+        v2ContentMetadata {
+          colorMain
+          colorSecondary
+          createdAt
+          description
+          emoji
+          frameCount
+          title
+          updatedAt
+          status
+          id
+          version
+        }
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
 
 // Define constants for colors and fonts
 const PRIMARY_COLOR = '#4285F4';
@@ -142,19 +181,6 @@ const StyledRightFooter = styled('footer')`
   z-index: 1300;
 `;
 
-async function fetchShows() {
-  const result = await API.graphql({
-    ...graphqlOperation(listContentMetadata, { filter: {}, limit: 50 }),
-    authMode: 'API_KEY',
-  });
-  const sortedMetadata = result.data.listContentMetadata.items.sort((a, b) => {
-    if (a.title < b.title) return -1;
-    if (a.title > b.title) return 1;
-    return 0;
-  });
-  return sortedMetadata;
-}
-
 async function fetchSections() {
   const result = await API.graphql({
     ...graphqlOperation(listHomepageSections, { filter: {}, limit: 10 }),
@@ -184,27 +210,33 @@ const defaultBackground = `linear-gradient(45deg,
   #00ab84 0, #00ab84 87.5% /* 7*12.5% */,
   #00a3e0 0)`;
 
-export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction }) {
-  const [shows, setShows] = useState([]);
+export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction, shows, setShows, metadata }) {
+  const { localCids, setLocalCids, savedCids, cid, setCid, searchQuery: cidSearchQuery, setSearchQuery: setCidSearchQuery, setShowObj, loadingSavedCids } = useSearchDetailsV2()
   const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [loadingRandom, setLoadingRandom] = useState(false);
+  // const [loadingRandom, setLoadingRandom] = useState(false);
   const [scrollToSections, setScrollToSections] = useState();
   const { show, setShow, searchQuery, setSearchQuery } = useSearchDetails();
   const isMd = useMediaQuery((theme) => theme.breakpoints.up('sm'));
+  const [addNewCidOpen, setAddNewCidOpen] = useState(false);
   const { user, setUser } = useContext(UserContext);
+  const { pathname } = useLocation();
+  const { loadRandomFrame, loadingRandom, error } = useLoadRandomFrame();
 
   const [alertOpen, setAlertOpen] = useState(true);
 
   const location = useLocation();
 
   // Theme States
-  const [currentThemeBragText, setCurrentThemeBragText] = useState(defaultBragText);
-  const [currentThemeTitleText, setCurrentThemeTitleText] = useState(defaultTitleText);
-  const [currentThemeFontColor, setCurrentThemeFontColor] = useState(defaultFontColor);
-  const [currentThemeBackground, setCurrentThemeBackground] = useState({
+  const [currentThemeBragText, setCurrentThemeBragText] = useState(metadata?.frameCount ? `Search over ${metadata?.frameCount.toLocaleString('en-US')} frames from ${metadata?.title}` : defaultBragText);
+  const [currentThemeTitleText, setCurrentThemeTitleText] = useState(metadata?.title || defaultTitleText);
+  const [currentThemeFontColor, setCurrentThemeFontColor] = useState(metadata?.colorSecondary || defaultFontColor);
+  const [currentThemeBackground, setCurrentThemeBackground] = useState(metadata?.colorMain ? { backgroundColor: `${metadata?.colorMain}`}
+  :
+  {
     backgroundImage: defaultBackground,
-  });
+  } 
+  );
 
   const { sectionIndex, seriesId } = useParams();
 
@@ -212,26 +244,32 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
 
   // The handleChangeSeries function now only handles theme updates
   const handleChangeSeries = useCallback((newSeriesTitle) => {
-    const selectedSeriesProperties = shows.find((object) => object.id === newSeriesTitle);
+    const selectedSeriesProperties = shows.find((object) => object.id === newSeriesTitle) || savedCids.find((object) => object.id === newSeriesTitle);
 
-    if (selectedSeriesProperties) {
-      setCurrentThemeBackground({ backgroundColor: `${selectedSeriesProperties.colorMain}` });
-      setCurrentThemeFontColor(selectedSeriesProperties.colorSecondary);
-      setCurrentThemeTitleText(selectedSeriesProperties.title);
-      setCurrentThemeBragText(
-        `Search over ${selectedSeriesProperties.frameCount.toLocaleString('en-US')} frames from ${selectedSeriesProperties.title
-        }`
-      );
-    } else {
+    if (!selectedSeriesProperties) {
+      // setCurrentThemeBackground({ backgroundColor: `${selectedSeriesProperties.colorMain}` });
+      // setCurrentThemeFontColor(selectedSeriesProperties.colorSecondary);
+      // setCurrentThemeTitleText(selectedSeriesProperties.title);
+      // setCurrentThemeBragText(
+      //   `Search over ${selectedSeriesProperties.frameCount.toLocaleString('en-US')} frames from ${selectedSeriesProperties.title}`
+      // );
       navigate('/')
     }
-  }, [shows]);
+    // else {
+    //   navigate('/')
+    // }
+  }, [shows, savedCids]);
+
+  useEffect(() => {
+    console.log(metadata)
+  }, [metadata]);
 
   // This useEffect handles the data fetching
   useEffect(() => {
     async function getData() {
       // Get shows
       const fetchedShows = await fetchShows();
+      console.log(fetchedShows)
       setShows(fetchedShows);
       setLoading(false);
 
@@ -263,7 +301,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
 
 
   useEffect(() => {
-    document.addEventListener('scroll', () => {
+    const handleScroll = () => {
       // Find the height of the entire document
       const { body } = document;
       const html = document.documentElement;
@@ -313,7 +351,15 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
           }
         });
       });
-    });
+    };
+
+    // Add event listener
+    document.addEventListener('scroll', handleScroll);
+
+    // Return a cleanup function to remove the event listener
+    return () => {
+      document.removeEventListener('scroll', handleScroll);
+    };
   }, []);
 
   useEffect(() => {
@@ -370,32 +416,80 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       });
   };
 
-  const loadRandomFrame = useCallback(() => {
-    setLoadingRandom(true);
-    getSessionID().then((sessionId) => {
-      const apiName = 'publicapi';
-      const path = '/random';
-      const myInit = {
-        queryStringParameters: {
-          series: show,
-          sessionId,
-        },
-      };
+  // const loadRandomFrame = useCallback(() => {
+  //   setLoadingRandom(true);
+  //   getSessionID().then((sessionId) => {
+  //     const apiName = 'publicapi';
+  //     const path = '/random';
+  //     const myInit = {
+  //       queryStringParameters: {
+  //         series: show,
+  //         sessionId,
+  //       },
+  //     };
 
-      API.get(apiName, path, myInit)
-        .then((response) => {
-          const fid = response.frame_id;
-          console.log(fid);
-          navigate(`/frame/${fid}`);
-          setSearchQuery(null)
-          setLoadingRandom(false);
-        })
-        .catch((error) => {
-          console.error(error);
-          setLoadingRandom(false);
-        });
-    });
-  }, [navigate, seriesTitle]);
+  //     API.get(apiName, path, myInit)
+  //       .then((response) => {
+  //         const fid = response.frame_id;
+  //         console.log(fid);
+  //         navigate(`/frame/${fid}`);
+  //         setSearchQuery(null)
+  //         setLoadingRandom(false);
+  //       })
+  //       .catch((error) => {
+  //         console.error(error);
+  //         setLoadingRandom(false);
+  //       });
+  //   });
+  // }, [navigate, seriesTitle]);
+
+  // useEffect(() => {
+  //   // Function to check and parse the local storage value
+  //   const checkAndParseLocalStorage = (key) => {
+  //     const storedValue = localStorage.getItem(key);
+  //     if (!storedValue) {
+  //       return null;
+  //     }
+
+  //     try {
+  //       const parsedValue = JSON.parse(storedValue);
+  //       return Array.isArray(parsedValue) ? parsedValue : null;
+  //     } catch (e) {
+  //       // If parsing fails, return null
+  //       return null;
+  //     }
+  //   };
+
+  //   if (!localCids) {
+  //     // Attempt to retrieve and parse the 'custom_cids' from local storage
+  //     const savedCids = checkAndParseLocalStorage('custom_cids');
+
+  //     // If savedCids is an array, use it; otherwise, default to an empty array
+  //     setLocalCids(savedCids || []);
+  //   }
+  //   console.log(localCids)
+
+  // }, [localCids]);
+
+  const searchCid = (e) => {
+    e.preventDefault()
+    setCidSearchQuery(searchTerm)
+    navigate(`/v2/search/${cid}/${encodeURIComponent(searchTerm)}`)
+    return false
+  }
+
+  useEffect(() => {
+
+
+    return () => {
+      if (pathname === '/') {
+        setCid(null)
+        setShowObj(null)
+        setSearchQuery(null)
+        console.log('Unset CID')
+      }
+    }
+  }, [pathname]);
 
   return (
     <>
@@ -463,12 +557,19 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
               <Grid item sm={3.5} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
                 <StyledSearchSelector
                   onChange={(e) => {
-                    const newSeriesTitle = e.target.value;
-                    setSeriesTitle(newSeriesTitle); // Update the series title based on the selection
-                    handleChangeSeries(newSeriesTitle); // Update the theme
-                    navigate(newSeriesTitle === '_universal' ? '/' : `/${newSeriesTitle}`); // Navigate
+                    const selectedId = e.target.value;
+
+                    if (selectedId === 'addNewCid') {
+                      setAddNewCidOpen(true)
+                    } else {
+                      const newSeriesTitle = e.target.value;
+                      setCid()
+                      setSeriesTitle(newSeriesTitle); // Update the series title based on the selection
+                      handleChangeSeries(newSeriesTitle); // Update the theme
+                      navigate(newSeriesTitle === '_universal' ? '/' : `/${newSeriesTitle}`); // Navigate
+                    }
                   }}
-                  value={seriesTitle}
+                  value={cid || seriesTitle}
                 >
                   <option key="_universal" value="_universal">
                     🌈 All Shows & Movies
@@ -484,6 +585,12 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                       </option>
                     ))
                   )}
+                  {/* <option disabled value=''>IPFS</option>
+                  {user && loadingSavedCids && <option disabled value=''>Loading saved CIDs...</option>}
+                  {!loading && savedCids && savedCids.map(obj =>
+                    <option key={obj.id} value={obj.id}>{obj.emoji} {obj.title}</option>
+                  )}
+                  <option key='addNew' value='addNewCid'>+ Add New CID</option> */}
                 </StyledSearchSelector>
               </Grid>
               <Grid item sm={7} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
@@ -545,7 +652,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
           {user?.userDetails?.subscriptionStatus !== 'active' &&
             <Grid item xs={12} mt={2}>
               <center>
-                <Box sx={{ maxWidth: '800px'}}>
+                <Box sx={{ maxWidth: '800px' }}>
                   <HomePageBannerAd />
                 </Box>
               </center>
@@ -581,7 +688,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
         </StyledLeftFooter>
         <StyledRightFooter className="bottomBtn">
           <StyledButton
-            onClick={loadRandomFrame}
+            onClick={() => { loadRandomFrame(show) }}
             loading={loadingRandom}
             startIcon={<Shuffle />}
             variant="contained"
@@ -621,6 +728,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
           buttonSubtext={JSON.parse(section.buttonSubtext)}
         />
       ))}
+      <AddCidPopup open={addNewCidOpen} setOpen={setAddNewCidOpen} />
     </>
   );
 }

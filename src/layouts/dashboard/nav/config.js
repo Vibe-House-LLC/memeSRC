@@ -96,6 +96,12 @@ const navConfig = [
         icon: icon('ic_booking')
       },
       {
+        title: 'Alias Management',
+        path: '/dashboard/aliasmanagement',
+        externalLink: false,
+        icon: icon('ic_booking')
+      },
+      {
         title: 'metadata',
         path: '/dashboard/metadata',
         externalLink: false,

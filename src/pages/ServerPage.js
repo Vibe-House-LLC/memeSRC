@@ -1,16 +1,31 @@
 // ServerPage.js
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import ServerInfo from '../sections/server/ServerInfo';
+
 
 const ServerPage = () => {
+    const [status, setStatus] = useState('loading...');
     useEffect(() => {
-        if (window && window.process && window.process.type) {
-            const electron = window.require('electron');
-            electron.ipcRenderer.send('load-index-html');
-        }
+        
+
+        // setInterval(() => {
+        //     if (window && window.process && window.process.type) {
+        //         const electron = window.require('electron');
+        //         electron.ipcRenderer.invoke('get-ipfs-status').then(response => {
+        //             console.log(response)
+        //             setStatus(response.RateIn)
+        //         }).catch(error => console.log(error))
+    
+    
+        //         // electron.ipcRenderer.send('load-index-html');
+        //     }
+        // }, 1000)
+        
     }, []);
 
-    // Optionally, render something or redirect to another page
-    return null; // Or return a loading indicator, or redirect to home, etc.
+    return (
+        <ServerInfo />
+    )
 };
 
 export default ServerPage;

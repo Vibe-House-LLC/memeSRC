@@ -398,6 +398,11 @@ export const getContentMetadata = /* GraphQL */ `
       colorSecondary
       emoji
       status
+      version
+      users {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       __typename
@@ -420,8 +425,216 @@ export const listContentMetadata = /* GraphQL */ `
         colorSecondary
         emoji
         status
+        version
         createdAt
         updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const contentMetadataByStatus = /* GraphQL */ `
+  query ContentMetadataByStatus(
+    $status: Int!
+    $sortDirection: ModelSortDirection
+    $filter: ModelContentMetadataFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    contentMetadataByStatus(
+      status: $status
+      sortDirection: $sortDirection
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        title
+        description
+        frameCount
+        colorMain
+        colorSecondary
+        emoji
+        status
+        version
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const getFavorite = /* GraphQL */ `
+  query GetFavorite($id: ID!) {
+    getFavorite(id: $id) {
+      id
+      owner
+      cid
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const listFavorites = /* GraphQL */ `
+  query ListFavorites(
+    $filter: ModelFavoriteFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listFavorites(filter: $filter, limit: $limit, nextToken: $nextToken) {
+      items {
+        id
+        owner
+        cid
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const getV2ContentMetadata = /* GraphQL */ `
+  query GetV2ContentMetadata($id: ID!) {
+    getV2ContentMetadata(id: $id) {
+      id
+      title
+      description
+      frameCount
+      colorMain
+      colorSecondary
+      emoji
+      status
+      version
+      users {
+        nextToken
+        __typename
+      }
+      alias {
+        id
+        createdAt
+        updatedAt
+        aliasV2ContentMetadataId
+        __typename
+      }
+      createdAt
+      updatedAt
+      v2ContentMetadataAliasId
+      __typename
+    }
+  }
+`;
+export const listV2ContentMetadata = /* GraphQL */ `
+  query ListV2ContentMetadata(
+    $filter: ModelV2ContentMetadataFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listV2ContentMetadata(
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        title
+        description
+        frameCount
+        colorMain
+        colorSecondary
+        emoji
+        status
+        version
+        createdAt
+        updatedAt
+        v2ContentMetadataAliasId
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const v2ContentMetadataByStatus = /* GraphQL */ `
+  query V2ContentMetadataByStatus(
+    $status: Int!
+    $sortDirection: ModelSortDirection
+    $filter: ModelV2ContentMetadataFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    v2ContentMetadataByStatus(
+      status: $status
+      sortDirection: $sortDirection
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        title
+        description
+        frameCount
+        colorMain
+        colorSecondary
+        emoji
+        status
+        version
+        createdAt
+        updatedAt
+        v2ContentMetadataAliasId
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const getAlias = /* GraphQL */ `
+  query GetAlias($id: ID!) {
+    getAlias(id: $id) {
+      id
+      v2ContentMetadata {
+        id
+        title
+        description
+        frameCount
+        colorMain
+        colorSecondary
+        emoji
+        status
+        version
+        createdAt
+        updatedAt
+        v2ContentMetadataAliasId
+        __typename
+      }
+      createdAt
+      updatedAt
+      aliasV2ContentMetadataId
+      __typename
+    }
+  }
+`;
+export const listAliases = /* GraphQL */ `
+  query ListAliases(
+    $filter: ModelAliasFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listAliases(filter: $filter, limit: $limit, nextToken: $nextToken) {
+      items {
+        id
+        createdAt
+        updatedAt
+        aliasV2ContentMetadataId
         __typename
       }
       nextToken
@@ -512,6 +725,14 @@ export const getUserDetails = /* GraphQL */ `
       subscriptionStatus
       magicSubscription
       userNotifications {
+        nextToken
+        __typename
+      }
+      contentMetadatas {
+        nextToken
+        __typename
+      }
+      v2ContentMetadatas {
         nextToken
         __typename
       }
@@ -910,6 +1131,247 @@ export const listEditorProjects = /* GraphQL */ `
         createdAt
         updatedAt
         editorProjectUserId
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const getUserMetadata = /* GraphQL */ `
+  query GetUserMetadata($id: ID!) {
+    getUserMetadata(id: $id) {
+      id
+      contentMetadataId
+      userDetailsId
+      contentMetadata {
+        id
+        title
+        description
+        frameCount
+        colorMain
+        colorSecondary
+        emoji
+        status
+        version
+        createdAt
+        updatedAt
+        __typename
+      }
+      userDetails {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const listUserMetadata = /* GraphQL */ `
+  query ListUserMetadata(
+    $filter: ModelUserMetadataFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listUserMetadata(filter: $filter, limit: $limit, nextToken: $nextToken) {
+      items {
+        id
+        contentMetadataId
+        userDetailsId
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const userMetadataByContentMetadataId = /* GraphQL */ `
+  query UserMetadataByContentMetadataId(
+    $contentMetadataId: ID!
+    $sortDirection: ModelSortDirection
+    $filter: ModelUserMetadataFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    userMetadataByContentMetadataId(
+      contentMetadataId: $contentMetadataId
+      sortDirection: $sortDirection
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        contentMetadataId
+        userDetailsId
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const userMetadataByUserDetailsId = /* GraphQL */ `
+  query UserMetadataByUserDetailsId(
+    $userDetailsId: ID!
+    $sortDirection: ModelSortDirection
+    $filter: ModelUserMetadataFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    userMetadataByUserDetailsId(
+      userDetailsId: $userDetailsId
+      sortDirection: $sortDirection
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        contentMetadataId
+        userDetailsId
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const getUserV2Metadata = /* GraphQL */ `
+  query GetUserV2Metadata($id: ID!) {
+    getUserV2Metadata(id: $id) {
+      id
+      v2ContentMetadataId
+      userDetailsId
+      v2ContentMetadata {
+        id
+        title
+        description
+        frameCount
+        colorMain
+        colorSecondary
+        emoji
+        status
+        version
+        createdAt
+        updatedAt
+        v2ContentMetadataAliasId
+        __typename
+      }
+      userDetails {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const listUserV2Metadata = /* GraphQL */ `
+  query ListUserV2Metadata(
+    $filter: ModelUserV2MetadataFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listUserV2Metadata(filter: $filter, limit: $limit, nextToken: $nextToken) {
+      items {
+        id
+        v2ContentMetadataId
+        userDetailsId
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const userV2MetadataByV2ContentMetadataId = /* GraphQL */ `
+  query UserV2MetadataByV2ContentMetadataId(
+    $v2ContentMetadataId: ID!
+    $sortDirection: ModelSortDirection
+    $filter: ModelUserV2MetadataFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    userV2MetadataByV2ContentMetadataId(
+      v2ContentMetadataId: $v2ContentMetadataId
+      sortDirection: $sortDirection
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        v2ContentMetadataId
+        userDetailsId
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const userV2MetadataByUserDetailsId = /* GraphQL */ `
+  query UserV2MetadataByUserDetailsId(
+    $userDetailsId: ID!
+    $sortDirection: ModelSortDirection
+    $filter: ModelUserV2MetadataFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    userV2MetadataByUserDetailsId(
+      userDetailsId: $userDetailsId
+      sortDirection: $sortDirection
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        v2ContentMetadataId
+        userDetailsId
+        createdAt
+        updatedAt
         __typename
       }
       nextToken

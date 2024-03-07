@@ -1,14 +1,19 @@
 import styled from "@emotion/styled";
 import { Box, Button, Container, Divider, Fab, FormControl, Grid, InputBase, Link, MenuItem, Select, Stack, Typography, useMediaQuery } from "@mui/material";
-import { ArrowBack, Favorite, MapsUgc, Search, Shuffle } from "@mui/icons-material";
+import { ArrowBack, Close, Favorite, MapsUgc, Search, Shuffle } from "@mui/icons-material";
 import { API, graphqlOperation } from 'aws-amplify';
-import { cloneElement, useCallback, useEffect, useState } from "react";
+import { cloneElement, useCallback, useContext, useEffect, useState } from "react";
 import { LoadingButton } from "@mui/lab";
 import { Link as RouterLink, useLocation, useNavigate, useParams } from "react-router-dom";
 import { searchPropTypes } from "./SearchPropTypes";
 import Logo from "../../components/logo/Logo";
-import { listContentMetadata } from '../../graphql/queries';
+import { contentMetadataByStatus, listContentMetadata } from '../../graphql/queries';
 import useSearchDetails from "../../hooks/useSearchDetails";
+import useSearchDetailsV2 from "../../hooks/useSearchDetailsV2";
+import AddCidPopup from "../../components/ipfs/add-cid-popup";
+import { UserContext } from "../../UserContext";
+import fetchShows from "../../utils/fetchShows";
+import useLoadRandomFrame from "../../utils/loadRandomFrame";
 
 // Define constants for colors and fonts
 const PRIMARY_COLOR = '#4285F4';
@@ -76,32 +81,22 @@ const StyledHeader = styled('header')(() => ({
   paddingBottom: '10px',
 }));
 
-async function fetchShows() {
-  const result = await API.graphql({
-    ...graphqlOperation(listContentMetadata, { filter: {}, limit: 50 }),
-    authMode: "API_KEY"
-  });
-  const sortedMetadata = result.data.listContentMetadata.items.sort((a, b) => {
-    if (a.title < b.title) return -1;
-    if (a.title > b.title) return 1;
-    return 0;
-  });
-  return sortedMetadata;
-}
-
 TopBannerSearchRevised.propTypes = searchPropTypes;
 
 
 export default function TopBannerSearchRevised(props) {
   const { show, searchQuery, setSearchQuery, frame, setFrame, setFineTuningFrame, setShow } = useSearchDetails();
+  const { savedCids, loadingSavedCids } = useSearchDetailsV2();
   const { search, pathname } = useLocation();
   const { fid, searchTerms } = useParams();
   const [shows, setShows] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [loadingRandom, setLoadingRandom] = useState(false);
+  const { loadRandomFrame, loadingRandom, error } = useLoadRandomFrame();
   const [searchTerm, setSearchTerm] = useState(searchQuery);
   const [seriesTitle, setSeriesTitle] = useState('_universal');
+  const [addNewCidOpen, setAddNewCidOpen] = useState(false);
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('md'));
+  const { user } = useContext(UserContext)
 
   const searchFunction = useCallback((e) => {
     if (e) {
@@ -159,35 +154,23 @@ export default function TopBannerSearchRevised(props) {
       });
   };
 
-  const loadRandomFrame = useCallback(() => {
-    setLoadingRandom(true);
-    getSessionID().then(sessionId => {
-      const apiName = 'publicapi';
-      const path = '/random';
-      const myInit = {
-        queryStringParameters: {
-          series: show,
-          sessionId
-        }
-      }
-
-      API.get(apiName, path, myInit)
-        .then(response => {
-          const fid = response.frame_id;
-          console.log(fid)
-          navigate(`/frame/${fid}`);
-          setLoadingRandom(false);
-        })
-        .catch(error => {
-          console.error(error);
-          setLoadingRandom(false);
-        });
-    })
-  }, [navigate, seriesTitle]);
-
   const handleBackToFramePage = () => {
     navigate(`/frame/${frame || fid}`)
     setFrame(null)
+  }
+
+  const handleSelectSeries = (data) => {
+    if (data?.addNew) {
+      setAddNewCidOpen(true)
+    } else {
+      const savedCid = shows?.find(obj => obj.id === data && obj.version === 2) || savedCids?.find(obj => obj.id === data)
+      if (savedCid) {
+        navigate(`/v2/search/${savedCid.id}/${encodeURIComponent(searchTerm || searchTerms)}`)
+      } else {
+        setShow(data); 
+        setSeriesTitle(data);
+      }
+    }
   }
 
   return (
@@ -205,7 +188,7 @@ export default function TopBannerSearchRevised(props) {
                     // InputProps={{
                     //   endAdornment: <InputAdornment position="end"><Typography variant="caption"><Search /></Typography></InputAdornment>,
                     // }}
-                    endAdornment={<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} />}
+                    endAdornment={<>{(searchTerm || searchTerms) && <Close onClick={() => { setSearchTerm(''); setSearchQuery(''); }} sx={{cursor: 'pointer', mr: 1}} />}<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} /></>}
                     sx={{ width: '100%' }}
                     value={searchTerm || searchTerms}
                     onChange={(e) => {
@@ -235,7 +218,7 @@ export default function TopBannerSearchRevised(props) {
                     labelId="demo-simple-select-standard-label"
                     id="demo-simple-select-standard"
                     value={show}
-                    onChange={(x) => { setShow(x.target.value); setSeriesTitle(x.target.value)}}
+                    onChange={(x) => { handleSelectSeries(x.target.value) }}
                     label="Age"
                     size="small"
                     autoWidth
@@ -246,6 +229,16 @@ export default function TopBannerSearchRevised(props) {
                     {(loading) ? <MenuItem key="loading" value="loading" disabled>Loading...</MenuItem> : shows.map((item) => (
                       <MenuItem key={item.id} value={item.id}>{item.emoji} {item.title}</MenuItem>
                     ))}
+                    {/* <Divider />
+                    <MenuItem disabled value=''>IPFS</MenuItem>
+                    <Divider />
+                    {user && loadingSavedCids &&
+                      <MenuItem value='' disabled>Loading saved CIDs...</MenuItem>
+                    }
+                    {!loading && savedCids && savedCids.map(obj =>
+                      <MenuItem key={obj.id} value={obj.id}>{obj.emoji} {obj.title}</MenuItem>
+                    )}
+                    <MenuItem key='addNew' value={{ addNew: true }}>+ Add New CID</MenuItem> */}
                   </Select>
                 </FormControl>
               </Grid>
@@ -274,14 +267,14 @@ export default function TopBannerSearchRevised(props) {
             </a>
           </StyledLeftFooter>
           <StyledRightFooter className="bottomBtn">
-            <StyledButton onClick={loadRandomFrame} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
+            <StyledButton onClick={() => { loadRandomFrame(show) }} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
           </StyledRightFooter>
         </>
       }
 
       {pathname.startsWith("/frame") &&
         <>
-          <Container maxWidth disableGutters sx={{mt: isMobile ? 2 : 0}}>
+          <Container maxWidth disableGutters sx={{ mt: isMobile ? 2 : 0 }}>
             <StyledHeader>
               <Grid container mb={1.5} mt={0} paddingX={2}>
                 <Grid item xs={12} md={6} paddingLeft={{ xs: 0, md: 2 }}>
@@ -292,7 +285,7 @@ export default function TopBannerSearchRevised(props) {
                       // InputProps={{
                       //   endAdornment: <InputAdornment position="end"><Typography variant="caption"><Search /></Typography></InputAdornment>,
                       // }}
-                      endAdornment={<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} />}
+                      endAdornment={<>{(searchTerm || searchTerms) && <Close onClick={() => { setSearchTerm(''); setSearchQuery(''); }} sx={{cursor: 'pointer', mr: 1}} />}<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} /></>}
                       sx={{ width: '100%' }}
                       value={searchTerm}
                       onChange={(e) => {
@@ -317,24 +310,34 @@ export default function TopBannerSearchRevised(props) {
               <Grid container wrap="nowrap" sx={{ overflowX: "scroll", flexWrap: "nowrap", scrollbarWidth: 'none', '&::-webkit-scrollbar': { height: '0 !important', width: '0 !important', display: 'none' } }} paddingX={2}>
                 <Grid item marginLeft={{ md: 6 }}>
 
-                  <FormControl variant="standard" sx={{ minWidth: 120 }}>
-                    <Select
-                      labelId="demo-simple-select-standard-label"
-                      id="demo-simple-select-standard"
-                      value={show}
-                      onChange={(x) => { setShow(x.target.value); }}
-                      label="Age"
-                      size="small"
-                      autoWidth
-                      disableUnderline
-                    >
+                <FormControl variant="standard" sx={{ minWidth: 120 }}>
+                  <Select
+                    labelId="demo-simple-select-standard-label"
+                    id="demo-simple-select-standard"
+                    value={show}
+                    onChange={(x) => { handleSelectSeries(x.target.value) }}
+                    label="Age"
+                    size="small"
+                    autoWidth
+                    disableUnderline
+                  >
 
-                      <MenuItem key='_universal' value='_universal' selected>🌈 All Shows & Movies</MenuItem>
-                      {(loading) ? <MenuItem key="loading" value="loading" disabled>Loading...</MenuItem> : shows.map((item) => (
-                        <MenuItem key={item.id} value={item.id}>{item.emoji} {item.title}</MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                    <MenuItem key='_universal' value='_universal' selected>🌈 All Shows & Movies</MenuItem>
+                    {(loading) ? <MenuItem key="loading" value="loading" disabled>Loading...</MenuItem> : shows.map((item) => (
+                      <MenuItem key={item.id} value={item.id}>{item.emoji} {item.title}</MenuItem>
+                    ))}
+                    {/* <Divider />
+                    <MenuItem disabled value=''>IPFS</MenuItem>
+                    <Divider />
+                    {user && loadingSavedCids &&
+                      <MenuItem value='' disabled>Loading saved CIDs...</MenuItem>
+                    }
+                    {!loading && savedCids && savedCids.map(obj =>
+                      <MenuItem key={obj.id} value={obj.id}>{obj.emoji} {obj.title}</MenuItem>
+                    )}
+                    <MenuItem key='addNew' value={{ addNew: true }}>+ Add New CID</MenuItem> */}
+                  </Select>
+                </FormControl>
                 </Grid>
                 <Grid item marginLeft={{ xs: 3 }} marginY='auto' display='flex' style={{ whiteSpace: 'nowrap' }}>
                   <Typography fontSize={13}><a href="/vote" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>Request a show</a></Typography>
@@ -386,7 +389,7 @@ export default function TopBannerSearchRevised(props) {
               </a>
             </StyledLeftFooter>
             <StyledRightFooter className="bottomBtn">
-              <StyledButton onClick={loadRandomFrame} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
+              <StyledButton onClick={() => { loadRandomFrame(show) }} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
             </StyledRightFooter>
           </Container>
         </>
@@ -394,7 +397,7 @@ export default function TopBannerSearchRevised(props) {
 
       {pathname.startsWith("/editor") &&
         <>
-          <Container maxWidth disableGutters sx={{mt: isMobile ? 2 : 0}}>
+          <Container maxWidth disableGutters sx={{ mt: isMobile ? 2 : 0 }}>
             <StyledHeader>
               <Grid container mb={1.5} mt={0} paddingX={2}>
                 <Grid item xs={12} md={6} paddingLeft={{ xs: 0, md: 2 }}>
@@ -405,7 +408,7 @@ export default function TopBannerSearchRevised(props) {
                       // InputProps={{
                       //   endAdornment: <InputAdornment position="end"><Typography variant="caption"><Search /></Typography></InputAdornment>,
                       // }}
-                      endAdornment={<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} />}
+                      endAdornment={<>{(searchTerm || searchTerms) && <Close onClick={() => { setSearchTerm(''); setSearchQuery(''); }} sx={{cursor: 'pointer', mr: 1}} />}<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} /></>}
                       sx={{ width: '100%' }}
                       value={searchTerm}
                       onChange={(e) => {
@@ -430,24 +433,34 @@ export default function TopBannerSearchRevised(props) {
               <Grid container wrap="nowrap" sx={{ overflowX: "scroll", flexWrap: "nowrap", scrollbarWidth: 'none', '&::-webkit-scrollbar': { height: '0 !important', width: '0 !important', display: 'none' } }} paddingX={2}>
                 <Grid item marginLeft={{ md: 6 }}>
 
-                  <FormControl variant="standard" sx={{ minWidth: 120 }}>
-                    <Select
-                      labelId="demo-simple-select-standard-label"
-                      id="demo-simple-select-standard"
-                      value={show}
-                      onChange={(x) => { setShow(x.target.value); }}
-                      label="Age"
-                      size="small"
-                      autoWidth
-                      disableUnderline
-                    >
+                <FormControl variant="standard" sx={{ minWidth: 120 }}>
+                  <Select
+                    labelId="demo-simple-select-standard-label"
+                    id="demo-simple-select-standard"
+                    value={show}
+                    onChange={(x) => { handleSelectSeries(x.target.value) }}
+                    label="Age"
+                    size="small"
+                    autoWidth
+                    disableUnderline
+                  >
 
-                      <MenuItem key='_universal' value='_universal' selected>🌈 All Shows & Movies</MenuItem>
-                      {(loading) ? <MenuItem key="loading" value="loading" disabled>Loading...</MenuItem> : shows.map((item) => (
-                        <MenuItem key={item.id} value={item.id}>{item.emoji} {item.title}</MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                    <MenuItem key='_universal' value='_universal' selected>🌈 All Shows & Movies</MenuItem>
+                    {(loading) ? <MenuItem key="loading" value="loading" disabled>Loading...</MenuItem> : shows.map((item) => (
+                      <MenuItem key={item.id} value={item.id}>{item.emoji} {item.title}</MenuItem>
+                    ))}
+                    {/* <Divider />
+                    <MenuItem disabled value=''>IPFS</MenuItem>
+                    <Divider />
+                    {user && loadingSavedCids &&
+                      <MenuItem value='' disabled>Loading saved CIDs...</MenuItem>
+                    }
+                    {!loading && savedCids && savedCids.map(obj =>
+                      <MenuItem key={obj.id} value={obj.id}>{obj.emoji} {obj.title}</MenuItem>
+                    )}
+                    <MenuItem key='addNew' value={{ addNew: true }}>+ Add New CID</MenuItem> */}
+                  </Select>
+                </FormControl>
                 </Grid>
                 <Grid item marginLeft={{ xs: 3 }} marginY='auto' display='flex' style={{ whiteSpace: 'nowrap' }}>
                   <Typography fontSize={13}><a href="/vote" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>Request a show</a></Typography>
@@ -493,7 +506,7 @@ export default function TopBannerSearchRevised(props) {
 
       {pathname.startsWith("/vote") &&
         <>
-          <Container maxWidth disableGutters sx={{mt: isMobile ? 2 : 0}}>
+          <Container maxWidth disableGutters sx={{ mt: isMobile ? 2 : 0 }}>
             <StyledHeader>
               <Grid container mb={1.5} mt={0} paddingX={2}>
                 <Grid item xs={12} md={6} paddingLeft={{ xs: 0, md: 2 }}>
@@ -504,7 +517,7 @@ export default function TopBannerSearchRevised(props) {
                       // InputProps={{
                       //   endAdornment: <InputAdornment position="end"><Typography variant="caption"><Search /></Typography></InputAdornment>,
                       // }}
-                      endAdornment={<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} />}
+                      endAdornment={<>{(searchTerm || searchTerms) && <Close onClick={() => { setSearchTerm(''); setSearchQuery(''); }} sx={{cursor: 'pointer', mr: 1}} />}<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} /></>}
                       sx={{ width: '100%' }}
                       value={searchTerm}
                       onChange={(e) => {
@@ -529,24 +542,34 @@ export default function TopBannerSearchRevised(props) {
               <Grid container wrap="nowrap" sx={{ overflowX: "scroll", flexWrap: "nowrap", scrollbarWidth: 'none', '&::-webkit-scrollbar': { height: '0 !important', width: '0 !important', display: 'none' } }} paddingX={2}>
                 <Grid item marginLeft={{ md: 6 }}>
 
-                  <FormControl variant="standard" sx={{ minWidth: 120 }}>
-                    <Select
-                      labelId="demo-simple-select-standard-label"
-                      id="demo-simple-select-standard"
-                      value={show}
-                      onChange={(x) => { setShow(x.target.value); }}
-                      label="Age"
-                      size="small"
-                      autoWidth
-                      disableUnderline
-                    >
+                <FormControl variant="standard" sx={{ minWidth: 120 }}>
+                  <Select
+                    labelId="demo-simple-select-standard-label"
+                    id="demo-simple-select-standard"
+                    value={show}
+                    onChange={(x) => { handleSelectSeries(x.target.value) }}
+                    label="Age"
+                    size="small"
+                    autoWidth
+                    disableUnderline
+                  >
 
-                      <MenuItem key='_universal' value='_universal' selected>🌈 All Shows & Movies</MenuItem>
-                      {(loading) ? <MenuItem key="loading" value="loading" disabled>Loading...</MenuItem> : shows.map((item) => (
-                        <MenuItem key={item.id} value={item.id}>{item.emoji} {item.title}</MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                    <MenuItem key='_universal' value='_universal' selected>🌈 All Shows & Movies</MenuItem>
+                    {(loading) ? <MenuItem key="loading" value="loading" disabled>Loading...</MenuItem> : shows.map((item) => (
+                      <MenuItem key={item.id} value={item.id}>{item.emoji} {item.title}</MenuItem>
+                    ))}
+                    {/* <Divider />
+                    <MenuItem disabled value=''>IPFS</MenuItem>
+                    <Divider /> */}
+                    {/* {user && loadingSavedCids &&
+                      <MenuItem value='' disabled>Loading saved CIDs...</MenuItem>
+                    }
+                    {!loading && savedCids && savedCids.map(obj =>
+                      <MenuItem key={obj.id} value={obj.id}>{obj.emoji} {obj.title}</MenuItem>
+                    )}
+                    <MenuItem key='addNew' value={{ addNew: true }}>+ Add New CID</MenuItem> */}
+                  </Select>
+                </FormControl>
                 </Grid>
                 <Grid item marginLeft={{ xs: 3 }} marginY='auto' display='flex' style={{ whiteSpace: 'nowrap' }}>
                   <Typography fontSize={13}><a href="/vote" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>Request a show</a></Typography>
@@ -560,7 +583,7 @@ export default function TopBannerSearchRevised(props) {
               </Grid>
             </StyledHeader>
           </Container>
-          <Divider sx={{mb: 2.5}} />
+          <Divider sx={{ mb: 2.5 }} />
           <Container maxWidth="xl" sx={{ pt: 0 }} disableGutters>
             {cloneElement(props.children, { setSeriesTitle, shows })}
             <StyledLeftFooter className="bottomBtn">
@@ -576,15 +599,15 @@ export default function TopBannerSearchRevised(props) {
               </a>
             </StyledLeftFooter>
             <StyledRightFooter className="bottomBtn">
-              <StyledButton onClick={loadRandomFrame} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
+              <StyledButton onClick={() => { loadRandomFrame(show) }} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
             </StyledRightFooter>
           </Container>
         </>
       }
 
-{pathname.startsWith("/episode") &&
+      {pathname.startsWith("/episode") &&
         <>
-          <Container maxWidth disableGutters sx={{mt: isMobile ? 8 : 0}}>
+          <Container maxWidth disableGutters sx={{ mt: isMobile ? 8 : 8 }}>
             <StyledHeader>
               <Grid container mb={1.5} mt={0} paddingX={2}>
                 <Grid item xs={12} md={6} paddingLeft={{ xs: 0, md: 2 }}>
@@ -595,7 +618,7 @@ export default function TopBannerSearchRevised(props) {
                       // InputProps={{
                       //   endAdornment: <InputAdornment position="end"><Typography variant="caption"><Search /></Typography></InputAdornment>,
                       // }}
-                      endAdornment={<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} />}
+                      endAdornment={<>{(searchTerm || searchTerms) && <Close onClick={() => { setSearchTerm(''); setSearchQuery(''); }} sx={{cursor: 'pointer', mr: 1}} />}<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} /></>}
                       sx={{ width: '100%' }}
                       value={searchTerm}
                       onChange={(e) => {
@@ -620,24 +643,34 @@ export default function TopBannerSearchRevised(props) {
               <Grid container wrap="nowrap" sx={{ overflowX: "scroll", flexWrap: "nowrap", scrollbarWidth: 'none', '&::-webkit-scrollbar': { height: '0 !important', width: '0 !important', display: 'none' } }} paddingX={2}>
                 <Grid item marginLeft={{ md: 6 }}>
 
-                  <FormControl variant="standard" sx={{ minWidth: 120 }}>
-                    <Select
-                      labelId="demo-simple-select-standard-label"
-                      id="demo-simple-select-standard"
-                      value={show}
-                      onChange={(x) => { setShow(x.target.value); }}
-                      label="Age"
-                      size="small"
-                      autoWidth
-                      disableUnderline
-                    >
+                <FormControl variant="standard" sx={{ minWidth: 120 }}>
+                  <Select
+                    labelId="demo-simple-select-standard-label"
+                    id="demo-simple-select-standard"
+                    value={show}
+                    onChange={(x) => { handleSelectSeries(x.target.value) }}
+                    label="Age"
+                    size="small"
+                    autoWidth
+                    disableUnderline
+                  >
 
-                      <MenuItem key='_universal' value='_universal' selected>🌈 All Shows & Movies</MenuItem>
-                      {(loading) ? <MenuItem key="loading" value="loading" disabled>Loading...</MenuItem> : shows.map((item) => (
-                        <MenuItem key={item.id} value={item.id}>{item.emoji} {item.title}</MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                    <MenuItem key='_universal' value='_universal' selected>🌈 All Shows & Movies</MenuItem>
+                    {(loading) ? <MenuItem key="loading" value="loading" disabled>Loading...</MenuItem> : shows.map((item) => (
+                      <MenuItem key={item.id} value={item.id}>{item.emoji} {item.title}</MenuItem>
+                    ))}
+                    {/* <Divider />
+                    <MenuItem disabled value=''>IPFS</MenuItem>
+                    <Divider />
+                    {user && loadingSavedCids &&
+                      <MenuItem value='' disabled>Loading saved CIDs...</MenuItem>
+                    }
+                    {!loading && savedCids && savedCids.map(obj =>
+                      <MenuItem key={obj.id} value={obj.id}>{obj.emoji} {obj.title}</MenuItem>
+                    )}
+                    <MenuItem key='addNew' value={{ addNew: true }}>+ Add New CID</MenuItem> */}
+                  </Select>
+                </FormControl>
                 </Grid>
                 <Grid item marginLeft={{ xs: 3 }} marginY='auto' display='flex' style={{ whiteSpace: 'nowrap' }}>
                   <Typography fontSize={13}><a href="/vote" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>Request a show</a></Typography>
@@ -651,7 +684,7 @@ export default function TopBannerSearchRevised(props) {
               </Grid>
             </StyledHeader>
           </Container>
-          <Divider sx={{mb: 2.5}} />
+          <Divider sx={{ mb: 2.5 }} />
           <Container maxWidth="xl" sx={{ pt: 0 }} disableGutters>
             {cloneElement(props.children, { setSeriesTitle, shows })}
             <StyledLeftFooter className="bottomBtn">
@@ -667,11 +700,12 @@ export default function TopBannerSearchRevised(props) {
               </a>
             </StyledLeftFooter>
             <StyledRightFooter className="bottomBtn">
-              <StyledButton onClick={loadRandomFrame} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
+              <StyledButton onClick={() => { loadRandomFrame(show) }} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
             </StyledRightFooter>
           </Container>
         </>
       }
+      <AddCidPopup open={addNewCidOpen} setOpen={setAddNewCidOpen} />
     </>
   )
 }

@@ -6,7 +6,7 @@ import styled from '@emotion/styled';
 import { Stack } from '@mui/system';
 import { LoadingButton } from '@mui/lab';
 import { API, graphqlOperation } from 'aws-amplify';
-import { listContentMetadata } from '../graphql/queries';
+import { contentMetadataByStatus, listContentMetadata } from '../graphql/queries';
 import EpisodeViewResultsAd from '../ads/EpisodeViewResultsAd';
 import EpisodeViewBannerAd from '../ads/EpisodeViewBannerAd';
 import { UserContext } from '../UserContext';
@@ -79,10 +79,10 @@ export default function EpisodePage({ setSeriesTitle }) {
   useEffect(() => {
     loadFrames(((Number(frameNum) + 1) / 9) - 1);
     API.graphql({
-      ...graphqlOperation(listContentMetadata, { filter: {}, limit: 50 }),
+      ...graphqlOperation(contentMetadataByStatus, { filter: {}, limit: 50, status: 1 }),
       authMode: "API_KEY"
     }).then(result => {
-      setShowName(result.data.listContentMetadata.items.find(obj => obj.id === seriesId).title)
+      setShowName(result.data.contentMetadataByStatus.items.find(obj => obj.id === seriesId).title)
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
