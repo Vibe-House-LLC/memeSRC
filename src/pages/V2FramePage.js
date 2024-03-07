@@ -364,6 +364,7 @@ export default function FramePage({ shows = [] }) {
       setSurroundingSubtitles([]);
       setSurroundingFrames(new Array(9).fill('loading'));
       setEnableFineTuningFrames(false)
+      setImgSrc()
 
       // Call the loading functions
       loadInitialFrameInfo().then(() => {
