@@ -170,7 +170,7 @@ const AliasManagementPageRevised = () => {
       // If the metadata cannot be loaded, the enitire function will stop before any damage is done.
       if (!doesMetadataExist?.data?.getV2ContentMetadata?.id) {
         // Get the metadata
-        const metadataUrl = `https://ipfs.memesrc.com/ipfs/${aliasData.aliasV2ContentMetadataId}/00_metadata.json`
+        const metadataUrl = `https://memesrc.com/v2/${aliasData.aliasV2ContentMetadataId}/00_metadata.json`
         const requestOptions = {
           method: "GET",
           redirect: "follow"

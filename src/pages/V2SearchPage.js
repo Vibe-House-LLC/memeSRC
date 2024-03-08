@@ -122,7 +122,7 @@ export default function SearchPage() {
 
   useEffect(() => {
     async function loadFile(cid, filename) {
-      const url = `https://ipfs.memesrc.com/ipfs/${cid}/_docs.csv`;
+      const url = `https://memesrc.com/v2/${cid}/_docs.csv`;
       try {
         const response = await fetch(url);
         if (!response.ok) {
@@ -211,7 +211,7 @@ export default function SearchPage() {
         const metadataCid = (await getV2Metadata(params.cid)).id
         const videoResultsPromises = results.map(async (result, index) => {
           const groupIndex = Math.floor((parseInt(result.subtitle_index, 10)) / 15);
-          const zipUrl = `https://ipfs.memesrc.com/ipfs/${metadataCid}/${result.season}/${result.episode}/s${groupIndex}.zip`;
+          const zipUrl = `https://memesrc.com/v2/${metadataCid}/${result.season}/${result.episode}/s${groupIndex}.zip`;
 
           try {
             const zipResponse = await fetch(zipUrl);

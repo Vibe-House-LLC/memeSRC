@@ -33,7 +33,7 @@ export default function V2EpisodePage({ setSeriesTitle }) {
       const fetchSubtitlesAndFrames = async () => {
         setLoading(true);
 
-        const subtitlesUrl = `https://ipfs.memesrc.com/ipfs/${confirmedCid}/${season}/${episode}/_docs.csv`;
+        const subtitlesUrl = `https://memesrc.com/v2/${confirmedCid}/${season}/${episode}/_docs.csv`;
         const subtitlesResponse = await fetch(subtitlesUrl);
         const subtitlesCsv = await subtitlesResponse.text();
 
