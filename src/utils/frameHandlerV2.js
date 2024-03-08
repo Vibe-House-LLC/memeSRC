@@ -53,7 +53,7 @@ const fetchFrameSubtitleAndImage = async (cid, season, episode, frame) => {
   episode = parseInt(episode, 10);
   frame = parseInt(frame, 10);
 
-  const csvUrl = `https://ipfs.memesrc.com/ipfs/${cid}/${season}/${episode}/_docs.csv`;
+  const csvUrl = `https://memesrc.com/v2/${cid}/${season}/${episode}/_docs.csv`;
   const csvData = await fetchCSV(csvUrl);
   const { subtitle } = findSubtitleForFrame(csvData, season, episode, frame);
   // Pass a single-element array with the frame
@@ -113,11 +113,11 @@ const fetchFrameInfo = async (cid, season, episode, frame, options = {}) => {
     
     console.log("TEST: 1")
 
-    const metadataUrl = `https://ipfs.memesrc.com/ipfs/${cid}/00_metadata.json`;
+    const metadataUrl = `https://memesrc.com/v2/${cid}/00_metadata.json`;
     const metadata = await fetchJSON(metadataUrl);
     const seriesName = metadata.index_name;
 
-    const csvUrl = `https://ipfs.memesrc.com/ipfs/${cid}/${season}/${episode}/_docs.csv`;
+    const csvUrl = `https://memesrc.com/v2/${cid}/${season}/${episode}/_docs.csv`;
     const csvData = await fetchCSV(csvUrl);
 
     console.log("TEST: 2")

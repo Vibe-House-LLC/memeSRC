@@ -16,7 +16,7 @@ export async function extractVideoFrames(cid, season, episode, frameIndexes, fps
 
   // Extract frames for each video file
   const fileList = Object.keys(fileFrameGroups).map(async (key) => {
-      const videoUrl = `https://ipfs.memesrc.com/ipfs/${cid}/${season}/${episode}/${key}`;
+      const videoUrl = `https://memesrc.com/v2/${cid}/${season}/${episode}/${key}`;
       console.log(videoUrl)
       const frameBlobs = await extractFramesFromVideo(videoUrl, fileFrameGroups[key], fps, scaleFactor);
       return frameBlobs;
