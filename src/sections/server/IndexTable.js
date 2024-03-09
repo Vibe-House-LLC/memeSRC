@@ -11,7 +11,7 @@ import CreateIndex from './CreateIndex';
 
 // Function to fetch the title for a given item
 const fetchTitle = async (item) => {
-  const url = `https://memesrc.com/v2/${item.cid}/00_metadata.json`;
+  const url = `https://ipfs.memesrc.com/ipfs/${item.cid}/00_metadata.json`;
   try {
     const response = await fetch(url);
     const metadata = await response.json();
