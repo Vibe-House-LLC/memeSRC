@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Grid, CircularProgress, Card, Chip, Typography, Button } from '@mui/material';
+import { Grid, CircularProgress, Card, Chip, Typography, Button, Collapse, IconButton } from '@mui/material';
 import styled from '@emotion/styled';
 import { Link, useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import JSZip from 'jszip';
+import { ReportProblem } from '@mui/icons-material';
 import useSearchDetails from '../hooks/useSearchDetails';
 import IpfsSearchBar from '../sections/search/ipfs-search-bar';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
@@ -71,6 +72,80 @@ const BottomCardLabel = styled.div`
   text-align: left;
 `;
 
+const UpgradedIndexBanner = styled.div`
+  background-image: url('https://api-prod-minimal-v510.vercel.app/assets/images/cover/cover_3.jpg');
+  background-size: cover;
+  background-position: center;
+  padding: 40px 20px;
+  text-align: center;
+  position: relative;
+  border-radius: 8px;
+  margin: 20px;
+  box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    border-radius: 8px;
+  }
+`;
+
+const UpgradedIndexText = styled(Typography)`
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 10px;
+  color: #fff;
+  position: relative;
+  z-index: 1;
+`;
+
+const UpgradedIndexSubtext = styled(Typography)`
+  font-size: 16px;
+  font-weight: bold;
+  color: #E2e2e3;
+  position: relative;
+  z-index: 1;
+  margin-bottom: 10px;
+  margin-left: 10px;
+  margin-right: 10px;
+
+  a {
+    color: #f0f0f0;
+    text-decoration: underline;
+
+    &:hover {
+      color: #fff;
+    }
+  }
+`;
+
+const DismissButton = styled(Button)`
+  margin-top: 15px;
+  border-radius: 20px;
+  padding: 6px 16px;
+  background-color: #fff;
+  color: #000;
+  position: relative;
+  z-index: 1;
+
+  &:hover {
+    background-color: #eee;
+  }
+`;
+
+const ReportProblemButton = styled(IconButton)`
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  color: #fff;
+  z-index: 1;
+`;
+
 export default function SearchPage() {
   const params = useParams();
 
@@ -83,6 +158,7 @@ export default function SearchPage() {
   const { showObj, setShowObj, cid } = useSearchDetailsV2();
   const [loadingResults, setLoadingResults] = useState(true);
   const [videoUrls, setVideoUrls] = useState({});
+  const [showBanner, setShowBanner] = useState(true);
 
   // Ref to keep track of video elements
   const videoRefs = useRef([]);
@@ -279,11 +355,30 @@ export default function SearchPage() {
   }, [loadingCsv, showObj, params?.searchTerms]);
 
   useEffect(() => {
-    console.log(newResults)
+    console.log(newResults);
   }, [newResults]);
 
   return (
     <>
+      <Collapse in={showBanner}>
+      <UpgradedIndexBanner>
+        <UpgradedIndexText>Upgraded Index!</UpgradedIndexText>
+        <UpgradedIndexSubtext>
+          You're testing {JSON.stringify(cid)} on the new memeSRC V2 data model! {' '}
+          <a href="https://forms.gle/8CETtVbwYoUmxqbi7" target="_blank" rel="noopener noreferrer">
+            Submit&nbsp;feedback
+          </a>.
+        </UpgradedIndexSubtext>
+        <DismissButton variant="contained" onClick={() => setShowBanner(false)}>
+          Dismiss
+        </DismissButton>
+      </UpgradedIndexBanner>
+      </Collapse>
+      {!showBanner && (
+        <ReportProblemButton color="primary" onClick={() => setShowBanner(true)}>
+          <ReportProblem />
+        </ReportProblemButton>
+      )}
       {newResults && newResults.length > 0 ? (
         <>
           <Grid container spacing={2} alignItems="stretch" paddingX={{ xs: 2, md: 6 }}>
