@@ -30,7 +30,7 @@ function CreateIndex({ onProcessComplete }) {
     setIsProcessing(true);
     setIsDialogOpen(true);
     setProgress(0);
-
+  
     const electron = window.require('electron');
     const ipcRenderer = electron.ipcRenderer;
     const ipcArguments = {
@@ -43,7 +43,10 @@ function CreateIndex({ onProcessComplete }) {
       colorSecondary,
       emoji,
     };
-
+  
+    // Save the folderPath in jobs.json
+    await ipcRenderer.invoke('save-job-folder-path', { id, folderPath });
+  
     ipcRenderer.send('test-javascript-processing', ipcArguments);
 
     ipcRenderer.once('javascript-processing-result', (event, response) => {
@@ -83,8 +86,8 @@ function CreateIndex({ onProcessComplete }) {
     setColorSecondary(job.colorSecondary);
     setEmoji(job.emoji);
     
-    setIsProcessing(true);
-    setIsDialogOpen(true);
+    // setIsProcessing(true);
+    // setIsDialogOpen(true);
     setProgress(0);
   }, [onProcessComplete]);
 
