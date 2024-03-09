@@ -78,7 +78,7 @@ export default function SearchPage() {
 
   const [loadingCsv, setLoadingCsv] = useState(true);
   const [csvLines, setCsvLines] = useState();
-  const [displayedResults, setDisplayedResults] = useState(10);
+  const [displayedResults, setDisplayedResults] = useState(8);
   const [newResults, setNewResults] = useState();
   const { showObj, setShowObj, cid } = useSearchDetailsV2();
   const [loadingResults, setLoadingResults] = useState(true);
@@ -239,7 +239,7 @@ export default function SearchPage() {
       }
   
       const searchTerms = searchTerm.split(" ");
-      const results = [];
+      let results = [];
       showObj.forEach((line) => {
         let score = 0;
         if (line.subtitle_text.toLowerCase().includes(searchTerm)) {
@@ -256,7 +256,7 @@ export default function SearchPage() {
       });
   
       results.sort((a, b) => b.score - a.score);
-      // results = results.slice(0, 100);
+      results = results.slice(0, 150);
   
       // Get the metadataCid using getV2Metadata
       const metadataCid = (await getV2Metadata(params.cid)).id;
@@ -319,11 +319,20 @@ export default function SearchPage() {
             ))}
           </Grid>
           {newResults.length > displayedResults && (
-            <Grid item xs={12} textAlign="center">
+            <Grid item xs={12} textAlign="center" mt={4}>
               <Button
                 variant="contained"
                 color="primary"
-                onClick={() => setDisplayedResults(displayedResults + 10)}
+                fullWidth
+                sx={{
+                  padding: '10px',
+                  fontSize: '1rem',
+                  fontWeight: 'bold',
+                  borderRadius: '8px',
+                  maxWidth: { xs: '90%', sm: '40%', md: '25%' },
+                  margin: '0 auto',
+                }}
+                onClick={() => setDisplayedResults(displayedResults + 8)}
               >
                 Load More
               </Button>
