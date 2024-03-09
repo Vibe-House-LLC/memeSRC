@@ -1,3 +1,5 @@
+// ServerInfo.js
+
 import React, { useEffect, useState } from 'react';
 import { Alert, Button, Card, Container, Dialog, DialogActions, DialogContent, DialogTitle, Divider, Grid, Stack, Typography, useMediaQuery } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
