@@ -149,8 +149,6 @@ const ReportProblemButton = styled(IconButton)`
 export default function SearchPage() {
   const params = useParams();
 
-  /* -------------------------------- New Stuff ------------------------------- */
-
   const [loadingCsv, setLoadingCsv] = useState(true);
   const [csvLines, setCsvLines] = useState();
   const [displayedResults, setDisplayedResults] = useState(8);
@@ -160,10 +158,8 @@ export default function SearchPage() {
   const [videoUrls, setVideoUrls] = useState({});
   const [showBanner, setShowBanner] = useState(true);
 
-  // Ref to keep track of video elements
   const videoRefs = useRef([]);
 
-  // Add videos to the refs array
   const addVideoRef = (element) => {
     if (element && !videoRefs.current.includes(element)) {
       videoRefs.current.push(element);
@@ -174,7 +170,6 @@ export default function SearchPage() {
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach(entry => {
-          // If the video is in the viewport, play it, otherwise pause
           if (entry.isIntersecting) {
             entry.target.play();
           } else {
@@ -183,20 +178,26 @@ export default function SearchPage() {
         });
       },
       {
-        // Use whatever root margin you see fit
         rootMargin: '0px',
-        threshold: 0.1 // Adjust this threshold to when you want the callback to be executed
+        threshold: 0.1
       }
     );
 
-    // Observe each video
     videoRefs.current.forEach(video => observer.observe(video));
 
-    // Cleanup function to unobserve videos when the component is unmounted or newResults change
     return () => {
       videoRefs.current.forEach(video => observer.unobserve(video));
     };
-  }, [newResults]); // Depend on newResults so this runs whenever the results change
+  }, [newResults]);
+
+  const checkBannerDismissed = (selectedCid) => {
+    const dismissedBanner = sessionStorage.getItem(`dismissedBanner_${selectedCid}`);
+    if (dismissedBanner) {
+      setShowBanner(false);
+    } else {
+      setShowBanner(true);
+    }
+  };
 
   useEffect(() => {
     async function loadFile(cid, filename) {
@@ -214,8 +215,8 @@ export default function SearchPage() {
           return headers.reduce((obj, header, index) => {
             obj[header] = values[index] ? values[index] : "";
             if (header === "subtitle_text" && obj[header]) {
-              obj.base64_subtitle = obj[header]; // Store the base64 version
-              obj[header] = atob(obj[header]); // Decode to regular text
+              obj.base64_subtitle = obj[header];
+              obj[header] = atob(obj[header]);
             }
             return obj;
           }, {});
@@ -227,7 +228,7 @@ export default function SearchPage() {
     }
 
     async function initialize(cid = null) {
-      const selectedCid = cid
+      const selectedCid = cid;
       if (!selectedCid) {
         alert("Please enter a valid CID.");
         return;
@@ -235,13 +236,14 @@ export default function SearchPage() {
       const filename = "1-1.csv";
       const lines = await loadFile(cid, filename);
       if (lines?.length > 0) {
-        // Decode base64 subtitle and assign to a new property
         const decodedLines = lines.map(line => ({
           ...line,
-          subtitle: line.base64_subtitle ? atob(line.base64_subtitle) : "" // Ensure you decode the subtitle and assign it here
+          subtitle: line.base64_subtitle ? atob(line.base64_subtitle) : ""
         }));
         setLoadingCsv(false);
-        setShowObj(decodedLines); // Use decodedLines with subtitle property
+        setShowObj(decodedLines);
+
+        checkBannerDismissed(selectedCid);
       } else {
         alert('error');
       }
@@ -253,6 +255,12 @@ export default function SearchPage() {
       alert(error)
     })
   }, []);
+
+  useEffect(() => {
+    if (cid) {
+      checkBannerDismissed(cid);
+    }
+  }, [cid]);
 
   const loadVideoUrl = async (result, metadataCid) => {
     const groupIndex = Math.floor(parseInt(result.subtitle_index, 10) / 15);
@@ -306,7 +314,7 @@ export default function SearchPage() {
 
   useEffect(() => {
     async function searchText() {
-      setNewResults(null); // Reset the current results state
+      setNewResults(null);
       setLoadingResults(true);
       const searchTerm = params?.searchTerms.trim().toLowerCase();
       if (searchTerm === "") {
@@ -319,11 +327,11 @@ export default function SearchPage() {
       showObj.forEach((line) => {
         let score = 0;
         if (line.subtitle_text.toLowerCase().includes(searchTerm)) {
-          score += 10; // Higher score for the entire search term
+          score += 10;
         }
         searchTerms.forEach((term) => {
           if (line.subtitle_text.toLowerCase().includes(term)) {
-            score += 1; // Increment score for each individual word match
+            score += 1;
           }
         });
         if (score > 0) {
@@ -334,13 +342,11 @@ export default function SearchPage() {
       results.sort((a, b) => b.score - a.score);
       results = results.slice(0, 150);
   
-      // Get the metadataCid using getV2Metadata
       const metadataCid = (await getV2Metadata(params.cid)).id;
   
       setNewResults(results);
       setLoadingResults(false);
   
-      // Pass metadataCid to the loadVideoUrl function
       results.forEach((result) => loadVideoUrl(result, metadataCid));
     }
   
@@ -352,7 +358,7 @@ export default function SearchPage() {
         setNewResults([]);
       }
     }
-  }, [loadingCsv, showObj, params?.searchTerms]);
+  }, [loadingCsv, showObj, params?.searchTerms, cid]);
 
   useEffect(() => {
     console.log(newResults);
@@ -361,21 +367,27 @@ export default function SearchPage() {
   return (
     <>
       <Collapse in={showBanner}>
-      <UpgradedIndexBanner>
-        <UpgradedIndexText>Upgraded Index!</UpgradedIndexText>
-        <UpgradedIndexSubtext>
-          You're testing {JSON.stringify(cid)} on the new memeSRC V2 data model! {' '}
-          <a href="https://forms.gle/8CETtVbwYoUmxqbi7" target="_blank" rel="noopener noreferrer">
-            Submit&nbsp;feedback
-          </a>.
-        </UpgradedIndexSubtext>
-        <DismissButton variant="contained" onClick={() => setShowBanner(false)}>
-          Dismiss
-        </DismissButton>
-      </UpgradedIndexBanner>
+        <UpgradedIndexBanner>
+          <UpgradedIndexText>Upgraded Index!</UpgradedIndexText>
+          <UpgradedIndexSubtext>
+            You're testing {JSON.stringify(cid)} on the new memeSRC V2 data model!{' '}
+            <a href="https://forms.gle/8CETtVbwYoUmxqbi7" target="_blank" rel="noopener noreferrer">
+              Submit&nbsp;feedback
+            </a>.
+          </UpgradedIndexSubtext>
+          <DismissButton variant="contained" onClick={() => {
+            setShowBanner(false);
+            sessionStorage.setItem(`dismissedBanner_${cid}`, true);
+          }}>
+            Dismiss
+          </DismissButton>
+        </UpgradedIndexBanner>
       </Collapse>
       {!showBanner && (
-        <ReportProblemButton color="primary" onClick={() => setShowBanner(true)}>
+        <ReportProblemButton color="primary" onClick={() => {
+          setShowBanner(true);
+          sessionStorage.removeItem(`dismissedBanner_${cid}`);
+        }}>
           <ReportProblem />
         </ReportProblemButton>
       )}
