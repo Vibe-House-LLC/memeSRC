@@ -303,6 +303,7 @@ export default function SearchPage() {
   const loadVideoUrl = async (result, metadataCid) => {
     const groupIndex = Math.floor(parseInt(result.subtitle_index, 10) / 15);
     const zipUrl = `https://memesrc.com/v2/${metadataCid}/${result.season}/${result.episode}/s${groupIndex}.zip`;
+    const resultId = `${result.season}-${result.episode}-${result.subtitle_index}`;
   
     try {
       const zipResponse = await fetch(zipUrl);
@@ -318,7 +319,7 @@ export default function SearchPage() {
       const videoBlob = new Blob([videoFile], { type: 'video/mp4' });
       const videoUrl = URL.createObjectURL(videoBlob);
   
-      setVideoUrls((prevVideoUrls) => ({ ...prevVideoUrls, [result.subtitle_index]: videoUrl }));
+      setVideoUrls((prevVideoUrls) => ({ ...prevVideoUrls, [resultId]: videoUrl }));
     } catch (error) {
       console.error("Error loading or processing ZIP file for result:", JSON.stringify(result), error);
     }
@@ -330,8 +331,10 @@ export default function SearchPage() {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             const resultIndex = entry.target.getAttribute("data-result-index");
-            if (resultIndex && !videoUrls[resultIndex]) {
-              loadVideoUrl(newResults[resultIndex]);
+            const result = newResults[resultIndex];
+            const resultId = `${result.season}-${result.episode}-${result.subtitle_index}`;
+            if (resultIndex && !videoUrls[resultId]) {
+              loadVideoUrl(result, cid);
             }
           }
         });
@@ -348,12 +351,13 @@ export default function SearchPage() {
     return () => {
       resultElements.forEach((element) => observer.unobserve(element));
     };
-  }, [newResults, videoUrls]);
+  }, [newResults, videoUrls, cid]);
 
   useEffect(() => {
     async function searchText() {
       setNewResults(null);
       setLoadingResults(true);
+      setDisplayedResults(4);
       const searchTerm = params?.searchTerms.trim().toLowerCase();
       if (searchTerm === "") {
         console.log("Search term is empty.");
@@ -466,24 +470,24 @@ export default function SearchPage() {
       {newResults && newResults.length > 0 ? (
         <>
           <Grid container spacing={2} alignItems="stretch" paddingX={{ xs: 2, md: 6 }}>
-            {newResults.slice(0, displayedResults).map((result, index) => (
-              <Grid item xs={12} sm={6} md={3} key={index} className="result-item" data-result-index={index}>
-                <Link to={`/v2/frame/${cid}/${result.season}/${result.episode}/${Math.round((parseInt(result.start_frame, 10) + parseInt(result.end_frame, 10)) / 2)}`} style={{ textDecoration: 'none' }}>
-                  <StyledCard>
-                    <StyledCardMediaContainer aspectRatio="56.25%">
-                      {videoUrls[result.subtitle_index] && (
-                        <StyledCardMedia
-                          ref={addVideoRef}
-                          src={videoUrls[result.subtitle_index]}
-                          autoPlay={autoplay}
-                          loop
-                          muted
-                          playsInline
-                          preload="auto"
-                          onError={(e) => console.error("Error loading video:", JSON.stringify(result))}
-                        />
-                      )}
-                    </StyledCardMediaContainer>
+          {newResults.slice(0, displayedResults).map((result, index) => (
+            <Grid item xs={12} sm={6} md={3} key={index} className="result-item" data-result-index={index}>
+              <Link to={`/v2/frame/${cid}/${result.season}/${result.episode}/${Math.round((parseInt(result.start_frame, 10) + parseInt(result.end_frame, 10)) / 2)}`} style={{ textDecoration: 'none' }}>
+                <StyledCard>
+                  <StyledCardMediaContainer aspectRatio="56.25%">
+                    {videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`] && (
+                      <StyledCardMedia
+                        ref={addVideoRef}
+                        src={videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`]}
+                        autoPlay={autoplay}
+                        loop
+                        muted
+                        playsInline
+                        preload="auto"
+                        onError={(e) => console.error("Error loading video:", JSON.stringify(result))}
+                      />
+                    )}
+                  </StyledCardMediaContainer>
                     <BottomCardCaption>{result.subtitle}</BottomCardCaption>
                     <BottomCardLabel>
                       <Chip
