@@ -1,14 +1,34 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Grid, CircularProgress, Card, Chip, Typography, Button, Collapse, IconButton } from '@mui/material';
+import { Grid, CircularProgress, Card, Chip, Typography, Button, Collapse, IconButton, FormControlLabel, Switch } from '@mui/material';
 import styled from '@emotion/styled';
 import { Link, useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import JSZip from 'jszip';
-import { ReportProblem } from '@mui/icons-material';
+import { ReportProblem, Settings } from '@mui/icons-material';
 import useSearchDetails from '../hooks/useSearchDetails';
 import IpfsSearchBar from '../sections/search/ipfs-search-bar';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
 import getV2Metadata from '../utils/getV2Metadata';
+
+const AutoplaySettingContainer = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #37383a;
+  padding: 10px 20px;
+  border-radius: 8px;
+  margin: 20px;
+  box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
+  color: #fff;
+`;
+
+const SettingsButton = styled(IconButton)`
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  color: #fff;
+  z-index: 1;
+`;
 
 const StyledCircularProgress = styled(CircularProgress)`
   position: absolute;
@@ -80,7 +100,7 @@ const UpgradedIndexBanner = styled.div`
   text-align: center;
   position: relative;
   border-radius: 8px;
-  margin: 20px;
+  margin: 0 20px 20px 20px;
   box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
 
   &::before {
@@ -96,7 +116,7 @@ const UpgradedIndexBanner = styled.div`
 `;
 
 const UpgradedIndexText = styled(Typography)`
-  font-size: 24px;
+  font-size: 30px;
   font-weight: bold;
   margin-bottom: 10px;
   color: #fff;
@@ -106,7 +126,7 @@ const UpgradedIndexText = styled(Typography)`
 
 const UpgradedIndexSubtext = styled(Typography)`
   font-size: 16px;
-  font-weight: bold;
+  font-weight: 600;
   color: #E2e2e3;
   position: relative;
   z-index: 1;
@@ -151,12 +171,28 @@ export default function SearchPage() {
 
   const [loadingCsv, setLoadingCsv] = useState(true);
   const [csvLines, setCsvLines] = useState();
-  const [displayedResults, setDisplayedResults] = useState(8);
+  const [displayedResults, setDisplayedResults] = useState(4);
   const [newResults, setNewResults] = useState();
   const { showObj, setShowObj, cid } = useSearchDetailsV2();
   const [loadingResults, setLoadingResults] = useState(true);
   const [videoUrls, setVideoUrls] = useState({});
   const [showBanner, setShowBanner] = useState(true);
+
+  const [autoplay, setAutoplay] = useState(true);
+  const [showSettings, setShowSettings] = useState(true);
+
+  const handleAutoplayChange = (event) => {
+    const isAutoplayEnabled = event.target.checked;
+    setAutoplay(isAutoplayEnabled);
+
+    videoRefs.current.forEach(video => {
+      if (isAutoplayEnabled && video.getBoundingClientRect().top < window.innerHeight) {
+        video.play();
+      } else {
+        video.pause();
+      }
+    });
+  };
 
   const videoRefs = useRef([]);
 
@@ -171,7 +207,9 @@ export default function SearchPage() {
       (entries) => {
         entries.forEach(entry => {
           if (entry.isIntersecting) {
-            entry.target.play();
+            if (autoplay) {
+              entry.target.play();
+            }
           } else {
             entry.target.pause();
           }
@@ -188,7 +226,7 @@ export default function SearchPage() {
     return () => {
       videoRefs.current.forEach(video => observer.unobserve(video));
     };
-  }, [newResults]);
+  }, [newResults, autoplay]);
 
   const checkBannerDismissed = (selectedCid) => {
     const dismissedBanner = sessionStorage.getItem(`dismissedBanner_${selectedCid}`);
@@ -368,19 +406,40 @@ export default function SearchPage() {
     <>
       <Collapse in={showBanner}>
         <UpgradedIndexBanner>
-          <UpgradedIndexText>Upgraded Index!</UpgradedIndexText>
+          <UpgradedIndexText>Upgraded!</UpgradedIndexText>
           <UpgradedIndexSubtext>
-            You're testing {JSON.stringify(cid)} on the new memeSRC V2 data model!{' '}
+            You're testing '{cid}' on the new data model.{' '}
             <a href="https://forms.gle/8CETtVbwYoUmxqbi7" target="_blank" rel="noopener noreferrer">
-              Submit&nbsp;feedback
+              Report&nbsp;a&nbsp;problem
             </a>.
           </UpgradedIndexSubtext>
-          <DismissButton variant="contained" onClick={() => {
-            setShowBanner(false);
-            sessionStorage.setItem(`dismissedBanner_${cid}`, true);
-          }}>
-            Dismiss
-          </DismissButton>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '10px' }}>
+            <DismissButton variant="contained" onClick={() => {
+              setShowBanner(false);
+              sessionStorage.setItem(`dismissedBanner_${cid}`, true);
+            }}>
+              Sounds good
+            </DismissButton>
+            <Button
+              variant="contained"
+              component={Link}
+              to={`/search/${cid}/${params?.searchTerms}`}
+              style={{
+                marginTop: '15px',
+                borderRadius: '20px',
+                padding: '6px 16px',
+                backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                color: '#000',
+                position: 'relative',
+                zIndex: 1,
+                '&:hover': {
+                  backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                },
+              }}
+            >
+              Switch back
+            </Button>
+          </div>
         </UpgradedIndexBanner>
       </Collapse>
       {!showBanner && (
@@ -391,6 +450,19 @@ export default function SearchPage() {
           <ReportProblem />
         </ReportProblemButton>
       )}
+      {/* <Collapse in={showSettings}>
+        <AutoplaySettingContainer>
+          <FormControlLabel
+            control={<Switch checked={autoplay} onChange={handleAutoplayChange} />}
+            label="Animated Thumbnails"
+          />
+        </AutoplaySettingContainer>
+      </Collapse>
+      {!showSettings && (
+        <SettingsButton color="primary" onClick={() => setShowSettings(true)}>
+          <Settings />
+        </SettingsButton>
+      )} */}
       {newResults && newResults.length > 0 ? (
         <>
           <Grid container spacing={2} alignItems="stretch" paddingX={{ xs: 2, md: 6 }}>
@@ -403,7 +475,7 @@ export default function SearchPage() {
                         <StyledCardMedia
                           ref={addVideoRef}
                           src={videoUrls[result.subtitle_index]}
-                          autoPlay
+                          autoPlay={autoplay}
                           loop
                           muted
                           playsInline
@@ -439,7 +511,7 @@ export default function SearchPage() {
                   maxWidth: { xs: '90%', sm: '40%', md: '25%' },
                   margin: '0 auto',
                 }}
-                onClick={() => setDisplayedResults(displayedResults + 8)}
+                onClick={() => setDisplayedResults(displayedResults + 4)}
               >
                 Load More
               </Button>
