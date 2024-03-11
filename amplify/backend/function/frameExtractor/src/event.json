@@ -1,0 +1,16 @@
+{
+  "path": "/v2/frame/seinfeld/1/1/250",
+  "httpMethod": "GET",
+  "pathParameters": {
+    "index": "seinfeld",
+    "season": "1",
+    "episode": "1",
+    "frame": "250"
+  },
+  "queryStringParameters": null,
+  "headers": {
+    "Accept": "application/json"
+  },
+  "body": null,
+  "isBase64Encoded": false
+}

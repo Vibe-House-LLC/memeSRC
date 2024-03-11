@@ -253,6 +253,13 @@
       "permissions": {
         "setting": "open"
       }
+    },
+    "/v2/frame/{index}/{season}/{episode}/{frame}": {
+      "name": "/v2/frame/{index}/{season}/{episode}/{frame}",
+      "lambdaFunction": "frameExtractor",
+      "permissions": {
+        "setting": "open"
+      }
     }
   }
 }
