@@ -167,6 +167,14 @@
           ],
           "category": "function",
           "resourceName": "memesrcStripeCallback"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "frameExtractor"
         }
       ],
       "providerPlugin": "awscloudformation",
@@ -255,6 +263,11 @@
           "resourceName": "memesrcGeneratedImages"
         }
       ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "frameExtractor": {
+      "build": true,
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
@@ -574,6 +587,22 @@
         {
           "category": "function",
           "resourceName": "SearchFunction"
+        }
+      ]
+    },
+    "AMPLIFY_function_frameExtractor_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "frameExtractor"
+        }
+      ]
+    },
+    "AMPLIFY_function_frameExtractor_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "frameExtractor"
         }
       ]
     },
