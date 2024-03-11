@@ -30,7 +30,7 @@ exports.handler = async (event) => {
       };
     }
 
-    const fileIndex = Math.floor((frameNumber - 1) / (CHUNK_DURATION * FPS)) + 1;
+    const fileIndex = Math.floor((frameNumber - 1) / (CHUNK_DURATION * FPS));
     const internalFrameIndex = ((frameNumber - 1) % (CHUNK_DURATION * FPS)) / FPS;
 
     const videoUrl = `https://memesrc.com/v2/${index}/${season}/${episode}/${fileIndex}.mp4`;
