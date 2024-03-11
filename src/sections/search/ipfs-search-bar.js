@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 import { Link, Fab, FormControl, Grid, InputBase, MenuItem, Select, Typography, Divider, Box, Stack, Container } from "@mui/material";
 import { ArrowBack, Close, Favorite, MapsUgc, Search, Shuffle } from "@mui/icons-material";
 import { API, graphqlOperation } from 'aws-amplify';
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { LoadingButton } from "@mui/lab";
 import { Outlet, Link as RouterLink, useLocation, useNavigate, useParams } from "react-router-dom";
 import { searchPropTypes } from "./SearchPropTypes";
@@ -97,6 +97,8 @@ export default function IpfsSearchBar(props) {
 
   /* ----------------------------------- New ---------------------------------- */
 
+  const searchInputRef = useRef(null);
+
   const [search, setSearch] = useState(searchQuery || '');
   const [addNewCidOpen, setAddNewCidOpen] = useState(false);
   const navigate = useNavigate();
@@ -188,7 +190,7 @@ export default function IpfsSearchBar(props) {
   };
 
   const searchFunction = (searchEvent) => {
-    searchEvent.preventDefault();
+    searchEvent?.preventDefault();
     console.log(search)
     navigate(`/v2/search/${cid}/${encodeURIComponent(search)}`)
     return false
@@ -214,10 +216,21 @@ export default function IpfsSearchBar(props) {
               <StyledSearchInput
                 label="With normal TextField"
                 id="outlined-start-adornment"
-                // InputProps={{
-                //   endAdornment: <InputAdornment position="end"><Typography variant="caption"><Search /></Typography></InputAdornment>,
-                // }}
-                endAdornment={<>{search && <Close onClick={() => { setSearch('') }} sx={{cursor: 'pointer', mr: 1}} />}<Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} /></>}
+                endAdornment={
+                  <>
+                    {search && (
+                      <Close
+                        fontSize='small'
+                        onClick={() => {
+                          setSearch('');
+                          searchInputRef.current.focus(); // Focus the text field
+                        }}
+                        sx={{ cursor: 'pointer', mr: 1, color: 'grey.400' }}
+                      />
+                    )}
+                    <Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} />
+                  </>
+                }
                 sx={{ width: '100%' }}
                 value={search}
                 onChange={(e) => {
@@ -232,9 +245,9 @@ export default function IpfsSearchBar(props) {
                   // Replace en-dash and em-dash with hyphen
                   value = value.replace(/[\u2013\u2014]/g, '-');
 
-                  // setSearchTerm(value);
-                  setSearch(value)
+                  setSearch(value);
                 }}
+                inputRef={searchInputRef} // Add the ref to the text field
               />
             </form>
           </Grid>
