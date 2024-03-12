@@ -172,7 +172,7 @@ export default function SearchPage() {
 
   const [loadingCsv, setLoadingCsv] = useState(true);
   const [csvLines, setCsvLines] = useState();
-  const [displayedResults, setDisplayedResults] = useState(12);
+  const [displayedResults, setDisplayedResults] = useState(8);
   const [newResults, setNewResults] = useState();
   const { showObj, setShowObj, cid } = useSearchDetailsV2();
   const [loadingResults, setLoadingResults] = useState(true);
@@ -239,32 +239,6 @@ export default function SearchPage() {
   };
 
   useEffect(() => {
-    async function loadFile(cid, filename) {
-      const url = `https://memesrc.com/v2/${cid}/_docs.csv`;
-      try {
-        const response = await fetch(url);
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-        const text = await response.text();
-        const lines = text.split("\n");
-        const headers = lines[0].split(",").map((header) => header.trim());
-        return lines.slice(1).map((line) => {
-          const values = line.split(",").map((value) => value.trim());
-          return headers.reduce((obj, header, index) => {
-            obj[header] = values[index] ? values[index] : "";
-            if (header === "subtitle_text" && obj[header]) {
-              obj.base64_subtitle = obj[header];
-              obj[header] = atob(obj[header]);
-            }
-            return obj;
-          }, {});
-        });
-      } catch (error) {
-        console.error("Failed to load file:", error);
-        return [];
-      }
-    }
 
     async function initialize(cid = null) {
       const selectedCid = cid;
@@ -272,20 +246,10 @@ export default function SearchPage() {
         alert("Please enter a valid CID.");
         return;
       }
-      const filename = "1-1.csv";
-      const lines = await loadFile(cid, filename);
-      if (lines?.length > 0) {
-        const decodedLines = lines.map(line => ({
-          ...line,
-          subtitle: line.base64_subtitle ? atob(line.base64_subtitle) : ""
-        }));
         setLoadingCsv(false);
-        setShowObj(decodedLines);
+        setShowObj([]);
 
         checkBannerDismissed(selectedCid);
-      } else {
-        alert('error');
-      }
     }
 
     getV2Metadata(params.cid).then(metadata => {
@@ -348,7 +312,7 @@ export default function SearchPage() {
     async function searchText() {
       setNewResults(null);
       setLoadingResults(true);
-      setDisplayedResults(12);
+      setDisplayedResults(8);
       const searchTerm = params?.searchTerms.trim().toLowerCase();
       if (searchTerm === "") {
         console.log("Search term is empty.");
