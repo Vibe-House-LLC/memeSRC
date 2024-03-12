@@ -47,12 +47,12 @@
         "FunctionName": {
           "Fn::If": [
             "ShouldNotCreateEnvResources",
-            "frameExtractor",
+            "memesrcSearchV2",
             {
               "Fn::Join": [
                 "",
                 [
-                  "frameExtractor",
+                  "memesrcSearchV2",
                   "-",
                   {
                     "Ref": "env"
@@ -90,12 +90,12 @@
         "RoleName": {
           "Fn::If": [
             "ShouldNotCreateEnvResources",
-            "memesrcLambdaRolebf391c15",
+            "memesrcLambdaRole5fe91be8",
             {
               "Fn::Join": [
                 "",
                 [
-                  "memesrcLambdaRolebf391c15",
+                  "memesrcLambdaRole5fe91be8",
                   "-",
                   {
                     "Ref": "env"

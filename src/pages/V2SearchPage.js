@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Grid, CircularProgress, Card, Chip, Typography, Button, Collapse, IconButton, FormControlLabel, Switch } from '@mui/material';
 import styled from '@emotion/styled';
+import { API } from 'aws-amplify';
 import { Link, useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import JSZip from 'jszip';
 import { ReportProblem, Settings } from '@mui/icons-material';
+import InfiniteScroll from 'react-infinite-scroll-component';
 import useSearchDetails from '../hooks/useSearchDetails';
 import IpfsSearchBar from '../sections/search/ipfs-search-bar';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
@@ -30,13 +32,6 @@ const SettingsButton = styled(IconButton)`
   z-index: 1;
 `;
 
-const StyledCircularProgress = styled(CircularProgress)`
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-`;
-
 const StyledCard = styled(Card)`
   border: 3px solid transparent;
   box-sizing: border-box;
@@ -54,6 +49,31 @@ const StyledCardMediaContainer = styled.div`
   overflow: hidden;
   position: relative;
   background-color: black;
+`;
+
+const StyledCardVideoContainer = styled.div`
+  width: 100%;
+  height: 0;
+  padding-bottom: 56.25%;
+  overflow: hidden;
+  position: relative;
+  background-color: black;
+`;
+
+const StyledCardImageContainer = styled.div`
+  width: 100%;
+  height: 0;
+  padding-bottom: 56.25%;
+  overflow: hidden;
+  position: relative;
+  background-color: black;
+`;
+
+const StyledCardImage = styled.img`
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  object-fit: contain;
 `;
 
 const StyledCardMedia = styled.video`
@@ -158,6 +178,20 @@ const DismissButton = styled(Button)`
   }
 `;
 
+const AnimationToggleButton = styled(Button)`
+  margin-top: 15px;
+  border-radius: 20px;
+  padding: 6px 16px;
+  background-color: rgba(255, 255, 255, 0.7);
+  color: #000;
+  position: relative;
+  z-index: 1;
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.8);
+  }
+`;
+
 const ReportProblemButton = styled(IconButton)`
   position: absolute;
   top: 10px;
@@ -169,9 +203,13 @@ const ReportProblemButton = styled(IconButton)`
 export default function SearchPage() {
   const params = useParams();
 
-  const [loadingCsv, setLoadingCsv] = useState(true);
+  const RESULTS_PER_PAGE = 4;
+
+  const [loadingCsv, setLoadingCsv] = useState(false);
+  const [animationsEnabled, setAnimationsEnabled] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [csvLines, setCsvLines] = useState();
-  const [displayedResults, setDisplayedResults] = useState(4);
+  const [displayedResults, setDisplayedResults] = useState(RESULTS_PER_PAGE);
   const [newResults, setNewResults] = useState();
   const { showObj, setShowObj, cid } = useSearchDetailsV2();
   const [loadingResults, setLoadingResults] = useState(true);
@@ -238,32 +276,6 @@ export default function SearchPage() {
   };
 
   useEffect(() => {
-    async function loadFile(cid, filename) {
-      const url = `https://memesrc.com/v2/${cid}/_docs.csv`;
-      try {
-        const response = await fetch(url);
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-        const text = await response.text();
-        const lines = text.split("\n");
-        const headers = lines[0].split(",").map((header) => header.trim());
-        return lines.slice(1).map((line) => {
-          const values = line.split(",").map((value) => value.trim());
-          return headers.reduce((obj, header, index) => {
-            obj[header] = values[index] ? values[index] : "";
-            if (header === "subtitle_text" && obj[header]) {
-              obj.base64_subtitle = obj[header];
-              obj[header] = atob(obj[header]);
-            }
-            return obj;
-          }, {});
-        });
-      } catch (error) {
-        console.error("Failed to load file:", error);
-        return [];
-      }
-    }
 
     async function initialize(cid = null) {
       const selectedCid = cid;
@@ -271,20 +283,10 @@ export default function SearchPage() {
         alert("Please enter a valid CID.");
         return;
       }
-      const filename = "1-1.csv";
-      const lines = await loadFile(cid, filename);
-      if (lines?.length > 0) {
-        const decodedLines = lines.map(line => ({
-          ...line,
-          subtitle: line.base64_subtitle ? atob(line.base64_subtitle) : ""
-        }));
         setLoadingCsv(false);
-        setShowObj(decodedLines);
+        setShowObj([]);
 
         checkBannerDismissed(selectedCid);
-      } else {
-        alert('error');
-      }
     }
 
     getV2Metadata(params.cid).then(metadata => {
@@ -300,29 +302,18 @@ export default function SearchPage() {
     }
   }, [cid]);
 
-  const loadVideoUrl = async (result, metadataCid) => {
-    const groupIndex = Math.floor(parseInt(result.subtitle_index, 10) / 15);
-    const zipUrl = `https://memesrc.com/v2/${metadataCid}/${result.season}/${result.episode}/s${groupIndex}.zip`;
-    const resultId = `${result.season}-${result.episode}-${result.subtitle_index}`;
-  
-    try {
-      const zipResponse = await fetch(zipUrl);
-      if (!zipResponse.ok) throw new Error(`Failed to fetch ZIP: ${zipResponse.statusText}`);
-      const zipBlob = await zipResponse.blob();
-      const zip = await JSZip.loadAsync(zipBlob);
-  
-      const videoPath = `s${parseInt(result.subtitle_index, 10)}.mp4`;
-      const videoFile = zip.file(videoPath) ? await zip.file(videoPath).async("blob") : null;
-  
-      if (!videoFile) throw new Error(`File not found in ZIP: ${videoPath}`);
-  
-      const videoBlob = new Blob([videoFile], { type: 'video/mp4' });
-      const videoUrl = URL.createObjectURL(videoBlob);
-  
-      setVideoUrls((prevVideoUrls) => ({ ...prevVideoUrls, [resultId]: videoUrl }));
-    } catch (error) {
-      console.error("Error loading or processing ZIP file for result:", JSON.stringify(result), error);
+  useEffect(() => {
+    if (newResults) {
+      newResults.forEach((result) => loadVideoUrl(result, cid));
     }
+  }, [animationsEnabled, newResults, cid]);
+
+  const loadVideoUrl = async (result, metadataCid) => {
+    const thumbnailUrl = animationsEnabled
+      ? `https://v2.memesrc.com/thumbnail/${metadataCid}/${result.season}/${result.episode}/${result.subtitle_index}`
+      : `https://v2.memesrc.com/frame/${metadataCid}/${result.season}/${result.episode}/${Math.round((parseInt(result.start_frame, 10) + parseInt(result.end_frame, 10)) / 2)}`;
+    const resultId = `${result.season}-${result.episode}-${result.subtitle_index}`;
+    setVideoUrls((prevVideoUrls) => ({ ...prevVideoUrls, [resultId]: thumbnailUrl }));
   };
 
   useEffect(() => {
@@ -364,32 +355,19 @@ export default function SearchPage() {
         return;
       }
   
-      const searchTerms = searchTerm.split(" ");
-      let results = [];
-      showObj.forEach((line) => {
-        let score = 0;
-        if (line.subtitle_text.toLowerCase().includes(searchTerm)) {
-          score += 10;
+      try {
+        const response = await fetch(`https://v2.memesrc.com/search/${cid}/${searchTerm}`);
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
         }
-        searchTerms.forEach((term) => {
-          if (line.subtitle_text.toLowerCase().includes(term)) {
-            score += 1;
-          }
-        });
-        if (score > 0) {
-          results.push({ ...line, score });
-        }
-      });
-  
-      results.sort((a, b) => b.score - a.score);
-      results = results.slice(0, 150);
-  
-      const metadataCid = (await getV2Metadata(params.cid)).id;
-  
-      setNewResults(results);
-      setLoadingResults(false);
-  
-      results.forEach((result) => loadVideoUrl(result, metadataCid));
+        const results = await response.json();
+        setNewResults(results);
+        setLoadingResults(false);
+        results.forEach((result) => loadVideoUrl(result, cid));
+      } catch (error) {
+        console.error("Error searching:", error);
+        setLoadingResults(false);
+      }
     }
   
     if (!loadingCsv && showObj) {
@@ -443,6 +421,12 @@ export default function SearchPage() {
             >
               Switch back
             </Button>
+            {/* <AnimationToggleButton
+              variant="contained"
+              onClick={() => setAnimationsEnabled(!animationsEnabled)}
+            >
+              {animationsEnabled ? 'Disable Animations' : 'Enable Animations'}
+            </AnimationToggleButton> */}
           </div>
         </UpgradedIndexBanner>
       </Collapse>
@@ -454,40 +438,89 @@ export default function SearchPage() {
           <ReportProblem />
         </ReportProblemButton>
       )}
-      {/* <Collapse in={showSettings}>
-        <AutoplaySettingContainer>
-          <FormControlLabel
-            control={<Switch checked={autoplay} onChange={handleAutoplayChange} />}
-            label="Animated Thumbnails"
-          />
-        </AutoplaySettingContainer>
-      </Collapse>
-      {!showSettings && (
-        <SettingsButton color="primary" onClick={() => setShowSettings(true)}>
-          <Settings />
-        </SettingsButton>
-      )} */}
       {newResults && newResults.length > 0 ? (
-        <>
+        <InfiniteScroll
+          dataLength={displayedResults}
+          next={() => {
+            if (!isLoading) {
+              setIsLoading(true);
+              setTimeout(() => {
+                setDisplayedResults((prevDisplayedResults) => Math.min(prevDisplayedResults + RESULTS_PER_PAGE, newResults.length));
+                setIsLoading(false);
+              }, 1000);
+            }
+          }}
+          hasMore={displayedResults < newResults.length}
+          loader={
+            <Grid item xs={12} textAlign="center" mt={4}>
+              <Button
+                variant="contained"
+                color="primary"
+                sx={{
+                  padding: '10px',
+                  fontSize: '1rem',
+                  fontWeight: 'bold',
+                  borderRadius: '8px',
+                  maxWidth: { xs: '90%', sm: '40%', md: '25%' },
+                  margin: '0 auto',
+                  px: 3,
+                  py: 1.5,
+                  mt: 10,
+                  mb: 10,
+                }}
+                onClick={() => setDisplayedResults(displayedResults + RESULTS_PER_PAGE*2)}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <CircularProgress size={24} style={{ marginRight: '8px' }} />
+                    Loading More
+                  </>
+                ) : (
+                  'Load More'
+                )}
+              </Button>
+            </Grid>
+          }
+          scrollThreshold={0.95}
+        >
           <Grid container spacing={2} alignItems="stretch" paddingX={{ xs: 2, md: 6 }}>
-          {newResults.slice(0, displayedResults).map((result, index) => (
-            <Grid item xs={12} sm={6} md={3} key={index} className="result-item" data-result-index={index}>
-              <Link to={`/v2/frame/${cid}/${result.season}/${result.episode}/${Math.round((parseInt(result.start_frame, 10) + parseInt(result.end_frame, 10)) / 2)}`} style={{ textDecoration: 'none' }}>
-                <StyledCard>
-                  <StyledCardMediaContainer aspectRatio="56.25%">
-                    {videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`] && (
-                      <StyledCardMedia
-                        ref={addVideoRef}
-                        src={videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`]}
-                        autoPlay={autoplay}
-                        loop
-                        muted
-                        playsInline
-                        preload="auto"
-                        onError={(e) => console.error("Error loading video:", JSON.stringify(result))}
-                      />
+            {newResults.slice(0, displayedResults).map((result, index) => (
+              <Grid item xs={12} sm={6} md={3} key={index} className="result-item" data-result-index={index}>
+                <Link
+                  to={`/v2/frame/${cid}/${result.season}/${result.episode}/${Math.round(
+                    (parseInt(result.start_frame, 10) + parseInt(result.end_frame, 10)) / 2
+                  )}`}
+                  style={{ textDecoration: 'none' }}
+                >
+                  <StyledCard>
+                    {animationsEnabled ? (
+                      <StyledCardVideoContainer>
+                        {videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`] && (
+                          <StyledCardMedia
+                            ref={addVideoRef}
+                            src={videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`]}
+                            autoPlay
+                            loop
+                            muted
+                            playsInline
+                            preload="auto"
+                            onError={(e) => console.error("Error loading video:", JSON.stringify(result))}
+                            key={`${result.season}-${result.episode}-${result.subtitle_index}-video`}
+                          />
+                        )}
+                      </StyledCardVideoContainer>
+                    ) : (
+                      <StyledCardImageContainer>
+                        {videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`] && (
+                          <StyledCardImage
+                            src={videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`]}
+                            alt={`Frame from S${result.season} E${result.episode}`}
+                            key={`${result.season}-${result.episode}-${result.subtitle_index}-image`}
+                          />
+                        )}
+                      </StyledCardImageContainer>
                     )}
-                  </StyledCardMediaContainer>
                     <BottomCardCaption>{result.subtitle}</BottomCardCaption>
                     <BottomCardLabel>
                       <Chip
@@ -501,36 +534,14 @@ export default function SearchPage() {
               </Grid>
             ))}
           </Grid>
-          {newResults.length > displayedResults && (
-            <Grid item xs={12} textAlign="center" mt={4}>
-              <Button
-                variant="contained"
-                color="primary"
-                fullWidth
-                sx={{
-                  padding: '10px',
-                  fontSize: '1rem',
-                  fontWeight: 'bold',
-                  borderRadius: '8px',
-                  maxWidth: { xs: '90%', sm: '40%', md: '25%' },
-                  margin: '0 auto',
-                }}
-                onClick={() => setDisplayedResults(displayedResults + 4)}
-              >
-                Load More
-              </Button>
-            </Grid>
-          )}
-        </>
+        </InfiniteScroll>
       ) : (
         <>
-          {newResults?.length <= 0 && !loadingResults ? (
-            <Typography textAlign='center' fontSize={30} fontWeight={700} my={8}>
+          {newResults?.length <= 0 && !loadingResults &&
+            <Typography textAlign="center" fontSize={30} fontWeight={700} my={8}>
               No Results
             </Typography>
-          ) : (
-            <StyledCircularProgress />
-          )}
+          }
         </>
       )}
     </>
