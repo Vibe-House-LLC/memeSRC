@@ -164,10 +164,12 @@ const ReportProblemButton = styled(IconButton)`
 export default function SearchPage() {
   const params = useParams();
 
+  const RESULTS_PER_PAGE = 4;
+
   const [loadingCsv, setLoadingCsv] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [csvLines, setCsvLines] = useState();
-  const [displayedResults, setDisplayedResults] = useState(4);
+  const [displayedResults, setDisplayedResults] = useState(RESULTS_PER_PAGE);
   const [newResults, setNewResults] = useState();
   const { showObj, setShowObj, cid } = useSearchDetailsV2();
   const [loadingResults, setLoadingResults] = useState(true);
@@ -402,9 +404,9 @@ export default function SearchPage() {
             if (!isLoading) {
               setIsLoading(true);
               setTimeout(() => {
-                setDisplayedResults((prevDisplayedResults) => Math.min(prevDisplayedResults + 8, newResults.length));
+                setDisplayedResults((prevDisplayedResults) => Math.min(prevDisplayedResults + RESULTS_PER_PAGE, newResults.length));
                 setIsLoading(false);
-              }, 3500);
+              }, 1000);
             }
           }}
           hasMore={displayedResults < newResults.length}
@@ -413,7 +415,6 @@ export default function SearchPage() {
               <Button
                 variant="contained"
                 color="primary"
-                fullWidth
                 sx={{
                   padding: '10px',
                   fontSize: '1rem',
@@ -421,8 +422,12 @@ export default function SearchPage() {
                   borderRadius: '8px',
                   maxWidth: { xs: '90%', sm: '40%', md: '25%' },
                   margin: '0 auto',
+                  px: 3,
+                  py: 1.5,
+                  mt: 10,
+                  mb: 10,
                 }}
-                onClick={() => setDisplayedResults(displayedResults + 8)}
+                onClick={() => setDisplayedResults(displayedResults + RESULTS_PER_PAGE*2)}
                 disabled={isLoading}
               >
                 {isLoading ? (
