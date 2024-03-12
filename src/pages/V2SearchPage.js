@@ -268,16 +268,7 @@ export default function SearchPage() {
   const loadVideoUrl = async (result, metadataCid) => {
     const thumbnailUrl = `https://v2.memesrc.com/thumbnail/${metadataCid}/${result.season}/${result.episode}/${result.subtitle_index}`;
     const resultId = `${result.season}-${result.episode}-${result.subtitle_index}`;
-  
-    try {
-      const response = await fetch(thumbnailUrl);
-      if (!response.ok) throw new Error(`Failed to fetch thumbnail: ${response.statusText}`);
-      const blob = await response.blob();
-      const videoUrl = URL.createObjectURL(blob);
-      setVideoUrls((prevVideoUrls) => ({ ...prevVideoUrls, [resultId]: videoUrl }));
-    } catch (error) {
-      console.error("Error loading thumbnail for result:", JSON.stringify(result), error);
-    }
+    setVideoUrls((prevVideoUrls) => ({ ...prevVideoUrls, [resultId]: thumbnailUrl }));
   };
 
   useEffect(() => {
@@ -421,7 +412,7 @@ export default function SearchPage() {
                       <StyledCardMedia
                         ref={addVideoRef}
                         src={videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`]}
-                        autoPlay={autoplay}
+                        autoPlay
                         loop
                         muted
                         playsInline
@@ -457,7 +448,7 @@ export default function SearchPage() {
                   maxWidth: { xs: '90%', sm: '40%', md: '25%' },
                   margin: '0 auto',
                 }}
-                onClick={() => setDisplayedResults(displayedResults + 20)}
+                onClick={() => setDisplayedResults(displayedResults + 8)}
               >
                 Load More
               </Button>
