@@ -116,6 +116,14 @@
         "frameExtractor": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
           "s3Key": "amplify-builds/frameExtractor-504e7956327a6764535a-build.zip"
+        },
+        "memesrcSearchV2": {
+          "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
+          "s3Key": "amplify-builds/memesrcSearchV2-636b494b64584d384169-build.zip"
+        },
+        "memesrcThumbnailZipExtractor": {
+          "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
+          "s3Key": "amplify-builds/memesrcThumbnailZipExtractor-48533238666a7254584b-build.zip"
         }
       },
       "storage": {
