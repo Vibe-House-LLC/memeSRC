@@ -51,6 +51,31 @@ const StyledCardMediaContainer = styled.div`
   background-color: black;
 `;
 
+const StyledCardVideoContainer = styled.div`
+  width: 100%;
+  height: 0;
+  padding-bottom: 56.25%;
+  overflow: hidden;
+  position: relative;
+  background-color: black;
+`;
+
+const StyledCardImageContainer = styled.div`
+  width: 100%;
+  height: 0;
+  padding-bottom: 56.25%;
+  overflow: hidden;
+  position: relative;
+  background-color: black;
+`;
+
+const StyledCardImage = styled.img`
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  object-fit: contain;
+`;
+
 const StyledCardMedia = styled.video`
   width: 100%;
   height: 100%;
@@ -153,6 +178,20 @@ const DismissButton = styled(Button)`
   }
 `;
 
+const AnimationToggleButton = styled(Button)`
+  margin-top: 15px;
+  border-radius: 20px;
+  padding: 6px 16px;
+  background-color: rgba(255, 255, 255, 0.7);
+  color: #000;
+  position: relative;
+  z-index: 1;
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.8);
+  }
+`;
+
 const ReportProblemButton = styled(IconButton)`
   position: absolute;
   top: 10px;
@@ -167,6 +206,7 @@ export default function SearchPage() {
   const RESULTS_PER_PAGE = 4;
 
   const [loadingCsv, setLoadingCsv] = useState(false);
+  const [animationsEnabled, setAnimationsEnabled] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [csvLines, setCsvLines] = useState();
   const [displayedResults, setDisplayedResults] = useState(RESULTS_PER_PAGE);
@@ -262,8 +302,16 @@ export default function SearchPage() {
     }
   }, [cid]);
 
+  useEffect(() => {
+    if (newResults) {
+      newResults.forEach((result) => loadVideoUrl(result, cid));
+    }
+  }, [animationsEnabled, newResults, cid]);
+
   const loadVideoUrl = async (result, metadataCid) => {
-    const thumbnailUrl = `https://v2.memesrc.com/thumbnail/${metadataCid}/${result.season}/${result.episode}/${result.subtitle_index}`;
+    const thumbnailUrl = animationsEnabled
+      ? `https://v2.memesrc.com/thumbnail/${metadataCid}/${result.season}/${result.episode}/${result.subtitle_index}`
+      : `https://v2.memesrc.com/frame/${metadataCid}/${result.season}/${result.episode}/${Math.round((parseInt(result.start_frame, 10) + parseInt(result.end_frame, 10)) / 2)}`;
     const resultId = `${result.season}-${result.episode}-${result.subtitle_index}`;
     setVideoUrls((prevVideoUrls) => ({ ...prevVideoUrls, [resultId]: thumbnailUrl }));
   };
@@ -373,6 +421,12 @@ export default function SearchPage() {
             >
               Switch back
             </Button>
+            {/* <AnimationToggleButton
+              variant="contained"
+              onClick={() => setAnimationsEnabled(!animationsEnabled)}
+            >
+              {animationsEnabled ? 'Disable Animations' : 'Enable Animations'}
+            </AnimationToggleButton> */}
           </div>
         </UpgradedIndexBanner>
       </Collapse>
@@ -384,19 +438,6 @@ export default function SearchPage() {
           <ReportProblem />
         </ReportProblemButton>
       )}
-      {/* <Collapse in={showSettings}>
-        <AutoplaySettingContainer>
-          <FormControlLabel
-            control={<Switch checked={autoplay} onChange={handleAutoplayChange} />}
-            label="Animated Thumbnails"
-          />
-        </AutoplaySettingContainer>
-      </Collapse>
-      {!showSettings && (
-        <SettingsButton color="primary" onClick={() => setShowSettings(true)}>
-          <Settings />
-        </SettingsButton>
-      )} */}
       {newResults && newResults.length > 0 ? (
         <InfiniteScroll
           dataLength={displayedResults}
@@ -453,20 +494,33 @@ export default function SearchPage() {
                   style={{ textDecoration: 'none' }}
                 >
                   <StyledCard>
-                    <StyledCardMediaContainer aspectRatio="56.25%">
-                      {videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`] && (
-                        <StyledCardMedia
-                          ref={addVideoRef}
-                          src={videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`]}
-                          autoPlay
-                          loop
-                          muted
-                          playsInline
-                          preload="auto"
-                          onError={(e) => console.error("Error loading video:", JSON.stringify(result))}
-                        />
-                      )}
-                    </StyledCardMediaContainer>
+                    {animationsEnabled ? (
+                      <StyledCardVideoContainer>
+                        {videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`] && (
+                          <StyledCardMedia
+                            ref={addVideoRef}
+                            src={videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`]}
+                            autoPlay
+                            loop
+                            muted
+                            playsInline
+                            preload="auto"
+                            onError={(e) => console.error("Error loading video:", JSON.stringify(result))}
+                            key={`${result.season}-${result.episode}-${result.subtitle_index}-video`}
+                          />
+                        )}
+                      </StyledCardVideoContainer>
+                    ) : (
+                      <StyledCardImageContainer>
+                        {videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`] && (
+                          <StyledCardImage
+                            src={videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`]}
+                            alt={`Frame from S${result.season} E${result.episode}`}
+                            key={`${result.season}-${result.episode}-${result.subtitle_index}-image`}
+                          />
+                        )}
+                      </StyledCardImageContainer>
+                    )}
                     <BottomCardCaption>{result.subtitle}</BottomCardCaption>
                     <BottomCardLabel>
                       <Chip
