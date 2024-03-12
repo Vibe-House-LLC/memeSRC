@@ -266,7 +266,7 @@ export default function SearchPage() {
   }, [cid]);
 
   const loadVideoUrl = async (result, metadataCid) => {
-    const thumbnailUrl = `https://api-dev.memesrc.com/dev/v2/thumbnail/${metadataCid}/${result.season}/${result.episode}/${result.subtitle_index}`;
+    const thumbnailUrl = `https://v2.memesrc.com/thumbnail/${metadataCid}/${result.season}/${result.episode}/${result.subtitle_index}`;
     const resultId = `${result.season}-${result.episode}-${result.subtitle_index}`;
   
     try {
@@ -320,7 +320,7 @@ export default function SearchPage() {
       }
   
       try {
-        const response = await fetch(`https://api-dev.memesrc.com/dev/v2/search/${cid}/${searchTerm}`);
+        const response = await fetch(`https://v2.memesrc.com/search/${cid}/${searchTerm}`);
         if (!response.ok) {
           throw new Error(`HTTP error! Status: ${response.status}`);
         }

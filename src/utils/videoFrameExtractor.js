@@ -1,6 +1,6 @@
 export async function extractVideoFrames(cid, season, episode, frameIndexes, fps, scaleFactor) {
   const frameUrls = frameIndexes.map(frameId => {
-    return `https://api-dev.memesrc.com/dev/v2/frame/${cid}/${season}/${episode}/${frameId}`;
+    return `https://v2.memesrc.com/frame/${cid}/${season}/${episode}/${frameId}`;
   });
 
   return frameUrls;
