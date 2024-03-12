@@ -6,6 +6,7 @@ import { Link, useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import JSZip from 'jszip';
 import { ReportProblem, Settings } from '@mui/icons-material';
+import InfiniteScroll from 'react-infinite-scroll-component';
 import useSearchDetails from '../hooks/useSearchDetails';
 import IpfsSearchBar from '../sections/search/ipfs-search-bar';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
@@ -29,13 +30,6 @@ const SettingsButton = styled(IconButton)`
   right: 10px;
   color: #fff;
   z-index: 1;
-`;
-
-const StyledCircularProgress = styled(CircularProgress)`
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
 `;
 
 const StyledCard = styled(Card)`
@@ -170,9 +164,10 @@ const ReportProblemButton = styled(IconButton)`
 export default function SearchPage() {
   const params = useParams();
 
-  const [loadingCsv, setLoadingCsv] = useState(true);
+  const [loadingCsv, setLoadingCsv] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [csvLines, setCsvLines] = useState();
-  const [displayedResults, setDisplayedResults] = useState(8);
+  const [displayedResults, setDisplayedResults] = useState(4);
   const [newResults, setNewResults] = useState();
   const { showObj, setShowObj, cid } = useSearchDetailsV2();
   const [loadingResults, setLoadingResults] = useState(true);
@@ -303,7 +298,7 @@ export default function SearchPage() {
     async function searchText() {
       setNewResults(null);
       setLoadingResults(true);
-      setDisplayedResults(8);
+      setDisplayedResults(4);
       const searchTerm = params?.searchTerms.trim().toLowerCase();
       if (searchTerm === "") {
         console.log("Search term is empty.");
@@ -401,40 +396,19 @@ export default function SearchPage() {
         </SettingsButton>
       )} */}
       {newResults && newResults.length > 0 ? (
-        <>
-          <Grid container spacing={2} alignItems="stretch" paddingX={{ xs: 2, md: 6 }}>
-          {newResults.slice(0, displayedResults).map((result, index) => (
-            <Grid item xs={12} sm={6} md={3} key={index} className="result-item" data-result-index={index}>
-              <Link to={`/v2/frame/${cid}/${result.season}/${result.episode}/${Math.round((parseInt(result.start_frame, 10) + parseInt(result.end_frame, 10)) / 2)}`} style={{ textDecoration: 'none' }}>
-                <StyledCard>
-                  <StyledCardMediaContainer aspectRatio="56.25%">
-                    {videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`] && (
-                      <StyledCardMedia
-                        ref={addVideoRef}
-                        src={videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`]}
-                        autoPlay
-                        loop
-                        muted
-                        playsInline
-                        preload="auto"
-                        onError={(e) => console.error("Error loading video:", JSON.stringify(result))}
-                      />
-                    )}
-                  </StyledCardMediaContainer>
-                    <BottomCardCaption>{result.subtitle}</BottomCardCaption>
-                    <BottomCardLabel>
-                      <Chip
-                        size="small"
-                        label={`S${result.season} E${result.episode}`}
-                        style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', color: 'white', fontWeight: 'bold' }}
-                      />
-                    </BottomCardLabel>
-                  </StyledCard>
-                </Link>
-              </Grid>
-            ))}
-          </Grid>
-          {newResults.length > displayedResults && (
+        <InfiniteScroll
+          dataLength={displayedResults}
+          next={() => {
+            if (!isLoading) {
+              setIsLoading(true);
+              setTimeout(() => {
+                setDisplayedResults((prevDisplayedResults) => Math.min(prevDisplayedResults + 8, newResults.length));
+                setIsLoading(false);
+              }, 3500);
+            }
+          }}
+          hasMore={displayedResults < newResults.length}
+          loader={
             <Grid item xs={12} textAlign="center" mt={4}>
               <Button
                 variant="contained"
@@ -449,21 +423,66 @@ export default function SearchPage() {
                   margin: '0 auto',
                 }}
                 onClick={() => setDisplayedResults(displayedResults + 8)}
+                disabled={isLoading}
               >
-                Load More
+                {isLoading ? (
+                  <>
+                    <CircularProgress size={24} style={{ marginRight: '8px' }} />
+                    Loading More
+                  </>
+                ) : (
+                  'Load More'
+                )}
               </Button>
             </Grid>
-          )}
-        </>
+          }
+          scrollThreshold={0.7}
+        >
+          <Grid container spacing={2} alignItems="stretch" paddingX={{ xs: 2, md: 6 }}>
+            {newResults.slice(0, displayedResults).map((result, index) => (
+              <Grid item xs={12} sm={6} md={3} key={index} className="result-item" data-result-index={index}>
+                <Link
+                  to={`/v2/frame/${cid}/${result.season}/${result.episode}/${Math.round(
+                    (parseInt(result.start_frame, 10) + parseInt(result.end_frame, 10)) / 2
+                  )}`}
+                  style={{ textDecoration: 'none' }}
+                >
+                  <StyledCard>
+                    <StyledCardMediaContainer aspectRatio="56.25%">
+                      {videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`] && (
+                        <StyledCardMedia
+                          ref={addVideoRef}
+                          src={videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`]}
+                          autoPlay
+                          loop
+                          muted
+                          playsInline
+                          preload="auto"
+                          onError={(e) => console.error("Error loading video:", JSON.stringify(result))}
+                        />
+                      )}
+                    </StyledCardMediaContainer>
+                    <BottomCardCaption>{result.subtitle}</BottomCardCaption>
+                    <BottomCardLabel>
+                      <Chip
+                        size="small"
+                        label={`S${result.season} E${result.episode}`}
+                        style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', color: 'white', fontWeight: 'bold' }}
+                      />
+                    </BottomCardLabel>
+                  </StyledCard>
+                </Link>
+              </Grid>
+            ))}
+          </Grid>
+        </InfiniteScroll>
       ) : (
         <>
-          {newResults?.length <= 0 && !loadingResults ? (
-            <Typography textAlign='center' fontSize={30} fontWeight={700} my={8}>
+          {newResults?.length <= 0 && !loadingResults &&
+            <Typography textAlign="center" fontSize={30} fontWeight={700} my={8}>
               No Results
             </Typography>
-          ) : (
-            <StyledCircularProgress />
-          )}
+          }
         </>
       )}
     </>
