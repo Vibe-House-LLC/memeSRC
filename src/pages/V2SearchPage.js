@@ -441,7 +441,7 @@ export default function SearchPage() {
               </Button>
             </Grid>
           }
-          scrollThreshold={0.7}
+          scrollThreshold={0.95}
         >
           <Grid container spacing={2} alignItems="stretch" paddingX={{ xs: 2, md: 6 }}>
             {newResults.slice(0, displayedResults).map((result, index) => (
