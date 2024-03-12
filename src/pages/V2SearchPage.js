@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Grid, CircularProgress, Card, Chip, Typography, Button, Collapse, IconButton, FormControlLabel, Switch } from '@mui/material';
 import styled from '@emotion/styled';
+import { API } from 'aws-amplify';
 import { Link, useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import JSZip from 'jszip';
@@ -171,7 +172,7 @@ export default function SearchPage() {
 
   const [loadingCsv, setLoadingCsv] = useState(true);
   const [csvLines, setCsvLines] = useState();
-  const [displayedResults, setDisplayedResults] = useState(4);
+  const [displayedResults, setDisplayedResults] = useState(12);
   const [newResults, setNewResults] = useState();
   const { showObj, setShowObj, cid } = useSearchDetailsV2();
   const [loadingResults, setLoadingResults] = useState(true);
@@ -301,27 +302,17 @@ export default function SearchPage() {
   }, [cid]);
 
   const loadVideoUrl = async (result, metadataCid) => {
-    const groupIndex = Math.floor(parseInt(result.subtitle_index, 10) / 15);
-    const zipUrl = `https://memesrc.com/v2/${metadataCid}/${result.season}/${result.episode}/s${groupIndex}.zip`;
+    const thumbnailUrl = `https://api-dev.memesrc.com/dev/v2/thumbnail/${metadataCid}/${result.season}/${result.episode}/${result.subtitle_index}`;
     const resultId = `${result.season}-${result.episode}-${result.subtitle_index}`;
   
     try {
-      const zipResponse = await fetch(zipUrl);
-      if (!zipResponse.ok) throw new Error(`Failed to fetch ZIP: ${zipResponse.statusText}`);
-      const zipBlob = await zipResponse.blob();
-      const zip = await JSZip.loadAsync(zipBlob);
-  
-      const videoPath = `s${parseInt(result.subtitle_index, 10)}.mp4`;
-      const videoFile = zip.file(videoPath) ? await zip.file(videoPath).async("blob") : null;
-  
-      if (!videoFile) throw new Error(`File not found in ZIP: ${videoPath}`);
-  
-      const videoBlob = new Blob([videoFile], { type: 'video/mp4' });
-      const videoUrl = URL.createObjectURL(videoBlob);
-  
+      const response = await fetch(thumbnailUrl);
+      if (!response.ok) throw new Error(`Failed to fetch thumbnail: ${response.statusText}`);
+      const blob = await response.blob();
+      const videoUrl = URL.createObjectURL(blob);
       setVideoUrls((prevVideoUrls) => ({ ...prevVideoUrls, [resultId]: videoUrl }));
     } catch (error) {
-      console.error("Error loading or processing ZIP file for result:", JSON.stringify(result), error);
+      console.error("Error loading thumbnail for result:", JSON.stringify(result), error);
     }
   };
 
@@ -357,39 +348,26 @@ export default function SearchPage() {
     async function searchText() {
       setNewResults(null);
       setLoadingResults(true);
-      setDisplayedResults(4);
+      setDisplayedResults(12);
       const searchTerm = params?.searchTerms.trim().toLowerCase();
       if (searchTerm === "") {
         console.log("Search term is empty.");
         return;
       }
   
-      const searchTerms = searchTerm.split(" ");
-      let results = [];
-      showObj.forEach((line) => {
-        let score = 0;
-        if (line.subtitle_text.toLowerCase().includes(searchTerm)) {
-          score += 10;
+      try {
+        const response = await fetch(`https://api-dev.memesrc.com/dev/v2/search/${cid}/${searchTerm}`);
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
         }
-        searchTerms.forEach((term) => {
-          if (line.subtitle_text.toLowerCase().includes(term)) {
-            score += 1;
-          }
-        });
-        if (score > 0) {
-          results.push({ ...line, score });
-        }
-      });
-  
-      results.sort((a, b) => b.score - a.score);
-      results = results.slice(0, 150);
-  
-      const metadataCid = (await getV2Metadata(params.cid)).id;
-  
-      setNewResults(results);
-      setLoadingResults(false);
-  
-      results.forEach((result) => loadVideoUrl(result, metadataCid));
+        const results = await response.json();
+        setNewResults(results);
+        setLoadingResults(false);
+        results.forEach((result) => loadVideoUrl(result, cid));
+      } catch (error) {
+        console.error("Error searching:", error);
+        setLoadingResults(false);
+      }
     }
   
     if (!loadingCsv && showObj) {
@@ -515,7 +493,7 @@ export default function SearchPage() {
                   maxWidth: { xs: '90%', sm: '40%', md: '25%' },
                   margin: '0 auto',
                 }}
-                onClick={() => setDisplayedResults(displayedResults + 4)}
+                onClick={() => setDisplayedResults(displayedResults + 20)}
               >
                 Load More
               </Button>

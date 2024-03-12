@@ -47,12 +47,12 @@
         "FunctionName": {
           "Fn::If": [
             "ShouldNotCreateEnvResources",
-            "frameExtractor",
+            "memesrcThumbnailZipExtractor",
             {
               "Fn::Join": [
                 "",
                 [
-                  "frameExtractor",
+                  "memesrcThumbnailZipExtractor",
                   "-",
                   {
                     "Ref": "env"
@@ -79,7 +79,7 @@
           ]
         },
         "Runtime": "nodejs18.x",
-        "MemorySize": 2048,
+        "MemorySize": 1024,
         "Layers": [],
         "Timeout": 25
       }
@@ -90,12 +90,12 @@
         "RoleName": {
           "Fn::If": [
             "ShouldNotCreateEnvResources",
-            "memesrcLambdaRolebf391c15",
+            "memesrcLambdaRolef1ba9076",
             {
               "Fn::Join": [
                 "",
                 [
-                  "memesrcLambdaRolebf391c15",
+                  "memesrcLambdaRolef1ba9076",
                   "-",
                   {
                     "Ref": "env"

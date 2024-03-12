@@ -1,0 +1,10 @@
+{
+  "pathParameters": {
+    "id": "seinfeld",
+    "query": "soup%20mode"
+  },
+  "httpMethod": "GET",
+  "headers": {
+    "Origin": "http://localhost:3000"
+  }
+}

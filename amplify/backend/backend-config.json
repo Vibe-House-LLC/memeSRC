@@ -175,6 +175,22 @@
           ],
           "category": "function",
           "resourceName": "frameExtractor"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcSearchV2"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcThumbnailZipExtractor"
         }
       ],
       "providerPlugin": "awscloudformation",
@@ -434,6 +450,11 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "memesrcSearchV2": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "memesrcStripeCallback": {
       "build": true,
       "dependsOn": [
@@ -451,6 +472,11 @@
     "memesrcTVDB": {
       "build": true,
       "dependsOn": [],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "memesrcThumbnailZipExtractor": {
+      "build": true,
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
@@ -798,6 +824,22 @@
         }
       ]
     },
+    "AMPLIFY_function_memesrcSearchV2_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcSearchV2"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcSearchV2_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcSearchV2"
+        }
+      ]
+    },
     "AMPLIFY_function_memesrcStripeCallback_deploymentBucketName": {
       "usedBy": [
         {
@@ -843,6 +885,22 @@
         {
           "category": "function",
           "resourceName": "memesrcTVDB"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcThumbnailZipExtractor_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcThumbnailZipExtractor"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcThumbnailZipExtractor_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcThumbnailZipExtractor"
         }
       ]
     },

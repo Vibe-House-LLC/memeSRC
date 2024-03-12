@@ -260,6 +260,20 @@
       "permissions": {
         "setting": "open"
       }
+    },
+    "/v2/search/{id}/{query}": {
+      "name": "/v2/search/{id}/{query}",
+      "lambdaFunction": "memesrcSearchV2",
+      "permissions": {
+        "setting": "open"
+      }
+    },
+    "/v2/thumbnail/{id}/{season}/{episode}/{subtitle}": {
+      "name": "/v2/thumbnail/{id}/{season}/{episode}/{subtitle}",
+      "lambdaFunction": "memesrcThumbnailZipExtractor",
+      "permissions": {
+        "setting": "open"
+      }
     }
   }
 }

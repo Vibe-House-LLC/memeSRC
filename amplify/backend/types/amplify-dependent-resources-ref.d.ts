@@ -135,6 +135,13 @@ export type AmplifyDependentResourcesAttributes = {
       "Name": "string",
       "Region": "string"
     },
+    "memesrcSearchV2": {
+      "Arn": "string",
+      "LambdaExecutionRole": "string",
+      "LambdaExecutionRoleArn": "string",
+      "Name": "string",
+      "Region": "string"
+    },
     "memesrcStripeCallback": {
       "Arn": "string",
       "LambdaExecutionRole": "string",
@@ -143,6 +150,13 @@ export type AmplifyDependentResourcesAttributes = {
       "Region": "string"
     },
     "memesrcTVDB": {
+      "Arn": "string",
+      "LambdaExecutionRole": "string",
+      "LambdaExecutionRoleArn": "string",
+      "Name": "string",
+      "Region": "string"
+    },
+    "memesrcThumbnailZipExtractor": {
       "Arn": "string",
       "LambdaExecutionRole": "string",
       "LambdaExecutionRoleArn": "string",
