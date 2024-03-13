@@ -31,6 +31,7 @@ async function downloadFile(url, filePath) {
  */
 exports.handler = async (event) => {
   const { id, season, episode, range } = event.pathParameters;
+  const { base64subtitle } = event.queryStringParameters || {};
 
   if (!id || !season || !episode || !range) {
     return {
@@ -62,6 +63,22 @@ exports.handler = async (event) => {
       };
     }
 
+    let subtitleOptions = [];
+    if (base64subtitle) {
+      const subtitleText = Buffer.from(base64subtitle, 'base64').toString('utf-8');
+      const subtitleLines = subtitleText.split('\n');
+      const subtitleFile = path.join('/tmp', `${id}-${season}-${episode}-${range}.srt`);
+    
+      const srtContent = subtitleLines
+        .map((line, index) => {
+          return `${index + 1}\n00:00:00,000 --> 00:00:30,000\n${line}\n\n`;
+        })
+        .join('');
+    
+      fs.writeFileSync(subtitleFile, srtContent);
+      subtitleOptions = [`subtitles=${subtitleFile}:force_style='FontName=Arial,FontSize=14'`];
+    }
+
     await new Promise((resolve, reject) => {
       const command = ffmpeg();
 
@@ -74,7 +91,7 @@ exports.handler = async (event) => {
         .outputOptions([
           `-frames:v ${endFrame - startFrame + 1}`,
           '-vf',
-          `fps=${FPS},scale=320:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse`,
+          `fps=${FPS},scale=320:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse${subtitleOptions.length > 0 ? `,${subtitleOptions.join(',')}` : ''}`,
           '-loop',
           '0',
         ])
