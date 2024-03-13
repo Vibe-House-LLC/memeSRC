@@ -12,26 +12,6 @@ import IpfsSearchBar from '../sections/search/ipfs-search-bar';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
 import getV2Metadata from '../utils/getV2Metadata';
 
-const AutoplaySettingContainer = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background-color: #37383a;
-  padding: 10px 20px;
-  border-radius: 8px;
-  margin: 20px;
-  box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
-  color: #fff;
-`;
-
-const SettingsButton = styled(IconButton)`
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  color: #fff;
-  z-index: 1;
-`;
-
 const StyledCard = styled(Card)`
   border: 3px solid transparent;
   box-sizing: border-box;
@@ -40,15 +20,6 @@ const StyledCard = styled(Card)`
   &:hover {
     border: 3px solid orange;
   }
-`;
-
-const StyledCardMediaContainer = styled.div`
-  width: 100%;
-  height: 0;
-  padding-bottom: ${props => props.aspectRatio};
-  overflow: hidden;
-  position: relative;
-  background-color: black;
 `;
 
 const StyledCardVideoContainer = styled.div`
@@ -116,12 +87,18 @@ const UpgradedIndexBanner = styled.div`
   background-image: url('https://api-prod-minimal-v510.vercel.app/assets/images/cover/cover_3.jpg');
   background-size: cover;
   background-position: center;
-  padding: 40px 20px;
+  padding: ${props => props.show ? '40px 20px' : '10px'};
   text-align: center;
   position: relative;
   border-radius: 8px;
   margin: 0 20px 20px 20px;
   box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: ${props => props.show ? '200px' : '50px'};
+  transition: all 0.3s ease-in-out;
 
   &::before {
     content: "";
@@ -164,73 +141,68 @@ const UpgradedIndexSubtext = styled(Typography)`
   }
 `;
 
-const DismissButton = styled(Button)`
-  margin-top: 15px;
-  border-radius: 20px;
-  padding: 6px 16px;
-  background-color: #fff;
-  color: #000;
+const MinimizedBanner = styled.div`
+  background-image: url('https://api-prod-minimal-v510.vercel.app/assets/images/cover/cover_3.jpg');
+  background-size: cover;
+  background-position: center;
+  padding: 10px;
+  text-align: center;
   position: relative;
-  z-index: 1;
+  border-radius: 8px;
+  margin: 0 20px 20px 20px;
+  box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 50px;
+  cursor: pointer;
 
-  &:hover {
-    background-color: #eee;
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    border-radius: 8px;
   }
 `;
 
-const AnimationToggleButton = styled(Button)`
-  margin-top: 15px;
-  border-radius: 20px;
-  padding: 6px 16px;
-  background-color: rgba(255, 255, 255, 0.7);
-  color: #000;
-  position: relative;
-  z-index: 1;
-
-  &:hover {
-    background-color: rgba(255, 255, 255, 0.8);
-  }
-`;
-
-const ReportProblemButton = styled(IconButton)`
-  position: absolute;
-  top: 10px;
-  right: 10px;
+const MinimizedBannerText = styled(Typography)`
+  font-size: 16px;
+  font-weight: bold;
   color: #fff;
+  position: relative;
   z-index: 1;
 `;
 
 export default function SearchPage() {
   const params = useParams();
 
-  const RESULTS_PER_PAGE = 4;
+  const RESULTS_PER_PAGE = 8;
 
   const [loadingCsv, setLoadingCsv] = useState(false);
-  const [animationsEnabled, setAnimationsEnabled] = useState(true);
+
+  // ===== Upgraded Index Banner States ===== 
+  const [isBannerMinimized, setIsBannerMinimized] = useState(
+    localStorage.getItem(`dismissedBanner`) === 'true' || false
+  );
+
+  const [animationsEnabled, setAnimationsEnabled] = useState(
+    localStorage.getItem('animationsEnabled') === 'true' || false
+  );
+  // ===== ===== ===== ===== ===== ===== ===== 
+  
   const [isLoading, setIsLoading] = useState(false);
-  const [csvLines, setCsvLines] = useState();
-  const [displayedResults, setDisplayedResults] = useState(RESULTS_PER_PAGE);
+  const [displayedResults, setDisplayedResults] = useState(RESULTS_PER_PAGE / 2);
   const [newResults, setNewResults] = useState();
   const { showObj, setShowObj, cid } = useSearchDetailsV2();
   const [loadingResults, setLoadingResults] = useState(true);
   const [videoUrls, setVideoUrls] = useState({});
-  const [showBanner, setShowBanner] = useState(true);
+  const [showBanner, setShowBanner] = useState(!isBannerMinimized);
 
   const [autoplay, setAutoplay] = useState(true);
-  const [showSettings, setShowSettings] = useState(true);
-
-  const handleAutoplayChange = (event) => {
-    const isAutoplayEnabled = event.target.checked;
-    setAutoplay(isAutoplayEnabled);
-
-    videoRefs.current.forEach(video => {
-      if (isAutoplayEnabled && video.getBoundingClientRect().top < window.innerHeight) {
-        video.play();
-      } else {
-        video.pause();
-      }
-    });
-  };
 
   const videoRefs = useRef([]);
 
@@ -266,11 +238,13 @@ export default function SearchPage() {
     };
   }, [newResults, autoplay]);
 
-  const checkBannerDismissed = (selectedCid) => {
-    const dismissedBanner = sessionStorage.getItem(`dismissedBanner_${selectedCid}`);
-    if (dismissedBanner) {
+  const checkBannerDismissed = () => {
+    const dismissedBanner = localStorage.getItem(`dismissedBanner`);
+    if (dismissedBanner === 'true') {
+      setIsBannerMinimized(true);
       setShowBanner(false);
     } else {
+      setIsBannerMinimized(false);
       setShowBanner(true);
     }
   };
@@ -348,7 +322,7 @@ export default function SearchPage() {
     async function searchText() {
       setNewResults(null);
       setLoadingResults(true);
-      setDisplayedResults(4);
+      setDisplayedResults(RESULTS_PER_PAGE / 2);
       const searchTerm = params?.searchTerms.trim().toLowerCase();
       if (searchTerm === "") {
         console.log("Search term is empty.");
@@ -384,59 +358,96 @@ export default function SearchPage() {
     console.log(newResults);
   }, [newResults]);
 
+  const ReportProblemButton = styled(IconButton)`
+    top: 10px;
+    right: 10px;
+    color: #fff;
+    z-index: 1;
+  `;
+
   return (
     <>
       <Collapse in={showBanner}>
-        <UpgradedIndexBanner>
-          <UpgradedIndexText>Upgraded!</UpgradedIndexText>
-          <UpgradedIndexSubtext>
-            You're testing '{cid}' on the new data model.{' '}
-            <a href="https://forms.gle/8CETtVbwYoUmxqbi7" target="_blank" rel="noopener noreferrer">
-              Report&nbsp;a&nbsp;problem
-            </a>.
-          </UpgradedIndexSubtext>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '10px' }}>
-            <DismissButton variant="contained" onClick={() => {
-              setShowBanner(false);
-              sessionStorage.setItem(`dismissedBanner_${cid}`, true);
-            }}>
-              Sounds good
-            </DismissButton>
-            <Button
-              variant="contained"
-              component={Link}
-              to={`/search/${cid}/${params?.searchTerms}`}
-              style={{
-                marginTop: '15px',
-                borderRadius: '20px',
-                padding: '6px 16px',
-                backgroundColor: 'rgba(255, 255, 255, 0.7)',
-                color: '#000',
-                position: 'relative',
-                zIndex: 1,
-                '&:hover': {
-                  backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                },
-              }}
-            >
-              Switch back
-            </Button>
-            {/* <AnimationToggleButton
-              variant="contained"
-              onClick={() => setAnimationsEnabled(!animationsEnabled)}
-            >
-              {animationsEnabled ? 'Disable Animations' : 'Enable Animations'}
-            </AnimationToggleButton> */}
-          </div>
+        <UpgradedIndexBanner show={showBanner}>
+          {showBanner && (
+            <>
+              <UpgradedIndexText>Upgraded!</UpgradedIndexText>
+              <UpgradedIndexSubtext>
+                You're testing '{cid}' on the new data model.{' '}
+                <a href="https://forms.gle/8CETtVbwYoUmxqbi7" target="_blank" rel="noopener noreferrer">
+                  Report&nbsp;a&nbsp;problem
+                </a>
+                .
+              </UpgradedIndexSubtext>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '10px' }}>
+                <Button
+                  variant="contained"
+                  onClick={() => {
+                    const newAnimationsEnabled = !animationsEnabled;
+                    setAnimationsEnabled(newAnimationsEnabled);
+                    localStorage.setItem('animationsEnabled', newAnimationsEnabled.toString());
+                  }}
+                  style={{
+                    marginTop: '15px',
+                    borderRadius: '20px',
+                    padding: '6px 16px',
+                    backgroundColor: '#fff',
+                    color: '#000',
+                    position: 'relative',
+                    zIndex: 1,
+                    '&:hover': {
+                      backgroundColor: '#eee',
+                    },
+                  }}
+                >
+                  {animationsEnabled ? 'Disable Animations' : 'Enable Animations'}
+                </Button>
+                <Button
+                  variant="contained"
+                  onClick={() => {
+                    setIsBannerMinimized(true);
+                    setShowBanner(false);
+                    localStorage.setItem(`dismissedBanner`, 'true');
+                  }}
+                  style={{
+                    marginTop: '15px',
+                    borderRadius: '20px',
+                    padding: '6px 16px',
+                    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                    color: '#000',
+                    position: 'relative',
+                    zIndex: 1,
+                    '&:hover': {
+                      backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                    },
+                  }}
+                >
+                  Minimize
+                </Button>
+              </div>
+            </>
+          )}
         </UpgradedIndexBanner>
       </Collapse>
       {!showBanner && (
-        <ReportProblemButton color="primary" onClick={() => {
-          setShowBanner(true);
-          sessionStorage.removeItem(`dismissedBanner_${cid}`);
-        }}>
-          <ReportProblem />
-        </ReportProblemButton>
+        <MinimizedBanner
+          onClick={() => {
+            setShowBanner(true);
+            setIsBannerMinimized(false);
+            localStorage.removeItem(`dismissedBanner`);
+          }}
+        >
+          <MinimizedBannerText style={{ fontWeight: 'bold' }}>You're testing the V2 data model!</MinimizedBannerText>
+          <MinimizedBannerText
+            style={{
+              textDecoration: 'underline',
+              fontWeight: 'normal',
+              marginLeft: '10px',
+            }}
+          >
+            Settings
+          </MinimizedBannerText>
+        </MinimizedBanner>
       )}
       {newResults && newResults.length > 0 ? (
         <InfiniteScroll
@@ -445,7 +456,9 @@ export default function SearchPage() {
             if (!isLoading) {
               setIsLoading(true);
               setTimeout(() => {
-                setDisplayedResults((prevDisplayedResults) => Math.min(prevDisplayedResults + RESULTS_PER_PAGE, newResults.length));
+                setDisplayedResults((prevDisplayedResults) =>
+                  Math.min(prevDisplayedResults + RESULTS_PER_PAGE, newResults.length)
+                );
                 setIsLoading(false);
               }, 1000);
             }
@@ -468,7 +481,7 @@ export default function SearchPage() {
                   mt: 10,
                   mb: 10,
                 }}
-                onClick={() => setDisplayedResults(displayedResults + RESULTS_PER_PAGE*2)}
+                onClick={() => setDisplayedResults(displayedResults + RESULTS_PER_PAGE * 2)}
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -505,7 +518,7 @@ export default function SearchPage() {
                             muted
                             playsInline
                             preload="auto"
-                            onError={(e) => console.error("Error loading video:", JSON.stringify(result))}
+                            onError={(e) => console.error('Error loading video:', JSON.stringify(result))}
                             key={`${result.season}-${result.episode}-${result.subtitle_index}-video`}
                           />
                         )}
@@ -537,11 +550,11 @@ export default function SearchPage() {
         </InfiniteScroll>
       ) : (
         <>
-          {newResults?.length <= 0 && !loadingResults &&
+          {newResults?.length <= 0 && !loadingResults && (
             <Typography textAlign="center" fontSize={30} fontWeight={700} my={8}>
               No Results
             </Typography>
-          }
+          )}
         </>
       )}
     </>
