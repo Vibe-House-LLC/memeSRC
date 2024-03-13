@@ -521,7 +521,7 @@ export default function SearchPage() {
                         )}
                       </StyledCardImageContainer>
                     )}
-                    <BottomCardCaption>{result.subtitle}</BottomCardCaption>
+                    <BottomCardCaption>{result.subtitle_text}</BottomCardCaption>
                     <BottomCardLabel>
                       <Chip
                         size="small"
