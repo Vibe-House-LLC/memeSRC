@@ -274,6 +274,20 @@
       "permissions": {
         "setting": "open"
       }
+    },
+    "/gif/{id}/{season}/{episode}/{range}": {
+      "name": "/gif/{id}/{season}/{episode}/{range}",
+      "lambdaFunction": "memesrcGif",
+      "permissions": {
+        "setting": "open"
+      }
+    },
+    "/v2/gif/{id}/{season}/{episode}/{range}": {
+      "name": "/v2/gif/{id}/{season}/{episode}/{range}",
+      "lambdaFunction": "memesrcGif",
+      "permissions": {
+        "setting": "open"
+      }
     }
   }
 }

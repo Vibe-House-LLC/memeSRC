@@ -191,6 +191,14 @@
           ],
           "category": "function",
           "resourceName": "memesrcThumbnailZipExtractor"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcGif"
         }
       ],
       "providerPlugin": "awscloudformation",
@@ -382,6 +390,11 @@
           "resourceName": "memesrc"
         }
       ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "memesrcGif": {
+      "build": true,
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
@@ -733,6 +746,22 @@
         {
           "category": "function",
           "resourceName": "memesrcFrameFunction"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcGif_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcGif"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcGif_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcGif"
         }
       ]
     },

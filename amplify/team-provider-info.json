@@ -124,6 +124,10 @@
         "memesrcThumbnailZipExtractor": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
           "s3Key": "amplify-builds/memesrcThumbnailZipExtractor-48533238666a7254584b-build.zip"
+        },
+        "memesrcGif": {
+          "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
+          "s3Key": "amplify-builds/memesrcGif-656735484436497a736f-build.zip"
         }
       },
       "storage": {
