@@ -80,34 +80,34 @@ exports.handler = async (event) => {
     }
 
     await new Promise((resolve, reject) => {
-      const command = ffmpeg();
-
-      inputFiles.forEach((file) => {
-        command.input(file);
-      });
-
-      command
-        .inputOptions([`-ss ${((startFrame - 1) % (CHUNK_DURATION * FPS)) / FPS}`])
-        .outputOptions([
-          `-frames:v ${endFrame - startFrame + 1}`,
-          '-vf',
-          `fps=${FPS},scale=320:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse${subtitleOptions.length > 0 ? `,${subtitleOptions.join(',')}` : ''}`,
-          '-loop',
-          '0',
-        ])
-        .output(outputFile)
-        .on('end', () => {
-          console.log('GIF generation complete');
-          resolve();
-        })
-        .on('error', (err) => {
-          console.error('Error generating GIF:', err);
-          reject(err);
+        const command = ffmpeg();
+      
+        inputFiles.forEach((file, index) => {
+          const startTime = index === 0 ? ((startFrame - 1) % (CHUNK_DURATION * FPS)) / FPS : 0;
+          command.input(file).inputOptions(`-ss ${startTime}`);
         });
-
-      console.log('FFmpeg command:', command.toString());
-      command.run();
-    });
+      
+        command
+          .outputOptions([
+            `-frames:v ${endFrame - startFrame + 1}`,
+            '-vf',
+            `fps=${FPS},scale=320:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse${subtitleOptions.length > 0 ? `,${subtitleOptions.join(',')}` : ''}`,
+            '-loop',
+            '0',
+          ])
+          .output(outputFile)
+          .on('end', () => {
+            console.log('GIF generation complete');
+            resolve();
+          })
+          .on('error', (err) => {
+            console.error('Error generating GIF:', err);
+            reject(err);
+          });
+      
+        console.log('FFmpeg command:', command.toString());
+        command.run();
+      });
 
     const gifBuffer = fs.readFileSync(outputFile);
     inputFiles.forEach((file) => {
