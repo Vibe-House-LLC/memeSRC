@@ -127,7 +127,7 @@
         },
         "memesrcGif": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcGif-6e756c50754a4269444d-build.zip"
+          "s3Key": "amplify-builds/memesrcGif-59464d766c5a4e63332b-build.zip"
         }
       },
       "storage": {

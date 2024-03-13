@@ -31,7 +31,7 @@ async function downloadFile(url, filePath) {
  */
 exports.handler = async (event) => {
   const { id, season, episode, range } = event.pathParameters;
-  const { base64subtitle } = event.queryStringParameters || {};
+  const { sub } = event.queryStringParameters || {};
 
   if (!id || !season || !episode || !range) {
     return {
@@ -64,8 +64,8 @@ exports.handler = async (event) => {
     }
 
     let subtitleOptions = [];
-    if (base64subtitle) {
-      const subtitleText = Buffer.from(base64subtitle, 'base64').toString('utf-8');
+    if (sub) {
+      const subtitleText = Buffer.from(sub, 'base64').toString('utf-8');
       const subtitleLines = subtitleText.split('\n');
       const subtitleFile = path.join('/tmp', `${id}-${season}-${episode}-${range}.srt`);
     
@@ -76,7 +76,7 @@ exports.handler = async (event) => {
         .join('');
     
       fs.writeFileSync(subtitleFile, srtContent);
-      subtitleOptions = [`subtitles=${subtitleFile}:force_style='FontName=Arial,FontSize=14'`];
+      subtitleOptions = [`subtitles=${subtitleFile}:force_style='FontName=Arial,FontSize=30,Bold=1'`];
     }
 
     await new Promise((resolve, reject) => {
