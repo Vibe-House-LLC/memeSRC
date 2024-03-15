@@ -335,8 +335,8 @@ export default function SearchPage() {
           throw new Error(`HTTP error! Status: ${response.status}`);
         }
         const results = await response.json();
-        setNewResults(results);
-        setLoadingResults(false);
+        setNewResults(results.results);
+        // setOfflineIndexes(results.offline_indexes);
         results.forEach((result) => loadVideoUrl(result, cid));
       } catch (error) {
         console.error("Error searching:", error);
@@ -536,6 +536,11 @@ export default function SearchPage() {
                     )}
                     <BottomCardCaption>{result.subtitle_text}</BottomCardCaption>
                     <BottomCardLabel>
+                      <Chip
+                        size="small"
+                        label={result.index_id}
+                        style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', color: 'white', fontWeight: 'bold' }}
+                      />
                       <Chip
                         size="small"
                         label={`S${result.season} E${result.episode}`}
