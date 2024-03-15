@@ -13,17 +13,23 @@ exports.handler = async (event) => {
     try {
         const promises = indices.map((index) => {
             const csvUrl = `https://memesrc.com/v2/${index}/_docs.csv`;
-            return new Promise((resolve, reject) => {
+            return new Promise((resolve) => {
                 https.get(csvUrl, (response) => {
-                    let data = '';
-                    response.on('data', (chunk) => {
-                        data += chunk;
-                    });
-                    response.on('end', () => {
-                        resolve({ index, data });
-                    });
-                }).on('error', (error) => {
-                    reject(error);
+                    if (response.statusCode === 200) {
+                        let data = '';
+                        response.on('data', (chunk) => {
+                            data += chunk;
+                        });
+                        response.on('end', () => {
+                            resolve({ index, data });
+                        });
+                    } else {
+                        // Resolve with an object indicating the index is offline
+                        resolve({ index, offline: true });
+                    }
+                }).on('error', () => {
+                    // Resolve with an object indicating the index is offline
+                    resolve({ index, offline: true });
                 });
             });
         });
@@ -31,8 +37,15 @@ exports.handler = async (event) => {
         const csvDataArray = await Promise.all(promises);
         
         let combinedResults = [];
+        let offlineIndexes = [];
         
-        for (const { index, data } of csvDataArray) {
+        for (const { index, data, offline } of csvDataArray) {
+            if (offline) {
+                // Add the offline index to the offlineIndexes array
+                offlineIndexes.push(index);
+                continue;
+            }
+            
             const lines = data.split("\n");
             const headers = lines[0].split(",").map((header) => header.trim());
             const showObj = lines.slice(1).map((line) => {
@@ -51,11 +64,11 @@ exports.handler = async (event) => {
             let results = [];
             showObj.forEach((line) => {
                 let score = 0;
-                if (line.subtitle_text.toLowerCase().includes(decodedQuery)) {
+                if (line.subtitle_text && line.subtitle_text.toLowerCase().includes(decodedQuery)) {
                     score += 10;
                 }
                 searchTerms.forEach((term) => {
-                    if (line.subtitle_text.toLowerCase().includes(term)) {
+                    if (line.subtitle_text && line.subtitle_text.toLowerCase().includes(term)) {
                         score += 1;
                     }
                 });
@@ -77,7 +90,7 @@ exports.handler = async (event) => {
                 "Access-Control-Allow-Headers": "*",
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify(combinedResults),
+            body: JSON.stringify({ results: combinedResults, offline_indexes: offlineIndexes }),
         };
     } catch (error) {
         console.error("Error:", error);
