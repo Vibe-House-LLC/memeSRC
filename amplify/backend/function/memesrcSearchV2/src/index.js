@@ -1,4 +1,6 @@
 const https = require('https');
+const fs = require('fs');
+const path = require('path');
 
 /**
  * @type {import('@types/aws-lambda').APIGatewayProxyHandler}
@@ -13,6 +15,17 @@ exports.handler = async (event) => {
     try {
         const promises = indices.map((index) => {
             const csvUrl = `https://memesrc.com/v2/${index}/_docs.csv`;
+            const csvFilePath = path.join('/tmp', `${index}.csv`);
+            
+            console.log("Getting docs for: ", index);
+            // Check if the CSV file exists in the /tmp directory
+            if (fs.existsSync(csvFilePath)) {
+                console.log("Loading cached docs: ", csvFilePath)
+                return Promise.resolve({ index, data: fs.readFileSync(csvFilePath, 'utf8') });
+            } else {
+                console.log("Loading remote docs: ", csvUrl)
+            }
+            
             return new Promise((resolve) => {
                 https.get(csvUrl, (response) => {
                     if (response.statusCode === 200) {
@@ -21,10 +34,13 @@ exports.handler = async (event) => {
                             data += chunk;
                         });
                         response.on('end', () => {
+                            // Write the downloaded CSV data to the /tmp directory
+                            fs.writeFileSync(csvFilePath, data, 'utf8');
                             resolve({ index, data });
                         });
                     } else {
                         // Resolve with an object indicating the index is offline
+                        console.log("Index was offline: ", index);
                         resolve({ index, offline: true });
                     }
                 }).on('error', () => {
