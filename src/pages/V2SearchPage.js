@@ -284,8 +284,8 @@ export default function SearchPage() {
 
   const loadVideoUrl = async (result, metadataCid) => {
     const thumbnailUrl = animationsEnabled
-      ? `https://v2.memesrc.com/thumbnail/${metadataCid}/${result.season}/${result.episode}/${result.subtitle_index}`
-      : `https://v2.memesrc.com/frame/${metadataCid}/${result.season}/${result.episode}/${Math.round((parseInt(result.start_frame, 10) + parseInt(result.end_frame, 10)) / 2)}`;
+      ? `https://v2-dev.memesrc.com/thumbnail/${metadataCid}/${result.season}/${result.episode}/${result.subtitle_index}`
+      : `https://v2-dev.memesrc.com/frame/${metadataCid}/${result.season}/${result.episode}/${Math.round((parseInt(result.start_frame, 10) + parseInt(result.end_frame, 10)) / 2)}`;
     const resultId = `${result.season}-${result.episode}-${result.subtitle_index}`;
     setVideoUrls((prevVideoUrls) => ({ ...prevVideoUrls, [resultId]: thumbnailUrl }));
   };
@@ -330,7 +330,7 @@ export default function SearchPage() {
       }
   
       try {
-        const response = await fetch(`https://v2.memesrc.com/search/${cid}/${searchTerm}`);
+        const response = await fetch(`https://v2-dev.memesrc.com/search/${cid}/${searchTerm}`);
         if (!response.ok) {
           throw new Error(`HTTP error! Status: ${response.status}`);
         }
