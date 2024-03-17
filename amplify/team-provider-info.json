@@ -23,7 +23,8 @@
       "api": {
         "memesrc": {},
         "AdminQueries": {},
-        "publicapi": {}
+        "publicapi": {},
+        "memesrcContentApi": {}
       },
       "function": {
         "AdminQueries9e1cafc6": {
