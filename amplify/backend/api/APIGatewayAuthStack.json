@@ -13,6 +13,9 @@
     },
     "publicapi": {
       "Type": "String"
+    },
+    "memesrcContentApi": {
+      "Type": "String"
     }
   },
   "Conditions": {

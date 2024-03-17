@@ -10,6 +10,11 @@ export type AmplifyDependentResourcesAttributes = {
       "GraphQLAPIIdOutput": "string",
       "GraphQLAPIKeyOutput": "string"
     },
+    "memesrcContentApi": {
+      "ApiId": "string",
+      "ApiName": "string",
+      "RootUrl": "string"
+    },
     "publicapi": {
       "ApiId": "string",
       "ApiName": "string",
