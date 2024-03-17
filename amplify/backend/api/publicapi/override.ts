@@ -2,5 +2,5 @@
 import { AmplifyApiRestResourceStackTemplate, AmplifyProjectInfo } from '@aws-amplify/cli-extensibility-helper';
 
 export function override(resources: AmplifyApiRestResourceStackTemplate, amplifyProjectInfo: AmplifyProjectInfo) {
-    resources.restApi.binaryMediaTypes = ["image~1jpeg", "image~1png", "image~1gif"];
+    resources.restApi.binaryMediaTypes = ["*~1*"];
 }
