@@ -641,7 +641,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                         </MenuItem>
                       ))
                     )}
-                    <MenuItem value="addNewCid">+ Add New CID</MenuItem>
+                    {/* <MenuItem value="addNewCid">+ Add New CID</MenuItem> */}
                 </Select>
               </Grid>
               <Grid item sm={7} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
