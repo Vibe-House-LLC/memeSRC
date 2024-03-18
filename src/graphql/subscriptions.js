@@ -1780,6 +1780,45 @@ export const onDeleteEditorProject = /* GraphQL */ `
     }
   }
 `;
+export const onCreateWebsiteSetting = /* GraphQL */ `
+  subscription OnCreateWebsiteSetting(
+    $filter: ModelSubscriptionWebsiteSettingFilterInput
+  ) {
+    onCreateWebsiteSetting(filter: $filter) {
+      id
+      value
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onUpdateWebsiteSetting = /* GraphQL */ `
+  subscription OnUpdateWebsiteSetting(
+    $filter: ModelSubscriptionWebsiteSettingFilterInput
+  ) {
+    onUpdateWebsiteSetting(filter: $filter) {
+      id
+      value
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onDeleteWebsiteSetting = /* GraphQL */ `
+  subscription OnDeleteWebsiteSetting(
+    $filter: ModelSubscriptionWebsiteSettingFilterInput
+  ) {
+    onDeleteWebsiteSetting(filter: $filter) {
+      id
+      value
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
 export const onCreateUserMetadata = /* GraphQL */ `
   subscription OnCreateUserMetadata(
     $filter: ModelSubscriptionUserMetadataFilterInput

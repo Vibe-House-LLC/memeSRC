@@ -53,6 +53,7 @@ const IpfsSearchBar = lazy(() => import('./sections/search/ipfs-search-bar'));
 const V2FramePage = lazy(() => import('./pages/V2FramePage'));
 const V2EditorPage = lazy(() => import('./pages/V2EditorPage'));
 const V2EpisodePage = lazy(() => import('./pages/V2EpisodePage'));
+const WebsiteSettings = lazy(() => import('./pages/WebsiteSettings'))
 
 // ----------------------------------------------------------------------
 
@@ -117,6 +118,7 @@ export default function Router() {
         { path: 'sourcemedia/files/:sourceMediaId', element: <SourceMediaFileList /> },
         { path: 'addseries', element: <AddSeriesPage /> },
         { path: 'inpainting', element: <InpaintingPage /> },
+        { path: 'websiteSettings', element: <WebsiteSettings /> },
         { path: 'addtoseries/:seriesId', element: <AddToSeriesPage /> }
       ],
     },
