@@ -285,3 +285,14 @@ type EditorProject @model @auth(
   title: String,
   state: String
 }
+
+type WebsiteSetting @model @auth(
+  rules: [
+    { allow: groups, groups: ["admins"] },
+    { allow: private, operations: [read] },
+    { allow: public, operations: [read] }
+  ]
+) {
+  id: ID!, 
+  value: Boolean
+}
