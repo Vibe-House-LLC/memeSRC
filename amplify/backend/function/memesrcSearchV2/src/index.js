@@ -69,14 +69,7 @@ exports.handler = async (event) => {
                 return headers.reduce((obj, header, index) => {
                     obj[header] = values[index] ? values[index] : "";
                     if (header === "subtitle_text" && obj[header]) {
-                        // Check if the subtitle text is base64 encoded
-                        if (obj[header].match(/^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$/)) {
-                            // Decode base64 encoded subtitle text
-                            obj[header] = Buffer.from(obj[header], 'base64').toString();
-                        } else {
-                            // Decode URL encoded subtitle text
-                            obj[header] = decodeURIComponent(obj[header]);
-                        }
+                        obj[header] = Buffer.from(obj[header], 'base64').toString();
                     }
                     return obj;
                 }, {});
