@@ -3,7 +3,7 @@ import { Alert, AlertTitle, Button, Fab, Grid, Typography, IconButton, Stack, us
 import { Box } from '@mui/system';
 import { ArrowDownwardRounded, Favorite, MapsUgc, Shuffle } from '@mui/icons-material';
 import { API, graphqlOperation } from 'aws-amplify';
-import { useCallback, useContext, useEffect, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useState } from 'react';
 import { LoadingButton } from '@mui/lab';
 import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
 import CloseIcon from '@mui/icons-material/Close';
@@ -11,7 +11,7 @@ import { UserContext } from '../../UserContext';
 import useSearchDetails from '../../hooks/useSearchDetails';
 import { searchPropTypes } from './SearchPropTypes';
 import Logo from '../../components/logo/Logo';
-import { contentMetadataByStatus, listContentMetadata, listHomepageSections } from '../../graphql/queries';
+import { contentMetadataByStatus, listContentMetadata, listFavorites, listHomepageSections } from '../../graphql/queries';
 import HomePageSection from './HomePageSection';
 import HomePageBannerAd from '../../ads/HomePageBannerAd';
 import useSearchDetailsV2 from '../../hooks/useSearchDetailsV2';
@@ -234,6 +234,39 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   const [alertOpen, setAlertOpen] = useState(true);
 
   const location = useLocation();
+
+  const [aliasesWithMetadata, setAliasesWithMetadata] = useState([]);
+  const [aliasesLoading, setAliasesLoading] = useState(true);
+  const [aliasesError, setAliasesError] = useState(null);
+
+  useEffect(() => {
+    const fetchAliasesRecursive = async (nextToken = null, accumulator = []) => {
+      try {
+        const result = await API.graphql(graphqlOperation(listAliases, {
+          limit: 10,
+          nextToken,
+        }));
+  
+        const fetchedAliases = result.data.listAliases.items;
+        const updatedAccumulator = [...accumulator, ...fetchedAliases];
+  
+        if (result.data.listAliases.nextToken) {
+          return fetchAliasesRecursive(result.data.listAliases.nextToken, updatedAccumulator);
+        }
+  
+        setAliasesWithMetadata(updatedAccumulator);
+        setAliasesLoading(false);
+        return updatedAccumulator;
+      } catch (error) {
+        console.error('Error fetching aliases:', error);
+        setAliasesError('Failed to fetch aliases.');
+        setAliasesLoading(false);
+        return []; // Return an empty array in case of an error
+      }
+    };
+  
+    fetchAliasesRecursive();
+  }, []);
 
   // Theme States
   const [currentThemeBragText, setCurrentThemeBragText] = useState(metadata?.frameCount ? `Search over ${metadata?.frameCount.toLocaleString('en-US')} frames from ${metadata?.title}` : defaultBragText);
@@ -597,14 +630,19 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                     outline: 'none',
                   },
                 }}
-              >
-                {seriesOptions.map((option) => (
-                  <MenuItem key={option.id} value={option.id}>
-                    {option.emoji} {option.title}
-                  </MenuItem>
-                ))}
-                {/* <MenuItem value="addNewCid">+ Add New CID</MenuItem> */}
-              </Select>
+                >
+                  <MenuItem value="_universal">🌈 All Shows & Movies</MenuItem>
+                    {aliasesLoading ? (
+                      <MenuItem disabled>Loading...</MenuItem>
+                    ) : (
+                      aliasesWithMetadata.map((alias) => (
+                        <MenuItem key={alias.id} value={alias.id}>
+                          {alias.v2ContentMetadata.emoji} {alias.v2ContentMetadata.title}
+                        </MenuItem>
+                      ))
+                    )}
+                    <MenuItem value="addNewCid">+ Add New CID</MenuItem>
+                </Select>
               </Grid>
               <Grid item sm={7} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
                 <StyledLabel htmlFor="search-term">
