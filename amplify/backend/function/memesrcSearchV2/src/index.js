@@ -69,8 +69,7 @@ exports.handler = async (event) => {
                 return headers.reduce((obj, header, index) => {
                     obj[header] = values[index] ? values[index] : "";
                     if (header === "subtitle_text" && obj[header]) {
-                        obj.base64_subtitle = obj[header];
-                        obj[header] = atob(obj[header]);
+                        obj[header] = decodeURIComponent(obj[header]);
                     }
                     return obj;
                 }, {});
