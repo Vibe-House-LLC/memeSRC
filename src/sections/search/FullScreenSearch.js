@@ -1,5 +1,5 @@
 import styled from '@emotion/styled';
-import { Alert, AlertTitle, Button, Fab, Grid, Typography, IconButton, Stack, useMediaQuery } from '@mui/material';
+import { Alert, AlertTitle, Button, Fab, Grid, Typography, IconButton, Stack, useMediaQuery, Select, MenuItem } from '@mui/material';
 import { Box } from '@mui/system';
 import { ArrowDownwardRounded, Favorite, MapsUgc, Shuffle } from '@mui/icons-material';
 import { API, graphqlOperation } from 'aws-amplify';
@@ -18,6 +18,14 @@ import useSearchDetailsV2 from '../../hooks/useSearchDetailsV2';
 import AddCidPopup from '../../components/ipfs/add-cid-popup';
 import fetchShows from '../../utils/fetchShows';
 import useLoadRandomFrame from '../../utils/loadRandomFrame';
+
+const seriesOptions = [
+  { id: '_universal', title: 'All Shows & Movies', emoji: '🌈' },
+  { id: 'seinfeld', title: 'Seinfeld', emoji: '🥨' },
+  { id: 'friends', title: 'Friends', emoji: '👫' },
+  { id: 'breakingbad', title: 'Breaking Bad', emoji: '🧪' },
+  { id: 'game_of_thrones', title: 'Game of Thrones', emoji: '🐉' },
+];
 
 /* --------------------------------- GraphQL -------------------------------- */
 
@@ -555,43 +563,48 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
           <StyledSearchForm onSubmit={(e) => searchFunction(e)}>
             <Grid container justifyContent="center">
               <Grid item sm={3.5} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
-                <StyledSearchSelector
-                  onChange={(e) => {
-                    const selectedId = e.target.value;
+              <Select
+                value={cid || seriesTitle}
+                onChange={(e) => {
+                  const selectedId = e.target.value;
 
-                    if (selectedId === 'addNewCid') {
-                      setAddNewCidOpen(true)
-                    } else {
-                      const newSeriesTitle = e.target.value;
-                      setCid()
-                      setSeriesTitle(newSeriesTitle); // Update the series title based on the selection
-                      handleChangeSeries(newSeriesTitle); // Update the theme
-                      navigate(newSeriesTitle === '_universal' ? '/' : `/${newSeriesTitle}`); // Navigate
-                    }
-                  }}
-                  value={cid || seriesTitle}
-                >
-                  <option key="_universal" value="_universal">
-                    🌈 All Shows & Movies
-                  </option>
-                  {loading ? (
-                    <option key="loading" value="loading" disabled>
-                      Loading...
-                    </option>
-                  ) : (
-                    shows.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.emoji} {item.title}
-                      </option>
-                    ))
-                  )}
-                  {/* <option disabled value=''>IPFS</option>
-                  {user && loadingSavedCids && <option disabled value=''>Loading saved CIDs...</option>}
-                  {!loading && savedCids && savedCids.map(obj =>
-                    <option key={obj.id} value={obj.id}>{obj.emoji} {obj.title}</option>
-                  )}
-                  <option key='addNew' value='addNewCid'>+ Add New CID</option> */}
-                </StyledSearchSelector>
+                  if (selectedId === 'addNewCid') {
+                    setAddNewCidOpen(true);
+                  } else {
+                    const newSeriesTitle = e.target.value;
+                    setCid();
+                    setSeriesTitle(newSeriesTitle);
+                    handleChangeSeries(newSeriesTitle);
+                    navigate(newSeriesTitle === '_universal' ? '/' : `/${newSeriesTitle}`);
+                  }
+                }}
+                displayEmpty
+                inputProps={{ 'aria-label': 'series selection' }}
+                sx={{
+                  fontFamily: FONT_FAMILY,
+                  fontSize: '16px',
+                  color: '#333',
+                  backgroundColor: '#fff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  // padding: '8px 12px',
+                  height: '50px',
+                  width: '100%',
+                  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                  transition: 'box-shadow 0.3s',
+                  '&:focus': {
+                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
+                    outline: 'none',
+                  },
+                }}
+              >
+                {seriesOptions.map((option) => (
+                  <MenuItem key={option.id} value={option.id}>
+                    {option.emoji} {option.title}
+                  </MenuItem>
+                ))}
+                {/* <MenuItem value="addNewCid">+ Add New CID</MenuItem> */}
+              </Select>
               </Grid>
               <Grid item sm={7} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
                 <StyledLabel htmlFor="search-term">
