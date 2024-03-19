@@ -49,10 +49,12 @@ export default async function fetchShows() {
     cid: v2Show.v2ContentMetadata.id
   }));
 
-  // Sort the final list of shows by title
+  // Sort the final list of shows by title, ignoring "The" at the beginning
   const sortedMetadata = finalShows.sort((a, b) => {
-    if (a.title < b.title) return -1;
-    if (a.title > b.title) return 1;
+    const titleA = a.title.toLowerCase().replace(/^the\s+/, '');
+    const titleB = b.title.toLowerCase().replace(/^the\s+/, '');
+    if (titleA < titleB) return -1;
+    if (titleA > titleB) return 1;
     return 0;
   });
 
