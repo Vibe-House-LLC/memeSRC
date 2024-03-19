@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Grid, CircularProgress, Card, Chip, Typography, Button, Collapse, IconButton, FormControlLabel, Switch } from '@mui/material';
+import { Grid, CircularProgress, Card, Chip, Typography, Button, Collapse, IconButton, FormControlLabel, Switch, Dialog, DialogTitle, DialogContent, List, ListItem, ListItemText, DialogActions, Box, CardContent } from '@mui/material';
 import styled from '@emotion/styled';
-import { API } from 'aws-amplify';
+import { API, graphqlOperation } from 'aws-amplify';
 import { Link, useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import JSZip from 'jszip';
@@ -11,6 +11,9 @@ import useSearchDetails from '../hooks/useSearchDetails';
 import IpfsSearchBar from '../sections/search/ipfs-search-bar';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
 import getV2Metadata from '../utils/getV2Metadata';
+
+import fetchShows from '../utils/fetchShows';
+import { getWebsiteSetting } from '../graphql/queries';
 
 const StyledCard = styled(Card)`
   border: 3px solid transparent;
@@ -193,6 +196,10 @@ export default function SearchPage() {
     localStorage.getItem('animationsEnabled') === 'true' || false
   );
   // ===== ===== ===== ===== ===== ===== ===== 
+
+  const [universalSearchMaintenance, setUniversalSearchMaintenance] = useState(false);
+  const [maintenanceDialogOpen, setMaintenanceDialogOpen] = useState(false);
+  const [availableShows, setAvailableShows] = useState([]);
   
   const [isLoading, setIsLoading] = useState(false);
   const [displayedResults, setDisplayedResults] = useState(RESULTS_PER_PAGE / 2);
@@ -250,25 +257,52 @@ export default function SearchPage() {
   };
 
   useEffect(() => {
-
     async function initialize(cid = null) {
       const selectedCid = cid;
       if (!selectedCid) {
         alert("Please enter a valid CID.");
         return;
       }
-        setLoadingCsv(false);
-        setShowObj([]);
-
-        checkBannerDismissed(selectedCid);
+      setLoadingCsv(false);
+      setShowObj([]);
+  
+      checkBannerDismissed(selectedCid);
     }
-
-    getV2Metadata(params.cid).then(metadata => {
-      initialize(metadata.id);
-    }).catch(error => {
-      alert(error)
-    })
-  }, []);
+  
+    async function getMaintenanceMode() {
+      try {
+        const response = await API.graphql({
+          ...graphqlOperation(getWebsiteSetting, { id: 'globalSettings' }),
+          authMode: 'API_KEY',
+        });
+        console.log("setUniversalSearchMaintenance to: ", response?.data?.getWebsiteSetting?.universalSearchMaintenance);
+        return response?.data?.getWebsiteSetting?.universalSearchMaintenance;
+      } catch (error) {
+        console.log(error);
+        return false;
+      }
+    }
+  
+    async function fetchData() {
+      const maintenance = await getMaintenanceMode();
+      setUniversalSearchMaintenance(maintenance);
+  
+      if (!maintenance || params.cid !== '_universal') {
+        try {
+          const metadata = await getV2Metadata(params.cid);
+          initialize(metadata.id);
+        } catch (error) {
+          alert(error);
+        }
+      } else {
+        setMaintenanceDialogOpen(true);
+        const shows = await fetchShows();
+        setAvailableShows(shows);
+      }
+    }
+  
+    fetchData();
+  }, [params.cid]);
 
   useEffect(() => {
     if (cid) {
@@ -329,6 +363,12 @@ export default function SearchPage() {
         return;
       }
   
+      // Block loading results when _universal is the CID and universalSearchMaintenance is true
+      if (cid === '_universal' && universalSearchMaintenance) {
+        setLoadingResults(false);
+        return;
+      }
+  
       try {
         const response = await fetch(`https://v2-${process.env.REACT_APP_USER_BRANCH}.memesrc.com/search/${cid}/${searchTerm}`);
         if (!response.ok) {
@@ -336,7 +376,6 @@ export default function SearchPage() {
         }
         const results = await response.json();
         setNewResults(results.results);
-        // setOfflineIndexes(results.offline_indexes);
         results.forEach((result) => loadVideoUrl(result, cid));
       } catch (error) {
         console.error("Error searching:", error);
@@ -344,7 +383,7 @@ export default function SearchPage() {
       }
     }
   
-    if (!loadingCsv && showObj) {
+    if (!loadingCsv && showObj && cid !== '_universal') {
       if (params?.searchTerms) {
         searchText();
       } else {
@@ -352,7 +391,7 @@ export default function SearchPage() {
         setNewResults([]);
       }
     }
-  }, [loadingCsv, showObj, params?.searchTerms, cid]);
+  }, [loadingCsv, showObj, params?.searchTerms, cid, universalSearchMaintenance]);
 
   useEffect(() => {
     console.log(newResults);
@@ -570,6 +609,80 @@ export default function SearchPage() {
           )}
         </>
       )}
+     <Dialog open={maintenanceDialogOpen} onClose={() => setMaintenanceDialogOpen(false)} maxWidth="sm" fullWidth>
+        <Box
+          sx={{
+            position: 'relative',
+            backgroundImage: 'url("https://api-prod-minimal-v510.vercel.app/assets/images/cover/cover_7.jpg")',
+            backgroundSize: 'fill',
+            backgroundPosition: 'center',
+            py: 4,
+            px: 3,
+            textAlign: 'center',
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              backgroundColor: 'rgba(0, 0, 0, 0.6)',
+              zIndex: 1,
+            },
+          }}
+        >
+          <Box sx={{ position: 'relative', zIndex: 2 }}>
+            <Typography variant="h2" sx={{ mb: 2, fontWeight: 'bold', color: 'common.white' }}>
+              Let's narrow it down
+            </Typography>
+            <Typography variant="body2" sx={{ mb: 3, color: 'common.white' }}>
+              Universal Search is temporarily offline.
+            </Typography>
+            <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold', color: 'common.white' }}>
+              Pick one or try again later
+            </Typography>
+          </Box>
+        </Box>
+        <DialogContent sx={{ pt: 4 }}>
+          <Grid container spacing={2}>
+            {availableShows.map(show => (
+              <Grid item xs={12} key={show.id}>
+                <Card
+                  onClick={() => {
+                    window.location.href = `/v2/search/${show.cid}/${params?.searchTerms || ''}`;
+                  }}
+                  sx={{
+                    backgroundColor: show.colorMain,
+                    color: show.colorSecondary,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minHeight: 150,
+                    transition: 'transform 0.2s',
+                    '&:hover': {
+                      transform: 'scale(1.05)',
+                    },
+                  }}
+                >
+                  <CardContent sx={{ textAlign: 'center' }}>
+                    <Typography variant="h5" sx={{ mb: 1 }}>
+                      {show.emoji} {show.title}
+                    </Typography>
+                    <Typography variant="caption">
+                      {show.frameCount.toLocaleString()} frames
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setMaintenanceDialogOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 }
