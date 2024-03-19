@@ -449,6 +449,14 @@ export default function SearchPage() {
           </MinimizedBannerText>
         </MinimizedBanner>
       )}
+      {loadingResults && (
+        <Grid item xs={12} textAlign="center" mt={4}>
+          <CircularProgress size={40} />
+          <Typography variant="h6" mt={2}>
+            Searching...
+          </Typography>
+        </Grid>
+      )}
       {newResults && newResults.length > 0 ? (
         <InfiniteScroll
           dataLength={displayedResults}

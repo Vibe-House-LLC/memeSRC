@@ -632,16 +632,16 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                 }}
                 >
                   <MenuItem value="_universal">🌈 All Shows & Movies</MenuItem>
-                    {aliasesLoading ? (
-                      <MenuItem disabled>Loading...</MenuItem>
-                    ) : (
-                      aliasesWithMetadata.map((alias) => (
-                        <MenuItem key={alias.id} value={alias.id}>
-                          {alias.v2ContentMetadata.emoji} {alias.v2ContentMetadata.title}
-                        </MenuItem>
-                      ))
-                    )}
-                    {/* <MenuItem value="addNewCid">+ Add New CID</MenuItem> */}
+                  {loading ? (
+                    <MenuItem disabled>Loading...</MenuItem>
+                  ) : (
+                    shows.map((show) => (
+                      <MenuItem key={show.id} value={show.id}>
+                        {show.emoji} {show.title}
+                      </MenuItem>
+                    ))
+                  )}
+                  {/* <MenuItem value="addNewCid">+ Add New CID</MenuItem> */}
                 </Select>
               </Grid>
               <Grid item sm={7} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
