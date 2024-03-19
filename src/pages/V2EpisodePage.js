@@ -1,3 +1,4 @@
+import { Buffer } from "buffer";
 import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { CircularProgress, Container, Typography, Card, CardMedia, CardContent, Button, Grid, useMediaQuery } from '@mui/material';
@@ -111,7 +112,7 @@ export default function V2EpisodePage({ setSeriesTitle }) {
                     />
                     <CardContent sx={{ alignSelf: 'center' }}>
                       <Typography variant="body1" color="textPrimary" component="p">
-                        {result.subtitle ? atob(result.subtitle) : 'No subtitle'}
+                        {result.subtitle ? Buffer.from(result.subtitle, 'base64').toString() : 'No subtitle'}
                       </Typography>
                     </CardContent>
                   </Card>

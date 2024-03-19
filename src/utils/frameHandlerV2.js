@@ -1,14 +1,5 @@
+import { Buffer } from "buffer";
 import { extractVideoFrames } from './videoFrameExtractor';
-
-// Utility function to decode base64-encoded text
-const decodeBase64 = (base64String) => {
-  try {
-    return atob(base64String); // Decode base64 string to plain text
-  } catch (error) {
-    console.error('Failed to decode base64 string:', error);
-    return null; // Return null in case of error
-  }
-};
 
 // Utility function to fetch JSON data from a given URL
 const fetchJSON = async (url) => {
@@ -40,7 +31,7 @@ const findSubtitleForFrame = (csvData, season, episode, frame) => {
       frame >= parseInt(startFrame, 10) &&
       frame <= parseInt(endFrame, 10)
     ) {
-      const subtitleText = decodeBase64(encodedSubtitleText); // Decode subtitle text from base64
+      const subtitleText = Buffer.from(encodedSubtitleText, 'base64').toString(); // Decode subtitle text from base64
       return { subtitle: subtitleText, index: i }; // Return decoded text and index
     }
   }
@@ -158,7 +149,7 @@ const fetchFrameInfo = async (cid, season, episode, frame, options = {}) => {
         const endIndex = Math.min(csvData.length - 1, mainSubtitleIndex + 3);
         for (let i = startIndex; i <= endIndex; i += 1) {
           const [,, , encodedSubtitleText, startFrame, endFrame] = csvData[i];
-          const subtitleText = decodeBase64(encodedSubtitleText); // Decode subtitle text from base64 here
+          const subtitleText = Buffer.from(encodedSubtitleText, 'base64').toString(); // Decode subtitle text from base64 here
           const middleFrame = Math.floor((parseInt(startFrame, 10) + parseInt(endFrame, 10)) / 2);
           console.log("TEST: 8")
           subtitlesSurrounding.push(
