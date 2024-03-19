@@ -7,6 +7,7 @@ const path = require('path');
  */
 exports.handler = async (event) => {
     console.log(`EVENT: ${JSON.stringify(event)}`);
+    console.log('Throw Away Console Log')
     
     const { id, query } = event.pathParameters;
     const decodedQuery = decodeURIComponent(query);

@@ -3,6 +3,7 @@ import { lazy } from 'react';
 import EditorNewProjectPage from './pages/EditorNewProjectPage';
 import EditorProjectsPage from './pages/EditorProjectsPage';
 import { V2SearchDetailsProvider } from './contexts/V2SearchDetailsProvider';
+import SiteWideMaintenance from './pages/SiteWideMaintenance';
 
 
 // ----------------------------------------------------------------------
@@ -58,24 +59,25 @@ const WebsiteSettings = lazy(() => import('./pages/WebsiteSettings'))
 // ----------------------------------------------------------------------
 
 export default function Router() {
+   
 
   const routes = useRoutes([
     {
       path: '/',
       element: <GuestAuth><MagicPopup><V2SearchDetailsProvider><DashboardLayout /></V2SearchDetailsProvider></MagicPopup></GuestAuth>,
       children: [
-        { element: <HomePage />, index: true },
-        { path: 'search', element: <Navigate to='/' /> },
-        { path: 'edit', element: <EditorNewProjectPage /> },
-        { path: 'editor/projects', element: <EditorProjectsPage /> },
-        { path: 'editor/new', element: <EditorNewProjectPage /> },
-        { path: 'editor/project/:editorProjectId', element: <EditorPage /> },
-        { path: 'search/:seriesId', element: <SearchPage /> },
-        { path: 'search/:seriesId/:searchTerms', element: <SearchPage /> },
-        { path: 'favorites', element: <FavoritesPage /> },
+        { element: <SiteWideMaintenance><HomePage /></SiteWideMaintenance>, index: true },
+        { path: 'search', element: <SiteWideMaintenance><Navigate to='/' /></SiteWideMaintenance> },
+        { path: 'edit', element: <SiteWideMaintenance><EditorNewProjectPage /></SiteWideMaintenance> },
+        { path: 'editor/projects', element: <SiteWideMaintenance><EditorProjectsPage /></SiteWideMaintenance> },
+        { path: 'editor/new', element: <SiteWideMaintenance><EditorNewProjectPage /></SiteWideMaintenance> },
+        { path: 'editor/project/:editorProjectId', element: <SiteWideMaintenance><EditorPage /></SiteWideMaintenance> },
+        { path: 'search/:seriesId', element: <SiteWideMaintenance><SearchPage /></SiteWideMaintenance> },
+        { path: 'search/:seriesId/:searchTerms', element: <SiteWideMaintenance><SearchPage /></SiteWideMaintenance> },
+        { path: 'favorites', element: <SiteWideMaintenance><FavoritesPage /></SiteWideMaintenance> },
         {
           path: 'v2',
-          element: <IpfsSearchBar />,
+          element: <SiteWideMaintenance><IpfsSearchBar /></SiteWideMaintenance>,
           children: [
             { path: 'search/:cid', element: <V2SearchPage /> },
             { path: 'search/:cid/:searchTerms', element: <V2SearchPage /> },
@@ -84,16 +86,16 @@ export default function Router() {
             { path: 'episode/:cid/:season/:episode/:frame', element: <V2EpisodePage /> },
           ]
         },
-        { path: 'frame/:fid', element: <TopBannerSearchRevised><FramePage /></TopBannerSearchRevised> },
-        { path: 'editor/:fid', element: <TopBannerSearchRevised><EditorPage /></TopBannerSearchRevised> },
-        { path: 'series/:seriesId', element: <TopBannerSearchRevised><SeriesPage /></TopBannerSearchRevised> },
-        { path: '/episode/:seriesId/:seasonNum/:episodeNum', element: <TopBannerSearchRevised><EpisodePage /></TopBannerSearchRevised> },
-        { path: '/episode/:seriesId/:seasonNum/:episodeNum/:frameNum', element: <TopBannerSearchRevised><EpisodePage /></TopBannerSearchRevised> },
-        { path: '/vote', element: <TopBannerSearchRevised><VotingPage /></TopBannerSearchRevised> },
-        { path: '/contribute', element: <ContributorRequest /> },
-        { path: '/pricing', element: <PricingPage /> },
-        { path: '/:seriesId', element: <DynamicRouteHandler /> },
-        { path: '/server', element: <ServerPage /> }
+        { path: 'frame/:fid', element: <SiteWideMaintenance><TopBannerSearchRevised><FramePage /></TopBannerSearchRevised></SiteWideMaintenance> },
+        { path: 'editor/:fid', element: <SiteWideMaintenance><TopBannerSearchRevised><EditorPage /></TopBannerSearchRevised></SiteWideMaintenance> },
+        { path: 'series/:seriesId', element: <SiteWideMaintenance><TopBannerSearchRevised><SeriesPage /></TopBannerSearchRevised></SiteWideMaintenance> },
+        { path: '/episode/:seriesId/:seasonNum/:episodeNum', element: <SiteWideMaintenance><TopBannerSearchRevised><EpisodePage /></TopBannerSearchRevised></SiteWideMaintenance> },
+        { path: '/episode/:seriesId/:seasonNum/:episodeNum/:frameNum', element: <SiteWideMaintenance><TopBannerSearchRevised><EpisodePage /></TopBannerSearchRevised></SiteWideMaintenance> },
+        { path: '/vote', element: <SiteWideMaintenance><TopBannerSearchRevised><VotingPage /></TopBannerSearchRevised></SiteWideMaintenance> },
+        { path: '/contribute', element: <SiteWideMaintenance><ContributorRequest /></SiteWideMaintenance> },
+        { path: '/pricing', element: <SiteWideMaintenance><PricingPage /></SiteWideMaintenance> },
+        { path: '/:seriesId', element: <SiteWideMaintenance><DynamicRouteHandler /></SiteWideMaintenance> },
+        { path: '/server', element: <SiteWideMaintenance><ServerPage /></SiteWideMaintenance> }
       ]
     },
     {
@@ -140,7 +142,7 @@ export default function Router() {
     },
     {
       path: '/section/:sectionIndex',
-      element: <HomePage />
+      element: <SiteWideMaintenance><HomePage /></SiteWideMaintenance>
     },
     {
       path: '/privacypolicy',
