@@ -294,5 +294,6 @@ type WebsiteSetting @model @auth(
   ]
 ) {
   id: ID!, 
-  value: Boolean
+  fullSiteMaintenance: Boolean,
+  universalSearchMaintenance: Boolean
 }

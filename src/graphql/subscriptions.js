@@ -1786,7 +1786,8 @@ export const onCreateWebsiteSetting = /* GraphQL */ `
   ) {
     onCreateWebsiteSetting(filter: $filter) {
       id
-      value
+      fullSiteMaintenance
+      universalSearchMaintenance
       createdAt
       updatedAt
       __typename
@@ -1799,7 +1800,8 @@ export const onUpdateWebsiteSetting = /* GraphQL */ `
   ) {
     onUpdateWebsiteSetting(filter: $filter) {
       id
-      value
+      fullSiteMaintenance
+      universalSearchMaintenance
       createdAt
       updatedAt
       __typename
@@ -1812,7 +1814,8 @@ export const onDeleteWebsiteSetting = /* GraphQL */ `
   ) {
     onDeleteWebsiteSetting(filter: $filter) {
       id
-      value
+      fullSiteMaintenance
+      universalSearchMaintenance
       createdAt
       updatedAt
       __typename

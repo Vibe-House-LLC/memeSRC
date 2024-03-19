@@ -1880,7 +1880,8 @@ export const createWebsiteSetting = /* GraphQL */ `
   ) {
     createWebsiteSetting(input: $input, condition: $condition) {
       id
-      value
+      fullSiteMaintenance
+      universalSearchMaintenance
       createdAt
       updatedAt
       __typename
@@ -1894,7 +1895,8 @@ export const updateWebsiteSetting = /* GraphQL */ `
   ) {
     updateWebsiteSetting(input: $input, condition: $condition) {
       id
-      value
+      fullSiteMaintenance
+      universalSearchMaintenance
       createdAt
       updatedAt
       __typename
@@ -1908,7 +1910,8 @@ export const deleteWebsiteSetting = /* GraphQL */ `
   ) {
     deleteWebsiteSetting(input: $input, condition: $condition) {
       id
-      value
+      fullSiteMaintenance
+      universalSearchMaintenance
       createdAt
       updatedAt
       __typename

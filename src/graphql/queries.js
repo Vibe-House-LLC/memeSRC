@@ -1142,7 +1142,8 @@ export const getWebsiteSetting = /* GraphQL */ `
   query GetWebsiteSetting($id: ID!) {
     getWebsiteSetting(id: $id) {
       id
-      value
+      fullSiteMaintenance
+      universalSearchMaintenance
       createdAt
       updatedAt
       __typename
@@ -1158,7 +1159,8 @@ export const listWebsiteSettings = /* GraphQL */ `
     listWebsiteSettings(filter: $filter, limit: $limit, nextToken: $nextToken) {
       items {
         id
-        value
+        fullSiteMaintenance
+        universalSearchMaintenance
         createdAt
         updatedAt
         __typename
