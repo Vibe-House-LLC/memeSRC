@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Grid, CircularProgress, Card, Chip, Typography, Button, Collapse, IconButton, FormControlLabel, Switch, Dialog, DialogTitle, DialogContent, List, ListItem, ListItemText, DialogActions, Box, CardContent } from '@mui/material';
+import { Grid, CircularProgress, Card, Chip, Typography, Button, Collapse, IconButton, FormControlLabel, Switch, Dialog, DialogTitle, DialogContent, List, ListItem, ListItemText, DialogActions, Box, CardContent, TextField } from '@mui/material';
 import styled from '@emotion/styled';
 import { API, graphqlOperation } from 'aws-amplify';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import JSZip from 'jszip';
 import { ReportProblem, Settings } from '@mui/icons-material';
 import InfiniteScroll from 'react-infinite-scroll-component';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { useTheme } from '@emotion/react';
 import useSearchDetails from '../hooks/useSearchDetails';
 import IpfsSearchBar from '../sections/search/ipfs-search-bar';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
@@ -14,6 +16,8 @@ import getV2Metadata from '../utils/getV2Metadata';
 
 import fetchShows from '../utils/fetchShows';
 import { getWebsiteSetting } from '../graphql/queries';
+
+
 
 const StyledCard = styled(Card)`
   border: 3px solid transparent;
@@ -181,6 +185,10 @@ const MinimizedBannerText = styled(Typography)`
 `;
 
 export default function SearchPage() {
+  const navigate = useNavigate();
+  const theme = useTheme();
+  const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
+
   const params = useParams();
 
   const RESULTS_PER_PAGE = 8;
@@ -404,6 +412,16 @@ export default function SearchPage() {
     z-index: 1;
   `;
 
+  const [indexFilterQuery, setIndexFilterQuery] = useState('');
+
+  const handleIndexFilterChange = (event) => {
+    setIndexFilterQuery(event.target.value);
+  };
+
+  const filteredShows = availableShows.filter(show =>
+    show.title.toLowerCase().includes(indexFilterQuery.toLowerCase())
+  );
+
   return (
     <>
       <Collapse in={showBanner}>
@@ -609,7 +627,7 @@ export default function SearchPage() {
           )}
         </>
       )}
-     <Dialog open={maintenanceDialogOpen} onClose={() => setMaintenanceDialogOpen(false)} maxWidth="sm" fullWidth>
+     <Dialog open={maintenanceDialogOpen} onClose={() => setMaintenanceDialogOpen(false)} maxWidth="sm" fullWidth fullScreen={fullScreen}>
         <Box
           sx={{
             position: 'relative',
@@ -636,7 +654,7 @@ export default function SearchPage() {
               Let's narrow it down
             </Typography>
             <Typography variant="body2" sx={{ mb: 3, color: 'common.white' }}>
-              Universal Search is temporarily offline.
+              ⚠️ Universal Search is temporarily offline.
             </Typography>
             <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold', color: 'common.white' }}>
               Pick one or try again later
@@ -644,8 +662,16 @@ export default function SearchPage() {
           </Box>
         </Box>
         <DialogContent sx={{ pt: 4 }}>
+          <TextField
+            label="Type to filter..."
+            variant="outlined"
+            fullWidth
+            value={indexFilterQuery}
+            onChange={handleIndexFilterChange}
+            sx={{ mb: 3 }}
+          />
           <Grid container spacing={2}>
-            {availableShows.map(show => (
+            {filteredShows.map(show => (
               <Grid item xs={12} key={show.id}>
                 <Card
                   onClick={() => {
@@ -680,7 +706,7 @@ export default function SearchPage() {
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setMaintenanceDialogOpen(false)}>Close</Button>
+          <Button onClick={() => navigate('/')} sx={{color: "white"}}>Return to home</Button>
         </DialogActions>
       </Dialog>
     </>
