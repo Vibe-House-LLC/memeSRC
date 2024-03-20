@@ -103,8 +103,8 @@ export default function TopBannerSearchRevised(props) {
       e.preventDefault();
     }
     const encodedSearchTerms = encodeURI(searchQuery)
-    console.log(`Navigating to: '${`/search/${show}/${encodedSearchTerms}`}'`)
-    navigate(`/search/${show}/${encodedSearchTerms}`)
+    console.log(`Navigating to: '${`/v2/search/${show}/${encodedSearchTerms}`}'`)
+    navigate(`/v2/search/${show}/${encodedSearchTerms}`)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [show, searchQuery]);
 
@@ -160,17 +160,20 @@ export default function TopBannerSearchRevised(props) {
   }
 
   const handleSelectSeries = (data) => {
-    if (data?.addNew) {
-      setAddNewCidOpen(true)
-    } else {
-      const savedCid = shows?.find(obj => obj.id === data && obj.version === 2) || savedCids?.find(obj => obj.id === data)
-      if (savedCid) {
-        navigate(`/v2/search/${savedCid.id}/${encodeURIComponent(searchTerm || searchTerms)}`)
-      } else {
-        setShow(data); 
-        setSeriesTitle(data);
-      }
-    }
+
+    navigate(`/v2/search/${data}/${encodeURIComponent(searchTerm || searchTerms)}`)
+
+    // if (data?.addNew) {
+    //   setAddNewCidOpen(true)
+    // } else {
+    //   const savedCid = shows?.find(obj => obj.id === data && obj.version === 2) || savedCids?.find(obj => obj.id === data)
+    //   if (savedCid) {
+    //     navigate(`/v2/search/${savedCid.id}/${encodeURIComponent(searchTerm || searchTerms)}`)
+    //   } else {
+    //     setShow(data); 
+    //     setSeriesTitle(data);
+    //   }
+    // }
   }
 
   return (
