@@ -168,128 +168,128 @@ export default function FramePage({ shows = [] }) {
 
 
   const updateCanvasUnthrottled = (scaleDown) => {
-  const offScreenCanvas = document.createElement('canvas');
-  const ctx = offScreenCanvas.getContext('2d');
+    const offScreenCanvas = document.createElement('canvas');
+    const ctx = offScreenCanvas.getContext('2d');
 
-  const img = new Image();
-  img.crossOrigin = "anonymous";
-  img.src = displayImage;
-  img.onload = function () {
-    if (throttleTimeoutRef.current !== null) {
-      clearTimeout(throttleTimeoutRef.current);
-    }
-
-    throttleTimeoutRef.current = setTimeout(() => {
-      // Define the maximum width for the canvas
-      const maxCanvasWidth = 1000; // Adjust this value as needed
-
-      // Calculate the aspect ratio of the image
-      const canvasAspectRatio = img.width / img.height;
-
-      // Calculate the corresponding height for the maximum width
-      const maxCanvasHeight = maxCanvasWidth / canvasAspectRatio;
-
-      const referenceWidth = 1000;
-      const referenceFontSizeDesktop = 40;
-      const referenceFontSizeMobile = 40;
-      const referenceBottomAnch = 35;  // Reference distance from bottom for desktop
-      const referenceBottomAnchMobile = 35; // Reference distance for mobile
-
-      const scaleFactor = 1000 / referenceWidth;
-
-      const scaledFontSizeDesktop = referenceFontSizeDesktop * scaleFactor;
-      const scaledFontSizeMobile = referenceFontSizeMobile * scaleFactor;
-      const scaledBottomAnch = isMd ? referenceBottomAnch * scaleFactor * fontBottomMarginScaleFactor : referenceBottomAnchMobile * scaleFactor * fontBottomMarginScaleFactor;
-      const referenceLineHeight = 50;
-      const scaledLineHeight = referenceLineHeight * scaleFactor * fontLineHeightScaleFactor * fontSizeScaleFactor;
-
-      // Set the canvas dimensions
-      offScreenCanvas.width = maxCanvasWidth;
-      offScreenCanvas.height = maxCanvasHeight;
-      // Scale the image and draw it on the canvas
-      ctx.drawImage(img, 0, 0, maxCanvasWidth, maxCanvasHeight);
-      setLoading(false)
-
-      if (showText) {
-        // Styling the text
-        ctx.font = `700 ${isMd ? `${scaledFontSizeDesktop * fontSizeScaleFactor}px` : `${scaledFontSizeMobile * fontSizeScaleFactor}px`} Arial`;
-        ctx.textAlign = 'center';
-        ctx.fillStyle = 'white';
-        ctx.strokeStyle = 'black';
-        ctx.lineWidth = 6;
-        ctx.lineJoin = 'round'; // Add this line to round the joints
-
-        const x = offScreenCanvas.width / 2;
-        const maxWidth = offScreenCanvas.width - 60; // leaving some margin
-        const lineHeight = 24; // adjust as per your requirements
-        const startY = offScreenCanvas.height - (2 * lineHeight); // adjust to position the text properly
-
-        const text = loadedSubtitle;
-
-        // Calculate number of lines without drawing
-        const numOfLines = wrapText(ctx, text, x, startY, maxWidth, scaledLineHeight, false);
-        const totalTextHeight = numOfLines * scaledLineHeight;  // Use scaled line height
-
-        // Adjust startY to anchor the text a scaled distance from the bottom
-        const startYAdjusted = offScreenCanvas.height - totalTextHeight - scaledBottomAnch + 40;
-
-        // Draw the text using the adjusted startY
-        wrapText(ctx, text, x, startYAdjusted, maxWidth, scaledLineHeight);
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.src = displayImage;
+    img.onload = function () {
+      if (throttleTimeoutRef.current !== null) {
+        clearTimeout(throttleTimeoutRef.current);
       }
 
-      if (scaleDown) {
-        // Create a second canvas
-        const scaledCanvas = document.createElement('canvas');
-        const scaledCtx = scaledCanvas.getContext('2d');
+      throttleTimeoutRef.current = setTimeout(() => {
+        // Define the maximum width for the canvas
+        const maxCanvasWidth = 1000; // Adjust this value as needed
 
-        // Calculate the scaled dimensions
-        const scaledWidth = offScreenCanvas.width / 3;
-        const scaledHeight = offScreenCanvas.height / 3;
+        // Calculate the aspect ratio of the image
+        const canvasAspectRatio = img.width / img.height;
 
-        // Set the scaled canvas dimensions
-        scaledCanvas.width = scaledWidth;
-        scaledCanvas.height = scaledHeight;
+        // Calculate the corresponding height for the maximum width
+        const maxCanvasHeight = maxCanvasWidth / canvasAspectRatio;
 
-        // Draw the full-size canvas onto the scaled canvas at the reduced size
-        scaledCtx.drawImage(offScreenCanvas, 0, 0, scaledWidth, scaledHeight);
+        const referenceWidth = 1000;
+        const referenceFontSizeDesktop = 40;
+        const referenceFontSizeMobile = 40;
+        const referenceBottomAnch = 35;  // Reference distance from bottom for desktop
+        const referenceBottomAnchMobile = 35; // Reference distance for mobile
 
-        // Use the scaled canvas to create the blob
-        scaledCanvas.toBlob((blob) => {
-          if (blob) {
-            // Create an object URL for the blob
-            const imageUrl = URL.createObjectURL(blob);
+        const scaleFactor = 1000 / referenceWidth;
 
-            // Use this object URL as the src for the image instead of a data URL
-            setImgSrc(imageUrl);
+        const scaledFontSizeDesktop = referenceFontSizeDesktop * scaleFactor;
+        const scaledFontSizeMobile = referenceFontSizeMobile * scaleFactor;
+        const scaledBottomAnch = isMd ? referenceBottomAnch * scaleFactor * fontBottomMarginScaleFactor : referenceBottomAnchMobile * scaleFactor * fontBottomMarginScaleFactor;
+        const referenceLineHeight = 50;
+        const scaledLineHeight = referenceLineHeight * scaleFactor * fontLineHeightScaleFactor * fontSizeScaleFactor;
 
-            // Optionally, revoke the object URL after the image has loaded to release memory
-            img.onload = () => {
-              URL.revokeObjectURL(imageUrl);
-            };
-          }
-        }, 'image/png');
-      } else {
-        // Instead of using toDataURL, convert the canvas to a blob
-        offScreenCanvas.toBlob((blob) => {
-          if (blob) {
-            // Create an object URL for the blob
-            const imageUrl = URL.createObjectURL(blob);
+        // Set the canvas dimensions
+        offScreenCanvas.width = maxCanvasWidth;
+        offScreenCanvas.height = maxCanvasHeight;
+        // Scale the image and draw it on the canvas
+        ctx.drawImage(img, 0, 0, maxCanvasWidth, maxCanvasHeight);
+        setLoading(false)
 
-            // Use this object URL as the src for the image instead of a data URL
-            setImgSrc(imageUrl);
+        if (showText) {
+          // Styling the text
+          ctx.font = `700 ${isMd ? `${scaledFontSizeDesktop * fontSizeScaleFactor}px` : `${scaledFontSizeMobile * fontSizeScaleFactor}px`} Arial`;
+          ctx.textAlign = 'center';
+          ctx.fillStyle = 'white';
+          ctx.strokeStyle = 'black';
+          ctx.lineWidth = 6;
+          ctx.lineJoin = 'round'; // Add this line to round the joints
 
-            // Optionally, revoke the object URL after the image has loaded to release memory
-            img.onload = () => {
-              URL.revokeObjectURL(imageUrl);
-            };
-          }
-        }, 'image/png'); // You can specify the image format
-      }
+          const x = offScreenCanvas.width / 2;
+          const maxWidth = offScreenCanvas.width - 60; // leaving some margin
+          const lineHeight = 24; // adjust as per your requirements
+          const startY = offScreenCanvas.height - (2 * lineHeight); // adjust to position the text properly
 
-      throttleTimeoutRef.current = null;
-    }, 100); // Adjust the debounce delay as needed
+          const text = loadedSubtitle;
+
+          // Calculate number of lines without drawing
+          const numOfLines = wrapText(ctx, text, x, startY, maxWidth, scaledLineHeight, false);
+          const totalTextHeight = numOfLines * scaledLineHeight;  // Use scaled line height
+
+          // Adjust startY to anchor the text a scaled distance from the bottom
+          const startYAdjusted = offScreenCanvas.height - totalTextHeight - scaledBottomAnch + 40;
+
+          // Draw the text using the adjusted startY
+          wrapText(ctx, text, x, startYAdjusted, maxWidth, scaledLineHeight);
+        }
+
+        if (scaleDown) {
+          // Create a second canvas
+          const scaledCanvas = document.createElement('canvas');
+          const scaledCtx = scaledCanvas.getContext('2d');
+
+          // Calculate the scaled dimensions
+          const scaledWidth = offScreenCanvas.width / 3;
+          const scaledHeight = offScreenCanvas.height / 3;
+
+          // Set the scaled canvas dimensions
+          scaledCanvas.width = scaledWidth;
+          scaledCanvas.height = scaledHeight;
+
+          // Draw the full-size canvas onto the scaled canvas at the reduced size
+          scaledCtx.drawImage(offScreenCanvas, 0, 0, scaledWidth, scaledHeight);
+
+          // Use the scaled canvas to create the blob
+          scaledCanvas.toBlob((blob) => {
+            if (blob) {
+              // Create an object URL for the blob
+              const imageUrl = URL.createObjectURL(blob);
+
+              // Use this object URL as the src for the image instead of a data URL
+              setImgSrc(imageUrl);
+
+              // Optionally, revoke the object URL after the image has loaded to release memory
+              img.onload = () => {
+                URL.revokeObjectURL(imageUrl);
+              };
+            }
+          }, 'image/jpeg', 0.9);
+        } else {
+          // Instead of using toDataURL, convert the canvas to a blob
+          offScreenCanvas.toBlob((blob) => {
+            if (blob) {
+              // Create an object URL for the blob
+              const imageUrl = URL.createObjectURL(blob);
+
+              // Use this object URL as the src for the image instead of a data URL
+              setImgSrc(imageUrl);
+
+              // Optionally, revoke the object URL after the image has loaded to release memory
+              img.onload = () => {
+                URL.revokeObjectURL(imageUrl);
+              };
+            }
+          }, 'image/jpeg', 0.9); // You can specify the image format
+        }
+
+        throttleTimeoutRef.current = null;
+      }, 10); // Adjust the debounce delay as needed
+    };
   };
-};
 
   const updateCanvas = () => {
     if (throttleTimeoutRef.current === null) {
@@ -395,7 +395,17 @@ export default function FramePage({ shows = [] }) {
   const loadFineTuningFrames = async () => {
     try {
       // Since fetchFramesFineTuning now expects an array, calculate the array of indexes for fine-tuning
-      const fineTuningFrames = await fetchFramesFineTuning(confirmedCid, season, episode, frame);
+      const fineTuningImageUrls = await fetchFramesFineTuning(confirmedCid, season, episode, frame);
+
+      // Preload the images and convert them to blob URLs
+      const fineTuningFrames = await Promise.all(
+        fineTuningImageUrls.map(async (url) => {
+          const response = await fetch(url);
+          const blob = await response.blob();
+          return URL.createObjectURL(blob);
+        })
+      );
+
       setFineTuningFrames(fineTuningFrames);
       setFrames(fineTuningFrames);
       console.log("Fine Tuning Frames: ", fineTuningFrames);
