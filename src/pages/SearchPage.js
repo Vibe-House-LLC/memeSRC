@@ -176,7 +176,7 @@ export default function SearchPage() {
     }
     const encodedSearchTerms = encodeURI(searchTerm)
     setSearchQuery(searchTerm)
-    navigate(`/search/${seriesTitle}/${encodedSearchTerms}`)
+    navigate(`/v2/search/${seriesTitle}/${encodedSearchTerms}`)
   }, [seriesTitle, searchTerm, navigate]);
 
   return (

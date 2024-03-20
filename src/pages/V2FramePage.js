@@ -1,7 +1,7 @@
 // eslint-disable camelcase
 import { Helmet } from 'react-helmet-async';
 import { Navigate, Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { API } from 'aws-amplify';
 import { styled } from '@mui/material/styles';
 import { useTheme } from '@emotion/react';
@@ -38,6 +38,7 @@ import {
   Alert,
 } from '@mui/material';
 import { Add, ArrowBack, ArrowBackIos, ArrowForward, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, FormatLineSpacing, FormatSize, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu, OpenInBrowser, OpenInNew, VerticalAlignBottom, VerticalAlignTop, Visibility, VisibilityOff } from '@mui/icons-material';
+import { throttle } from 'lodash';
 import useSearchDetails from '../hooks/useSearchDetails';
 import { fetchFrameInfo, fetchFramesFineTuning, fetchFramesSurroundingPromises } from '../utils/frameHandlerV2';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
@@ -165,7 +166,8 @@ export default function FramePage({ shows = [] }) {
   }
 
 
-  const updateCanvas = (scaleDown) => {
+  const updateCanvasUnthrottled = (scaleDown) => {
+
     const offScreenCanvas = document.createElement('canvas');
     const ctx = offScreenCanvas.getContext('2d');
 
@@ -281,6 +283,11 @@ export default function FramePage({ shows = [] }) {
       }
     };
   }
+
+  const updateCanvas = throttle(() => {
+      updateCanvasUnthrottled();
+    }, 100, { leading: false, trailing: true })
+
 
   useEffect(() => {
     if (confirmedCid) {
@@ -404,9 +411,9 @@ export default function FramePage({ shows = [] }) {
   }
 
 
-  useEffect(() => {
-    updateCanvas(true)
-  }, [fontSizeScaleFactor, fontLineHeightScaleFactor, fontBottomMarginScaleFactor]);
+  // useEffect(() => {
+  //   updateCanvas(true)
+  // }, [fontSizeScaleFactor, fontLineHeightScaleFactor, fontBottomMarginScaleFactor]);
 
   /* -------------------------------------------------------------------------- */
 
@@ -442,7 +449,7 @@ export default function FramePage({ shows = [] }) {
 
   useEffect(() => {
     updateCanvas();
-  }, [showText, displayImage, frameData, loadedSubtitle]);
+  }, [showText, displayImage, frameData, loadedSubtitle, fontSizeScaleFactor, fontLineHeightScaleFactor, fontBottomMarginScaleFactor, frame]);
 
   useEffect(() => {
     if (frames && frames.length > 0) {

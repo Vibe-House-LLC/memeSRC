@@ -42,21 +42,26 @@ export default function SearchPage({ metadata }) {
     if (e) {
       e.preventDefault();
     }
-    console.log(seriesTitle)
 
-    const v2 = shows?.find(obj => obj.id === seriesTitle) || savedCids?.find(obj => obj.id === seriesTitle)
+    setV2SearchQuery(searchTerm)
+    const encodedSearchTerms = encodeURI(searchTerm)
+    console.log(`Navigating to: '${`/v2/search/${seriesTitle}/${encodedSearchTerms}`}'`)
+    navigate(`/v2/search/${seriesTitle}/${encodedSearchTerms}`)
+    // console.log(seriesTitle)
 
-    if (v2 && v2?.version === 2) {
-      setV2SearchQuery(searchTerm)
-      const encodedSearchTerms = encodeURI(searchTerm)
-      console.log(`Navigating to: '${`/v2/search/${seriesTitle}/${encodedSearchTerms}`}'`)
-      navigate(`/v2/search/${seriesTitle}/${encodedSearchTerms}`)
-    } else {
-      setSearchQuery(searchTerm)
-      const encodedSearchTerms = encodeURI(searchTerm)
-      console.log(`Navigating to: '${`/search/${seriesTitle}/${encodedSearchTerms}`}'`)
-      navigate(`/search/${seriesTitle}/${encodedSearchTerms}`)
-    }
+    // const v2 = shows?.find(obj => obj.id === seriesTitle) || savedCids?.find(obj => obj.id === seriesTitle)
+
+    // if (v2 && v2?.version === 2) {
+    //   setV2SearchQuery(searchTerm)
+    //   const encodedSearchTerms = encodeURI(searchTerm)
+    //   console.log(`Navigating to: '${`/v2/search/${seriesTitle}/${encodedSearchTerms}`}'`)
+    //   navigate(`/v2/search/${seriesTitle}/${encodedSearchTerms}`)
+    // } else {
+    //   setSearchQuery(searchTerm)
+    //   const encodedSearchTerms = encodeURI(searchTerm)
+    //   console.log(`Navigating to: '${`/search/${seriesTitle}/${encodedSearchTerms}`}'`)
+    //   navigate(`/search/${seriesTitle}/${encodedSearchTerms}`)
+    // }
 
   }, [seriesTitle, searchTerm, navigate, savedCids]);
 
