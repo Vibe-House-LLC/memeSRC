@@ -38,7 +38,6 @@ import {
   Alert,
 } from '@mui/material';
 import { Add, ArrowBack, ArrowBackIos, ArrowForward, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, FormatLineSpacing, FormatSize, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu, OpenInBrowser, OpenInNew, VerticalAlignBottom, VerticalAlignTop, Visibility, VisibilityOff } from '@mui/icons-material';
-import { throttle } from 'lodash';
 import useSearchDetails from '../hooks/useSearchDetails';
 import { fetchFrameInfo, fetchFramesFineTuning, fetchFramesSurroundingPromises } from '../utils/frameHandlerV2';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
@@ -83,6 +82,8 @@ export default function FramePage({ shows = [] }) {
   const [fontLineHeightScaleFactor, setFontLineHeightScaleFactor] = useState(1);
   const [fontBottomMarginScaleFactor, setFontBottomMarginScaleFactor] = useState(1);
   const [enableFineTuningFrames, setEnableFineTuningFrames] = useState(false);
+
+  const throttleTimeoutRef = useRef(null);
 
   /* ---------- This is used to prevent slider activity while scrolling on mobile ---------- */
 
@@ -167,14 +168,18 @@ export default function FramePage({ shows = [] }) {
 
 
   const updateCanvasUnthrottled = (scaleDown) => {
+  const offScreenCanvas = document.createElement('canvas');
+  const ctx = offScreenCanvas.getContext('2d');
 
-    const offScreenCanvas = document.createElement('canvas');
-    const ctx = offScreenCanvas.getContext('2d');
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  img.src = displayImage;
+  img.onload = function () {
+    if (throttleTimeoutRef.current !== null) {
+      clearTimeout(throttleTimeoutRef.current);
+    }
 
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.src = displayImage;
-    img.onload = function () {
+    throttleTimeoutRef.current = setTimeout(() => {
       // Define the maximum width for the canvas
       const maxCanvasWidth = 1000; // Adjust this value as needed
 
@@ -264,7 +269,6 @@ export default function FramePage({ shows = [] }) {
           }
         }, 'image/png');
       } else {
-
         // Instead of using toDataURL, convert the canvas to a blob
         offScreenCanvas.toBlob((blob) => {
           if (blob) {
@@ -281,12 +285,17 @@ export default function FramePage({ shows = [] }) {
           }
         }, 'image/png'); // You can specify the image format
       }
-    };
-  }
 
-  const updateCanvas = throttle(() => {
+      throttleTimeoutRef.current = null;
+    }, 100); // Adjust the debounce delay as needed
+  };
+};
+
+  const updateCanvas = () => {
+    if (throttleTimeoutRef.current === null) {
       updateCanvasUnthrottled();
-    }, 100, { leading: false, trailing: true })
+    }
+  };
 
 
   useEffect(() => {
