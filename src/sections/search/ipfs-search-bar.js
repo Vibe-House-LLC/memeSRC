@@ -141,17 +141,18 @@ export default function IpfsSearchBar(props) {
   }, [cid]);
 
   const handleSelectSeries = (data) => {
-    if (data?.addNew) {
-      setAddNewCidOpen(true)
-    } else {
-      const savedCid = shows?.find(obj => obj.id === data && obj.version === 2) || savedCids?.find(obj => obj.id === data)
-      if (savedCid) {
-        navigate(`/v2/search/${savedCid.id}/${encodeURIComponent(search)}`)
-      } else {
-        setV1Show(data)
-        navigate(`/search/${data}/${encodeURIComponent(search)}`)
-      }
-    }
+    navigate(`/v2/search/${data}/${encodeURIComponent(search)}`)
+    // if (data?.addNew) {
+    //   setAddNewCidOpen(true)
+    // } else {
+    //   const savedCid = shows?.find(obj => obj.id === data && obj.version === 2) || savedCids?.find(obj => obj.id === data)
+    //   if (savedCid) {
+    //     navigate(`/v2/search/${savedCid.id}/${encodeURIComponent(search)}`)
+    //   } else {
+    //     setV1Show(data)
+    //     navigate(`/search/${data}/${encodeURIComponent(search)}`)
+    //   }
+    // }
   }
 
   useEffect(() => {
