@@ -515,7 +515,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   const searchCid = (e) => {
     e.preventDefault()
     setCidSearchQuery(searchTerm)
-    navigate(`/v2/search/${cid}/${encodeURIComponent(searchTerm)}`)
+    navigate(`/search/${cid}/${encodeURIComponent(searchTerm)}`)
     return false
   }
 

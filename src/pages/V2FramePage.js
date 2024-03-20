@@ -496,7 +496,7 @@ export default function FramePage({ shows = [] }) {
               margin: '-10px'
             }}
             onClick={() => {
-              navigate(`/v2/frame/${cid}/${season}/${episode}/${Number(frame) - 10}`)
+              navigate(`/frame/${cid}/${season}/${episode}/${Number(frame) - 10}`)
             }}
           >
             <ArrowBackIos style={{ fontSize: '2rem' }} />
@@ -514,7 +514,7 @@ export default function FramePage({ shows = [] }) {
               margin: '-10px'
             }}
             onClick={() => {
-              navigate(`/v2/frame/${cid}/${season}/${episode}/${Number(frame) + 10}`)
+              navigate(`/frame/${cid}/${season}/${episode}/${Number(frame) + 10}`)
             }}
           >
             <ArrowForwardIos style={{ fontSize: '2rem' }} />
@@ -596,7 +596,7 @@ export default function FramePage({ shows = [] }) {
               size='small'
               icon={<OpenInNew />}
               label={`Season ${season} / Episode ${episode}`}
-              onClick={() => navigate(`/v2/episode/${cid}/${season}/${episode}/1`)}
+              onClick={() => navigate(`/episode/${cid}/${season}/${episode}/1`)}
               sx={{
                 marginBottom: '15px',
                 "& .MuiChip-label": {
@@ -609,7 +609,7 @@ export default function FramePage({ shows = [] }) {
               icon={<BrowseGallery />}
               // TODO: I'm assuming there's probably some easy math to put the time code here
               label={`${frameToTimeCode(frame)}`}
-              onClick={() => navigate(`/v2/episode/${cid}/${season}/${episode}/${frame}`)}
+              onClick={() => navigate(`/episode/${cid}/${season}/${episode}/${frame}`)}
               sx={{
                 marginBottom: '15px',
                 marginLeft: '5px',
@@ -845,7 +845,7 @@ export default function FramePage({ shows = [] }) {
               size="medium"
               fullWidth
               variant="contained"
-              to={`/v2/editor/${cid}/${season}/${episode}/${frame}`}
+              to={`/editor/${cid}/${season}/${episode}/${frame}`}
               component={RouterLink}
               sx={{ my: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
               startIcon={<Edit />}
@@ -890,7 +890,7 @@ export default function FramePage({ shows = [] }) {
                                     },
                                   },
                                 }}
-                                onClick={() => navigate(`/v2/frame/${cid}/${season}/${episode}/${result?.frame}`)}
+                                onClick={() => navigate(`/frame/${cid}/${season}/${episode}/${result?.frame}`)}
                               >
                                 {loading ? (
                                   <CircularProgress size={20} sx={{ color: '#565656' }} />
@@ -995,7 +995,7 @@ export default function FramePage({ shows = [] }) {
                           src={`${surroundingFrame.frameImage}`}
                           title={surroundingFrame.subtitle || 'No subtitle'}
                           onClick={() => {
-                            navigate(`/v2/frame/${cid}/${season}/${episode}/${surroundingFrame.frame}`);
+                            navigate(`/frame/${cid}/${season}/${episode}/${surroundingFrame.frame}`);
                           }}
                         />
                       </StyledCard>
@@ -1012,7 +1012,7 @@ export default function FramePage({ shows = [] }) {
               <Button
                 variant="contained"
                 fullWidth
-                href={`/v2/episode/${cid}/${season}/${episode}/${frame}`}
+                href={`/episode/${cid}/${season}/${episode}/${frame}`}
               >
                 View Episode
               </Button>

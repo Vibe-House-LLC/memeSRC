@@ -135,7 +135,7 @@ export default function TopBannerSearch(props) {
 
   const handleSelectSeries = (data) => {
 
-    navigate(`/v2/search/${data}/${encodeURIComponent(searchTerm)}`)
+    navigate(`/search/${data}/${encodeURIComponent(searchTerm)}`)
 
     // if (data?.addNew) {
     //   setAddNewCidOpen(true)

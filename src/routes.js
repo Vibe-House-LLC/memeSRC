@@ -59,7 +59,7 @@ const WebsiteSettings = lazy(() => import('./pages/WebsiteSettings'))
 // ----------------------------------------------------------------------
 
 export default function Router() {
-   
+
 
   const routes = useRoutes([
     {
@@ -69,28 +69,33 @@ export default function Router() {
         { element: <SiteWideMaintenance><HomePage /></SiteWideMaintenance>, index: true },
         { path: 'search', element: <SiteWideMaintenance><Navigate to='/' /></SiteWideMaintenance> },
         { path: 'edit', element: <SiteWideMaintenance><EditorNewProjectPage /></SiteWideMaintenance> },
-        { path: 'editor/projects', element: <SiteWideMaintenance><EditorProjectsPage /></SiteWideMaintenance> },
-        { path: 'editor/new', element: <SiteWideMaintenance><EditorNewProjectPage /></SiteWideMaintenance> },
-        { path: 'editor/project/:editorProjectId', element: <SiteWideMaintenance><EditorPage /></SiteWideMaintenance> },
-        { path: 'search/:seriesId', element: <SiteWideMaintenance><SearchPage /></SiteWideMaintenance> },
-        { path: 'search/:seriesId/:searchTerms', element: <SiteWideMaintenance><SearchPage /></SiteWideMaintenance> },
+        // { path: 'editor/projects', element: <SiteWideMaintenance><EditorProjectsPage /></SiteWideMaintenance> },
+        // { path: 'editor/new', element: <SiteWideMaintenance><EditorNewProjectPage /></SiteWideMaintenance> },
+        // { path: 'editor/project/:editorProjectId', element: <SiteWideMaintenance><EditorPage /></SiteWideMaintenance> },
+        // { path: 'search/:seriesId', element: <SiteWideMaintenance><SearchPage /></SiteWideMaintenance> },
+        // { path: 'search/:seriesId/:searchTerms', element: <SiteWideMaintenance><SearchPage /></SiteWideMaintenance> },
+        { path: 'search/:cid', element: <SiteWideMaintenance><IpfsSearchBar><V2SearchPage /></IpfsSearchBar></SiteWideMaintenance> },
+        { path: 'search/:cid/:searchTerms', element: <SiteWideMaintenance><IpfsSearchBar><V2SearchPage /></IpfsSearchBar></SiteWideMaintenance> },
+        { path: 'frame/:cid/:season/:episode/:frame', element: <SiteWideMaintenance><IpfsSearchBar><V2FramePage /></IpfsSearchBar></SiteWideMaintenance> },
+        { path: 'editor/:cid/:season/:episode/:frame', element: <SiteWideMaintenance><IpfsSearchBar><V2EditorPage /></IpfsSearchBar></SiteWideMaintenance> },
+        { path: 'episode/:cid/:season/:episode/:frame', element: <SiteWideMaintenance><IpfsSearchBar><V2EpisodePage /></IpfsSearchBar></SiteWideMaintenance> },
         { path: 'favorites', element: <SiteWideMaintenance><FavoritesPage /></SiteWideMaintenance> },
-        {
-          path: 'v2',
-          element: <SiteWideMaintenance><IpfsSearchBar /></SiteWideMaintenance>,
-          children: [
-            { path: 'search/:cid', element: <V2SearchPage /> },
-            { path: 'search/:cid/:searchTerms', element: <V2SearchPage /> },
-            { path: 'frame/:cid/:season/:episode/:frame', element: <V2FramePage /> },
-            { path: 'editor/:cid/:season/:episode/:frame', element: <V2EditorPage /> },
-            { path: 'episode/:cid/:season/:episode/:frame', element: <V2EpisodePage /> },
-          ]
-        },
-        { path: 'frame/:fid', element: <SiteWideMaintenance><TopBannerSearchRevised><FramePage /></TopBannerSearchRevised></SiteWideMaintenance> },
-        { path: 'editor/:fid', element: <SiteWideMaintenance><TopBannerSearchRevised><EditorPage /></TopBannerSearchRevised></SiteWideMaintenance> },
+        // {
+        //   path: 'v2',
+        //   element: <SiteWideMaintenance><IpfsSearchBar /></SiteWideMaintenance>,
+        //   children: [
+        //     { path: 'search/:cid', element: <V2SearchPage /> },
+        //     { path: 'search/:cid/:searchTerms', element: <V2SearchPage /> },
+        //     { path: 'frame/:cid/:season/:episode/:frame', element: <V2FramePage /> },
+        //     { path: 'editor/:cid/:season/:episode/:frame', element: <V2EditorPage /> },
+        //     { path: 'episode/:cid/:season/:episode/:frame', element: <V2EpisodePage /> },
+        //   ]
+        // },
+        // { path: 'frame/:fid', element: <SiteWideMaintenance><TopBannerSearchRevised><FramePage /></TopBannerSearchRevised></SiteWideMaintenance> },
+        // { path: 'editor/:fid', element: <SiteWideMaintenance><TopBannerSearchRevised><EditorPage /></TopBannerSearchRevised></SiteWideMaintenance> },
         { path: 'series/:seriesId', element: <SiteWideMaintenance><TopBannerSearchRevised><SeriesPage /></TopBannerSearchRevised></SiteWideMaintenance> },
-        { path: '/episode/:seriesId/:seasonNum/:episodeNum', element: <SiteWideMaintenance><TopBannerSearchRevised><EpisodePage /></TopBannerSearchRevised></SiteWideMaintenance> },
-        { path: '/episode/:seriesId/:seasonNum/:episodeNum/:frameNum', element: <SiteWideMaintenance><TopBannerSearchRevised><EpisodePage /></TopBannerSearchRevised></SiteWideMaintenance> },
+        // { path: '/episode/:seriesId/:seasonNum/:episodeNum', element: <SiteWideMaintenance><TopBannerSearchRevised><EpisodePage /></TopBannerSearchRevised></SiteWideMaintenance> },
+        // { path: '/episode/:seriesId/:seasonNum/:episodeNum/:frameNum', element: <SiteWideMaintenance><TopBannerSearchRevised><EpisodePage /></TopBannerSearchRevised></SiteWideMaintenance> },
         { path: '/vote', element: <SiteWideMaintenance><TopBannerSearchRevised><VotingPage /></TopBannerSearchRevised></SiteWideMaintenance> },
         { path: '/contribute', element: <SiteWideMaintenance><ContributorRequest /></SiteWideMaintenance> },
         { path: '/pricing', element: <SiteWideMaintenance><PricingPage /></SiteWideMaintenance> },

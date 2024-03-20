@@ -1141,7 +1141,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   };
 
   const handleNavigate = (cid, season, episode, frame) => {
-    navigate(`/v2/editor/${cid}/${season}/${episode}/${frame}`);
+    navigate(`/editor/${cid}/${season}/${episode}/${frame}`);
     setOpenNavWithoutSavingDialog(false);
     editor.canvas.discardActiveObject().requestRenderAll();
     setFutureStates([]);
@@ -1865,7 +1865,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                           src={`${surroundingFrame.frameImage}`}
                           title={surroundingFrame.subtitle || 'No subtitle'}
                           onClick={() => {
-                            navigate(`/v2/frame/${cid}/${season}/${episode}/${surroundingFrame.frame}`);
+                            navigate(`/frame/${cid}/${season}/${episode}/${surroundingFrame.frame}`);
                           }}
                         />
                       </StyledCard>
@@ -1880,7 +1880,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                 <Button
                   variant="contained"
                   fullWidth
-                  href={`/v2/episode/${cid}/${season}/${episode}/${frame}`}
+                  href={`/episode/${cid}/${season}/${episode}/${frame}`}
                 >
                   View Episode
                 </Button>
