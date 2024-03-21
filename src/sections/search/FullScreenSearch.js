@@ -1,9 +1,9 @@
 import styled from '@emotion/styled';
-import { Alert, AlertTitle, Button, Fab, Grid, Typography, IconButton, Stack, useMediaQuery } from '@mui/material';
+import { Alert, AlertTitle, Button, Fab, Grid, Typography, IconButton, Stack, useMediaQuery, Select, MenuItem } from '@mui/material';
 import { Box } from '@mui/system';
 import { ArrowDownwardRounded, Favorite, MapsUgc, Shuffle } from '@mui/icons-material';
 import { API, graphqlOperation } from 'aws-amplify';
-import { useCallback, useContext, useEffect, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useState } from 'react';
 import { LoadingButton } from '@mui/lab';
 import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
 import CloseIcon from '@mui/icons-material/Close';
@@ -11,13 +11,21 @@ import { UserContext } from '../../UserContext';
 import useSearchDetails from '../../hooks/useSearchDetails';
 import { searchPropTypes } from './SearchPropTypes';
 import Logo from '../../components/logo/Logo';
-import { contentMetadataByStatus, listContentMetadata, listHomepageSections } from '../../graphql/queries';
+import { contentMetadataByStatus, listContentMetadata, listFavorites, listHomepageSections } from '../../graphql/queries';
 import HomePageSection from './HomePageSection';
 import HomePageBannerAd from '../../ads/HomePageBannerAd';
 import useSearchDetailsV2 from '../../hooks/useSearchDetailsV2';
 import AddCidPopup from '../../components/ipfs/add-cid-popup';
 import fetchShows from '../../utils/fetchShows';
 import useLoadRandomFrame from '../../utils/loadRandomFrame';
+
+const seriesOptions = [
+  { id: '_universal', title: 'All Shows & Movies', emoji: '🌈' },
+  { id: 'seinfeld', title: 'Seinfeld', emoji: '🥨' },
+  { id: 'friends', title: 'Friends', emoji: '👫' },
+  { id: 'breakingbad', title: 'Breaking Bad', emoji: '🧪' },
+  { id: 'game_of_thrones', title: 'Game of Thrones', emoji: '🐉' },
+];
 
 /* --------------------------------- GraphQL -------------------------------- */
 
@@ -226,6 +234,39 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   const [alertOpen, setAlertOpen] = useState(true);
 
   const location = useLocation();
+
+  const [aliasesWithMetadata, setAliasesWithMetadata] = useState([]);
+  const [aliasesLoading, setAliasesLoading] = useState(true);
+  const [aliasesError, setAliasesError] = useState(null);
+
+  useEffect(() => {
+    const fetchAliasesRecursive = async (nextToken = null, accumulator = []) => {
+      try {
+        const result = await API.graphql(graphqlOperation(listAliases, {
+          limit: 10,
+          nextToken,
+        }));
+  
+        const fetchedAliases = result.data.listAliases.items;
+        const updatedAccumulator = [...accumulator, ...fetchedAliases];
+  
+        if (result.data.listAliases.nextToken) {
+          return fetchAliasesRecursive(result.data.listAliases.nextToken, updatedAccumulator);
+        }
+  
+        setAliasesWithMetadata(updatedAccumulator);
+        setAliasesLoading(false);
+        return updatedAccumulator;
+      } catch (error) {
+        console.error('Error fetching aliases:', error);
+        setAliasesError('Failed to fetch aliases.');
+        setAliasesLoading(false);
+        return []; // Return an empty array in case of an error
+      }
+    };
+  
+    fetchAliasesRecursive();
+  }, []);
 
   // Theme States
   const [currentThemeBragText, setCurrentThemeBragText] = useState(metadata?.frameCount ? `Search over ${metadata?.frameCount.toLocaleString('en-US')} frames from ${metadata?.title}` : defaultBragText);
@@ -474,7 +515,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   const searchCid = (e) => {
     e.preventDefault()
     setCidSearchQuery(searchTerm)
-    navigate(`/v2/search/${cid}/${encodeURIComponent(searchTerm)}`)
+    navigate(`/search/${cid}/${encodeURIComponent(searchTerm)}`)
     return false
   }
 
@@ -555,43 +596,53 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
           <StyledSearchForm onSubmit={(e) => searchFunction(e)}>
             <Grid container justifyContent="center">
               <Grid item sm={3.5} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
-                <StyledSearchSelector
-                  onChange={(e) => {
-                    const selectedId = e.target.value;
+              <Select
+                value={cid || seriesTitle}
+                onChange={(e) => {
+                  const selectedId = e.target.value;
 
-                    if (selectedId === 'addNewCid') {
-                      setAddNewCidOpen(true)
-                    } else {
-                      const newSeriesTitle = e.target.value;
-                      setCid()
-                      setSeriesTitle(newSeriesTitle); // Update the series title based on the selection
-                      handleChangeSeries(newSeriesTitle); // Update the theme
-                      navigate(newSeriesTitle === '_universal' ? '/' : `/${newSeriesTitle}`); // Navigate
-                    }
-                  }}
-                  value={cid || seriesTitle}
+                  if (selectedId === 'addNewCid') {
+                    setAddNewCidOpen(true);
+                  } else {
+                    const newSeriesTitle = e.target.value;
+                    setCid();
+                    setSeriesTitle(newSeriesTitle);
+                    handleChangeSeries(newSeriesTitle);
+                    navigate(newSeriesTitle === '_universal' ? '/' : `/${newSeriesTitle}`);
+                  }
+                }}
+                displayEmpty
+                inputProps={{ 'aria-label': 'series selection' }}
+                sx={{
+                  fontFamily: FONT_FAMILY,
+                  fontSize: '16px',
+                  color: '#333',
+                  backgroundColor: '#fff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  // padding: '8px 12px',
+                  height: '50px',
+                  width: '100%',
+                  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                  transition: 'box-shadow 0.3s',
+                  '&:focus': {
+                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
+                    outline: 'none',
+                  },
+                }}
                 >
-                  <option key="_universal" value="_universal">
-                    🌈 All Shows & Movies
-                  </option>
+                  <MenuItem value="_universal">🌈 All Shows & Movies</MenuItem>
                   {loading ? (
-                    <option key="loading" value="loading" disabled>
-                      Loading...
-                    </option>
+                    <MenuItem disabled>Loading...</MenuItem>
                   ) : (
-                    shows.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.emoji} {item.title}
-                      </option>
+                    shows.map((show) => (
+                      <MenuItem key={show.id} value={show.id}>
+                        {show.emoji} {show.title}
+                      </MenuItem>
                     ))
                   )}
-                  {/* <option disabled value=''>IPFS</option>
-                  {user && loadingSavedCids && <option disabled value=''>Loading saved CIDs...</option>}
-                  {!loading && savedCids && savedCids.map(obj =>
-                    <option key={obj.id} value={obj.id}>{obj.emoji} {obj.title}</option>
-                  )}
-                  <option key='addNew' value='addNewCid'>+ Add New CID</option> */}
-                </StyledSearchSelector>
+                  {/* <MenuItem value="addNewCid">+ Add New CID</MenuItem> */}
+                </Select>
               </Grid>
               <Grid item sm={7} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
                 <StyledLabel htmlFor="search-term">

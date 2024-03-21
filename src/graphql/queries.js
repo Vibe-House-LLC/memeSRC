@@ -1138,6 +1138,38 @@ export const listEditorProjects = /* GraphQL */ `
     }
   }
 `;
+export const getWebsiteSetting = /* GraphQL */ `
+  query GetWebsiteSetting($id: ID!) {
+    getWebsiteSetting(id: $id) {
+      id
+      fullSiteMaintenance
+      universalSearchMaintenance
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const listWebsiteSettings = /* GraphQL */ `
+  query ListWebsiteSettings(
+    $filter: ModelWebsiteSettingFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listWebsiteSettings(filter: $filter, limit: $limit, nextToken: $nextToken) {
+      items {
+        id
+        fullSiteMaintenance
+        universalSearchMaintenance
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
 export const getUserMetadata = /* GraphQL */ `
   query GetUserMetadata($id: ID!) {
     getUserMetadata(id: $id) {

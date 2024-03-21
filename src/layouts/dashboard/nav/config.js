@@ -78,6 +78,12 @@ const navConfig = [
         icon: icon('ic_analytics'),
       },
       {
+        title: 'Website Settings',
+        path: '/dashboard/websiteSettings',
+        externalLink: false,
+        icon: <Settings />,
+      },
+      {
         title: 'Source Media',
         path: '/dashboard/sourcemedia',
         externalLink: false,

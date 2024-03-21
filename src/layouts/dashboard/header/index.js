@@ -183,9 +183,9 @@ export default function Header({ onOpenNav }) {
               xs: 2,
             }}
           >
-            {user &&
+            {/* {user &&
               <NotificationsPopover />
-            }
+            } */}
             <>
               <Chip
                 onClick={(event) => {

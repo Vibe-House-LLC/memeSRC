@@ -1,3 +1,4 @@
+import { Buffer } from "buffer";
 import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { CircularProgress, Container, Typography, Card, CardMedia, CardContent, Button, Grid, useMediaQuery } from '@mui/material';
@@ -79,7 +80,7 @@ export default function V2EpisodePage({ setSeriesTitle }) {
   const navigateFrames = (direction) => {
     const currentFrame = parseInt(frame, 10);
     const newFrame = direction === 'prev' ? Math.max(currentFrame - fps * 10, 0) : currentFrame + fps * 10;
-    navigate(`/v2/episode/${cid}/${season}/${episode}/${newFrame}`);
+    navigate(`/episode/${cid}/${season}/${episode}/${newFrame}`);
   };
 
   return (
@@ -102,7 +103,7 @@ export default function V2EpisodePage({ setSeriesTitle }) {
             {results.map((result) => (
               <Grid item xs={12} key={result.fid}>
                 <div style={{ display: 'flex', justifyContent: 'center' }}>
-                  <Card component="a" href={`/v2/frame/${cid}/${season}/${episode}/${result.fid}`} style={{ display: 'flex', textDecoration: 'none', width: '100%' }}>
+                  <Card component="a" href={`/frame/${cid}/${season}/${episode}/${result.fid}`} style={{ display: 'flex', textDecoration: 'none', width: '100%' }}>
                     <CardMedia
                       component="img"
                       style={{ width: '50%', objectFit: 'contain' }}
@@ -111,7 +112,7 @@ export default function V2EpisodePage({ setSeriesTitle }) {
                     />
                     <CardContent sx={{ alignSelf: 'center' }}>
                       <Typography variant="body1" color="textPrimary" component="p">
-                        {result.subtitle ? atob(result.subtitle) : 'No subtitle'}
+                        {result.subtitle ? Buffer.from(result.subtitle, 'base64').toString() : 'No subtitle'}
                       </Typography>
                     </CardContent>
                   </Card>

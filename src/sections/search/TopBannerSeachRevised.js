@@ -160,17 +160,20 @@ export default function TopBannerSearchRevised(props) {
   }
 
   const handleSelectSeries = (data) => {
-    if (data?.addNew) {
-      setAddNewCidOpen(true)
-    } else {
-      const savedCid = shows?.find(obj => obj.id === data && obj.version === 2) || savedCids?.find(obj => obj.id === data)
-      if (savedCid) {
-        navigate(`/v2/search/${savedCid.id}/${encodeURIComponent(searchTerm || searchTerms)}`)
-      } else {
-        setShow(data); 
-        setSeriesTitle(data);
-      }
-    }
+
+    navigate(`/search/${data}/${encodeURIComponent(searchTerm || searchTerms)}`)
+
+    // if (data?.addNew) {
+    //   setAddNewCidOpen(true)
+    // } else {
+    //   const savedCid = shows?.find(obj => obj.id === data && obj.version === 2) || savedCids?.find(obj => obj.id === data)
+    //   if (savedCid) {
+    //     navigate(`/v2/search/${savedCid.id}/${encodeURIComponent(searchTerm || searchTerms)}`)
+    //   } else {
+    //     setShow(data); 
+    //     setSeriesTitle(data);
+    //   }
+    // }
   }
 
   return (

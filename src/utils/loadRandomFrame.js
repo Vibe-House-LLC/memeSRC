@@ -83,7 +83,7 @@ function useLoadRandomFrame() {
                 setShowObj(loadedShowSubtitles)
                 const randomSubtitle = getRandomIndex(loadedShowSubtitles);
                 setLoadingRandom(false)
-                navigate(`/v2/frame/${showObject.id}/${randomSubtitle.season}/${randomSubtitle.episode}/${findMidpoint(randomSubtitle.start_frame, randomSubtitle.end_frame)}`)
+                navigate(`/frame/${showObject.id}/${randomSubtitle.season}/${randomSubtitle.episode}/${findMidpoint(randomSubtitle.start_frame, randomSubtitle.end_frame)}`)
             } else {
                 const sessionId = await getSessionID();
                 const apiName = 'publicapi';

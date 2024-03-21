@@ -482,11 +482,17 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       resizeCanvas(desiredWidth, desiredHeight)
       editor?.canvas.setBackgroundImage(oImg);
       // if (defaultSubtitle) {
-      addText(defaultSubtitle || '')
+      // addText(defaultSubtitle || '')
       // }
       setImageLoaded(true)
     }
-  }, [defaultFrame, defaultSubtitle])
+  }, [defaultFrame])
+
+  useEffect(() => {
+    if (defaultSubtitle) {
+      addText(defaultSubtitle || '')
+    }
+  }, [defaultSubtitle]);
 
   // Calculate the desired editor size
   const calculateEditorSize = (aspectRatio) => {
@@ -565,6 +571,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const handleEdit = (event, index) => {
     // console.log(event)
     // console.log(index)
+    // setDefaultSubtitle(event.target.value)
     editor.canvas.item(index).set('text', event.target.value);
     // console.log(`Length of object:  + ${selectedObjects.length}`)
     setCanvasObjects([...editor.canvas._objects])
@@ -1141,7 +1148,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   };
 
   const handleNavigate = (cid, season, episode, frame) => {
-    navigate(`/v2/editor/${cid}/${season}/${episode}/${frame}`);
+    navigate(`/editor/${cid}/${season}/${episode}/${frame}`);
     setOpenNavWithoutSavingDialog(false);
     editor.canvas.discardActiveObject().requestRenderAll();
     setFutureStates([]);
@@ -1206,7 +1213,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       frames[newSliderValue],
       (oImg) => {
         setDefaultFrame(oImg);
-        setDefaultSubtitle(loadedSubtitle);
         setLoading(false);
       },
       { crossOrigin: 'anonymous' }
@@ -1236,8 +1242,18 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
       const loadFineTuningFrames = async () => {
         try {
-          // Fetch fine-tuning frames based on the current frame
-          const fineTuningFrames = await fetchFramesFineTuning(confirmedCid, season, episode, frame);
+          // Since fetchFramesFineTuning now expects an array, calculate the array of indexes for fine-tuning
+          const fineTuningImageUrls = await fetchFramesFineTuning(confirmedCid, season, episode, frame);
+    
+          // Preload the images and convert them to blob URLs
+          const fineTuningFrames = await Promise.all(
+            fineTuningImageUrls.map(async (url) => {
+              const response = await fetch(url);
+              const blob = await response.blob();
+              return URL.createObjectURL(blob);
+            })
+          );
+    
           setFineTuningFrames(fineTuningFrames);
           setFrames(fineTuningFrames);
           console.log("Fine Tuning Frames: ", fineTuningFrames);
@@ -1865,7 +1881,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                           src={`${surroundingFrame.frameImage}`}
                           title={surroundingFrame.subtitle || 'No subtitle'}
                           onClick={() => {
-                            navigate(`/v2/frame/${cid}/${season}/${episode}/${surroundingFrame.frame}`);
+                            navigate(`/editor/${cid}/${season}/${episode}/${surroundingFrame.frame}`);
                           }}
                         />
                       </StyledCard>
@@ -1880,7 +1896,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                 <Button
                   variant="contained"
                   fullWidth
-                  href={`/v2/episode/${cid}/${season}/${episode}/${frame}`}
+                  href={`/episode/${cid}/${season}/${episode}/${frame}`}
                 >
                   View Episode
                 </Button>

@@ -141,17 +141,18 @@ export default function IpfsSearchBar(props) {
   }, [cid]);
 
   const handleSelectSeries = (data) => {
-    if (data?.addNew) {
-      setAddNewCidOpen(true)
-    } else {
-      const savedCid = shows?.find(obj => obj.id === data && obj.version === 2) || savedCids?.find(obj => obj.id === data)
-      if (savedCid) {
-        navigate(`/v2/search/${savedCid.id}/${encodeURIComponent(search)}`)
-      } else {
-        setV1Show(data)
-        navigate(`/search/${data}/${encodeURIComponent(search)}`)
-      }
-    }
+    navigate(`/search/${data}/${encodeURIComponent(search)}`)
+    // if (data?.addNew) {
+    //   setAddNewCidOpen(true)
+    // } else {
+    //   const savedCid = shows?.find(obj => obj.id === data && obj.version === 2) || savedCids?.find(obj => obj.id === data)
+    //   if (savedCid) {
+    //     navigate(`/v2/search/${savedCid.id}/${encodeURIComponent(search)}`)
+    //   } else {
+    //     setV1Show(data)
+    //     navigate(`/search/${data}/${encodeURIComponent(search)}`)
+    //   }
+    // }
   }
 
   useEffect(() => {
@@ -192,7 +193,7 @@ export default function IpfsSearchBar(props) {
   const searchFunction = (searchEvent) => {
     searchEvent?.preventDefault();
     console.log(search)
-    navigate(`/v2/search/${cid}/${encodeURIComponent(search)}`)
+    navigate(`/search/${cid}/${encodeURIComponent(search)}`)
     return false
   }
 
@@ -303,14 +304,14 @@ export default function IpfsSearchBar(props) {
       </StyledHeader>
       <Divider sx={{ mb: 2.5 }} />
 
-      {pathname.startsWith("/v2/frame") &&
+      {pathname.startsWith("/frame") &&
         <Container maxWidth='xl' disableGutters sx={{ px: 1 }}>
           <Box
             sx={{ width: '100%', px: 2 }}
           >
             <Link
               component={RouterLink}
-              to={search ? `/v2/search/${cid}/${search}` : "/"}
+              to={search ? `/search/${cid}/${search}` : "/"}
               sx={{
                 color: 'white',
                 textDecoration: 'none',
@@ -332,14 +333,14 @@ export default function IpfsSearchBar(props) {
             </Typography>
         </Container>
       }
-      {pathname.startsWith("/v2/editor") &&
+      {pathname.startsWith("/editor") &&
         <Container maxWidth='xl' disableGutters sx={{ px: 1 }}>
           <Box
             sx={{ width: '100%', px: 2 }}
           >
             <Link
               component={RouterLink}
-              to={search ? `/v2/frame/${cid}/${params?.season}/${params?.episode}/${params?.frame}` : "/"}
+              to={search ? `/frame/${cid}/${params?.season}/${params?.episode}/${params?.frame}` : "/"}
               sx={{
                 color: 'white',
                 textDecoration: 'none',
@@ -358,7 +359,7 @@ export default function IpfsSearchBar(props) {
           </Box>
         </Container>
       }
-      <Outlet />
+      {props.children}
       <StyledLeftFooter className="bottomBtn">
         <a href="https://forms.gle/8CETtVbwYoUmxqbi7" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
           <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black", zIndex: '1300' }} size='medium'>

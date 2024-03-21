@@ -1873,6 +1873,51 @@ export const deleteEditorProject = /* GraphQL */ `
     }
   }
 `;
+export const createWebsiteSetting = /* GraphQL */ `
+  mutation CreateWebsiteSetting(
+    $input: CreateWebsiteSettingInput!
+    $condition: ModelWebsiteSettingConditionInput
+  ) {
+    createWebsiteSetting(input: $input, condition: $condition) {
+      id
+      fullSiteMaintenance
+      universalSearchMaintenance
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const updateWebsiteSetting = /* GraphQL */ `
+  mutation UpdateWebsiteSetting(
+    $input: UpdateWebsiteSettingInput!
+    $condition: ModelWebsiteSettingConditionInput
+  ) {
+    updateWebsiteSetting(input: $input, condition: $condition) {
+      id
+      fullSiteMaintenance
+      universalSearchMaintenance
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const deleteWebsiteSetting = /* GraphQL */ `
+  mutation DeleteWebsiteSetting(
+    $input: DeleteWebsiteSettingInput!
+    $condition: ModelWebsiteSettingConditionInput
+  ) {
+    deleteWebsiteSetting(input: $input, condition: $condition) {
+      id
+      fullSiteMaintenance
+      universalSearchMaintenance
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
 export const createUserMetadata = /* GraphQL */ `
   mutation CreateUserMetadata(
     $input: CreateUserMetadataInput!

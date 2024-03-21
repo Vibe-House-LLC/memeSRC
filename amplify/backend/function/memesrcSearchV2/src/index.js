@@ -7,6 +7,7 @@ const path = require('path');
  */
 exports.handler = async (event) => {
     console.log(`EVENT: ${JSON.stringify(event)}`);
+    console.log('Throw Away Console Log')
     
     const { id, query } = event.pathParameters;
     const decodedQuery = decodeURIComponent(query);
@@ -69,8 +70,7 @@ exports.handler = async (event) => {
                 return headers.reduce((obj, header, index) => {
                     obj[header] = values[index] ? values[index] : "";
                     if (header === "subtitle_text" && obj[header]) {
-                        obj.base64_subtitle = obj[header];
-                        obj[header] = atob(obj[header]);
+                        obj[header] = Buffer.from(obj[header], 'base64').toString();
                     }
                     return obj;
                 }, {});
