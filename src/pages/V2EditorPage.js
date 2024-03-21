@@ -565,6 +565,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const handleEdit = (event, index) => {
     // console.log(event)
     // console.log(index)
+    setDefaultSubtitle(event.target.value)
     editor.canvas.item(index).set('text', event.target.value);
     // console.log(`Length of object:  + ${selectedObjects.length}`)
     setCanvasObjects([...editor.canvas._objects])
@@ -1206,7 +1207,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       frames[newSliderValue],
       (oImg) => {
         setDefaultFrame(oImg);
-        setDefaultSubtitle(loadedSubtitle);
         setLoading(false);
       },
       { crossOrigin: 'anonymous' }
@@ -1236,8 +1236,18 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
       const loadFineTuningFrames = async () => {
         try {
-          // Fetch fine-tuning frames based on the current frame
-          const fineTuningFrames = await fetchFramesFineTuning(confirmedCid, season, episode, frame);
+          // Since fetchFramesFineTuning now expects an array, calculate the array of indexes for fine-tuning
+          const fineTuningImageUrls = await fetchFramesFineTuning(confirmedCid, season, episode, frame);
+    
+          // Preload the images and convert them to blob URLs
+          const fineTuningFrames = await Promise.all(
+            fineTuningImageUrls.map(async (url) => {
+              const response = await fetch(url);
+              const blob = await response.blob();
+              return URL.createObjectURL(blob);
+            })
+          );
+    
           setFineTuningFrames(fineTuningFrames);
           setFrames(fineTuningFrames);
           console.log("Fine Tuning Frames: ", fineTuningFrames);
@@ -1865,7 +1875,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                           src={`${surroundingFrame.frameImage}`}
                           title={surroundingFrame.subtitle || 'No subtitle'}
                           onClick={() => {
-                            navigate(`/frame/${cid}/${season}/${episode}/${surroundingFrame.frame}`);
+                            navigate(`/editor/${cid}/${season}/${episode}/${surroundingFrame.frame}`);
                           }}
                         />
                       </StyledCard>
