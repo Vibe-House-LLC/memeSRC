@@ -45,8 +45,8 @@ export default function SearchPage({ metadata }) {
 
     setV2SearchQuery(searchTerm)
     const encodedSearchTerms = encodeURI(searchTerm)
-    console.log(`Navigating to: '${`/v2/search/${seriesTitle}/${encodedSearchTerms}`}'`)
-    navigate(`/v2/search/${seriesTitle}/${encodedSearchTerms}`)
+    console.log(`Navigating to: '${`/search/${seriesTitle}/${encodedSearchTerms}`}'`)
+    navigate(`/search/${seriesTitle}/${encodedSearchTerms}`)
     // console.log(seriesTitle)
 
     // const v2 = shows?.find(obj => obj.id === seriesTitle) || savedCids?.find(obj => obj.id === seriesTitle)

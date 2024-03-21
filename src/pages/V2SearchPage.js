@@ -566,7 +566,7 @@ export default function SearchPage() {
             {newResults.slice(0, displayedResults).map((result, index) => (
               <Grid item xs={12} sm={6} md={3} key={index} className="result-item" data-result-index={index}>
                 <Link
-                  to={`/v2/frame/${cid}/${result.season}/${result.episode}/${Math.round(
+                  to={`/frame/${cid}/${result.season}/${result.episode}/${Math.round(
                     (parseInt(result.start_frame, 10) + parseInt(result.end_frame, 10)) / 2
                   )}`}
                   style={{ textDecoration: 'none' }}
@@ -675,7 +675,7 @@ export default function SearchPage() {
               <Grid item xs={12} key={show.id}>
                 <Card
                   onClick={() => {
-                    window.location.href = `/v2/search/${show.cid}/${params?.searchTerms || ''}`;
+                    window.location.href = `/search/${show.cid}/${params?.searchTerms || ''}`;
                   }}
                   sx={{
                     backgroundColor: show.colorMain,
