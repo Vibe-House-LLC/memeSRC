@@ -482,11 +482,17 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       resizeCanvas(desiredWidth, desiredHeight)
       editor?.canvas.setBackgroundImage(oImg);
       // if (defaultSubtitle) {
-      addText(defaultSubtitle || '')
+      // addText(defaultSubtitle || '')
       // }
       setImageLoaded(true)
     }
-  }, [defaultFrame, defaultSubtitle])
+  }, [defaultFrame])
+
+  useEffect(() => {
+    if (defaultSubtitle) {
+      addText(defaultSubtitle || '')
+    }
+  }, [defaultSubtitle]);
 
   // Calculate the desired editor size
   const calculateEditorSize = (aspectRatio) => {
@@ -565,7 +571,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const handleEdit = (event, index) => {
     // console.log(event)
     // console.log(index)
-    setDefaultSubtitle(event.target.value)
+    // setDefaultSubtitle(event.target.value)
     editor.canvas.item(index).set('text', event.target.value);
     // console.log(`Length of object:  + ${selectedObjects.length}`)
     setCanvasObjects([...editor.canvas._objects])
