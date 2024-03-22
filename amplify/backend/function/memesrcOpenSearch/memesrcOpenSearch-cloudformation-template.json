@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "{\"createdOn\":\"Mac\",\"createdBy\":\"Amplify\",\"createdWith\":\"12.7.1\",\"stackType\":\"function-Lambda\",\"metadata\":{}}",
+  "Description": "{\"createdOn\":\"Mac\",\"createdBy\":\"Amplify\",\"createdWith\":\"12.10.1\",\"stackType\":\"function-Lambda\",\"metadata\":{}}",
   "Parameters": {
     "CloudWatchRule": {
       "Type": "String",
@@ -50,12 +50,12 @@
         "FunctionName": {
           "Fn::If": [
             "ShouldNotCreateEnvResources",
-            "memesrcSearchV2",
+            "memesrcOpenSearch",
             {
               "Fn::Join": [
                 "",
                 [
-                  "memesrcSearchV2",
+                  "memesrcOpenSearch",
                   "-",
                   {
                     "Ref": "env"
@@ -87,7 +87,7 @@
                         "env": {
                           "Ref": "env"
                         },
-                        "functionName": "memesrcSearchV2"
+                        "functionName": "memesrcOpenSearch"
                       }
                     ]
                   },
@@ -109,7 +109,7 @@
                         "env": {
                           "Ref": "env"
                         },
-                        "functionName": "memesrcSearchV2"
+                        "functionName": "memesrcOpenSearch"
                       }
                     ]
                   },
@@ -126,9 +126,9 @@
           ]
         },
         "Runtime": "nodejs18.x",
-        "MemorySize": 2048,
         "Layers": [],
-        "Timeout": 25
+        "MemorySize": 1024,
+        "Timeout": 750
       }
     },
     "LambdaExecutionRole": {
@@ -137,12 +137,12 @@
         "RoleName": {
           "Fn::If": [
             "ShouldNotCreateEnvResources",
-            "memesrcLambdaRole5fe91be8",
+            "memesrcLambdaRole313376ae",
             {
               "Fn::Join": [
                 "",
                 [
-                  "memesrcLambdaRole5fe91be8",
+                  "memesrcLambdaRole313376ae",
                   "-",
                   {
                     "Ref": "env"
@@ -254,7 +254,7 @@
                           "env": {
                             "Ref": "env"
                           },
-                          "functionName": "memesrcSearchV2"
+                          "functionName": "memesrcOpenSearch"
                         }
                       ]
                     },
