@@ -16,8 +16,9 @@
     "s3Key": {
       "Type": "String"
     },
-    "secretsPathAmplifyAppId": {
-      "Type": "String"
+    "functionmemesrcOpenSearchName": {
+      "Type": "String",
+      "Default": "functionmemesrcOpenSearchName"
     }
   },
   "Conditions": {
@@ -50,12 +51,12 @@
         "FunctionName": {
           "Fn::If": [
             "ShouldNotCreateEnvResources",
-            "memesrcOpenSearch",
+            "memesrcIndexToOpenSearch",
             {
               "Fn::Join": [
                 "",
                 [
-                  "memesrcOpenSearch",
+                  "memesrcIndexToOpenSearch",
                   "-",
                   {
                     "Ref": "env"
@@ -73,49 +74,8 @@
             "REGION": {
               "Ref": "AWS::Region"
             },
-            "opensearchUser": {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "Fn::Sub": [
-                      "/amplify/${appId}/${env}/AMPLIFY_${functionName}_",
-                      {
-                        "appId": {
-                          "Ref": "secretsPathAmplifyAppId"
-                        },
-                        "env": {
-                          "Ref": "env"
-                        },
-                        "functionName": "memesrcOpenSearch"
-                      }
-                    ]
-                  },
-                  "opensearchUser"
-                ]
-              ]
-            },
-            "opensearchPass": {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "Fn::Sub": [
-                      "/amplify/${appId}/${env}/AMPLIFY_${functionName}_",
-                      {
-                        "appId": {
-                          "Ref": "secretsPathAmplifyAppId"
-                        },
-                        "env": {
-                          "Ref": "env"
-                        },
-                        "functionName": "memesrcOpenSearch"
-                      }
-                    ]
-                  },
-                  "opensearchPass"
-                ]
-              ]
+            "FUNCTION_MEMESRCOPENSEARCH_NAME": {
+              "Ref": "functionmemesrcOpenSearchName"
             }
           }
         },
@@ -127,8 +87,7 @@
         },
         "Runtime": "nodejs18.x",
         "Layers": [],
-        "MemorySize": 1024,
-        "Timeout": 750
+        "Timeout": 25
       }
     },
     "LambdaExecutionRole": {
@@ -137,12 +96,12 @@
         "RoleName": {
           "Fn::If": [
             "ShouldNotCreateEnvResources",
-            "memesrcLambdaRole313376ae",
+            "memesrcLambdaRoleb4f5420d",
             {
               "Fn::Join": [
                 "",
                 [
-                  "memesrcLambdaRole313376ae",
+                  "memesrcLambdaRoleb4f5420d",
                   "-",
                   {
                     "Ref": "env"
@@ -213,10 +172,13 @@
         }
       }
     },
-    "AmplifyFunctionSecretsPolicy": {
+    "AmplifyResourcesPolicy": {
+      "DependsOn": [
+        "LambdaExecutionRole"
+      ],
       "Type": "AWS::IAM::Policy",
       "Properties": {
-        "PolicyName": "amplify-function-secrets-policy",
+        "PolicyName": "amplify-lambda-execution-policy",
         "Roles": [
           {
             "Ref": "LambdaExecutionRole"
@@ -228,47 +190,41 @@
             {
               "Effect": "Allow",
               "Action": [
-                "ssm:GetParameter",
-                "ssm:GetParameters"
+                "lambda:Create*",
+                "lambda:Put*",
+                "lambda:Add*",
+                "lambda:Get*",
+                "lambda:List*",
+                "lambda:Invoke*",
+                "lambda:Update*",
+                "lambda:Delete*",
+                "lambda:Remove*"
               ],
-              "Resource": {
-                "Fn::Join": [
-                  "",
-                  [
-                    "arn:aws:ssm:",
-                    {
-                      "Ref": "AWS::Region"
-                    },
-                    ":",
-                    {
-                      "Ref": "AWS::AccountId"
-                    },
-                    ":parameter",
-                    {
-                      "Fn::Sub": [
-                        "/amplify/${appId}/${env}/AMPLIFY_${functionName}_",
-                        {
-                          "appId": {
-                            "Ref": "secretsPathAmplifyAppId"
-                          },
-                          "env": {
-                            "Ref": "env"
-                          },
-                          "functionName": "memesrcOpenSearch"
-                        }
-                      ]
-                    },
-                    "*"
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:lambda:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":",
+                      {
+                        "Ref": "AWS::AccountId"
+                      },
+                      ":function:",
+                      {
+                        "Ref": "functionmemesrcOpenSearchName"
+                      }
+                    ]
                   ]
-                ]
-              }
+                }
+              ]
             }
           ]
         }
-      },
-      "DependsOn": [
-        "LambdaExecutionRole"
-      ]
+      }
     }
   },
   "Outputs": {
