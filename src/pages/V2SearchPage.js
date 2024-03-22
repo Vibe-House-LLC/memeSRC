@@ -320,9 +320,10 @@ export default function SearchPage() {
   }, [animationsEnabled, newResults, cid]);
 
   const loadVideoUrl = async (result, metadataCid) => {
+    const resultCid = result.cid || metadataCid;
     const thumbnailUrl = animationsEnabled
-      ? `https://v2-${process.env.REACT_APP_USER_BRANCH}.memesrc.com/thumbnail/${metadataCid}/${result.season}/${result.episode}/${result.subtitle_index}`
-      : `https://v2-${process.env.REACT_APP_USER_BRANCH}.memesrc.com/frame/${metadataCid}/${result.season}/${result.episode}/${Math.round((parseInt(result.start_frame, 10) + parseInt(result.end_frame, 10)) / 2)}`;
+      ? `https://v2-${process.env.REACT_APP_USER_BRANCH}.memesrc.com/thumbnail/${resultCid}/${result.season}/${result.episode}/${result.subtitle_index}`
+      : `https://v2-${process.env.REACT_APP_USER_BRANCH}.memesrc.com/frame/${resultCid}/${result.season}/${result.episode}/${Math.round((parseInt(result.start_frame, 10) + parseInt(result.end_frame, 10)) / 2)}`;
     const resultId = `${result.season}-${result.episode}-${result.subtitle_index}`;
     setVideoUrls((prevVideoUrls) => ({ ...prevVideoUrls, [resultId]: thumbnailUrl }));
   };
@@ -336,7 +337,7 @@ export default function SearchPage() {
             const result = newResults[resultIndex];
             const resultId = `${result.season}-${result.episode}-${result.subtitle_index}`;
             if (resultIndex && !videoUrls[resultId]) {
-              loadVideoUrl(result, cid);
+              loadVideoUrl(result, result);
             }
           }
         });
@@ -379,7 +380,8 @@ export default function SearchPage() {
         }
         const results = await response.json();
         setNewResults(results.results);
-        results.forEach((result) => loadVideoUrl(result, cid));
+        setLoadingResults(false);
+        // results.forEach((result) => loadVideoUrl(result, cid));
       } catch (error) {
         console.error("Error searching:", error);
         setLoadingResults(false);
@@ -561,7 +563,7 @@ export default function SearchPage() {
             {newResults.slice(0, displayedResults).map((result, index) => (
               <Grid item xs={12} sm={6} md={3} key={index} className="result-item" data-result-index={index}>
                 <Link
-                  to={`/frame/${cid}/${result.season}/${result.episode}/${Math.round(
+                  to={`/frame/${result.cid || cid}/${result.season}/${result.episode}/${Math.round(
                     (parseInt(result.start_frame, 10) + parseInt(result.end_frame, 10)) / 2
                   )}`}
                   style={{ textDecoration: 'none' }}
@@ -598,7 +600,7 @@ export default function SearchPage() {
                     <BottomCardLabel>
                       <Chip
                         size="small"
-                        label={result.index_id}
+                        label={result.cid || result.index_id}
                         style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', color: 'white', fontWeight: 'bold' }}
                       />
                       <Chip

@@ -13,7 +13,7 @@ const { Parameters } = await (new aws.SSM())
 Parameters will be of the form { Name: 'secretName', Value: 'secretValue', ... }[]
 */
 
-const aws = require('aws-sdk');
+const { SSMClient, GetParametersCommand } = require("@aws-sdk/client-ssm");
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
@@ -42,12 +42,13 @@ exports.handler = async (event) => {
             "size": 500
         };
 
-        const { Parameters } = await new aws.SSM()
-          .getParameters({
+        const ssmClient = new SSMClient();
+        const { Parameters } = await ssmClient.send(
+          new GetParametersCommand({
             Names: ["opensearchUser", "opensearchPass"].map(secretName => process.env[secretName]),
             WithDecryption: true,
           })
-          .promise();
+        );
     
         const OPENSEARCH_USER = Parameters.find(param => param.Name === process.env.opensearchUser).Value;
         const OPENSEARCH_PASS = Parameters.find(param => param.Name === process.env.opensearchPass).Value;
@@ -70,6 +71,10 @@ exports.handler = async (event) => {
                 });
                 res.on('end', () => {
                     const searchResults = JSON.parse(data);
+                    const sources = searchResults.hits.hits.map(hit => ({
+                        ...hit._source,
+                        cid: hit._index.replace(/^v2-/, '')
+                    }));
                     resolve({
                         statusCode: 200,
                         headers: {
@@ -77,7 +82,9 @@ exports.handler = async (event) => {
                             "Access-Control-Allow-Headers": "*",
                             "Content-Type": "application/json"
                         },
-                        body: JSON.stringify(searchResults),
+                        body: JSON.stringify({
+                            results: sources
+                        }),
                     });
                 });
             });
