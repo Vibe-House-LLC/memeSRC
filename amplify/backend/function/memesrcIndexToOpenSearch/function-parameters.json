@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "function": {
+      "memesrcOpenSearch": [
+        "create",
+        "read",
+        "update",
+        "delete"
+      ]
+    }
+  },
+  "lambdaLayers": []
+}

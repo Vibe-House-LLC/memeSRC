@@ -452,6 +452,20 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "memesrcIndexToOpenSearch": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "memesrcOpenSearch"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "memesrcOpenAI": {
       "build": true,
       "dependsOn": [
@@ -470,6 +484,11 @@
           "resourceName": "memesrc"
         }
       ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "memesrcOpenSearch": {
+      "build": true,
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
@@ -819,6 +838,22 @@
         }
       ]
     },
+    "AMPLIFY_function_memesrcIndexToOpenSearch_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcIndexToOpenSearch"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcIndexToOpenSearch_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcIndexToOpenSearch"
+        }
+      ]
+    },
     "AMPLIFY_function_memesrcOpenAI_deploymentBucketName": {
       "usedBy": [
         {
@@ -840,6 +875,30 @@
         {
           "category": "function",
           "resourceName": "memesrcOpenAI"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcOpenSearch_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcOpenSearch"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcOpenSearch_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcOpenSearch"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcOpenSearch_secretsPathAmplifyAppId": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcOpenSearch"
         }
       ]
     },
@@ -900,6 +959,14 @@
       ]
     },
     "AMPLIFY_function_memesrcSearchV2_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcSearchV2"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcSearchV2_secretsPathAmplifyAppId": {
       "usedBy": [
         {
           "category": "function",

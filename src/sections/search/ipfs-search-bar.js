@@ -104,12 +104,10 @@ export default function IpfsSearchBar(props) {
   const navigate = useNavigate();
 
   useEffect(() => {
-
-    if (params.cid) {
-      setCid(params.cid)
-      console.log('SET CID')
+    if (!cid) {
+      setCid('_universal')
     }
-  }, [params?.cid]);
+  }, [cid]);
 
   useEffect(() => {
     // Function to check and parse the local storage value
@@ -141,7 +139,10 @@ export default function IpfsSearchBar(props) {
   }, [cid]);
 
   const handleSelectSeries = (data) => {
-    navigate(`/search/${data}/${encodeURIComponent(search)}`)
+    // navigate(`/search/${data}/${encodeURIComponent(search)}`)
+
+    setCid(data)
+
     // if (data?.addNew) {
     //   setAddNewCidOpen(true)
     // } else {
@@ -329,7 +330,7 @@ export default function IpfsSearchBar(props) {
             </Link>
           </Box>
           <Typography variant='h2' mt={1} pl={2}>
-              {savedCids ? `${shows.find(obj => obj.id === cid)?.emoji || savedCids.find(obj => obj.id === cid)?.emoji} ${shows.find(obj => obj.id === cid)?.title || savedCids.find(obj => obj.id === cid)?.title}` : ''}
+              {savedCids ? `${shows.find(obj => obj.id === params?.cid)?.emoji || savedCids.find(obj => obj.id === params?.cid)?.emoji} ${shows.find(obj => obj.id === params?.cid)?.title || savedCids.find(obj => obj.id === params?.cid)?.title}` : ''}
             </Typography>
         </Container>
       }
