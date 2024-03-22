@@ -1,6 +1,6 @@
 {
   "pathParameters": {
-    "id": "seinfeld,seinfeld43,curbyourenthusiasm,testinvalidindex",
+    "id": "_universal",
     "query": "somebody%20get%20a%20sponge"
   },
   "httpMethod": "GET",

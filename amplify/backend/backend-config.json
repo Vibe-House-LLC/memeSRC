@@ -966,6 +966,14 @@
         }
       ]
     },
+    "AMPLIFY_function_memesrcSearchV2_secretsPathAmplifyAppId": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcSearchV2"
+        }
+      ]
+    },
     "AMPLIFY_function_memesrcStripeCallback_deploymentBucketName": {
       "usedBy": [
         {

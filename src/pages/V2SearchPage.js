@@ -296,12 +296,7 @@ export default function SearchPage() {
       setUniversalSearchMaintenance(maintenance);
   
       if (!maintenance || params.cid !== '_universal') {
-        try {
-          const metadata = await getV2Metadata(params.cid);
-          initialize(metadata.id);
-        } catch (error) {
-          alert(error);
-        }
+        initialize(params.cid);
       } else {
         setMaintenanceDialogOpen(true);
         const shows = await fetchShows();
@@ -378,7 +373,7 @@ export default function SearchPage() {
       }
   
       try {
-        const response = await fetch(`https://v2-${process.env.REACT_APP_USER_BRANCH}.memesrc.com/search/${cid}/${searchTerm}`);
+        const response = await fetch(`https://v2-${process.env.REACT_APP_USER_BRANCH}.memesrc.com/search/${cid || params?.cid}/${searchTerm}`);
         if (!response.ok) {
           throw new Error(`HTTP error! Status: ${response.status}`);
         }
@@ -391,7 +386,7 @@ export default function SearchPage() {
       }
     }
   
-    if (!loadingCsv && showObj && cid !== '_universal') {
+    if (cid !== '_universal') {
       if (params?.searchTerms) {
         searchText();
       } else {
@@ -399,7 +394,7 @@ export default function SearchPage() {
         setNewResults([]);
       }
     }
-  }, [loadingCsv, showObj, params?.searchTerms, cid, universalSearchMaintenance]);
+  }, [loadingCsv, showObj, params?.searchTerms, cid, universalSearchMaintenance]);  
 
   useEffect(() => {
     console.log(newResults);
