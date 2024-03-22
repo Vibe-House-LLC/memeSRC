@@ -185,7 +185,7 @@ exports.handler = async (event) => {
                         }
                     });
                     if (score > 0) {
-                        results.push({ ...line, score, index_id: index });
+                        results.push({ ...line, score, cid: index });
                     }
                 });
                 

@@ -520,7 +520,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   }
 
   useEffect(() => {
-
+    setCid(metadata?.id || '_universal')
 
     return () => {
       if (pathname === '/') {
@@ -605,7 +605,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                     setAddNewCidOpen(true);
                   } else {
                     const newSeriesTitle = e.target.value;
-                    setCid();
+                    setCid(selectedId || '_universal');
                     setSeriesTitle(newSeriesTitle);
                     handleChangeSeries(newSeriesTitle);
                     navigate(newSeriesTitle === '_universal' ? '/' : `/${newSeriesTitle}`);
