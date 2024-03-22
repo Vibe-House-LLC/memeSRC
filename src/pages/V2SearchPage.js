@@ -388,14 +388,14 @@ export default function SearchPage() {
       }
     }
   
-    if (cid !== '_universal') {
-      if (params?.searchTerms) {
-        searchText();
-      } else {
-        setLoadingResults(false);
-        setNewResults([]);
-      }
+    // if (cid !== '_universal') {
+    if (params?.searchTerms) {
+      searchText();
+    } else {
+      setLoadingResults(false);
+      setNewResults([]);
     }
+    // }
   }, [loadingCsv, showObj, params?.searchTerms, cid, universalSearchMaintenance]);  
 
   useEffect(() => {
@@ -563,7 +563,7 @@ export default function SearchPage() {
             {newResults.slice(0, displayedResults).map((result, index) => (
               <Grid item xs={12} sm={6} md={3} key={index} className="result-item" data-result-index={index}>
                 <Link
-                  to={`/frame/${result.cid || cid}/${result.season}/${result.episode}/${Math.round(
+                  to={`/frame/${result.cid}/${result.season}/${result.episode}/${Math.round(
                     (parseInt(result.start_frame, 10) + parseInt(result.end_frame, 10)) / 2
                   )}`}
                   style={{ textDecoration: 'none' }}
@@ -600,7 +600,7 @@ export default function SearchPage() {
                     <BottomCardLabel>
                       <Chip
                         size="small"
-                        label={result.cid || result.index_id}
+                        label={result.cid}
                         style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', color: 'white', fontWeight: 'bold' }}
                       />
                       <Chip
