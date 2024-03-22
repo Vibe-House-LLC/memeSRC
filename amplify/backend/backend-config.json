@@ -473,6 +473,11 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "memesrcOpenSearch": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "memesrcPublicStripeFunction": {
       "build": true,
       "dependsOn": [
@@ -840,6 +845,14 @@
         {
           "category": "function",
           "resourceName": "memesrcOpenAI"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcOpenSearch_secretsPathAmplifyAppId": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcOpenSearch"
         }
       ]
     },
