@@ -11,10 +11,10 @@
     "env": {
       "Type": "String"
     },
-    "publicapi": {
+    "memesrcContentApi": {
       "Type": "String"
     },
-    "memesrcContentApi": {
+    "publicapi": {
       "Type": "String"
     }
   },

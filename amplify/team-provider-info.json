@@ -167,7 +167,7 @@
       "function": {
         "AdminQueries9e1cafc6": {
           "deploymentBucketName": "amplify-memesrc-beta-190209-deployment",
-          "s3Key": "amplify-builds/AdminQueries9e1cafc6-53424b6a51346c544e73-build.zip"
+          "s3Key": "amplify-builds/AdminQueries9e1cafc6-6838585141753033634d-build.zip"
         },
         "memesrcc3c71449": {},
         "SearchFunction": {
@@ -178,7 +178,7 @@
         "memesrcFrameFunction": {
           "secretsPathAmplifyAppId": "d32pnvtwxwtte5",
           "deploymentBucketName": "amplify-memesrc-beta-190209-deployment",
-          "s3Key": "amplify-builds/memesrcFrameFunction-6758396b577569767959-build.zip"
+          "s3Key": "amplify-builds/memesrcFrameFunction-376a39553935462f556b-build.zip"
         },
         "memesrcRandom": {
           "secretsPathAmplifyAppId": "d32pnvtwxwtte5",
@@ -216,13 +216,13 @@
         },
         "memesrcUserFunction": {
           "deploymentBucketName": "amplify-memesrc-beta-190209-deployment",
-          "s3Key": "amplify-builds/memesrcUserFunction-616e6e4555776f75754d-build.zip",
+          "s3Key": "amplify-builds/memesrcUserFunction-74644e7472586d72556a-build.zip",
           "secretsPathAmplifyAppId": "d32pnvtwxwtte5"
         },
         "memesrcinpainter": {
           "secretsPathAmplifyAppId": "d32pnvtwxwtte5",
           "deploymentBucketName": "amplify-memesrc-beta-190209-deployment",
-          "s3Key": "amplify-builds/memesrcinpainter-4a4b7468556a74543536-build.zip"
+          "s3Key": "amplify-builds/memesrcinpainter-7042317735417a2f4953-build.zip"
         },
         "S3Trigger016e2873": {
           "deploymentBucketName": "amplify-memesrc-beta-190209-deployment",
@@ -239,18 +239,50 @@
         },
         "memesrcAggregateVotes": {
           "deploymentBucketName": "amplify-memesrc-beta-190209-deployment",
-          "s3Key": "amplify-builds/memesrcAggregateVotes-3353496a64392b532f4d-build.zip"
+          "s3Key": "amplify-builds/memesrcAggregateVotes-783961667930654d6848-build.zip"
         },
         "memesrcStripeCallback": {
           "secretsPathAmplifyAppId": "d32pnvtwxwtte5",
           "deploymentBucketName": "amplify-memesrc-beta-190209-deployment",
-          "s3Key": "amplify-builds/memesrcStripeCallback-6f4f6f414e664338316f-build.zip"
+          "s3Key": "amplify-builds/memesrcStripeCallback-7a6f31694d512b2f626a-build.zip"
+        },
+        "memesrcOpenAI": {
+          "secretsPathAmplifyAppId": "d32pnvtwxwtte5",
+          "deploymentBucketName": "amplify-memesrc-beta-190209-deployment",
+          "s3Key": "amplify-builds/memesrcOpenAI-6f414152376c3076327a-build.zip"
+        },
+        "memesrcThumbnailZipExtractor": {
+          "deploymentBucketName": "amplify-memesrc-beta-190209-deployment",
+          "s3Key": "amplify-builds/memesrcThumbnailZipExtractor-48533238666a7254584b-build.zip"
+        },
+        "memesrcIndexToOpenSearch": {
+          "deploymentBucketName": "amplify-memesrc-beta-190209-deployment",
+          "s3Key": "amplify-builds/memesrcIndexToOpenSearch-7444666b685a55316664-build.zip"
+        },
+        "memesrcOpenSearch": {
+          "secretsPathAmplifyAppId": "d32pnvtwxwtte5",
+          "deploymentBucketName": "amplify-memesrc-beta-190209-deployment",
+          "s3Key": "amplify-builds/memesrcOpenSearch-612b447a303444744446-build.zip"
+        },
+        "frameExtractor": {
+          "deploymentBucketName": "amplify-memesrc-beta-190209-deployment",
+          "s3Key": "amplify-builds/frameExtractor-504e7956327a6764535a-build.zip"
+        },
+        "memesrcGif": {
+          "deploymentBucketName": "amplify-memesrc-beta-190209-deployment",
+          "s3Key": "amplify-builds/memesrcGif-42484b68783147516b77-build.zip"
+        },
+        "memesrcSearchV2": {
+          "secretsPathAmplifyAppId": "d32pnvtwxwtte5",
+          "deploymentBucketName": "amplify-memesrc-beta-190209-deployment",
+          "s3Key": "amplify-builds/memesrcSearchV2-463074694962336d5965-build.zip"
         }
       },
       "api": {
         "AdminQueries": {},
         "memesrc": {},
-        "publicapi": {}
+        "publicapi": {},
+        "memesrcContentApi": {}
       },
       "hosting": {
         "S3AndCloudFront": {}
