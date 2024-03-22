@@ -13,6 +13,7 @@ const { Parameters } = await (new aws.SSM())
 Parameters will be of the form { Name: 'secretName', Value: 'secretValue', ... }[]
 */
 
+const aws = require('aws-sdk');
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
