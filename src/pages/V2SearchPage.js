@@ -362,6 +362,20 @@ export default function SearchPage() {
     };
   }, [newResults, videoUrls, cid]);
 
+  const injectAds = (results, adInterval) => {
+    const injectedResults = [];
+    
+    for (let i = 0; i < results.length; i+=1) {
+      injectedResults.push(results[i]);
+      
+      if ((i + 1) % adInterval === 0 && i !== results.length - 1) {
+        injectedResults.push({ isAd: true });
+      }
+    }
+    
+    return injectedResults;
+  };
+
   useEffect(() => {
     async function searchText() {
       setNewResults(null);
@@ -372,22 +386,23 @@ export default function SearchPage() {
         console.log("Search term is empty.");
         return;
       }
-  
+    
       // Block loading results when _universal is the CID and universalSearchMaintenance is true
       if (cid === '_universal' && universalSearchMaintenance) {
         setLoadingResults(false);
         return;
       }
-  
+    
       try {
         const response = await fetch(`https://v2-${process.env.REACT_APP_USER_BRANCH}.memesrc.com/search/${cid || params?.cid}/${searchTerm}`);
         if (!response.ok) {
           throw new Error(`HTTP error! Status: ${response.status}`);
         }
         const results = await response.json();
-        setNewResults(results.results);
+        const adInterval = user?.userDetails?.subscriptionStatus !== 'active' ? 5 : Infinity;
+        const resultsWithAds = injectAds(results.results, adInterval);
+        setNewResults(resultsWithAds);
         setLoadingResults(false);
-        // results.forEach((result) => loadVideoUrl(result, cid));
       } catch (error) {
         console.error("Error searching:", error);
         setLoadingResults(false);
@@ -526,7 +541,7 @@ export default function SearchPage() {
               setTimeout(() => {
                 setDisplayedResults((prevDisplayedResults) =>
                   Math.min(
-                    prevDisplayedResults + RESULTS_PER_PAGE - (user?.userDetails?.subscriptionStatus !== 'active' ? 1 : 0),
+                    prevDisplayedResults + RESULTS_PER_PAGE,
                     newResults.length
                   )
                 );
@@ -579,15 +594,12 @@ export default function SearchPage() {
               </Grid>
             )}
             {newResults.slice(0, displayedResults).map((result, index) => (
-              <React.Fragment key={index}>
-                {(index % 7) - 4 === 0 && index !== 0 && user?.userDetails?.subscriptionStatus !== 'active' && (
-                  <Grid item xs={12} sm={6} md={3}>
-                    <StyledCard sx={{ aspectRatio: '16/9' }}>
-                      <SearchPageResultsAd />
-                    </StyledCard>
-                  </Grid>
-                )}
-                <Grid item xs={12} sm={6} md={3} className="result-item" data-result-index={index}>
+              <Grid item xs={12} sm={6} md={3} key={index} className="result-item" data-result-index={index}>
+                {result.isAd ? (
+                  <StyledCard sx={{ aspectRatio: '16/9' }}>
+                    <SearchPageResultsAd />
+                  </StyledCard>
+                ) : (
                   <Link
                     to={`/frame/${result.cid}/${result.season}/${result.episode}/${Math.round(
                       (parseInt(result.start_frame, 10) + parseInt(result.end_frame, 10)) / 2
@@ -637,8 +649,8 @@ export default function SearchPage() {
                       </BottomCardLabel>
                     </StyledCard>
                   </Link>
-                </Grid>
-              </React.Fragment>
+                )}
+              </Grid>
             ))}
           </Grid>
         </InfiniteScroll>
