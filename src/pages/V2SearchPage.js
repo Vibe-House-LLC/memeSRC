@@ -525,7 +525,10 @@ export default function SearchPage() {
               setIsLoading(true);
               setTimeout(() => {
                 setDisplayedResults((prevDisplayedResults) =>
-                  Math.min(prevDisplayedResults + RESULTS_PER_PAGE - 1, newResults.length)
+                  Math.min(
+                    prevDisplayedResults + RESULTS_PER_PAGE - (user?.userDetails?.subscriptionStatus !== 'active' ? 1 : 0),
+                    newResults.length
+                  )
                 );
                 setIsLoading(false);
               }, 1000);
