@@ -1,3 +1,5 @@
+// V2EditorPage.js
+
 import { Fragment, forwardRef, memo, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { fabric } from 'fabric';
 import { FabricJSCanvas, useFabricJSEditor } from 'fabricjs-react'
@@ -21,6 +23,7 @@ import { createEditorProject, updateEditorProject } from '../graphql/mutations';
 import { getEditorProject } from '../graphql/queries';
 import ImageEditorControls from '../components/ImageEditorControls';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
+import EditorPageBottomBannerAd from '../ads/EditorPageBottomBannerAd';
 
 import { fetchFrameInfo, fetchFramesFineTuning, fetchFramesSurroundingPromises } from '../utils/frameHandlerV2';
 import getV2Metadata from '../utils/getV2Metadata';
@@ -2067,6 +2070,17 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
               </Box>
             </DialogActions>
           </Dialog>
+          {user?.userDetails?.subscriptionStatus !== 'active' &&
+            <Grid container>
+              <Grid item xs={12} mt={2}>
+                <center>
+                  <Box sx={{ maxWidth: '800px'}}>
+                    <EditorPageBottomBannerAd />
+                  </Box>
+                </center>
+              </Grid>
+            </Grid>
+          }
         </ParentContainer>
       </Container>
       <Snackbar

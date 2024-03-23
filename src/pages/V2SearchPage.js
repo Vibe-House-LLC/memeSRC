@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import { Grid, CircularProgress, Card, Chip, Typography, Button, Collapse, IconButton, FormControlLabel, Switch, Dialog, DialogTitle, DialogContent, List, ListItem, ListItemText, DialogActions, Box, CardContent, TextField } from '@mui/material';
 import styled from '@emotion/styled';
 import { API, graphqlOperation } from 'aws-amplify';
@@ -13,6 +13,10 @@ import useSearchDetails from '../hooks/useSearchDetails';
 import IpfsSearchBar from '../sections/search/ipfs-search-bar';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
 import getV2Metadata from '../utils/getV2Metadata';
+
+import SearchPageBannerAd from '../ads/SearchPageBannerAd';
+import SearchPageResultsAd from '../ads/SearchPageResultsAd';
+import { UserContext } from '../UserContext';
 
 import fetchShows from '../utils/fetchShows';
 import { getWebsiteSetting } from '../graphql/queries';
@@ -190,6 +194,8 @@ export default function SearchPage() {
   const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
 
   const params = useParams();
+
+  const { user } = useContext(UserContext);
 
   const RESULTS_PER_PAGE = 8;
 
@@ -519,7 +525,10 @@ export default function SearchPage() {
               setIsLoading(true);
               setTimeout(() => {
                 setDisplayedResults((prevDisplayedResults) =>
-                  Math.min(prevDisplayedResults + RESULTS_PER_PAGE, newResults.length)
+                  Math.min(
+                    prevDisplayedResults + RESULTS_PER_PAGE - (user?.userDetails?.subscriptionStatus !== 'active' ? 1 : 0),
+                    newResults.length
+                  )
                 );
                 setIsLoading(false);
               }, 1000);
@@ -560,58 +569,76 @@ export default function SearchPage() {
           scrollThreshold={0.95}
         >
           <Grid container spacing={2} alignItems="stretch" paddingX={{ xs: 2, md: 6 }}>
-            {newResults.slice(0, displayedResults).map((result, index) => (
-              <Grid item xs={12} sm={6} md={3} key={index} className="result-item" data-result-index={index}>
-                <Link
-                  to={`/frame/${result.cid}/${result.season}/${result.episode}/${Math.round(
-                    (parseInt(result.start_frame, 10) + parseInt(result.end_frame, 10)) / 2
-                  )}`}
-                  style={{ textDecoration: 'none' }}
-                >
-                  <StyledCard>
-                    {animationsEnabled ? (
-                      <StyledCardVideoContainer>
-                        {videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`] && (
-                          <StyledCardMedia
-                            ref={addVideoRef}
-                            src={videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`]}
-                            autoPlay
-                            loop
-                            muted
-                            playsInline
-                            preload="auto"
-                            onError={(e) => console.error('Error loading video:', JSON.stringify(result))}
-                            key={`${result.season}-${result.episode}-${result.subtitle_index}-video`}
-                          />
-                        )}
-                      </StyledCardVideoContainer>
-                    ) : (
-                      <StyledCardImageContainer>
-                        {videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`] && (
-                          <StyledCardImage
-                            src={videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`]}
-                            alt={`Frame from S${result.season} E${result.episode}`}
-                            key={`${result.season}-${result.episode}-${result.subtitle_index}-image`}
-                          />
-                        )}
-                      </StyledCardImageContainer>
-                    )}
-                    <BottomCardCaption>{result.subtitle_text}</BottomCardCaption>
-                    <BottomCardLabel>
-                      <Chip
-                        size="small"
-                        label={result.cid}
-                        style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', color: 'white', fontWeight: 'bold' }}
-                      />
-                      <Chip
-                        size="small"
-                        label={`S${result.season} E${result.episode}`}
-                        style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', color: 'white', fontWeight: 'bold' }}
-                      />
-                    </BottomCardLabel>
-                  </StyledCard>
-                </Link>
+            {user?.userDetails?.subscriptionStatus !== 'active' && (
+              <Grid item xs={12} mt={2}>
+                <center>
+                  <Box sx={{ maxWidth: '800px' }}>
+                    <SearchPageBannerAd />
+                  </Box>
+                </center>
               </Grid>
+            )}
+            {newResults.slice(0, displayedResults).map((result, index) => (
+              <React.Fragment key={index}>
+                {(index % 7) - 4 === 0 && index !== 0 && user?.userDetails?.subscriptionStatus !== 'active' && (
+                  <Grid item xs={12} sm={6} md={3}>
+                    <StyledCard sx={{ aspectRatio: '16/9' }}>
+                      <SearchPageResultsAd />
+                    </StyledCard>
+                  </Grid>
+                )}
+                <Grid item xs={12} sm={6} md={3} className="result-item" data-result-index={index}>
+                  <Link
+                    to={`/frame/${result.cid}/${result.season}/${result.episode}/${Math.round(
+                      (parseInt(result.start_frame, 10) + parseInt(result.end_frame, 10)) / 2
+                    )}`}
+                    style={{ textDecoration: 'none' }}
+                  >
+                    <StyledCard>
+                      {animationsEnabled ? (
+                        <StyledCardVideoContainer>
+                          {videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`] && (
+                            <StyledCardMedia
+                              ref={addVideoRef}
+                              src={videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`]}
+                              autoPlay
+                              loop
+                              muted
+                              playsInline
+                              preload="auto"
+                              onError={(e) => console.error('Error loading video:', JSON.stringify(result))}
+                              key={`${result.season}-${result.episode}-${result.subtitle_index}-video`}
+                            />
+                          )}
+                        </StyledCardVideoContainer>
+                      ) : (
+                        <StyledCardImageContainer>
+                          {videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`] && (
+                            <StyledCardImage
+                              src={videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`]}
+                              alt={`Frame from S${result.season} E${result.episode}`}
+                              key={`${result.season}-${result.episode}-${result.subtitle_index}-image`}
+                            />
+                          )}
+                        </StyledCardImageContainer>
+                      )}
+                      <BottomCardCaption>{result.subtitle_text}</BottomCardCaption>
+                      <BottomCardLabel>
+                        <Chip
+                          size="small"
+                          label={result.cid}
+                          style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', color: 'white', fontWeight: 'bold' }}
+                        />
+                        <Chip
+                          size="small"
+                          label={`S${result.season} E${result.episode}`}
+                          style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', color: 'white', fontWeight: 'bold' }}
+                        />
+                      </BottomCardLabel>
+                    </StyledCard>
+                  </Link>
+                </Grid>
+              </React.Fragment>
             ))}
           </Grid>
         </InfiniteScroll>
