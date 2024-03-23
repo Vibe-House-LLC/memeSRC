@@ -552,7 +552,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                 </Box>
                 {currentThemeTitleText}
               </Typography>
-              {!localStorage.getItem('alertDismissed-UPLOADS-auir9o89rd') && (
+              {/* {!localStorage.getItem('alertDismissed-UPLOADS-auir9o89rd') && (
                 <center>
                   <Alert
                     severity="success"
@@ -590,7 +590,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                     <b>New:</b> Edit&nbsp;your&nbsp;own&nbsp;pics!
                   </Alert>
                 </center>
-              )}
+              )} */}
             </Grid>
           </Grid>
           <StyledSearchForm onSubmit={(e) => searchFunction(e)}>

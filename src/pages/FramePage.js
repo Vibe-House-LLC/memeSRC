@@ -728,7 +728,7 @@ export default function FramePage({ shows = [] }) {
                 </CardContent>
               </Card>
             </Box>
-            {alertOpenTapToEdit && (
+            {/* {alertOpenTapToEdit && (
               <Alert
                 severity='success'
                 sx={{ marginTop: 1.5 }}
@@ -748,7 +748,7 @@ export default function FramePage({ shows = [] }) {
               >
                 <b>New!</b> Tap the text ☝️ to edit your caption
               </Alert>
-            )}
+            )} */}
 
             <Button
               size="medium"
