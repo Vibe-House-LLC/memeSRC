@@ -524,6 +524,15 @@ export default function SearchPage() {
           </MinimizedBannerText>
         </MinimizedBanner>
       )}
+      {user?.userDetails?.subscriptionStatus !== 'active' && (
+        <Grid item xs={12} mt={2}>
+          <center>
+            <Box sx={{ maxWidth: '800px' }}>
+              <SearchPageBannerAd />
+            </Box>
+          </center>
+        </Grid>
+      )}
       {loadingResults && (
         <Grid item xs={12} textAlign="center" mt={4}>
           <CircularProgress size={40} />
@@ -584,15 +593,6 @@ export default function SearchPage() {
           scrollThreshold={0.95}
         >
           <Grid container spacing={2} alignItems="stretch" paddingX={{ xs: 2, md: 6 }}>
-            {user?.userDetails?.subscriptionStatus !== 'active' && (
-              <Grid item xs={12} mt={2}>
-                <center>
-                  <Box sx={{ maxWidth: '800px' }}>
-                    <SearchPageBannerAd />
-                  </Box>
-                </center>
-              </Grid>
-            )}
             {newResults.slice(0, displayedResults).map((result, index) => (
               <Grid item xs={12} sm={6} md={3} key={index} className="result-item" data-result-index={index}>
                 {result.isAd ? (
