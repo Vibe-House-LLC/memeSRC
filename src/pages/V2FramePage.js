@@ -1,7 +1,9 @@
+// V2FramePage.js
+
 // eslint-disable camelcase
 import { Helmet } from 'react-helmet-async';
 import { Navigate, Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useContext } from 'react';
 import { API } from 'aws-amplify';
 import { styled } from '@mui/material/styles';
 import { useTheme } from '@emotion/react';
@@ -42,6 +44,8 @@ import useSearchDetails from '../hooks/useSearchDetails';
 import { fetchFrameInfo, fetchFramesFineTuning, fetchFramesSurroundingPromises } from '../utils/frameHandlerV2';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
 import getV2Metadata from '../utils/getV2Metadata';
+import FramePageBottomBannerAd from '../ads/FramePageBottomBannerAd';
+import { UserContext } from '../UserContext';
 
 // import { listGlobalMessages } from '../../../graphql/queries'
 
@@ -84,6 +88,8 @@ export default function FramePage({ shows = [] }) {
   const [enableFineTuningFrames, setEnableFineTuningFrames] = useState(false);
 
   const throttleTimeoutRef = useRef(null);
+
+  const { user } = useContext(UserContext);
 
   /* ---------- This is used to prevent slider activity while scrolling on mobile ---------- */
 
@@ -1017,6 +1023,16 @@ export default function FramePage({ shows = [] }) {
                 </Grid>
               ))}
             </Grid>
+
+            {user?.userDetails?.subscriptionStatus !== 'active' && (
+              <Grid item xs={12} mt={2}>
+                <center>
+                  <Box sx={{ maxWidth: '800px' }}>
+                    <FramePageBottomBannerAd />
+                  </Box>
+                </center>
+              </Grid>
+            )}
 
             <Grid item xs={12} mt={3}>
               <Button
