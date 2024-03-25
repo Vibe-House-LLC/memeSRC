@@ -1166,9 +1166,7 @@ export const handler = async (event) => {
       const userId = getStripeCheckoutSession.body.data.getStripeCheckoutSession.user.id
       const status = getStripeCheckoutSession.body.data.getStripeCheckoutSession.status
 
-      // =======
-      // TODO: Determine the creditsPerMonth for this user/sub/price
-      // =======
+      const creditsPerMonth = body.creditsPerMonth;
 
       if (status === 'open') {
         const updateUserDetailsQuery = `
@@ -1245,9 +1243,7 @@ export const handler = async (event) => {
       const stripeCustomer = await makeRequest(getStripeCustomerQuery);
       console.log('stripeCustomer', JSON.stringify(stripeCustomer))
 
-      // =======
-      // TODO: Determine the creditsPerMonth for this user/sub/price
-      // =======
+      const creditsPerMonth = body.creditsPerMonth;
 
       // Now lets make sure that the customer existed.
       if (stripeCustomer?.body?.data?.getStripeCustomer?.user?.id) {

@@ -60,7 +60,8 @@ exports.handler = async (event) => {
         body: JSON.stringify({
           stripeCustomerId,
           periodStart,
-          periodEnd
+          periodEnd,
+          numCredits: creditsPerPrice[lineItem.price.id]
         })
       }),
     };
