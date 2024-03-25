@@ -20,6 +20,15 @@ Amplify Params - DO NOT EDIT */
 
 const aws = require('aws-sdk');
 const { LambdaClient, InvokeCommand } = require("@aws-sdk/client-lambda");
+
+const creditsPerPrice = {
+  "price_1NbXguAqFX20vifI34N1MJFO": 69,  // Magic 69 (prod)
+  "price_1Nhc9UAqFX20vifI0mYIzSfs": 69,  // Magic 69 (dev)
+  "price_1OyLVZAqFX20vifImSa8wizl": 5,   // Pro 5 (dev)
+  "price_1OyLWrAqFX20vifIkrK4Oxnp": 25,  // Pro 25 (dev)
+  "price_1OyLXpAqFX20vifIxTi2SMIx": 69   // Pro 69 (dev)
+};
+
 /**
  * @type {import('@types/aws-lambda').APIGatewayProxyHandler}
  */
@@ -155,14 +164,8 @@ exports.handler = async (event) => {
   // This function checks to see if an invoice object contains at least one of the price ID's.
   // This includes the test price and the production price.
   function hasMatchingPriceId(invoice) {
-    // Define the price IDs to check against
-    const validPriceIds = [
-      "price_1NbXguAqFX20vifI34N1MJFO",
-      "price_1Nhc9UAqFX20vifI0mYIzSfs"
-    ];
-
     // Check if any line item matches the valid price IDs
-    return invoice.lines.data.some(lineItem => validPriceIds.includes(lineItem.price.id));
+    return invoice.lines.data.some(lineItem => lineItem.price.id in creditsPerPrice);
   }
 
 
