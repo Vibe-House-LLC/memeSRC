@@ -56,12 +56,12 @@ exports.handler = async (event) => {
     const invokeRequest = {
       FunctionName: process.env.FUNCTION_MEMESRCUSERFUNCTION_NAME,
       Payload: JSON.stringify({
-        path: `/function/magic69/renewCredits`,
+        path: `/function/pro/renewCredits`,
         body: JSON.stringify({
           stripeCustomerId,
           periodStart,
           periodEnd,
-          numCredits: creditsPerPrice[lineItem.price.id]
+          creditsPerMonth: creditsPerPrice[lineItem.price.id]
         })
       }),
     };
