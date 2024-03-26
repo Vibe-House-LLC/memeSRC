@@ -1,4 +1,4 @@
-import { AutoFixHighRounded, Block, Close, Favorite, Star, SupportAgent, ExpandMore } from '@mui/icons-material';
+import { AutoFixHighRounded, Block, Close, Favorite, Star, SupportAgent, ExpandMore, Clear, Check } from '@mui/icons-material';
 import { Box, Button, Card, Chip, Collapse, Dialog, DialogContent, DialogTitle, Divider, Fade, Grid, IconButton, LinearProgress, Typography, useMediaQuery } from '@mui/material';
 import { API } from 'aws-amplify';
 import { createContext, useState, useRef, useEffect } from 'react';
@@ -171,7 +171,7 @@ export const DialogProvider = ({ children }) => {
                         mr: 2,
                       }}
                     >
-                      <Block sx={{ color: getTextColor() }} />
+                      <Check sx={{ color: getTextColor() }} />
                     </Box>
                     <Typography fontWeight={500}>No Ads</Typography>
                   </Box>
@@ -188,9 +188,9 @@ export const DialogProvider = ({ children }) => {
                         mr: 2,
                       }}
                     >
-                      <SupportAgent sx={{ color: getTextColor() }} />
+                      <AutoFixHighRounded sx={{ color: getTextColor() }} />
                     </Box>
-                    <Typography fontWeight={500}>Premium Support</Typography>
+                    <Typography fontWeight={500}>{getCreditCount()} Magic Credits / mo</Typography>
                   </Box>
                   <Box display="flex" alignItems="center" ml={2}>
                     <Box
@@ -205,9 +205,9 @@ export const DialogProvider = ({ children }) => {
                         mr: 2,
                       }}
                     >
-                      <AutoFixHighRounded sx={{ color: getTextColor() }} />
+                      <SupportAgent sx={{ color: getTextColor() }} />
                     </Box>
-                    <Typography fontWeight={500}>{getCreditCount()} Credits for Magic Tools</Typography>
+                    <Typography fontWeight={500}>Premium Support</Typography>
                   </Box>
                 </Grid>
                 <Grid item xs={12} md={7}>
