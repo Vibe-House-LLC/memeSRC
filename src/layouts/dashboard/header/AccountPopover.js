@@ -1,12 +1,13 @@
 import { useState, useContext, useEffect } from 'react';
 // @mui
 import { alpha } from '@mui/material/styles';
-import { Box, Divider, Typography, Stack, MenuItem, Avatar, IconButton, Popover } from '@mui/material';
+import { Box, Divider, Typography, Stack, MenuItem, Avatar, IconButton, Popover, CircularProgress } from '@mui/material';
 // mocks_
 import { useNavigate } from 'react-router-dom';
-import { Auth } from 'aws-amplify';
+import { API, Auth } from 'aws-amplify';
 import { UserContext } from '../../../UserContext';
 import account from '../../../_mock/account';
+import { useSubscribeDialog } from '../../../contexts/useSubscribeDialog';
 
 // ----------------------------------------------------------------------
 
@@ -30,7 +31,11 @@ const MENU_OPTIONS = [
 export default function AccountPopover() {
   const userDetails = useContext(UserContext);
 
+  const { openSubscriptionDialog } = useSubscribeDialog();
+
   const [open, setOpen] = useState(null);
+
+  const [loadingCustomerPortal, setLoadingCustomerPortal] = useState(false);
 
   const navigate = useNavigate();
 
@@ -42,6 +47,19 @@ export default function AccountPopover() {
     setOpen(null);
   };
 
+  const logIntoCustomerPortal = () => {
+    API.post('publicapi', '/user/update/getPortalLink', {
+      body: {
+        currentUrl: window.location.href
+      }
+    }).then(results => {
+      console.log(results)
+      window.location.href = results
+    }).catch(error => {
+      console.log(error.response)
+    })
+  }
+
   const logout = () => {
     Auth.signOut().then(() => {
       window.localStorage.removeItem('memeSRCUserInfo')
@@ -50,6 +68,11 @@ export default function AccountPopover() {
     }).catch((err) => {
       alert(err)
     })
+  }
+
+  const handleSubscribe = () => {
+    setOpen()
+    openSubscriptionDialog();
   }
 
   return (
@@ -94,7 +117,7 @@ export default function AccountPopover() {
             }),
           }}
         >
-          <Avatar alt="photoURL" sx={{ width: 35, height: 35 }}/>
+          <Avatar alt="photoURL" sx={{ width: 35, height: 35 }} />
         </IconButton>
       }
 
@@ -138,6 +161,26 @@ export default function AccountPopover() {
               ))}
             </Stack> */}
 
+            {userDetails?.user &&
+              <>
+                {userDetails?.user?.magicSubscription === 'true' ?
+                  <>
+                    <MenuItem onClick={logIntoCustomerPortal} sx={{ m: 1 }}>
+                      <Stack direction='row' alignItems='center'>
+                        {loadingCustomerPortal ? <><CircularProgress color='success' size={15} sx={{ mr: 1 }} /> Please Wait...</> : 'Manage Subscription'}
+                      </Stack>
+                    </MenuItem>
+                  </>
+                  :
+                  <>
+                    <MenuItem onClick={handleSubscribe} sx={{ m: 1, color: theme => theme.palette.success.main }}>
+                      Subscribe to Pro
+                    </MenuItem>
+                  </>
+                }
+              </>
+            }
+
             <Divider sx={{ borderStyle: 'dashed' }} />
 
             <MenuItem onClick={logout} sx={{ m: 1 }}>
@@ -147,16 +190,16 @@ export default function AccountPopover() {
           :
           <>
             <Stack sx={{ p: 1 }}>
-                <MenuItem onClick={() => {
-                  navigate('/login')
-                }}>
-                  Log In
-                </MenuItem>
-                <MenuItem onClick={() => {
-                  navigate('/signup')
-                }}>
-                  Create Account
-                </MenuItem>
+              <MenuItem onClick={() => {
+                navigate('/login')
+              }}>
+                Log In
+              </MenuItem>
+              <MenuItem onClick={() => {
+                navigate('/signup')
+              }}>
+                Create Account
+              </MenuItem>
             </Stack>
           </>
         }
