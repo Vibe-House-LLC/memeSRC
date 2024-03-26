@@ -179,7 +179,6 @@ export default function V2EpisodePage({ setSeriesTitle }) {
               <Card component="a" href={`/frame/${cid}/${season}/${episode}/${result.fid}`} style={{ textDecoration: 'none' }}>
                 <CardMedia
                   component="img"
-                  height="175"
                   image={result.frame_image}
                   alt={`Frame ${result.fid}`}
                 />
