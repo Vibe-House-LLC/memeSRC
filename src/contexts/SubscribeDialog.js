@@ -14,6 +14,13 @@ export const DialogProvider = ({ children }) => {
 
   const [askedAboutCredits, setAskedAboutCredits] = useState(false);
 
+  const [selectedTitleSubtitle, setSelectedTitleSubtitle] = useState(null);
+
+  useEffect(() => {
+    const randomIndex = Math.floor(Math.random() * titleSubtitlePairs.length);
+    setSelectedTitleSubtitle(titleSubtitlePairs[randomIndex]);
+  }, []);
+
   const subscribeButtonRef = useRef(null);
   const upgradeCreditsRef = useRef(null);
 
@@ -57,6 +64,25 @@ export const DialogProvider = ({ children }) => {
       setLoading(false)
     })
   }
+
+  const titleSubtitlePairs = [
+    {
+      title: 'Subscribe to Pro!',
+      subtitle: 'Or don\'t. I don\'t care.',
+    },
+    {
+      title: 'Get Pro. Be a Hero.',
+      subtitle: 'Or stay basic I guess. Your choice.',
+    },
+    {
+      title: 'Unlock Pro Power!',
+      subtitle: "Or forget you ever saw this.",
+    },
+    {
+      title: "Pro is for pros.",
+      subtitle: "But don't let that stop you.",
+    },
+  ];
 
   const getCreditCount = () => {
     switch (selectedPlan) {
@@ -109,6 +135,11 @@ export const DialogProvider = ({ children }) => {
     }
   };
 
+  const getRandomTitleSubtitle = () => {
+    const randomIndex = Math.floor(Math.random() * titleSubtitlePairs.length);
+    return titleSubtitlePairs[randomIndex];
+  };
+
   return (
     <DialogContext.Provider value={{ subscriptionDialogOpen, setSubscriptionDialogOpen }}>
       {children}
@@ -128,36 +159,41 @@ export const DialogProvider = ({ children }) => {
           },
         }}
       >
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-          <img
+        <DialogTitle sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', pt: isMd ? 3 : 2, pb: isMd ? 1 : 0.5 }}>
+        <img
             src="https://beta.memesrc.com/assets/memeSRC-white.svg"
             alt="memeSRC logo"
-            style={{ height: isMd ? 40 : 32, marginRight: 16 }}
-          />
-          <Typography fontSize={isMd ? 32 : 24} fontWeight={700}>
+            style={{ height: isMd ? 48 : 40, marginBottom: 8 }}
+        />
+        <Typography fontSize={isMd ? 32 : 24} fontWeight={700}>
             memeSRC Pro
-          </Typography>
-          <IconButton onClick={closeDialog} size="large" sx={{ position: 'absolute', top: isMd ? 15 : 8, right: 10 }}>
+        </Typography>
+        <IconButton onClick={closeDialog} size="large" sx={{ position: 'absolute', top: isMd ? 10 : 5, right: 10 }}>
             <Close />
-          </IconButton>
+        </IconButton>
         </DialogTitle>
         <Divider />
         {!loading && (
           <Fade in timeout={400}>
-            <DialogContent sx={{ mb: 5, py: 4 }}>
+            <DialogContent sx={{ py: 4, pb: 6 }}>
               <Grid container spacing={4} alignItems="center">
                 <Grid item xs={12} md={5}>
                   <Box p={3} sx={{ backgroundColor: getColor(), borderRadius: 4, mb: 4 }}>
-                    <Typography fontSize={28} fontWeight={700} color={getTextColor()} gutterBottom>
-                      Subscribe to Pro!
+                    <Typography fontSize={25} fontWeight={700} color={getTextColor()} gutterBottom>
+                      {selectedTitleSubtitle?.title}
                     </Typography>
-                    <Typography fontSize={15} fontWeight={700} color={getTextColor()} gutterBottom>
-                      Or don't. I don't care.
+                    <Typography variant="h2" gutterBottom mb={1.25} color={getTextColor()}>
+                        {getPrice()} / mo.
+                    </Typography>
+                    <Typography fontSize={16} fontWeight={600} color={getTextColor()} gutterBottom>
+                      {selectedTitleSubtitle?.subtitle}
                     </Typography>
                   </Box>
-                  <Typography variant="h2" gutterBottom ml={2}>
-                    {getPrice()}/month
-                  </Typography>
+                  <Box display="flex" alignItems="center" mx={2} mb={3} mt={-1}>
+                    <Typography variant="p" sx={{color: "#C2C2C2"}}>
+                        <b>memeSRC Pro</b> helps keep the site alive, plus unlocks some nice perks:
+                    </Typography>
+                  </Box>
                   <Box display="flex" alignItems="center" mb={2} ml={2}>
                     <Box
                       sx={{
@@ -173,7 +209,7 @@ export const DialogProvider = ({ children }) => {
                     >
                       <Check sx={{ color: getTextColor() }} />
                     </Box>
-                    <Typography fontWeight={500}>No Ads</Typography>
+                    <Typography fontSize={18} fontWeight={500}>No Ads</Typography>
                   </Box>
                   <Box display="flex" alignItems="center" mb={2} ml={2}>
                     <Box
@@ -190,7 +226,7 @@ export const DialogProvider = ({ children }) => {
                     >
                       <AutoFixHighRounded sx={{ color: getTextColor() }} />
                     </Box>
-                    <Typography fontWeight={500}>{getCreditCount()} Magic Credits / mo</Typography>
+                    <Typography fontSize={18} fontWeight={500}>{getCreditCount()} Magic Credits / mo</Typography>
                   </Box>
                   <Box display="flex" alignItems="center" ml={2}>
                     <Box
@@ -207,7 +243,7 @@ export const DialogProvider = ({ children }) => {
                     >
                       <SupportAgent sx={{ color: getTextColor() }} />
                     </Box>
-                    <Typography fontWeight={500}>Premium Support</Typography>
+                    <Typography fontSize={18} fontWeight={500}>Premium Support</Typography>
                   </Box>
                 </Grid>
                 <Grid item xs={12} md={7}>
@@ -322,6 +358,7 @@ export const DialogProvider = ({ children }) => {
                         '&:hover': { borderColor: 'rgb(84, 214, 44)' },
                         position: 'relative',
                         overflow: 'hidden',
+                        mb: 3
                       }}
                       onClick={() => setSelectedPlanAndScroll('pro69')}
                     >
@@ -358,23 +395,33 @@ export const DialogProvider = ({ children }) => {
               </Grid>
               <Box mt={4} textAlign="center">
                 <Button
-                  ref={subscribeButtonRef}
-                  variant="contained"
-                  size="large"
-                  onClick={buySubscription}
-                  fullWidth
-                  sx={{
+                    ref={subscribeButtonRef}
+                    variant="contained"
+                    size="large"
+                    onClick={buySubscription}
+                    fullWidth
+                    sx={{
                     borderRadius: 50,
                     px: 4,
                     py: 1.5,
                     fontSize: 20,
                     backgroundColor: getColor(),
                     color: getTextColor(),
-                  }}
+                    }}
                 >
-                  Subscribe: {getPrice()}/mo
+                    Subscribe: {getPrice()}/mo
                 </Button>
-              </Box>
+                <Typography variant="caption" color="text.secondary" mx={3} mt={1} sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center' }}>
+                    <span>Payments to&nbsp;</span>
+                    <a href="https://vibehouse.net" target="_blank" rel="noopener noreferrer" style={{ color: '#9e9e9e', textDecoration: 'none' }}>
+                    <b>Vibe House</b>
+                    </a>
+                    <span>&nbsp;secured by&nbsp;</span>
+                    <a href="https://stripe.com" target="_blank" rel="noopener noreferrer" style={{ color: '#9e9e9e', textDecoration: 'none' }}>
+                    <b>Stripe</b>
+                    </a>
+                </Typography>
+                </Box>
             </DialogContent>
           </Fade>
         )}
