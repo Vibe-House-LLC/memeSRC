@@ -1,7 +1,7 @@
 import { AutoFixHighRounded, Block, Close, Favorite, Star, SupportAgent, ExpandMore } from '@mui/icons-material';
 import { Box, Button, Card, Chip, Collapse, Dialog, DialogContent, DialogTitle, Divider, Fade, Grid, IconButton, LinearProgress, Typography, useMediaQuery } from '@mui/material';
 import { API } from 'aws-amplify';
-import { createContext, useState, useRef } from 'react';
+import { createContext, useState, useRef, useEffect } from 'react';
 
 export const DialogContext = createContext();
 
@@ -16,6 +16,10 @@ export const DialogProvider = ({ children }) => {
 
   const subscribeButtonRef = useRef(null);
   const upgradeCreditsRef = useRef(null);
+
+  useEffect(() => {
+    setCreditOptionsOpen(isMd);
+  }, [isMd]);
 
   const setSelectedPlanAndScroll = (plan) => {
     setSelectedPlan(plan);
