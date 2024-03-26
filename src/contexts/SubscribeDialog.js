@@ -182,7 +182,7 @@ export const DialogProvider = ({ children }) => {
                     <Typography fontSize={25} fontWeight={700} color={getTextColor()} gutterBottom>
                       {selectedTitleSubtitle?.title}
                     </Typography>
-                    <Typography variant="h2" gutterBottom mb={1.25} color={getTextColor()}>
+                    <Typography variant="h1" gutterBottom mb={1.25} color={getTextColor()}>
                         {getPrice()} / mo.
                     </Typography>
                     <Typography fontSize={16} fontWeight={600} color={getTextColor()} gutterBottom>
