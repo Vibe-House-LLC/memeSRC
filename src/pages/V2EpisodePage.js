@@ -3,7 +3,7 @@
 import { Buffer } from "buffer";
 import React, { useState, useEffect, useContext } from 'react';
 import { useParams } from 'react-router-dom';
-import { CircularProgress, Container, Typography, Card, CardMedia, CardContent, Button, Grid, useMediaQuery, Box } from '@mui/material';
+import { CircularProgress, Container, Typography, Card, CardMedia, CardContent, Button, Grid, useMediaQuery, Box, List, ListItem, ListItemAvatar, Avatar, ListItemText } from '@mui/material';
 import PropTypes from 'prop-types';
 import { extractVideoFrames } from '../utils/videoFrameExtractor';
 import { UserContext } from '../UserContext';
@@ -146,12 +146,25 @@ export default function V2EpisodePage({ setSeriesTitle }) {
   };
 
   return (
-    <Container maxWidth="lg">
-      <Typography gutterBottom variant="h4" component="div" align="center" style={{ marginTop: '20px', marginBottom: '20px' }}>
-        {cid} <br /><span style={{ fontSize: '18px' }}>Season {season}, Episode {episode}</span>
+    <Container maxWidth="lg" style={{ paddingTop: '20px', paddingBottom: '20px' }}>
+      <Typography
+        gutterBottom
+        variant="h4"
+        component="div"
+        align="center"
+        style={{ marginBottom: '20px', fontFamily: 'Arial, sans-serif', color: '#333' }}
+      >
+        {cid} <br />
+        <span style={{ fontSize: '18px' }}>Season {season}, Episode {episode}</span>
       </Typography>
       <Box marginBottom="20px">
-        <Button fullWidth disabled={loading || loadingMore} variant="contained" onClick={() => navigateFrames('prev')} sx={{ mb: 2 }}>
+        <Button
+          fullWidth
+          disabled={loading || loadingMore}
+          variant="contained"
+          onClick={() => navigateFrames('prev')}
+          style={{ marginBottom: '16px', backgroundColor: '#1976d2', color: 'white', padding: '12px' }}
+        >
           {loadingMore ? 'Loading...' : 'Previous Frames'}
         </Button>
       </Box>
@@ -160,21 +173,21 @@ export default function V2EpisodePage({ setSeriesTitle }) {
           <CircularProgress />
         </Box>
       ) : (
-        <Grid container spacing={4}>
+        <Grid container spacing={2}>
           {results.map((result) => (
-            <Grid item xs={12} key={result.fid}>
-              <Card component="a" href={`/frame/${cid}/${season}/${episode}/${result.fid}`} style={{ display: 'flex', textDecoration: 'none', alignItems: 'center', padding: '20px' }}>
+            <Grid item xs={12} sm={6} md={4} key={result.fid}>
+              <Card component="a" href={`/frame/${cid}/${season}/${episode}/${result.fid}`} style={{ textDecoration: 'none' }}>
                 <CardMedia
                   component="img"
-                  style={{ width: '30%', objectFit: 'contain', marginRight: '20px' }}
+                  height="175"
                   image={result.frame_image}
                   alt={`Frame ${result.fid}`}
                 />
-                <CardContent style={{ flex: 1 }}>
-                  <Typography variant="h6" color="textPrimary" component="p">
+                <CardContent sx={{backgroundColor: '#1f1f1f'}}>
+                  <Typography variant="subtitle1" color="textPrimary" style={{ marginBottom: '8px' }}>
                     {result.subtitle ? Buffer.from(result.subtitle, 'base64').toString() : '(...)'}
                   </Typography>
-                  <Typography variant="subtitle1" color="textSecondary" component="p" style={{ marginTop: '10px' }}>
+                  <Typography variant="caption" color="textSecondary">
                     Timecode: {result.timecode}
                   </Typography>
                 </CardContent>
@@ -184,7 +197,13 @@ export default function V2EpisodePage({ setSeriesTitle }) {
         </Grid>
       )}
       <Box marginTop="20px">
-        <Button fullWidth disabled={loading || loadingMore} variant="contained" onClick={() => navigateFrames('next')}>
+        <Button
+          fullWidth
+          disabled={loading || loadingMore}
+          variant="contained"
+          onClick={() => navigateFrames('next')}
+          style={{ backgroundColor: '#1976d2', color: 'white', padding: '12px' }}
+        >
           {loadingMore ? 'Loading...' : 'Next Frames'}
         </Button>
       </Box>
