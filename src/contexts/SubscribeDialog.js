@@ -159,39 +159,57 @@ export const DialogProvider = ({ children }) => {
           },
         }}
       >
-        <DialogTitle sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', pt: isMd ? 3 : 2, pb: isMd ? 1 : 0.5 }}>
-        <img
+        <DialogTitle
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            position: 'relative',
+            pt: isMd ? 3 : 2,
+            pb: isMd ? 1 : 0.5,
+          }}
+        >
+          <img
             src="https://beta.memesrc.com/assets/memeSRC-white.svg"
             alt="memeSRC logo"
             style={{ height: isMd ? 48 : 40, marginBottom: 8 }}
-        />
-        <Typography fontSize={isMd ? 32 : 24} fontWeight={700}>
+          />
+          <Typography fontSize={isMd ? 32 : 24} fontWeight={700}>
             memeSRC Pro
-        </Typography>
-        <IconButton onClick={closeDialog} size="large" sx={{ position: 'absolute', top: isMd ? 10 : 5, right: 10 }}>
+          </Typography>
+          <IconButton onClick={closeDialog} size="large" sx={{ position: 'absolute', top: isMd ? 10 : 5, right: 10 }}>
             <Close />
-        </IconButton>
+          </IconButton>
         </DialogTitle>
         <Divider />
         {!loading && (
           <Fade in timeout={400}>
             <DialogContent sx={{ py: 4, pb: 6 }}>
+              <Box
+                p={3}
+                sx={{
+                  backgroundColor: getColor(),
+                  borderRadius: 4,
+                  mb: 4,
+                  mt: isMd ? -4 : 0,
+                }}
+              >
+                <Typography fontSize={25} fontWeight={700} color={getTextColor()} gutterBottom>
+                  {selectedTitleSubtitle?.title}
+                </Typography>
+                <Typography variant={isMd ? 'h2' : 'h1'} gutterBottom mb={1.25} color={getTextColor()}>
+                  {getPrice()} / mo.
+                </Typography>
+                <Typography fontSize={16} fontWeight={600} color={getTextColor()} gutterBottom>
+                  {selectedTitleSubtitle?.subtitle}
+                </Typography>
+              </Box>
               <Grid container spacing={4} alignItems="center">
                 <Grid item xs={12} md={5}>
-                  <Box p={3} sx={{ backgroundColor: getColor(), borderRadius: 4, mb: 4 }}>
-                    <Typography fontSize={25} fontWeight={700} color={getTextColor()} gutterBottom>
-                      {selectedTitleSubtitle?.title}
-                    </Typography>
-                    <Typography variant="h1" gutterBottom mb={1.25} color={getTextColor()}>
-                        {getPrice()} / mo.
-                    </Typography>
-                    <Typography fontSize={16} fontWeight={600} color={getTextColor()} gutterBottom>
-                      {selectedTitleSubtitle?.subtitle}
-                    </Typography>
-                  </Box>
                   <Box display="flex" alignItems="center" mx={2} mb={3} mt={-1}>
-                    <Typography variant="p" sx={{color: "#C2C2C2"}}>
-                        <b>memeSRC Pro</b> helps keep the site alive, plus unlocks some nice perks:
+                    <Typography variant="p" sx={{ color: '#C2C2C2', fontSize: isMd ? '20px' : '14px' }}>
+                      <b>memeSRC Pro</b> helps keep the site alive, plus unlocks some nice perks:
                     </Typography>
                   </Box>
                   <Box display="flex" alignItems="center" mb={2} ml={2}>
@@ -209,7 +227,9 @@ export const DialogProvider = ({ children }) => {
                     >
                       <Check sx={{ color: getTextColor() }} />
                     </Box>
-                    <Typography fontSize={18} fontWeight={500}>No Ads</Typography>
+                    <Typography fontSize={18} fontWeight={500}>
+                      No Ads
+                    </Typography>
                   </Box>
                   <Box display="flex" alignItems="center" mb={2} ml={2}>
                     <Box
@@ -226,7 +246,9 @@ export const DialogProvider = ({ children }) => {
                     >
                       <AutoFixHighRounded sx={{ color: getTextColor() }} />
                     </Box>
-                    <Typography fontSize={18} fontWeight={500}>{getCreditCount()} Magic Credits / mo</Typography>
+                    <Typography fontSize={18} fontWeight={500}>
+                      {getCreditCount()} Magic Credits / mo
+                    </Typography>
                   </Box>
                   <Box display="flex" alignItems="center" ml={2}>
                     <Box
@@ -243,7 +265,9 @@ export const DialogProvider = ({ children }) => {
                     >
                       <SupportAgent sx={{ color: getTextColor() }} />
                     </Box>
-                    <Typography fontSize={18} fontWeight={500}>Premium Support</Typography>
+                    <Typography fontSize={18} fontWeight={500}>
+                      Premium Support
+                    </Typography>
                   </Box>
                 </Grid>
                 <Grid item xs={12} md={7}>
@@ -302,10 +326,10 @@ export const DialogProvider = ({ children }) => {
                           color: selectedPlan === 'pro5' ? 'common.black' : 'common.white',
                         }}
                       >
-                        <Typography fontSize={18} fontWeight={700} sx={{ml: 2}}>
+                        <Typography fontSize={18} fontWeight={700} sx={{ ml: 2 }}>
                           5 credits / mo.
                         </Typography>
-                        <Typography fontSize={18} fontWeight={700} sx={{mr: 1}}>
+                        <Typography fontSize={18} fontWeight={700} sx={{ mr: 1 }}>
                           {selectedPlan === 'pro5' ? 'included' : selectedPlan === 'pro25' ? '-$2' : '-$4'}
                         </Typography>
                       </Box>
@@ -342,10 +366,10 @@ export const DialogProvider = ({ children }) => {
                           color: selectedPlan === 'pro25' ? 'common.black' : 'common.white',
                         }}
                       >
-                        <Typography fontSize={18} fontWeight={700} sx={{ml: 2}}>
+                        <Typography fontSize={18} fontWeight={700} sx={{ ml: 2 }}>
                           25 credits / mo.
                         </Typography>
-                        <Typography fontSize={18} fontWeight={700} sx={{mr: 1}}>
+                        <Typography fontSize={18} fontWeight={700} sx={{ mr: 1 }}>
                           {selectedPlan === 'pro25' ? 'included' : selectedPlan === 'pro5' ? '+$2' : '-$2'}
                         </Typography>
                       </Box>
@@ -358,7 +382,7 @@ export const DialogProvider = ({ children }) => {
                         '&:hover': { borderColor: 'rgb(84, 214, 44)' },
                         position: 'relative',
                         overflow: 'hidden',
-                        mb: 3
+                        mb: 3,
                       }}
                       onClick={() => setSelectedPlanAndScroll('pro69')}
                     >
@@ -382,10 +406,10 @@ export const DialogProvider = ({ children }) => {
                           color: selectedPlan === 'pro69' ? 'common.black' : 'common.white',
                         }}
                       >
-                        <Typography fontSize={18} fontWeight={700} sx={{ml: 2}}>
+                        <Typography fontSize={18} fontWeight={700} sx={{ ml: 2 }}>
                           69 credits / mo.
                         </Typography>
-                        <Typography fontSize={18} fontWeight={700} sx={{mr: 1}}>
+                        <Typography fontSize={18} fontWeight={700} sx={{ mr: 1 }}>
                           {selectedPlan === 'pro69' ? 'included' : selectedPlan === 'pro5' ? '+$4' : '+$2'}
                         </Typography>
                       </Box>
@@ -395,33 +419,49 @@ export const DialogProvider = ({ children }) => {
               </Grid>
               <Box mt={4} textAlign="center">
                 <Button
-                    ref={subscribeButtonRef}
-                    variant="contained"
-                    size="large"
-                    onClick={buySubscription}
-                    fullWidth
-                    sx={{
+                  ref={subscribeButtonRef}
+                  variant="contained"
+                  size="large"
+                  onClick={buySubscription}
+                  fullWidth
+                  sx={{
                     borderRadius: 50,
                     px: 4,
                     py: 1.5,
                     fontSize: 20,
                     backgroundColor: getColor(),
                     color: getTextColor(),
-                    }}
+                  }}
                 >
-                    Subscribe: {getPrice()}/mo
+                  Subscribe: {getPrice()}/mo
                 </Button>
-                <Typography variant="caption" color="text.secondary" mx={3} mt={1} sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center' }}>
-                    <span>Payments to&nbsp;</span>
-                    <a href="https://vibehouse.net" target="_blank" rel="noopener noreferrer" style={{ color: '#9e9e9e', textDecoration: 'none' }}>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  mx={3}
+                  mt={1}
+                  sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center' }}
+                >
+                  <span>Payments to&nbsp;</span>
+                  <a
+                    href="https://vibehouse.net"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: '#9e9e9e', textDecoration: 'none' }}
+                  >
                     <b>Vibe House</b>
-                    </a>
-                    <span>&nbsp;secured by&nbsp;</span>
-                    <a href="https://stripe.com" target="_blank" rel="noopener noreferrer" style={{ color: '#9e9e9e', textDecoration: 'none' }}>
+                  </a>
+                  <span>&nbsp;secured by&nbsp;</span>
+                  <a
+                    href="https://stripe.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: '#9e9e9e', textDecoration: 'none' }}
+                  >
                     <b>Stripe</b>
-                    </a>
+                  </a>
                 </Typography>
-                </Box>
+              </Box>
             </DialogContent>
           </Fade>
         )}
