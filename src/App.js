@@ -9,6 +9,7 @@ import ThemeProvider from './theme';
 import SnackBar from './utils/Snackbar';
 import StripeWatcher from './utils/StripeWatcher';
 import { V2SearchDetailsProvider } from './contexts/V2SearchDetailsProvider';
+import { DialogProvider } from './contexts/SubscribeDialog';
 // import AutoAdWrapper from './ads/AutoAdWrapper';
 // import FeaturePopover from './components/features-popover/featurePopover';
 // components
@@ -36,11 +37,13 @@ export default function App() {
             </Backdrop>
           }>
             {/* <FeaturePopover> */}
-            <SearchDetailsProvider>
-              
+            <DialogProvider>
+              <SearchDetailsProvider>
+
                 <Router />
-              
-            </SearchDetailsProvider>
+
+              </SearchDetailsProvider>
+            </DialogProvider>
             {/* </FeaturePopover> */}
           </Suspense>
         </StripeWatcher>
