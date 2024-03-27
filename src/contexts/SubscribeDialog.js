@@ -280,7 +280,7 @@ export const DialogProvider = ({ children }) => {
                       <SupportAgent sx={{ color: getTextColor() }} />
                     </Box>
                     <Typography fontSize={18} fontWeight={500}>
-                      Premium Support
+                      Pro Support
                     </Typography>
                   </Box>
                 </Grid>
