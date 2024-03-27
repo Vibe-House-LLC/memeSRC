@@ -37,13 +37,11 @@ export default function App() {
             </Backdrop>
           }>
             {/* <FeaturePopover> */}
-            <DialogProvider>
               <SearchDetailsProvider>
 
                 <Router />
 
               </SearchDetailsProvider>
-            </DialogProvider>
             {/* </FeaturePopover> */}
           </Suspense>
         </StripeWatcher>

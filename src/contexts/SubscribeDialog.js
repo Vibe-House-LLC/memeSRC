@@ -1,16 +1,20 @@
 import { AutoFixHighRounded, Block, Close, Favorite, Star, SupportAgent, ExpandMore, Clear, Check } from '@mui/icons-material';
 import { Box, Button, Card, Chip, Collapse, Dialog, DialogContent, DialogTitle, Divider, Fade, Grid, IconButton, LinearProgress, Typography, useMediaQuery } from '@mui/material';
 import { API } from 'aws-amplify';
-import { createContext, useState, useRef, useEffect } from 'react';
+import { createContext, useState, useRef, useEffect, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { UserContext } from '../UserContext';
 
 export const SubscribeDialogContext = createContext();
 
 export const DialogProvider = ({ children }) => {
+  const navigate = useNavigate();
   const isMd = useMediaQuery(theme => theme.breakpoints.up('md'));
   const [subscriptionDialogOpen, setSubscriptionDialogOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState('pro5');
   const [loading, setLoading] = useState(false);
   const [creditOptionsOpen, setCreditOptionsOpen] = useState(false);
+  const { user } = useContext(UserContext);
 
   const [askedAboutCredits, setAskedAboutCredits] = useState(false);
 
@@ -143,6 +147,11 @@ export const DialogProvider = ({ children }) => {
 
   const openSubscriptionDialog = () => {
     setSubscriptionDialogOpen(true)
+  }
+
+  const handleLogin = () => {
+    setSubscriptionDialogOpen(false);
+    navigate('/login')
   }
 
   return (
@@ -423,7 +432,8 @@ export const DialogProvider = ({ children }) => {
                 </Grid>
               </Grid>
               <Box mt={4} textAlign="center">
-                <Button
+                {console.log(user)}
+                {user?.userDetails ? <Button
                   ref={subscribeButtonRef}
                   variant="contained"
                   size="large"
@@ -440,6 +450,25 @@ export const DialogProvider = ({ children }) => {
                 >
                   Subscribe: {getPrice()}/mo
                 </Button>
+                :
+                <Button
+                  ref={subscribeButtonRef}
+                  variant="contained"
+                  size="large"
+                  onClick={handleLogin}
+                  fullWidth
+                  sx={{
+                    borderRadius: 50,
+                    px: 4,
+                    py: 1.5,
+                    fontSize: 20,
+                    backgroundColor: getColor(),
+                    color: getTextColor(),
+                  }}
+                >
+                  Please Log In
+                </Button>
+                }
                 <Typography
                   variant="caption"
                   color="text.secondary"
