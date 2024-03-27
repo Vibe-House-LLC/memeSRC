@@ -1,5 +1,5 @@
 // component
-import { Article, CardGiftcard, Favorite, FolderShared, MapsUgc, Settings, Shield } from '@mui/icons-material';
+import { Article, Ballot, CardGiftcard, Edit, Favorite, FolderShared, MapsUgc, Search, Settings, Shield, SupportAgent, Upload } from '@mui/icons-material';
 import SvgColor from '../../../components/svg-color';
 
 // ----------------------------------------------------------------------
@@ -12,7 +12,7 @@ const isElectron = () => {
 
 const navConfig = [
   {
-    sectionTitle: 'General',
+    sectionTitle: 'Tools',
     adminOnly: false,
     items: [
 
@@ -20,25 +20,19 @@ const navConfig = [
         title: 'search',
         path: '/search',
         externalLink: false,
-        icon: icon('ic_menu_item'),
+        icon: <Search />,
       },
       {
         title: 'edit',
         path: '/edit',
         externalLink: false,
-        icon: icon('ic_file'),
+        icon: <Edit />,
       },
       {
-        title: 'Request',
+        title: 'Vote',
         path: '/vote',
         externalLink: false,
-        icon: icon('ic_kanban')
-      },
-      {
-        title: 'Contribute',
-        path: '/contribute',
-        externalLink: false,
-        icon: <FolderShared />
+        icon: <Ballot />
       },
       ...(isElectron() ? [{
         title: 'Server',
@@ -46,6 +40,24 @@ const navConfig = [
         externalLink: false,
         icon: <Settings />
       }] : [])
+    ]
+  },
+  {
+    sectionTitle: 'Contribute',
+    adminOnly: false,
+    items: [
+      {
+        title: 'upload',
+        path: '/contribute',
+        externalLink: false,
+        icon: <Upload />
+      },
+      {
+        title: 'Donate',
+        path: 'https://memesrc.com/donate',
+        externalLink: true,
+        icon: <Favorite />
+      }
     ]
   },
   {
@@ -59,11 +71,11 @@ const navConfig = [
         icon: <MapsUgc />
       },
       {
-        title: 'Donate',
-        path: 'https://memesrc.com/donate',
-        externalLink: true,
-        icon: <Favorite />
-      }
+        title: 'Pro Support',
+        path: '/support',
+        externalLink: false,
+        icon: <SupportAgent />,
+      },
     ]
   },
 
