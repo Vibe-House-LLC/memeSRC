@@ -1,6 +1,9 @@
+import { Link, Typography } from '@mui/material';
 import { useEffect } from 'react';
+import { useSubscribeDialog } from '../contexts/useSubscribeDialog';
 
 const EpisodeViewBannerAd = () => {
+    const { openSubscriptionDialog } = useSubscribeDialog();
 
     useEffect(() => {
         // Load the adsbygoogle script
@@ -16,14 +19,21 @@ const EpisodeViewBannerAd = () => {
     }, []);
 
     return (
-        <ins className="adsbygoogle"
-            style={{ display: 'block' }}
-            data-ad-format="auto"
-            data-ad-layout-key="-gw-3+1f-3d+2z"
-            data-ad-client="ca-pub-1307598869123774"
-            data-ad-slot="9219716563"
-            data-full-width-responsive="true"
-        />
+        <>
+            <ins className="adsbygoogle"
+                style={{ display: 'block' }}
+                data-ad-format="auto"
+                data-ad-layout-key="-gw-3+1f-3d+2z"
+                data-ad-client="ca-pub-1307598869123774"
+                data-ad-slot="9219716563"
+                data-full-width-responsive="true"
+            />
+            <Link onClick={(e) => { e.preventDefault(); openSubscriptionDialog(); }} sx={{ color: theme => theme.palette.success.main, cursor: 'pointer' }} >
+                <Typography fontSize={14} textAlign='center' py={4}>
+                    Remove ads w/ memeSRC Pro
+                </Typography>
+            </Link>
+        </>
     );
 }
 
