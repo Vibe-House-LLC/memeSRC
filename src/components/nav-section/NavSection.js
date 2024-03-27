@@ -85,7 +85,7 @@ function NavItem({ item }) {
         >
           <StyledNavItemIcon>{icon && icon}</StyledNavItemIcon>
 
-          <ListItemText sx={{fontSize:16}} disableTypography primary={title} />
+          <ListItemText sx={{fontSize:18}} disableTypography primary={title} />
 
           {info && info}
         </StyledNavItem>
@@ -105,7 +105,7 @@ function NavItem({ item }) {
         >
           <StyledNavItemIcon>{icon && icon}</StyledNavItemIcon>
 
-          <ListItemText sx={{fontSize:16}} disableTypography primary={title} />
+          <ListItemText sx={{fontSize:18}} disableTypography primary={title} />
 
           {info && info}
         </StyledNavItem>

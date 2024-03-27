@@ -61,20 +61,20 @@ const navConfig = [
     ]
   },
   {
-    sectionTitle: 'Support',
+    sectionTitle: 'Contact',
     adminOnly: false,
     items: [
-      {
-        title: 'Feedback',
-        path: 'https://forms.gle/8CETtVbwYoUmxqbi7',
-        externalLink: true,
-        icon: <MapsUgc />
-      },
       {
         title: 'Pro Support',
         path: '/support',
         externalLink: false,
         icon: <SupportAgent />,
+      },
+      {
+        title: 'Feedback',
+        path: 'https://forms.gle/8CETtVbwYoUmxqbi7',
+        externalLink: true,
+        icon: <MapsUgc />
       },
     ]
   },
