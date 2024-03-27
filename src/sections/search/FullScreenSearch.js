@@ -1,5 +1,5 @@
 import styled from '@emotion/styled';
-import { Alert, AlertTitle, Button, Fab, Grid, Typography, IconButton, Stack, useMediaQuery, Select, MenuItem } from '@mui/material';
+import { Alert, AlertTitle, Button, Fab, Grid, Typography, IconButton, Stack, useMediaQuery, Select, MenuItem, Chip } from '@mui/material';
 import { Box } from '@mui/system';
 import { ArrowDownwardRounded, Favorite, MapsUgc, Shuffle } from '@mui/icons-material';
 import { API, graphqlOperation } from 'aws-amplify';
@@ -550,7 +550,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                     color="white"
                   />
                 </Box>
-                {currentThemeTitleText}
+                {currentThemeTitleText}{user?.userDetails?.magicSubscription === 'true' && <Chip color='success' sx={{ fontSize: {xs: 12, md: 14}, fontWeight: 700, mb: {xs: 1, md: 5}, ml: 1, px: { xs: 0.5, md: 1}, color: 'white', boxShadow: '2px 2px 5px rgba(0,0,0,0.5)'}} label='Pro' />}
               </Typography>
               {/* {!localStorage.getItem('alertDismissed-UPLOADS-auir9o89rd') && (
                 <center>

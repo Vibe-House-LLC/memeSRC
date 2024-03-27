@@ -4,6 +4,7 @@ import EditorNewProjectPage from './pages/EditorNewProjectPage';
 import EditorProjectsPage from './pages/EditorProjectsPage';
 import { V2SearchDetailsProvider } from './contexts/V2SearchDetailsProvider';
 import SiteWideMaintenance from './pages/SiteWideMaintenance';
+import { DialogProvider } from './contexts/SubscribeDialog';
 
 
 // ----------------------------------------------------------------------
@@ -64,7 +65,7 @@ export default function Router() {
   const routes = useRoutes([
     {
       path: '/',
-      element: <GuestAuth><MagicPopup><V2SearchDetailsProvider><DashboardLayout /></V2SearchDetailsProvider></MagicPopup></GuestAuth>,
+      element: <GuestAuth><DialogProvider><MagicPopup><V2SearchDetailsProvider><DashboardLayout /></V2SearchDetailsProvider></MagicPopup></DialogProvider></GuestAuth>,
       children: [
         { element: <SiteWideMaintenance><HomePage /></SiteWideMaintenance>, index: true },
         { path: 'search', element: <SiteWideMaintenance><Navigate to='/' /></SiteWideMaintenance> },
@@ -105,7 +106,7 @@ export default function Router() {
     },
     {
       path: '/dashboard',
-      element: <CheckAuth><MagicPopup><DashboardLayout /></MagicPopup></CheckAuth>,
+      element: <CheckAuth><DialogProvider><MagicPopup><DashboardLayout /></MagicPopup></DialogProvider></CheckAuth>,
       children: [
         { element: <Navigate to="/dashboard/app" />, index: true },
         { path: 'app', element: <DashboardAppPage /> },
