@@ -914,8 +914,16 @@ export const handler = async (event) => {
       console.log('stripeCustomerInfo')
       console.log(stripeCustomerInfo)
 
+      const creditsPerPrice = {
+        "price_1NbXguAqFX20vifI34N1MJFO": 69,  // Magic 69 (prod)
+        "price_1Nhc9UAqFX20vifI0mYIzSfs": 69,  // Magic 69 (dev)
+        "price_1OyLVZAqFX20vifImSa8wizl": 5,   // Pro 5 (dev)
+        "price_1OyLWrAqFX20vifIkrK4Oxnp": 25,  // Pro 25 (dev)
+        "price_1OyLXpAqFX20vifIxTi2SMIx": 69   // Pro 69 (dev)
+      };
+
       const priceMap = {
-        "magic69-prod": "price_1NbXguAqFX20vifI34N1MJFO",
+        "magic69-beta": "price_1NbXguAqFX20vifI34N1MJFO",
         "magic69-dev": "price_1Nhc9UAqFX20vifI0mYIzSfs",
         "pro5-dev": "price_1OyLVZAqFX20vifImSa8wizl",
         "pro25-dev": "price_1OyLWrAqFX20vifIkrK4Oxnp",
@@ -925,6 +933,21 @@ export const handler = async (event) => {
       const priceKey = `${body.priceKey}-${process.env.ENV}`
 
       // Now that the customerId is set, lets create a checkout session.
+      console.log("Payload to make the stripe checkout session:", JSON.stringify({
+        success_url: `https://api.memesrc.com/${process.env.ENV}/public/stripeVerification?checkoutSessionId={CHECKOUT_SESSION_ID}`,
+        cancel_url: body.currentUrl,
+        customer: stripeCustomerId,
+        line_items: [
+          { price: priceMap[priceKey], quantity: 1 },
+        ],
+        mode: 'subscription',
+        // discounts: [{
+        //   coupon: `${process.env.ENV === 'beta' ? 'DIdAixG9' : 'GTke5f0s'}`
+        // }],
+        metadata: {
+          callbackUrl: body.currentUrl
+        }
+      }))
       const session = await stripe.checkout.sessions.create({
         success_url: `https://api.memesrc.com/${process.env.ENV}/public/stripeVerification?checkoutSessionId={CHECKOUT_SESSION_ID}`,
         cancel_url: body.currentUrl,
@@ -1149,6 +1172,107 @@ export const handler = async (event) => {
   // ======================================================
   // STARTING REPLACEMENT STUFF FOR PRO SUBS FROM MAGIC 69
   // ======================================================
+
+  if (path === `/function/pro/addCredits`) {
+    try {
+      // Lets get the checkout session from GraphQL
+      const getStripeCheckoutSessionQuery = `
+        query getStripeCheckoutSession {
+          getStripeCheckoutSession(id: "${body.checkoutSessionId}") {
+            id
+            status
+            user {
+              id
+            }
+          }
+        }
+      `
+      console.log('getStripeCheckoutSessionQuery')
+      console.log(getStripeCheckoutSessionQuery)
+
+      const getStripeCheckoutSession = await makeRequest(getStripeCheckoutSessionQuery);
+      console.log('getStripeCheckoutSession')
+      console.log(getStripeCheckoutSession)
+
+      const stripeCustomerId = body.stripeCustomerId
+
+      // Now if the checkout session status is open, lets add their credits.
+      const userId = getStripeCheckoutSession.body.data.getStripeCheckoutSession.user.id
+      const status = getStripeCheckoutSession.body.data.getStripeCheckoutSession.status
+
+      const getStripeCustomerQuery = `
+        query getStripeCustomer {
+          getStripeCustomer(id: "${stripeCustomerId}") {
+            user {
+              id
+              credits
+            }
+          }
+        }
+      `
+      console.log('getStripeCustomerQuery', getStripeCustomerQuery);
+      const stripeCustomer = await makeRequest(getStripeCustomerQuery);
+      console.log('stripeCustomer', JSON.stringify(stripeCustomer))
+      
+      const creditsPerMonth = body.creditsPerMonth
+      const newCreditValue = Math.max(creditsPerMonth, (stripeCustomer.body.data.getStripeCustomer.user.credits || 0));
+
+      if (status === 'open') {
+        const updateUserDetailsQuery = `
+          mutation updateUserDetails {
+            updateUserDetails(input: {id: "${userId}", magicSubscription: "true", credits: ${newCreditValue}, subscriptionPeriodStart: "${body.periodStart}", subscriptionPeriodEnd: "${body.periodEnd}", subscriptionStatus: "active"}) {
+              id
+              credits
+            }
+          }
+        `
+        console.log('updateUserDetailsQuery')
+        console.log(updateUserDetailsQuery)
+
+        const updateUsersCredits = await makeRequest(updateUserDetailsQuery)
+        console.log('updateUsersCredits')
+        console.log(updateUsersCredits)
+
+        const updateCheckoutSessionStatus = `
+          mutation updateStripeCheckoutSession {
+            updateStripeCheckoutSession(input: {id: "${body.checkoutSessionId}", status: "complete"}) {
+              id
+            }
+          }
+        `
+        console.log('updateCheckoutSessionStatus')
+        console.log(updateCheckoutSessionStatus)
+
+        const updateCheckoutSession = await makeRequest(updateCheckoutSessionStatus)
+        console.log('updateCheckoutSession')
+        console.log(updateCheckoutSession)
+
+        response = {
+          statusCode: 200,
+          body: {
+            complete: true,
+            message: 'User has been given 69 credits'
+          }
+        }
+      } else {
+        response = {
+          statusCode: 500,
+          body: {
+            message: 'This checkout session has already been completed.',
+            errorCode: 'CheckoutSessionCompleted'
+          }
+        }
+      }
+    } catch (error) {
+      response = {
+        statusCode: 500,
+        body: {
+          error,
+          message: 'Something went wrong. Please try again.'
+        }
+      }
+    }
+  }
 
   if (path === `/function/pro/renewCredits`) {
     // Lets wrap this in a try/catch. That way if stripe customer in GraphQL doesn't exist, it will fail.   

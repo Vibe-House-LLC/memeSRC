@@ -214,7 +214,7 @@ export default function SearchPage() {
   const [universalSearchMaintenance, setUniversalSearchMaintenance] = useState(false);
   const [maintenanceDialogOpen, setMaintenanceDialogOpen] = useState(false);
   const [availableShows, setAvailableShows] = useState([]);
-  
+
   const [isLoading, setIsLoading] = useState(false);
   const [displayedResults, setDisplayedResults] = useState(RESULTS_PER_PAGE / 2);
   const [newResults, setNewResults] = useState();
@@ -279,10 +279,10 @@ export default function SearchPage() {
       }
       setLoadingCsv(false);
       setShowObj([]);
-  
+
       checkBannerDismissed(selectedCid);
     }
-  
+
     async function getMaintenanceMode() {
       try {
         const response = await API.graphql({
@@ -296,11 +296,11 @@ export default function SearchPage() {
         return false;
       }
     }
-  
+
     async function fetchData() {
       const maintenance = await getMaintenanceMode();
       setUniversalSearchMaintenance(maintenance);
-  
+
       if (!maintenance || params.cid !== '_universal') {
         initialize(params.cid);
       } else {
@@ -309,7 +309,7 @@ export default function SearchPage() {
         setAvailableShows(shows);
       }
     }
-  
+
     fetchData();
   }, [params.cid]);
 
@@ -364,15 +364,15 @@ export default function SearchPage() {
 
   const injectAds = (results, adInterval) => {
     const injectedResults = [];
-    
-    for (let i = 0; i < results.length; i+=1) {
+
+    for (let i = 0; i < results.length; i += 1) {
       injectedResults.push(results[i]);
-      
+
       if ((i + 1) % adInterval === 0 && i !== results.length - 1) {
         injectedResults.push({ isAd: true });
       }
     }
-    
+
     return injectedResults;
   };
 
@@ -386,15 +386,16 @@ export default function SearchPage() {
         console.log("Search term is empty.");
         return;
       }
-    
+
       // Block loading results when _universal is the CID and universalSearchMaintenance is true
       if (cid === '_universal' && universalSearchMaintenance) {
         setLoadingResults(false);
         return;
       }
-    
+
       try {
         const response = await fetch(`https://v2-${process.env.REACT_APP_USER_BRANCH}.memesrc.com/search/${cid || params?.cid}/${searchTerm}`);
+        // const response = await fetch(`http://the-internet.herokuapp.com/status_codes/500`);
         if (!response.ok) {
           throw new Error(`HTTP error! Status: ${response.status}`);
         }
@@ -405,10 +406,13 @@ export default function SearchPage() {
         setLoadingResults(false);
       } catch (error) {
         console.error("Error searching:", error);
-        setLoadingResults(false);
+        setMaintenanceDialogOpen(true);
+        const shows = await fetchShows();
+        setAvailableShows(shows);
+        setUniversalSearchMaintenance(true)
       }
     }
-  
+
     // if (cid !== '_universal') {
     if (params?.searchTerms) {
       searchText();
@@ -417,7 +421,7 @@ export default function SearchPage() {
       setNewResults([]);
     }
     // }
-  }, [loadingCsv, showObj, params?.searchTerms, cid, universalSearchMaintenance]);  
+  }, [loadingCsv, showObj, params?.searchTerms, cid, universalSearchMaintenance]);
 
   useEffect(() => {
     console.log(newResults);
@@ -663,7 +667,7 @@ export default function SearchPage() {
           )}
         </>
       )}
-     <Dialog open={maintenanceDialogOpen} onClose={() => setMaintenanceDialogOpen(false)} maxWidth="sm" fullWidth fullScreen={fullScreen}>
+      <Dialog open={maintenanceDialogOpen} onClose={() => setMaintenanceDialogOpen(false)} maxWidth="sm" fullWidth fullScreen={fullScreen}>
         <Box
           sx={{
             position: 'relative',
@@ -742,7 +746,7 @@ export default function SearchPage() {
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => navigate('/')} sx={{color: "white"}}>Return to home</Button>
+          <Button onClick={() => navigate('/')} sx={{ color: "white" }}>Return to home</Button>
         </DialogActions>
       </Dialog>
     </>

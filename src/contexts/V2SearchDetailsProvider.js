@@ -1,6 +1,6 @@
 import PropTypes from 'prop-types';
 import { useContext, useEffect, useState } from "react";
-import { useLocation } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import { API } from 'aws-amplify';
 import { V2SearchContext } from "./v2-search-context";
 import { UserContext } from '../UserContext';
@@ -20,6 +20,7 @@ export const V2SearchDetailsProvider = ({ children }) => {
     const [showObj, setShowObj] = useState();
     const [selectedFrameIndex, setSelectedFrameIndex] = useState();
     const [loadingSavedCids, setLoadingSavedCids] = useState(false);
+    const { cid: seriesId } = useParams()
 
     useEffect(() => {
         if (pathname === '/') {
@@ -28,6 +29,9 @@ export const V2SearchDetailsProvider = ({ children }) => {
         }
         if (!(pathname.startsWith('/frame') || pathname.startsWith('/editor'))) {
             setFineTuningFrame(null)
+        }
+        if (!cid && seriesId) {
+            setCid(seriesId)
         }
     }, [pathname])
 

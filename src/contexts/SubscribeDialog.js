@@ -3,11 +3,11 @@ import { Box, Button, Card, Chip, Collapse, Dialog, DialogContent, DialogTitle, 
 import { API } from 'aws-amplify';
 import { createContext, useState, useRef, useEffect } from 'react';
 
-export const DialogContext = createContext();
+export const SubscribeDialogContext = createContext();
 
 export const DialogProvider = ({ children }) => {
   const isMd = useMediaQuery(theme => theme.breakpoints.up('md'));
-  const [subscriptionDialogOpen, setSubscriptionDialogOpen] = useState(true);
+  const [subscriptionDialogOpen, setSubscriptionDialogOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState('pro5');
   const [loading, setLoading] = useState(false);
   const [creditOptionsOpen, setCreditOptionsOpen] = useState(false);
@@ -50,6 +50,7 @@ export const DialogProvider = ({ children }) => {
   };
 
   const buySubscription = () => {
+    console.log(selectedPlan)
     setLoading(true)
     API.post('publicapi', '/user/update/getCheckoutSession', {
       body: {
@@ -140,8 +141,12 @@ export const DialogProvider = ({ children }) => {
     return titleSubtitlePairs[randomIndex];
   };
 
+  const openSubscriptionDialog = () => {
+    setSubscriptionDialogOpen(true)
+  }
+
   return (
-    <DialogContext.Provider value={{ subscriptionDialogOpen, setSubscriptionDialogOpen }}>
+    <SubscribeDialogContext.Provider value={{ openSubscriptionDialog }}>
       {children}
       <Dialog
         open={subscriptionDialogOpen}
@@ -476,6 +481,6 @@ export const DialogProvider = ({ children }) => {
           </DialogContent>
         )}
       </Dialog>
-    </DialogContext.Provider>
+    </SubscribeDialogContext.Provider>
   );
 };
