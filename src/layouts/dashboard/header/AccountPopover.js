@@ -163,7 +163,7 @@ export default function AccountPopover() {
 
             {userDetails?.user &&
               <>
-                {userDetails?.user?.magicSubscription === 'true' ?
+                {userDetails?.user?.userDetails?.magicSubscription === 'true' ?
                   <>
                     <MenuItem onClick={logIntoCustomerPortal} sx={{ m: 1 }}>
                       <Stack direction='row' alignItems='center'>
