@@ -20,6 +20,15 @@ Amplify Params - DO NOT EDIT */
 
 const aws = require('aws-sdk');
 const { LambdaClient, InvokeCommand } = require("@aws-sdk/client-lambda");
+
+const creditsPerPrice = {
+  "price_1NbXguAqFX20vifI34N1MJFO": 69,  // Magic 69 (prod)
+  "price_1Nhc9UAqFX20vifI0mYIzSfs": 69,  // Magic 69 (dev)
+  "price_1OyLVZAqFX20vifImSa8wizl": 5,   // Pro 5 (dev)
+  "price_1OyLWrAqFX20vifIkrK4Oxnp": 25,  // Pro 25 (dev)
+  "price_1OyLXpAqFX20vifIxTi2SMIx": 69   // Pro 69 (dev)
+};
+
 /**
  * @type {import('@types/aws-lambda').APIGatewayProxyHandler}
  */
@@ -28,18 +37,20 @@ exports.handler = async (event) => {
 
   const queryStringParameters = event.queryStringParameters
 
-  const handleGiveUserCredits = async (checkoutSessionId, periodStart, periodEnd) => {
+  const handleGiveUserCredits = async (checkoutSessionId, periodStart, periodEnd, creditsPerMonth, stripeCustomerId) => {
     const lambdaClient = new LambdaClient({ region: "us-east-1" });
 
     // Create the request object to invoke the user function
     const invokeRequest = {
       FunctionName: process.env.FUNCTION_MEMESRCUSERFUNCTION_NAME,
       Payload: JSON.stringify({
-        path: `/function/magic69/addCredits`,
+        path: `/function/pro/addCredits`,
         body: JSON.stringify({
           checkoutSessionId,
           periodStart,
-          periodEnd
+          periodEnd,
+          creditsPerMonth,
+          stripeCustomerId
         })
       }),
     };
@@ -139,8 +150,11 @@ exports.handler = async (event) => {
     const periodEnd = invoice['period_end']
     console.log('periodEnd', periodEnd)
 
+    const creditsPerMonth = creditsPerPrice[invoice.lines.data[0].price.id]
+    const stripeCustomerId = invoice.customer
+
     // Then lets update the user details
-    const updateUsersCredits = await handleGiveUserCredits(checkoutSessionId, periodStart, periodEnd);
+    const updateUsersCredits = await handleGiveUserCredits(checkoutSessionId, periodStart, periodEnd, creditsPerMonth, stripeCustomerId);
     console.log('updateUsersCredits')
     console.log(updateUsersCredits)
 

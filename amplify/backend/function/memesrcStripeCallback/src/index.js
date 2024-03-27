@@ -49,7 +49,7 @@ exports.handler = async (event) => {
 
   const stripe = require('stripe')(stripeKey);
 
-  const handleGiveUserCredits = async (stripeCustomerId, periodStart, periodEnd) => {
+  const handleGiveUserCredits = async (stripeCustomerId, periodStart, periodEnd, invoice) => {
     const lambdaClient = new LambdaClient({ region: "us-east-1" });
 
     // Create the request object to invoke the user function
@@ -61,7 +61,7 @@ exports.handler = async (event) => {
           stripeCustomerId,
           periodStart,
           periodEnd,
-          creditsPerMonth: creditsPerPrice[lineItem.price.id]
+          creditsPerMonth: creditsPerPrice[invoice.data.lines.data[0].price.id]
         })
       }),
     };
@@ -226,6 +226,10 @@ exports.handler = async (event) => {
     const isRenewel = (stripeEvent['billing_reason'] === 'subscription_cycle')
     console.log('isRenewel', isRenewel)
 
+    const invoice = await stripe.invoices.retrieve(
+      stripeEvent.invoice
+    );
+
 
     // Currently I'm leaving isRenewel out of the if statement. This means that there is a double call when
     // someone first creates a subscription, but that doesn't cause any issues currently.
@@ -242,7 +246,7 @@ exports.handler = async (event) => {
       const periodEnd = stripeEvent.period_end
       console.log('periodEnd', periodEnd)
 
-      const renewUsersCredits = await handleGiveUserCredits(stripeCustomerId, periodStart, periodEnd)
+      const renewUsersCredits = await handleGiveUserCredits(stripeCustomerId, periodStart, periodEnd, invoice)
       console.log('renewUsersCredits', renewUsersCredits)
     }
   }

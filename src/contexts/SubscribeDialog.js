@@ -50,6 +50,7 @@ export const DialogProvider = ({ children }) => {
   };
 
   const buySubscription = () => {
+    console.log(selectedPlan)
     setLoading(true)
     API.post('publicapi', '/user/update/getCheckoutSession', {
       body: {
