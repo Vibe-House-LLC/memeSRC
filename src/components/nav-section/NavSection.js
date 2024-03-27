@@ -25,7 +25,7 @@ export default function NavSection({ data = [], ...other }) {
           <List disablePadding sx={{ p: 1 }}>
             {data.filter(item => item.adminOnly === false).map((section, index) => (
               <Fragment key={section.sectionTitle}>
-                <Typography variant='body1' fontWeight={700} pl={2} mb={2} mt={index > 0 ? 5 : 0}>
+                <Typography variant='h4' fontWeight={700} pl={2} mb={1} mt={index > 0 ? 4 : 0}>
                   {section.sectionTitle}
                 </Typography>
                 {
@@ -43,7 +43,7 @@ export default function NavSection({ data = [], ...other }) {
           <List disablePadding sx={{ p: 1 }}>
             {data.map((section, index) => (
               <Fragment key={section.sectionTitle}>
-                <Typography variant='body1' fontWeight={700} pl={2} mb={2} mt={index > 0 ? 5 : 0}>
+                <Typography variant='h4' fontWeight={700} pl={2} mb={1} mt={index > 0 ? 4 : 0}>
                   {section.sectionTitle}
                 </Typography>
                 {
