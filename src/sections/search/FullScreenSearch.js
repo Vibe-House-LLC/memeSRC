@@ -550,7 +550,25 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                     color="white"
                   />
                 </Box>
-                {currentThemeTitleText}{user?.userDetails?.magicSubscription === 'true' && <Chip color='success' sx={{ fontSize: {xs: 12, md: 14}, fontWeight: 700, mb: {xs: 1, md: 5}, ml: 1, px: { xs: 0.5, md: 1}, color: 'white', boxShadow: '2px 2px 5px rgba(0,0,0,0.5)'}} label='Pro' />}
+                {`${currentThemeTitleText} ${user?.userDetails?.magicSubscription === 'true' ? 'Pro' : ''}`}
+                {/* {user?.userDetails?.magicSubscription === 'true' && 
+                  <Chip
+                    color="success"
+                    sx={{
+                      fontSize: { xs: 12, md: 14 },
+                      fontWeight: 700,
+                      mb: { xs: 1, md: 5 },
+                      ml: 1,
+                      px: { xs: 0.5, md: 1 },
+                      color: 'white',
+                      boxShadow: '2px 2px 5px rgba(0,0,0,0.5)',
+                      '& .MuiChip-label': {
+                        fontWeight: 'bold',
+                      },
+                    }}
+                    label="PRO"
+                  />
+                } */}
               </Typography>
               {/* {!localStorage.getItem('alertDismissed-UPLOADS-auir9o89rd') && (
                 <center>
