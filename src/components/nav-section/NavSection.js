@@ -25,7 +25,7 @@ export default function NavSection({ data = [], ...other }) {
           <List disablePadding sx={{ p: 1 }}>
             {data.filter(item => item.adminOnly === false).map((section, index) => (
               <Fragment key={section.sectionTitle}>
-                <Typography variant='body2' fontWeight={700} pl={2} mb={2} mt={index > 0 ? 5 : 0}>
+                <Typography variant='subtitle2' color='gray' fontWeight={700} pl={2} mb={1} mt={index > 0 ? 4 : 0}>
                   {section.sectionTitle}
                 </Typography>
                 {
@@ -43,7 +43,7 @@ export default function NavSection({ data = [], ...other }) {
           <List disablePadding sx={{ p: 1 }}>
             {data.map((section, index) => (
               <Fragment key={section.sectionTitle}>
-                <Typography variant='body2' fontWeight={700} pl={2} mb={2} mt={index > 0 ? 5 : 0}>
+                <Typography variant='subtitle2' color='gray' fontWeight={700} pl={2} mb={1} mt={index > 0 ? 4 : 0}>
                   {section.sectionTitle}
                 </Typography>
                 {
@@ -85,7 +85,7 @@ function NavItem({ item }) {
         >
           <StyledNavItemIcon>{icon && icon}</StyledNavItemIcon>
 
-          <ListItemText disableTypography primary={title} />
+          <ListItemText sx={{fontSize:18}} disableTypography primary={title} />
 
           {info && info}
         </StyledNavItem>
@@ -105,7 +105,7 @@ function NavItem({ item }) {
         >
           <StyledNavItemIcon>{icon && icon}</StyledNavItemIcon>
 
-          <ListItemText disableTypography primary={title} />
+          <ListItemText sx={{fontSize:18}} disableTypography primary={title} />
 
           {info && info}
         </StyledNavItem>

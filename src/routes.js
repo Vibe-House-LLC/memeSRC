@@ -56,6 +56,7 @@ const V2FramePage = lazy(() => import('./pages/V2FramePage'));
 const V2EditorPage = lazy(() => import('./pages/V2EditorPage'));
 const V2EpisodePage = lazy(() => import('./pages/V2EpisodePage'));
 const WebsiteSettings = lazy(() => import('./pages/WebsiteSettings'))
+const PremiumSupport = lazy(() => import('./pages/PremiumSupport'));
 
 // ----------------------------------------------------------------------
 
@@ -81,6 +82,7 @@ export default function Router() {
         { path: 'editor/:cid/:season/:episode/:frame', element: <SiteWideMaintenance><IpfsSearchBar><V2EditorPage /></IpfsSearchBar></SiteWideMaintenance> },
         { path: 'episode/:cid/:season/:episode/:frame', element: <SiteWideMaintenance><IpfsSearchBar><V2EpisodePage /></IpfsSearchBar></SiteWideMaintenance> },
         { path: 'favorites', element: <SiteWideMaintenance><FavoritesPage /></SiteWideMaintenance> },
+        { path: 'support', element: <SiteWideMaintenance><PremiumSupport /></SiteWideMaintenance> },
         // {
         //   path: 'v2',
         //   element: <SiteWideMaintenance><IpfsSearchBar /></SiteWideMaintenance>,
