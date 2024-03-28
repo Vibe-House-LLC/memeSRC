@@ -96,6 +96,12 @@ const navConfig = [
         icon: <Settings />,
       },
       {
+        title: 'Pro Support Admin',
+        path: '/dashboard/support',
+        externalLink: false,
+        icon: <SupportAgent />,
+      },
+      {
         title: 'Source Media',
         path: '/dashboard/sourcemedia',
         externalLink: false,
