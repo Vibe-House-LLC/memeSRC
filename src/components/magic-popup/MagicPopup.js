@@ -296,7 +296,7 @@ export default function MagicPopup({ children }) {
                                 size="large"
                                 fullWidth
                             >
-                                Customer Portal
+                                Manage Subscription
                             </LoadingButton>
                         ) : (
                             <>
