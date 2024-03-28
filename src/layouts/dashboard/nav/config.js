@@ -18,7 +18,7 @@ const navConfig = [
 
       {
         title: 'search',
-        path: '/',
+        path: '/search',
         externalLink: false,
         icon: <Search />,
       },
