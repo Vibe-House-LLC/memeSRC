@@ -2175,6 +2175,56 @@ export const handler = async (event) => {
     }
   }
 
+  if (path === `/${process.env.ENV}/public/user/update/proSupportMessage`) {
+    const userId = userSub;
+    const message = body.message;
+  
+    if (!userId || !message) {
+      response = {
+        statusCode: 400,
+        body: {
+          error: 'Missing required fields',
+          message: 'Both userId and message are required to submit a pro support message',
+        },
+      };
+    } else {
+      const createProSupportMessageQuery = `
+        mutation createProSupportMessage($userId: ID!, $message: String!) {
+          createProSupportMessage(input: {userDetailsProSupportMessagesId: $userId, message: $message}) {
+            id
+            createdAt
+            user {
+              id
+            }
+          }
+        }
+      `;
+  
+      try {
+        const createProSupportMessage = await makeRequestWithVariables(createProSupportMessageQuery, { userId, message });
+        console.log('createProSupportMessage', createProSupportMessage);
+  
+        response = {
+          statusCode: 200,
+          body: {
+            success: true,
+            message: 'Pro support message submitted successfully',
+            data: createProSupportMessage.body.data.createProSupportMessage,
+          },
+        };
+      } catch (error) {
+        console.log(error);
+        response = {
+          statusCode: 500,
+          body: {
+            error: 'Failed to submit pro support message',
+            message: `An error occurred while submitting the pro support message: ${error}`,
+          },
+        };
+      }
+    }
+  }
+
   if (path === `/${process.env.ENV}/public/user/update/removeMetadata`) {
     /* ----------------------------- GraphQL Queries ---------------------------- */
     const getUsersMetadataQuery = `

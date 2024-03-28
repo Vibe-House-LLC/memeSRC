@@ -1,4 +1,5 @@
 import { useContext, useEffect, useState } from 'react';
+import { API } from 'aws-amplify';
 import { Helmet } from 'react-helmet-async';
 import { Typography, Container, Grid, Stack, TextField, Box, Button, Paper, Divider, FormControl, FormLabel, Card, CardContent, List, ListItem, ListItemText, IconButton, Checkbox, FormControlLabel } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
@@ -41,12 +42,32 @@ export default function ProSupport() {
     return isValid;
   };
 
-  const submitSupportTicket = () => {
+  const submitSupportTicket = async () => {
     setFormSubmitted(true);
     if (validateForm()) {
       setLoadingSubmitStatus(true);
-      // TODO: Submit support ticket with message
-      alert('TODO: Submit support ticket');
+      try {
+        const response = await API.post('publicapi', '/user/update/proSupportMessage', {
+          body: {
+            message: messageInput,
+          },
+        });
+  
+        if (response.success) {
+          setSnackbarMessage('Pro support message submitted successfully');
+          setSeverity('success');
+          setOpen(true);
+        } else {
+          setSnackbarMessage('Failed to submit pro support message');
+          setSeverity('error');
+          setOpen(true);
+        }
+      } catch (error) {
+        console.log(error);
+        setSnackbarMessage(`${error}`);
+        setSeverity('error');
+        setOpen(true);
+      }
       setMessageInput('');
       setEmailConsent(false);
       setLoadingSubmitStatus(false);
