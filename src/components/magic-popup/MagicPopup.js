@@ -164,7 +164,7 @@ export default function MagicPopup({ children }) {
                             </Stack>
 
                             <Typography variant="h4">
-                                You're in the Early Access program for a new suite of generative editing tools!
+                                memeSRC Pro has unlocked Early&nbsp;Access to new generative editing tools!
                             </Typography>
 
                             <Typography variant="subtitle1" fontWeight="bold" lineHeight={2} textAlign="left" px={2}>
