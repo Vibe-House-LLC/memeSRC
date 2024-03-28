@@ -1,5 +1,6 @@
-import { Link, Typography } from '@mui/material';
+import { Link, Typography, Box } from '@mui/material';
 import { useEffect } from 'react';
+import { Close, OpenInBrowser, Share } from '@mui/icons-material';
 import { useSubscribeDialog } from '../contexts/useSubscribeDialog';
 
 const SearchPageBannerAd = () => {
@@ -20,11 +21,13 @@ const SearchPageBannerAd = () => {
 
     return (
         <>
-            <Link onClick={(e) => { e.preventDefault(); openSubscriptionDialog(); }} sx={{ color: theme => theme.palette.success.main, cursor: 'pointer' }} >
-                <Typography fontSize={14} textAlign='center' py={4}>
-                    Remove ads w/ memeSRC Pro
-                </Typography>
-            </Link>
+            <Box display='flex' justifyContent='center'>
+                <Link onClick={(e) => { e.preventDefault(); openSubscriptionDialog(); }} sx={{ color: 'white', cursor: 'pointer' }} >
+                    <Typography fontSize={14} textAlign='center' pb={2} display='flex' alignItems='center'>
+                        <Close fontSize='small' sx={{ mr: 0.5 }} /> <b>Remove ads w/ memeSRC Pro</b>
+                    </Typography>
+                </Link>
+            </Box>
             <ins className="adsbygoogle"
                 style={{ display: 'block' }}
                 data-ad-format="auto"
