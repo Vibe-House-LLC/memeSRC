@@ -516,7 +516,7 @@ export default function SearchPage() {
             localStorage.removeItem(`dismissedBanner`);
           }}
         >
-          <MinimizedBannerText style={{ fontWeight: 'bold' }}>You're testing the V2 data model!</MinimizedBannerText>
+          <MinimizedBannerText style={{ fontWeight: 'bold' }}>You're using a V2 index!</MinimizedBannerText>
           <MinimizedBannerText
             style={{
               textDecoration: 'underline',
