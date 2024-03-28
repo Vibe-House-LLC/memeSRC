@@ -1058,6 +1058,10 @@ export const createUserDetails = /* GraphQL */ `
         nextToken
         __typename
       }
+      proSupportMessages {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       userDetailsStripeCustomerInfoId
@@ -1114,6 +1118,10 @@ export const updateUserDetails = /* GraphQL */ `
         nextToken
         __typename
       }
+      proSupportMessages {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       userDetailsStripeCustomerInfoId
@@ -1167,6 +1175,10 @@ export const deleteUserDetails = /* GraphQL */ `
         __typename
       }
       v2ContentMetadatas {
+        nextToken
+        __typename
+      }
+      proSupportMessages {
         nextToken
         __typename
       }
@@ -1914,6 +1926,105 @@ export const deleteWebsiteSetting = /* GraphQL */ `
       universalSearchMaintenance
       createdAt
       updatedAt
+      __typename
+    }
+  }
+`;
+export const createProSupportMessage = /* GraphQL */ `
+  mutation CreateProSupportMessage(
+    $input: CreateProSupportMessageInput!
+    $condition: ModelProSupportMessageConditionInput
+  ) {
+    createProSupportMessage(input: $input, condition: $condition) {
+      id
+      user {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      message
+      createdAt
+      updatedAt
+      userDetailsProSupportMessagesId
+      __typename
+    }
+  }
+`;
+export const updateProSupportMessage = /* GraphQL */ `
+  mutation UpdateProSupportMessage(
+    $input: UpdateProSupportMessageInput!
+    $condition: ModelProSupportMessageConditionInput
+  ) {
+    updateProSupportMessage(input: $input, condition: $condition) {
+      id
+      user {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      message
+      createdAt
+      updatedAt
+      userDetailsProSupportMessagesId
+      __typename
+    }
+  }
+`;
+export const deleteProSupportMessage = /* GraphQL */ `
+  mutation DeleteProSupportMessage(
+    $input: DeleteProSupportMessageInput!
+    $condition: ModelProSupportMessageConditionInput
+  ) {
+    deleteProSupportMessage(input: $input, condition: $condition) {
+      id
+      user {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      message
+      createdAt
+      updatedAt
+      userDetailsProSupportMessagesId
       __typename
     }
   }

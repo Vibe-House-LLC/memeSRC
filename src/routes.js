@@ -57,6 +57,7 @@ const V2EditorPage = lazy(() => import('./pages/V2EditorPage'));
 const V2EpisodePage = lazy(() => import('./pages/V2EpisodePage'));
 const WebsiteSettings = lazy(() => import('./pages/WebsiteSettings'))
 const ProSupport = lazy(() => import('./pages/ProSupport'));
+const ProSupportAdmin = lazy(() => import('./pages/ProSupportAdmin'));
 
 // ----------------------------------------------------------------------
 
@@ -114,6 +115,7 @@ export default function Router() {
         { path: 'app', element: <DashboardAppPage /> },
         { path: 'imageupload', element: <ImageUploadPage /> },
         { path: 'user', element: <UserPage /> },
+        { path: 'support', element: <ProSupportAdmin /> },
         { path: 'products', element: <ProductsPage /> },
         { path: 'blog', element: <BlogPage /> },
         { path: 'home', element: <HomePage /> },
