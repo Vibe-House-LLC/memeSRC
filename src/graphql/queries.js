@@ -736,6 +736,10 @@ export const getUserDetails = /* GraphQL */ `
         nextToken
         __typename
       }
+      proSupportMessages {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       userDetailsStripeCustomerInfoId
@@ -1163,6 +1167,60 @@ export const listWebsiteSettings = /* GraphQL */ `
         universalSearchMaintenance
         createdAt
         updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const getProSupportMessage = /* GraphQL */ `
+  query GetProSupportMessage($id: ID!) {
+    getProSupportMessage(id: $id) {
+      id
+      user {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      message
+      createdAt
+      updatedAt
+      userDetailsProSupportMessagesId
+      __typename
+    }
+  }
+`;
+export const listProSupportMessages = /* GraphQL */ `
+  query ListProSupportMessages(
+    $filter: ModelProSupportMessageFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listProSupportMessages(
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        message
+        createdAt
+        updatedAt
+        userDetailsProSupportMessagesId
         __typename
       }
       nextToken
