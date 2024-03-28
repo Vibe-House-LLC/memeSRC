@@ -20,6 +20,11 @@ const MagicToolsLoadingAd = () => {
 
     return (
         <>
+            <Link onClick={(e) => { e.preventDefault(); openSubscriptionDialog(); }} sx={{ color: theme => theme.palette.success.main, cursor: 'pointer' }} >
+                <Typography fontSize={14} textAlign='center' py={4}>
+                    Remove ads w/ memeSRC Pro
+                </Typography>
+            </Link>
             <ins className="adsbygoogle"
                 style={{ display: 'block' }}
                 data-ad-format="auto"
@@ -27,11 +32,6 @@ const MagicToolsLoadingAd = () => {
                 data-ad-slot="9331397200"
                 data-full-width-responsive="true"
             />
-            <Link onClick={(e) => { e.preventDefault(); openSubscriptionDialog(); }} sx={{ color: theme => theme.palette.success.main, cursor: 'pointer' }} >
-                <Typography fontSize={14} textAlign='center' py={4}>
-                    Remove ads w/ memeSRC Pro
-                </Typography>
-            </Link>
         </>
     );
 }

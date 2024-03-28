@@ -20,6 +20,11 @@ const SearchPageBannerAd = () => {
 
     return (
         <>
+            <Link onClick={(e) => { e.preventDefault(); openSubscriptionDialog(); }} sx={{ color: theme => theme.palette.success.main, cursor: 'pointer' }} >
+                <Typography fontSize={14} textAlign='center' py={4}>
+                    Remove ads w/ memeSRC Pro
+                </Typography>
+            </Link>
             <ins className="adsbygoogle"
                 style={{ display: 'block' }}
                 data-ad-format="auto"
@@ -27,11 +32,6 @@ const SearchPageBannerAd = () => {
                 data-ad-client="ca-pub-1307598869123774"
                 data-ad-slot="1685907131"
             />
-            <Link onClick={(e) => { e.preventDefault(); openSubscriptionDialog(); }} sx={{ color: theme => theme.palette.success.main, cursor: 'pointer' }} >
-                <Typography fontSize={14} textAlign='center' py={4}>
-                    Remove ads w/ memeSRC Pro
-                </Typography>
-            </Link>
         </>
     );
 }
