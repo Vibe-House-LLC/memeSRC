@@ -8,7 +8,7 @@ import { UserContext } from '../UserContext';
 import { SnackbarContext } from '../SnackbarContext';
 import { useSubscribeDialog } from '../contexts/useSubscribeDialog';
 
-export default function PremiumSupport() {
+export default function ProSupport() {
   const [loadingSubmitStatus, setLoadingSubmitStatus] = useState();
   const { user } = useContext(UserContext);
   const { setOpen, setMessage: setSnackbarMessage, setSeverity } = useContext(SnackbarContext);
@@ -71,18 +71,23 @@ export default function PremiumSupport() {
   return (
     <>
       <Helmet>
-        <title> Premium Support • memeSRC </title>
+        <title> Pro Support • memeSRC </title>
       </Helmet>
       <Container maxWidth="xl" sx={{ height: '100%' }}>
         {!authorized ? (
-          <Grid container height="100%" justifyContent="center" alignItems="center">
+          <Grid container height="100%" justifyContent="center" alignItems="center" mt={6}>
             <Grid item>
               <Stack spacing={3} justifyContent="center">
+                <img
+                  src="https://beta.memesrc.com/assets/memeSRC-white.svg"
+                  alt="memeSRC logo"
+                  style={{ height: 48, marginBottom: -15 }}
+                />
                 <Typography variant="h3" textAlign="center">
-                  Premium&nbsp;Support
+                  memeSRC&nbsp;Pro Support
                 </Typography>
                 <Typography variant="body" textAlign="center">
-                  Premium support is available for Pro subscribers. <br /> Upgrade to Pro to access personalized assistance.
+                  Pro Support is available for memeSRC&nbsp;Pro subscribers. Upgrade for personal assistance.
                 </Typography>
               </Stack>
               <center>
@@ -98,9 +103,9 @@ export default function PremiumSupport() {
               <Typography variant="body2" textAlign="center" style={{ opacity: 0.7 }}>
                 <br />
                 <br />
-                You can also submit general feedback using{' '}
+                Or, submit general feedback using{' '}
                 <a href="https://forms.gle/8CETtVbwYoUmxqbi7" style={{ color: 'white' }} target="_blank" rel="noreferrer">
-                  this link
+                  this form
                 </a>.
               </Typography>
             </Grid>
