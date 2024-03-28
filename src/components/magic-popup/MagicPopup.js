@@ -106,7 +106,7 @@ export default function MagicPopup({ children }) {
                                 </Stack>
 
                                 <Typography variant="h3">
-                                    A new suite of generative editing tools and features are coming soon!
+                                   memeSRC Pro unlocks Early&nbsp;Access to new generative editing tools.
                                 </Typography>
 
                                 <Typography variant="subtitle1" fontWeight="bold" lineHeight={2} textAlign="left" px={2}>
@@ -316,7 +316,7 @@ export default function MagicPopup({ children }) {
                                         },
                                     }}
                                 >
-                                    Subscribe to Pro 
+                                    Get memeSRC Pro 
                                     {/* <Chip size='small' sx={{ ml: 1, backgroundColor: 'white', color: 'green' }} label="30% off" /> */}
                                 </LoadingButton>
                                 {/* <Typography

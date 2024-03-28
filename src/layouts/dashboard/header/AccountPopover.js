@@ -176,7 +176,7 @@ export default function AccountPopover() {
                   <>
                   <Divider sx={{ borderStyle: 'dashed' }} />
                     <MenuItem onClick={handleSubscribe} sx={{ m: 1, color: theme => theme.palette.success.main }}>
-                      Subscribe to Pro
+                      memeSRC Pro
                     </MenuItem>
                   </>
                 }

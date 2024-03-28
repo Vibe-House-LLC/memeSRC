@@ -72,7 +72,7 @@ export const DialogProvider = ({ children }) => {
 
   const titleSubtitlePairs = [
     {
-      title: 'Subscribe to Pro!',
+      title: 'Get memeSRC Pro!',
       subtitle: 'Or don\'t. I don\'t care.',
     },
     {
@@ -80,7 +80,7 @@ export const DialogProvider = ({ children }) => {
       subtitle: 'Or stay basic I guess. Your choice.',
     },
     {
-      title: 'Unlock Pro Power!',
+      title: 'Unlock memeSRC Pro!',
       subtitle: "Or forget you ever saw this.",
     },
     {
