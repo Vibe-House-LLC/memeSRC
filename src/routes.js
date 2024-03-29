@@ -4,6 +4,7 @@ import EditorNewProjectPage from './pages/EditorNewProjectPage';
 import EditorProjectsPage from './pages/EditorProjectsPage';
 import { V2SearchDetailsProvider } from './contexts/V2SearchDetailsProvider';
 import SiteWideMaintenance from './pages/SiteWideMaintenance';
+import { DialogProvider } from './contexts/SubscribeDialog';
 
 
 // ----------------------------------------------------------------------
@@ -55,6 +56,8 @@ const V2FramePage = lazy(() => import('./pages/V2FramePage'));
 const V2EditorPage = lazy(() => import('./pages/V2EditorPage'));
 const V2EpisodePage = lazy(() => import('./pages/V2EpisodePage'));
 const WebsiteSettings = lazy(() => import('./pages/WebsiteSettings'))
+const ProSupport = lazy(() => import('./pages/ProSupport'));
+const ProSupportAdmin = lazy(() => import('./pages/ProSupportAdmin'));
 
 // ----------------------------------------------------------------------
 
@@ -64,14 +67,14 @@ export default function Router() {
   const routes = useRoutes([
     {
       path: '/',
-      element: <GuestAuth><MagicPopup><V2SearchDetailsProvider><DashboardLayout /></V2SearchDetailsProvider></MagicPopup></GuestAuth>,
+      element: <GuestAuth><DialogProvider><MagicPopup><V2SearchDetailsProvider><DashboardLayout /></V2SearchDetailsProvider></MagicPopup></DialogProvider></GuestAuth>,
       children: [
         { element: <SiteWideMaintenance><HomePage /></SiteWideMaintenance>, index: true },
         { path: 'search', element: <SiteWideMaintenance><Navigate to='/' /></SiteWideMaintenance> },
         { path: 'edit', element: <SiteWideMaintenance><EditorNewProjectPage /></SiteWideMaintenance> },
-        // { path: 'editor/projects', element: <SiteWideMaintenance><EditorProjectsPage /></SiteWideMaintenance> },
-        // { path: 'editor/new', element: <SiteWideMaintenance><EditorNewProjectPage /></SiteWideMaintenance> },
-        // { path: 'editor/project/:editorProjectId', element: <SiteWideMaintenance><EditorPage /></SiteWideMaintenance> },
+        { path: 'editor/projects', element: <SiteWideMaintenance><EditorProjectsPage /></SiteWideMaintenance> },
+        { path: 'editor/new', element: <SiteWideMaintenance><EditorNewProjectPage /></SiteWideMaintenance> },
+        { path: 'editor/project/:editorProjectId', element: <SiteWideMaintenance><EditorPage /></SiteWideMaintenance> },
         // { path: 'search/:seriesId', element: <SiteWideMaintenance><SearchPage /></SiteWideMaintenance> },
         // { path: 'search/:seriesId/:searchTerms', element: <SiteWideMaintenance><SearchPage /></SiteWideMaintenance> },
         { path: 'search/:cid', element: <SiteWideMaintenance><IpfsSearchBar><V2SearchPage /></IpfsSearchBar></SiteWideMaintenance> },
@@ -80,6 +83,7 @@ export default function Router() {
         { path: 'editor/:cid/:season/:episode/:frame', element: <SiteWideMaintenance><IpfsSearchBar><V2EditorPage /></IpfsSearchBar></SiteWideMaintenance> },
         { path: 'episode/:cid/:season/:episode/:frame', element: <SiteWideMaintenance><IpfsSearchBar><V2EpisodePage /></IpfsSearchBar></SiteWideMaintenance> },
         { path: 'favorites', element: <SiteWideMaintenance><FavoritesPage /></SiteWideMaintenance> },
+        { path: 'support', element: <SiteWideMaintenance><ProSupport /></SiteWideMaintenance> },
         // {
         //   path: 'v2',
         //   element: <SiteWideMaintenance><IpfsSearchBar /></SiteWideMaintenance>,
@@ -105,12 +109,13 @@ export default function Router() {
     },
     {
       path: '/dashboard',
-      element: <CheckAuth><MagicPopup><DashboardLayout /></MagicPopup></CheckAuth>,
+      element: <CheckAuth><DialogProvider><MagicPopup><DashboardLayout /></MagicPopup></DialogProvider></CheckAuth>,
       children: [
         { element: <Navigate to="/dashboard/app" />, index: true },
         { path: 'app', element: <DashboardAppPage /> },
         { path: 'imageupload', element: <ImageUploadPage /> },
         { path: 'user', element: <UserPage /> },
+        { path: 'support', element: <ProSupportAdmin /> },
         { path: 'products', element: <ProductsPage /> },
         { path: 'blog', element: <BlogPage /> },
         { path: 'home', element: <HomePage /> },

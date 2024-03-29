@@ -914,18 +914,46 @@ export const handler = async (event) => {
       console.log('stripeCustomerInfo')
       console.log(stripeCustomerInfo)
 
+      const priceMap = {
+        "magic69-beta": "price_1NbXguAqFX20vifI34N1MJFO",
+        "magic69-dev": "price_1Nhc9UAqFX20vifI0mYIzSfs",
+        "pro5-dev": "price_1OyLVZAqFX20vifImSa8wizl",
+        "pro25-dev": "price_1OyLWrAqFX20vifIkrK4Oxnp",
+        "pro69-dev": "price_1OyLXpAqFX20vifIxTi2SMIx",
+        "pro5-beta": "price_1OziYeAqFX20vifIptXDlka4",  // Pro 5 (prod)
+        "pro25-beta": "price_1OziZIAqFX20vifIQ5mw6jqr",  // Pro 25 (prod)
+        "pro69-beta": "price_1Ozia3AqFX20vifIgwvdxsEg",  // Pro 69 (prod)
+      }
+
+      const priceKey = `${body.priceKey}-${process.env.ENV}`
+
       // Now that the customerId is set, lets create a checkout session.
+      console.log("Payload to make the stripe checkout session:", JSON.stringify({
+        success_url: `https://api.memesrc.com/${process.env.ENV}/public/stripeVerification?checkoutSessionId={CHECKOUT_SESSION_ID}`,
+        cancel_url: body.currentUrl,
+        customer: stripeCustomerId,
+        line_items: [
+          { price: priceMap[priceKey], quantity: 1 },
+        ],
+        mode: 'subscription',
+        // discounts: [{
+        //   coupon: `${process.env.ENV === 'beta' ? 'DIdAixG9' : 'GTke5f0s'}`
+        // }],
+        metadata: {
+          callbackUrl: body.currentUrl
+        }
+      }))
       const session = await stripe.checkout.sessions.create({
         success_url: `https://api.memesrc.com/${process.env.ENV}/public/stripeVerification?checkoutSessionId={CHECKOUT_SESSION_ID}`,
         cancel_url: body.currentUrl,
         customer: stripeCustomerId,
         line_items: [
-          { price: `${process.env.ENV === 'beta' ? 'price_1NbXguAqFX20vifI34N1MJFO' : 'price_1Nhc9UAqFX20vifI0mYIzSfs'}`, quantity: 1 },
+          { price: priceMap[priceKey], quantity: 1 },
         ],
         mode: 'subscription',
-        discounts: [{
-          coupon: `${process.env.ENV === 'beta' ? 'DIdAixG9' : 'GTke5f0s'}`
-        }],
+        // discounts: [{
+        //   coupon: `${process.env.ENV === 'beta' ? 'DIdAixG9' : 'GTke5f0s'}`
+        // }],
         metadata: {
           callbackUrl: body.currentUrl
         }
@@ -1135,6 +1163,325 @@ export const handler = async (event) => {
       }
     }
   }
+
+  // ======================================================
+  // STARTING REPLACEMENT STUFF FOR PRO SUBS FROM MAGIC 69
+  // ======================================================
+
+  if (path === `/function/pro/addCredits`) {
+    try {
+      // Lets get the checkout session from GraphQL
+      const getStripeCheckoutSessionQuery = `
+        query getStripeCheckoutSession {
+          getStripeCheckoutSession(id: "${body.checkoutSessionId}") {
+            id
+            status
+            user {
+              id
+            }
+          }
+        }
+      `
+      console.log('getStripeCheckoutSessionQuery')
+      console.log(getStripeCheckoutSessionQuery)
+
+      const getStripeCheckoutSession = await makeRequest(getStripeCheckoutSessionQuery);
+      console.log('getStripeCheckoutSession')
+      console.log(getStripeCheckoutSession)
+
+      const stripeCustomerId = body.stripeCustomerId
+
+      // Now if the checkout session status is open, lets add their credits.
+      const userId = getStripeCheckoutSession.body.data.getStripeCheckoutSession.user.id
+      const status = getStripeCheckoutSession.body.data.getStripeCheckoutSession.status
+
+      const getStripeCustomerQuery = `
+        query getStripeCustomer {
+          getStripeCustomer(id: "${stripeCustomerId}") {
+            user {
+              id
+              credits
+            }
+          }
+        }
+      `
+      console.log('getStripeCustomerQuery', getStripeCustomerQuery);
+      const stripeCustomer = await makeRequest(getStripeCustomerQuery);
+      console.log('stripeCustomer', JSON.stringify(stripeCustomer))
+      
+      const creditsPerMonth = body.creditsPerMonth
+      const newCreditValue = Math.max(creditsPerMonth, (stripeCustomer.body.data.getStripeCustomer.user.credits || 0));
+
+      if (status === 'open') {
+        const updateUserDetailsQuery = `
+          mutation updateUserDetails {
+            updateUserDetails(input: {id: "${userId}", magicSubscription: "true", credits: ${newCreditValue}, subscriptionPeriodStart: "${body.periodStart}", subscriptionPeriodEnd: "${body.periodEnd}", subscriptionStatus: "active"}) {
+              id
+              credits
+            }
+          }
+        `
+        console.log('updateUserDetailsQuery')
+        console.log(updateUserDetailsQuery)
+
+        const updateUsersCredits = await makeRequest(updateUserDetailsQuery)
+        console.log('updateUsersCredits')
+        console.log(updateUsersCredits)
+
+        const updateCheckoutSessionStatus = `
+          mutation updateStripeCheckoutSession {
+            updateStripeCheckoutSession(input: {id: "${body.checkoutSessionId}", status: "complete"}) {
+              id
+            }
+          }
+        `
+        console.log('updateCheckoutSessionStatus')
+        console.log(updateCheckoutSessionStatus)
+
+        const updateCheckoutSession = await makeRequest(updateCheckoutSessionStatus)
+        console.log('updateCheckoutSession')
+        console.log(updateCheckoutSession)
+
+        response = {
+          statusCode: 200,
+          body: {
+            complete: true,
+            message: 'User has been given 69 credits'
+          }
+        }
+      } else {
+        response = {
+          statusCode: 500,
+          body: {
+            message: 'This checkout session has already been completed.',
+            errorCode: 'CheckoutSessionCompleted'
+          }
+        }
+      }
+    } catch (error) {
+      response = {
+        statusCode: 500,
+        body: {
+          error,
+          message: 'Something went wrong. Please try again.'
+        }
+      }
+    }
+  }
+
+  if (path === `/function/pro/renewCredits`) {
+    // Lets wrap this in a try/catch. That way if stripe customer in GraphQL doesn't exist, it will fail.   
+    try {
+      // First we want to get the UserDetails ID by checking the stripe customer.
+      const getStripeCustomerQuery = `
+        query getStripeCustomer {
+          getStripeCustomer(id: "${body.stripeCustomerId}") {
+            user {
+              id
+              credits
+            }
+          }
+        }
+      `
+      console.log('getStripeCustomerQuery', getStripeCustomerQuery);
+      const stripeCustomer = await makeRequest(getStripeCustomerQuery);
+      console.log('stripeCustomer', JSON.stringify(stripeCustomer))
+
+      const creditsPerMonth = body.creditsPerMonth;
+
+      // Now lets make sure that the customer existed.
+      if (stripeCustomer?.body?.data?.getStripeCustomer?.user?.id) {
+        // The stripe customer exists and is attached to a user.
+        // Lets throw credits at them.
+        const userId = stripeCustomer.body.data.getStripeCustomer.user.id
+        const newCreditValue = Math.max(creditsPerMonth, (stripeCustomer.body.data.getStripeCustomer.user.credits || 0));
+
+        const updateUserDetailsQuery = `
+          mutation updateUserDetails {
+            updateUserDetails(input: {id: "${userId}", magicSubscription: "true", credits: ${newCreditValue}, subscriptionPeriodStart: "${body.periodStart}", subscriptionPeriodEnd: "${body.periodEnd}", subscriptionStatus: "active"}) {
+              id
+              credits
+            }
+          }
+        `
+        console.log('updateUserDetailsQuery')
+        console.log(updateUserDetailsQuery)
+
+        const updateUsersCredits = await makeRequest(updateUserDetailsQuery)
+        console.log('updateUsersCredits')
+        console.log(updateUsersCredits)
+
+        // The user now has creditsPerMonth credits, and their subscriptionPeriodStart and subscriptionPeriodEnd have been updated
+        response = {
+          statusCode: 200,
+          body: {
+            code: 'success',
+            message: `The user now has ${newCreditValue} credits, and their subscriptionPeriodStart and subscriptionPeriodEnd have been updated`
+          }
+        }
+      } else {
+        response = {
+          statusCode: 406,
+          body: {
+            error: 'UserDoesNotExist',
+            message: 'The stripe customer ID does not correspond to a customer ID in GraphQL. This could be because the customer ID in question did not sign up for magic tools.'
+          }
+        }
+      }
+
+    } catch (error) {
+      console.log(error)
+      response = {
+        statusCode: 500,
+        body: {
+          error: 'TryCaught',
+          message: 'Something failed in the try/catch. Check logs for memesrcUserFunction.'
+        }
+      }
+    }
+  }
+
+  if (path === `/function/pro/failedPayment`) {
+    // Lets wrap this in a try/catch. That way if stripe customer in GraphQL doesn't exist, it will fail.
+    try {
+      // First we want to get the UserDetails ID by checking the stripe customer.
+      const getStripeCustomerQuery = `
+        query getStripeCustomer {
+          getStripeCustomer(id: "${body.stripeCustomerId}") {
+            user {
+              id
+            }
+          }
+        }
+      `
+      console.log('getStripeCustomerQuery', getStripeCustomerQuery);
+      const stripeCustomer = await makeRequest(getStripeCustomerQuery);
+      console.log('stripeCustomer', JSON.stringify(stripeCustomer))
+
+      // Now lets make sure that the customer existed.
+      if (stripeCustomer?.body?.data?.getStripeCustomer?.user?.id) {
+        // The stripe customer exists and is attached to a user.
+        // Lets reduce them to 0 credits
+        const userId = stripeCustomer.body.data.getStripeCustomer.user.id
+
+        const updateUserDetailsQuery = `
+          mutation updateUserDetails {
+            updateUserDetails(input: {id: "${userId}", subscriptionStatus: "failedPayment", credits: 0}) {
+              id
+              credits
+            }
+          }
+        `
+        console.log('updateUserDetailsQuery')
+        console.log(updateUserDetailsQuery)
+
+        const updateUsersCredits = await makeRequest(updateUserDetailsQuery)
+        console.log('updateUsersCredits')
+        console.log(updateUsersCredits)
+
+        // The user subscriptionStatus is now set to failedPayment
+        response = {
+          statusCode: 200,
+          body: {
+            code: 'success',
+            message: 'The user subscriptionStatus is now set to failedPayment'
+          }
+        }
+      } else {
+        response = {
+          statusCode: 406,
+          body: {
+            error: 'UserDoesNotExist',
+            message: 'The stripe customer ID does not correspond to a customer ID in GraphQL. This could be because the customer ID in question did not sign up for magic tools.'
+          }
+        }
+      }
+
+    } catch (error) {
+      console.log(error)
+      response = {
+        statusCode: 500,
+        body: {
+          error: 'TryCaught',
+          message: 'Something failed in the try/catch. Check logs for memesrcUserFunction.'
+        }
+      }
+    }
+  }
+
+
+  // Stripe callback to cancel subscription
+  if (path === `/function/pro/cancelSubscription`) {
+    // Lets wrap this in a try/catch. That way if stripe customer in GraphQL doesn't exist, it will fail.
+    try {
+      // First we want to get the UserDetails ID by checking the stripe customer.
+      const getStripeCustomerQuery = `
+        query getStripeCustomer {
+          getStripeCustomer(id: "${body.stripeCustomerId}") {
+            user {
+              id
+            }
+          }
+        }
+      `
+      console.log('getStripeCustomerQuery', getStripeCustomerQuery);
+      const stripeCustomer = await makeRequest(getStripeCustomerQuery);
+      console.log('stripeCustomer', JSON.stringify(stripeCustomer))
+
+      // Now lets make sure that the customer existed.
+      if (stripeCustomer?.body?.data?.getStripeCustomer?.user?.id) {
+        // The stripe customer exists and is attached to a user.
+        // Let's reduce them to 0 credits.
+        const userId = stripeCustomer.body.data.getStripeCustomer.user.id
+
+        const updateUserDetailsQuery = `
+        mutation updateUserDetails {
+          updateUserDetails(input: {id: "${userId}", magicSubscription: null, subscriptionStatus: "canceled", credits: 0}) {
+            id
+          }
+        }
+        `
+        console.log('updateUserDetailsQuery')
+        console.log(updateUserDetailsQuery)
+
+        const updateUserDetails = await makeRequest(updateUserDetailsQuery)
+        console.log('updateUserDetails')
+        console.log(updateUserDetails)
+
+        // The user subscriptionStatus is now set to canceled
+        response = {
+          statusCode: 200,
+          body: {
+            code: 'success',
+            message: 'The user subscriptionStatus is now set to canceled'
+          }
+        }
+      } else {
+        response = {
+          statusCode: 406,
+          body: {
+            error: 'UserDoesNotExist',
+            message: 'The stripe customer ID does not correspond to a customer ID in GraphQL. This could be because the customer ID in question did not sign up for magic tools.'
+          }
+        }
+      }
+
+    } catch (error) {
+      console.log(error)
+      response = {
+        statusCode: 500,
+        body: {
+          error: 'TryCaught',
+          message: 'Something failed in the try/catch. Check logs for memesrcUserFunction.'
+        }
+      }
+    }
+  }
+
+
+  // ====================================
+  // END PRO SUB REPLACEMENT FOR MAGIC 69
+  // ====================================
 
   // This handles adding the customers credits after subscribing
   if (path === `/function/magic69/addCredits`) {
@@ -1819,6 +2166,56 @@ export const handler = async (event) => {
           errorCode: 'FAILED_TO_SAVE_METADATA',
           message: 'Something went wrong attempting to pull saved metadata.',
         }
+      }
+    }
+  }
+
+  if (path === `/${process.env.ENV}/public/user/update/proSupportMessage`) {
+    const userId = userSub;
+    const message = body.message;
+  
+    if (!userId || !message) {
+      response = {
+        statusCode: 400,
+        body: {
+          error: 'Missing required fields',
+          message: 'Both userId and message are required to submit a pro support message',
+        },
+      };
+    } else {
+      const createProSupportMessageQuery = `
+        mutation createProSupportMessage($userId: ID!, $message: String!) {
+          createProSupportMessage(input: {userDetailsProSupportMessagesId: $userId, message: $message}) {
+            id
+            createdAt
+            user {
+              id
+            }
+          }
+        }
+      `;
+  
+      try {
+        const createProSupportMessage = await makeRequestWithVariables(createProSupportMessageQuery, { userId, message });
+        console.log('createProSupportMessage', createProSupportMessage);
+  
+        response = {
+          statusCode: 200,
+          body: {
+            success: true,
+            message: 'Pro support message submitted successfully',
+            data: createProSupportMessage.body.data.createProSupportMessage,
+          },
+        };
+      } catch (error) {
+        console.log(error);
+        response = {
+          statusCode: 500,
+          body: {
+            error: 'Failed to submit pro support message',
+            message: `An error occurred while submitting the pro support message: ${error}`,
+          },
+        };
       }
     }
   }

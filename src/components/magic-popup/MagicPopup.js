@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { UserContext } from '../../UserContext';
 import { MagicPopupContext } from '../../MagicPopupContext';
 import { SnackbarContext } from '../../SnackbarContext';
+import { useSubscribeDialog } from '../../contexts/useSubscribeDialog';
 
 const Alert = forwardRef((props, ref) =>
     <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />
@@ -20,63 +21,10 @@ MagicPopup.propTypes = {
 
 export default function MagicPopup({ children }) {
     const [magicToolsPopoverAnchorEl, setMagicToolsPopoverAnchorEl] = useState(null);
-    const { user, setUser } = useContext(UserContext);
-    const [earlyAccessLoading, setEarlyAccessLoading] = useState(false);
-    const [earlyAccessComplete, setEarlyAccessComplete] = useState(false);
-    const [earlyAccessDisabled, setEarlyAccessDisabled] = useState(false);
+    const { user } = useContext(UserContext);
     const [loadingSubscriptionUrl, setLoadingSubscriptionUrl] = useState(false);
-    const { setOpen, setMessage, setSeverity } = useContext(SnackbarContext)
-    const navigate = useNavigate();
-    const buttonRef = useRef(null);
     const theme = useTheme();
-
-    const earlyAccessSubmit = () => {
-        buttonRef.current.blur();
-        setEarlyAccessLoading(true);
-        console.log('submitting')
-        API.get('publicapi', '/user/update/earlyAccess').then(response => {
-            console.log(response)
-            setEarlyAccessComplete(true);
-            setEarlyAccessLoading(false);
-            setEarlyAccessDisabled(true);
-        }).catch(err => console.log(err))
-    }
-
-    const acceptInvitation = () => {
-        setLoadingSubscriptionUrl(true)
-        API.post('publicapi', '/user/update/acceptMagicInvitation').then(results => {
-            console.log(results)
-            setUser({ ...user, userDetails: { ...user.userDetails, earlyAccessStatus: 'accepted', credits: results.credits } })
-            setLoadingSubscriptionUrl(false)
-            setMessage(results.message);
-            setSeverity('success');
-            setOpen(true)
-        }).catch(error => {
-            console.log(error.response)
-            setMessage(error.response.message);
-            setSeverity('error');
-            setOpen(true)
-            setLoadingSubscriptionUrl(false)
-        })
-    }
-
-    // /user/update/getPortalLink
-
-    const buySubscription = () => {
-        setLoadingSubscriptionUrl(true)
-        API.post('publicapi', '/user/update/getCheckoutSession', {
-            body: {
-                currentUrl: window.location.href
-            }
-        }).then(results => {
-            console.log(results)
-            setLoadingSubscriptionUrl(false)
-            window.location.href = results
-        }).catch(error => {
-            console.log(error.response)
-            setLoadingSubscriptionUrl(false)
-        })
-    }
+    const { openSubscriptionDialog } = useSubscribeDialog();
 
     const logIntoCustomerPortal = () => {
         setLoadingSubscriptionUrl(true)
@@ -94,24 +42,9 @@ export default function MagicPopup({ children }) {
         })
     }
 
-
-
-    const cancelSubscription = () => {
-        setLoadingSubscriptionUrl(true)
-        API.post('publicapi', '/user/update/cancelSubscription').then(results => {
-            console.log(results)
-            setLoadingSubscriptionUrl(false)
-            setMessage('Your subscription has been cancelled.')
-            setSeverity('info')
-            setOpen(true)
-            setUser({ ...user, userDetails: { ...user.userDetails, magicSubscription: null } })
-        }).catch(error => {
-            console.log(error.response)
-            setLoadingSubscriptionUrl(false)
-            setMessage('Something went wrong.')
-            setSeverity('error')
-            setOpen(true)
-        })
+    const handleSubscribe = () => {
+        openSubscriptionDialog();
+        setMagicToolsPopoverAnchorEl();
     }
 
     return (
@@ -164,7 +97,7 @@ export default function MagicPopup({ children }) {
                     }}
                 >
                     {/* --------------------- User is invited to early access -------------------- */}
-                    {user?.userDetails?.earlyAccessStatus === 'invited' && (
+                    {user?.userDetails?.magicSubscription !== 'true' && (
                         <>
                             <Stack justifyContent="center" spacing={3}>
                                 <Stack direction="row" color="#54d62c" alignItems="center" justifyContent="left" spacing={1}>
@@ -173,7 +106,7 @@ export default function MagicPopup({ children }) {
                                 </Stack>
 
                                 <Typography variant="h3">
-                                    A new suite of generative editing tools and features are coming soon!
+                                   memeSRC Pro unlocks Early&nbsp;Access to new generative editing tools.
                                 </Typography>
 
                                 <Typography variant="subtitle1" fontWeight="bold" lineHeight={2} textAlign="left" px={2}>
@@ -209,21 +142,21 @@ export default function MagicPopup({ children }) {
                                     </ul>
                                 </Typography>
 
-                                <Stack direction="row" alignItems="center">
+                                {/* <Stack direction="row" alignItems="center">
                                     <Verified sx={{ mr: 1 }} color="success" />
                                     <Typography variant="h5" sx={{ color: (theme) => theme.palette.success.main }}>
                                         You're Invited!
                                     </Typography>
-                                </Stack>
+                                </Stack> */}
                             </Stack>
-                            <Typography variant="body1" textAlign="left" fontWeight={700} pt={1}>
+                            {/* <Typography variant="body1" textAlign="left" fontWeight={700} pt={1}>
                                 You've been invited to the Early Access program to help us test new features as they're developed.
-                            </Typography>
+                            </Typography> */}
                         </>
                     )}
 
                     {/* --------------------- User has accepted early access -------------------- */}
-                    {user?.userDetails?.earlyAccessStatus === 'accepted' && (
+                    {user?.userDetails?.magicSubscription === 'true' && (
                         <Stack justifyContent="center" spacing={3}>
                             <Stack direction="row" color="#54d62c" alignItems="center" justifyContent="left" spacing={1}>
                                 <AutoFixHighRounded fontSize="large" />
@@ -231,7 +164,7 @@ export default function MagicPopup({ children }) {
                             </Stack>
 
                             <Typography variant="h4">
-                                You're in the Early Access program for a new suite of generative editing tools!
+                                memeSRC Pro has unlocked Early&nbsp;Access to new generative editing tools!
                             </Typography>
 
                             <Typography variant="subtitle1" fontWeight="bold" lineHeight={2} textAlign="left" px={2}>
@@ -302,7 +235,7 @@ export default function MagicPopup({ children }) {
                     )}
 
                     {/* --------------------- User has done nothing about early access -------------------- */}
-                    {(!user?.userDetails?.earlyAccessStatus || user?.userDetails?.earlyAccessStatus === 'requested') && (
+                    {/* {(!user?.userDetails?.earlyAccessStatus || user?.userDetails?.earlyAccessStatus === 'requested') && (
                         <Stack justifyContent="center" spacing={3}>
                             <Stack direction="row" color="#54d62c" alignItems="center" justifyContent="left" spacing={1}>
                                 <AutoFixHighRounded fontSize="large" />
@@ -351,60 +284,24 @@ export default function MagicPopup({ children }) {
                                 developed.
                             </Typography>
                         </Stack>
-                    )}
+                    )} */}
                 </Box>
                 <Box width="100%" px={2} pb={2} pt={1}>
-                    {user?.userDetails?.earlyAccessStatus === 'accepted' ? (
-                        <>
-                            {user?.userDetails?.magicSubscription === 'true' ? (
+                    <>
+                        {user?.userDetails?.magicSubscription === 'true' ? (
+                            <LoadingButton
+                                loading={loadingSubscriptionUrl}
+                                onClick={logIntoCustomerPortal}
+                                variant="contained"
+                                size="large"
+                                fullWidth
+                            >
+                                Manage Subscription
+                            </LoadingButton>
+                        ) : (
+                            <>
                                 <LoadingButton
-                                    loading={loadingSubscriptionUrl}
-                                    onClick={logIntoCustomerPortal}
-                                    variant="contained"
-                                    size="large"
-                                    fullWidth
-                                >
-                                    Customer Portal
-                                </LoadingButton>
-                            ) : (
-                                <>
-                                    <LoadingButton
-                                        loading={loadingSubscriptionUrl}
-                                        onClick={buySubscription}
-                                        variant="contained"
-                                        size="large"
-                                        fullWidth
-                                        sx={{
-                                            backgroundColor: (theme) => theme.palette.success.main,
-                                            color: (theme) => theme.palette.common.black,
-                                            '&:hover': {
-                                                ...(!loadingSubscriptionUrl && {
-                                                    backgroundColor: (theme) => theme.palette.success.dark,
-                                                    color: (theme) => theme.palette.common.black,
-                                                }),
-                                            },
-                                        }}
-                                    >
-                                        Try Magic 69 <Chip size='small' sx={{ml: 1, backgroundColor: 'white', color: 'green'}} label="30% off" />
-                                    </LoadingButton>
-                                    <Typography
-                                        variant="caption"
-                                        display="block"
-                                        gutterBottom
-                                        align="center"
-                                        sx={{ pt: 1, marginTop: 1, opacity: 0.8 }}
-                                    >
-                                        69 credits/mo for <del>$6.00</del> $4.20. Cancel any time.
-                                    </Typography>
-                                </>
-                            )}
-                        </>
-                    ) : (
-                        <>
-                            {user?.userDetails?.earlyAccessStatus === 'invited' ? (
-                                <LoadingButton
-                                    loading={loadingSubscriptionUrl}
-                                    onClick={acceptInvitation}
+                                    onClick={handleSubscribe}
                                     variant="contained"
                                     size="large"
                                     fullWidth
@@ -419,62 +316,22 @@ export default function MagicPopup({ children }) {
                                         },
                                     }}
                                 >
-                                    Accept Invitation
+                                    Get memeSRC Pro 
+                                    {/* <Chip size='small' sx={{ ml: 1, backgroundColor: 'white', color: 'green' }} label="30% off" /> */}
                                 </LoadingButton>
-                            ) : (
-                                <LoadingButton
-                                    onClick={(event) => {
-                                        if (user) {
-                                            earlyAccessSubmit();
-                                        } else {
-                                            navigate('/signup');
-                                        }
-                                    }}
-                                    loading={earlyAccessLoading}
-                                    disabled={
-                                        user?.userDetails?.earlyAccessStatus ||
-                                        earlyAccessLoading ||
-                                        earlyAccessDisabled ||
-                                        earlyAccessComplete
-                                    }
-                                    variant="contained"
-                                    startIcon={<SupervisedUserCircle />}
-                                    size="large"
-                                    fullWidth
-                                    sx={css`
-                    font-size: 18px;
-                    background-color: #54d62c;
-                    color: black;
-
-                    ${!(earlyAccessLoading || earlyAccessDisabled)
-                                            ? `@media (hover: hover) and (pointer: fine) {
-                          /* Apply hover style only on non-mobile devices */
-                          &:hover {
-                            background-color: #96f176;
-                            color: black;
-                          }
-                        }`
-                                            : ''}
-                  `}
-                                    onBlur={() => {
-                                        // Blur the button when it loses focus
-                                        buttonRef.current.blur();
-                                    }}
-                                    ref={buttonRef}
+                                {/* <Typography
+                                    variant="caption"
+                                    display="block"
+                                    gutterBottom
+                                    align="center"
+                                    sx={{ pt: 1, marginTop: 1, opacity: 0.8 }}
                                 >
-                                    {earlyAccessComplete ? (
-                                        `You're on the list!`
-                                    ) : (
-                                        <>
-                                            {user?.userDetails?.earlyAccessStatus && user?.userDetails?.earlyAccessStatus !== null
-                                                ? `You're on the list!`
-                                                : 'Request Access'}
-                                        </>
-                                    )}
-                                </LoadingButton>
-                            )}
-                        </>
-                    )}
+                                    69 credits/mo for <del>$6.00</del> $4.20. Cancel any time.
+                                </Typography> */}
+                            </>
+                        )}
+                    </>
+
                     {/* <Typography
               variant="caption"
               align="center"

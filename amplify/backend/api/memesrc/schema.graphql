@@ -202,6 +202,7 @@ type UserDetails @model @auth(
   userNotifications: [UserNotification] @hasMany
   contentMetadatas: [ContentMetadata] @manyToMany(relationName: "UserMetadata")
   v2ContentMetadatas: [V2ContentMetadata] @manyToMany(relationName: "UserV2Metadata")
+  proSupportMessages: [ProSupportMessage] @hasMany
 }
 
 type StripeCustomer @model @auth(
@@ -296,4 +297,15 @@ type WebsiteSetting @model @auth(
   id: ID!, 
   fullSiteMaintenance: Boolean,
   universalSearchMaintenance: Boolean
+}
+
+type ProSupportMessage @model @auth(
+  rules: [
+    { allow: groups, groups: ["admins", "mods"] },
+  ]
+) {
+  id: ID!
+  user: UserDetails @belongsTo
+  message: String!
+  createdAt: AWSDateTime!
 }

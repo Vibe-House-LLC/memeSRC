@@ -20,6 +20,20 @@ Amplify Params - DO NOT EDIT */
 
 const aws = require('aws-sdk');
 const { LambdaClient, InvokeCommand } = require("@aws-sdk/client-lambda");
+
+const creditsPerPrice = {
+  // Beta Prices (non-test mode on stripe)
+  "price_1OziYeAqFX20vifIptXDlka4": 5,   // Pro 5 (beta)
+  "price_1OziZIAqFX20vifIQ5mw6jqr": 25,  // Pro 25 (beta)
+  "price_1Ozia3AqFX20vifIgwvdxsEg": 69,  // Pro 69 (beta)
+  "price_1NbXguAqFX20vifI34N1MJFO": 69,  // Magic 69 (beta) - deprecated
+  // Dev Prices (test mode on stripe)
+  "price_1OyLVZAqFX20vifImSa8wizl": 5,   // Pro 5 (dev)
+  "price_1OyLWrAqFX20vifIkrK4Oxnp": 25,  // Pro 25 (dev)
+  "price_1OyLXpAqFX20vifIxTi2SMIx": 69,  // Pro 69 (dev)
+  "price_1Nhc9UAqFX20vifI0mYIzSfs": 69,  // Magic 69 (dev) - deprecated
+};
+
 /**
  * @type {import('@types/aws-lambda').APIGatewayProxyHandler}
  */
@@ -40,18 +54,19 @@ exports.handler = async (event) => {
 
   const stripe = require('stripe')(stripeKey);
 
-  const handleGiveUserCredits = async (stripeCustomerId, periodStart, periodEnd) => {
+  const handleGiveUserCredits = async (stripeCustomerId, periodStart, periodEnd, invoice) => {
     const lambdaClient = new LambdaClient({ region: "us-east-1" });
 
     // Create the request object to invoke the user function
     const invokeRequest = {
       FunctionName: process.env.FUNCTION_MEMESRCUSERFUNCTION_NAME,
       Payload: JSON.stringify({
-        path: `/function/magic69/renewCredits`,
+        path: `/function/pro/renewCredits`,
         body: JSON.stringify({
           stripeCustomerId,
           periodStart,
-          periodEnd
+          periodEnd,
+          creditsPerMonth: creditsPerPrice[invoice.data.lines.data[0].price.id]
         })
       }),
     };
@@ -155,14 +170,8 @@ exports.handler = async (event) => {
   // This function checks to see if an invoice object contains at least one of the price ID's.
   // This includes the test price and the production price.
   function hasMatchingPriceId(invoice) {
-    // Define the price IDs to check against
-    const validPriceIds = [
-      "price_1NbXguAqFX20vifI34N1MJFO",
-      "price_1Nhc9UAqFX20vifI0mYIzSfs"
-    ];
-
     // Check if any line item matches the valid price IDs
-    return invoice.lines.data.some(lineItem => validPriceIds.includes(lineItem.price.id));
+    return invoice.lines.data.some(lineItem => lineItem.price.id in creditsPerPrice);
   }
 
 
@@ -222,6 +231,10 @@ exports.handler = async (event) => {
     const isRenewel = (stripeEvent['billing_reason'] === 'subscription_cycle')
     console.log('isRenewel', isRenewel)
 
+    const invoice = await stripe.invoices.retrieve(
+      stripeEvent.invoice
+    );
+
 
     // Currently I'm leaving isRenewel out of the if statement. This means that there is a double call when
     // someone first creates a subscription, but that doesn't cause any issues currently.
@@ -238,7 +251,7 @@ exports.handler = async (event) => {
       const periodEnd = stripeEvent.period_end
       console.log('periodEnd', periodEnd)
 
-      const renewUsersCredits = await handleGiveUserCredits(stripeCustomerId, periodStart, periodEnd)
+      const renewUsersCredits = await handleGiveUserCredits(stripeCustomerId, periodStart, periodEnd, invoice)
       console.log('renewUsersCredits', renewUsersCredits)
     }
   }

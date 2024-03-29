@@ -988,6 +988,10 @@ export const onCreateUserDetails = /* GraphQL */ `
         nextToken
         __typename
       }
+      proSupportMessages {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       userDetailsStripeCustomerInfoId
@@ -1043,6 +1047,10 @@ export const onUpdateUserDetails = /* GraphQL */ `
         nextToken
         __typename
       }
+      proSupportMessages {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       userDetailsStripeCustomerInfoId
@@ -1095,6 +1103,10 @@ export const onDeleteUserDetails = /* GraphQL */ `
         __typename
       }
       v2ContentMetadatas {
+        nextToken
+        __typename
+      }
+      proSupportMessages {
         nextToken
         __typename
       }
@@ -1818,6 +1830,102 @@ export const onDeleteWebsiteSetting = /* GraphQL */ `
       universalSearchMaintenance
       createdAt
       updatedAt
+      __typename
+    }
+  }
+`;
+export const onCreateProSupportMessage = /* GraphQL */ `
+  subscription OnCreateProSupportMessage(
+    $filter: ModelSubscriptionProSupportMessageFilterInput
+  ) {
+    onCreateProSupportMessage(filter: $filter) {
+      id
+      user {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      message
+      createdAt
+      updatedAt
+      userDetailsProSupportMessagesId
+      __typename
+    }
+  }
+`;
+export const onUpdateProSupportMessage = /* GraphQL */ `
+  subscription OnUpdateProSupportMessage(
+    $filter: ModelSubscriptionProSupportMessageFilterInput
+  ) {
+    onUpdateProSupportMessage(filter: $filter) {
+      id
+      user {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      message
+      createdAt
+      updatedAt
+      userDetailsProSupportMessagesId
+      __typename
+    }
+  }
+`;
+export const onDeleteProSupportMessage = /* GraphQL */ `
+  subscription OnDeleteProSupportMessage(
+    $filter: ModelSubscriptionProSupportMessageFilterInput
+  ) {
+    onDeleteProSupportMessage(filter: $filter) {
+      id
+      user {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      message
+      createdAt
+      updatedAt
+      userDetailsProSupportMessagesId
       __typename
     }
   }

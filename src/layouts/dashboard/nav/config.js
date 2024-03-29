@@ -1,5 +1,5 @@
 // component
-import { Article, CardGiftcard, Favorite, FolderShared, MapsUgc, Settings, Shield } from '@mui/icons-material';
+import { Article, Ballot, CardGiftcard, Edit, Favorite, FolderShared, MapsUgc, Search, Settings, Shield, SupportAgent, Upload } from '@mui/icons-material';
 import SvgColor from '../../../components/svg-color';
 
 // ----------------------------------------------------------------------
@@ -12,7 +12,7 @@ const isElectron = () => {
 
 const navConfig = [
   {
-    sectionTitle: 'General',
+    sectionTitle: 'Tools',
     adminOnly: false,
     items: [
 
@@ -20,25 +20,19 @@ const navConfig = [
         title: 'search',
         path: '/search',
         externalLink: false,
-        icon: icon('ic_menu_item'),
+        icon: <Search />,
       },
       {
         title: 'edit',
         path: '/edit',
         externalLink: false,
-        icon: icon('ic_file'),
+        icon: <Edit />,
       },
       {
-        title: 'Request',
+        title: 'Vote',
         path: '/vote',
         externalLink: false,
-        icon: icon('ic_kanban')
-      },
-      {
-        title: 'Contribute',
-        path: '/contribute',
-        externalLink: false,
-        icon: <FolderShared />
+        icon: <Ballot />
       },
       ...(isElectron() ? [{
         title: 'Server',
@@ -49,14 +43,14 @@ const navConfig = [
     ]
   },
   {
-    sectionTitle: 'Support',
+    sectionTitle: 'Contribute',
     adminOnly: false,
     items: [
       {
-        title: 'Feedback',
-        path: 'https://forms.gle/8CETtVbwYoUmxqbi7',
-        externalLink: true,
-        icon: <MapsUgc />
+        title: 'upload',
+        path: '/contribute',
+        externalLink: false,
+        icon: <Upload />
       },
       {
         title: 'Donate',
@@ -64,6 +58,24 @@ const navConfig = [
         externalLink: true,
         icon: <Favorite />
       }
+    ]
+  },
+  {
+    sectionTitle: 'Contact',
+    adminOnly: false,
+    items: [
+      {
+        title: 'Pro Support',
+        path: '/support',
+        externalLink: false,
+        icon: <SupportAgent />,
+      },
+      {
+        title: 'Feedback',
+        path: 'https://forms.gle/8CETtVbwYoUmxqbi7',
+        externalLink: true,
+        icon: <MapsUgc />
+      },
     ]
   },
 
@@ -82,6 +94,12 @@ const navConfig = [
         path: '/dashboard/websiteSettings',
         externalLink: false,
         icon: <Settings />,
+      },
+      {
+        title: 'Pro Support Admin',
+        path: '/dashboard/support',
+        externalLink: false,
+        icon: <SupportAgent />,
       },
       {
         title: 'Source Media',
