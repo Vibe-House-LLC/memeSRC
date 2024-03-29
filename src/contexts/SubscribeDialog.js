@@ -258,10 +258,10 @@ export const DialogProvider = ({ children }) => {
                         mr: 2,
                       }}
                     >
-                      <AutoFixHighRounded sx={{ color: getTextColor() }} />
+                      <SupportAgent sx={{ color: getTextColor() }} />
                     </Box>
                     <Typography fontSize={18} fontWeight={500}>
-                      {getCreditCount()} Magic Credits / mo
+                      Pro Support
                     </Typography>
                   </Box>
                   <Box display="flex" alignItems="center" ml={2}>
@@ -277,10 +277,10 @@ export const DialogProvider = ({ children }) => {
                         mr: 2,
                       }}
                     >
-                      <SupportAgent sx={{ color: getTextColor() }} />
+                      <AutoFixHighRounded sx={{ color: getTextColor() }} />
                     </Box>
                     <Typography fontSize={18} fontWeight={500}>
-                      Pro Support
+                    {getCreditCount()} Magic Credits / mo
                     </Typography>
                   </Box>
                 </Grid>
