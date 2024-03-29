@@ -914,20 +914,15 @@ export const handler = async (event) => {
       console.log('stripeCustomerInfo')
       console.log(stripeCustomerInfo)
 
-      const creditsPerPrice = {
-        "price_1NbXguAqFX20vifI34N1MJFO": 69,  // Magic 69 (prod)
-        "price_1Nhc9UAqFX20vifI0mYIzSfs": 69,  // Magic 69 (dev)
-        "price_1OyLVZAqFX20vifImSa8wizl": 5,   // Pro 5 (dev)
-        "price_1OyLWrAqFX20vifIkrK4Oxnp": 25,  // Pro 25 (dev)
-        "price_1OyLXpAqFX20vifIxTi2SMIx": 69   // Pro 69 (dev)
-      };
-
       const priceMap = {
         "magic69-beta": "price_1NbXguAqFX20vifI34N1MJFO",
         "magic69-dev": "price_1Nhc9UAqFX20vifI0mYIzSfs",
         "pro5-dev": "price_1OyLVZAqFX20vifImSa8wizl",
         "pro25-dev": "price_1OyLWrAqFX20vifIkrK4Oxnp",
-        "pro69-dev": "price_1OyLXpAqFX20vifIxTi2SMIx"
+        "pro69-dev": "price_1OyLXpAqFX20vifIxTi2SMIx",
+        "pro5-beta": "price_1OziYeAqFX20vifIptXDlka4",  // Pro 5 (prod)
+        "pro25-beta": "price_1OziZIAqFX20vifIQ5mw6jqr",  // Pro 25 (prod)
+        "pro69-beta": "price_1Ozia3AqFX20vifIgwvdxsEg",  // Pro 69 (prod)
       }
 
       const priceKey = `${body.priceKey}-${process.env.ENV}`
