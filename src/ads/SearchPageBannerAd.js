@@ -30,22 +30,20 @@ const SearchPageBannerAd = () => {
     }, []);
 
     const removeAdsLink = (
-        <Link onClick={(e) => { e.preventDefault(); openSubscriptionDialog(); }} sx={{ color: 'white', cursor: 'pointer' }} >
-            <Typography fontSize={14} textAlign='center' py={2} display='flex' alignItems='center'>
-                <Close fontSize='small' sx={{ mr: 0.5 }} /> <b>Remove ads w/ memeSRC Pro</b>
-            </Typography>
-        </Link>
+        <Box display='flex' justifyContent='center'>
+            <Link onClick={(e) => { e.preventDefault(); openSubscriptionDialog(); }} sx={{ color: 'white', cursor: 'pointer' }} >
+                <Typography fontSize={14} textAlign='center' py={2} display='flex' alignItems='center'>
+                    <Close fontSize='small' sx={{ mr: 0.5 }} /> <b>Remove ads w/ memeSRC Pro</b>
+                </Typography>
+            </Link>
+        </Box>
     );
 
     return (
         <Box sx={{ backgroundColor: 'black', borderRadius: 2, margin: 2 }}>
-            <Box display='flex' justifyContent='center'>
-                {removeAdsLink}
-            </Box>
-                {adSnippet}
-            <Box display='flex' justifyContent='center'>
-                {removeAdsLink}
-            </Box>
+            {removeAdsLink}
+            {adSnippet}
+            {removeAdsLink}
         </Box>
     );
 }
