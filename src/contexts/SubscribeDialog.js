@@ -226,8 +226,8 @@ export const DialogProvider = ({ children }) => {
               <Grid container spacing={4} alignItems="center">
                 <Grid item xs={12} md={5}>
                   <Box display="flex" alignItems="center" mx={2} mb={3} mt={-1}>
-                    <Typography variant="p" sx={{ color: '#C2C2C2', fontSize: isMd ? '20px' : '14px' }}>
-                      <b>memeSRC Pro</b> helps keep the site alive, plus unlocks some nice perks:
+                    <Typography variant='body2' sx={{ color: '#C2C2C2', fontSize: isMd ? '20px' : '16px' }}>
+                      <b>memeSRC&nbsp;Pro</b>&nbsp;helps support&nbsp;the&nbsp;site and unlocks these&nbsp;perks:
                     </Typography>
                   </Box>
                   <Box display="flex" alignItems="center" mb={2} ml={2}>
