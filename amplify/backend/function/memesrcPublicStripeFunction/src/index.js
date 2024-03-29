@@ -22,11 +22,16 @@ const aws = require('aws-sdk');
 const { LambdaClient, InvokeCommand } = require("@aws-sdk/client-lambda");
 
 const creditsPerPrice = {
-  "price_1NbXguAqFX20vifI34N1MJFO": 69,  // Magic 69 (prod)
-  "price_1Nhc9UAqFX20vifI0mYIzSfs": 69,  // Magic 69 (dev)
+  // Beta Prices (non-test mode on stripe)
+  "price_1OziYeAqFX20vifIptXDlka4": 5,   // Pro 5 (beta)
+  "price_1OziZIAqFX20vifIQ5mw6jqr": 25,  // Pro 25 (beta)
+  "price_1Ozia3AqFX20vifIgwvdxsEg": 69,  // Pro 69 (beta)
+  "price_1NbXguAqFX20vifI34N1MJFO": 69,  // Magic 69 (beta) - deprecated
+  // Dev Prices (test mode on stripe)
   "price_1OyLVZAqFX20vifImSa8wizl": 5,   // Pro 5 (dev)
   "price_1OyLWrAqFX20vifIkrK4Oxnp": 25,  // Pro 25 (dev)
-  "price_1OyLXpAqFX20vifIxTi2SMIx": 69   // Pro 69 (dev)
+  "price_1OyLXpAqFX20vifIxTi2SMIx": 69,  // Pro 69 (dev)
+  "price_1Nhc9UAqFX20vifI0mYIzSfs": 69,  // Magic 69 (dev) - deprecated
 };
 
 /**
