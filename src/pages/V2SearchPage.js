@@ -203,7 +203,7 @@ export default function SearchPage() {
 
   // ===== Upgraded Index Banner States ===== 
   const [isBannerMinimized, setIsBannerMinimized] = useState(
-    localStorage.getItem(`dismissedBanner`) === 'true' || false
+    localStorage.getItem(`dismissedBanner`) === 'true' || true
   );
 
   const [animationsEnabled, setAnimationsEnabled] = useState(

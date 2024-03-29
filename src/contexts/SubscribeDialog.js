@@ -1,4 +1,4 @@
-import { AutoFixHighRounded, Block, Close, Favorite, Star, SupportAgent, ExpandMore, Clear, Check } from '@mui/icons-material';
+import { AutoFixHighRounded, Block, Close, Favorite, Star, SupportAgent, ExpandMore, Clear, Check, Bolt } from '@mui/icons-material';
 import { Box, Button, Card, Chip, Collapse, Dialog, DialogContent, DialogTitle, Divider, Fade, Grid, IconButton, LinearProgress, Typography, useMediaQuery } from '@mui/material';
 import { API } from 'aws-amplify';
 import { createContext, useState, useRef, useEffect, useContext } from 'react';
@@ -207,6 +207,10 @@ export const DialogProvider = ({ children }) => {
                   borderRadius: 4,
                   mb: 4,
                   mt: isMd ? -4 : 0,
+                  cursor: 'pointer',
+                }}
+                onClick={() => {
+                  subscribeButtonRef.current.scrollIntoView({ behavior: 'smooth' });
                 }}
               >
                 <Typography fontSize={25} fontWeight={700} color={getTextColor()} gutterBottom>
@@ -262,6 +266,25 @@ export const DialogProvider = ({ children }) => {
                     </Box>
                     <Typography fontSize={18} fontWeight={500}>
                       Pro Support
+                    </Typography>
+                  </Box>
+                  <Box display="flex" alignItems="center" mb={2} ml={2}>
+                    <Box
+                      sx={{
+                        backgroundColor: getColor(),
+                        borderRadius: '50%',
+                        width: 32,
+                        height: 32,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        mr: 2,
+                      }}
+                    >
+                      <Bolt sx={{ color: getTextColor() }} />
+                    </Box>
+                    <Typography fontSize={18} fontWeight={500}>
+                      Early Access Features
                     </Typography>
                   </Box>
                   <Box display="flex" alignItems="center" ml={2}>
@@ -399,7 +422,7 @@ export const DialogProvider = ({ children }) => {
                         mb: 3,
                       }}
                       onClick={() => setSelectedPlanAndScroll('pro69')}
-                    >
+                      >
                       <Box
                         sx={{
                           position: 'absolute',
