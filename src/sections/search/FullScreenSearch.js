@@ -18,6 +18,7 @@ import useSearchDetailsV2 from '../../hooks/useSearchDetailsV2';
 import AddCidPopup from '../../components/ipfs/add-cid-popup';
 import fetchShows from '../../utils/fetchShows';
 import useLoadRandomFrame from '../../utils/loadRandomFrame';
+import { useSubscribeDialog } from '../../contexts/useSubscribeDialog';
 
 const seriesOptions = [
   { id: '_universal', title: 'All Shows & Movies', emoji: '🌈' },
@@ -238,6 +239,8 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   const [aliasesWithMetadata, setAliasesWithMetadata] = useState([]);
   const [aliasesLoading, setAliasesLoading] = useState(true);
   const [aliasesError, setAliasesError] = useState(null);
+
+  const { openSubscriptionDialog } = useSubscribeDialog();
 
   useEffect(() => {
     const fetchAliasesRecursive = async (nextToken = null, accumulator = []) => {
@@ -551,46 +554,29 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                   />
                 </Box>
                 {`${currentThemeTitleText} ${currentThemeTitleText === 'memeSRC' ? (user?.userDetails?.magicSubscription === 'true' ? 'Pro' : '') : ''}`}
-                {/* {user?.userDetails?.magicSubscription === 'true' && 
-                  <Chip
-                    color="success"
-                    sx={{
-                      fontSize: { xs: 12, md: 14 },
-                      fontWeight: 700,
-                      mb: { xs: 1, md: 5 },
-                      ml: 1,
-                      px: { xs: 0.5, md: 1 },
-                      color: 'white',
-                      boxShadow: '2px 2px 5px rgba(0,0,0,0.5)',
-                      '& .MuiChip-label': {
-                        fontWeight: 'bold',
-                      },
-                    }}
-                    label="PRO"
-                  />
-                } */}
               </Typography>
-              {/* {!localStorage.getItem('alertDismissed-UPLOADS-auir9o89rd') && (
+              {!localStorage.getItem('alertDismissed-PRO-REMOVE-ADS-y78ifu') && user?.userDetails?.magicSubscription !== 'true' && (
                 <center>
                   <Alert
-                    severity="success"
+                    severity="info"
                     action={
                       <>
                         <Button
-                          component={Link}
-                          to="/edit"
                           variant="outlined"
                           color="inherit"
                           size="small"
                           style={{ marginRight: '5px' }}
+                          onClick={async () => {
+                            openSubscriptionDialog();
+                          }}
                         >
-                          Edit
+                          Upgrade
                         </Button>
                         <IconButton
                           color="inherit"
                           size="small"
                           onClick={() => {
-                            localStorage.setItem('alertDismissed-UPLOADS-auir9o89rd', 'true');
+                            localStorage.setItem('alertDismissed-PRO-REMOVE-ADS-y78ifu', 'true');
                             setAlertOpen(false);
                           }}
                         >
@@ -602,13 +588,13 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                       marginTop: 2,
                       marginBottom: -3,
                       opacity: 0.9,
-                      maxWidth: 400
+                      maxWidth: 400,
                     }}
                   >
-                    <b>New:</b> Edit&nbsp;your&nbsp;own&nbsp;pics!
+                    <b>New:</b> Remove ads!
                   </Alert>
                 </center>
-              )} */}
+              )}
             </Grid>
           </Grid>
           <StyledSearchForm onSubmit={(e) => searchFunction(e)}>
