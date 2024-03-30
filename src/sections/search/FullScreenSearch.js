@@ -550,7 +550,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                     color="white"
                   />
                 </Box>
-                {`${currentThemeTitleText} ${user?.userDetails?.magicSubscription === 'true' ? 'Pro' : ''}`}
+                {`${currentThemeTitleText} ${currentThemeTitleText === 'memeSRC' ? (user?.userDetails?.magicSubscription === 'true' ? 'Pro' : '') : ''}`}
                 {/* {user?.userDetails?.magicSubscription === 'true' && 
                   <Chip
                     color="success"
