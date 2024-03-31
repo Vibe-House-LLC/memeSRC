@@ -1,7 +1,3 @@
-import { faker } from '@faker-js/faker';
-
-// ----------------------------------------------------------------------
-
 const POST_TITLES = [
   'Whiteboard Templates By Industry Leaders',
   'Tesla Cybertruck-inspired camper trailer for Tesla fans who can’t just wait for the truck!',
@@ -30,16 +26,16 @@ const POST_TITLES = [
 ];
 
 const posts = [...Array(23)].map((_, index) => ({
-  id: faker.datatype.uuid(),
+  id: `post-${index + 1}`,
   cover: `/assets/images/covers/cover_${index + 1}.jpg`,
   title: POST_TITLES[index + 1],
-  createdAt: faker.date.past(),
-  view: faker.datatype.number(),
-  comment: faker.datatype.number(),
-  share: faker.datatype.number(),
-  favorite: faker.datatype.number(),
+  createdAt: new Date(2022, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28)),
+  view: Math.floor(Math.random() * 1000),
+  comment: Math.floor(Math.random() * 100),
+  share: Math.floor(Math.random() * 50),
+  favorite: Math.floor(Math.random() * 100),
   author: {
-    name: faker.name.fullName(),
+    name: `Author ${index + 1}`,
     avatarUrl: `/assets/images/avatars/avatar_${index + 1}.jpg`,
   },
 }));

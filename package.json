@@ -42,7 +42,6 @@
     "@aws-sdk/util-dynamodb": "^3.388.0",
     "@emotion/react": "^11.10.4",
     "@emotion/styled": "^11.10.4",
-    "@faker-js/faker": "^7.6.0",
     "@fontsource/roboto": "^4.5.8",
     "@iconify/react": "^4.0.0",
     "@mui/icons-material": "^5.11.0",

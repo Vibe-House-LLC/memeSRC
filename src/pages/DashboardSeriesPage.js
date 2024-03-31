@@ -12,7 +12,6 @@ import { styled } from '@mui/material/styles';
 // components
 import { useState, useEffect, Fragment, useContext } from 'react';
 import { API, Auth, graphqlOperation, Storage } from 'aws-amplify';
-import { faker } from '@faker-js/faker';
 import { LoadingButton } from '@mui/lab';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -631,10 +630,10 @@ export default function DashboardSeriesPage() {
                       year: seriesItem.year,
                       statusText: seriesItem.statusText,
                       description: seriesItem.description,
-                      view: faker.datatype.number(),
-                      comment: faker.datatype.number(),
-                      share: faker.datatype.number(),
-                      favorite: faker.datatype.number(),
+                      view: 1000,
+                      comment: 50,
+                      share: 20,
+                      favorite: 100,
                       author: {
                         name: seriesItem.name,
                         avatarUrl: '🍌',
