@@ -52,7 +52,7 @@
     "@mui/x-data-grid": "^6.19.2",
     "amplify": "^0.0.11",
     "apexcharts": "^3.36.0",
-    "aws-amplify": "^5.0.4",
+    "aws-amplify": "^5.3.18",
     "change-case": "^4.1.2",
     "date-fns": "^2.29.3",
     "dompurify": "^2.4.3",
