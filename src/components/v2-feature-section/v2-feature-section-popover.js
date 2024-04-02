@@ -32,7 +32,7 @@ export default function FeatureSectionPopover({ children }) {
     const [currentSection, setCurrentSection] = useState(0);
     const [open, setOpen] = useState(false);
     const [showLanding, setShowLanding] = useState(true);
-    const [progress, setProgress] = useState(25);
+    const [progress, setProgress] = useState(0);
 
     const handleNext = () => {
         setCurrentSection((prevSection) => prevSection + 1);
@@ -41,7 +41,7 @@ export default function FeatureSectionPopover({ children }) {
 
     const handleBack = () => {
         setCurrentSection((prevSection) => prevSection - 1);
-        setProgress((prevProgress) => (prevProgress === 25) ? 25 : prevProgress - 25);
+        setProgress((prevProgress) => prevProgress - 25);
     };
 
     const handleClose = () => {
@@ -142,7 +142,10 @@ export default function FeatureSectionPopover({ children }) {
                                     <Box sx={{ mt: 'auto' }}>
                                         <Button
                                             onClick={() => {
-                                                setShowLanding(false)
+                                                setShowLanding(false);
+                                                setTimeout(() => {
+                                                    setProgress(25)
+                                                }, 100)
                                             }}
                                             variant="contained"
                                             fullWidth
@@ -233,7 +236,7 @@ export default function FeatureSectionPopover({ children }) {
                             }}
                         >
                             <IconButton
-                                onClick={currentSection === 0 ? () => { setShowLanding(true) } : handleBack}
+                                onClick={currentSection === 0 ? () => { setShowLanding(true); setProgress(0) } : handleBack}
                                 sx={{
                                     backgroundColor: "rgba(0, 0, 0, 0.2)",
                                     color: "white",
