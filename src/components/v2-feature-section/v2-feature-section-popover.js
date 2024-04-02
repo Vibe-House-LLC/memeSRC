@@ -32,13 +32,16 @@ export default function FeatureSectionPopover({ children }) {
     const [currentSection, setCurrentSection] = useState(0);
     const [open, setOpen] = useState(false);
     const [showLanding, setShowLanding] = useState(true);
+    const [progress, setProgress] = useState(25);
 
     const handleNext = () => {
         setCurrentSection((prevSection) => prevSection + 1);
+        setProgress((prevProgress) => prevProgress + 25);
     };
 
     const handleBack = () => {
         setCurrentSection((prevSection) => prevSection - 1);
+        setProgress((prevProgress) => (prevProgress === 25) ? 25 : prevProgress - 25);
     };
 
     const handleClose = () => {
@@ -67,39 +70,13 @@ export default function FeatureSectionPopover({ children }) {
                 scroll="paper"
                 PaperProps={{
                     sx: {
-                        borderRadius: isMd ? 5 : 0,
+                        borderRadius: isMd ? 3 : 0,
                         backgroundColor: showLanding ? 'black' : sections[currentSection].color,
                     },
                 }}
             >
-                <DialogTitle
-                    sx={{
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        position: "relative",
-                        pt: isMd ? 3 : 2,
-                        pb: isMd ? 1 : 0.5,
-                        background: `linear-gradient(45deg,
-                            #5461c8 12.5% /* 1*12.5% */,
-                            #c724b1 0, #c724b1 25%   /* 2*12.5% */,
-                            #e4002b 0, #e4002b 37.5% /* 3*12.5% */,
-                            #ff6900 0, #ff6900 50%   /* 4*12.5% */,
-                            #f6be00 0, #f6be00 62.5% /* 5*12.5% */,
-                            #97d700 0, #97d700 75%   /* 6*12.5% */,
-                            #00ab84 0, #00ab84 87.5% /* 7*12.5% */,
-                            #00a3e0 0)`
-                    }}
-                >
-                    <img
-                        src="https://beta.memesrc.com/assets/memeSRC-white.svg"
-                        alt="memeSRC logo"
-                        style={{ height: isMd ? 48 : 40, marginBottom: 8 }}
-                    />
-                    <Typography fontSize={isMd ? 32 : 24} fontWeight={700}>
-                        memeSRC v2
-                    </Typography>
+
+                <DialogContent sx={{ pt: 0, height: '100%', position: 'relative' }}>
                     <IconButton
                         size="large"
                         sx={{
@@ -110,14 +87,12 @@ export default function FeatureSectionPopover({ children }) {
                             '&:hover': {
                                 backgroundColor: 'rgba(255, 255, 255, 0.7)',
                             },
+                            zIndex: 8000
                         }}
                         onClick={handleClose}
                     >
                         <Close sx={{ color: 'white' }} />
                     </IconButton>
-                </DialogTitle>
-                <Divider />
-                <DialogContent sx={{ pt: 0, height: '100%' }}>
                     {showLanding ?
                         <Fade in timeout={800}>
                             <Box sx={{ flex: 1, overflowY: "auto", height: '100%' }}>
@@ -129,7 +104,8 @@ export default function FeatureSectionPopover({ children }) {
                                         flexDirection: 'column',
                                         justifyContent: 'center',
                                         height: '100%',
-                                        pt: 4,
+                                        pt: 0,
+                                        pb: 2
                                     }}
                                 >
                                     <Box
@@ -144,11 +120,21 @@ export default function FeatureSectionPopover({ children }) {
                                     >
                                         <Grow in timeout={1000}>
                                             <Box>
-                                                <Typography fontSize={isMd ? 36 : 40} fontWeight={700} gutterBottom sx={{ color: 'white' }} textAlign='center'>
-                                                    Welcome to memeSRC v2
-                                                </Typography>
+                                                {/* <Typography fontSize={isMd ? 18 : 20} fontWeight={700} gutterBottom sx={{ color: 'white' }} textAlign='center'>
+                                                    Welcome to
+                                                </Typography> */}
+                                                <center>
+                                                    <img
+                                                        src="https://beta.memesrc.com/assets/memeSRC-white.svg"
+                                                        alt="memeSRC logo"
+                                                        style={{ height: isMd ? 58 : 48, marginBottom: 2 }}
+                                                    />
+                                                    <Typography fontSize={isMd ? 38 : 38} fontWeight={700}>
+                                                        memeSRC v2
+                                                    </Typography>
+                                                </center>
                                                 <Typography fontSize={18} fontWeight={700} sx={{ color: 'white' }} pt={2} textAlign='center'>
-                                                    We've added some neat new features and improved a lot behind-the-scenes.
+                                                    We've updated memeSRC with some cool new features and made big improvements behind-the-scenes.
                                                 </Typography>
                                             </Box>
                                         </Grow>
@@ -178,7 +164,7 @@ export default function FeatureSectionPopover({ children }) {
                                             <Link
                                                 onClick={handleClose}
                                                 sx={{
-                                                    color: 'white',
+                                                    color: theme => theme.palette.grey[500],
                                                     cursor: 'pointer'
                                                 }}
                                             >
@@ -204,21 +190,21 @@ export default function FeatureSectionPopover({ children }) {
                         <Box width='100%'>
                             <LinearProgress
                                 variant="determinate"
-                                value={(currentSection / (sections.length - 1)) * 100}
+                                value={progress}
                                 sx={{
                                     height: 20,
                                     borderRadius: 10,
                                     "& .MuiLinearProgress-bar": {
                                         backgroundImage: `repeating-linear-gradient(45deg,
-                                                        #5461c8 0%, #5461c8 12.5%,     /* 1*12.5% */
-                                                        #c724b1 12.5%, #c724b1 25%,   /* 2*12.5% */
-                                                        #e4002b 25%, #e4002b 37.5%,   /* 3*12.5% */
-                                                        #ff6900 37.5%, #ff6900 50%,   /* 4*12.5% */
-                                                        
-                                                        #97d700 62.5%, #97d700 75%,   /* 6*12.5% */
-                                                        #00ab84 75%, #00ab84 87.5%,   /* 7*12.5% */
-                                                        #00a3e0 87.5%, #00a3e0 100%   /* 8*12.5% */
-                                                    )`,
+                                                    #5461c8 0%, #5461c8 12.5%,     /* 1*12.5% */
+                                                    #c724b1 12.5%, #c724b1 25%,   /* 2*12.5% */
+                                                    #e4002b 25%, #e4002b 37.5%,   /* 3*12.5% */
+                                                    #ff6900 37.5%, #ff6900 50%,   /* 4*12.5% */
+                                                    
+                                                    #97d700 62.5%, #97d700 75%,   /* 6*12.5% */
+                                                    #00ab84 75%, #00ab84 87.5%,   /* 7*12.5% */
+                                                    #00a3e0 87.5%, #00a3e0 100%   /* 8*12.5% */
+                                                )`,
                                         backgroundSize: '200% 100%',
                                         borderRadius: 10,
                                     },
@@ -280,7 +266,7 @@ export default function FeatureSectionPopover({ children }) {
                         </IconButton> */}
                             <Button
                                 variant="contained"
-                                onClick={currentSection === sections.length - 1 ? handleClose : handleNext}
+                                onClick={currentSection === sections.length - 1 ? () => { handleClose(); setProgress(100); } : handleNext}
                                 endIcon={currentSection === sections.length - 1 ? <Check /> : <ArrowForward />}
                                 sx={{
                                     backgroundColor: theme => theme.palette.success.main,
@@ -302,7 +288,7 @@ export default function FeatureSectionPopover({ children }) {
                         </Box>
                     </DialogActions>
                 }
-            </Dialog>
+            </Dialog >
         </>
     );
 }
