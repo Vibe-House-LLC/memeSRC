@@ -1,5 +1,5 @@
 // component
-import { Article, Ballot, CardGiftcard, Edit, Favorite, FolderShared, MapsUgc, Search, Settings, Shield, SupportAgent, Upload } from '@mui/icons-material';
+import { Article, Ballot, CardGiftcard, Edit, Favorite, FolderShared, MapsUgc, QuestionAnswer, Search, Settings, Shield, SupportAgent, Upload } from '@mui/icons-material';
 import SvgColor from '../../../components/svg-color';
 
 // ----------------------------------------------------------------------
@@ -61,9 +61,15 @@ const navConfig = [
     ]
   },
   {
-    sectionTitle: 'Contact',
+    sectionTitle: 'Help & Contact',
     adminOnly: false,
     items: [
+      {
+        title: 'FAQs',
+        path: '/faq',
+        externalLink: false,
+        icon: <QuestionAnswer />,
+      },
       {
         title: 'Pro Support',
         path: '/support',
