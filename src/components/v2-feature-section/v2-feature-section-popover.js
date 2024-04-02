@@ -11,6 +11,10 @@ import {
     Button,
     LinearProgress,
     DialogActions,
+    Fade,
+    Link,
+    Container,
+    Grow,
 } from "@mui/material";
 import { useEffect, useState } from "react";
 import PlatformUpdates from "./sections/platform-updates";
@@ -27,6 +31,7 @@ export default function FeatureSectionPopover({ children }) {
     const isMd = useMediaQuery((theme) => theme.breakpoints.up("md"));
     const [currentSection, setCurrentSection] = useState(0);
     const [open, setOpen] = useState(false);
+    const [showLanding, setShowLanding] = useState(true);
 
     const handleNext = () => {
         setCurrentSection((prevSection) => prevSection + 1);
@@ -40,14 +45,14 @@ export default function FeatureSectionPopover({ children }) {
         localStorage.setItem('featurePopoverDismissed', 'true');
         setOpen(false);
     };
-    
+
     useEffect(() => {
         const dismissed = localStorage.getItem('featurePopoverDismissed');
         if (!dismissed) {
             setOpen(true);
         }
     }, []);
-    
+
 
     return (
         <>
@@ -63,7 +68,7 @@ export default function FeatureSectionPopover({ children }) {
                 PaperProps={{
                     sx: {
                         borderRadius: isMd ? 5 : 0,
-                        backgroundColor: sections[currentSection].color,
+                        backgroundColor: showLanding ? 'black' : sections[currentSection].color,
                     },
                 }}
             >
@@ -108,28 +113,103 @@ export default function FeatureSectionPopover({ children }) {
                         }}
                         onClick={handleClose}
                     >
-                        <Close sx={{ color: 'white'}} />
+                        <Close sx={{ color: 'white' }} />
                     </IconButton>
                 </DialogTitle>
                 <Divider />
                 <DialogContent sx={{ pt: 0, height: '100%' }}>
-                    <Box sx={{ flex: 1, overflowY: "auto", height: '100%' }}>
-                        {sections[currentSection].component({
-                            backgroundColor: sections[currentSection].color,
-                            textColor: sections[currentSection].textColor,
-                        })}
-                    </Box>
+                    {showLanding ?
+                        <Fade in timeout={800}>
+                            <Box sx={{ flex: 1, overflowY: "auto", height: '100%' }}>
+                                <Container
+                                    maxWidth="md"
+                                    sx={{
+                                        backgroundColor: 'black',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        justifyContent: 'center',
+                                        height: '100%',
+                                        pt: 4,
+                                    }}
+                                >
+                                    <Box
+                                        sx={{
+                                            textAlign: 'left',
+                                            px: 2,
+                                            width: '100%',
+                                            my: 'auto',
+                                            pt: 5,
+                                            pb: 8
+                                        }}
+                                    >
+                                        <Grow in timeout={1000}>
+                                            <Box>
+                                                <Typography fontSize={isMd ? 36 : 40} fontWeight={700} gutterBottom sx={{ color: 'white' }} textAlign='center'>
+                                                    Welcome to memeSRC v2
+                                                </Typography>
+                                                <Typography fontSize={18} fontWeight={700} sx={{ color: 'white' }} pt={2} textAlign='center'>
+                                                    We've added some neat new features and improved a lot behind-the-scenes.
+                                                </Typography>
+                                            </Box>
+                                        </Grow>
+                                    </Box>
+                                    <Box sx={{ mt: 'auto' }}>
+                                        <Button
+                                            onClick={() => {
+                                                setShowLanding(false)
+                                            }}
+                                            variant="contained"
+                                            fullWidth
+                                            sx={{
+                                                color: "black",
+                                                py: 1,
+                                                borderRadius: 5,
+                                                fontSize: 20,
+                                                backgroundColor: theme => theme.palette.success.main,
+                                                "&:hover": {
+                                                    backgroundColor: theme => theme.palette.success.dark,
+                                                },
+                                                mb: 2
+                                            }}
+                                        >
+                                            See whats new
+                                        </Button>
+                                        <center>
+                                            <Link
+                                                onClick={handleClose}
+                                                sx={{
+                                                    color: 'white',
+                                                    cursor: 'pointer'
+                                                }}
+                                            >
+                                                I don't care.
+                                            </Link>
+                                        </center>
+                                    </Box>
+                                </Container>
+
+                            </Box>
+                        </Fade>
+                        :
+                        <Box sx={{ flex: 1, overflowY: "auto", height: '100%' }}>
+                            {sections[currentSection].component({
+                                backgroundColor: sections[currentSection].color,
+                                textColor: sections[currentSection].textColor,
+                            })}
+                        </Box>
+                    }
                 </DialogContent>
-                <DialogActions sx={{ display: 'block', pb: 2 }} disableSpacing>
-                    <Box width='100%'>
-                        <LinearProgress
-                            variant="determinate"
-                            value={(currentSection / (sections.length - 1)) * 100}
-                            sx={{
-                                height: 20,
-                                borderRadius: 10,
-                                "& .MuiLinearProgress-bar": {
-                                    backgroundImage: `repeating-linear-gradient(45deg,
+                {!showLanding &&
+                    <DialogActions sx={{ display: 'block', pb: 2 }} disableSpacing>
+                        <Box width='100%'>
+                            <LinearProgress
+                                variant="determinate"
+                                value={(currentSection / (sections.length - 1)) * 100}
+                                sx={{
+                                    height: 20,
+                                    borderRadius: 10,
+                                    "& .MuiLinearProgress-bar": {
+                                        backgroundImage: `repeating-linear-gradient(45deg,
                                                         #5461c8 0%, #5461c8 12.5%,     /* 1*12.5% */
                                                         #c724b1 12.5%, #c724b1 25%,   /* 2*12.5% */
                                                         #e4002b 25%, #e4002b 37.5%,   /* 3*12.5% */
@@ -139,51 +219,50 @@ export default function FeatureSectionPopover({ children }) {
                                                         #00ab84 75%, #00ab84 87.5%,   /* 7*12.5% */
                                                         #00a3e0 87.5%, #00a3e0 100%   /* 8*12.5% */
                                                     )`,
-                                    backgroundSize: '200% 100%',
-                                    borderRadius: 10,
-                                },
-                                "& .MuiLinearProgress-root": {
-                                    backgroundColor: theme => theme.palette.getContrastText(sections[currentSection].color),
-                                    borderRadius: 10,
-                                },
-                                "& .MuiLinearProgress-dashed": {
-                                    backgroundImage: "none",
-                                },
-                            }}
-                        />
+                                        backgroundSize: '200% 100%',
+                                        borderRadius: 10,
+                                    },
+                                    "& .MuiLinearProgress-root": {
+                                        backgroundColor: theme => theme.palette.getContrastText(sections[currentSection].color),
+                                        borderRadius: 10,
+                                    },
+                                    "& .MuiLinearProgress-dashed": {
+                                        backgroundImage: "none",
+                                    },
+                                }}
+                            />
 
-                        {/* <Box sx={{ display: "flex", justifyContent: "center", px: 2, pt: 1 }}>
+                            {/* <Box sx={{ display: "flex", justifyContent: "center", px: 2, pt: 1 }}>
                             <Typography variant="body2" color="text.primary">
                                 {sections[currentSection].title}
                             </Typography>
                         </Box> */}
-                    </Box>
-                    <Box
-                        sx={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            mt: 2,
-                            px: 2
-                        }}
-                    >
-                        <IconButton
-                            disabled={currentSection === 0}
-                            onClick={handleBack}
+                        </Box>
+                        <Box
                             sx={{
-                                backgroundColor: "rgba(0, 0, 0, 0.2)",
-                                color: "white",
-                                "&:hover": {
-                                    backgroundColor: "rgba(0, 0, 0, 0.3)",
-                                },
-                                "&.Mui-disabled": {
-                                    opacity: 0.5,
-                                    backgroundColor: "rgba(0, 0, 0, 0.2)",
-                                },
+                                display: "flex",
+                                justifyContent: "space-between",
+                                mt: 2,
+                                px: 2
                             }}
                         >
-                            <ArrowBack />
-                        </IconButton>
-                        {/* <IconButton
+                            <IconButton
+                                onClick={currentSection === 0 ? () => { setShowLanding(true) } : handleBack}
+                                sx={{
+                                    backgroundColor: "rgba(0, 0, 0, 0.2)",
+                                    color: "white",
+                                    "&:hover": {
+                                        backgroundColor: "rgba(0, 0, 0, 0.3)",
+                                    },
+                                    "&.Mui-disabled": {
+                                        opacity: 0.5,
+                                        backgroundColor: "rgba(0, 0, 0, 0.2)",
+                                    },
+                                }}
+                            >
+                                <ArrowBack />
+                            </IconButton>
+                            {/* <IconButton
                             onClick={currentSection === sections.length - 1 ? handleClose : handleNext}
                             sx={{
                                 backgroundColor: "rgba(0, 0, 0, 0.2)",
@@ -199,29 +278,30 @@ export default function FeatureSectionPopover({ children }) {
                         >
                             {currentSection === sections.length - 1 ? <Check /> : <ArrowForward />}
                         </IconButton> */}
-                        <Button
-                        variant="contained"
-                            onClick={currentSection === sections.length - 1 ? handleClose : handleNext}
-                            endIcon={currentSection === sections.length - 1 ? <Check /> : <ArrowForward />}
-                            sx={{
-                                backgroundColor: theme => theme.palette.success.main,
-                                color: "black",
-                                fontSize: 18,
-                                px: 4,
-                                borderRadius: 5,
-                                "&:hover": {
-                                    backgroundColor: theme => theme.palette.success.dark,
-                                },
-                                "&.Mui-disabled": {
-                                    opacity: 0.5,
-                                    backgroundColor: "rgba(0, 0, 0, 0.2)",
-                                },
-                            }}
-                        >
-                            {currentSection === sections.length - 1 ? 'Done' : 'Next'}
-                        </Button>
-                    </Box>
-                </DialogActions>
+                            <Button
+                                variant="contained"
+                                onClick={currentSection === sections.length - 1 ? handleClose : handleNext}
+                                endIcon={currentSection === sections.length - 1 ? <Check /> : <ArrowForward />}
+                                sx={{
+                                    backgroundColor: theme => theme.palette.success.main,
+                                    color: "black",
+                                    fontSize: 18,
+                                    px: 4,
+                                    borderRadius: 5,
+                                    "&:hover": {
+                                        backgroundColor: theme => theme.palette.success.dark,
+                                    },
+                                    "&.Mui-disabled": {
+                                        opacity: 0.5,
+                                        backgroundColor: "rgba(0, 0, 0, 0.2)",
+                                    },
+                                }}
+                            >
+                                {currentSection === sections.length - 1 ? 'Done' : 'Next'}
+                            </Button>
+                        </Box>
+                    </DialogActions>
+                }
             </Dialog>
         </>
     );
