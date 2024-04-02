@@ -139,7 +139,7 @@ export default function ProSupport() {
               </Typography>
               <Paper elevation={3} sx={{ p: 2 }}>
                 <Typography variant="subtitle1" gutterBottom mt={1} mb={2}>
-                  As a Pro subscriber, you get access to Premium&nbsp;Support. Send us a message and we'll get back to you asap:
+                  As a Pro subscriber, you get access to Pro&nbsp;Support. Send us a message and we'll get back to you asap:
                 </Typography>
                 <TextField
                   label="Message"
