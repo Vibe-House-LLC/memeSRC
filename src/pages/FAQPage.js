@@ -158,7 +158,7 @@ Remember, content is indexed from user uploads, so if it's not there it might no
       question: 'Can I edit my own pictures with memeSRC?',
       answer: `Yes, you can absolutely edit your own pictures using all of memeSRC's features, including the powerful Magic Tools! Here's how to get started:
 
-1. Go to [the upload page](/upload) and select the image you want to edit from your device.
+1. Go to [the upload page](/edit) and select the image you want to edit from your device.
 2. Once uploaded, you'll be taken directly to the Advanced Editor.
 3. Use the Magic Tools like the Magic Eraser and Magic Fill to customize your image in creative ways.
 4. Add one or more captions, click (or tap) and drag to move them, change their color, adjust formatting, etc.
