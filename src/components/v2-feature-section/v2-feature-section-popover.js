@@ -120,7 +120,7 @@ export default function FeatureSectionPopover({ children }) {
                         })}
                     </Box>
                 </DialogContent>
-                <DialogActions sx={{ display: 'block', py: 2, backgroundColor: 'black' }} disableSpacing>
+                <DialogActions sx={{ display: 'block', pb: 2 }} disableSpacing>
                     <Box width='100%'>
                         <LinearProgress
                             variant="determinate"
