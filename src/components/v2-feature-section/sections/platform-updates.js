@@ -4,7 +4,7 @@ import { Favorite, Star, AccessTime, LocationOn, HowToVote, Upload, Science, Git
 
 export default function PlatformUpdates({ backgroundColor, textColor, large }) {
     const isMd = useMediaQuery(theme => theme.breakpoints.up('md'))
-    
+
     return (
         <Container
             maxWidth="md"
@@ -55,7 +55,7 @@ export default function PlatformUpdates({ backgroundColor, textColor, large }) {
                     >
                         <HowToVote sx={{ color: backgroundColor }} />
                     </Box>
-                    <Typography fontSize={18} fontWeight={500}>
+                    <Typography fontSize={18} fontWeight={500} sx={{ color: textColor }}>
                         Voting
                     </Typography>
                 </Box>
@@ -74,7 +74,7 @@ export default function PlatformUpdates({ backgroundColor, textColor, large }) {
                     >
                         <Upload sx={{ color: backgroundColor }} />
                     </Box>
-                    <Typography fontSize={18} fontWeight={500}>
+                    <Typography fontSize={18} fontWeight={500} sx={{ color: textColor }}>
                         Index Uploads
                     </Typography>
                 </Box>
@@ -93,7 +93,7 @@ export default function PlatformUpdates({ backgroundColor, textColor, large }) {
                     >
                         <Science sx={{ color: backgroundColor }} />
                     </Box>
-                    <Typography fontSize={18} fontWeight={500}>
+                    <Typography fontSize={18} fontWeight={500} sx={{ color: textColor }}>
                         Early Access
                     </Typography>
                 </Box>
@@ -113,7 +113,7 @@ export default function PlatformUpdates({ backgroundColor, textColor, large }) {
                     >
                         <GitHub sx={{ color: backgroundColor }} />
                     </Box>
-                    <Typography fontSize={18} fontWeight={500}>
+                    <Typography fontSize={18} fontWeight={500} sx={{ color: textColor }}>
                         Open Source
                     </Typography>
                 </Box>
@@ -133,7 +133,7 @@ export default function PlatformUpdates({ backgroundColor, textColor, large }) {
                     >
                         <Update sx={{ color: backgroundColor }} />
                     </Box>
-                    <Typography fontSize={18} fontWeight={500}>
+                    <Typography fontSize={18} fontWeight={500} sx={{ color: textColor }}>
                         Faster, more resilient, and easier to build upon
                     </Typography>
                 </Box>

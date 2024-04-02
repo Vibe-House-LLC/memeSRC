@@ -22,9 +22,9 @@ import EditorUpdates from "./sections/editor-updates";
 import MemeSrcPro from "./sections/memesrc-pro";
 
 const sections = [
-    { title: "Editor Updates", color: "#ff8d0a", textColor: '#FFFFFF', component: (props) => <EditorUpdates {...props} /> },
-    { title: "Platform Updates", color: "#0069cc", textColor: '#FFFFFF', component: (props) => <PlatformUpdates {...props} /> },
-    { title: "memeSRC Pro", color: "#34933f", textColor: '#FFFFFF', component: (props) => <MemeSrcPro {...props} /> },
+    { title: "Editor Updates", color: "#34933f", textColor: '#FFFFFF', component: (props) => <EditorUpdates {...props} /> },
+    { title: "Platform Updates", color: "#ff8d0a", textColor: '#FFFFFF', component: (props) => <PlatformUpdates {...props} /> },
+    { title: "memeSRC Pro", color: "#0069cc", textColor: '#FFFFFF', component: (props) => <MemeSrcPro {...props} /> },
 ];
 
 export default function FeatureSectionPopover({ children }) {

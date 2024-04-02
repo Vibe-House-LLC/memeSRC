@@ -55,7 +55,7 @@ export default function EditorUpdates({ backgroundColor, textColor, large }) {
                     >
                         <PhotoAlbum sx={{ color: backgroundColor }} />
                     </Box>
-                    <Typography fontSize={18} fontWeight={500}>
+                    <Typography fontSize={18} fontWeight={500} sx={{ color: textColor }}>
                         Edit your own pictures
                     </Typography>
                 </Box>
@@ -74,7 +74,7 @@ export default function EditorUpdates({ backgroundColor, textColor, large }) {
                     >
                         <OpenWith sx={{ color: backgroundColor }} />
                     </Box>
-                    <Typography fontSize={18} fontWeight={500}>
+                    <Typography fontSize={18} fontWeight={500} sx={{ color: textColor }}>
                         Freeform Placement
                     </Typography>
                 </Box>
@@ -93,7 +93,7 @@ export default function EditorUpdates({ backgroundColor, textColor, large }) {
                     >
                         <Layers sx={{ color: backgroundColor }} />
                     </Box>
-                    <Typography fontSize={18} fontWeight={500}>
+                    <Typography fontSize={18} fontWeight={500} sx={{ color: textColor }}>
                         Layers
                     </Typography>
                 </Box>
@@ -112,7 +112,7 @@ export default function EditorUpdates({ backgroundColor, textColor, large }) {
                     >
                         <FormatShapes sx={{ color: backgroundColor }} />
                     </Box>
-                    <Typography fontSize={18} fontWeight={500}>
+                    <Typography fontSize={18} fontWeight={500} sx={{ color: textColor }}>
                         Formatting
                     </Typography>
                 </Box>
@@ -131,7 +131,7 @@ export default function EditorUpdates({ backgroundColor, textColor, large }) {
                     >
                         <AutoFixHighRounded sx={{ color: backgroundColor }} />
                     </Box>
-                    <Typography fontSize={18} fontWeight={500}>
+                    <Typography fontSize={18} fontWeight={500} sx={{ color: textColor }}>
                         Magic Tools
                     </Typography>
                 </Box>

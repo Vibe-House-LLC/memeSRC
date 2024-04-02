@@ -786,16 +786,16 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
           buttonSubtext={JSON.parse(section.buttonSubtext)}
         />
       ))} */}
-      <Container data-scroll-to id='editor-updates' maxWidth='true' sx={{ height: '100vh', backgroundColor: '#ff8d0a' }}>
-        <EditorUpdates backgroundColor='#ff8d0a'textColor='white' large />
+      <Container data-scroll-to id='editor-updates' maxWidth='true' sx={{ height: '100vh', backgroundColor: '#34933f' }}>
+        <EditorUpdates backgroundColor='#34933f'textColor='white' large />
       </Container>
 
-      <Container data-scroll-to id='platform-updates' maxWidth='true' sx={{ height: '100vh', backgroundColor: '#0069cc' }}>
-        <PlatformUpdates backgroundColor='#0069cc'textColor='white' large />
+      <Container data-scroll-to id='platform-updates' maxWidth='true' sx={{ height: '100vh', backgroundColor: '#ff8d0a' }}>
+        <PlatformUpdates backgroundColor='#ff8d0a'textColor='white' large />
       </Container>
 
-      <Container data-scroll-to id='memesrc-pro' maxWidth='true' sx={{ height: '100vh', backgroundColor: '#34933f' }}>
-        <MemeSrcPro backgroundColor='#34933f'textColor='white' large />
+      <Container data-scroll-to id='memesrc-pro' maxWidth='true' sx={{ height: '100vh', backgroundColor: '#0069cc' }}>
+        <MemeSrcPro backgroundColor='#0069cc' textColor='white' large />
       </Container>
       <AddCidPopup open={addNewCidOpen} setOpen={setAddNewCidOpen} />
     </>

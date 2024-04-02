@@ -54,7 +54,7 @@ export default function MemeSrcPro({ backgroundColor, textColor, large }) {
                     >
                         <Check sx={{ color: backgroundColor }} />
                     </Box>
-                    <Typography fontSize={18} fontWeight={500}>
+                    <Typography fontSize={18} fontWeight={500} sx={{ color: textColor }}>
                         No Ads
                     </Typography>
                 </Box>
@@ -73,7 +73,7 @@ export default function MemeSrcPro({ backgroundColor, textColor, large }) {
                     >
                         <SupportAgent sx={{ color: backgroundColor }} />
                     </Box>
-                    <Typography fontSize={18} fontWeight={500}>
+                    <Typography fontSize={18} fontWeight={500} sx={{ color: textColor }}>
                         Pro Support
                     </Typography>
                 </Box>
@@ -92,7 +92,7 @@ export default function MemeSrcPro({ backgroundColor, textColor, large }) {
                     >
                         <Bolt sx={{ color: backgroundColor }} />
                     </Box>
-                    <Typography fontSize={18} fontWeight={500}>
+                    <Typography fontSize={18} fontWeight={500} sx={{ color: textColor }}>
                         Early Access Features
                     </Typography>
                 </Box>
@@ -111,7 +111,7 @@ export default function MemeSrcPro({ backgroundColor, textColor, large }) {
                     >
                         <AutoFixHighRounded sx={{ color: backgroundColor }} />
                     </Box>
-                    <Typography fontSize={18} fontWeight={500}>
+                    <Typography fontSize={18} fontWeight={500} sx={{ color: textColor }}>
                         Magic Tools
                     </Typography>
                 </Box>
