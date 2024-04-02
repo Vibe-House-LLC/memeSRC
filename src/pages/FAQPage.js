@@ -161,7 +161,7 @@ Remember, content is indexed from user uploads, so if it's not there it might no
 1. Go to [the upload page](/upload) and select the image you want to edit from your device.
 2. Once uploaded, you'll be taken directly to the Advanced Editor.
 3. Use the Magic Tools like the Magic Eraser and Magic Fill to customize your image in creative ways.
-4. Add text, stickers, or additional images to create your perfect meme.
+4. Add one or more captions, click (or tap) and drag to move them, change their color, adjust formatting, etc.
 5. Click "Save, Copy, Share" to download your masterpiece and share it with the world!`,
     },
     {
