@@ -1,8 +1,10 @@
 import PropTypes from 'prop-types';
-import { Container, Box, Typography } from '@mui/material';
+import { Container, Box, Typography, useMediaQuery } from '@mui/material';
 import { Favorite, Star, AccessTime, LocationOn, HowToVote, Upload, Science, GitHub, Update } from '@mui/icons-material';
 
-export default function PlatformUpdates({ backgroundColor, textColor }) {
+export default function PlatformUpdates({ backgroundColor, textColor, large }) {
+    const isMd = useMediaQuery(theme => theme.breakpoints.up('md'))
+
     return (
         <Container
             maxWidth="md"
@@ -23,7 +25,7 @@ export default function PlatformUpdates({ backgroundColor, textColor }) {
                     width: '100%'
                 }}
             >
-                <Typography fontSize={32} fontWeight={700} gutterBottom sx={{ color: textColor }}>
+                <Typography fontSize={(isMd && large) ? 48 : 32} fontWeight={700} gutterBottom sx={{ color: textColor }}>
                     Platform Updates
                 </Typography>
                 <Typography fontSize={18} fontWeight={700} sx={{ color: textColor }}>
@@ -53,7 +55,7 @@ export default function PlatformUpdates({ backgroundColor, textColor }) {
                     >
                         <HowToVote sx={{ color: backgroundColor }} />
                     </Box>
-                    <Typography fontSize={18} fontWeight={500}>
+                    <Typography fontSize={18} fontWeight={500} sx={{ color: textColor }}>
                         Voting
                     </Typography>
                 </Box>
@@ -72,7 +74,7 @@ export default function PlatformUpdates({ backgroundColor, textColor }) {
                     >
                         <Upload sx={{ color: backgroundColor }} />
                     </Box>
-                    <Typography fontSize={18} fontWeight={500}>
+                    <Typography fontSize={18} fontWeight={500} sx={{ color: textColor }}>
                         Index Uploads
                     </Typography>
                 </Box>
@@ -91,7 +93,7 @@ export default function PlatformUpdates({ backgroundColor, textColor }) {
                     >
                         <Science sx={{ color: backgroundColor }} />
                     </Box>
-                    <Typography fontSize={18} fontWeight={500}>
+                    <Typography fontSize={18} fontWeight={500} sx={{ color: textColor }}>
                         Early Access
                     </Typography>
                 </Box>
@@ -111,7 +113,7 @@ export default function PlatformUpdates({ backgroundColor, textColor }) {
                     >
                         <GitHub sx={{ color: backgroundColor }} />
                     </Box>
-                    <Typography fontSize={18} fontWeight={500}>
+                    <Typography fontSize={18} fontWeight={500} sx={{ color: textColor }}>
                         Open Source
                     </Typography>
                 </Box>
@@ -131,7 +133,7 @@ export default function PlatformUpdates({ backgroundColor, textColor }) {
                     >
                         <Update sx={{ color: backgroundColor }} />
                     </Box>
-                    <Typography fontSize={18} fontWeight={500}>
+                    <Typography fontSize={18} fontWeight={500} sx={{ color: textColor }}>
                         Faster, more resilient, and easier to build upon
                     </Typography>
                 </Box>
@@ -143,9 +145,11 @@ export default function PlatformUpdates({ backgroundColor, textColor }) {
 PlatformUpdates.propTypes = {
     backgroundColor: PropTypes.string,
     textColor: PropTypes.string,
+    large: PropTypes.bool
 };
 
 PlatformUpdates.defaultProps = {
     backgroundColor: '#ffffff',
     textColor: '#000000',
+    large: false
 };

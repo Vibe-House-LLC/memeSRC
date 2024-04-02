@@ -1,10 +1,11 @@
 import PropTypes from 'prop-types';
-import { Container, Box, Typography } from '@mui/material';
+import { Container, Box, Typography, useMediaQuery } from '@mui/material';
 import { Favorite, Star, AccessTime, LocationOn, Bolt, SupportAgent, AutoFixHighRounded, GitHub, Check } from '@mui/icons-material';
 
-export default function MemeSrcPro({ backgroundColor, textColor }) {
-  return (
-    <Container
+export default function MemeSrcPro({ backgroundColor, textColor, large }) {
+    const isMd = useMediaQuery(theme => theme.breakpoints.up('md'))
+    return (
+        <Container
             maxWidth="md"
             sx={{
                 backgroundColor,
@@ -23,11 +24,11 @@ export default function MemeSrcPro({ backgroundColor, textColor }) {
                     width: '100%'
                 }}
             >
-                <Typography fontSize={32} fontWeight={700} gutterBottom sx={{ color: textColor }}>
-                memeSRC Pro
+                <Typography fontSize={(isMd && large) ? 48 : 32} fontWeight={700} gutterBottom sx={{ color: textColor }}>
+                    memeSRC Pro
                 </Typography>
                 <Typography fontSize={18} fontWeight={700} sx={{ color: textColor }}>
-                Help support the site and unlock extra perks
+                    Help support the site and unlock extra perks
                 </Typography>
             </Box>
             <Box
@@ -38,25 +39,25 @@ export default function MemeSrcPro({ backgroundColor, textColor }) {
                     width: '100%'
                 }}
             >
-            <Box display="flex" alignItems="center" mb={2} ml={2}>
-                <Box
-                    sx={{
-                        backgroundColor: textColor,
-                        borderRadius: '50%',
-                        width: 32,
-                        height: 32,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        mr: 2,
-                    }}
-                >
-                    <Check sx={{ color: backgroundColor }} />
+                <Box display="flex" alignItems="center" mb={2} ml={2}>
+                    <Box
+                        sx={{
+                            backgroundColor: textColor,
+                            borderRadius: '50%',
+                            width: 32,
+                            height: 32,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            mr: 2,
+                        }}
+                    >
+                        <Check sx={{ color: backgroundColor }} />
+                    </Box>
+                    <Typography fontSize={18} fontWeight={500} sx={{ color: textColor }}>
+                        No Ads
+                    </Typography>
                 </Box>
-                <Typography fontSize={18} fontWeight={500}>
-                    No Ads
-                </Typography>
-            </Box>
                 <Box display="flex" alignItems="center" mb={2} ml={2}>
                     <Box
                         sx={{
@@ -72,7 +73,7 @@ export default function MemeSrcPro({ backgroundColor, textColor }) {
                     >
                         <SupportAgent sx={{ color: backgroundColor }} />
                     </Box>
-                    <Typography fontSize={18} fontWeight={500}>
+                    <Typography fontSize={18} fontWeight={500} sx={{ color: textColor }}>
                         Pro Support
                     </Typography>
                 </Box>
@@ -91,8 +92,8 @@ export default function MemeSrcPro({ backgroundColor, textColor }) {
                     >
                         <Bolt sx={{ color: backgroundColor }} />
                     </Box>
-                    <Typography fontSize={18} fontWeight={500}>
-                    Early Access Features
+                    <Typography fontSize={18} fontWeight={500} sx={{ color: textColor }}>
+                        Early Access Features
                     </Typography>
                 </Box>
                 <Box display="flex" alignItems="center" mb={2} ml={2}>
@@ -110,21 +111,23 @@ export default function MemeSrcPro({ backgroundColor, textColor }) {
                     >
                         <AutoFixHighRounded sx={{ color: backgroundColor }} />
                     </Box>
-                    <Typography fontSize={18} fontWeight={500}>
+                    <Typography fontSize={18} fontWeight={500} sx={{ color: textColor }}>
                         Magic Tools
                     </Typography>
                 </Box>
             </Box>
         </Container>
-  );
+    );
 }
 
 MemeSrcPro.propTypes = {
-  backgroundColor: PropTypes.string,
-  textColor: PropTypes.string,
+    backgroundColor: PropTypes.string,
+    textColor: PropTypes.string,
+    large: PropTypes.bool
 };
 
 MemeSrcPro.defaultProps = {
-  backgroundColor: '#ffffff',
-  textColor: '#000000',
+    backgroundColor: '#ffffff',
+    textColor: '#000000',
+    large: false
 };

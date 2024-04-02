@@ -1,5 +1,5 @@
 import styled from '@emotion/styled';
-import { Alert, AlertTitle, Button, Fab, Grid, Typography, IconButton, Stack, useMediaQuery, Select, MenuItem, Chip } from '@mui/material';
+import { Alert, AlertTitle, Button, Fab, Grid, Typography, IconButton, Stack, useMediaQuery, Select, MenuItem, Chip, Container } from '@mui/material';
 import { Box } from '@mui/system';
 import { ArrowDownwardRounded, Favorite, MapsUgc, Shuffle } from '@mui/icons-material';
 import { API, graphqlOperation } from 'aws-amplify';
@@ -19,6 +19,9 @@ import AddCidPopup from '../../components/ipfs/add-cid-popup';
 import fetchShows from '../../utils/fetchShows';
 import useLoadRandomFrame from '../../utils/loadRandomFrame';
 import { useSubscribeDialog } from '../../contexts/useSubscribeDialog';
+import EditorUpdates from '../../components/v2-feature-section/sections/editor-updates';
+import PlatformUpdates from '../../components/v2-feature-section/sections/platform-updates';
+import MemeSrcPro from '../../components/v2-feature-section/sections/memesrc-pro';
 
 const seriesOptions = [
   { id: '_universal', title: 'All Shows & Movies', emoji: '🌈' },
@@ -770,7 +773,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
           </Fab>
         </StyledFooter>
       </StyledGridContainer>
-      {sections.map((section) => (
+      {/* {sections.map((section) => (
         <HomePageSection
           key={section.id}
           index={section.index}
@@ -782,7 +785,18 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
           bottomImage={JSON.parse(section.bottomImage)}
           buttonSubtext={JSON.parse(section.buttonSubtext)}
         />
-      ))}
+      ))} */}
+      <Container data-scroll-to id='editor-updates' maxWidth='true' sx={{ height: '100vh', backgroundColor: '#34933f' }}>
+        <EditorUpdates backgroundColor='#34933f'textColor='white' large />
+      </Container>
+
+      <Container data-scroll-to id='platform-updates' maxWidth='true' sx={{ height: '100vh', backgroundColor: '#ff8d0a' }}>
+        <PlatformUpdates backgroundColor='#ff8d0a'textColor='white' large />
+      </Container>
+
+      <Container data-scroll-to id='memesrc-pro' maxWidth='true' sx={{ height: '100vh', backgroundColor: '#0069cc' }}>
+        <MemeSrcPro backgroundColor='#0069cc' textColor='white' large />
+      </Container>
       <AddCidPopup open={addNewCidOpen} setOpen={setAddNewCidOpen} />
     </>
   );

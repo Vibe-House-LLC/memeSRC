@@ -1,8 +1,9 @@
 import PropTypes from 'prop-types';
-import { Container, Box, Typography } from '@mui/material';
+import { Container, Box, Typography, useMediaQuery } from '@mui/material';
 import { Favorite, Star, AccessTime, LocationOn, Check, PhotoAlbum, OpenWith, Layers, FormatShapes, AutoFixHighRounded } from '@mui/icons-material';
 
-export default function EditorUpdates({ backgroundColor, textColor }) {
+export default function EditorUpdates({ backgroundColor, textColor, large }) {
+    const isMd = useMediaQuery(theme => theme.breakpoints.up('md'))
 
     return (
         <Container
@@ -24,7 +25,7 @@ export default function EditorUpdates({ backgroundColor, textColor }) {
                     width: '100%'
                 }}
             >
-                <Typography fontSize={32} fontWeight={700} gutterBottom sx={{ color: textColor }}>
+                <Typography fontSize={(isMd && large) ? 48 : 32} fontWeight={700} gutterBottom sx={{ color: textColor }}>
                     Editor Updates
                 </Typography>
                 <Typography fontSize={18} fontWeight={700} sx={{ color: textColor }}>
@@ -54,7 +55,7 @@ export default function EditorUpdates({ backgroundColor, textColor }) {
                     >
                         <PhotoAlbum sx={{ color: backgroundColor }} />
                     </Box>
-                    <Typography fontSize={18} fontWeight={500}>
+                    <Typography fontSize={18} fontWeight={500} sx={{ color: textColor }}>
                         Edit your own pictures
                     </Typography>
                 </Box>
@@ -73,7 +74,7 @@ export default function EditorUpdates({ backgroundColor, textColor }) {
                     >
                         <OpenWith sx={{ color: backgroundColor }} />
                     </Box>
-                    <Typography fontSize={18} fontWeight={500}>
+                    <Typography fontSize={18} fontWeight={500} sx={{ color: textColor }}>
                         Freeform Placement
                     </Typography>
                 </Box>
@@ -92,7 +93,7 @@ export default function EditorUpdates({ backgroundColor, textColor }) {
                     >
                         <Layers sx={{ color: backgroundColor }} />
                     </Box>
-                    <Typography fontSize={18} fontWeight={500}>
+                    <Typography fontSize={18} fontWeight={500} sx={{ color: textColor }}>
                         Layers
                     </Typography>
                 </Box>
@@ -111,7 +112,7 @@ export default function EditorUpdates({ backgroundColor, textColor }) {
                     >
                         <FormatShapes sx={{ color: backgroundColor }} />
                     </Box>
-                    <Typography fontSize={18} fontWeight={500}>
+                    <Typography fontSize={18} fontWeight={500} sx={{ color: textColor }}>
                         Formatting
                     </Typography>
                 </Box>
@@ -130,7 +131,7 @@ export default function EditorUpdates({ backgroundColor, textColor }) {
                     >
                         <AutoFixHighRounded sx={{ color: backgroundColor }} />
                     </Box>
-                    <Typography fontSize={18} fontWeight={500}>
+                    <Typography fontSize={18} fontWeight={500} sx={{ color: textColor }}>
                         Magic Tools
                     </Typography>
                 </Box>
@@ -142,9 +143,11 @@ export default function EditorUpdates({ backgroundColor, textColor }) {
 EditorUpdates.propTypes = {
     backgroundColor: PropTypes.string,
     textColor: PropTypes.string,
+    large: PropTypes.bool
 };
 
 EditorUpdates.defaultProps = {
     backgroundColor: '#ffffff',
     textColor: '#000000',
+    large: false
 };
