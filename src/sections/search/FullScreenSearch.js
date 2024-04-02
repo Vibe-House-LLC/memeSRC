@@ -786,15 +786,15 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
           buttonSubtext={JSON.parse(section.buttonSubtext)}
         />
       ))} */}
-      <Container maxWidth='true' sx={{ height: '80vh', backgroundColor: '#ff8d0a' }}>
+      <Container data-scroll-to id='editor-updates' maxWidth='true' sx={{ height: '100vh', backgroundColor: '#ff8d0a' }}>
         <EditorUpdates backgroundColor='#ff8d0a'textColor='white' large />
       </Container>
 
-      <Container maxWidth='true' sx={{ height: '80vh', backgroundColor: '#0069cc' }}>
+      <Container data-scroll-to id='platform-updates' maxWidth='true' sx={{ height: '100vh', backgroundColor: '#0069cc' }}>
         <PlatformUpdates backgroundColor='#0069cc'textColor='white' large />
       </Container>
 
-      <Container maxWidth='true' sx={{ height: '80vh', backgroundColor: '#34933f' }}>
+      <Container data-scroll-to id='memesrc-pro' maxWidth='true' sx={{ height: '100vh', backgroundColor: '#34933f' }}>
         <MemeSrcPro backgroundColor='#34933f'textColor='white' large />
       </Container>
       <AddCidPopup open={addNewCidOpen} setOpen={setAddNewCidOpen} />
