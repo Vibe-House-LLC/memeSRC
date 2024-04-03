@@ -632,7 +632,7 @@ export default function VotingPage({ shows: searchableShows }) {
                                 {
                                   searchableShows.some(searchableShow => searchableShow.id === show.slug) && (
                                     <a 
-                                      href={`https://beta.memesrc.com/${show.slug}`} 
+                                      href={`/${show.slug}`} 
                                       target="_blank" 
                                       rel="noopener noreferrer" 
                                       style={{ textDecoration: 'none', color: 'inherit' }}

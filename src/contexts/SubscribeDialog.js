@@ -185,7 +185,7 @@ export const DialogProvider = ({ children }) => {
           }}
         >
           <img
-            src="https://beta.memesrc.com/assets/memeSRC-white.svg"
+            src="/assets/memeSRC-white.svg"
             alt="memeSRC logo"
             style={{ height: isMd ? 48 : 40, marginBottom: 8 }}
           />
