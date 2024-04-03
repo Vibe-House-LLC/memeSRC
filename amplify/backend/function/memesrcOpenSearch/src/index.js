@@ -37,7 +37,7 @@ exports.handler = async (event) => {
 
   const OPENSEARCH_ENDPOINT = "https://search-memesrc-3lcaiflaubqkqafuim5oyxupwa.us-east-1.es.amazonaws.com";
   const inputArg = event.index;
-  const csvUrl = `https://memesrc.com/v2/${inputArg}/_docs.csv`;
+  const csvUrl = `https://img.memesrc.com/v2/${inputArg}/_docs.csv`;
   const indexName = `v2-${inputArg}`;
   const batchSize = 100;
 

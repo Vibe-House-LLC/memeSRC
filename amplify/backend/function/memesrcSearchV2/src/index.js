@@ -111,7 +111,7 @@ exports.handler = async (event) => {
         
         try {
             const promises = indices.map((index) => {
-                const csvUrl = `https://memesrc.com/v2/${index}/_docs.csv`;
+                const csvUrl = `https://img.memesrc.com/v2/${index}/_docs.csv`;
                 const csvFilePath = path.join('/tmp', `${index}.csv`);
                 
                 console.log("Getting docs for: ", index);

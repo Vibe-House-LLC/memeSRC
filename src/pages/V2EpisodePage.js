@@ -46,7 +46,7 @@ export default function V2EpisodePage({ setSeriesTitle }) {
   useEffect(() => {
     if (confirmedCid) {
       const fetchSubtitles = async () => {
-        const subtitlesUrl = `https://memesrc.com/v2/${confirmedCid}/${season}/${episode}/_docs.csv`;
+        const subtitlesUrl = `https://img.memesrc.com/v2/${confirmedCid}/${season}/${episode}/_docs.csv`;
         const subtitlesResponse = await fetch(subtitlesUrl);
         const subtitlesCsv = await subtitlesResponse.text();
 

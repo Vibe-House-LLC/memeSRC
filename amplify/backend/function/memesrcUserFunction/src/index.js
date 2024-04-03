@@ -2047,7 +2047,7 @@ export const handler = async (event) => {
 
     /* ----------------------------- Fetch Metadata ----------------------------- */
 
-    const metadataUrl = `https://memesrc.com/v2/${cid}/00_metadata.json`
+    const metadataUrl = `https://img.memesrc.com/v2/${cid}/00_metadata.json`
     console.log('metadataUrl', metadataUrl)
 
     try {

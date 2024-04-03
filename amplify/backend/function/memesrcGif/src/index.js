@@ -50,7 +50,7 @@ exports.handler = async (event) => {
   try {
     const inputFiles = [];
     for (let i = startFileIndex; i <= endFileIndex; i++) {
-      const videoUrl = `https://memesrc.com/v2/${id}/${season}/${episode}/${i}.mp4`;
+      const videoUrl = `https://img.memesrc.com/v2/${id}/${season}/${episode}/${i}.mp4`;
       const localFilePath = path.join('/tmp', `${id}-${season}-${episode}-${i}.mp4`);
       await downloadFile(videoUrl, localFilePath);
       inputFiles.push(localFilePath);

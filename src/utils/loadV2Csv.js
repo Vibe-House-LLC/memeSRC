@@ -5,7 +5,7 @@ import getV2Metadata from "./getV2Metadata";
 export default async function loadV2Csv(show) {
 
     async function loadFile(cid, filename) {
-        const url = `https://memesrc.com/v2/${cid}/_docs.csv`;
+        const url = `https://img.memesrc.com/v2/${cid}/_docs.csv`;
         try {
             const response = await fetch(url);
             if (!response.ok) {

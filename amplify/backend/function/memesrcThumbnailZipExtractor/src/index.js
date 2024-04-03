@@ -25,7 +25,7 @@ exports.handler = async (event) => {
     }
 
     const groupIndex = Math.floor(subtitleIndex / 15);
-    const zipUrl = `https://memesrc.com/v2/${id}/${season}/${episode}/s${groupIndex}.zip`;
+    const zipUrl = `https://img.memesrc.com/v2/${id}/${season}/${episode}/s${groupIndex}.zip`;
 
     console.log("zipUrl", zipUrl);
 

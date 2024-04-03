@@ -33,7 +33,7 @@ exports.handler = async (event) => {
     const fileIndex = Math.floor((frameNumber - 1) / (CHUNK_DURATION * FPS));
     const internalFrameIndex = ((frameNumber - 1) % (CHUNK_DURATION * FPS)) / FPS;
 
-    const videoUrl = `https://memesrc.com/v2/${index}/${season}/${episode}/${fileIndex}.mp4`;
+    const videoUrl = `https://img.memesrc.com/v2/${index}/${season}/${episode}/${fileIndex}.mp4`;
     const outputFile = path.join('/tmp', `frame-${Date.now()}.jpg`);
 
     await new Promise((resolve, reject) => {
