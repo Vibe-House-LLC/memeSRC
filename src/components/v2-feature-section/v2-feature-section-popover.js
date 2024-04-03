@@ -125,7 +125,7 @@ export default function FeatureSectionPopover({ children }) {
                                                 </Typography> */}
                                                 <center>
                                                     <img
-                                                        src="https://beta.memesrc.com/assets/memeSRC-white.svg"
+                                                        src="/assets/memeSRC-white.svg"
                                                         alt="memeSRC logo"
                                                         style={{ height: isMd ? 58 : 48, marginBottom: 2 }}
                                                     />
