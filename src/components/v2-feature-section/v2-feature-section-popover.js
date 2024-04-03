@@ -161,7 +161,7 @@ export default function FeatureSectionPopover({ children }) {
                                                 mb: 2
                                             }}
                                         >
-                                            See whats new
+                                            See what's new
                                         </Button>
                                         <center>
                                             <Link
