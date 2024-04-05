@@ -173,14 +173,28 @@ exports.handler = async (event) => {
                 });
                 
                 const searchTerms = decodedQuery.trim().toLowerCase().split(" ");
+                const nonSpecialQuery = decodedQuery.replace(/[^a-zA-Z0-9\s]/g, '').toLowerCase();
+                const nonSpecialSearchTerms = nonSpecialQuery.split(" ");
+
                 let results = [];
                 showObj.forEach((line) => {
                     let score = 0;
-                    if (line.subtitle_text && line.subtitle_text.toLowerCase().includes(decodedQuery)) {
+                    const subtitleText = line.subtitle_text ? line.subtitle_text.toLowerCase() : '';
+                    const nonSpecialSubtitle = subtitleText.replace(/[^a-zA-Z0-9\s]/g, '');
+
+                    if (subtitleText.includes(decodedQuery)) {
                         score += 10;
                     }
+                    if (nonSpecialSubtitle.includes(nonSpecialQuery)) {
+                        score += 5;
+                    }
                     searchTerms.forEach((term) => {
-                        if (line.subtitle_text && line.subtitle_text.toLowerCase().includes(term)) {
+                        if (subtitleText.includes(term)) {
+                            score += 1;
+                        }
+                    });
+                    nonSpecialSearchTerms.forEach((term) => {
+                        if (nonSpecialSubtitle.includes(term)) {
                             score += 1;
                         }
                     });
@@ -188,7 +202,7 @@ exports.handler = async (event) => {
                         results.push({ ...line, score, cid: index });
                     }
                 });
-                
+
                 combinedResults = combinedResults.concat(results);
             }
             
