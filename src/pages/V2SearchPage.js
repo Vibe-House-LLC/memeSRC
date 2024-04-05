@@ -381,7 +381,7 @@ export default function SearchPage() {
       setNewResults(null);
       setLoadingResults(true);
       setDisplayedResults(RESULTS_PER_PAGE / 2);
-      const searchTerm = params?.searchTerms.trim().toLowerCase();
+      const searchTerm = encodeURIComponent(params?.searchTerms.trim().toLowerCase());
       if (searchTerm === "") {
         console.log("Search term is empty.");
         return;
