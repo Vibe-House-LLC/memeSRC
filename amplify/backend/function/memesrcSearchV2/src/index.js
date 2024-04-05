@@ -192,7 +192,14 @@ exports.handler = async (event) => {
                 combinedResults = combinedResults.concat(results);
             }
             
-            combinedResults.sort((a, b) => b.score - a.score);
+            combinedResults.sort((a, b) => {
+                if (b.score === a.score) {
+                    // If scores are the same, sort by subtitle length in ascending order
+                    return a.subtitle_text.length - b.subtitle_text.length;
+                }
+                // If scores are different, sort by score in descending order
+                return b.score - a.score;
+            });
             combinedResults = combinedResults.slice(0, 150);
             
             return {
