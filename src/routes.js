@@ -60,6 +60,11 @@ const ProSupport = lazy(() => import('./pages/ProSupport'));
 const ProSupportAdmin = lazy(() => import('./pages/ProSupportAdmin'));
 const FAQPage = lazy(() => import('./pages/FAQPage'));
 
+const DonationRedirect = () => {
+  window.location.href = 'https://buy.stripe.com/6oEeYJ2EJ4vH3Ha7ss';
+  return null;
+};
+
 // ----------------------------------------------------------------------
 
 export default function Router() {
@@ -171,6 +176,10 @@ export default function Router() {
     {
       path: '/404',
       element: <Page404 />
+    },
+    {
+      path: '/donate',
+      element: <DonationRedirect />
     },
     {
       path: '*',
