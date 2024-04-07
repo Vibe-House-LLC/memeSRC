@@ -203,10 +203,10 @@ export default function SearchPage() {
 
   // ===== Upgraded Index Banner States ===== 
   const [isBannerMinimized, setIsBannerMinimized] = useState(true);
-
-  const [animationsEnabled, setAnimationsEnabled] = useState(
-    localStorage.getItem('animationsEnabled') === 'true' || false
-  );
+  const [animationsEnabled, setAnimationsEnabled] = useState(false);
+  // const [animationsEnabled, setAnimationsEnabled] = useState(
+  //   localStorage.getItem('animationsEnabled') === 'true' || false
+  // );
   // ===== ===== ===== ===== ===== ===== ===== 
 
   const [universalSearchMaintenance, setUniversalSearchMaintenance] = useState(false);
@@ -444,7 +444,7 @@ export default function SearchPage() {
 
   return (
     <>
-      <Collapse in={showBanner}>
+      {/* <Collapse in={showBanner}>
         <UpgradedIndexBanner show={showBanner}>
           {showBanner && (
             <>
@@ -525,7 +525,7 @@ export default function SearchPage() {
             Settings
           </MinimizedBannerText>
         </MinimizedBanner>
-      )}
+      )} */}
       {user?.userDetails?.subscriptionStatus !== 'active' && (
         <Grid item xs={12} mt={2}>
           <center>
