@@ -202,9 +202,7 @@ export default function SearchPage() {
   const [loadingCsv, setLoadingCsv] = useState(false);
 
   // ===== Upgraded Index Banner States ===== 
-  const [isBannerMinimized, setIsBannerMinimized] = useState(
-    localStorage.getItem(`dismissedBanner`) === 'true' || true
-  );
+  const [isBannerMinimized, setIsBannerMinimized] = useState(true);
 
   const [animationsEnabled, setAnimationsEnabled] = useState(
     localStorage.getItem('animationsEnabled') === 'true' || false
@@ -221,7 +219,7 @@ export default function SearchPage() {
   const { showObj, setShowObj, cid } = useSearchDetailsV2();
   const [loadingResults, setLoadingResults] = useState(true);
   const [videoUrls, setVideoUrls] = useState({});
-  const [showBanner, setShowBanner] = useState(!isBannerMinimized);
+  const [showBanner, setShowBanner] = useState(false);
 
   const [autoplay, setAutoplay] = useState(true);
 
@@ -259,16 +257,16 @@ export default function SearchPage() {
     };
   }, [newResults, autoplay]);
 
-  const checkBannerDismissed = () => {
-    const dismissedBanner = localStorage.getItem(`dismissedBanner`);
-    if (dismissedBanner === 'true') {
-      setIsBannerMinimized(true);
-      setShowBanner(false);
-    } else {
-      setIsBannerMinimized(false);
-      setShowBanner(true);
-    }
-  };
+  // const checkBannerDismissed = () => {
+  //   const dismissedBanner = localStorage.getItem(`dismissedBanner`);
+  //   if (dismissedBanner === 'true') {
+  //     setIsBannerMinimized(true);
+  //     setShowBanner(false);
+  //   } else {
+  //     setIsBannerMinimized(false);
+  //     setShowBanner(true);
+  //   }
+  // };
 
   useEffect(() => {
     async function initialize(cid = null) {
@@ -280,7 +278,7 @@ export default function SearchPage() {
       setLoadingCsv(false);
       setShowObj([]);
 
-      checkBannerDismissed(selectedCid);
+      // checkBannerDismissed(selectedCid);
     }
 
     async function getMaintenanceMode() {
@@ -313,11 +311,11 @@ export default function SearchPage() {
     fetchData();
   }, [params.cid]);
 
-  useEffect(() => {
-    if (cid) {
-      checkBannerDismissed(cid);
-    }
-  }, [cid]);
+  // useEffect(() => {
+  //   if (cid) {
+  //     checkBannerDismissed(cid);
+  //   }
+  // }, [cid]);
 
   useEffect(() => {
     if (newResults) {
@@ -452,7 +450,7 @@ export default function SearchPage() {
             <>
               <UpgradedIndexText>Upgraded!</UpgradedIndexText>
               <UpgradedIndexSubtext>
-                You're testing '{cid}' on the new data model.{' '}
+                You're searching an upgraded index.{' '}
                 <a href="https://forms.gle/8CETtVbwYoUmxqbi7" target="_blank" rel="noopener noreferrer">
                   Report&nbsp;a&nbsp;problem
                 </a>
