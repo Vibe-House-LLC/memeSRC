@@ -2,7 +2,7 @@
 
 import { Buffer } from "buffer";
 import React, { useState, useEffect, useContext } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { CircularProgress, Container, Typography, Card, CardMedia, CardContent, Button, Grid, useMediaQuery, Box, List, ListItem, ListItemAvatar, Avatar, ListItemText } from '@mui/material';
 import PropTypes from 'prop-types';
 import { extractVideoFrames } from '../utils/videoFrameExtractor';
@@ -34,6 +34,7 @@ export default function V2EpisodePage({ setSeriesTitle }) {
   const [lastNext, setLastNext] = useState(null);
   const fps = 10; // Frames per second
   const isMd = useMediaQuery(theme => theme.breakpoints.up('md'));
+  const navigate = useNavigate();
 
   useEffect(() => {
     getV2Metadata(cid).then(metadata => {
@@ -145,6 +146,10 @@ export default function V2EpisodePage({ setSeriesTitle }) {
     setLoadingMore(false);
   };
 
+  const skipToStart = () => {
+    navigate(`/episode/${cid}/${season}/${episode}/1`);
+  };
+
   return (
     <Container maxWidth="lg" style={{ paddingTop: '20px', paddingBottom: '20px' }}>
       <Typography
@@ -158,6 +163,15 @@ export default function V2EpisodePage({ setSeriesTitle }) {
         <span style={{ fontSize: '18px' }}>Season {season}, Episode {episode}</span>
       </Typography>
       <Box marginBottom="20px">
+        <Button
+          fullWidth
+          disabled={loading || loadingMore}
+          variant="contained"
+          onClick={skipToStart}
+          style={{ marginBottom: '16px', backgroundColor: '#1976d2', color: 'white', padding: '12px' }}
+        >
+          Skip to Start
+        </Button>
         <Button
           fullWidth
           disabled={loading || loadingMore}
