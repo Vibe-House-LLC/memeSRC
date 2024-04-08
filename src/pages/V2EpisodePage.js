@@ -75,7 +75,7 @@ export default function V2EpisodePage({ setSeriesTitle }) {
         setLoading(true);
 
         const frameIndexes = [];
-        for (let i = 0; i < 300; i += 1) {
+        for (let i = 0; i < 180; i += 1) {
           frameIndexes.push(parseInt(frame, 10) + i * fps);
         }
 
@@ -111,7 +111,7 @@ export default function V2EpisodePage({ setSeriesTitle }) {
       : parseInt(currentFrame, 10) + fps;
   
     const frameIndexes = [];
-    const numFrames = direction === 'prev' ? 15 : 300;
+    const numFrames = direction === 'prev' ? 15 : 180;
     for (let i = 0; i < numFrames; i += 1) {
       frameIndexes.push(newFrame + i * fps);
     }
