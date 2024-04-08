@@ -405,14 +405,11 @@ export default function FramePage({ shows = [] }) {
       // Since fetchFramesFineTuning now expects an array, calculate the array of indexes for fine-tuning
       const fineTuningImageUrls = await fetchFramesFineTuning(confirmedCid, season, episode, frame);
 
-      // Preload the images and convert them to blob URLs
-      // const fineTuningFrames = await Promise.all(
-      //   fineTuningImageUrls.map(async (url) => {
-      //     const response = await fetch(url);
-      //     const blob = await response.blob();
-      //     return URL.createObjectURL(blob);
-      //   })
-      // );
+      // Preload the images
+      fineTuningImageUrls.forEach((url) => {
+        const img = new Image();
+        img.src = url;
+      });
 
       setFineTuningFrames(fineTuningImageUrls);
       setFrames(fineTuningImageUrls);
