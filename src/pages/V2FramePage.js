@@ -85,7 +85,7 @@ export default function FramePage({ shows = [] }) {
   const [fontSizeScaleFactor, setFontSizeScaleFactor] = useState(1);
   const [fontLineHeightScaleFactor, setFontLineHeightScaleFactor] = useState(1);
   const [fontBottomMarginScaleFactor, setFontBottomMarginScaleFactor] = useState(1);
-  const [enableFineTuningFrames, setEnableFineTuningFrames] = useState(false);
+  const [enableFineTuningFrames, setEnableFineTuningFrames] = useState(true);
 
   const throttleTimeoutRef = useRef(null);
 
@@ -390,7 +390,7 @@ export default function FramePage({ shows = [] }) {
 
       // Call the loading functions
       loadInitialFrameInfo().then(() => {
-        // loadFineTuningFrames(); // Load fine-tuning frames
+        loadFineTuningFrames(); // Load fine-tuning frames
         loadSurroundingSubtitles(); // Load surrounding subtitles
         loadSurroundingFrames(); // Load surrounding frames
       });
@@ -404,17 +404,17 @@ export default function FramePage({ shows = [] }) {
       const fineTuningImageUrls = await fetchFramesFineTuning(confirmedCid, season, episode, frame);
 
       // Preload the images and convert them to blob URLs
-      const fineTuningFrames = await Promise.all(
-        fineTuningImageUrls.map(async (url) => {
-          const response = await fetch(url);
-          const blob = await response.blob();
-          return URL.createObjectURL(blob);
-        })
-      );
+      // const fineTuningFrames = await Promise.all(
+      //   fineTuningImageUrls.map(async (url) => {
+      //     const response = await fetch(url);
+      //     const blob = await response.blob();
+      //     return URL.createObjectURL(blob);
+      //   })
+      // );
 
-      setFineTuningFrames(fineTuningFrames);
-      setFrames(fineTuningFrames);
-      console.log("Fine Tuning Frames: ", fineTuningFrames);
+      setFineTuningFrames(fineTuningImageUrls);
+      setFrames(fineTuningImageUrls);
+      console.log("Fine Tuning Frames: ", fineTuningImageUrls);
     } catch (error) {
       console.error("Failed to fetch fine tuning frames:", error);
     }
@@ -536,59 +536,47 @@ export default function FramePage({ shows = [] }) {
             <ArrowForwardIos style={{ fontSize: '2rem' }} />
           </IconButton>
         </div>
-        {enableFineTuningFrames ?
-          <>
-            {frames && frames?.length > 0 ?
-              <Stack spacing={2} direction="row" p={0} pr={3} pl={3} alignItems={'center'}>
-                <Tooltip title="Fine Tuning">
-                  <IconButton>
-                    <HistoryToggleOffRounded alt="Fine Tuning" />
-                  </IconButton>
-                </Tooltip>
-                <Slider
-                  size="small"
-                  defaultValue={selectedFrameIndex || Math.floor(frames.length / 2)}
-                  min={0}
-                  max={frames.length - 1}
-                  value={selectedFrameIndex}
-                  step={1}
-                  onChange={(e, newValue) => handleSliderChange(newValue)}
-                  valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
-                  marks
-                />
-              </Stack>
-              :
-              <Stack spacing={2} direction="row" py={1.1} justifyContent='center' alignItems={'center'}>
-                <CircularProgress color='success' size={14} />
-                <Typography variant='body2'>
-                  Loading fine tuning frames...
-                </Typography>
-              </Stack>
-            }
-          </>
-          :
-          <>
-            <center>
-              <Button
-                size='small'
-                variant='success'
-                sx={{
-                  fontSize: 12,
-                  py: 0.3,
-                  my: 1
-                }}
-                onClick={() => {
-                  loadFineTuningFrames();
-                  setEnableFineTuningFrames(true)
-                }}
-              >
-                Load Fine Tuning Frames
-              </Button>
-            </center>
-          </>
-        }
 
+        {frames && frames?.length > 0 ?
+          <Stack spacing={2} direction="row" p={0} pr={3} pl={3} alignItems={'center'}>
+            <Tooltip title="Fine Tuning">
+              <IconButton>
+                <HistoryToggleOffRounded alt="Fine Tuning" />
+              </IconButton>
+            </Tooltip>
+            <Slider
+              size="small"
+              defaultValue={selectedFrameIndex || Math.floor(frames?.length / 2)}
+              min={0}
+              max={frames?.length - 1}
+              value={selectedFrameIndex}
+              step={1}
+              onChange={(e, newValue) => handleSliderChange(newValue)}
+              valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
+              marks
+            />
+          </Stack>
+          :
+          <Stack spacing={2} direction="row" p={0} pr={3} pl={3} alignItems={'center'}>
+            <Tooltip title="Fine Tuning">
+              <IconButton>
+                <HistoryToggleOffRounded alt="Fine Tuning" />
+              </IconButton>
+            </Tooltip>
+            <Slider
+              size="small"
+              defaultValue={5}
+              min={0}
+              max={10}
+              value={5}
+              step={1}
+              disabled
+              marks
+            />
+          </Stack>
+        }
       </>
+
     );
   };
 
