@@ -1,3 +1,5 @@
+// V2SearchPage.js
+
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { Grid, CircularProgress, Card, Chip, Typography, Button, Collapse, IconButton, FormControlLabel, Switch, Dialog, DialogTitle, DialogContent, List, ListItem, ListItemText, DialogActions, Box, CardContent, TextField } from '@mui/material';
 import styled from '@emotion/styled';
@@ -621,7 +623,7 @@ export default function SearchPage() {
               {newResults.slice(0, displayedResults).map((result, index) => (
                 <Grid item xs={12} sm={6} md={3} key={index} className="result-item" data-result-index={index}>
                   {result.isAd ? (
-                    <StyledCard sx={{ aspectRatio: '16/9' }}>
+                    <StyledCard>
                       <SearchPageResultsAd />
                     </StyledCard>
                   ) : (
@@ -679,15 +681,6 @@ export default function SearchPage() {
               ))}
             </Grid>
           </InfiniteScroll>
-          {newResults.length > 0 && user?.userDetails?.subscriptionStatus !== 'active' && (
-            <Grid item xs={12} mt={2}>
-              <center>
-                <Box sx={{ maxWidth: '800px' }}>
-                  <SearchPageBannerAd />
-                </Box>
-              </center>
-            </Grid>
-           )}
         </>
       ) : (
         <>
@@ -697,6 +690,15 @@ export default function SearchPage() {
             </Typography>
           )}
         </>
+      )}
+      {newResults?.length > 0 && user?.userDetails?.subscriptionStatus !== 'active' && (
+            <Grid item xs={12} mt={2}>
+              <center>
+                <Box sx={{ maxWidth: '800px' }}>
+                  <SearchPageBannerAd />
+                </Box>
+              </center>
+            </Grid>
       )}
       <Dialog open={maintenanceDialogOpen} onClose={() => setMaintenanceDialogOpen(false)} maxWidth="sm" fullWidth fullScreen={fullScreen}>
         <Box
