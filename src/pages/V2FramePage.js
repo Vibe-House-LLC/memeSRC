@@ -38,6 +38,8 @@ import {
   TextField,
   Snackbar,
   Alert,
+  FormControl,
+  FormLabel
 } from '@mui/material';
 import { Add, ArrowBack, ArrowBackIos, ArrowForward, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, FormatLineSpacing, FormatSize, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu, OpenInBrowser, OpenInNew, VerticalAlignBottom, VerticalAlignTop, Visibility, VisibilityOff } from '@mui/icons-material';
 import useSearchDetails from '../hooks/useSearchDetails';
@@ -85,7 +87,7 @@ export default function FramePage({ shows = [] }) {
   const [fontSizeScaleFactor, setFontSizeScaleFactor] = useState(1);
   const [fontLineHeightScaleFactor, setFontLineHeightScaleFactor] = useState(1);
   const [fontBottomMarginScaleFactor, setFontBottomMarginScaleFactor] = useState(1);
-  const [enableFineTuningFrames, setEnableFineTuningFrames] = useState(false);
+  const [enableFineTuningFrames, setEnableFineTuningFrames] = useState(true);
 
   const throttleTimeoutRef = useRef(null);
 
@@ -390,7 +392,7 @@ export default function FramePage({ shows = [] }) {
 
       // Call the loading functions
       loadInitialFrameInfo().then(() => {
-        // loadFineTuningFrames(); // Load fine-tuning frames
+        loadFineTuningFrames(); // Load fine-tuning frames
         loadSurroundingSubtitles(); // Load surrounding subtitles
         loadSurroundingFrames(); // Load surrounding frames
       });
@@ -403,18 +405,15 @@ export default function FramePage({ shows = [] }) {
       // Since fetchFramesFineTuning now expects an array, calculate the array of indexes for fine-tuning
       const fineTuningImageUrls = await fetchFramesFineTuning(confirmedCid, season, episode, frame);
 
-      // Preload the images and convert them to blob URLs
-      const fineTuningFrames = await Promise.all(
-        fineTuningImageUrls.map(async (url) => {
-          const response = await fetch(url);
-          const blob = await response.blob();
-          return URL.createObjectURL(blob);
-        })
-      );
+      // Preload the images
+      fineTuningImageUrls.forEach((url) => {
+        const img = new Image();
+        img.src = url;
+      });
 
-      setFineTuningFrames(fineTuningFrames);
-      setFrames(fineTuningFrames);
-      console.log("Fine Tuning Frames: ", fineTuningFrames);
+      setFineTuningFrames(fineTuningImageUrls);
+      setFrames(fineTuningImageUrls);
+      console.log("Fine Tuning Frames: ", fineTuningImageUrls);
     } catch (error) {
       console.error("Failed to fetch fine tuning frames:", error);
     }
@@ -536,59 +535,98 @@ export default function FramePage({ shows = [] }) {
             <ArrowForwardIos style={{ fontSize: '2rem' }} />
           </IconButton>
         </div>
-        {enableFineTuningFrames ?
-          <>
-            {frames && frames?.length > 0 ?
-              <Stack spacing={2} direction="row" p={0} pr={3} pl={3} alignItems={'center'}>
-                <Tooltip title="Fine Tuning">
-                  <IconButton>
-                    <HistoryToggleOffRounded alt="Fine Tuning" />
-                  </IconButton>
-                </Tooltip>
-                <Slider
-                  size="small"
-                  defaultValue={selectedFrameIndex || Math.floor(frames.length / 2)}
-                  min={0}
-                  max={frames.length - 1}
-                  value={selectedFrameIndex}
-                  step={1}
-                  onChange={(e, newValue) => handleSliderChange(newValue)}
-                  valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
-                  marks
-                />
-              </Stack>
-              :
-              <Stack spacing={2} direction="row" py={1.1} justifyContent='center' alignItems={'center'}>
-                <CircularProgress color='success' size={14} />
-                <Typography variant='body2'>
-                  Loading fine tuning frames...
-                </Typography>
-              </Stack>
-            }
-          </>
-          :
-          <>
-            <center>
-              <Button
-                size='small'
-                variant='success'
-                sx={{
-                  fontSize: 12,
-                  py: 0.3,
-                  my: 1
-                }}
-                onClick={() => {
-                  loadFineTuningFrames();
-                  setEnableFineTuningFrames(true)
-                }}
-              >
-                Load Fine Tuning Frames
-              </Button>
-            </center>
-          </>
-        }
 
+        {frames && frames?.length > 0 ?
+          <Stack spacing={2} direction="row" p={0} pr={3} pl={3} alignItems={'center'}>
+            <Tooltip title="Fine Tuning">
+              <IconButton>
+                <HistoryToggleOffRounded alt="Fine Tuning" />
+              </IconButton>
+            </Tooltip>
+            <Slider
+              size="small"
+              defaultValue={selectedFrameIndex || Math.floor(frames?.length / 2)}
+              min={0}
+              max={frames?.length - 1}
+              value={selectedFrameIndex}
+              step={1}
+              onChange={(e, newValue) => handleSliderChange(newValue)}
+              valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
+              marks
+              componentsProps={{
+                track: {
+                  style: {
+                    ...(isSm && { pointerEvents: 'none' }),
+                    backgroundColor: 'white', // Change the background color to white
+                    height: 6, // Increase the height of the slider
+                  }
+                },
+                rail: {
+                  style: {
+                    backgroundColor: 'white', // Change the background color to white
+                    height: 6, // Increase the height of the slider
+                  }
+                },
+                thumb: {
+                  style: {
+                    ...(isSm && { pointerEvents: 'auto' }),
+                    backgroundColor: '#2079fe', // Change the color of the slider thumb to blue
+                    width: 20, // Increase the width of the slider thumb
+                    height: 20, // Increase the height of the slider thumb
+                  }
+                }
+              }}
+            />
+          </Stack>
+          :
+          <Stack spacing={2} direction="row" p={0} pr={3} pl={3} alignItems={'center'}>
+            <Tooltip title="Fine Tuning">
+              <IconButton>
+                <HistoryToggleOffRounded alt="Fine Tuning" />
+              </IconButton>
+            </Tooltip>
+            <Slider
+              size="small"
+              defaultValue={5}
+              min={0}
+              max={10}
+              value={5}
+              step={1}
+              disabled
+              marks
+              componentsProps={{
+                root: {
+                  style: {
+                    ...(isSm && { pointerEvents: 'none' }),
+                  }
+                },
+                track: {
+                  style: {
+                    ...(isSm && { pointerEvents: 'none' }),
+                    backgroundColor: 'white', // Change the background color to white
+                    height: 6, // Increase the height of the slider
+                  }
+                },
+                rail: {
+                  style: {
+                    backgroundColor: 'white', // Change the background color to white
+                    height: 6, // Increase the height of the slider
+                  }
+                },
+                thumb: {
+                  style: {
+                    ...(isSm && { pointerEvents: 'auto' }),
+                    backgroundColor: '#2079fe', // Change the color of the slider thumb to blue
+                    width: 20, // Increase the width of the slider thumb
+                    height: 20, // Increase the height of the slider thumb
+                  }
+                }
+              }}
+            />
+          </Stack>
+        }
       </>
+
     );
   };
 
@@ -663,59 +701,80 @@ export default function FramePage({ shows = [] }) {
                          {showTitle}
                         </Typography> */}
                   {loading ?
-                    <Skeleton variant='text' height={25} width={'max(100px, 50%)'} />
+                    <Skeleton variant='text' height={150} width={'max(100px, 50%)'} />
                     :
                     <>
-                      <Stack direction='row' spacing={1} pl={0.5} alignItems='center'>
-                        {showText ?
-                          <Stack direction='row' spacing={2} alignItems='center' sx={{ width: '100%' }}>
-                            <IconButton size='small' onClick={() => { setShowText(!showText) }}>
-                              <VisibilityOff sx={{ fontSize: 20 }} />
-                            </IconButton>
-                            <TextField
-                              autoFocus
-                              multiline
-                              fullWidth
-                              variant="outlined"
-                              size="small"
-                              value={loadedSubtitle}
-                              onChange={(e) => setLoadedSubtitle(e.target.value)}
-                            />
-                          </Stack>
-                          :
-                          <Stack direction='row' spacing={1} pl={0.5} alignItems='center'>
-                            <IconButton size='small' onClick={() => setShowText(!showText)} sx={{ cursor: 'pointer' }}>
-                              <Edit sx={{ fontSize: 20 }} />
-                            </IconButton>
-                            <Typography
-                              variant="subtitle1"
-                              style={{ marginBottom: '0rem', whiteSpace: 'pre-line' }}
-                              textAlign='left'
-                              sx={{ color: "text.secondary" }}
-                              onClick={() => { setShowText(!showText) }}
-                            >
-                              {loadedSubtitle || '(no subtitle)'}
-                            </Typography>
-                          </Stack>
-                        }
+                      <Stack direction='row' spacing={1} alignItems='center'>
+                        <Stack direction='row' alignItems='center' sx={{ width: '100%' }}>
+                          <TextField
+                            autoFocus
+                            multiline
+                            fullWidth
+                            variant="outlined"
+                            size="small"
+                            value={loadedSubtitle}
+                            onClick={() => {
+                              setShowText(true)
+                            }}
+                            onChange={(e) => setLoadedSubtitle(e.target.value)}
+                            sx={{
+                              '& .MuiOutlinedInput-root': {
+                                backgroundColor: 'white',
+                                color: 'black',
+                                '& fieldset': {
+                                  borderColor: 'rgba(0, 0, 0, 0.23)',
+                                },
+                                '&:hover fieldset': {
+                                  borderColor: 'rgba(0, 0, 0, 0.87)',
+                                },
+                                '&.Mui-focused fieldset': {
+                                  borderColor: 'primary.main',
+                                },
+                              },
+                              '& .MuiInputBase-input': {
+                                color: 'black',
+                              },
+                              '& .MuiFormLabel-root': {
+                                color: 'text.secondary',
+                              },
+                            }}
+                          />
+                        </Stack>
                       </Stack>
-                      {showText &&
-                        <Stack spacing={2} direction="row" p={0} pt={2} alignItems={'center'}>
-                          <Tooltip title="Line Height">
+                      <FormControl fullWidth variant="outlined" sx={{ mt: 2, border: '1px solid rgba(191, 191, 191, 0.57)', borderRadius: '8px', py: 1, px: 2 }}>
+                        <FormLabel sx={{ fontSize: '0.875rem', fontWeight: 'bold', mb: 1, textAlign: 'center' }}>Bottom Margin</FormLabel>
+                        <Stack spacing={2} direction="row" p={0} alignItems={'center'}>
+                          {/* <Tooltip title="Line Height">
                             <IconButton>
                               <VerticalAlignTop alt="Line Height" />
                             </IconButton>
-                          </Tooltip>
+                          </Tooltip> */}
                           <Slider
                             componentsProps={{
                               root: {
                                 style: {
-                                  ...(isSm && { pointerEvents: 'none' })
+                                  ...(isSm && { pointerEvents: 'none' }),
+                                }
+                              },
+                              track: {
+                                style: {
+                                  ...(isSm && { pointerEvents: 'none' }),
+                                  backgroundColor: 'white',
+                                  height: 6,
+                                }
+                              },
+                              rail: {
+                                style: {
+                                  backgroundColor: 'white',
+                                  height: 6,
                                 }
                               },
                               thumb: {
                                 style: {
-                                  ...(isSm && { pointerEvents: 'auto' })
+                                  ...(isSm && { pointerEvents: 'auto' }),
+                                  backgroundColor: '#2079fe',
+                                  width: 20,
+                                  height: 20,
                                 }
                               }
                             }}
@@ -735,33 +794,53 @@ export default function FramePage({ shows = [] }) {
                             marks
                             valueLabelFormat='Bottom Margin'
                             valueLabelDisplay
+                            onMouseDown={() => {
+                              setShowText(true)
+                            }}
                           />
                         </Stack>
-                      }
-                      {showText &&
-                        <Stack spacing={2} direction="row" p={0} pt={2} alignItems={'center'}>
-                          <Tooltip title="Font Size">
+                      </FormControl>
+                      <FormControl fullWidth variant="outlined" sx={{ mt: 2, border: '1px solid rgba(191, 191, 191, 0.57)', borderRadius: '8px', py: 1, px: 2 }}>
+                        <FormLabel sx={{ fontSize: '0.875rem', fontWeight: 'bold', mb: 1, textAlign: 'center' }}>Font Size</FormLabel>
+                        <Stack spacing={2} direction="row" p={0} alignItems={'center'}>
+                          {/* <Tooltip title="Font Size">
                             <IconButton>
                               <FormatSize alt="Font Size" />
                             </IconButton>
-                          </Tooltip>
+                          </Tooltip> */}
                           <Slider
                             componentsProps={{
                               root: {
                                 style: {
-                                  ...(isSm && { pointerEvents: 'none' })
+                                  ...(isSm && { pointerEvents: 'none' }),
+                                }
+                              },
+                              track: {
+                                style: {
+                                  ...(isSm && { pointerEvents: 'none' }),
+                                  backgroundColor: 'white',
+                                  height: 6,
+                                }
+                              },
+                              rail: {
+                                style: {
+                                  backgroundColor: 'white',
+                                  height: 6,
                                 }
                               },
                               thumb: {
                                 style: {
-                                  ...(isSm && { pointerEvents: 'auto' })
+                                  ...(isSm && { pointerEvents: 'auto' }),
+                                  backgroundColor: '#2079fe',
+                                  width: 20,
+                                  height: 20,
                                 }
                               }
                             }}
                             size="small"
-                            defaultValue={25} // 1 scaled up by the factor of 25
-                            min={0.25} // 0.01 scaled up by the factor of 25
-                            max={50} // 2 scaled up by the factor of 25
+                            defaultValue={25}
+                            min={0.25}
+                            max={50}
                             step={1}
                             value={fontSizeScaleFactor * 25}
                             onChange={(e, newValue) => {
@@ -774,49 +853,71 @@ export default function FramePage({ shows = [] }) {
                             marks
                             valueLabelFormat='Font Size'
                             valueLabelDisplay
+                            onMouseDown={() => {
+                              setShowText(true)
+                            }}
                           />
                         </Stack>
-                      }
-                      {showText &&
-                        <Stack spacing={2} direction="row" p={0} pt={2} alignItems={'center'}>
-                          <Tooltip title="Line Height">
+                      </FormControl>
+                      <FormControl fullWidth variant="outlined" sx={{ mt: 2, border: '1px solid rgba(191, 191, 191, 0.57)', borderRadius: '8px', py: 1, px: 2 }}>
+                        <FormLabel sx={{ fontSize: '0.875rem', fontWeight: 'bold', mb: 1, textAlign: 'center' }}>Line Height</FormLabel>
+                        <Stack spacing={2} direction="row" p={0} alignItems={'center'}>
+                          {/* <Tooltip title="Line Height">
                             <IconButton>
                               <FormatLineSpacing alt="Line Height" />
                             </IconButton>
-                          </Tooltip>
+                          </Tooltip> */}
                           <Slider
                             componentsProps={{
                               root: {
                                 style: {
-                                  ...(isSm && { pointerEvents: 'none' })
+                                  ...(isSm && { pointerEvents: 'none' }),
+                                }
+                              },
+                              track: {
+                                style: {
+                                  ...(isSm && { pointerEvents: 'none' }),
+                                  backgroundColor: 'white',
+                                  height: 6,
+                                }
+                              },
+                              rail: {
+                                style: {
+                                  backgroundColor: 'white',
+                                  height: 6,
                                 }
                               },
                               thumb: {
                                 style: {
-                                  ...(isSm && { pointerEvents: 'auto' })
+                                  ...(isSm && { pointerEvents: 'auto' }),
+                                  backgroundColor: '#2079fe',
+                                  width: 20,
+                                  height: 20,
                                 }
                               }
                             }}
                             size="small"
-                            defaultValue={1} // 1 scaled up by the factor of 25
-                            min={1} // 0.01 scaled up by the factor of 25
-                            max={5} // 2 scaled up by the factor of 25
+                            defaultValue={1}
+                            min={1}
+                            max={5}
                             step={0.2}
-                            value={fontLineHeightScaleFactor} // Scale the value for the slider
+                            value={fontLineHeightScaleFactor}
                             onChange={(e, newValue) => {
                               if (e.type === 'mousedown') {
                                 return;
                               }
-                              // Divide by scale factor to get the actual value to set
                               setFontLineHeightScaleFactor(newValue);
                             }}
                             onChangeCommitted={() => updateCanvas()}
                             valueLabelFormat='Line Height'
                             valueLabelDisplay
+                            onMouseDown={() => {
+                              setShowText(true)
+                            }}
                             marks
                           />
                         </Stack>
-                      }
+                      </FormControl>
                     </>
                   }
 
@@ -845,7 +946,7 @@ export default function FramePage({ shows = [] }) {
               </Alert>
             )} */}
 
-            <Button
+            {/* <Button
               size="medium"
               fullWidth
               variant="contained"
@@ -855,7 +956,7 @@ export default function FramePage({ shows = [] }) {
               startIcon={showText ? <VisibilityOff /> : <Visibility />}
             >
               {showText ? "Disable" : "Enable"} Caption
-            </Button>
+            </Button> */}
 
             <Button
               size="medium"
