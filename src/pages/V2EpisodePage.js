@@ -2,7 +2,7 @@
 
 import { Buffer } from "buffer";
 import React, { useState, useEffect, useContext } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { CircularProgress, Container, Typography, Card, CardMedia, CardContent, Button, Grid, useMediaQuery, Box, List, ListItem, ListItemAvatar, Avatar, ListItemText } from '@mui/material';
 import PropTypes from 'prop-types';
 import { extractVideoFrames } from '../utils/videoFrameExtractor';
@@ -32,8 +32,11 @@ export default function V2EpisodePage({ setSeriesTitle }) {
   const [subtitles, setSubtitles] = useState([]);
   const [lastPrev, setLastPrev] = useState(null);
   const [lastNext, setLastNext] = useState(null);
+  const [firstFrame, setFirstFrame] = useState(1);
+  const [lastFrame, setLastFrame] = useState(null);
   const fps = 10; // Frames per second
   const isMd = useMediaQuery(theme => theme.breakpoints.up('md'));
+  const navigate = useNavigate();
 
   useEffect(() => {
     getV2Metadata(cid).then(metadata => {
@@ -62,6 +65,12 @@ export default function V2EpisodePage({ setSeriesTitle }) {
           };
         });
 
+        if (parsedSubtitles.length > 0) {
+          const lastSubtitle = parsedSubtitles[parsedSubtitles.length - 5];
+          const lastFrameIndex = lastSubtitle.end_frame - 30;
+          setLastFrame(lastFrameIndex);
+        }
+
         setSubtitles(parsedSubtitles);
       };
 
@@ -75,7 +84,7 @@ export default function V2EpisodePage({ setSeriesTitle }) {
         setLoading(true);
 
         const frameIndexes = [];
-        for (let i = 0; i < 60; i += 1) {
+        for (let i = 0; i < 180; i += 1) {
           frameIndexes.push(parseInt(frame, 10) + i * fps);
         }
 
@@ -111,7 +120,7 @@ export default function V2EpisodePage({ setSeriesTitle }) {
       : parseInt(currentFrame, 10) + fps;
   
     const frameIndexes = [];
-    const numFrames = direction === 'prev' ? 15 : 60;
+    const numFrames = direction === 'prev' ? 15 : 180;
     for (let i = 0; i < numFrames; i += 1) {
       frameIndexes.push(newFrame + i * fps);
     }
@@ -145,6 +154,18 @@ export default function V2EpisodePage({ setSeriesTitle }) {
     setLoadingMore(false);
   };
 
+  const skipToStart = () => {
+    navigate(`/episode/${cid}/${season}/${episode}/1`);
+  };
+
+  const skipToEnd = () => {
+    if (subtitles.length > 0) {
+      const lastSubtitle = subtitles[subtitles.length - 5];
+      const lastFrameIndex = lastSubtitle.end_frame - 30;
+      navigate(`/episode/${cid}/${season}/${episode}/${lastFrameIndex}`);
+    }
+  };
+
   return (
     <Container maxWidth="lg" style={{ paddingTop: '20px', paddingBottom: '20px' }}>
       <Typography
@@ -158,6 +179,17 @@ export default function V2EpisodePage({ setSeriesTitle }) {
         <span style={{ fontSize: '18px' }}>Season {season}, Episode {episode}</span>
       </Typography>
       <Box marginBottom="20px">
+        {parseInt(frame, 10) > firstFrame && (
+          <Button
+            fullWidth
+            disabled={loading || loadingMore}
+            variant="contained"
+            onClick={skipToStart}
+            style={{ marginBottom: '16px', backgroundColor: '#1976d2', color: 'white', padding: '12px' }}
+          >
+            Skip to Start
+          </Button>
+        )}
         <Button
           fullWidth
           disabled={loading || loadingMore}
@@ -205,6 +237,17 @@ export default function V2EpisodePage({ setSeriesTitle }) {
         >
           {loadingMore ? 'Loading...' : 'Next Frames'}
         </Button>
+        {parseInt(frame, 10) < lastFrame && (
+          <Button
+            fullWidth
+            disabled={loading || loadingMore}
+            variant="contained"
+            onClick={skipToEnd}
+            style={{ marginTop: '16px', backgroundColor: '#1976d2', color: 'white', padding: '12px' }}
+          >
+            Skip to End
+          </Button>
+        )}
       </Box>
     </Container>
   );
