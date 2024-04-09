@@ -154,7 +154,7 @@ const fetchFrameInfo = async (cid, season, episode, frame, options = {}) => {
           console.log("TEST: 8")
           subtitlesSurrounding.push(
             {
-              subtitle: subtitleText || '', // Use decoded subtitle text
+              subtitle: subtitleText, // Use decoded subtitle text
               frame: middleFrame,
             }
           );
@@ -175,7 +175,7 @@ const fetchFrameInfo = async (cid, season, episode, frame, options = {}) => {
 
     return {
       series_name: seriesName,
-      subtitle: mainSubtitle,
+      subtitle: mainSubtitle || '',
       frame_image: mainFrameImage,
       frames_surrounding: framesSurrounding,
       frames_fine_tuning: framesFineTuning,
