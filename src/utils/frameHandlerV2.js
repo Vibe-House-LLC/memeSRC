@@ -52,7 +52,7 @@ const fetchFrameSubtitleAndImage = async (cid, season, episode, frame) => {
   const mainFrameImage = mainFrameImages.length > 0 ? mainFrameImages[0] : 'No image available';
 
   return {
-    subtitle: subtitle,
+    subtitle,
     frame_image: mainFrameImage,
   };
 };
