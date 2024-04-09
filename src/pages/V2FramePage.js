@@ -377,10 +377,6 @@ export default function FramePage({ shows = [] }) {
         }
       };
 
-
-
-      // window.scrollTo(0, 0);
-
       // Clear values before loading new ones
       setLoading(true);
       setFrame(null);
@@ -475,6 +471,11 @@ export default function FramePage({ shows = [] }) {
   const [loadedSubtitle, setLoadedSubtitle] = useState('');  // TODO
   const [loadedSeason, setLoadedSeason] = useState('');  // TODO
   const [loadedEpisode, setLoadedEpisode] = useState('');  // TODO
+
+  // Scroll to top when this component loads
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   useEffect(() => {
     updateCanvas();
