@@ -379,7 +379,7 @@ export default function FramePage({ shows = [] }) {
 
 
 
-      window.scrollTo(0, 0);
+      // window.scrollTo(0, 0);
 
       // Clear values before loading new ones
       setLoading(true);
@@ -738,7 +738,6 @@ export default function FramePage({ shows = [] }) {
                       <Stack direction='row' spacing={1} alignItems='center'>
                         <Stack direction='row' alignItems='center' sx={{ width: '100%' }}>
                           <TextField
-                            autoFocus
                             multiline
                             fullWidth
                             variant="outlined"
