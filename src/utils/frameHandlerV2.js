@@ -52,7 +52,7 @@ const fetchFrameSubtitleAndImage = async (cid, season, episode, frame) => {
   const mainFrameImage = mainFrameImages.length > 0 ? mainFrameImages[0] : 'No image available';
 
   return {
-    subtitle,
+    subtitle: subtitle || '',
     frame_image: mainFrameImage,
   };
 };
@@ -154,7 +154,7 @@ const fetchFrameInfo = async (cid, season, episode, frame, options = {}) => {
           console.log("TEST: 8")
           subtitlesSurrounding.push(
             {
-              subtitle: subtitleText, // Use decoded subtitle text
+              subtitle: subtitleText || '', // Use decoded subtitle text
               frame: middleFrame,
             }
           );
