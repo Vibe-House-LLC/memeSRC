@@ -746,7 +746,7 @@ export default function FramePage({ shows = [] }) {
                           />
                         </Stack>
                       </Stack>
-                      {showText && loadedSubtitle.trim() !== '' && (
+                      {showText && loadedSubtitle?.trim() !== '' && (
       <Button
         size="medium"
         fullWidth
