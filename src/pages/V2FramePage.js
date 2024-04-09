@@ -717,6 +717,7 @@ export default function FramePage({ shows = [] }) {
                             fullWidth
                             variant="outlined"
                             size="small"
+                            placeholder="Type a caption..."
                             value={loadedSubtitle}
                             onClick={() => {
                               setShowText(true)
