@@ -529,14 +529,12 @@ export default function SearchPage() {
         </MinimizedBanner>
       )} */}
     <Grid item xs={12} mt={2}>
-      <Typography variant="h2" textAlign="center" mb={2}>
-        {newResults ? (
+      <Typography variant="h3" textAlign="center" mb={2}>
+        {newResults && 
           <>
             Found <b>{newResults.filter(result => !result.isAd).length}</b> results
           </>
-        ) : (
-          "Searching..."
-        )}
+        }
       </Typography>
     </Grid>
     {user?.userDetails?.subscriptionStatus !== 'active' && (
