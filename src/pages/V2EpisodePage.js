@@ -198,6 +198,11 @@ export default function V2EpisodePage({ setSeriesTitle }) {
         {cid} <br />
         <span style={{ fontSize: '18px' }}>Season {season}, Episode {episode}</span>
       </Typography>
+      {user?.userDetails?.subscriptionStatus !== 'active' && (
+        <Box marginBottom="20px">
+          <EpisodePageBannerAd />
+        </Box>
+      )}
       <Box marginBottom="20px">
         {parseInt(frame, 10) > firstFrame && (
           <Button
@@ -220,12 +225,6 @@ export default function V2EpisodePage({ setSeriesTitle }) {
           {loadingMore ? 'Loading...' : 'Previous Frames'}
         </Button>
       </Box>
-
-      {user?.userDetails?.subscriptionStatus !== 'active' && (
-        <Box marginBottom="20px">
-          <EpisodePageBannerAd />
-        </Box>
-      )}
 
       {loading ? (
         <Box display="flex" justifyContent="center" marginTop="50px">
