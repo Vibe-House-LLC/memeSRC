@@ -682,10 +682,21 @@ export default function FramePage({ shows = [] }) {
               }}
             />
 
+          {user?.userDetails?.subscriptionStatus !== 'active' && (
+            <Grid item xs={12} mt={2}>
+              <center>
+                <Box sx={{ maxWidth: '800px' }}>
+                  <FramePageBottomBannerAd />
+                </Box>
+              </center>
+            </Grid>
+          )}
+
             <Card>
               {renderFineTuningFrames(imgSrc)}
             </Card>
           </Grid>
+
           <Grid item xs={12} md={6}>
             <Box sx={{ width: '100%' }}>
               <Card
@@ -1147,16 +1158,6 @@ export default function FramePage({ shows = [] }) {
               ))}
             </Grid>
 
-            {user?.userDetails?.subscriptionStatus !== 'active' && (
-              <Grid item xs={12} mt={2}>
-                <center>
-                  <Box sx={{ maxWidth: '800px' }}>
-                    <FramePageBottomBannerAd />
-                  </Box>
-                </center>
-              </Grid>
-            )}
-
             <Grid item xs={12} mt={3}>
               <Button
                 variant="contained"
@@ -1166,6 +1167,16 @@ export default function FramePage({ shows = [] }) {
                 View Episode
               </Button>
             </Grid>
+
+            {user?.userDetails?.subscriptionStatus !== 'active' && (
+              <Grid item xs={12} mt={2}>
+                <center>
+                  <Box sx={{ maxWidth: '800px' }}>
+                    <FramePageBottomBannerAd />
+                  </Box>
+                </center>
+              </Grid>
+            )}
           </Grid>
         </Grid>
       </Container >
