@@ -43,6 +43,7 @@ exports.handler = async (event) => {
           '-vframes 1',
           '-c:v mjpeg',
           '-f image2',
+          '-vf "scale=iw*sar:ih"',
         ])
         .output(outputFile)
         .on('end', resolve)
