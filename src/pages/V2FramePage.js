@@ -89,8 +89,6 @@ export default function FramePage({ shows = [] }) {
   const [fontBottomMarginScaleFactor, setFontBottomMarginScaleFactor] = useState(1);
   const [enableFineTuningFrames, setEnableFineTuningFrames] = useState(true);
 
-  const [showText, setShowText] = useState(false);
-
   const throttleTimeoutRef = useRef(null);
 
   const { user } = useContext(UserContext);
