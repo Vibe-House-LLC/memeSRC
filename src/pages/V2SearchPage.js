@@ -1,3 +1,5 @@
+// V2SearchPage.js
+
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { Grid, CircularProgress, Card, Chip, Typography, Button, Collapse, IconButton, FormControlLabel, Switch, Dialog, DialogTitle, DialogContent, List, ListItem, ListItemText, DialogActions, Box, CardContent, TextField } from '@mui/material';
 import styled from '@emotion/styled';
@@ -526,15 +528,26 @@ export default function SearchPage() {
           </MinimizedBannerText>
         </MinimizedBanner>
       )} */}
-      {user?.userDetails?.subscriptionStatus !== 'active' && (
-        <Grid item xs={12} mt={2}>
-          <center>
-            <Box sx={{ maxWidth: '800px' }}>
-              <SearchPageBannerAd />
-            </Box>
-          </center>
-        </Grid>
-      )}
+    <Grid item xs={12} mt={2}>
+      <Typography variant="h2" textAlign="center" mb={2}>
+        {newResults ? (
+          <>
+            Found <b>{newResults.filter(result => !result.isAd).length}</b> results
+          </>
+        ) : (
+          "Searching..."
+        )}
+      </Typography>
+    </Grid>
+    {user?.userDetails?.subscriptionStatus !== 'active' && (
+      <Grid item xs={12} mt={2}>
+        <center>
+          <Box sx={{ maxWidth: '800px' }}>
+            <SearchPageBannerAd />
+          </Box>
+        </center>
+      </Grid>
+    )}
       {loadingResults && (
         <Grid item xs={12} textAlign="center" mt={4}>
           <CircularProgress size={40} />
@@ -544,118 +557,131 @@ export default function SearchPage() {
         </Grid>
       )}
       {newResults && newResults.length > 0 ? (
-        <InfiniteScroll
-          dataLength={displayedResults}
-          next={() => {
-            if (!isLoading) {
-              setIsLoading(true);
-              setTimeout(() => {
-                setDisplayedResults((prevDisplayedResults) =>
-                  Math.min(
-                    prevDisplayedResults + RESULTS_PER_PAGE,
-                    newResults.length
-                  )
-                );
-                setIsLoading(false);
-              }, 1000);
-            }
-          }}
-          hasMore={displayedResults < newResults.length}
-          loader={
-            <Grid item xs={12} textAlign="center" mt={4}>
-              <Button
-                variant="contained"
-                color="primary"
-                sx={{
-                  padding: '10px',
-                  fontSize: '1rem',
-                  fontWeight: 'bold',
-                  borderRadius: '8px',
-                  maxWidth: { xs: '90%', sm: '40%', md: '25%' },
-                  margin: '0 auto',
-                  px: 3,
-                  py: 1.5,
-                  mt: 10,
-                  mb: 10,
-                }}
-                onClick={() => setDisplayedResults(displayedResults + RESULTS_PER_PAGE * 2)}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <CircularProgress size={24} style={{ marginRight: '8px' }} />
-                    Loading More
-                  </>
-                ) : (
-                  'Load More'
-                )}
-              </Button>
-            </Grid>
-          }
-          scrollThreshold={0.95}
-        >
-          <Grid container spacing={2} alignItems="stretch" paddingX={{ xs: 2, md: 6 }}>
-            {newResults.slice(0, displayedResults).map((result, index) => (
-              <Grid item xs={12} sm={6} md={3} key={index} className="result-item" data-result-index={index}>
-                {result.isAd ? (
-                  <StyledCard sx={{ aspectRatio: '16/9' }}>
-                    <SearchPageResultsAd />
-                  </StyledCard>
-                ) : (
-                  <Link
-                    to={`/frame/${result.cid}/${result.season}/${result.episode}/${Math.round(
-                      (parseInt(result.start_frame, 10) + parseInt(result.end_frame, 10)) / 2
-                    )}`}
-                    style={{ textDecoration: 'none' }}
+        <>
+          <InfiniteScroll
+            dataLength={displayedResults}
+            next={() => {
+              if (!isLoading) {
+                setIsLoading(true);
+                setTimeout(() => {
+                  setDisplayedResults((prevDisplayedResults) =>
+                    Math.min(
+                      prevDisplayedResults + RESULTS_PER_PAGE,
+                      newResults.length
+                    )
+                  );
+                  setIsLoading(false);
+                }, 1000);
+              }
+            }}
+            hasMore={displayedResults < newResults.length}
+            loader={
+              <>
+                {/* {user?.userDetails?.subscriptionStatus !== 'active' && (
+                  <Grid item xs={12} mt={2}>
+                    <center>
+                      <Box sx={{ maxWidth: '800px' }}>
+                        <SearchPageBannerAd />
+                      </Box>
+                    </center>
+                  </Grid>
+                )} */}
+                <Grid item xs={12} textAlign="center" mt={4}>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    sx={{
+                      padding: '10px',
+                      fontSize: '1rem',
+                      fontWeight: 'bold',
+                      borderRadius: '8px',
+                      maxWidth: { xs: '90%', sm: '40%', md: '25%' },
+                      margin: '0 auto',
+                      px: 3,
+                      py: 1.5,
+                      mt: 10,
+                      mb: 10,
+                    }}
+                    onClick={() => setDisplayedResults(displayedResults + RESULTS_PER_PAGE * 2)}
+                    disabled={isLoading}
                   >
+                    {isLoading ? (
+                      <>
+                        <CircularProgress size={24} style={{ marginRight: '8px' }} />
+                        Loading More
+                      </>
+                    ) : (
+                      'Load More'
+                    )}
+                  </Button>
+                </Grid>
+              </>
+            }
+            scrollThreshold={0.95}
+          >
+            <Grid container spacing={2} alignItems="stretch" paddingX={{ xs: 2, md: 6 }}>
+              {newResults.slice(0, displayedResults).map((result, index) => (
+                <Grid item xs={12} sm={6} md={3} key={index} className="result-item" data-result-index={index}>
+                  {result.isAd ? (
                     <StyledCard>
-                      {animationsEnabled ? (
-                        <StyledCardVideoContainer>
-                          {videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`] && (
-                            <StyledCardMedia
-                              ref={addVideoRef}
-                              src={videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`]}
-                              autoPlay
-                              loop
-                              muted
-                              playsInline
-                              preload="auto"
-                              onError={(e) => console.error('Error loading video:', JSON.stringify(result))}
-                              key={`${result.season}-${result.episode}-${result.subtitle_index}-video`}
-                            />
-                          )}
-                        </StyledCardVideoContainer>
-                      ) : (
-                        <StyledCardImageContainer>
-                          {videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`] && (
-                            <StyledCardImage
-                              src={videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`]}
-                              alt={`Frame from S${result.season} E${result.episode}`}
-                              key={`${result.season}-${result.episode}-${result.subtitle_index}-image`}
-                            />
-                          )}
-                        </StyledCardImageContainer>
-                      )}
-                      <BottomCardCaption>{result.subtitle_text}</BottomCardCaption>
-                      <BottomCardLabel>
-                        <Chip
-                          size="small"
-                          label={result.cid}
-                          style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', color: 'white', fontWeight: 'bold' }}
-                        />
-                        <Chip
-                          size="small"
-                          label={`S${result.season} E${result.episode}`}
-                          style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', color: 'white', fontWeight: 'bold' }}
-                        />
-                      </BottomCardLabel>
+                      <SearchPageResultsAd />
                     </StyledCard>
-                  </Link>
-                )}
-              </Grid>
-            ))}
-          </Grid>
-        </InfiniteScroll>
+                  ) : (
+                    <Link
+                      to={`/frame/${result.cid}/${result.season}/${result.episode}/${Math.round(
+                        (parseInt(result.start_frame, 10) + parseInt(result.end_frame, 10)) / 2
+                      )}`}
+                      style={{ textDecoration: 'none' }}
+                    >
+                      <StyledCard>
+                        {animationsEnabled ? (
+                          <StyledCardVideoContainer>
+                            {videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`] && (
+                              <StyledCardMedia
+                                ref={addVideoRef}
+                                src={videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`]}
+                                autoPlay
+                                loop
+                                muted
+                                playsInline
+                                preload="auto"
+                                onError={(e) => console.error('Error loading video:', JSON.stringify(result))}
+                                key={`${result.season}-${result.episode}-${result.subtitle_index}-video`}
+                              />
+                            )}
+                          </StyledCardVideoContainer>
+                        ) : (
+                          <StyledCardImageContainer>
+                            {videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`] && (
+                              <StyledCardImage
+                                src={videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`]}
+                                alt={`Frame from S${result.season} E${result.episode}`}
+                                key={`${result.season}-${result.episode}-${result.subtitle_index}-image`}
+                              />
+                            )}
+                          </StyledCardImageContainer>
+                        )}
+                        <BottomCardCaption>{result.subtitle_text}</BottomCardCaption>
+                        <BottomCardLabel>
+                          <Chip
+                            size="small"
+                            label={result.cid}
+                            style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', color: 'white', fontWeight: 'bold' }}
+                          />
+                          <Chip
+                            size="small"
+                            label={`S${result.season} E${result.episode}`}
+                            style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', color: 'white', fontWeight: 'bold' }}
+                          />
+                        </BottomCardLabel>
+                      </StyledCard>
+                    </Link>
+                  )}
+                </Grid>
+              ))}
+            </Grid>
+          </InfiniteScroll>
+        </>
       ) : (
         <>
           {newResults?.length <= 0 && !loadingResults && (
@@ -664,6 +690,15 @@ export default function SearchPage() {
             </Typography>
           )}
         </>
+      )}
+      {newResults?.length > 0 && user?.userDetails?.subscriptionStatus !== 'active' && (
+            <Grid item xs={12} mt={2}>
+              <center>
+                <Box sx={{ maxWidth: '800px' }}>
+                  <SearchPageBannerAd />
+                </Box>
+              </center>
+            </Grid>
       )}
       <Dialog open={maintenanceDialogOpen} onClose={() => setMaintenanceDialogOpen(false)} maxWidth="sm" fullWidth fullScreen={fullScreen}>
         <Box

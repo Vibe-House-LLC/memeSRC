@@ -649,6 +649,17 @@ export default function FramePage({ shows = [] }) {
       <Container maxWidth="xl" sx={{ pt: 0 }}>
         <Grid container spacing={2} direction="row" alignItems="center">
           {/* <img src={imgSrc} alt='alt' /> */}
+
+          {user?.userDetails?.subscriptionStatus !== 'active' && isMd && (
+            <Grid item xs={12} mt={2}>
+              <center>
+                <Box sx={{ maxWidth: '800px' }}>
+                  <FramePageBottomBannerAd />
+                </Box>
+              </center>
+            </Grid>
+          )}
+
           <Grid item xs={12} md={6}>
 
             <Typography variant='h2' marginBottom={2}>
@@ -682,10 +693,21 @@ export default function FramePage({ shows = [] }) {
               }}
             />
 
+          {!isMd && user?.userDetails?.subscriptionStatus !== 'active' && (
+            <Grid item xs={12} mt={2}>
+              <center>
+                <Box sx={{ maxWidth: '800px' }}>
+                  <FramePageBottomBannerAd />
+                </Box>
+              </center>
+            </Grid>
+          )}
+
             <Card>
               {renderFineTuningFrames(imgSrc)}
             </Card>
           </Grid>
+
           <Grid item xs={12} md={6}>
             <Box sx={{ width: '100%' }}>
               <Card
@@ -1147,16 +1169,6 @@ export default function FramePage({ shows = [] }) {
               ))}
             </Grid>
 
-            {user?.userDetails?.subscriptionStatus !== 'active' && (
-              <Grid item xs={12} mt={2}>
-                <center>
-                  <Box sx={{ maxWidth: '800px' }}>
-                    <FramePageBottomBannerAd />
-                  </Box>
-                </center>
-              </Grid>
-            )}
-
             <Grid item xs={12} mt={3}>
               <Button
                 variant="contained"
@@ -1166,6 +1178,16 @@ export default function FramePage({ shows = [] }) {
                 View Episode
               </Button>
             </Grid>
+
+            {user?.userDetails?.subscriptionStatus !== 'active' && (
+              <Grid item xs={12} mt={2}>
+                <center>
+                  <Box sx={{ maxWidth: '800px' }}>
+                    <FramePageBottomBannerAd />
+                  </Box>
+                </center>
+              </Grid>
+            )}
           </Grid>
         </Grid>
       </Container >
