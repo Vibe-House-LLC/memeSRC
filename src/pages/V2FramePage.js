@@ -744,7 +744,8 @@ export default function FramePage({ shows = [] }) {
                               },
                             }}
                           />
-                          <Button
+                        </Stack>
+                        <Button
   size="medium"
   fullWidth
   variant="contained"
@@ -754,7 +755,6 @@ export default function FramePage({ shows = [] }) {
 >
   Clear Caption
 </Button>
-                        </Stack>
                       </Stack>
                       <FormControl fullWidth variant="outlined" sx={{ mt: 2, border: '1px solid rgba(191, 191, 191, 0.57)', borderRadius: '8px', py: 1, px: 2 }}>
                         <FormLabel sx={{ fontSize: '0.875rem', fontWeight: 'bold', mb: 1, textAlign: 'center' }}>Bottom Margin</FormLabel>
