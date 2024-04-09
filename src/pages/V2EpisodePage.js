@@ -9,6 +9,9 @@ import { extractVideoFrames } from '../utils/videoFrameExtractor';
 import { UserContext } from '../UserContext';
 import getV2Metadata from '../utils/getV2Metadata';
 
+import EpisodePageBannerAd from '../ads/SearchPageBannerAd';
+import EpisodePageResultsAd from '../ads/SearchPageResultsAd';
+
 V2EpisodePage.propTypes = {
   setSeriesTitle: PropTypes.func.isRequired,
 };
@@ -166,6 +169,23 @@ export default function V2EpisodePage({ setSeriesTitle }) {
     }
   };
 
+  const injectAds = (results, adInterval) => {
+    const injectedResults = [];
+
+    for (let i = 0; i < results.length; i += 1) {
+      injectedResults.push(results[i]);
+
+      if ((i + 1) % adInterval === 0 && i !== results.length - 1) {
+        injectedResults.push({ isAd: true });
+      }
+    }
+
+    return injectedResults;
+  };
+
+  const adInterval = user?.userDetails?.subscriptionStatus !== 'active' ? 9 : Infinity;
+  const resultsWithAds = injectAds(results, adInterval);
+
   return (
     <Container maxWidth="lg" style={{ paddingTop: '20px', paddingBottom: '20px' }}>
       <Typography
@@ -200,33 +220,53 @@ export default function V2EpisodePage({ setSeriesTitle }) {
           {loadingMore ? 'Loading...' : 'Previous Frames'}
         </Button>
       </Box>
+
+      {user?.userDetails?.subscriptionStatus !== 'active' && (
+        <Box marginBottom="20px">
+          <EpisodePageBannerAd />
+        </Box>
+      )}
+
       {loading ? (
         <Box display="flex" justifyContent="center" marginTop="50px">
           <CircularProgress />
         </Box>
       ) : (
         <Grid container spacing={2}>
-          {results.map((result) => (
-            <Grid item xs={12} sm={6} md={4} key={result.fid}>
-              <Card component="a" href={`/frame/${cid}/${season}/${episode}/${result.fid}`} style={{ textDecoration: 'none' }}>
-                <CardMedia
-                  component="img"
-                  image={result.frame_image}
-                  alt={`Frame ${result.fid}`}
-                />
-                <CardContent sx={{backgroundColor: '#1f1f1f'}}>
-                  <Typography variant="subtitle1" color="textPrimary" style={{ marginBottom: '8px' }}>
-                    {result.subtitle ? Buffer.from(result.subtitle, 'base64').toString() : '(...)'}
-                  </Typography>
-                  <Typography variant="caption" color="textSecondary">
-                    Timecode: {result.timecode}
-                  </Typography>
-                </CardContent>
-              </Card>
+          {resultsWithAds.map((result, index) => (
+            <Grid item xs={12} sm={6} md={4} key={index}>
+              {result.isAd ? (
+                <Card>
+                  <EpisodePageResultsAd />
+                </Card>
+              ) : (
+                <Card component="a" href={`/frame/${cid}/${season}/${episode}/${result.fid}`} style={{ textDecoration: 'none' }}>
+                  <CardMedia
+                    component="img"
+                    image={result.frame_image}
+                    alt={`Frame ${result.fid}`}
+                  />
+                  <CardContent sx={{backgroundColor: '#1f1f1f'}}>
+                    <Typography variant="subtitle1" color="textPrimary" style={{ marginBottom: '8px' }}>
+                      {result.subtitle ? Buffer.from(result.subtitle, 'base64').toString() : '(...)'}
+                    </Typography>
+                    <Typography variant="caption" color="textSecondary">
+                      Timecode: {result.timecode}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              )}
             </Grid>
           ))}
         </Grid>
       )}
+
+      {resultsWithAds.length > 0 && user?.userDetails?.subscriptionStatus !== 'active' && (
+        <Box marginTop="20px">
+          <EpisodePageBannerAd />
+        </Box>
+      )}
+
       <Box marginTop="20px">
         <Button
           fullWidth
