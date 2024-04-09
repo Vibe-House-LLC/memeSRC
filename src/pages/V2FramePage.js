@@ -89,6 +89,8 @@ export default function FramePage({ shows = [] }) {
   const [fontBottomMarginScaleFactor, setFontBottomMarginScaleFactor] = useState(1);
   const [enableFineTuningFrames, setEnableFineTuningFrames] = useState(true);
 
+  const [showText, setShowText] = useState(false);
+
   const throttleTimeoutRef = useRef(null);
 
   const { user } = useContext(UserContext);
@@ -124,6 +126,11 @@ export default function FramePage({ shows = [] }) {
   }
 
   /* ---------------------------- Subtitle Function --------------------------- */
+
+  const handleClearCaption = () => {
+    setLoadedSubtitle('');
+    updateCanvas();
+  };
 
   function wrapText(context, text, x, y, maxWidth, lineHeight, shouldDraw = true) {
     // Split text into paragraphs (on new lines)
@@ -739,6 +746,16 @@ export default function FramePage({ shows = [] }) {
                               },
                             }}
                           />
+                          <Button
+  size="medium"
+  fullWidth
+  variant="contained"
+  onClick={handleClearCaption}
+  sx={{ mt: 2, backgroundColor: '#f44336', '&:hover': { backgroundColor: '#d32f2f' } }}
+  startIcon={<Close />}
+>
+  Clear Caption
+</Button>
                         </Stack>
                       </Stack>
                       <FormControl fullWidth variant="outlined" sx={{ mt: 2, border: '1px solid rgba(191, 191, 191, 0.57)', borderRadius: '8px', py: 1, px: 2 }}>
