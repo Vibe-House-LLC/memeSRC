@@ -223,7 +223,7 @@ export default function FramePage({ shows = [] }) {
         ctx.drawImage(img, 0, 0, maxCanvasWidth, maxCanvasHeight);
         setLoading(false)
 
-        if (showText) {
+        if (showText && loadedSubtitle) {
           // Styling the text
           ctx.font = `700 ${isMd ? `${scaledFontSizeDesktop * fontSizeScaleFactor}px` : `${scaledFontSizeMobile * fontSizeScaleFactor}px`} Arial`;
           ctx.textAlign = 'center';
@@ -478,7 +478,11 @@ export default function FramePage({ shows = [] }) {
 
   useEffect(() => {
     updateCanvas();
-  }, [showText, displayImage, frameData, loadedSubtitle, fontSizeScaleFactor, fontLineHeightScaleFactor, fontBottomMarginScaleFactor, frame]);
+  }, [showText, frameData, fontSizeScaleFactor, fontLineHeightScaleFactor, fontBottomMarginScaleFactor]);
+
+  useEffect(() => {
+    updateCanvasUnthrottled();
+  }, [displayImage, loadedSubtitle, frame]);
 
   useEffect(() => {
     if (frames && frames.length > 0) {
