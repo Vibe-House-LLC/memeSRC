@@ -745,17 +745,19 @@ export default function FramePage({ shows = [] }) {
                             }}
                           />
                         </Stack>
-                        <Button
-  size="medium"
-  fullWidth
-  variant="contained"
-  onClick={handleClearCaption}
-  sx={{ mt: 2, backgroundColor: '#f44336', '&:hover': { backgroundColor: '#d32f2f' } }}
-  startIcon={<Close />}
->
-  Clear Caption
-</Button>
                       </Stack>
+                      {showText && loadedSubtitle.trim() !== '' && (
+      <Button
+        size="medium"
+        fullWidth
+        variant="contained"
+        onClick={handleClearCaption}
+        sx={{ mt: 2, backgroundColor: '#f44336', '&:hover': { backgroundColor: '#d32f2f' } }}
+        startIcon={<Close />}
+      >
+        Clear Caption
+      </Button>
+    )}
                       <FormControl fullWidth variant="outlined" sx={{ mt: 2, border: '1px solid rgba(191, 191, 191, 0.57)', borderRadius: '8px', py: 1, px: 2 }}>
                         <FormLabel sx={{ fontSize: '0.875rem', fontWeight: 'bold', mb: 1, textAlign: 'center' }}>Bottom Margin</FormLabel>
                         <Stack spacing={2} direction="row" p={0} alignItems={'center'}>
