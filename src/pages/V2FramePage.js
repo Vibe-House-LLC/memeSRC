@@ -649,6 +649,17 @@ export default function FramePage({ shows = [] }) {
       <Container maxWidth="xl" sx={{ pt: 0 }}>
         <Grid container spacing={2} direction="row" alignItems="center">
           {/* <img src={imgSrc} alt='alt' /> */}
+
+          {user?.userDetails?.subscriptionStatus !== 'active' && isMd && (
+            <Grid item xs={12} mt={2}>
+              <center>
+                <Box sx={{ maxWidth: '800px' }}>
+                  <FramePageBottomBannerAd />
+                </Box>
+              </center>
+            </Grid>
+          )}
+
           <Grid item xs={12} md={6}>
 
             <Typography variant='h2' marginBottom={2}>
@@ -682,7 +693,7 @@ export default function FramePage({ shows = [] }) {
               }}
             />
 
-          {user?.userDetails?.subscriptionStatus !== 'active' && (
+          {!isMd && user?.userDetails?.subscriptionStatus !== 'active' && (
             <Grid item xs={12} mt={2}>
               <center>
                 <Box sx={{ maxWidth: '800px' }}>
