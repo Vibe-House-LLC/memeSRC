@@ -545,11 +545,11 @@ export const DialogProvider = ({ children }) => {
           <DialogContent sx={{ minHeight: 500, display: 'flex', flexDirection: 'column', mb: 5 }}>
 
             <Box sx={{ m: 'auto' }}>
-            <Typography fontSize={30} textAlign='center' fontWeight={700}>
-              You will be billed by Vibe House LLC through Stripe
+            <Typography fontSize={20} textAlign='center' fontWeight={700}>
+              Powered by
             </Typography>
-            <Typography fontSize={20} textAlign='center' fontWeight={700} pt={2}>
-              Please check the box below the button to proceed
+            <Typography fontSize={45} textAlign='center' fontWeight={700} pt={0.5}>
+              Vibe House
             </Typography>
             </Box>
             <Box sx={{ mx: 'auto', mt: 'auto' }}>
@@ -586,7 +586,7 @@ export const DialogProvider = ({ children }) => {
                   color="primary"
                 />
                 <Typography variant="body2">
-                  I understand that I will be billed monthly by Vibe House LLC through Stripe.
+                  I understand that I will be billed by Vibe House LLC through Stripe.
                 </Typography>
               </Box>
             </Box>
