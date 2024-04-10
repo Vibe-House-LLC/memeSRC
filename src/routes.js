@@ -76,6 +76,7 @@ export default function Router() {
       element: <GuestAuth><DialogProvider><MagicPopup><V2SearchDetailsProvider><DashboardLayout /></V2SearchDetailsProvider></MagicPopup></DialogProvider></GuestAuth>,
       children: [
         { element: <SiteWideMaintenance><HomePage /></SiteWideMaintenance>, index: true },
+        { path: 'pro', element: <SiteWideMaintenance><HomePage /></SiteWideMaintenance>, index: true },
         { path: 'search', element: <SiteWideMaintenance><Navigate to='/' /></SiteWideMaintenance> },
         { path: 'edit', element: <SiteWideMaintenance><EditorNewProjectPage /></SiteWideMaintenance> },
         { path: 'editor/projects', element: <SiteWideMaintenance><EditorProjectsPage /></SiteWideMaintenance> },

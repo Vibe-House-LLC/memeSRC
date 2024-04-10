@@ -2,7 +2,7 @@ import { AutoFixHighRounded, Block, Close, Favorite, Star, SupportAgent, ExpandM
 import { Box, Button, Card, Checkbox, Chip, CircularProgress, Collapse, Dialog, DialogContent, DialogTitle, Divider, Fade, Grid, IconButton, LinearProgress, Typography, useMediaQuery } from '@mui/material';
 import { API } from 'aws-amplify';
 import { createContext, useState, useRef, useEffect, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { LoadingButton } from '@mui/lab';
 import { UserContext } from '../UserContext';
 
@@ -10,6 +10,7 @@ export const SubscribeDialogContext = createContext();
 
 export const DialogProvider = ({ children }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const isMd = useMediaQuery(theme => theme.breakpoints.up('md'));
   const [subscriptionDialogOpen, setSubscriptionDialogOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState('pro5');
@@ -22,6 +23,12 @@ export const DialogProvider = ({ children }) => {
   const [askedAboutCredits, setAskedAboutCredits] = useState(false);
 
   const [selectedTitleSubtitle, setSelectedTitleSubtitle] = useState(null);
+
+  useEffect(() => {
+    if (location.pathname === '/pro') {
+      setSubscriptionDialogOpen(true);
+    }
+  }, [location]);
 
   useEffect(() => {
     const randomIndex = Math.floor(Math.random() * titleSubtitlePairs.length);
