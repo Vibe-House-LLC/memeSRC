@@ -5,7 +5,7 @@ import { Box, Chip, Divider, Fab, Popover, Stack, Typography, css, useTheme } fr
 import { AutoFixHighRounded, Close, SupervisedUserCircle, Verified } from '@mui/icons-material';
 import { API } from 'aws-amplify';
 import { LoadingButton } from '@mui/lab';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { UserContext } from '../../UserContext';
 import { MagicPopupContext } from '../../MagicPopupContext';
 import { SnackbarContext } from '../../SnackbarContext';
@@ -20,11 +20,30 @@ MagicPopup.propTypes = {
 }
 
 export default function MagicPopup({ children }) {
+    const location = useLocation();
     const [magicToolsPopoverAnchorEl, setMagicToolsPopoverAnchorEl] = useState(null);
     const { user } = useContext(UserContext);
     const [loadingSubscriptionUrl, setLoadingSubscriptionUrl] = useState(false);
     const theme = useTheme();
     const { openSubscriptionDialog } = useSubscribeDialog();
+    const magicPopupRef = useRef(null);
+
+    useEffect(() => {
+      if (
+        location.pathname === '/pro' &&
+        user !== null &&
+        user.userDetails?.subscriptionStatus === 'active'
+      ) {
+        console.log(user.userDetails);
+        // Set the anchorEl to magicPopup if the element with ID 'magicPopup' exists
+        const magicPopupElement = document.getElementById('magicChip');
+        if (magicPopupElement) {
+          setMagicToolsPopoverAnchorEl(magicPopupElement);
+        } else {
+          setMagicToolsPopoverAnchorEl(null);
+        }
+      }
+    }, [user, location]);
 
     const logIntoCustomerPortal = () => {
         setLoadingSubscriptionUrl(true)

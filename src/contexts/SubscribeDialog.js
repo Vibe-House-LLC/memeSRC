@@ -25,10 +25,15 @@ export const DialogProvider = ({ children }) => {
   const [selectedTitleSubtitle, setSelectedTitleSubtitle] = useState(null);
 
   useEffect(() => {
-    if (location.pathname === '/pro') {
+    if (
+      location.pathname === '/pro' &&
+      user !== null &&
+      user.userDetails?.subscriptionStatus !== 'active'
+    ) {
+      console.log(user.userDetails);
       setSubscriptionDialogOpen(true);
     }
-  }, [location]);
+  }, [user, location]);
 
   useEffect(() => {
     const randomIndex = Math.floor(Math.random() * titleSubtitlePairs.length);
