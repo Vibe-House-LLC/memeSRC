@@ -1,8 +1,9 @@
 import { AutoFixHighRounded, Block, Close, Favorite, Star, SupportAgent, ExpandMore, Clear, Check, Bolt } from '@mui/icons-material';
-import { Box, Button, Card, Chip, Collapse, Dialog, DialogContent, DialogTitle, Divider, Fade, Grid, IconButton, LinearProgress, Typography, useMediaQuery } from '@mui/material';
+import { Box, Button, Card, Checkbox, Chip, CircularProgress, Collapse, Dialog, DialogContent, DialogTitle, Divider, Fade, Grid, IconButton, LinearProgress, Typography, useMediaQuery } from '@mui/material';
 import { API } from 'aws-amplify';
 import { createContext, useState, useRef, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { LoadingButton } from '@mui/lab';
 import { UserContext } from '../UserContext';
 
 export const SubscribeDialogContext = createContext();
@@ -15,6 +16,8 @@ export const DialogProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [creditOptionsOpen, setCreditOptionsOpen] = useState(false);
   const { user } = useContext(UserContext);
+  const [checkoutLink, setCheckoutLink] = useState();
+  const [billingAgreement, setBillingAgreement] = useState(false);
 
   const [askedAboutCredits, setAskedAboutCredits] = useState(false);
 
@@ -41,7 +44,7 @@ export const DialogProvider = ({ children }) => {
   const setCreditOptionsOpenAndScroll = (setting) => {
     setCreditOptionsOpen(setting);
     setTimeout(() => {
-        upgradeCreditsRef.current.scrollIntoView({ behavior: 'smooth' });
+      upgradeCreditsRef.current.scrollIntoView({ behavior: 'smooth' });
     }, 200)
   }
 
@@ -51,6 +54,9 @@ export const DialogProvider = ({ children }) => {
 
   const closeDialog = () => {
     setSubscriptionDialogOpen(false);
+    setLoading(false)
+    setCheckoutLink()
+    setBillingAgreement(false)
   };
 
   const buySubscription = () => {
@@ -63,7 +69,8 @@ export const DialogProvider = ({ children }) => {
       }
     }).then(results => {
       console.log(results)
-      window.location.href = results
+      setCheckoutLink(results)
+      setLoading(false)
     }).catch(error => {
       console.log(error.response)
       setLoading(false)
@@ -197,7 +204,7 @@ export const DialogProvider = ({ children }) => {
           </IconButton>
         </DialogTitle>
         <Divider />
-        {!loading && (
+        {!loading && !checkoutLink && (
           <Fade in timeout={400}>
             <DialogContent sx={{ py: 4, pb: 6 }}>
               <Box
@@ -303,7 +310,7 @@ export const DialogProvider = ({ children }) => {
                       <AutoFixHighRounded sx={{ color: getTextColor() }} />
                     </Box>
                     <Typography fontSize={18} fontWeight={500}>
-                    {getCreditCount()} Magic Credits / mo
+                      {getCreditCount()} Magic Credits / mo
                     </Typography>
                   </Box>
                 </Grid>
@@ -422,7 +429,7 @@ export const DialogProvider = ({ children }) => {
                         mb: 3,
                       }}
                       onClick={() => setSelectedPlanAndScroll('pro69')}
-                      >
+                    >
                       <Box
                         sx={{
                           position: 'absolute',
@@ -473,24 +480,24 @@ export const DialogProvider = ({ children }) => {
                 >
                   Subscribe: {getPrice()}/mo
                 </Button>
-                :
-                <Button
-                  ref={subscribeButtonRef}
-                  variant="contained"
-                  size="large"
-                  onClick={handleLogin}
-                  fullWidth
-                  sx={{
-                    borderRadius: 50,
-                    px: 4,
-                    py: 1.5,
-                    fontSize: 20,
-                    backgroundColor: getColor(),
-                    color: getTextColor(),
-                  }}
-                >
-                  Please Log In
-                </Button>
+                  :
+                  <Button
+                    ref={subscribeButtonRef}
+                    variant="contained"
+                    size="large"
+                    onClick={handleLogin}
+                    fullWidth
+                    sx={{
+                      borderRadius: 50,
+                      px: 4,
+                      py: 1.5,
+                      fontSize: 20,
+                      backgroundColor: getColor(),
+                      color: getTextColor(),
+                    }}
+                  >
+                    Please Log In
+                  </Button>
                 }
                 <Typography
                   variant="caption"
@@ -522,13 +529,54 @@ export const DialogProvider = ({ children }) => {
             </DialogContent>
           </Fade>
         )}
-        {loading && (
-          <DialogContent sx={{ minHeight: 500, display: 'flex', mb: 5 }}>
+        {(loading || checkoutLink) && (
+          <DialogContent sx={{ minHeight: 500, display: 'flex', flexDirection: 'column', mb: 5 }}>
+
             <Box sx={{ m: 'auto' }}>
-              <Typography fontSize={30} fontWeight={700} textAlign="center" mb={7}>
-                Prepping checkout...
-              </Typography>
-              <LinearProgress />
+            <Typography fontSize={30} textAlign='center' fontWeight={700}>
+              You will be billed by Vibe House LLC through Stripe
+            </Typography>
+            <Typography fontSize={20} textAlign='center' fontWeight={700} pt={2}>
+              Please check the box below the button to proceed
+            </Typography>
+            </Box>
+            <Box sx={{ mx: 'auto', mt: 'auto' }}>
+              <LoadingButton
+                loading={loading || !checkoutLink}
+                loadingIndicator={
+                  <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                    <CircularProgress color="inherit" size={16} sx={{ mr: 1 }} />
+                    <span>Preparing&nbsp;Checkout...</span>
+                  </Box>
+                }
+                disabled={loading || !billingAgreement || !checkoutLink}
+                variant="contained"
+                size="large"
+                fullWidth
+                sx={{
+                  borderRadius: 50,
+                  px: 0,
+                  py: 1.5,
+                  fontSize: 20,
+                  backgroundColor: getColor(),
+                  color: getTextColor(),
+                }}
+                onClick={() => {
+                  window.location.href = checkoutLink
+                }}
+              >
+                {!loading && checkoutLink ? 'Proceed to Checkout' : ''}
+              </LoadingButton>
+              <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
+                <Checkbox
+                  checked={billingAgreement}
+                  onChange={(e) => setBillingAgreement(e.target.checked)}
+                  color="primary"
+                />
+                <Typography variant="body2">
+                  I understand that I will be billed monthly by Vibe House LLC through Stripe.
+                </Typography>
+              </Box>
             </Box>
           </DialogContent>
         )}
