@@ -41,9 +41,9 @@ exports.handler = async (event) => {
         .outputOptions([
           `-ss ${internalFrameIndex}`,
           '-vframes 1',
+          '-vf scale=iw*sar:ih,setsar=1',
           '-c:v mjpeg',
           '-f image2',
-          '-vf "scale=iw*sar:ih"',
         ])
         .output(outputFile)
         .on('end', resolve)
@@ -81,7 +81,7 @@ exports.handler = async (event) => {
     console.error('Error:', error);
     return {
       statusCode: 500,
-      body: JSON.stringify('An error occurred while processing the request'),
+      body: JSON.stringify(`An error occurred:${error}`),
     };
   }
 };
