@@ -35,6 +35,8 @@ export default function GuestAuth(props) {
         const localStorageUser = JSON.parse(window.localStorage.getItem('memeSRCUserDetails'))
         if (localStorageUser) {
             setUser(localStorageUser)
+        } else {
+            setUser(false)
         }
         // Set up the user context
         // console.log(user)
@@ -49,7 +51,7 @@ export default function GuestAuth(props) {
                 // });
             }).catch(err => console.log(err))
         }).catch(() => {
-            setUser(null)  // indicate the context is ready but user is not auth'd
+            setUser(false)  // indicate the context is ready but user is not auth'd
             window.localStorage.removeItem('memeSRCUserInfo')
             // console.log("There wasn't an authenticated user found")
             // console.log("Updating Amplify config to use API_KEY")

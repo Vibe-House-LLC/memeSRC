@@ -17,6 +17,7 @@ import {
     Grow,
 } from "@mui/material";
 import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import PlatformUpdates from "./sections/platform-updates";
 import EditorUpdates from "./sections/editor-updates";
 import MemeSrcPro from "./sections/memesrc-pro";
@@ -28,6 +29,7 @@ const sections = [
 ];
 
 export default function FeatureSectionPopover({ children }) {
+    const location = useLocation();
     const isMd = useMediaQuery((theme) => theme.breakpoints.up("md"));
     const [currentSection, setCurrentSection] = useState(0);
     const [open, setOpen] = useState(false);
@@ -51,10 +53,14 @@ export default function FeatureSectionPopover({ children }) {
 
     useEffect(() => {
         const dismissed = localStorage.getItem('featurePopoverDismissed');
-        if (!dismissed) {
+        if (!dismissed && location.pathname !== '/pro') {
             setOpen(true);
         }
-    }, []);
+
+        if (location.pathname === '/pro') {
+            localStorage.setItem('featurePopoverDismissed', 'true');
+        }
+    }, [location]);
 
 
     return (
