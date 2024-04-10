@@ -56,6 +56,10 @@ export default function FeatureSectionPopover({ children }) {
         if (!dismissed && location.pathname !== '/pro') {
             setOpen(true);
         }
+
+        if (location.pathname !== '/pro') {
+            localStorage.setItem('featurePopoverDismissed', 'true');
+        }
     }, [location]);
 
 
