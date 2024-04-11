@@ -1,5 +1,5 @@
 import { AutoFixHighRounded, Block, Close, Favorite, Star, SupportAgent, ExpandMore, Clear, Check, Bolt } from '@mui/icons-material';
-import { Box, Button, Card, Checkbox, Chip, CircularProgress, Collapse, Dialog, DialogContent, DialogTitle, Divider, Fade, Grid, IconButton, LinearProgress, Typography, useMediaQuery } from '@mui/material';
+import { Box, Button, Card, Checkbox, Chip, CircularProgress, Collapse, Dialog, DialogContent, DialogTitle, Divider, Fade, Grid, IconButton, LinearProgress, Typography, useMediaQuery, FormControlLabel } from '@mui/material';
 import { API } from 'aws-amplify';
 import { createContext, useState, useRef, useEffect, useContext } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -543,16 +543,15 @@ export const DialogProvider = ({ children }) => {
         )}
         {(loading || checkoutLink) && (
           <DialogContent sx={{ minHeight: 500, display: 'flex', flexDirection: 'column', mb: 5 }}>
-
             <Box sx={{ m: 'auto' }}>
-            <Typography fontSize={20} textAlign='center' fontWeight={700}>
-              Powered by
-            </Typography>
-            <Typography fontSize={45} textAlign='center' fontWeight={700} pt={0.5}>
-              Vibe House
-            </Typography>
+              <Typography fontSize={20} textAlign='center' fontWeight={700}>
+                Powered by
+              </Typography>
+              <Typography fontSize={45} textAlign='center' fontWeight={700} pt={0.5}>
+                Vibe House
+              </Typography>
             </Box>
-            <Box sx={{ mx: 'auto', mt: 'auto' }}>
+            <Box sx={{ mx: 'auto', mt: 'auto', textAlign: 'center' }}>
               <LoadingButton
                 loading={loading || !checkoutLink}
                 loadingIndicator={
@@ -561,7 +560,6 @@ export const DialogProvider = ({ children }) => {
                     <span>Preparing&nbsp;Checkout...</span>
                   </Box>
                 }
-                disabled={loading || !billingAgreement || !checkoutLink}
                 variant="contained"
                 size="large"
                 fullWidth
@@ -574,21 +572,22 @@ export const DialogProvider = ({ children }) => {
                   color: getTextColor(),
                 }}
                 onClick={() => {
-                  window.location.href = checkoutLink
+                  window.location.href = checkoutLink;
                 }}
               >
-                {!loading && checkoutLink ? 'Proceed to Checkout' : ''}
+                {!loading && checkoutLink ? 'Agree & Continue' : ''}
               </LoadingButton>
-              <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
-                <Checkbox
-                  checked={billingAgreement}
-                  onChange={(e) => setBillingAgreement(e.target.checked)}
-                  color="primary"
-                />
-                <Typography variant="body2">
-                  I understand that I will be billed by Vibe House LLC through Stripe.
-                </Typography>
-              </Box>
+              <Typography variant="caption" sx={{ mt: 2, lineHeight: 1.2, }}>
+                I understand memeSRC Pro is billed as Vibe&nbsp;House&nbsp;LLC and agree to the{' '}
+                <a href="/termsofservice" target="_blank" style={{ color: 'white', textDecoration: 'none', fontWeight: 'bold' }}>
+                  Terms of Service
+                </a>{' '}
+                and{' '}
+                <a href="/privacypolicy" target="_blank" style={{ color: 'white', textDecoration: 'none', fontWeight: 'bold' }}>
+                  Privacy Policy
+                </a>
+                .
+              </Typography>
             </Box>
           </DialogContent>
         )}
