@@ -5,7 +5,7 @@ import { Link, Stack, IconButton, InputAdornment, TextField, Checkbox, Typograph
 import { LoadingButton } from '@mui/lab';
 import { API, Auth } from 'aws-amplify';
 // utils
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import { SnackbarContext } from '../../../SnackbarContext';
 // components
@@ -26,6 +26,7 @@ input:-webkit-autofill:active  {
 
 export default function SignupForm(props) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const { setSeverity, setMessage, setOpen } = useContext(SnackbarContext);
 
@@ -159,7 +160,7 @@ export default function SignupForm(props) {
 
   useEffect(() => {
     if (user && user.username && user.email && user.userConfirmed === false) {
-      navigate('/verify');
+      navigate(`/verify${searchParams.get('dest') ? `?dest=${encodeURIComponent(searchParams.get('dest'))}` : '' }`);
     }
   }, [user])
 

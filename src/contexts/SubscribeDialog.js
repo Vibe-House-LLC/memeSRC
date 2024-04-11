@@ -170,7 +170,7 @@ export const DialogProvider = ({ children }) => {
 
   const handleLogin = () => {
     setSubscriptionDialogOpen(false);
-    navigate('/login')
+    navigate('/login?dest=%2Fpro')
   }
 
   return (

@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 // @mui
 import { Backdrop, CircularProgress, Link, Stack, TextField, Typography } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
@@ -15,6 +15,7 @@ import { SnackbarContext } from '../../../SnackbarContext';
 
 export default function VerifyForm(props) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user, setUser } = useContext(UserContext)
   const { setSeverity, setMessage, setOpen } = useContext(SnackbarContext);
   const [code, setCode] = useState('')
@@ -41,14 +42,14 @@ export default function VerifyForm(props) {
         setSeverity('success');
         setMessage(`Account verified! Please log in.`);
         setOpen(true)
-        navigate('/login', { replace: true })
+        navigate(`/login${searchParams.get('dest') ? `?dest=${encodeURIComponent(searchParams.get('dest'))}` : '' }`, { replace: true })
       }).catch(err => {
         console.log(err)
         if (err.name === "NotAuthorizedException") {
             setSeverity('success');
             setMessage(`Account already verified!`);
             setOpen(true)
-            navigate('/login', { replace: true });
+            navigate(`/login${searchParams.get('dest') ? `?dest=${encodeURIComponent(searchParams.get('dest'))}` : '' }`, { replace: true });
             setLoading(false)
         } else if (err.name === "CodeMismatchException") {
           setSeverity('error');

@@ -48,17 +48,11 @@ export default function LoginForm() {
 
   // Use the useLocation hook to get the location object
   const location = useLocation();
-
+  const queryString = location.search;
+  const queryParams = new URLSearchParams(queryString);
+  const dest = queryParams.get('dest');
   const handleClick = () => {
     setLoading(true);
-    // Get the query string from the location object
-    const queryString = location.search;
-
-    // Parse the query string into an object
-    const queryParams = new URLSearchParams(queryString);
-
-    // Get the 'dest' parameter from the query string
-    const dest = queryParams.get('dest');
 
     // TODO: Get the session/local storage thing figured out. Currently if it's set to session, if you manually go to another page on the site it logs you out.
 
@@ -74,7 +68,7 @@ export default function LoginForm() {
       Auth.signIn(username, password).then((x) => {
         API.post('publicapi', '/user/update/status').then(response => {
           setUser(x)
-          navigate(dest || '/', { replace: true })
+          navigate(decodeURIComponent(dest) || '/', { replace: true })
         })
       }).catch((error) => {
         console.log(error.name)
@@ -126,7 +120,7 @@ export default function LoginForm() {
         Sign In to memeSRC
       </Typography>
       <Typography variant='body1' gutterBottom marginBottom={8}>
-        Need an account? <Link sx={{ cursor: 'pointer' }} onClick={() => { navigate('/signup') }}>Create one</Link>
+        Need an account? <Link sx={{ cursor: 'pointer' }} onClick={() => { navigate(`/signup${dest ? `?dest=${encodeURIComponent(dest)}` : ''}`) }}>Create one</Link>
       </Typography>
       <form onSubmit={(e) => {
         e.preventDefault();
