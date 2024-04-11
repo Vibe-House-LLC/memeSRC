@@ -68,7 +68,7 @@ export default function LoginForm() {
       Auth.signIn(username, password).then((x) => {
         API.post('publicapi', '/user/update/status').then(response => {
           setUser(x)
-          navigate(decodeURIComponent(dest) || '/', { replace: true })
+          navigate(dest ? decodeURIComponent(dest) : '/', { replace: true })
         })
       }).catch((error) => {
         console.log(error.name)

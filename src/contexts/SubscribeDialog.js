@@ -76,7 +76,7 @@ export const DialogProvider = ({ children }) => {
     setLoading(true)
     API.post('publicapi', '/user/update/getCheckoutSession', {
       body: {
-        currentUrl: window.location.href,
+        currentUrl: window.location.href.replace('pro', ''),
         priceKey: selectedPlan
       }
     }).then(results => {

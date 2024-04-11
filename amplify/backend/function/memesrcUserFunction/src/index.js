@@ -929,6 +929,7 @@ export const handler = async (event) => {
 
       // Now that the customerId is set, lets create a checkout session.
       console.log("Payload to make the stripe checkout session:", JSON.stringify({
+        allow_promotion_codes: true,
         success_url: `https://api.memesrc.com/${process.env.ENV}/public/stripeVerification?checkoutSessionId={CHECKOUT_SESSION_ID}`,
         cancel_url: body.currentUrl,
         customer: stripeCustomerId,
@@ -944,6 +945,7 @@ export const handler = async (event) => {
         }
       }))
       const session = await stripe.checkout.sessions.create({
+        allow_promotion_codes: true,
         success_url: `https://api.memesrc.com/${process.env.ENV}/public/stripeVerification?checkoutSessionId={CHECKOUT_SESSION_ID}`,
         cancel_url: body.currentUrl,
         customer: stripeCustomerId,
