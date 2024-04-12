@@ -18,6 +18,10 @@
     },
     "secretsPathAmplifyAppId": {
       "Type": "String"
+    },
+    "storagememesrcGeneratedImagesBucketName": {
+      "Type": "String",
+      "Default": "storagememesrcGeneratedImagesBucketName"
     }
   },
   "Conditions": {
@@ -116,6 +120,9 @@
                   "opensearchPass"
                 ]
               ]
+            },
+            "STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME": {
+              "Ref": "storagememesrcGeneratedImagesBucketName"
             }
           }
         },
@@ -269,6 +276,62 @@
       "DependsOn": [
         "LambdaExecutionRole"
       ]
+    },
+    "AmplifyResourcesPolicy": {
+      "DependsOn": [
+        "LambdaExecutionRole"
+      ],
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyName": "amplify-lambda-execution-policy",
+        "Roles": [
+          {
+            "Ref": "LambdaExecutionRole"
+          }
+        ],
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": "s3:ListBucket",
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:s3:::",
+                      {
+                        "Ref": "storagememesrcGeneratedImagesBucketName"
+                      }
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "s3:GetObject"
+              ],
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:s3:::",
+                      {
+                        "Ref": "storagememesrcGeneratedImagesBucketName"
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
     }
   },
   "Outputs": {
