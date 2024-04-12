@@ -82,13 +82,13 @@ const FavoritesPage = () => {
 
       } while (nextToken);
 
-      console.log("YOOOO:", allFavorites);
-
       const enrichedFavorites = allFavorites.map(favorite => {
         const match = availableIndexes.find(index => index.id === favorite.cid);
-        console.log("YO:", match ? { ...favorite, alias: match } : favorite);
         return match ? { ...favorite, alias: match } : favorite;
       });
+
+      // Sort enrichedFavorites alphabetically by alias title
+      enrichedFavorites.sort((a, b) => (a.alias?.title || "").localeCompare(b.alias?.title || ""));
 
       setFavorites(enrichedFavorites);
     } catch (err) {
@@ -127,6 +127,9 @@ const FavoritesPage = () => {
   const filteredAvailableIndexes = availableIndexes.filter(
     index => !favorites.find(favorite => favorite.cid === index.id)
   );
+
+  // Sort filteredAvailableIndexes alphabetically by title before rendering
+  const sortedFilteredAvailableIndexes = filteredAvailableIndexes.sort((a, b) => a.title.localeCompare(b.title));
 
   if (loading) {
     return <div style={{ padding: '20px' }}>Loading...</div>;
@@ -188,9 +191,9 @@ const FavoritesPage = () => {
       </div>
       <div style={{ marginTop: 20 }}>
         <Typography variant="h4" gutterBottom>Available Indexes</Typography>
-        {filteredAvailableIndexes.length > 0 ? (
+        {sortedFilteredAvailableIndexes.length > 0 ? (
           <Grid container spacing={2}>
-            {filteredAvailableIndexes.map((index) => (
+            {sortedFilteredAvailableIndexes.map((index) => (
               <Grid item xs={12} key={index.id}>
                 <Card
                   sx={{
