@@ -1,11 +1,20 @@
+/* Amplify Params - DO NOT EDIT
+	ENV
+	REGION
+	STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME
+Amplify Params - DO NOT EDIT */
 const fs = require('fs');
 const path = require('path');
 const ffmpeg = require('fluent-ffmpeg');
 const ffmpegPath = require('ffmpeg-static');
+const { S3Client, GetObjectCommand } = require('@aws-sdk/client-s3');
+
 ffmpeg.setFfmpegPath(ffmpegPath);
 
 const CHUNK_DURATION = 25; // Duration of each chunk in seconds
 const FPS = 10; // Frames per second of the source
+
+const s3Client = new S3Client({ region: process.env.REGION });
 
 /**
  * @type {import('@types/aws-lambda').APIGatewayProxyHandler}
@@ -33,11 +42,29 @@ exports.handler = async (event) => {
     const fileIndex = Math.floor((frameNumber - 1) / (CHUNK_DURATION * FPS));
     const internalFrameIndex = ((frameNumber - 1) % (CHUNK_DURATION * FPS)) / FPS;
 
-    const videoUrl = `https://img.memesrc.com/v2/${index}/${season}/${episode}/${fileIndex}.mp4`;
+    const bucketName = process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME;
+    const objectKey = `src/${index}/${season}/${episode}/${fileIndex}.mp4`;
+    const videoFile = path.join('/tmp', `video-${Date.now()}.mp4`);
     const outputFile = path.join('/tmp', `frame-${Date.now()}.jpg`);
 
+    const getObjectParams = {
+      Bucket: bucketName,
+      Key: objectKey,
+    };
+
+    const getObjectCommand = new GetObjectCommand(getObjectParams);
+    const response = await s3Client.send(getObjectCommand);
+    const videoStream = response.Body;
+
     await new Promise((resolve, reject) => {
-      const command = ffmpeg(videoUrl)
+      const fileStream = fs.createWriteStream(videoFile);
+      videoStream.pipe(fileStream);
+      fileStream.on('finish', resolve);
+      fileStream.on('error', reject);
+    });
+
+    await new Promise((resolve, reject) => {
+      const command = ffmpeg(videoFile)
         .outputOptions([
           `-ss ${internalFrameIndex}`,
           '-vframes 1',
@@ -52,8 +79,8 @@ exports.handler = async (event) => {
           reject(err);
         });
 
-      console.log('FFmpeg command:', command.toString());
-      console.log('Video URL:', videoUrl);
+      console.log('FFmpeg command:', JSON.stringify(command.toString()));
+      console.log('S3 Object Key:', objectKey);
       console.log('Internal Frame Index:', internalFrameIndex);
       console.log('Output File:', outputFile);
 
@@ -63,25 +90,25 @@ exports.handler = async (event) => {
     const imageBuffer = fs.readFileSync(outputFile);
     const base64Image = imageBuffer.toString('base64');
 
-    const response = {
-        statusCode: 200,
-        headers: {
-          'Content-Type': 'image/jpeg',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': '*',
-        },
-        body: base64Image,
-        isBase64Encoded: true,
-      }
+    const lambdaResponse = {
+      statusCode: 200,
+      headers: {
+        'Content-Type': 'image/jpeg',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': '*',
+      },
+      body: base64Image,
+      isBase64Encoded: true,
+    };
 
-    console.log('response:', JSON.stringify(response))
+    console.log('Lambda Response:', JSON.stringify(lambdaResponse));
 
-    return response;
+    return lambdaResponse;
   } catch (error) {
     console.error('Error:', error);
     return {
       statusCode: 500,
-      body: JSON.stringify(`An error occurred:${error}`),
+      body: JSON.stringify(`An error occurred: ${error}`),
     };
   }
 };

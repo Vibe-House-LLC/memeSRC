@@ -3,5 +3,12 @@
   "secretNames": [
     "opensearchUser",
     "opensearchPass"
-  ]
+  ],
+  "permissions": {
+    "storage": {
+      "memesrcGeneratedImages": [
+        "read"
+      ]
+    }
+  }
 }
