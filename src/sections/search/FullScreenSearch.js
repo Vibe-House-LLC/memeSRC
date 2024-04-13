@@ -245,6 +245,11 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
 
   const { openSubscriptionDialog } = useSubscribeDialog();
 
+  // Scroll to top when arriving at this page
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [])
+
   useEffect(() => {
     const fetchAliasesRecursive = async (nextToken = null, accumulator = []) => {
       try {
