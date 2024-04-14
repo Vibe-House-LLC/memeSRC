@@ -1,5 +1,7 @@
+// FullScreenSearch.js
+
 import styled from '@emotion/styled';
-import { Alert, AlertTitle, Button, Fab, Grid, Typography, IconButton, Stack, useMediaQuery, Select, MenuItem, Chip, Container } from '@mui/material';
+import { Alert, AlertTitle, Button, Fab, Grid, Typography, IconButton, Stack, useMediaQuery, Select, MenuItem, Chip, Container, ListSubheader } from '@mui/material';
 import { Box } from '@mui/system';
 import { ArrowDownwardRounded, Favorite, MapsUgc, Shuffle } from '@mui/icons-material';
 import { API, graphqlOperation } from 'aws-amplify';
@@ -245,34 +247,39 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
 
   const { openSubscriptionDialog } = useSubscribeDialog();
 
+  // Scroll to top when arriving at this page
   useEffect(() => {
-    const fetchAliasesRecursive = async (nextToken = null, accumulator = []) => {
-      try {
-        const result = await API.graphql(graphqlOperation(listAliases, {
-          limit: 10,
-          nextToken,
-        }));
+    window.scrollTo(0, 0);
+  }, [])
+
+  // useEffect(() => {
+  //   const fetchAliasesRecursive = async (nextToken = null, accumulator = []) => {
+  //     try {
+  //       const result = await API.graphql(graphqlOperation(listAliases, {
+  //         limit: 10,
+  //         nextToken,
+  //       }));
   
-        const fetchedAliases = result.data.listAliases.items;
-        const updatedAccumulator = [...accumulator, ...fetchedAliases];
+  //       const fetchedAliases = result.data.listAliases.items;
+  //       const updatedAccumulator = [...accumulator, ...fetchedAliases];
   
-        if (result.data.listAliases.nextToken) {
-          return fetchAliasesRecursive(result.data.listAliases.nextToken, updatedAccumulator);
-        }
+  //       if (result.data.listAliases.nextToken) {
+  //         return fetchAliasesRecursive(result.data.listAliases.nextToken, updatedAccumulator);
+  //       }
   
-        setAliasesWithMetadata(updatedAccumulator);
-        setAliasesLoading(false);
-        return updatedAccumulator;
-      } catch (error) {
-        console.error('Error fetching aliases:', error);
-        setAliasesError('Failed to fetch aliases.');
-        setAliasesLoading(false);
-        return []; // Return an empty array in case of an error
-      }
-    };
+  //       setAliasesWithMetadata(updatedAccumulator);
+  //       setAliasesLoading(false);
+  //       return updatedAccumulator;
+  //     } catch (error) {
+  //       console.error('Error fetching aliases:', error);
+  //       setAliasesError('Failed to fetch aliases.');
+  //       setAliasesLoading(false);
+  //       return []; // Return an empty array in case of an error
+  //     }
+  //   };
   
-    fetchAliasesRecursive();
-  }, []);
+  //   fetchAliasesRecursive();
+  // }, []);
 
   // Theme States
   const [currentThemeBragText, setCurrentThemeBragText] = useState(metadata?.frameCount ? `Search over ${metadata?.frameCount.toLocaleString('en-US')} frames from ${metadata?.title}` : defaultBragText);
@@ -318,8 +325,10 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       const fetchedShows = await fetchShows();
       console.log(fetchedShows)
       setShows(fetchedShows);
+      setAliasesWithMetadata(fetchedShows);
       setLoading(false);
-
+      setAliasesLoading(false);
+  
       // Get homepage sections
       const fetchedSections = await fetchSections();
       setSections(fetchedSections);
@@ -604,51 +613,71 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
             <Grid container justifyContent="center">
               <Grid item sm={3.5} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
               <Select
-                value={cid || seriesTitle}
-                onChange={(e) => {
-                  const selectedId = e.target.value;
+                  value={cid || seriesTitle}
+                  onChange={(e) => {
+                    const selectedId = e.target.value;
 
-                  if (selectedId === 'addNewCid') {
-                    setAddNewCidOpen(true);
-                  } else {
-                    const newSeriesTitle = e.target.value;
-                    setCid(selectedId || '_universal');
-                    setSeriesTitle(newSeriesTitle);
-                    handleChangeSeries(newSeriesTitle);
-                    navigate(newSeriesTitle === '_universal' ? '/' : `/${newSeriesTitle}`);
-                  }
-                }}
-                displayEmpty
-                inputProps={{ 'aria-label': 'series selection' }}
-                sx={{
-                  fontFamily: FONT_FAMILY,
-                  fontSize: '16px',
-                  color: '#333',
-                  backgroundColor: '#fff',
-                  border: 'none',
-                  borderRadius: '8px',
-                  // padding: '8px 12px',
-                  height: '50px',
-                  width: '100%',
-                  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-                  transition: 'box-shadow 0.3s',
-                  '&:focus': {
-                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
-                    outline: 'none',
-                  },
-                }}
+                    if (selectedId === 'addNewCid') {
+                      setAddNewCidOpen(true);
+                    } else if (selectedId === 'editFavorites') {
+                      navigate('/favorites'); // Navigate to the favorites editing page
+                    } else {
+                      const newSeriesTitle = e.target.value;
+                      setCid(selectedId || '_universal');
+                      setSeriesTitle(newSeriesTitle);
+                      handleChangeSeries(newSeriesTitle);
+                      navigate(newSeriesTitle === '_universal' ? '/' : `/${newSeriesTitle}`);
+                    }
+                  }}
+                  displayEmpty
+                  inputProps={{ 'aria-label': 'series selection' }}
+                  sx={{
+                    fontFamily: FONT_FAMILY,
+                    fontSize: '16px',
+                    color: '#333',
+                    backgroundColor: '#fff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    height: '50px',
+                    width: '100%',
+                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                    transition: 'box-shadow 0.3s',
+                    '&:focus': {
+                      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
+                      outline: 'none',
+                    },
+                  }}
                 >
                   <MenuItem value="_universal">🌈 All Shows & Movies</MenuItem>
-                  {loading ? (
-                    <MenuItem disabled>Loading...</MenuItem>
-                  ) : (
-                    shows.map((show) => (
+
+                  {/* Check if user is subscribed or has favorites and directly render each item */}
+                  {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
+                    <ListSubheader key="favorites-subheader">Favorites</ListSubheader>
+                  ) : null}
+
+                  {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
+                    shows.filter(show => show.isFavorite).map(show => (
                       <MenuItem key={show.id} value={show.id}>
-                        {show.emoji} {show.title}
+                        ⭐ {show.emoji} {show.title}
                       </MenuItem>
                     ))
-                  )}
-                  {/* <MenuItem value="addNewCid">+ Add New CID</MenuItem> */}
+                  ) : null}
+
+                  {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
+                    <MenuItem value="editFavorites" style={{ fontSize: '0.9rem', opacity: 0.7 }}>
+                      ⚙ Edit Favorites
+                    </MenuItem>
+                  ) : null}
+
+                  {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
+                    <ListSubheader key="other-subheader">Other</ListSubheader>
+                  ) : null}
+
+                  {shows.filter(show => !show.isFavorite).map(show => (
+                    <MenuItem key={show.id} value={show.id}>
+                      {show.emoji} {show.title}
+                    </MenuItem>
+                  ))}
                 </Select>
               </Grid>
               <Grid item sm={7} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>

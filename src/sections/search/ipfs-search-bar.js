@@ -1,5 +1,7 @@
+// ipfs-search-bar.js
+
 import styled from "@emotion/styled";
-import { Link, Fab, FormControl, Grid, InputBase, MenuItem, Select, Typography, Divider, Box, Stack, Container } from "@mui/material";
+import { Link, Fab, FormControl, Grid, InputBase, MenuItem, Select, Typography, Divider, Box, Stack, Container, ListSubheader } from "@mui/material";
 import { ArrowBack, Close, Favorite, MapsUgc, Search, Shuffle } from "@mui/icons-material";
 import { API, graphqlOperation } from 'aws-amplify';
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
@@ -83,7 +85,6 @@ const StyledHeader = styled('header')(() => ({
 
 IpfsSearchBar.propTypes = searchPropTypes;
 
-
 export default function IpfsSearchBar(props) {
   const { show, setShow, searchQuery, setSearchQuery, cid = '', setCid, localCids, setLocalCids, showObj, setShowObj, selectedFrameIndex, setSelectedFrameIndex, savedCids, loadingSavedCids } = useSearchDetailsV2();
   const { setShow: setV1Show, setSeriesTitle: setV1SeriesTitle } = useSearchDetails();
@@ -139,10 +140,13 @@ export default function IpfsSearchBar(props) {
   }, [cid]);
 
   const handleSelectSeries = (data) => {
-    // navigate(`/search/${data}/${encodeURIComponent(search)}`)
-
-    setCid(data)
-
+    if (data === "editFavorites") {
+      navigate("/favorites"); // Navigate to the favorites editing page
+    } else if (data === "addNewCid") {
+      setAddNewCidOpen(true);
+    } else {
+      setCid(data);
+    }
     // if (data?.addNew) {
     //   setAddNewCidOpen(true)
     // } else {
@@ -154,7 +158,7 @@ export default function IpfsSearchBar(props) {
     //     navigate(`/search/${data}/${encodeURIComponent(search)}`)
     //   }
     // }
-  }
+  };
 
   useEffect(() => {
     setSelectedFrameIndex()
@@ -257,40 +261,49 @@ export default function IpfsSearchBar(props) {
         <Grid container wrap="nowrap" sx={{ overflowX: "scroll", flexWrap: "nowrap", scrollbarWidth: 'none', '&::-webkit-scrollbar': { height: '0 !important', width: '0 !important', display: 'none' } }} paddingX={2}>
           <Grid item marginLeft={{ md: 6 }}>
 
-            <FormControl
-              // disabled={resultsLoading}
-              variant="standard"
-              sx={{ minWidth: 120 }}
-            >
-              <Select
-                labelId="demo-simple-select-standard-label"
-                id="demo-simple-select-standard"
-                value={cid}
-                onChange={(x) => {
-                  handleSelectSeries(x.target.value)
-                }}
-                label="Age"
-                size="small"
-                autoWidth
-                disableUnderline
-              >
-                {console.log(cid)}
-                <MenuItem key='_universal' value='_universal'>🌈 All Shows & Movies</MenuItem>
-                {(loading) ? <MenuItem key="loading" value="loading" disabled>Loading...</MenuItem> : shows.map((item) => (
-                  <MenuItem key={item.id} value={item.id}>{item.emoji} {item.title}</MenuItem>
-                ))}
-                {/* <Divider />
-                <MenuItem disabled value=''>IPFS</MenuItem>
-                <Divider />
-                {user && loadingSavedCids &&
-                  <MenuItem value='' disabled>Loading saved CIDs...</MenuItem>
-                }
-                {!loading && savedCids && savedCids.map(obj =>
-                  <MenuItem key={obj.id} value={obj.id}>{obj.emoji} {obj.title}</MenuItem>
-                )}
-                <MenuItem key='addNew' value={{ addNew: true }}>+ Add New CID</MenuItem> */}
-              </Select>
-            </FormControl>
+          <FormControl variant="standard" sx={{ minWidth: 120 }}>
+  <Select
+    labelId="demo-simple-select-standard-label"
+    id="demo-simple-select-standard"
+    value={cid}
+    onChange={(event) => handleSelectSeries(event.target.value)}
+    label="Series"
+    size="small"
+    autoWidth
+    disableUnderline
+  >
+    <MenuItem key="_universal" value="_universal">
+      🌈 All Shows & Movies
+    </MenuItem>
+
+    {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
+      <ListSubheader key="favorites-subheader">Favorites</ListSubheader>
+    ) : null}
+
+    {(user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite)) && (
+      shows.filter(show => show.isFavorite).map(show => (
+        <MenuItem key={show.id} value={show.id}>
+          ⭐ {show.emoji} {show.title}
+        </MenuItem>
+      ))
+    )}
+
+    {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
+      <MenuItem value="editFavorites" style={{ fontSize: "0.9rem", opacity: 0.7 }}>
+        ⚙ Edit Favorites
+      </MenuItem>
+    ) : null}
+
+    <ListSubheader key="all-shows-subheader">Other</ListSubheader>
+    {shows.filter(show => !show.isFavorite).map(show => (
+      <MenuItem key={show.id} value={show.id}>
+        {show.emoji} {show.title}
+      </MenuItem>
+    ))}
+  </Select>
+</FormControl>
+
+
           </Grid>
           <Grid item marginLeft={{ xs: 3 }} marginY='auto' display='flex' style={{ whiteSpace: 'nowrap' }}>
             <Typography fontSize={13}><a href="/vote" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>Request a show</a></Typography>

@@ -1,53 +1,129 @@
+// FavoritesPage.js
+
 import React, { useState, useEffect } from 'react';
 import { API, graphqlOperation, Auth } from 'aws-amplify';
+import { Typography, IconButton, Badge, Fab, Grid, Card, CardContent } from '@mui/material';
+import StarBorderIcon from '@mui/icons-material/StarBorder';
+import StarIcon from '@mui/icons-material/Star';
+import { styled } from '@mui/material/styles';
 import { createFavorite, deleteFavorite } from '../graphql/mutations';
 import { listFavorites } from '../graphql/queries';
+import fetchShows from '../utils/fetchShows';
+
+const StyledBadge = styled(Badge)(() => ({
+  '& .MuiBadge-badge': {
+    padding: '0 3px',
+    backgroundColor: 'rgba(0, 0, 0, 1)',
+    fontWeight: 'bold',
+    fontSize: '7pt',
+  },
+  position: 'absolute',
+  top: '8px',
+  right: '8px',
+}));
+
+const StyledFab = styled(Fab)(() => ({
+  backgroundColor: 'rgba(255, 255, 255, 0.35)',
+  zIndex: 0,
+  position: 'relative',
+}));
+
+const APP_VERSION = process.env.REACT_APP_VERSION || 'defaultVersion';
+
+async function getCacheKey() {
+  try {
+    const currentUser = await Auth.currentAuthenticatedUser();
+    return `showsCache-${currentUser.username}-${APP_VERSION}`;
+  } catch {
+    return `showsCache-${APP_VERSION}`;
+  }
+}
 
 const FavoritesPage = () => {
   const [favorites, setFavorites] = useState([]);
-  const [newFavorite, setNewFavorite] = useState('');
+  const [availableIndexes, setAvailableIndexes] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchFavorites();
+    Promise.all([fetchAvailableIndexes()])
+      .then(() => {
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error('Error loading data:', err);
+        setError('Failed to load data.');
+        setLoading(false);
+      });
   }, []);
+
+  useEffect(() => {
+    if (availableIndexes.length > 0) {
+      fetchFavorites();
+    }
+  }, [availableIndexes]);
+
+  const fetchAvailableIndexes = async () => {
+    try {
+      const shows = await fetchShows();
+      setAvailableIndexes(shows);
+    } catch (err) {
+      console.error('Error fetching available indexes:', err);
+      setError('Failed to fetch available indexes.');
+    }
+  };
 
   const fetchFavorites = async () => {
     try {
       const currentUser = await Auth.currentAuthenticatedUser();
-      const currentUserUsername = currentUser.username; // Or whichever field you use to match the owner
-  
-      let nextToken = null; // Initialize nextToken
-      let allFavorites = []; // Initialize an array to hold all fetched favorites, including those owned by other users
-  
+
+      let nextToken = null;
+      let allFavorites = [];
+
       do {
         // eslint-disable-next-line no-await-in-loop
         const result = await API.graphql(graphqlOperation(listFavorites, {
-          limit: 10, // Specify the number of items to fetch per request, adjust as needed
-          nextToken // Pass the nextToken for the next page of items
+          limit: 10,
+          nextToken,
         }));
-  
-        allFavorites = allFavorites.concat(result.data.listFavorites.items); // Concatenate the newly fetched favorites with the existing array
-        nextToken = result.data.listFavorites.nextToken; // Update nextToken with the nextToken from the response
-  
-      } while (nextToken); // Continue fetching until there's no nextToken, indicating no more items to fetch
-      
-      setFavorites(allFavorites); // Update state with filtered favorites
+
+        allFavorites = allFavorites.concat(result.data.listFavorites.items);
+        nextToken = result.data.listFavorites.nextToken;
+
+      } while (nextToken);
+
+      const enrichedFavorites = allFavorites.map(favorite => {
+        const match = availableIndexes.find(index => index.id === favorite.cid);
+        return match ? { ...favorite, alias: match } : favorite;
+      });
+
+      // Sort enrichedFavorites alphabetically by alias title
+      enrichedFavorites.sort((a, b) => {
+        const titleA = (a.alias?.title || "").toLowerCase().replace(/^the\s+/, '');
+        const titleB = (b.alias?.title || "").toLowerCase().replace(/^the\s+/, '');
+        return titleA.localeCompare(titleB);
+      });      
+
+      setFavorites(enrichedFavorites);
     } catch (err) {
       console.error('Error fetching favorites:', err);
       setError('Failed to fetch favorites.');
     }
-  };  
-  
-  const addFavorite = async () => {
+  };
+
+  const clearSessionCache = async () => {
+    const cacheKey = await getCacheKey();
+    sessionStorage.removeItem(cacheKey);
+  };
+
+  const addFavorite = async (indexId) => {
     try {
-      if (!newFavorite) return;
       setIsSaving(true);
-      const input = { cid: newFavorite };
+      const input = { cid: indexId };
       await API.graphql(graphqlOperation(createFavorite, { input }));
-      setNewFavorite('');
-      fetchFavorites(); // Refresh the list
+      await clearSessionCache();
+      fetchFavorites();
     } catch (err) {
       console.error('Error adding favorite:', err);
       setError('Failed to add favorite.');
@@ -56,12 +132,12 @@ const FavoritesPage = () => {
     }
   };
 
-  const removeFavorite = async (id) => {
+  const removeFavorite = async (favoriteId) => {
     try {
       setIsSaving(true);
-      const input = { id };
-      await API.graphql(graphqlOperation(deleteFavorite, { input }));
-      fetchFavorites(); // Refresh the list
+      await API.graphql(graphqlOperation(deleteFavorite, { input: { id: favoriteId } }));
+      await clearSessionCache();
+      setFavorites(favorites.filter(favorite => favorite.id !== favoriteId));
     } catch (err) {
       console.error('Error removing favorite:', err);
       setError('Failed to remove favorite.');
@@ -70,25 +146,125 @@ const FavoritesPage = () => {
     }
   };
 
+  const filteredAvailableIndexes = availableIndexes.filter(
+    index => !favorites.find(favorite => favorite.cid === index.id)
+  );
+
+  // Sort filteredAvailableIndexes alphabetically by title before rendering
+  const sortedFilteredAvailableIndexes = filteredAvailableIndexes.sort((a, b) => {
+    const titleA = a.title.toLowerCase().replace(/^the\s+/, '');
+    const titleB = b.title.toLowerCase().replace(/^the\s+/, '');
+    return titleA.localeCompare(titleB);
+  });  
+
+  if (loading) {
+    return <div style={{ padding: '20px' }}>Loading...</div>;
+  }
+
   return (
-    <div>
+    <div style={{ padding: '20px' }}>
       <h2>My Favorites</h2>
       {error && <p style={{ color: 'red' }}>{error}</p>}
-      <input
-        value={newFavorite}
-        onChange={(e) => setNewFavorite(e.target.value)}
-        placeholder="Add a new favorite"
-        disabled={isSaving}
-      />
-      <button onClick={addFavorite} disabled={isSaving}>Add Favorite</button>
-      <ul>
-        {favorites.map((favorite) => (
-          <li key={favorite.id}>
-            {favorite.cid}
-            <button onClick={() => removeFavorite(favorite.id)} disabled={isSaving}>Remove</button>
-          </li>
-        ))}
-      </ul>
+      <div>
+        <Typography variant="h4" gutterBottom>Favorite Indexes</Typography>
+        {favorites.length > 0 ? (
+          <Grid container spacing={2}>
+            {favorites.map((favorite) => (
+              <Grid item xs={12} key={favorite.id}>
+                <Card
+                  sx={{
+                    backgroundColor: favorite.alias?.colorMain,
+                    color: favorite.alias?.colorSecondary,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minHeight: 150,
+                    position: 'relative',
+                  }}
+                >
+                  <CardContent sx={{ textAlign: 'center' }}>
+                    <StyledBadge
+                      anchorOrigin={{
+                        vertical: 'top',
+                        horizontal: 'right',
+                      }}
+                    >
+                      <StyledFab
+                        aria-label="remove-favorite"
+                        onClick={() => removeFavorite(favorite.id)}
+                        disabled={isSaving}
+                        size="small"
+                      >
+                        <StarIcon />
+                      </StyledFab>
+                    </StyledBadge>
+                    <Typography variant="h5" sx={{ mb: 1 }}>
+                      {favorite.alias?.emoji} {favorite.alias?.title}
+                    </Typography>
+                    <Typography variant="caption">
+                      {favorite.alias?.frameCount.toLocaleString()} frames
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        ) : (
+          <Typography>No favorites added yet.</Typography>
+        )}
+      </div>
+      <div style={{ marginTop: 20 }}>
+        <Typography variant="h4" gutterBottom>Available Indexes</Typography>
+        {sortedFilteredAvailableIndexes.length > 0 ? (
+          <Grid container spacing={2}>
+            {sortedFilteredAvailableIndexes.map((index) => (
+              <Grid item xs={12} key={index.id}>
+                <Card
+                  sx={{
+                    backgroundColor: index.colorMain,
+                    color: index.colorSecondary,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minHeight: 150,
+                    position: 'relative',
+                  }}
+                >
+                  <CardContent sx={{ textAlign: 'center' }}>
+                    <StyledBadge
+                      anchorOrigin={{
+                        vertical: 'top',
+                        horizontal: 'right',
+                      }}
+                    >
+                      <StyledFab
+                        aria-label="add-favorite"
+                        onClick={() => addFavorite(index.id)}
+                        disabled={isSaving}
+                        size="small"
+                      >
+                        <StarBorderIcon />
+                      </StyledFab>
+                    </StyledBadge>
+                    <Typography variant="h5" sx={{ mb: 1 }}>
+                      {index.emoji} {index.title}
+                    </Typography>
+                    <Typography variant="caption">
+                      {index.frameCount.toLocaleString()} frames
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        ) : (
+          <Typography>All indexes are in your favorites.</Typography>
+        )}
+      </div>
     </div>
   );
 };
