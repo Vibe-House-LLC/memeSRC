@@ -261,58 +261,49 @@ export default function IpfsSearchBar(props) {
         <Grid container wrap="nowrap" sx={{ overflowX: "scroll", flexWrap: "nowrap", scrollbarWidth: 'none', '&::-webkit-scrollbar': { height: '0 !important', width: '0 !important', display: 'none' } }} paddingX={2}>
           <Grid item marginLeft={{ md: 6 }}>
 
-            <FormControl
-              // disabled={resultsLoading}
-              variant="standard"
-              sx={{ minWidth: 120 }}
-            >
-              <Select
-                labelId="demo-simple-select-standard-label"
-                id="demo-simple-select-standard"
-                value={cid}
-                onChange={(x) => {
-                  handleSelectSeries(x.target.value);
-                }}
-                label="Age"
-                size="small"
-                autoWidth
-                disableUnderline
-              >
-                <MenuItem key="_universal" value="_universal">
-                  🌈 All Shows & Movies
-                </MenuItem>
-                <ListSubheader key="favorites-subheader">Favorites</ListSubheader>
-                {shows
-                  .filter((show) => show.isFavorite)
-                  .map((show) => (
-                    <MenuItem key={show.id} value={show.id} selected={cid === show.id}>
-                      ⭐ {show.emoji} {show.title}
-                    </MenuItem>
-                  ))}
-                <MenuItem value="editFavorites" style={{ fontSize: "0.9rem", opacity: 0.7 }}>
-                  Edit Favorites
-                </MenuItem>
+          <FormControl variant="standard" sx={{ minWidth: 120 }}>
+  <Select
+    labelId="demo-simple-select-standard-label"
+    id="demo-simple-select-standard"
+    value={cid}
+    onChange={(event) => handleSelectSeries(event.target.value)}
+    label="Series"
+    size="small"
+    autoWidth
+    disableUnderline
+  >
+    <MenuItem key="_universal" value="_universal">
+      🌈 All Shows & Movies
+    </MenuItem>
 
-                <ListSubheader key="all-shows-subheader">Other</ListSubheader>
-                {shows
-                  .filter((show) => !show.isFavorite)
-                  .map((show) => (
-                    <MenuItem key={show.id} value={show.id} selected={cid === show.id}>
-                      {show.emoji} {show.title}
-                    </MenuItem>
-                  ))}
-                {/* <Divider />
-                <MenuItem disabled value=''>IPFS</MenuItem>
-                <Divider />
-                {user && loadingSavedCids &&
-                  <MenuItem value='' disabled>Loading saved CIDs...</MenuItem>
-                }
-                {!loading && savedCids && savedCids.map(obj =>
-                  <MenuItem key={obj.id} value={obj.id}>{obj.emoji} {obj.title}</MenuItem>
-                )}
-                <MenuItem key='addNew' value={{ addNew: true }}>+ Add New CID</MenuItem> */}
-              </Select>
-            </FormControl>
+    {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
+      <ListSubheader key="favorites-subheader">Favorites</ListSubheader>
+    ) : null}
+
+    {(user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite)) && (
+      shows.filter(show => show.isFavorite).map(show => (
+        <MenuItem key={show.id} value={show.id}>
+          ⭐ {show.emoji} {show.title}
+        </MenuItem>
+      ))
+    )}
+
+    {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
+      <MenuItem value="editFavorites" style={{ fontSize: "0.9rem", opacity: 0.7 }}>
+        Edit Favorites
+      </MenuItem>
+    ) : null}
+
+    <ListSubheader key="all-shows-subheader">Other</ListSubheader>
+    {shows.filter(show => !show.isFavorite).map(show => (
+      <MenuItem key={show.id} value={show.id}>
+        {show.emoji} {show.title}
+      </MenuItem>
+    ))}
+  </Select>
+</FormControl>
+
+
           </Grid>
           <Grid item marginLeft={{ xs: 3 }} marginY='auto' display='flex' style={{ whiteSpace: 'nowrap' }}>
             <Typography fontSize={13}><a href="/vote" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>Request a show</a></Typography>

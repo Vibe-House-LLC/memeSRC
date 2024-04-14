@@ -649,24 +649,36 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                   }}
                 >
                   <MenuItem value="_universal">🌈 All Shows & Movies</MenuItem>
-                  <ListSubheader key="favorites-subheader">Favorites</ListSubheader>
-                  {shows.filter((show) => show.isFavorite).map((show) => (
-                    <MenuItem key={show.id} value={show.id} selected={cid === show.id || seriesTitle === show.id}>
-                      ⭐ {show.emoji} {show.title}
-                    </MenuItem>
-                  ))}
-                  <MenuItem value="editFavorites" style={{ fontSize: '0.9rem', opacity: 0.7 }}>
-                      Edit Favorites
-                  </MenuItem>
 
-                  <ListSubheader key="all-shows-subheader">Other</ListSubheader>
-                  {shows.filter((show) => !show.isFavorite).map((show) => (
-                    <MenuItem key={show.id} value={show.id} selected={cid === show.id || seriesTitle === show.id}>
+                  {/* Check if user is subscribed or has favorites and directly render each item */}
+                  {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
+                    <ListSubheader key="favorites-subheader">Favorites</ListSubheader>
+                  ) : null}
+
+                  {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
+                    shows.filter(show => show.isFavorite).map(show => (
+                      <MenuItem key={show.id} value={show.id}>
+                        ⭐ {show.emoji} {show.title}
+                      </MenuItem>
+                    ))
+                  ) : null}
+
+                  {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
+                    <MenuItem value="editFavorites" style={{ fontSize: '0.9rem', opacity: 0.7 }}>
+                      Edit Favorites
+                    </MenuItem>
+                  ) : null}
+
+                  {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
+                    <ListSubheader key="other-subheader">Other</ListSubheader>
+                  ) : null}
+
+                  {shows.filter(show => !show.isFavorite).map(show => (
+                    <MenuItem key={show.id} value={show.id}>
                       {show.emoji} {show.title}
                     </MenuItem>
                   ))}
                 </Select>
-
               </Grid>
               <Grid item sm={7} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
                 <StyledLabel htmlFor="search-term">
