@@ -1,7 +1,7 @@
 // fetchShows.js
 
-import { API, graphqlOperation } from "aws-amplify";
-import { listAliases } from "../graphql/queries";
+import { API, graphqlOperation, Auth } from "aws-amplify";
+import { listFavorites } from "../graphql/queries";
 
 const listAliasesQuery = /* GraphQL */ `
   query ListAliases(
@@ -67,6 +67,27 @@ async function fetchShowsFromAPI() {
   return sortedMetadata;
 }
 
+async function fetchFavorites() {
+  const currentUser = await Auth.currentAuthenticatedUser();
+
+  let nextToken = null;
+  let allFavorites = [];
+
+  do {
+    // eslint-disable-next-line no-await-in-loop
+    const result = await API.graphql(graphqlOperation(listFavorites, {
+      limit: 10,
+      nextToken,
+    }));
+
+    allFavorites = allFavorites.concat(result.data.listFavorites.items);
+    nextToken = result.data.listFavorites.nextToken;
+
+  } while (nextToken);
+
+  return allFavorites;
+}
+
 export default async function fetchShows() {
   const cachedData = localStorage.getItem(CACHE_KEY);
 
@@ -94,10 +115,21 @@ export default async function fetchShows() {
 
   // Cache doesn't exist, fetch new data and store it in the cache
   const freshData = await fetchShowsFromAPI();
+
+  // Fetch user's favorites
+  const favorites = await fetchFavorites();
+
+  // Move favorite shows to the top of the list
+  const favoriteShowIds = favorites.map(favorite => favorite.cid);
+  const favoriteShows = freshData.filter(show => favoriteShowIds.includes(show.id));
+  const nonFavoriteShows = freshData.filter(show => !favoriteShowIds.includes(show.id));
+  const updatedData = [...favoriteShows, ...nonFavoriteShows];
+
   const cacheData = {
-    data: freshData,
+    data: updatedData,
     updatedAt: Date.now(),
   };
   localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
-  return freshData;
+
+  return updatedData;
 }
