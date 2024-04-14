@@ -36,8 +36,17 @@ const listAliasesQuery = /* GraphQL */ `
   }
 `;
 
-const CACHE_KEY = 'showsCache';
-const CACHE_EXPIRATION_MINUTES = 5;
+const APP_VERSION = process.env.REACT_APP_VERSION || 'defaultVersion';
+const CACHE_EXPIRATION_MINUTES = 5; // Define cache expiration minutes
+
+async function getCacheKey() {
+  try {
+    const currentUser = await Auth.currentAuthenticatedUser();
+    return `showsCache-${currentUser.username}-${APP_VERSION}`;
+  } catch {
+    return `showsCache-${APP_VERSION}`;
+  }
+}
 
 async function fetchShowsFromAPI() {
   const aliases = await API.graphql({
@@ -48,20 +57,16 @@ async function fetchShowsFromAPI() {
 
   const loadedV2Shows = aliases?.data?.listAliases?.items.filter(obj => obj?.v2ContentMetadata) || [];
 
-  // Map the loaded V2 shows to the desired format
   const finalShows = loadedV2Shows.map(v2Show => ({
     ...v2Show.v2ContentMetadata,
     id: v2Show.id,
     cid: v2Show.v2ContentMetadata.id
   }));
 
-  // Sort the final list of shows by title, ignoring "The" at the beginning
   const sortedMetadata = finalShows.sort((a, b) => {
     const titleA = a.title.toLowerCase().replace(/^the\s+/, '');
     const titleB = b.title.toLowerCase().replace(/^the\s+/, '');
-    if (titleA < titleB) return -1;
-    if (titleA > titleB) return 1;
-    return 0;
+    return titleA.localeCompare(titleB);
   });
 
   return sortedMetadata;
@@ -74,6 +79,7 @@ async function fetchFavorites() {
   let allFavorites = [];
 
   do {
+    // Disable ESLint check for await-in-loop
     // eslint-disable-next-line no-await-in-loop
     const result = await API.graphql(graphqlOperation(listFavorites, {
       limit: 10,
@@ -89,44 +95,35 @@ async function fetchFavorites() {
 }
 
 export default async function fetchShows() {
-  const cachedData = localStorage.getItem(CACHE_KEY);
+  const CACHE_KEY = await getCacheKey();
+  const cachedData = sessionStorage.getItem(CACHE_KEY);
 
   if (cachedData) {
     const { data, updatedAt } = JSON.parse(cachedData);
-    const cacheAge = (Date.now() - updatedAt) / 1000 / 60; // Cache age in minutes
+    const cacheAge = (Date.now() - updatedAt) / 1000 / 60;
 
     if (cacheAge <= CACHE_EXPIRATION_MINUTES) {
-      // Cache is valid, return the cached data
       return data;
     }
 
-    // Cache is expired, fetch new data in the background and update the cache
     fetchShowsFromAPI().then((freshData) => {
       const cacheData = {
         data: freshData,
         updatedAt: Date.now(),
       };
-      localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+      sessionStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
     });
 
-    // Return the cached data for now
     return data;
   }
 
-  // Cache doesn't exist, fetch new data and store it in the cache
   const freshData = await fetchShowsFromAPI();
 
   try {
-    // Check if the user is authenticated
     await Auth.currentAuthenticatedUser();
-
-    // User is authenticated, fetch favorites
     const favorites = await fetchFavorites();
-
-    // Create a Set of favorite show IDs for efficient lookup
     const favoriteShowIds = new Set(favorites.map(favorite => favorite.cid));
 
-    // Add a new property 'isFavorite' to each show object
     const updatedData = freshData.map(show => ({
       ...show,
       isFavorite: favoriteShowIds.has(show.id)
@@ -136,16 +133,15 @@ export default async function fetchShows() {
       data: updatedData,
       updatedAt: Date.now(),
     };
-    localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+    sessionStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
 
     return updatedData;
   } catch (error) {
-    // User is not authenticated, return the fresh data without favorites
     const cacheData = {
       data: freshData,
       updatedAt: Date.now(),
     };
-    localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+    sessionStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
 
     return freshData;
   }
