@@ -294,7 +294,10 @@ export default function IpfsSearchBar(props) {
       </MenuItem>
     ) : null}
 
-    <ListSubheader key="all-shows-subheader">Other</ListSubheader>
+    {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
+      <ListSubheader key="other-subheader">Other</ListSubheader>
+    ) : null}
+
     {shows.filter(show => !show.isFavorite).map(show => (
       <MenuItem key={show.id} value={show.id}>
         {show.emoji} {show.title}
