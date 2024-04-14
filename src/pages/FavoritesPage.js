@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { API, graphqlOperation, Auth } from 'aws-amplify';
-import { Typography, IconButton, Badge, Fab, Grid, Card, CardContent } from '@mui/material';
+import { Typography, IconButton, Badge, Fab, Grid, Card, CardContent, Button, Collapse } from '@mui/material';
 import StarBorderIcon from '@mui/icons-material/StarBorder';
 import StarIcon from '@mui/icons-material/Star';
 import { styled } from '@mui/material/styles';
@@ -30,6 +30,98 @@ const StyledFab = styled(Fab)(() => ({
 
 const APP_VERSION = process.env.REACT_APP_VERSION || 'defaultVersion';
 
+const UpgradedIndexBanner = styled('div')(({ show }) => ({
+  backgroundImage: 'url("https://api-prod-minimal-v510.vercel.app/assets/images/cover/cover_3.jpg")',
+  backgroundSize: 'cover',
+  backgroundPosition: 'center',
+  padding: show ? '40px 20px' : '10px',
+  textAlign: 'center',
+  position: 'relative',
+  borderRadius: '8px',
+  margin: '0 20px 20px 20px',
+  boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  minHeight: show ? '200px' : '50px',
+  transition: 'all 0.3s ease-in-out',
+  '&::before': {
+    content: '""',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: '8px',
+  },
+}));
+
+const UpgradedIndexText = styled(Typography)`
+  font-size: 30px;
+  font-weight: bold;
+  margin-bottom: 10px;
+  color: #fff;
+  position: relative;
+  z-index: 1;
+`;
+
+const UpgradedIndexSubtext = styled(Typography)`
+  font-size: 16px;
+  font-weight: 600;
+  color: #E2e2e3;
+  position: relative;
+  z-index: 1;
+  margin-bottom: 10px;
+  margin-left: 10px;
+  margin-right: 10px;
+
+  a {
+    color: #f0f0f0;
+    text-decoration: underline;
+
+    &:hover {
+      color: #fff;
+    }
+  }
+`;
+
+const MinimizedBanner = styled('div')({
+  backgroundImage: 'url("https://api-prod-minimal-v510.vercel.app/assets/images/cover/cover_3.jpg")',
+  backgroundSize: 'cover',
+  backgroundPosition: 'center',
+  padding: '10px',
+  textAlign: 'center',
+  position: 'relative',
+  borderRadius: '8px',
+  margin: '0 20px 20px 20px',
+  boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  minHeight: '50px',
+  cursor: 'pointer',
+  '&::before': {
+    content: '""',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: '8px',
+  },
+});
+
+const MinimizedBannerText = styled(Typography)`
+  font-size: 16px;
+  font-weight: bold;
+  color: #fff;
+  position: relative;
+  z-index: 1;
+`;
+
 async function getCacheKey() {
   try {
     const currentUser = await Auth.currentAuthenticatedUser();
@@ -45,6 +137,8 @@ const FavoritesPage = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [isBannerMinimized, setIsBannerMinimized] = useState(false);
+  const [showBanner, setShowBanner] = useState(true);
 
   useEffect(() => {
     Promise.all([fetchAvailableIndexes()])
@@ -163,6 +257,69 @@ const FavoritesPage = () => {
 
   return (
     <div style={{ padding: '20px' }}>
+      <Collapse in={showBanner}>
+        <UpgradedIndexBanner show={showBanner}>
+          {showBanner && (
+            <>
+              <UpgradedIndexText>Favorites!</UpgradedIndexText>
+              <UpgradedIndexSubtext>
+                Use the ⭐️ to set favorites.
+              </UpgradedIndexSubtext>
+              <UpgradedIndexSubtext sx={{fontSize: 12}}>
+              As a memeSRC Pro, you get early access.{' '}
+                <a href="https://forms.gle/8CETtVbwYoUmxqbi7" target="_blank" rel="noopener noreferrer">
+                  Report&nbsp;a&nbsp;problem
+                </a>
+                .
+              </UpgradedIndexSubtext>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '10px' }}>
+                <Button
+                  variant="contained"
+                  onClick={() => {
+                    setIsBannerMinimized(true);
+                    setShowBanner(false);
+                    localStorage.setItem(`dismissedBanner`, 'true');
+                  }}
+                  style={{
+                    marginTop: '15px',
+                    borderRadius: '20px',
+                    padding: '6px 16px',
+                    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                    color: '#000',
+                    position: 'relative',
+                    zIndex: 1,
+                    '&:hover': {
+                      backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                    },
+                  }}
+                >
+                  Minimize
+                </Button>
+              </div>
+            </>
+          )}
+        </UpgradedIndexBanner>
+      </Collapse>
+      {!showBanner && (
+        <MinimizedBanner
+          onClick={() => {
+            setShowBanner(true);
+            setIsBannerMinimized(false);
+            localStorage.removeItem(`dismissedBanner`);
+          }}
+        >
+          <MinimizedBannerText style={{ fontWeight: 'bold' }}>Favorites (early access)</MinimizedBannerText>
+          <MinimizedBannerText
+            style={{
+              textDecoration: 'underline',
+              fontWeight: 'normal',
+              marginLeft: '10px',
+            }}
+          >
+            Learn&nbsp;More
+          </MinimizedBannerText>
+        </MinimizedBanner>
+      )}
       <h2>My Favorites</h2>
       {error && <p style={{ color: 'red' }}>{error}</p>}
       <div>
