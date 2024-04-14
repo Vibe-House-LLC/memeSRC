@@ -290,7 +290,7 @@ export default function IpfsSearchBar(props) {
 
     {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
       <MenuItem value="editFavorites" style={{ fontSize: "0.9rem", opacity: 0.7 }}>
-        Edit Favorites
+        ⚙ Edit Favorites
       </MenuItem>
     ) : null}
 
