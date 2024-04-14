@@ -12,7 +12,6 @@ import { DialogProvider } from './contexts/SubscribeDialog';
 const AddSeriesPage = lazy(() => import('./pages/AddSeriesPage'));
 const VotingPage = lazy(() => import('./pages/VotingPage'))
 const InpaintingPage = lazy(() => import('./pages/InpaintingPage'));
-const FramePage = lazy(() => import('./pages/FramePage'));
 const TopBannerSearchRevised = lazy(() => import('./sections/search/TopBannerSeachRevised'));
 const DashboardSeriesPage = lazy(() => import('./pages/DashboardSeriesPage'));
 const DashboardCidPage = lazy(() => import('./pages/DashboardCidPage'));
@@ -37,10 +36,8 @@ const CheckAuth = lazy(() => import('./sections/auth/login/CheckAuth'));
 const ImageUploadPage = lazy(() => import('./pages/ImageUploadPage'));
 const AddToSeriesPage = lazy(() => import('./pages/AddToSeriesPage'));
 const HomePage = lazy(() => import('./pages/HomePage'))
-const SearchPage = lazy(() => import('./pages/SearchPage'));
 const V2SearchPage = lazy(() => import('./pages/V2SearchPage'));
 const EditorPage = lazy(() => import('./pages/EditorPage'));
-const EpisodePage = lazy(() => import('./pages/EpisodePage'));
 const SeriesPage = lazy(() => import('./pages/SeriesPage'));
 const SourceMediaList = lazy(() => import('./pages/SourceMediaList'));
 const SourceMediaFileList = lazy(() => import('./pages/SourceMediaFileList'));
@@ -82,8 +79,6 @@ export default function Router() {
         { path: 'editor/projects', element: <SiteWideMaintenance><EditorProjectsPage /></SiteWideMaintenance> },
         { path: 'editor/new', element: <SiteWideMaintenance><EditorNewProjectPage /></SiteWideMaintenance> },
         { path: 'editor/project/:editorProjectId', element: <SiteWideMaintenance><EditorPage /></SiteWideMaintenance> },
-        // { path: 'search/:seriesId', element: <SiteWideMaintenance><SearchPage /></SiteWideMaintenance> },
-        // { path: 'search/:seriesId/:searchTerms', element: <SiteWideMaintenance><SearchPage /></SiteWideMaintenance> },
         { path: 'search/:cid', element: <SiteWideMaintenance><IpfsSearchBar><V2SearchPage /></IpfsSearchBar></SiteWideMaintenance> },
         { path: 'search/:cid/:searchTerms', element: <SiteWideMaintenance><IpfsSearchBar><V2SearchPage /></IpfsSearchBar></SiteWideMaintenance> },
         { path: 'frame/:cid/:season/:episode/:frame', element: <SiteWideMaintenance><IpfsSearchBar><V2FramePage /></IpfsSearchBar></SiteWideMaintenance> },
@@ -92,22 +87,7 @@ export default function Router() {
         { path: 'favorites', element: <SiteWideMaintenance><FavoritesPage /></SiteWideMaintenance> },
         { path: 'support', element: <SiteWideMaintenance><ProSupport /></SiteWideMaintenance> },
         { path: 'faq', element: <SiteWideMaintenance><FAQPage /></SiteWideMaintenance> },
-        // {
-        //   path: 'v2',
-        //   element: <SiteWideMaintenance><IpfsSearchBar /></SiteWideMaintenance>,
-        //   children: [
-        //     { path: 'search/:cid', element: <V2SearchPage /> },
-        //     { path: 'search/:cid/:searchTerms', element: <V2SearchPage /> },
-        //     { path: 'frame/:cid/:season/:episode/:frame', element: <V2FramePage /> },
-        //     { path: 'editor/:cid/:season/:episode/:frame', element: <V2EditorPage /> },
-        //     { path: 'episode/:cid/:season/:episode/:frame', element: <V2EpisodePage /> },
-        //   ]
-        // },
-        // { path: 'frame/:fid', element: <SiteWideMaintenance><TopBannerSearchRevised><FramePage /></TopBannerSearchRevised></SiteWideMaintenance> },
-        // { path: 'editor/:fid', element: <SiteWideMaintenance><TopBannerSearchRevised><EditorPage /></TopBannerSearchRevised></SiteWideMaintenance> },
         { path: 'series/:seriesId', element: <SiteWideMaintenance><TopBannerSearchRevised><SeriesPage /></TopBannerSearchRevised></SiteWideMaintenance> },
-        // { path: '/episode/:seriesId/:seasonNum/:episodeNum', element: <SiteWideMaintenance><TopBannerSearchRevised><EpisodePage /></TopBannerSearchRevised></SiteWideMaintenance> },
-        // { path: '/episode/:seriesId/:seasonNum/:episodeNum/:frameNum', element: <SiteWideMaintenance><TopBannerSearchRevised><EpisodePage /></TopBannerSearchRevised></SiteWideMaintenance> },
         { path: '/vote', element: <SiteWideMaintenance><TopBannerSearchRevised><VotingPage /></TopBannerSearchRevised></SiteWideMaintenance> },
         { path: '/contribute', element: <SiteWideMaintenance><ContributorRequest /></SiteWideMaintenance> },
         { path: '/pricing', element: <SiteWideMaintenance><PricingPage /></SiteWideMaintenance> },
