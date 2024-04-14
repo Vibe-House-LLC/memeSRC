@@ -39,6 +39,7 @@ const UpgradedIndexBanner = styled('div')(({ show }) => ({
   position: 'relative',
   borderRadius: '8px',
   boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
+  marginBottom: '30px;',
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
@@ -95,6 +96,7 @@ const MinimizedBanner = styled('div')({
   position: 'relative',
   borderRadius: '8px',
   boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
+  marginBottom: '30px;',
   display: 'flex',
   justifyContent: 'center',
   alignItems: 'center',
@@ -135,8 +137,8 @@ const FavoritesPage = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
-  const [isBannerMinimized, setIsBannerMinimized] = useState(false);
-  const [showBanner, setShowBanner] = useState(true);
+  const [isBannerMinimized, setIsBannerMinimized] = useState(true);
+  const [showBanner, setShowBanner] = useState(false);
 
   useEffect(() => {
     Promise.all([fetchAvailableIndexes()])
@@ -255,6 +257,7 @@ const FavoritesPage = () => {
 
   return (
     <div style={{ padding: '20px' }}>
+      <h1>Edit Favorites</h1>
       <Collapse in={showBanner}>
         <UpgradedIndexBanner show={showBanner}>
           {showBanner && (
@@ -318,10 +321,9 @@ const FavoritesPage = () => {
           </MinimizedBannerText>
         </MinimizedBanner>
       )}
-      <h2>My Favorites</h2>
       {error && <p style={{ color: 'red' }}>{error}</p>}
       <div>
-        <Typography variant="h4" gutterBottom>Favorite Indexes</Typography>
+        <Typography variant="h4" gutterBottom>Favorites</Typography>
         {favorites.length > 0 ? (
           <Grid container spacing={2}>
             {favorites.map((favorite) => (
@@ -371,7 +373,7 @@ const FavoritesPage = () => {
         )}
       </div>
       <div style={{ marginTop: 20 }}>
-        <Typography variant="h4" gutterBottom>Available Indexes</Typography>
+        <Typography variant="h4" gutterBottom>Other</Typography>
         {sortedFilteredAvailableIndexes.length > 0 ? (
           <Grid container spacing={2}>
             {sortedFilteredAvailableIndexes.map((index) => (
