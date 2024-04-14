@@ -28,6 +28,17 @@ const StyledFab = styled(Fab)(() => ({
   position: 'relative',
 }));
 
+const APP_VERSION = process.env.REACT_APP_VERSION || 'defaultVersion';
+
+async function getCacheKey() {
+  try {
+    const currentUser = await Auth.currentAuthenticatedUser();
+    return `showsCache-${currentUser.username}-${APP_VERSION}`;
+  } catch {
+    return `showsCache-${APP_VERSION}`;
+  }
+}
+
 const FavoritesPage = () => {
   const [favorites, setFavorites] = useState([]);
   const [availableIndexes, setAvailableIndexes] = useState([]);
@@ -97,11 +108,17 @@ const FavoritesPage = () => {
     }
   };
 
+  const clearSessionCache = async () => {
+    const cacheKey = await getCacheKey();
+    sessionStorage.removeItem(cacheKey);
+  };
+
   const addFavorite = async (indexId) => {
     try {
       setIsSaving(true);
       const input = { cid: indexId };
       await API.graphql(graphqlOperation(createFavorite, { input }));
+      await clearSessionCache();
       fetchFavorites();
     } catch (err) {
       console.error('Error adding favorite:', err);
@@ -115,6 +132,7 @@ const FavoritesPage = () => {
     try {
       setIsSaving(true);
       await API.graphql(graphqlOperation(deleteFavorite, { input: { id: favoriteId } }));
+      await clearSessionCache();
       setFavorites(favorites.filter(favorite => favorite.id !== favoriteId));
     } catch (err) {
       console.error('Error removing favorite:', err);
