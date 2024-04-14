@@ -99,7 +99,11 @@ const FavoritesPage = () => {
       });
 
       // Sort enrichedFavorites alphabetically by alias title
-      enrichedFavorites.sort((a, b) => (a.alias?.title || "").localeCompare(b.alias?.title || ""));
+      enrichedFavorites.sort((a, b) => {
+        const titleA = (a.alias?.title || "").toLowerCase().replace(/^the\s+/, '');
+        const titleB = (b.alias?.title || "").toLowerCase().replace(/^the\s+/, '');
+        return titleA.localeCompare(titleB);
+      });      
 
       setFavorites(enrichedFavorites);
     } catch (err) {
@@ -147,7 +151,11 @@ const FavoritesPage = () => {
   );
 
   // Sort filteredAvailableIndexes alphabetically by title before rendering
-  const sortedFilteredAvailableIndexes = filteredAvailableIndexes.sort((a, b) => a.title.localeCompare(b.title));
+  const sortedFilteredAvailableIndexes = filteredAvailableIndexes.sort((a, b) => {
+    const titleA = a.title.toLowerCase().replace(/^the\s+/, '');
+    const titleB = b.title.toLowerCase().replace(/^the\s+/, '');
+    return titleA.localeCompare(titleB);
+  });  
 
   if (loading) {
     return <div style={{ padding: '20px' }}>Loading...</div>;
