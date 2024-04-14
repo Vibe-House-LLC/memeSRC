@@ -1,7 +1,7 @@
 // fetchShows.js
 
 import { API, graphqlOperation, Auth } from "aws-amplify";
-import { listFavorites } from "../graphql/queries";
+import { listFavorites } from '../graphql/queries';
 
 const listAliasesQuery = /* GraphQL */ `
   query ListAliases(
@@ -119,11 +119,14 @@ export default async function fetchShows() {
   // Fetch user's favorites
   const favorites = await fetchFavorites();
 
-  // Move favorite shows to the top of the list
-  const favoriteShowIds = favorites.map(favorite => favorite.cid);
-  const favoriteShows = freshData.filter(show => favoriteShowIds.includes(show.id));
-  const nonFavoriteShows = freshData.filter(show => !favoriteShowIds.includes(show.id));
-  const updatedData = [...favoriteShows, ...nonFavoriteShows];
+  // Create a Set of favorite show IDs for efficient lookup
+  const favoriteShowIds = new Set(favorites.map(favorite => favorite.cid));
+
+  // Add a new property 'isFavorite' to each show object
+  const updatedData = freshData.map(show => ({
+    ...show,
+    isFavorite: favoriteShowIds.has(show.id)
+  }));
 
   const cacheData = {
     data: updatedData,

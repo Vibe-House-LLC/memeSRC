@@ -1,7 +1,7 @@
 // FullScreenSearch.js
 
 import styled from '@emotion/styled';
-import { Alert, AlertTitle, Button, Fab, Grid, Typography, IconButton, Stack, useMediaQuery, Select, MenuItem, Chip, Container } from '@mui/material';
+import { Alert, AlertTitle, Button, Fab, Grid, Typography, IconButton, Stack, useMediaQuery, Select, MenuItem, Chip, Container, ListSubheader } from '@mui/material';
 import { Box } from '@mui/system';
 import { ArrowDownwardRounded, Favorite, MapsUgc, Shuffle } from '@mui/icons-material';
 import { API, graphqlOperation } from 'aws-amplify';
@@ -613,51 +613,64 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
             <Grid container justifyContent="center">
               <Grid item sm={3.5} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
               <Select
-                value={cid || seriesTitle}
-                onChange={(e) => {
-                  const selectedId = e.target.value;
+                  value={cid || seriesTitle}
+                  onChange={(e) => {
+                    const selectedId = e.target.value;
 
-                  if (selectedId === 'addNewCid') {
-                    setAddNewCidOpen(true);
-                  } else {
-                    const newSeriesTitle = e.target.value;
-                    setCid(selectedId || '_universal');
-                    setSeriesTitle(newSeriesTitle);
-                    handleChangeSeries(newSeriesTitle);
-                    navigate(newSeriesTitle === '_universal' ? '/' : `/${newSeriesTitle}`);
-                  }
-                }}
-                displayEmpty
-                inputProps={{ 'aria-label': 'series selection' }}
-                sx={{
-                  fontFamily: FONT_FAMILY,
-                  fontSize: '16px',
-                  color: '#333',
-                  backgroundColor: '#fff',
-                  border: 'none',
-                  borderRadius: '8px',
-                  // padding: '8px 12px',
-                  height: '50px',
-                  width: '100%',
-                  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-                  transition: 'box-shadow 0.3s',
-                  '&:focus': {
-                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
-                    outline: 'none',
-                  },
-                }}
+                    if (selectedId === 'addNewCid') {
+                      setAddNewCidOpen(true);
+                    } else {
+                      const newSeriesTitle = e.target.value;
+                      setCid(selectedId || '_universal');
+                      setSeriesTitle(newSeriesTitle);
+                      handleChangeSeries(newSeriesTitle);
+                      navigate(newSeriesTitle === '_universal' ? '/' : `/${newSeriesTitle}`);
+                    }
+                  }}
+                  displayEmpty
+                  inputProps={{ 'aria-label': 'series selection' }}
+                  sx={{
+                    fontFamily: FONT_FAMILY,
+                    fontSize: '16px',
+                    color: '#333',
+                    backgroundColor: '#fff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    height: '50px',
+                    width: '100%',
+                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                    transition: 'box-shadow 0.3s',
+                    '&:focus': {
+                      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
+                      outline: 'none',
+                    },
+                  }}
                 >
-                <MenuItem value="_universal">🌈 All Shows & Movies</MenuItem>
+                  <MenuItem value="_universal">🌈 All Shows & Movies</MenuItem>
                   {loading ? (
                     <MenuItem disabled>Loading...</MenuItem>
                   ) : (
-                    shows.map((show) => (
-                      <MenuItem key={show.id} value={show.id}>
-                        {show.emoji} {show.title}
-                      </MenuItem>
-                    ))
+                    [
+                      shows.some((show) => show.isFavorite) && [
+                        <ListSubheader key="favorites-subheader">Favorites</ListSubheader>,
+                        shows
+                          .filter((show) => show.isFavorite)
+                          .map((show) => (
+                            <MenuItem key={show.id} value={show.id} selected={cid === show.id || seriesTitle === show.id}>
+                              ⭐ {show.emoji} {show.title}
+                            </MenuItem>
+                          )),
+                      ],
+                      <ListSubheader key="all-shows-subheader">All Shows</ListSubheader>,
+                      shows
+                        .filter((show) => !show.isFavorite)
+                        .map((show) => (
+                          <MenuItem key={show.id} value={show.id} selected={cid === show.id || seriesTitle === show.id}>
+                            {show.emoji} {show.title}
+                          </MenuItem>
+                        )),
+                    ]
                   )}
-                  {/* <MenuItem value="addNewCid">+ Add New CID</MenuItem> */}
                 </Select>
               </Grid>
               <Grid item sm={7} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
