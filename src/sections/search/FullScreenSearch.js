@@ -655,8 +655,11 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                       ⭐ {show.emoji} {show.title}
                     </MenuItem>
                   ))}
-                  <MenuItem value="editFavorites">Edit Favorites</MenuItem>
-                  <ListSubheader key="all-shows-subheader">All Shows</ListSubheader>
+                  <MenuItem value="editFavorites" style={{ fontSize: '0.9rem', opacity: 0.7 }}>
+                      Edit Favorites
+                  </MenuItem>
+
+                  <ListSubheader key="all-shows-subheader">Other</ListSubheader>
                   {shows.filter((show) => !show.isFavorite).map((show) => (
                     <MenuItem key={show.id} value={show.id} selected={cid === show.id || seriesTitle === show.id}>
                       {show.emoji} {show.title}
