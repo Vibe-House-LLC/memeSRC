@@ -37,7 +37,7 @@ const listAliasesQuery = /* GraphQL */ `
 `;
 
 const APP_VERSION = process.env.REACT_APP_VERSION || 'defaultVersion';
-const CACHE_EXPIRATION_MINUTES = 5; // Define cache expiration minutes
+const CACHE_EXPIRATION_MINUTES = 1; // Define cache expiration minutes
 
 async function getCacheKey() {
   try {
@@ -94,55 +94,51 @@ async function fetchFavorites() {
   return allFavorites;
 }
 
+async function updateCacheAndReturnData(data, cacheKey) {
+  try {
+    const currentUser = await Auth.currentAuthenticatedUser();
+    const favorites = await fetchFavorites();
+    const favoriteShowIds = new Set(favorites.map(favorite => favorite.cid));
+
+    data = data.map(show => ({
+      ...show,
+      isFavorite: favoriteShowIds.has(show.id)
+    }));
+  } catch (error) {
+    // If there's an error fetching favorites (likely due to not being authenticated), return data without favorites.
+  }
+
+  const cacheData = {
+    data,
+    updatedAt: Date.now(),
+  };
+  sessionStorage.setItem(cacheKey, JSON.stringify(cacheData));
+
+  return data;
+}
+
 export default async function fetchShows() {
   const CACHE_KEY = await getCacheKey();
   const cachedData = sessionStorage.getItem(CACHE_KEY);
+
+  async function refreshDataInBackground() {
+    const freshData = await fetchShowsFromAPI();
+    updateCacheAndReturnData(freshData, CACHE_KEY);
+  }
 
   if (cachedData) {
     const { data, updatedAt } = JSON.parse(cachedData);
     const cacheAge = (Date.now() - updatedAt) / 1000 / 60;
 
     if (cacheAge <= CACHE_EXPIRATION_MINUTES) {
-      return data;
+      return data; // Data is fresh enough, return it directly
     }
-
-    fetchShowsFromAPI().then((freshData) => {
-      const cacheData = {
-        data: freshData,
-        updatedAt: Date.now(),
-      };
-      sessionStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
-    });
-
-    return data;
+    // Data is stale, kick off a background update
+    refreshDataInBackground();
+    return data; // Return the stale data for immediate use
   }
 
+  // No cache found, fetch new data and return after updating cache
   const freshData = await fetchShowsFromAPI();
-
-  try {
-    await Auth.currentAuthenticatedUser();
-    const favorites = await fetchFavorites();
-    const favoriteShowIds = new Set(favorites.map(favorite => favorite.cid));
-
-    const updatedData = freshData.map(show => ({
-      ...show,
-      isFavorite: favoriteShowIds.has(show.id)
-    }));
-
-    const cacheData = {
-      data: updatedData,
-      updatedAt: Date.now(),
-    };
-    sessionStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
-
-    return updatedData;
-  } catch (error) {
-    const cacheData = {
-      data: freshData,
-      updatedAt: Date.now(),
-    };
-    sessionStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
-
-    return freshData;
-  }
+  return updateCacheAndReturnData(freshData, CACHE_KEY);
 }
