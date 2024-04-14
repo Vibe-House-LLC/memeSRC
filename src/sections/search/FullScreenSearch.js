@@ -1,3 +1,5 @@
+// FullScreenSearch.js
+
 import styled from '@emotion/styled';
 import { Alert, AlertTitle, Button, Fab, Grid, Typography, IconButton, Stack, useMediaQuery, Select, MenuItem, Chip, Container } from '@mui/material';
 import { Box } from '@mui/system';
@@ -250,34 +252,34 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
     window.scrollTo(0, 0);
   }, [])
 
-  useEffect(() => {
-    const fetchAliasesRecursive = async (nextToken = null, accumulator = []) => {
-      try {
-        const result = await API.graphql(graphqlOperation(listAliases, {
-          limit: 10,
-          nextToken,
-        }));
+  // useEffect(() => {
+  //   const fetchAliasesRecursive = async (nextToken = null, accumulator = []) => {
+  //     try {
+  //       const result = await API.graphql(graphqlOperation(listAliases, {
+  //         limit: 10,
+  //         nextToken,
+  //       }));
   
-        const fetchedAliases = result.data.listAliases.items;
-        const updatedAccumulator = [...accumulator, ...fetchedAliases];
+  //       const fetchedAliases = result.data.listAliases.items;
+  //       const updatedAccumulator = [...accumulator, ...fetchedAliases];
   
-        if (result.data.listAliases.nextToken) {
-          return fetchAliasesRecursive(result.data.listAliases.nextToken, updatedAccumulator);
-        }
+  //       if (result.data.listAliases.nextToken) {
+  //         return fetchAliasesRecursive(result.data.listAliases.nextToken, updatedAccumulator);
+  //       }
   
-        setAliasesWithMetadata(updatedAccumulator);
-        setAliasesLoading(false);
-        return updatedAccumulator;
-      } catch (error) {
-        console.error('Error fetching aliases:', error);
-        setAliasesError('Failed to fetch aliases.');
-        setAliasesLoading(false);
-        return []; // Return an empty array in case of an error
-      }
-    };
+  //       setAliasesWithMetadata(updatedAccumulator);
+  //       setAliasesLoading(false);
+  //       return updatedAccumulator;
+  //     } catch (error) {
+  //       console.error('Error fetching aliases:', error);
+  //       setAliasesError('Failed to fetch aliases.');
+  //       setAliasesLoading(false);
+  //       return []; // Return an empty array in case of an error
+  //     }
+  //   };
   
-    fetchAliasesRecursive();
-  }, []);
+  //   fetchAliasesRecursive();
+  // }, []);
 
   // Theme States
   const [currentThemeBragText, setCurrentThemeBragText] = useState(metadata?.frameCount ? `Search over ${metadata?.frameCount.toLocaleString('en-US')} frames from ${metadata?.title}` : defaultBragText);
@@ -323,8 +325,10 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       const fetchedShows = await fetchShows();
       console.log(fetchedShows)
       setShows(fetchedShows);
+      setAliasesWithMetadata(fetchedShows);
       setLoading(false);
-
+      setAliasesLoading(false);
+  
       // Get homepage sections
       const fetchedSections = await fetchSections();
       setSections(fetchedSections);
@@ -643,7 +647,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                   },
                 }}
                 >
-                  <MenuItem value="_universal">🌈 All Shows & Movies</MenuItem>
+                <MenuItem value="_universal">🌈 All Shows & Movies</MenuItem>
                   {loading ? (
                     <MenuItem disabled>Loading...</MenuItem>
                   ) : (
