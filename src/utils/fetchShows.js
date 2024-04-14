@@ -1,3 +1,5 @@
+// fetchShows.js
+
 import { API, graphqlOperation } from "aws-amplify";
 import { listAliases } from "../graphql/queries";
 
@@ -34,9 +36,13 @@ const listAliasesQuery = /* GraphQL */ `
   }
 `;
 
-export default async function fetchShows() {
+const CACHE_KEY = 'showsCache';
+const CACHE_EXPIRATION_MINUTES = 5;
+
+async function fetchShowsFromAPI() {
   const aliases = await API.graphql({
-    ...graphqlOperation(listAliasesQuery, { filter: {}, limit: 50 }),
+    query: listAliasesQuery,
+    variables: { filter: {}, limit: 50 },
     authMode: 'API_KEY',
   });
 
@@ -59,4 +65,39 @@ export default async function fetchShows() {
   });
 
   return sortedMetadata;
+}
+
+export default async function fetchShows() {
+  const cachedData = localStorage.getItem(CACHE_KEY);
+
+  if (cachedData) {
+    const { data, updatedAt } = JSON.parse(cachedData);
+    const cacheAge = (Date.now() - updatedAt) / 1000 / 60; // Cache age in minutes
+
+    if (cacheAge <= CACHE_EXPIRATION_MINUTES) {
+      // Cache is valid, return the cached data
+      return data;
+    }
+
+    // Cache is expired, fetch new data in the background and update the cache
+    fetchShowsFromAPI().then((freshData) => {
+      const cacheData = {
+        data: freshData,
+        updatedAt: Date.now(),
+      };
+      localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+    });
+
+    // Return the cached data for now
+    return data;
+  }
+
+  // Cache doesn't exist, fetch new data and store it in the cache
+  const freshData = await fetchShowsFromAPI();
+  const cacheData = {
+    data: freshData,
+    updatedAt: Date.now(),
+  };
+  localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+  return freshData;
 }
