@@ -116,23 +116,37 @@ export default async function fetchShows() {
   // Cache doesn't exist, fetch new data and store it in the cache
   const freshData = await fetchShowsFromAPI();
 
-  // Fetch user's favorites
-  const favorites = await fetchFavorites();
+  try {
+    // Check if the user is authenticated
+    await Auth.currentAuthenticatedUser();
 
-  // Create a Set of favorite show IDs for efficient lookup
-  const favoriteShowIds = new Set(favorites.map(favorite => favorite.cid));
+    // User is authenticated, fetch favorites
+    const favorites = await fetchFavorites();
 
-  // Add a new property 'isFavorite' to each show object
-  const updatedData = freshData.map(show => ({
-    ...show,
-    isFavorite: favoriteShowIds.has(show.id)
-  }));
+    // Create a Set of favorite show IDs for efficient lookup
+    const favoriteShowIds = new Set(favorites.map(favorite => favorite.cid));
 
-  const cacheData = {
-    data: updatedData,
-    updatedAt: Date.now(),
-  };
-  localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+    // Add a new property 'isFavorite' to each show object
+    const updatedData = freshData.map(show => ({
+      ...show,
+      isFavorite: favoriteShowIds.has(show.id)
+    }));
 
-  return updatedData;
+    const cacheData = {
+      data: updatedData,
+      updatedAt: Date.now(),
+    };
+    localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+
+    return updatedData;
+  } catch (error) {
+    // User is not authenticated, return the fresh data without favorites
+    const cacheData = {
+      data: freshData,
+      updatedAt: Date.now(),
+    };
+    localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+
+    return freshData;
+  }
 }
