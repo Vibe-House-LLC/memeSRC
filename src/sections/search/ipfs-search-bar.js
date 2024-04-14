@@ -1,5 +1,7 @@
+// ipfs-search-bar.js
+
 import styled from "@emotion/styled";
-import { Link, Fab, FormControl, Grid, InputBase, MenuItem, Select, Typography, Divider, Box, Stack, Container } from "@mui/material";
+import { Link, Fab, FormControl, Grid, InputBase, MenuItem, Select, Typography, Divider, Box, Stack, Container, ListSubheader } from "@mui/material";
 import { ArrowBack, Close, Favorite, MapsUgc, Search, Shuffle } from "@mui/icons-material";
 import { API, graphqlOperation } from 'aws-amplify';
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
@@ -83,7 +85,6 @@ const StyledHeader = styled('header')(() => ({
 
 IpfsSearchBar.propTypes = searchPropTypes;
 
-
 export default function IpfsSearchBar(props) {
   const { show, setShow, searchQuery, setSearchQuery, cid = '', setCid, localCids, setLocalCids, showObj, setShowObj, selectedFrameIndex, setSelectedFrameIndex, savedCids, loadingSavedCids } = useSearchDetailsV2();
   const { setShow: setV1Show, setSeriesTitle: setV1SeriesTitle } = useSearchDetails();
@@ -139,10 +140,13 @@ export default function IpfsSearchBar(props) {
   }, [cid]);
 
   const handleSelectSeries = (data) => {
-    // navigate(`/search/${data}/${encodeURIComponent(search)}`)
-
-    setCid(data)
-
+    if (data === "editFavorites") {
+      navigate("/favorites"); // Navigate to the favorites editing page
+    } else if (data === "addNewCid") {
+      setAddNewCidOpen(true);
+    } else {
+      setCid(data);
+    }
     // if (data?.addNew) {
     //   setAddNewCidOpen(true)
     // } else {
@@ -154,7 +158,7 @@ export default function IpfsSearchBar(props) {
     //     navigate(`/search/${data}/${encodeURIComponent(search)}`)
     //   }
     // }
-  }
+  };
 
   useEffect(() => {
     setSelectedFrameIndex()
@@ -267,18 +271,36 @@ export default function IpfsSearchBar(props) {
                 id="demo-simple-select-standard"
                 value={cid}
                 onChange={(x) => {
-                  handleSelectSeries(x.target.value)
+                  handleSelectSeries(x.target.value);
                 }}
                 label="Age"
                 size="small"
                 autoWidth
                 disableUnderline
               >
-                {console.log(cid)}
-                <MenuItem key='_universal' value='_universal'>🌈 All Shows & Movies</MenuItem>
-                {(loading) ? <MenuItem key="loading" value="loading" disabled>Loading...</MenuItem> : shows.map((item) => (
-                  <MenuItem key={item.id} value={item.id}>{item.emoji} {item.title}</MenuItem>
-                ))}
+                <MenuItem key="_universal" value="_universal">
+                  🌈 All Shows & Movies
+                </MenuItem>
+                <ListSubheader key="favorites-subheader">Favorites</ListSubheader>
+                {shows
+                  .filter((show) => show.isFavorite)
+                  .map((show) => (
+                    <MenuItem key={show.id} value={show.id} selected={cid === show.id}>
+                      ⭐ {show.emoji} {show.title}
+                    </MenuItem>
+                  ))}
+                <MenuItem value="editFavorites" style={{ fontSize: "0.9rem", opacity: 0.7 }}>
+                  Edit Favorites
+                </MenuItem>
+
+                <ListSubheader key="all-shows-subheader">Other</ListSubheader>
+                {shows
+                  .filter((show) => !show.isFavorite)
+                  .map((show) => (
+                    <MenuItem key={show.id} value={show.id} selected={cid === show.id}>
+                      {show.emoji} {show.title}
+                    </MenuItem>
+                  ))}
                 {/* <Divider />
                 <MenuItem disabled value=''>IPFS</MenuItem>
                 <Divider />
