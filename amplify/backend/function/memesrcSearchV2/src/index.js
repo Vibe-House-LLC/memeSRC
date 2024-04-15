@@ -1,3 +1,5 @@
+// index.js for memesrcSearchV2 function
+
 /* Amplify Params - DO NOT EDIT
 	ENV
 	REGION
@@ -18,6 +20,7 @@ Parameters will be of the form { Name: 'secretName', Value: 'secretValue', ... }
 */
 
 const { SSMClient, GetParametersCommand } = require("@aws-sdk/client-ssm");
+const { S3Client, GetObjectCommand } = require('@aws-sdk/client-s3');
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
@@ -65,6 +68,7 @@ exports.handler = async (event) => {
 
     const options = {
         hostname: opensearchUrl.replace('https://', ''),
+        // hostname: "https://httpstat.us/500",  // this can be used test opensearch failures
         path: searchPath,
         method: 'POST',
         headers: {
@@ -127,134 +131,147 @@ exports.handler = async (event) => {
             console.log('Falling back to CSV approach.');
             
             const indices = id.split(',');
-        }
-        try {
-            const promises = indices.map((index) => {
-                const csvUrl = `https://img.memesrc.com/v2/${index}/_docs.csv`;
-                const csvFilePath = path.join('/tmp', `${index}.csv`);
-                
-                console.log("Getting docs for: ", index);
-                // Check if the CSV file exists in the /tmp directory
-                if (fs.existsSync(csvFilePath)) {
-                    console.log("Loading cached docs: ", csvFilePath)
-                    return Promise.resolve({ index, data: fs.readFileSync(csvFilePath, 'utf8') });
-                } else {
-                    console.log("Loading remote docs: ", csvUrl)
-                }
-                
-                return new Promise((resolve) => {
-                    https.get(csvUrl, (response) => {
-                        if (response.statusCode === 200) {
-                            let data = '';
-                            response.on('data', (chunk) => {
-                                data += chunk;
+            const s3Client = new S3Client({ region: process.env.REGION });
+            const bucketName = process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME;
+            
+            try {
+                const promises = indices.map((index) => {
+                    const objectKey = `src/${index}/_docs.csv`;
+                    const csvFilePath = path.join('/tmp', `${index}.csv`);
+                    
+                    console.log("Getting docs for: ", index);
+                    
+                    // Check if the CSV file exists in the /tmp directory
+                    if (fs.existsSync(csvFilePath)) {
+                        console.log("Loading cached docs: ", csvFilePath);
+                        return Promise.resolve({ index, data: fs.readFileSync(csvFilePath, 'utf8') });
+                    } else {
+                        console.log("Loading remote docs from S3: ", objectKey);
+                    }
+                    
+                    const getObjectParams = {
+                        Bucket: bucketName,
+                        Key: objectKey,
+                    };
+                    
+                    const getObjectCommand = new GetObjectCommand(getObjectParams);
+                    
+                    return s3Client.send(getObjectCommand)
+                        .then((response) => {
+                            return new Promise((resolve, reject) => {
+                                let data = '';
+                                response.Body.on('data', (chunk) => {
+                                    data += chunk;
+                                });
+                                response.Body.on('end', () => {
+                                    // Write the downloaded CSV data to the /tmp directory
+                                    fs.writeFileSync(csvFilePath, data, 'utf8');
+                                    resolve({ index, data });
+                                });
+                                response.Body.on('error', (error) => {
+                                    console.error('S3 GetObject Error:', error);
+                                    reject(error);
+                                });
                             });
-                            response.on('end', () => {
-                                // Write the downloaded CSV data to the /tmp directory
-                                fs.writeFileSync(csvFilePath, data, 'utf8');
-                                resolve({ index, data });
-                            });
-                        } else {
+                        })
+                        .catch((error) => {
+                            console.error('S3 GetObject Error:', error);
                             // Resolve with an object indicating the index is offline
                             console.log("Index was offline: ", index);
-                            resolve({ index, offline: true });
-                        }
-                    }).on('error', () => {
-                        // Resolve with an object indicating the index is offline
-                        resolve({ index, offline: true });
-                    });
+                            return Promise.resolve({ index, offline: true });
+                        });
                 });
-            });
-            
-            const csvDataArray = await Promise.all(promises);
-            
-            let combinedResults = [];
-            let offlineIndexes = [];
-            
-            for (const { index, data, offline } of csvDataArray) {
-                if (offline) {
-                    // Add the offline index to the offlineIndexes array
-                    offlineIndexes.push(index);
-                    continue;
+                
+                const csvDataArray = await Promise.all(promises);
+                
+                let combinedResults = [];
+                let offlineIndexes = [];
+                
+                for (const { index, data, offline } of csvDataArray) {
+                    if (offline) {
+                        // Add the offline index to the offlineIndexes array
+                        offlineIndexes.push(index);
+                        continue;
+                    }
+                    
+                    const lines = data.split("\n");
+                    const headers = lines[0].split(",").map((header) => header.trim());
+                    const showObj = lines.slice(1).map((line) => {
+                        const values = line.split(",").map((value) => value.trim());
+                        return headers.reduce((obj, header, index) => {
+                            obj[header] = values[index] ? values[index] : "";
+                            if (header === "subtitle_text" && obj[header]) {
+                                obj[header] = Buffer.from(obj[header], 'base64').toString();
+                            }
+                            return obj;
+                        }, {});
+                    });
+                    
+                    const searchTerms = decodedQuery.trim().toLowerCase().split(" ");
+                    const nonSpecialQuery = decodedQuery.replace(/[^a-zA-Z0-9\s]/g, '').toLowerCase();
+                    const nonSpecialSearchTerms = nonSpecialQuery.split(" ");
+
+                    let results = [];
+                    showObj.forEach((line) => {
+                        let score = 0;
+                        const subtitleText = line.subtitle_text ? line.subtitle_text.toLowerCase() : '';
+                        const nonSpecialSubtitle = subtitleText.replace(/[^a-zA-Z0-9\s]/g, '');
+
+                        if (subtitleText.includes(decodedQuery)) {
+                            score += 10;
+                        }
+                        if (nonSpecialSubtitle.includes(nonSpecialQuery)) {
+                            score += 5;
+                        }
+                        searchTerms.forEach((term) => {
+                            if (subtitleText.includes(term)) {
+                                score += 1;
+                            }
+                        });
+                        nonSpecialSearchTerms.forEach((term) => {
+                            if (nonSpecialSubtitle.includes(term)) {
+                                score += 1;
+                            }
+                        });
+                        if (score > 0) {
+                            results.push({ ...line, score, cid: index });
+                        }
+                    });
+
+                    combinedResults = combinedResults.concat(results);
                 }
                 
-                const lines = data.split("\n");
-                const headers = lines[0].split(",").map((header) => header.trim());
-                const showObj = lines.slice(1).map((line) => {
-                    const values = line.split(",").map((value) => value.trim());
-                    return headers.reduce((obj, header, index) => {
-                        obj[header] = values[index] ? values[index] : "";
-                        if (header === "subtitle_text" && obj[header]) {
-                            obj[header] = Buffer.from(obj[header], 'base64').toString();
-                        }
-                        return obj;
-                    }, {});
+                combinedResults.sort((a, b) => {
+                    if (b.score === a.score) {
+                        // If scores are the same, sort by subtitle length in ascending order
+                        return a.subtitle_text.length - b.subtitle_text.length;
+                    }
+                    // If scores are different, sort by score in descending order
+                    return b.score - a.score;
                 });
+                combinedResults = combinedResults.slice(0, 150);
                 
-                const searchTerms = decodedQuery.trim().toLowerCase().split(" ");
-                const nonSpecialQuery = decodedQuery.replace(/[^a-zA-Z0-9\s]/g, '').toLowerCase();
-                const nonSpecialSearchTerms = nonSpecialQuery.split(" ");
-
-                let results = [];
-                showObj.forEach((line) => {
-                    let score = 0;
-                    const subtitleText = line.subtitle_text ? line.subtitle_text.toLowerCase() : '';
-                    const nonSpecialSubtitle = subtitleText.replace(/[^a-zA-Z0-9\s]/g, '');
-
-                    if (subtitleText.includes(decodedQuery)) {
-                        score += 10;
-                    }
-                    if (nonSpecialSubtitle.includes(nonSpecialQuery)) {
-                        score += 5;
-                    }
-                    searchTerms.forEach((term) => {
-                        if (subtitleText.includes(term)) {
-                            score += 1;
-                        }
-                    });
-                    nonSpecialSearchTerms.forEach((term) => {
-                        if (nonSpecialSubtitle.includes(term)) {
-                            score += 1;
-                        }
-                    });
-                    if (score > 0) {
-                        results.push({ ...line, score, cid: index });
-                    }
-                });
-
-                combinedResults = combinedResults.concat(results);
+                return {
+                    statusCode: 200,
+                    headers: {
+                        "Access-Control-Allow-Origin": "*",
+                        "Access-Control-Allow-Headers": "*",
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ results: combinedResults, offline_indexes: offlineIndexes }),
+                };
+            } catch (error) {
+                console.error("Error:", error);
+                return {
+                    statusCode: 500,
+                    headers: {
+                        "Access-Control-Allow-Origin": "*",
+                        "Access-Control-Allow-Headers": "*",
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ error: "An error occurred while processing the request." }),
+                };
             }
-            
-            combinedResults.sort((a, b) => {
-                if (b.score === a.score) {
-                    // If scores are the same, sort by subtitle length in ascending order
-                    return a.subtitle_text.length - b.subtitle_text.length;
-                }
-                // If scores are different, sort by score in descending order
-                return b.score - a.score;
-            });
-            combinedResults = combinedResults.slice(0, 150);
-            
-            return {
-                statusCode: 200,
-                headers: {
-                    "Access-Control-Allow-Origin": "*",
-                    "Access-Control-Allow-Headers": "*",
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ results: combinedResults, offline_indexes: offlineIndexes }),
-            };
-        } catch (error) {
-            console.error("Error:", error);
-            return {
-                statusCode: 500,
-                headers: {
-                    "Access-Control-Allow-Origin": "*",
-                    "Access-Control-Allow-Headers": "*",
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ error: "An error occurred while processing the request." }),
-            };
         }
     }
 };
