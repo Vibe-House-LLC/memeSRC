@@ -246,7 +246,7 @@ export default function V2EpisodePage({ setSeriesTitle }) {
                 </Card>
               ) : (
                 <Card component="a" href={`/frame/${cid}/${season}/${episode}/${result.fid}`} style={{ textDecoration: 'none' }}>
-                  <Box sx={{ position: 'relative', paddingTop: '56.25%' }}>
+                  <Box sx={{ position: 'relative', paddingTop: '56.25%', backgroundColor: '#1f1f1f' }}>
                     <CardMedia
                       component="img"
                       image={result.frame_image}
@@ -262,7 +262,7 @@ export default function V2EpisodePage({ setSeriesTitle }) {
                         left: 0,
                         width: '100%',
                         height: '100%',
-                        objectFit: 'cover',
+                        objectFit: 'contain',
                         display: imagesLoaded[result.fid] ? 'block' : 'none',
                       }}
                     />
@@ -279,8 +279,8 @@ export default function V2EpisodePage({ setSeriesTitle }) {
                       />
                     )}
                   </Box>
-                  <CardContent sx={{ backgroundColor: '#1f1f1f', height: isMd ? 100 : 80 }}>
-                    <Typography variant="subtitle1" color="textPrimary" style={{ marginBottom: '8px' }}>
+                  <CardContent sx={{ backgroundColor: '#1f1f1f', padding: '16px' }}>
+                    <Typography variant="subtitle1" color="textPrimary" style={{ marginBottom: '8px', minHeight: '3em' }}>
                       {result.subtitle ? Buffer.from(result.subtitle, 'base64').toString() : '(...)'}
                     </Typography>
                     <Typography variant="caption" color="textSecondary">
