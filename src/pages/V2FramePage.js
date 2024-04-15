@@ -89,7 +89,7 @@ export default function FramePage({ shows = [] }) {
   const [fontBottomMarginScaleFactor, setFontBottomMarginScaleFactor] = useState(1);
   const [enableFineTuningFrames, setEnableFineTuningFrames] = useState(true);
   const [loadingFineTuning, setLoadingFineTuning] = useState(false);
-  const [fineTuningFramesPreloaded, setFineTuningFramesPreloaded] = useState(false);
+  const [fineTuningLoadStarted, setFineTuningLoadStarted] = useState(false);
 
   const throttleTimeoutRef = useRef(null);
 
@@ -393,7 +393,7 @@ export default function FramePage({ shows = [] }) {
       setEnableFineTuningFrames(false)
       setImgSrc();
       setLoadingFineTuning(false)
-      setFineTuningFramesPreloaded(false)
+      setFineTuningLoadStarted(false)
 
       // Call the loading functions
       loadInitialFrameInfo().then(() => {
@@ -419,7 +419,8 @@ export default function FramePage({ shows = [] }) {
   };
 
   const loadFineTuningImages = () => {
-    if (fineTuningFrames && !fineTuningFramesPreloaded) {
+    if (fineTuningFrames && !fineTuningLoadStarted) {
+      setFineTuningLoadStarted(true)
       setLoadingFineTuning(true);
 
       // Create an array of promises for each image load
@@ -434,7 +435,6 @@ export default function FramePage({ shows = [] }) {
       // Wait for all image promises to resolve
       Promise.all(imagePromises)
         .then(() => {
-          setFineTuningFramesPreloaded(true);
           setLoadingFineTuning(false);
         })
         .catch((error) => {

@@ -1179,7 +1179,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const [loadedEpisode, setLoadedEpisode] = useState('');
   const [surroundingSubtitles, setSurroundingSubtitles] = useState(null);
   const [loadingFineTuning, setLoadingFineTuning] = useState(false);
-  const [fineTuningFramesPreloaded, setFineTuningFramesPreloaded] = useState(false);
+  const [fineTuningLoadStarted, setFineTuningLoadStarted] = useState(false);
 
   useEffect(() => {
     getV2Metadata(cid).then(metadata => {
@@ -1317,7 +1317,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       setSurroundingSubtitles([]);
       setSurroundingFrames(new Array(9).fill('loading'));
       setLoadingFineTuning(false)
-      setFineTuningFramesPreloaded(false)
+      setFineTuningLoadStarted(false)
 
       // Sequentially call the functions to ensure loading states and data fetching are managed efficiently
       loadInitialFrameInfo().then(() => {
@@ -1329,7 +1329,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   }, [confirmedCid, season, episode, frame]);
 
   const loadFineTuningImages = () => {
-    if (fineTuningFrames && !fineTuningFramesPreloaded) {
+    if (fineTuningFrames && !fineTuningLoadStarted) {
+      setFineTuningLoadStarted(true)
       setLoadingFineTuning(true);
 
       // Create an array of promises for each image load
@@ -1344,7 +1345,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       // Wait for all image promises to resolve
       Promise.all(imagePromises)
         .then(() => {
-          setFineTuningFramesPreloaded(true);
           setLoadingFineTuning(false);
         })
         .catch((error) => {
