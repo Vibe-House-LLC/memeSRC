@@ -88,6 +88,8 @@ export default function FramePage({ shows = [] }) {
   const [fontLineHeightScaleFactor, setFontLineHeightScaleFactor] = useState(1);
   const [fontBottomMarginScaleFactor, setFontBottomMarginScaleFactor] = useState(1);
   const [enableFineTuningFrames, setEnableFineTuningFrames] = useState(true);
+  const [loadingFineTuning, setLoadingFineTuning] = useState(false);
+  const [fineTuningFramesPreloaded, setFineTuningFramesPreloaded] = useState(false);
 
   const throttleTimeoutRef = useRef(null);
 
@@ -389,7 +391,9 @@ export default function FramePage({ shows = [] }) {
       setSurroundingSubtitles([]);
       setSurroundingFrames(new Array(9).fill('loading'));
       setEnableFineTuningFrames(false)
-      setImgSrc()
+      setImgSrc();
+      setLoadingFineTuning(false)
+      setFineTuningFramesPreloaded(false)
 
       // Call the loading functions
       loadInitialFrameInfo().then(() => {
@@ -406,17 +410,37 @@ export default function FramePage({ shows = [] }) {
       // Since fetchFramesFineTuning now expects an array, calculate the array of indexes for fine-tuning
       const fineTuningImageUrls = await fetchFramesFineTuning(confirmedCid, season, episode, frame);
 
-      // Preload the images
-      fineTuningImageUrls.forEach((url) => {
-        const img = new Image();
-        img.src = url;
-      });
-
       setFineTuningFrames(fineTuningImageUrls);
       setFrames(fineTuningImageUrls);
       console.log("Fine Tuning Frames: ", fineTuningImageUrls);
     } catch (error) {
       console.error("Failed to fetch fine tuning frames:", error);
+    }
+  };
+
+  const loadFineTuningImages = () => {
+    if (fineTuningFrames && !fineTuningFramesPreloaded) {
+      setLoadingFineTuning(true);
+
+      // Create an array of promises for each image load
+      const imagePromises = fineTuningFrames.map((url) => {
+        return new Promise((resolve) => {
+          const img = new Image();
+          img.onload = () => resolve();
+          img.src = url;
+        });
+      });
+
+      // Wait for all image promises to resolve
+      Promise.all(imagePromises)
+        .then(() => {
+          setFineTuningFramesPreloaded(true);
+          setLoadingFineTuning(false);
+        })
+        .catch((error) => {
+          console.error('Error loading fine-tuning images:', error);
+          setLoadingFineTuning(false);
+        });
     }
   };
 
@@ -550,7 +574,11 @@ export default function FramePage({ shows = [] }) {
           <Stack spacing={2} direction="row" p={0} pr={3} pl={3} alignItems={'center'}>
             <Tooltip title="Fine Tuning">
               <IconButton>
-                <HistoryToggleOffRounded alt="Fine Tuning" />
+                {loadingFineTuning ? (
+                  <CircularProgress size={24} />
+                ) : (
+                  <HistoryToggleOffRounded alt="Fine Tuning" />
+                )}
               </IconButton>
             </Tooltip>
             <Slider
@@ -560,6 +588,8 @@ export default function FramePage({ shows = [] }) {
               max={frames?.length - 1}
               value={selectedFrameIndex}
               step={1}
+              onMouseDown={loadFineTuningImages}
+              onTouchStart={loadFineTuningImages}
               onChange={(e, newValue) => handleSliderChange(newValue)}
               valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
               marks
@@ -694,15 +724,15 @@ export default function FramePage({ shows = [] }) {
               }}
             />
 
-          {!isMd && user?.userDetails?.subscriptionStatus !== 'active' && (
-            <Grid item xs={12} mt={2}>
-              <center>
-                <Box sx={{ maxWidth: '800px' }}>
-                  <FramePageBottomBannerAd />
-                </Box>
-              </center>
-            </Grid>
-          )}
+            {!isMd && user?.userDetails?.subscriptionStatus !== 'active' && (
+              <Grid item xs={12} mt={2}>
+                <center>
+                  <Box sx={{ maxWidth: '800px' }}>
+                    <FramePageBottomBannerAd />
+                  </Box>
+                </center>
+              </Grid>
+            )}
 
             <Card>
               {renderFineTuningFrames(imgSrc)}
@@ -745,7 +775,10 @@ export default function FramePage({ shows = [] }) {
                             size="small"
                             placeholder="Type a caption..."
                             value={loadedSubtitle}
-                            onClick={() => {
+                            onMouseDown={() => {
+                              setShowText(true)
+                            }}
+                            onTouchStart={() => {
                               setShowText(true)
                             }}
                             onChange={(e) => setLoadedSubtitle(e.target.value)}
@@ -841,6 +874,9 @@ export default function FramePage({ shows = [] }) {
                             onMouseDown={() => {
                               setShowText(true)
                             }}
+                            onTouchStart={() => {
+                              setShowText(true)
+                            }}
                           />
                         </Stack>
                       </FormControl>
@@ -900,6 +936,9 @@ export default function FramePage({ shows = [] }) {
                             onMouseDown={() => {
                               setShowText(true)
                             }}
+                            onTouchStart={() => {
+                              setShowText(true)
+                            }}
                           />
                         </Stack>
                       </FormControl>
@@ -956,6 +995,9 @@ export default function FramePage({ shows = [] }) {
                             valueLabelFormat='Line Height'
                             valueLabelDisplay
                             onMouseDown={() => {
+                              setShowText(true)
+                            }}
+                            onTouchStart={() => {
                               setShowText(true)
                             }}
                             marks
