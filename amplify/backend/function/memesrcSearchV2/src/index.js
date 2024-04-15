@@ -27,90 +27,92 @@ const path = require('path');
  */
 exports.handler = async (event) => {
     console.log(`EVENT: ${JSON.stringify(event)}`);
-    console.log('Throw Away Console Log')
+    console.log('Throw Away Console Log');
     
     const { id, query } = event.pathParameters;
     const decodedQuery = decodeURIComponent(query);
     
     const opensearchUrl = 'https://search-memesrc-3lcaiflaubqkqafuim5oyxupwa.us-east-1.es.amazonaws.com';
+    let searchPath;
     
     if (id === '_universal') {
-        // Perform OpenSearch search for _universal index
-        const searchPath = '/v2-*,-fc-*/_search';
-        const searchPayload = {
-            "query": {
-                "match": {
-                    "subtitle_text": decodedQuery
-                }
-            },
-            "size": 500
-        };
-
-        const ssmClient = new SSMClient();
-        const { Parameters } = await ssmClient.send(
-          new GetParametersCommand({
-            Names: ["opensearchUser", "opensearchPass"].map(secretName => process.env[secretName]),
-            WithDecryption: true,
-          })
-        );
+        searchPath = '/v2-*,-fc-*/_search';
+    } else {
+        const indices = id.split(',');
+        const processedIndices = indices.map(index => `v2-${index}`);
+        searchPath = `/${processedIndices.join(',')}/_search`;
+    }
     
-        const OPENSEARCH_USER = Parameters.find(param => param.Name === process.env.opensearchUser).Value;
-        const OPENSEARCH_PASS = Parameters.find(param => param.Name === process.env.opensearchPass).Value;
-    
-        const options = {
-            hostname: opensearchUrl.replace('https://', ''),
-            path: searchPath,
-            method: 'POST',
-            headers: {
-            'Content-Type': 'application/json',
-            },
-            auth: `${OPENSEARCH_USER}:${OPENSEARCH_PASS}`,
-        };
+    const searchPayload = {
+        "query": {
+            "match": {
+                "subtitle_text": decodedQuery
+            }
+        },
+        "size": 500
+    };
 
-        return new Promise((resolve, reject) => {
+    const ssmClient = new SSMClient();
+    const { Parameters } = await ssmClient.send(
+      new GetParametersCommand({
+        Names: ["opensearchUser", "opensearchPass"].map(secretName => process.env[secretName]),
+        WithDecryption: true,
+      })
+    );
+
+    const OPENSEARCH_USER = Parameters.find(param => param.Name === process.env.opensearchUser).Value;
+    const OPENSEARCH_PASS = Parameters.find(param => param.Name === process.env.opensearchPass).Value;
+
+    const options = {
+        hostname: opensearchUrl.replace('https://', ''),
+        path: searchPath,
+        method: 'POST',
+        headers: {
+        'Content-Type': 'application/json',
+        },
+        auth: `${OPENSEARCH_USER}:${OPENSEARCH_PASS}`,
+    };
+
+    try {
+        const opensearchResponse = await new Promise((resolve, reject) => {
             const req = https.request(options, (res) => {
                 let data = '';
                 res.on('data', (chunk) => {
                     data += chunk;
                 });
                 res.on('end', () => {
-                    const searchResults = JSON.parse(data);
-                    const sources = searchResults.hits.hits.map(hit => ({
-                        ...hit._source,
-                        cid: hit._index.replace(/^v2-/, '')
-                    }));
-                    resolve({
-                        statusCode: 200,
-                        headers: {
-                            "Access-Control-Allow-Origin": "*",
-                            "Access-Control-Allow-Headers": "*",
-                            "Content-Type": "application/json"
-                        },
-                        body: JSON.stringify({
-                            results: sources
-                        }),
-                    });
+                    resolve(JSON.parse(data));
                 });
             });
 
             req.on('error', (error) => {
-                console.error('Error:', error);
-                reject({
-                    statusCode: 500,
-                    headers: {
-                        "Access-Control-Allow-Origin": "*",
-                        "Access-Control-Allow-Headers": "*",
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({ error: "An error occurred while processing the request." }),
-                });
+                console.error('OpenSearch Error:', error);
+                reject(error);
             });
 
             req.write(JSON.stringify(searchPayload));
             req.end();
         });
-    } else {
-        // Perform the original search methodology for other indices
+
+        const sources = opensearchResponse.hits.hits.map(hit => ({
+            ...hit._source,
+            cid: hit._index.replace(/^v2-/, '')
+        }));
+
+        return {
+            statusCode: 200,
+            headers: {
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Headers": "*",
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                results: sources
+            }),
+        };
+    } catch (error) {
+        console.error('OpenSearch is down. Falling back to CSV approach.');
+        
         const indices = id.split(',');
         
         try {

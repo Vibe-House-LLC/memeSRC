@@ -120,7 +120,7 @@
         },
         "memesrcSearchV2": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcSearchV2-79414651763941766832-build.zip",
+          "s3Key": "amplify-builds/memesrcSearchV2-332b38784e6c6f554b43-build.zip",
           "secretsPathAmplifyAppId": "d32pnvtwxwtte5"
         },
         "memesrcThumbnailZipExtractor": {
