@@ -96,6 +96,7 @@ exports.handler = async (event) => {
         'Content-Type': 'image/jpeg',
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': '*',
+        'Cache-Control': 'max-age=31536000',
       },
       body: base64Image,
       isBase64Encoded: true,
