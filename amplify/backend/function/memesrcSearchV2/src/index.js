@@ -111,9 +111,22 @@ exports.handler = async (event) => {
             }),
         };
     } catch (error) {
-        console.error('OpenSearch is down. Falling back to CSV approach.');
+        console.error('OpenSearch is down.');
         
-        const indices = id.split(',');
+        if (id === '_universal') {
+            return {
+                statusCode: 500,
+                headers: {
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Headers": "*",
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ error: "OpenSearch is down." }),
+            };
+        } else {
+            console.log('Falling back to CSV approach.');
+            
+            const indices = id.split(',');
         
         try {
             const promises = indices.map((index) => {
