@@ -3,7 +3,7 @@
 import { Buffer } from "buffer";
 import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { CircularProgress, Container, Typography, Card, CardMedia, CardContent, Button, Grid, useMediaQuery, Box, List, ListItem, ListItemAvatar, Avatar, ListItemText } from '@mui/material';
+import { CircularProgress, Container, Typography, Card, CardMedia, CardContent, Button, Grid, useMediaQuery, Box, List, ListItem, ListItemAvatar, Avatar, ListItemText, Skeleton } from '@mui/material';
 import PropTypes from 'prop-types';
 import { extractVideoFrames } from '../utils/videoFrameExtractor';
 import { UserContext } from '../UserContext';
@@ -37,6 +37,7 @@ export default function V2EpisodePage({ setSeriesTitle }) {
   const [lastNext, setLastNext] = useState(null);
   const [firstFrame, setFirstFrame] = useState(1);
   const [lastFrame, setLastFrame] = useState(null);
+  const [imagesLoaded, setImagesLoaded] = useState({});
   const fps = 10; // Frames per second
   const isMd = useMediaQuery(theme => theme.breakpoints.up('md'));
   const navigate = useNavigate();
@@ -87,7 +88,7 @@ export default function V2EpisodePage({ setSeriesTitle }) {
         setLoading(true);
 
         const frameIndexes = [];
-        for (let i = 0; i < 250; i += 1) {
+        for (let i = 0; i < 60; i += 1) {
           frameIndexes.push(parseInt(frame, 10) + i * fps);
         }
 
@@ -123,7 +124,7 @@ export default function V2EpisodePage({ setSeriesTitle }) {
       : parseInt(currentFrame, 10) + fps;
   
     const frameIndexes = [];
-    const numFrames = direction === 'prev' ? 15 : 250;
+    const numFrames = direction === 'prev' ? 15 : 60;
     for (let i = 0; i < numFrames; i += 1) {
       frameIndexes.push(newFrame + i * fps);
     }
@@ -166,6 +167,7 @@ export default function V2EpisodePage({ setSeriesTitle }) {
       const lastSubtitle = subtitles[subtitles.length - 5];
       const lastFrameIndex = lastSubtitle.end_frame - 30;
       navigate(`/episode/${cid}/${season}/${episode}/${lastFrameIndex}`);
+      window.scrollTo(0, 0);
     }
   };
 
@@ -185,6 +187,10 @@ export default function V2EpisodePage({ setSeriesTitle }) {
 
   const adInterval = user?.userDetails?.subscriptionStatus !== 'active' ? 9 : Infinity;
   const resultsWithAds = injectAds(results, adInterval);
+
+  const handleImageLoad = (fid) => {
+    setImagesLoaded(prevState => ({ ...prevState, [fid]: true }));
+  };
 
   return (
     <Container maxWidth="lg" style={{ paddingTop: '20px', paddingBottom: '20px' }}>
@@ -228,7 +234,7 @@ export default function V2EpisodePage({ setSeriesTitle }) {
 
       {loading ? (
         <Box display="flex" justifyContent="center" marginTop="50px">
-          <CircularProgress />
+          <Skeleton variant="circular" width={40} height={40} />
         </Box>
       ) : (
         <Grid container spacing={2}>
@@ -240,13 +246,41 @@ export default function V2EpisodePage({ setSeriesTitle }) {
                 </Card>
               ) : (
                 <Card component="a" href={`/frame/${cid}/${season}/${episode}/${result.fid}`} style={{ textDecoration: 'none' }}>
-                  <CardMedia
-                    component="img"
-                    image={result.frame_image}
-                    alt={`Frame ${result.fid}`}
-                  />
-                  <CardContent sx={{backgroundColor: '#1f1f1f'}}>
-                    <Typography variant="subtitle1" color="textPrimary" style={{ marginBottom: '8px' }}>
+                  <Box sx={{ position: 'relative', paddingTop: '56.25%', backgroundColor: '#1f1f1f' }}>
+                    <CardMedia
+                      component="img"
+                      image={result.frame_image}
+                      alt={`Frame ${result.fid}`}
+                      onLoad={() => handleImageLoad(result.fid)}
+                      onError={() => {
+                        console.error(`Failed to load image for frame ${result.fid}`);
+                        handleImageLoad(result.fid);
+                      }}
+                      sx={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'contain',
+                        display: imagesLoaded[result.fid] ? 'block' : 'none',
+                      }}
+                    />
+                    {!imagesLoaded[result.fid] && (
+                      <Skeleton
+                        variant="rectangular"
+                        sx={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          width: '100%',
+                          height: '100%',
+                        }}
+                      />
+                    )}
+                  </Box>
+                  <CardContent sx={{ backgroundColor: '#1f1f1f', padding: '16px' }}>
+                    <Typography variant="subtitle1" color="textPrimary" style={{ marginBottom: '8px', minHeight: '3em' }}>
                       {result.subtitle ? Buffer.from(result.subtitle, 'base64').toString() : '(...)'}
                     </Typography>
                     <Typography variant="caption" color="textSecondary">
