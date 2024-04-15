@@ -127,7 +127,7 @@ exports.handler = async (event) => {
             console.log('Falling back to CSV approach.');
             
             const indices = id.split(',');
-        
+        }
         try {
             const promises = indices.map((index) => {
                 const csvUrl = `https://img.memesrc.com/v2/${index}/_docs.csv`;
