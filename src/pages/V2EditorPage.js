@@ -7,7 +7,7 @@ import { styled } from '@mui/material/styles';
 import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
-import { Accordion, AccordionDetails, AccordionSummary, Backdrop, Button, ButtonGroup, Card, CircularProgress, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Skeleton, Slider, Snackbar, Stack, Tab, Tabs, TextField, ToggleButton, ToggleButtonGroup, Typography, useMediaQuery, useTheme } from '@mui/material';
+import { Accordion, AccordionDetails, AccordionSummary, Backdrop, Button, ButtonGroup, Card, CircularProgress, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, LinearProgress, List, ListItem, ListItemIcon, ListItemText, Popover, Skeleton, Slider, Snackbar, Stack, Tab, Tabs, TextField, ToggleButton, ToggleButtonGroup, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { AccessTime, Add, AddCircleOutline, AddPhotoAlternate, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ClosedCaption, ContentCopy, FolderOpen, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, History, HistoryToggleOffRounded, IosShare, Menu, MoreTime, Redo, Save, Share, Timelapse, Timeline, Undo, Update, ZoomIn, ZoomOut } from '@mui/icons-material';
 import { API, Storage, graphqlOperation } from 'aws-amplify';
 import { Box } from '@mui/system';
@@ -1128,6 +1128,9 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   useEffect(() => {
     setPromptEnabled('erase')
     setMagicPrompt('Everyday scene as cinematic cinestill sample')
+    if (editorTool === 'fineTuning') {
+      loadFineTuningImages()
+    }
   }, [editorTool])
 
   useEffect(() => {
@@ -1175,6 +1178,9 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const [loadedSeason, setLoadedSeason] = useState('');
   const [loadedEpisode, setLoadedEpisode] = useState('');
   const [surroundingSubtitles, setSurroundingSubtitles] = useState(null);
+  const [loadingFineTuning, setLoadingFineTuning] = useState(false);
+  const [fineTuningLoadStarted, setFineTuningLoadStarted] = useState(false);
+  const [fineTuningBlobs, setFineTuningBlobs] = useState([]);
 
   useEffect(() => {
     getV2Metadata(cid).then(metadata => {
@@ -1213,7 +1219,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const handleSliderChange = (newSliderValue) => {
     setSelectedFrameIndex(newSliderValue);
     fabric.Image.fromURL(
-      frames[newSliderValue],
+      fineTuningBlobs[newSliderValue],
       (oImg) => {
         setDefaultFrame(oImg);
         setLoading(false);
@@ -1247,19 +1253,19 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         try {
           // Since fetchFramesFineTuning now expects an array, calculate the array of indexes for fine-tuning
           const fineTuningImageUrls = await fetchFramesFineTuning(confirmedCid, season, episode, frame);
-    
+
           // Preload the images and convert them to blob URLs
-          const fineTuningFrames = await Promise.all(
-            fineTuningImageUrls.map(async (url) => {
-              const response = await fetch(url);
-              const blob = await response.blob();
-              return URL.createObjectURL(blob);
-            })
-          );
-    
-          setFineTuningFrames(fineTuningFrames);
-          setFrames(fineTuningFrames);
-          console.log("Fine Tuning Frames: ", fineTuningFrames);
+          // const fineTuningFrames = await Promise.all(
+          //   fineTuningImageUrls.map(async (url) => {
+          //     const response = await fetch(url);
+          //     const blob = await response.blob();
+          //     return URL.createObjectURL(blob);
+          //   })
+          // );
+
+          setFineTuningFrames(fineTuningImageUrls);
+          setFrames(fineTuningImageUrls);
+          console.log("Fine Tuning Frames: ", fineTuningImageUrls);
         } catch (error) {
           console.error("Failed to fetch fine tuning frames:", error);
         }
@@ -1311,6 +1317,10 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       setFrames([]);
       setSurroundingSubtitles([]);
       setSurroundingFrames(new Array(9).fill('loading'));
+      setLoadingFineTuning(false)
+      setFineTuningLoadStarted(false)
+      setFineTuningBlobs([])
+      setEditorTool('captions')
 
       // Sequentially call the functions to ensure loading states and data fetching are managed efficiently
       loadInitialFrameInfo().then(() => {
@@ -1321,6 +1331,40 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     }
   }, [confirmedCid, season, episode, frame]);
 
+  const loadFineTuningImages = () => {
+    if (fineTuningFrames && !fineTuningLoadStarted) {
+      console.log('LOADING THE IMAGES');
+      setFineTuningLoadStarted(true);
+      setLoadingFineTuning(true);
+
+      // Create an array of promises for each image load
+      const blobPromises = fineTuningFrames.map((url) => {
+        return fetch(url)
+          .then((response) => response.blob())
+          .catch((error) => {
+            console.error('Error fetching image:', error);
+            return null;
+          });
+      });
+
+      // Wait for all blob promises to resolve
+      Promise.all(blobPromises)
+        .then((blobs) => {
+          // Filter out any null blobs (in case of errors)
+          const validBlobs = blobs.filter((blob) => blob !== null);
+
+          // Create blob URLs for each valid blob
+          const blobUrls = validBlobs.map((blob) => URL.createObjectURL(blob));
+
+          setFineTuningBlobs(blobUrls);
+          setLoadingFineTuning(false);
+        })
+        .catch((error) => {
+          console.error('Error loading fine-tuning images:', error);
+          setLoadingFineTuning(false);
+        });
+    }
+  };
 
   // Outputs
   return (
@@ -1570,17 +1614,23 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
 
                   {editorTool === 'fineTuning' && (
-                    <Slider
-                      size="small"
-                      defaultValue={selectedFrameIndex || Math.floor(frames.length / 2)}
-                      min={0}
-                      max={frames.length - 1}
-                      value={selectedFrameIndex}
-                      step={1}
-                      onChange={(e, newValue) => handleSliderChange(newValue)}
-                      valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
-                      marks
-                    />
+                    <>
+                      <Slider
+                        size="small"
+                        defaultValue={selectedFrameIndex || Math.floor(frames.length / 2)}
+                        min={0}
+                        max={frames.length - 1}
+                        value={selectedFrameIndex}
+                        step={1}
+                        onMouseDown={loadFineTuningImages}
+                        onTouchStart={loadFineTuningImages}
+                        onChange={(e, newValue) => handleSliderChange(newValue)}
+                        valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
+                        marks
+                        disabled={loadingFineTuning}
+                      />
+                      {loadingFineTuning && <LinearProgress />}
+                    </>
                   )}
 
                   {editorTool === 'magicEraser' && (
@@ -2074,7 +2124,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
             <Grid container>
               <Grid item xs={12} mt={2}>
                 <center>
-                  <Box sx={{ maxWidth: '800px'}}>
+                  <Box sx={{ maxWidth: '800px' }}>
                     <EditorPageBottomBannerAd />
                   </Box>
                 </center>

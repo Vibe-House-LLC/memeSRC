@@ -88,6 +88,9 @@ export default function FramePage({ shows = [] }) {
   const [fontLineHeightScaleFactor, setFontLineHeightScaleFactor] = useState(1);
   const [fontBottomMarginScaleFactor, setFontBottomMarginScaleFactor] = useState(1);
   const [enableFineTuningFrames, setEnableFineTuningFrames] = useState(true);
+  const [loadingFineTuning, setLoadingFineTuning] = useState(false);
+  const [fineTuningLoadStarted, setFineTuningLoadStarted] = useState(false);
+  const [fineTuningBlobs, setFineTuningBlobs] = useState([]);
 
   const throttleTimeoutRef = useRef(null);
 
@@ -389,7 +392,10 @@ export default function FramePage({ shows = [] }) {
       setSurroundingSubtitles([]);
       setSurroundingFrames(new Array(9).fill('loading'));
       setEnableFineTuningFrames(false)
-      setImgSrc()
+      setImgSrc();
+      setLoadingFineTuning(false)
+      setFineTuningLoadStarted(false)
+      setFineTuningBlobs([])
 
       // Call the loading functions
       loadInitialFrameInfo().then(() => {
@@ -406,17 +412,46 @@ export default function FramePage({ shows = [] }) {
       // Since fetchFramesFineTuning now expects an array, calculate the array of indexes for fine-tuning
       const fineTuningImageUrls = await fetchFramesFineTuning(confirmedCid, season, episode, frame);
 
-      // Preload the images
-      fineTuningImageUrls.forEach((url) => {
-        const img = new Image();
-        img.src = url;
-      });
-
       setFineTuningFrames(fineTuningImageUrls);
       setFrames(fineTuningImageUrls);
       console.log("Fine Tuning Frames: ", fineTuningImageUrls);
     } catch (error) {
       console.error("Failed to fetch fine tuning frames:", error);
+    }
+  };
+
+  const loadFineTuningImages = () => {
+    if (fineTuningFrames && !fineTuningLoadStarted) {
+      console.log('LOADING THE IMAGES');
+      setFineTuningLoadStarted(true);
+      setLoadingFineTuning(true);
+
+      // Create an array of promises for each image load
+      const blobPromises = fineTuningFrames.map((url) => {
+        return fetch(url)
+          .then((response) => response.blob())
+          .catch((error) => {
+            console.error('Error fetching image:', error);
+            return null;
+          });
+      });
+
+      // Wait for all blob promises to resolve
+      Promise.all(blobPromises)
+        .then((blobs) => {
+          // Filter out any null blobs (in case of errors)
+          const validBlobs = blobs.filter((blob) => blob !== null);
+
+          // Create blob URLs for each valid blob
+          const blobUrls = validBlobs.map((blob) => URL.createObjectURL(blob));
+
+          setFineTuningBlobs(blobUrls);
+          setLoadingFineTuning(false);
+        })
+        .catch((error) => {
+          console.error('Error loading fine-tuning images:', error);
+          setLoadingFineTuning(false);
+        });
     }
   };
 
@@ -496,7 +531,7 @@ export default function FramePage({ shows = [] }) {
 
   const handleSliderChange = (newSliderValue) => {
     setSelectedFrameIndex(newSliderValue);
-    setDisplayImage(frames[newSliderValue]);
+    setDisplayImage(fineTuningBlobs?.[newSliderValue] || null);
   };
 
   const renderFineTuningFrames = (imgSrc) => {
@@ -509,6 +544,23 @@ export default function FramePage({ shows = [] }) {
             image={imgSrc}
             id='frameImage'
           />
+          {loadingFineTuning && (
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+            >
+              <CircularProgress size={60} />
+            </div>
+          )}
           <IconButton
             style={{
               position: 'absolute',
@@ -550,7 +602,11 @@ export default function FramePage({ shows = [] }) {
           <Stack spacing={2} direction="row" p={0} pr={3} pl={3} alignItems={'center'}>
             <Tooltip title="Fine Tuning">
               <IconButton>
-                <HistoryToggleOffRounded alt="Fine Tuning" />
+                {loadingFineTuning ? (
+                  <CircularProgress size={24} />
+                ) : (
+                  <HistoryToggleOffRounded alt="Fine Tuning" />
+                )}
               </IconButton>
             </Tooltip>
             <Slider
@@ -560,6 +616,8 @@ export default function FramePage({ shows = [] }) {
               max={frames?.length - 1}
               value={selectedFrameIndex}
               step={1}
+              onMouseDown={loadFineTuningImages}
+              onTouchStart={loadFineTuningImages}
               onChange={(e, newValue) => handleSliderChange(newValue)}
               valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
               marks
@@ -694,15 +752,15 @@ export default function FramePage({ shows = [] }) {
               }}
             />
 
-          {!isMd && user?.userDetails?.subscriptionStatus !== 'active' && (
-            <Grid item xs={12} mt={2}>
-              <center>
-                <Box sx={{ maxWidth: '800px' }}>
-                  <FramePageBottomBannerAd />
-                </Box>
-              </center>
-            </Grid>
-          )}
+            {!isMd && user?.userDetails?.subscriptionStatus !== 'active' && (
+              <Grid item xs={12} mt={2}>
+                <center>
+                  <Box sx={{ maxWidth: '800px' }}>
+                    <FramePageBottomBannerAd />
+                  </Box>
+                </center>
+              </Grid>
+            )}
 
             <Card>
               {renderFineTuningFrames(imgSrc)}
@@ -745,7 +803,10 @@ export default function FramePage({ shows = [] }) {
                             size="small"
                             placeholder="Type a caption..."
                             value={loadedSubtitle}
-                            onClick={() => {
+                            onMouseDown={() => {
+                              setShowText(true)
+                            }}
+                            onTouchStart={() => {
                               setShowText(true)
                             }}
                             onChange={(e) => setLoadedSubtitle(e.target.value)}
@@ -841,6 +902,9 @@ export default function FramePage({ shows = [] }) {
                             onMouseDown={() => {
                               setShowText(true)
                             }}
+                            onTouchStart={() => {
+                              setShowText(true)
+                            }}
                           />
                         </Stack>
                       </FormControl>
@@ -900,6 +964,9 @@ export default function FramePage({ shows = [] }) {
                             onMouseDown={() => {
                               setShowText(true)
                             }}
+                            onTouchStart={() => {
+                              setShowText(true)
+                            }}
                           />
                         </Stack>
                       </FormControl>
@@ -956,6 +1023,9 @@ export default function FramePage({ shows = [] }) {
                             valueLabelFormat='Line Height'
                             valueLabelDisplay
                             onMouseDown={() => {
+                              setShowText(true)
+                            }}
+                            onTouchStart={() => {
                               setShowText(true)
                             }}
                             marks
