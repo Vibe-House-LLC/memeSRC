@@ -544,6 +544,23 @@ export default function FramePage({ shows = [] }) {
             image={imgSrc}
             id='frameImage'
           />
+          {loadingFineTuning && (
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+            >
+              <CircularProgress size={60} />
+            </div>
+          )}
           <IconButton
             style={{
               position: 'absolute',
