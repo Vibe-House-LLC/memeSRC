@@ -1180,6 +1180,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const [surroundingSubtitles, setSurroundingSubtitles] = useState(null);
   const [loadingFineTuning, setLoadingFineTuning] = useState(false);
   const [fineTuningLoadStarted, setFineTuningLoadStarted] = useState(false);
+  const [fineTuningBlobs, setFineTuningBlobs] = useState([]);
 
   useEffect(() => {
     getV2Metadata(cid).then(metadata => {
@@ -1218,7 +1219,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const handleSliderChange = (newSliderValue) => {
     setSelectedFrameIndex(newSliderValue);
     fabric.Image.fromURL(
-      frames[newSliderValue],
+      fineTuningBlobs[newSliderValue],
       (oImg) => {
         setDefaultFrame(oImg);
         setLoading(false);
@@ -1318,6 +1319,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       setSurroundingFrames(new Array(9).fill('loading'));
       setLoadingFineTuning(false)
       setFineTuningLoadStarted(false)
+      setFineTuningBlobs([])
+      setEditorTool('captions')
 
       // Sequentially call the functions to ensure loading states and data fetching are managed efficiently
       loadInitialFrameInfo().then(() => {
@@ -1330,21 +1333,30 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
   const loadFineTuningImages = () => {
     if (fineTuningFrames && !fineTuningLoadStarted) {
-      setFineTuningLoadStarted(true)
+      console.log('LOADING THE IMAGES');
+      setFineTuningLoadStarted(true);
       setLoadingFineTuning(true);
 
       // Create an array of promises for each image load
-      const imagePromises = fineTuningFrames.map((url) => {
-        return new Promise((resolve) => {
-          const img = new Image();
-          img.onload = () => resolve();
-          img.src = url;
-        });
+      const blobPromises = fineTuningFrames.map((url) => {
+        return fetch(url)
+          .then((response) => response.blob())
+          .catch((error) => {
+            console.error('Error fetching image:', error);
+            return null;
+          });
       });
 
-      // Wait for all image promises to resolve
-      Promise.all(imagePromises)
-        .then(() => {
+      // Wait for all blob promises to resolve
+      Promise.all(blobPromises)
+        .then((blobs) => {
+          // Filter out any null blobs (in case of errors)
+          const validBlobs = blobs.filter((blob) => blob !== null);
+
+          // Create blob URLs for each valid blob
+          const blobUrls = validBlobs.map((blob) => URL.createObjectURL(blob));
+
+          setFineTuningBlobs(blobUrls);
           setLoadingFineTuning(false);
         })
         .catch((error) => {
@@ -1615,6 +1627,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                         onChange={(e, newValue) => handleSliderChange(newValue)}
                         valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
                         marks
+                        disabled={loadingFineTuning}
                       />
                       {loadingFineTuning && <LinearProgress />}
                     </>
