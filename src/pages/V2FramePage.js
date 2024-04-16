@@ -414,7 +414,6 @@ export default function FramePage({ shows = [] }) {
 
       setFineTuningFrames(fineTuningImageUrls);
       setFrames(fineTuningImageUrls);
-      console.log("Fine Tuning Frames: ", fineTuningImageUrls);
     } catch (error) {
       console.error("Failed to fetch fine tuning frames:", error);
     }
@@ -454,6 +453,13 @@ export default function FramePage({ shows = [] }) {
         });
     }
   };
+
+useEffect(() => {
+  if (fineTuningBlobs && fineTuningBlobs.length > 0) {
+    setDisplayImage(fineTuningBlobs?.[selectedFrameIndex] || null);
+  }
+
+}, [fineTuningBlobs]);
 
 
   function frameToTimeCode(frame, frameRate = 10) {
@@ -518,7 +524,7 @@ export default function FramePage({ shows = [] }) {
 
   useEffect(() => {
     updateCanvasUnthrottled();
-  }, [displayImage, loadedSubtitle, frame]);
+  }, [displayImage, loadedSubtitle, frame, fineTuningBlobs, selectedFrameIndex]);
 
   useEffect(() => {
     if (frames && frames.length > 0) {
