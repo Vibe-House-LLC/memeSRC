@@ -102,8 +102,6 @@ exports.handler = async (event) => {
       isBase64Encoded: true,
     };
 
-    console.log('Lambda Response:', JSON.stringify(lambdaResponse));
-
     return lambdaResponse;
   } catch (error) {
     console.error('Error:', error);

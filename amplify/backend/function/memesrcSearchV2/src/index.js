@@ -115,7 +115,7 @@ exports.handler = async (event) => {
             }),
         };
     } catch (error) {
-        console.error('OpenSearch is down.');
+        console.error(`OpenSearch is down: ${error}`);
         
         if (id === '_universal') {
             return {
