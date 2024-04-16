@@ -537,6 +537,7 @@ useEffect(() => {
 
   const handleSliderChange = (newSliderValue) => {
     setSelectedFrameIndex(newSliderValue);
+    navigate(`/frame/${cid}/${season}/${episode}/${frame}/${newSliderValue}`)
     setDisplayImage(fineTuningBlobs?.[newSliderValue] || null);
   };
 

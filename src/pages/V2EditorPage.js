@@ -1218,6 +1218,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
   const handleSliderChange = (newSliderValue) => {
     setSelectedFrameIndex(newSliderValue);
+    navigate(`/editor/${cid}/${season}/${episode}/${frame}/${newSliderValue}`)
     fabric.Image.fromURL(
       fineTuningBlobs[newSliderValue],
       (oImg) => {
