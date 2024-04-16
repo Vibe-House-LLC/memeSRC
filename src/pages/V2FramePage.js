@@ -537,7 +537,6 @@ useEffect(() => {
 
   const handleSliderChange = (newSliderValue) => {
     setSelectedFrameIndex(newSliderValue);
-    navigate(`/frame/${cid}/${season}/${episode}/${frame}/${newSliderValue}`)
     setDisplayImage(fineTuningBlobs?.[newSliderValue] || null);
   };
 
@@ -626,6 +625,7 @@ useEffect(() => {
               onMouseDown={loadFineTuningImages}
               onTouchStart={loadFineTuningImages}
               onChange={(e, newValue) => handleSliderChange(newValue)}
+              onChangeCommitted={(e, value) => {navigate(`/frame/${cid}/${season}/${episode}/${frame}/${value}`)}}
               valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
               marks
               componentsProps={{
