@@ -80,7 +80,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
   // console.log(searchDetails.fineTuningFrame)
   // Get everything ready
-  const { fid, editorProjectId } = useParams();
+  const { fid, editorProjectId, fineTuningIndex } = useParams();
   const { user, setUser } = useContext(UserContext);
   const [defaultFrame, setDefaultFrame] = useState(null);
   const [pickingColor, setPickingColor] = useState(false);
@@ -1201,11 +1201,11 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     if (frames && frames.length > 0) {
       console.log(frames.length)
       console.log(Math.floor(frames.length / 2))
-      setSelectedFrameIndex(selectedFrameIndex || Math.floor(frames.length / 2))
+      setSelectedFrameIndex(fineTuningIndex || Math.floor(frames.length / 2))
 
       // Background image from the given URL
       fabric.Image.fromURL(
-        selectedFrameIndex ? frames[selectedFrameIndex] : frames[Math.floor(frames.length / 2)],
+        fineTuningIndex ? frames[fineTuningIndex] : frames[Math.floor(frames.length / 2)],
         (oImg) => {
           setDefaultFrame(oImg);
           setDefaultSubtitle(loadedSubtitle);
@@ -1218,6 +1218,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
   const handleSliderChange = (newSliderValue) => {
     setSelectedFrameIndex(newSliderValue);
+    navigate(`/editor/${cid}/${season}/${episode}/${frame}/${newSliderValue}`)
     fabric.Image.fromURL(
       fineTuningBlobs[newSliderValue],
       (oImg) => {

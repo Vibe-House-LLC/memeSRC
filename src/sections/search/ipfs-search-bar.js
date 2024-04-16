@@ -357,7 +357,7 @@ export default function IpfsSearchBar(props) {
           >
             <Link
               component={RouterLink}
-              to={search ? `/frame/${params?.cid}/${params?.season}/${params?.episode}/${params?.frame}` : "/"}
+              to={`/frame/${params?.cid}/${params?.season}/${params?.episode}/${params?.frame}${selectedFrameIndex ? `/${selectedFrameIndex}` : ''}`}
               sx={{
                 color: 'white',
                 textDecoration: 'none',
