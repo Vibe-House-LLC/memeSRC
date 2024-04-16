@@ -68,7 +68,7 @@ async function getAllVotes(seriesId) {
     }
   `;
 
-  console.log(query);
+  // console.log(query);
   const response = await makeRequest(query);
   if (response.statusCode !== 200) {
     throw new Error(
@@ -92,14 +92,14 @@ async function processVotes({ allItems, userSub }) {
   const lastBoostValue = {};
   const nextVoteTime = {};
 
-  console.log(`allItems: ${JSON.stringify(allItems)}`)
+  // console.log(`allItems: ${JSON.stringify(allItems)}`)
 
   const seriesIds = new Set(allItems.map(item => item.seriesUserVoteSeriesId));
   const isLastUserVoteOlderThan24Hours = {};
   seriesIds.forEach(id => isLastUserVoteOlderThan24Hours[id] = true);
 
   allItems.forEach((vote) => {
-    console.log(vote)
+    // console.log(vote)
     if (vote.boost > 0) {
       currentUserVotesUp[vote.seriesUserVoteSeriesId] = (currentUserVotesUp[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
     } else if (vote.boost < 0) {
@@ -371,7 +371,7 @@ async function getAllUserVotes(params) {
     const query = getUserDetails(params, nextToken);
     const response = await makeRequest(query);
 
-    console.log(`response: ${JSON.stringify(response)}`)
+    // console.log(`response: ${JSON.stringify(response)}`)
 
     // Depending on the structure of your response, you might need to adjust the following lines.
     const userDetails = response.body.data.getUserDetails;
@@ -391,7 +391,7 @@ async function getAllUserVotes(params) {
  */
 
 export const handler = async (event) => {
-  console.log(`EVENT: ${JSON.stringify(event)}`);
+  // console.log(`EVENT: ${JSON.stringify(event)}`);
   // Get the users sub (if it exist)
   const userSub = event.requestContext?.identity?.cognitoAuthenticationProvider
     ? event.requestContext.identity.cognitoAuthenticationProvider.split(':').pop()
@@ -421,9 +421,9 @@ export const handler = async (event) => {
     const sub = body.sub;
     const status = 'unverified';
     const credits = 0;
-    console.log('NEW USER');
+    // console.log('NEW USER');
     response = await makeRequest(createUserDetails({ username, sub, email, status, credits }));
-    console.log(response);
+    // console.log(response);
   }
 
   if (path === `/${process.env.ENV}/public/user/update/status`) {
@@ -500,7 +500,7 @@ export const handler = async (event) => {
         }
       `;
 
-    console.log(query)
+    // console.log(query)
 
     response = await makeRequest(query);
   }
@@ -509,36 +509,36 @@ export const handler = async (event) => {
     const seriesId = body.seriesId;
     const boost = body.boost;
 
-    console.log('LOAD USER');
+    // console.log('LOAD USER');
     const userDetails = await makeRequest(getUserDetails({ subId: userSub }));
-    console.log('User Details:', userDetails);
+    // console.log('User Details:', userDetails);
 
-    console.log('SEPARATE USER VOTES');
+    // console.log('SEPARATE USER VOTES');
     const usersVotes = userDetails.body.data.getUserDetails.votes.items;
-    console.log('User Votes:', usersVotes);
+    // console.log('User Votes:', usersVotes);
 
-    console.log('CHECK IF VOTE EXISTS FOR SERIES ID');
+    // console.log('CHECK IF VOTE EXISTS FOR SERIES ID');
     const lastVote = usersVotes
       ?.filter((item) => item.series?.id === seriesId)
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
-    console.log('Last Vote:', lastVote);
+    // console.log('Last Vote:', lastVote);
 
     // Check if the last vote was more than 24 hours ago
     let canVote = false;
     if (lastVote) {
       const voteTime = new Date(lastVote.createdAt);
-      console.log(`Last Vote Time: ${voteTime}`)
+      // console.log(`Last Vote Time: ${voteTime}`)
       const diffInHours = (new Date() - voteTime) / 1000 / 60 / 60;
-      console.log(`diffInHours: ${diffInHours}`)
+      // console.log(`diffInHours: ${diffInHours}`)
       canVote = diffInHours >= 24;
     } else {
       canVote = true;
     }
 
-    console.log('Can Vote:', canVote);
+    // console.log('Can Vote:', canVote);
 
     if (canVote) {
-      console.log('CREATE VOTE QUERY');
+      // console.log('CREATE VOTE QUERY');
       const createVote = `
         mutation createSeriesUserVote {
             createSeriesUserVote(input: {userDetailsVotesId: "${userSub}", seriesUserVoteSeriesId: "${seriesId}", boost: ${boost > 0 ? 1 : -1
@@ -547,11 +547,11 @@ export const handler = async (event) => {
             }
         }
       `;
-      console.log('Create Vote Query:', createVote);
+      // console.log('Create Vote Query:', createVote);
 
       // Hit GraphQL to place vote
       response = await makeRequest(createVote);
-      console.log('Vote Response:', response);
+      // console.log('Vote Response:', response);
     } else {
       // The user has already voted recently. Return a Forbidden error with details
       response = {
@@ -561,7 +561,7 @@ export const handler = async (event) => {
           message: 'You can only vote once every 24 hours.',
         },
       };
-      console.log('Forbidden Error:', response);
+      // console.log('Forbidden Error:', response);
     }
   }
 
@@ -596,10 +596,10 @@ export const handler = async (event) => {
         if (userAuth !== "unauthenticated") {
           // Summarize the user's personal votes
           const userVotes = await getAllUserVotes({ subId: userSub });
-          console.log(`userVotes: ${JSON.stringify(userVotes)}`)
+          // console.log(`userVotes: ${JSON.stringify(userVotes)}`)
           // const userVotes = allVotes.body.data.getUserDetails.votes.items;
 
-          console.log(totalVotes)
+          // console.log(totalVotes)
           // The next change is going to be setting these values to the lets. That way they'll be null unless we hit this step.
           // I'm going to comment out the original code in case we need to come back to it.
           /* 
@@ -678,16 +678,16 @@ export const handler = async (event) => {
         }
       }
     `
-    console.log('listTvdbResultsQuery')
-    console.log(listTvdbResultsQuery)
+    // console.log('listTvdbResultsQuery')
+    // console.log(listTvdbResultsQuery)
 
     // Attempt to load the TVDB ID from GraphQL
     const listTvdbResults = await makeRequest(listTvdbResultsQuery)
-    console.log('listTvdbResults')
-    console.log(listTvdbResults)
+    // console.log('listTvdbResults')
+    // console.log(listTvdbResults)
 
     // Check to see if there are any results
-    console.log('ITEM LENGTH', listTvdbResults.body?.data?.seriesByTvdbid?.items.length)
+    // console.log('ITEM LENGTH', listTvdbResults.body?.data?.seriesByTvdbid?.items.length)
     if (listTvdbResults.body?.data?.seriesByTvdbid?.items.length > 0) {
       // Send a response saying the series already exists
       response = {
@@ -707,12 +707,12 @@ export const handler = async (event) => {
           }
         }
       `
-      console.log('createSeriesQuery')
-      console.log(createSeriesQuery)
+      // console.log('createSeriesQuery')
+      // console.log(createSeriesQuery)
 
       const createSeries = await makeRequest(createSeriesQuery)
-      console.log('createSeries')
-      console.log(createSeries)
+      // console.log('createSeries')
+      // console.log(createSeries)
       // Send a response saying the series has been added to the quests
       response = {
         statusCode: 200,
@@ -727,9 +727,9 @@ export const handler = async (event) => {
 
   // This is what works with the S3 Trigger to take note of uploaded files
   if (path === `/trigger/addFile`) {
-    console.log('ADD FILE')
-    console.log(event.userSub)
-    console.log(event.key)
+    // console.log('ADD FILE')
+    // console.log(event.userSub)
+    // console.log(event.key)
 
     const { sourceMediaId, key } = event;
 
@@ -764,10 +764,10 @@ export const handler = async (event) => {
           }
         }
       `;
-    console.log(query)
+    // console.log(query)
 
     const becomeContributor = await makeRequest(query)
-    console.log(becomeContributor)
+    // console.log(becomeContributor)
 
     response = {
       statusCode: 200,
@@ -797,16 +797,16 @@ export const handler = async (event) => {
             }
           }
         `;
-      console.log('The Query')
-      console.log(query)
+      // console.log('The Query')
+      // console.log(query)
 
       const userDetailsQuery = await makeRequest(query);
-      console.log('userDetailsQuery')
-      console.log(userDetailsQuery)
+      // console.log('userDetailsQuery')
+      // console.log(userDetailsQuery)
 
       const userDetails = userDetailsQuery.body.data.getUserDetails
-      console.log('User Details')
-      console.log(userDetails)
+      // console.log('User Details')
+      // console.log(userDetails)
 
       // Now lets set the customer id
       const stripeCustomerId = userDetails.stripeCustomerInfo.id
@@ -851,16 +851,16 @@ export const handler = async (event) => {
             }
           }
         `;
-      console.log('The Query')
-      console.log(query)
+      // console.log('The Query')
+      // console.log(query)
 
       const userDetailsQuery = await makeRequest(query);
-      console.log('userDetailsQuery')
-      console.log(userDetailsQuery)
+      // console.log('userDetailsQuery')
+      // console.log(userDetailsQuery)
 
       const userDetails = userDetailsQuery.body.data.getUserDetails
-      console.log('User Details')
-      console.log(userDetails)
+      // console.log('User Details')
+      // console.log(userDetails)
 
       // Now lets set the customer id
       let stripeCustomerId;
@@ -882,8 +882,8 @@ export const handler = async (event) => {
             }
           }
         `
-        console.log('createStripeCustomerQuery')
-        console.log(createStripeCustomerQuery)
+        // console.log('createStripeCustomerQuery')
+        // console.log(createStripeCustomerQuery)
         await makeRequest(createStripeCustomerQuery)
 
         const addStripeCustomerToUserQuery = `
@@ -893,12 +893,12 @@ export const handler = async (event) => {
           }
         }
         `
-        console.log('addStripeCustomerToUserQuery')
-        console.log(addStripeCustomerToUserQuery)
+        // console.log('addStripeCustomerToUserQuery')
+        // console.log(addStripeCustomerToUserQuery)
         const addStripeCustomerToUser = await makeRequest(addStripeCustomerToUserQuery)
-        console.log('addStripeCustomerToUser')
-        console.log(addStripeCustomerToUser)
-        console.log(JSON.stringify(addStripeCustomerToUser))
+        // console.log('addStripeCustomerToUser')
+        // console.log(addStripeCustomerToUser)
+        // console.log(JSON.stringify(addStripeCustomerToUser))
 
         // And finally, lets set stripeCustomerId to the new id
         stripeCustomerId = customer.id
@@ -911,8 +911,8 @@ export const handler = async (event) => {
       const stripeCustomerInfo = await stripe.customers.retrieve(stripeCustomerId, {
         expand: ['subscriptions'],
       });
-      console.log('stripeCustomerInfo')
-      console.log(stripeCustomerInfo)
+      // console.log('stripeCustomerInfo')
+      // console.log(stripeCustomerInfo)
 
       const priceMap = {
         "magic69-beta": "price_1NbXguAqFX20vifI34N1MJFO",
@@ -928,22 +928,22 @@ export const handler = async (event) => {
       const priceKey = `${body.priceKey}-${process.env.ENV}`
 
       // Now that the customerId is set, lets create a checkout session.
-      console.log("Payload to make the stripe checkout session:", JSON.stringify({
-        allow_promotion_codes: true,
-        success_url: `https://api.memesrc.com/${process.env.ENV}/public/stripeVerification?checkoutSessionId={CHECKOUT_SESSION_ID}`,
-        cancel_url: body.currentUrl,
-        customer: stripeCustomerId,
-        line_items: [
-          { price: priceMap[priceKey], quantity: 1 },
-        ],
-        mode: 'subscription',
-        // discounts: [{
-        //   coupon: `${process.env.ENV === 'beta' ? 'DIdAixG9' : 'GTke5f0s'}`
-        // }],
-        metadata: {
-          callbackUrl: body.currentUrl
-        }
-      }))
+      // console.log("Payload to make the stripe checkout session:", JSON.stringify({
+      //   allow_promotion_codes: true,
+      //   success_url: `https://api.memesrc.com/${process.env.ENV}/public/stripeVerification?checkoutSessionId={CHECKOUT_SESSION_ID}`,
+      //   cancel_url: body.currentUrl,
+      //   customer: stripeCustomerId,
+      //   line_items: [
+      //     { price: priceMap[priceKey], quantity: 1 },
+      //   ],
+      //   mode: 'subscription',
+      //   // discounts: [{
+      //   //   coupon: `${process.env.ENV === 'beta' ? 'DIdAixG9' : 'GTke5f0s'}`
+      //   // }],
+      //   metadata: {
+      //     callbackUrl: body.currentUrl
+      //   }
+      // }))
       const session = await stripe.checkout.sessions.create({
         allow_promotion_codes: true,
         success_url: `https://api.memesrc.com/${process.env.ENV}/public/stripeVerification?checkoutSessionId={CHECKOUT_SESSION_ID}`,
@@ -968,12 +968,12 @@ export const handler = async (event) => {
           }
         }
       `
-      console.log('createCheckoutSessionQuery')
-      console.log(createCheckoutSessionQuery)
+      // console.log('createCheckoutSessionQuery')
+      // console.log(createCheckoutSessionQuery)
 
       const createCheckoutSession = await makeRequest(createCheckoutSessionQuery)
-      console.log('createCheckoutSession')
-      console.log(createCheckoutSession)
+      // console.log('createCheckoutSession')
+      // console.log(createCheckoutSession)
 
       response = {
         statusCode: 200,
@@ -1010,16 +1010,16 @@ export const handler = async (event) => {
             }
           }
         `;
-      console.log('The Query')
-      console.log(query)
+      // console.log('The Query')
+      // console.log(query)
 
       const userDetailsQuery = await makeRequest(query);
-      console.log('userDetailsQuery')
-      console.log(userDetailsQuery)
+      // console.log('userDetailsQuery')
+      // console.log(userDetailsQuery)
 
       const userDetails = userDetailsQuery.body.data.getUserDetails
-      console.log('User Details')
-      console.log(userDetails)
+      // console.log('User Details')
+      // console.log(userDetails)
 
 
       const stripeCustomerId = userDetails.stripeCustomerInfo.id
@@ -1027,8 +1027,8 @@ export const handler = async (event) => {
       const stripeCustomerInfo = await stripe.customers.retrieve(stripeCustomerId, {
         expand: ['subscriptions'],
       });
-      console.log('stripeCustomerInfo')
-      console.log(JSON.stringify(stripeCustomerInfo))
+      // console.log('stripeCustomerInfo')
+      // console.log(JSON.stringify(stripeCustomerInfo))
       const subscriptions = stripeCustomerInfo.subscriptions.data
 
       async function cancelActiveSubscriptions(subscriptions) {
@@ -1039,7 +1039,7 @@ export const handler = async (event) => {
         for (const subscription of activeSubscriptions) {
           try {
             await stripe.subscriptions.cancel(subscription.id);
-            console.log(`Subscription ${subscription.id} cancelled successfully.`);
+            // console.log(`Subscription ${subscription.id} cancelled successfully.`);
           } catch (error) {
             console.error(`Failed to cancel subscription ${subscription.id}.`, error);
           }
@@ -1055,8 +1055,8 @@ export const handler = async (event) => {
           }
         }
         `
-      console.log('removeMagicSubscriptionQuery')
-      console.log(removeMagicSubscriptionQuery)
+      // console.log('removeMagicSubscriptionQuery')
+      // console.log(removeMagicSubscriptionQuery)
 
       await makeRequest(removeMagicSubscriptionQuery)
 
@@ -1093,16 +1093,16 @@ export const handler = async (event) => {
             }
           }
         `;
-      console.log('UserDetails Query Text')
-      console.log(query)
+      // console.log('UserDetails Query Text')
+      // console.log(query)
 
       const userDetailsQuery = await makeRequest(query);
-      console.log('userDetailsQuery')
-      console.log(userDetailsQuery)
+      // console.log('userDetailsQuery')
+      // console.log(userDetailsQuery)
 
       const userDetails = userDetailsQuery.body.data.getUserDetails
-      console.log('User Details')
-      console.log(userDetails)
+      // console.log('User Details')
+      // console.log(userDetails)
 
       /* ----------------------- Now lets check their status ---------------------- */
 
@@ -1118,12 +1118,12 @@ export const handler = async (event) => {
             }
           }
         `
-        console.log('acceptInviteQuery')
-        console.log(acceptInviteQuery)
+        // console.log('acceptInviteQuery')
+        // console.log(acceptInviteQuery)
 
         const acceptInvite = await makeRequest(acceptInviteQuery)
-        console.log('acceptInvite')
-        console.log(acceptInvite)
+        // console.log('acceptInvite')
+        // console.log(acceptInvite)
 
         // The user has now accepted the invite and has free credits
         response = {
@@ -1184,12 +1184,12 @@ export const handler = async (event) => {
           }
         }
       `
-      console.log('getStripeCheckoutSessionQuery')
-      console.log(getStripeCheckoutSessionQuery)
+      // console.log('getStripeCheckoutSessionQuery')
+      // console.log(getStripeCheckoutSessionQuery)
 
       const getStripeCheckoutSession = await makeRequest(getStripeCheckoutSessionQuery);
-      console.log('getStripeCheckoutSession')
-      console.log(getStripeCheckoutSession)
+      // console.log('getStripeCheckoutSession')
+      // console.log(getStripeCheckoutSession)
 
       const stripeCustomerId = body.stripeCustomerId
 
@@ -1207,9 +1207,9 @@ export const handler = async (event) => {
           }
         }
       `
-      console.log('getStripeCustomerQuery', getStripeCustomerQuery);
+      // console.log('getStripeCustomerQuery', getStripeCustomerQuery);
       const stripeCustomer = await makeRequest(getStripeCustomerQuery);
-      console.log('stripeCustomer', JSON.stringify(stripeCustomer))
+      // console.log('stripeCustomer', JSON.stringify(stripeCustomer))
       
       const creditsPerMonth = body.creditsPerMonth
       const newCreditValue = Math.max(creditsPerMonth, (stripeCustomer.body.data.getStripeCustomer.user.credits || 0));
@@ -1223,12 +1223,12 @@ export const handler = async (event) => {
             }
           }
         `
-        console.log('updateUserDetailsQuery')
-        console.log(updateUserDetailsQuery)
+        // console.log('updateUserDetailsQuery')
+        // console.log(updateUserDetailsQuery)
 
         const updateUsersCredits = await makeRequest(updateUserDetailsQuery)
-        console.log('updateUsersCredits')
-        console.log(updateUsersCredits)
+        // console.log('updateUsersCredits')
+        // console.log(updateUsersCredits)
 
         const updateCheckoutSessionStatus = `
           mutation updateStripeCheckoutSession {
@@ -1237,12 +1237,12 @@ export const handler = async (event) => {
             }
           }
         `
-        console.log('updateCheckoutSessionStatus')
-        console.log(updateCheckoutSessionStatus)
+        // console.log('updateCheckoutSessionStatus')
+        // console.log(updateCheckoutSessionStatus)
 
         const updateCheckoutSession = await makeRequest(updateCheckoutSessionStatus)
-        console.log('updateCheckoutSession')
-        console.log(updateCheckoutSession)
+        // console.log('updateCheckoutSession')
+        // console.log(updateCheckoutSession)
 
         response = {
           statusCode: 200,
@@ -1285,9 +1285,9 @@ export const handler = async (event) => {
           }
         }
       `
-      console.log('getStripeCustomerQuery', getStripeCustomerQuery);
+      // console.log('getStripeCustomerQuery', getStripeCustomerQuery);
       const stripeCustomer = await makeRequest(getStripeCustomerQuery);
-      console.log('stripeCustomer', JSON.stringify(stripeCustomer))
+      // console.log('stripeCustomer', JSON.stringify(stripeCustomer))
 
       const creditsPerMonth = body.creditsPerMonth;
 
@@ -1306,12 +1306,12 @@ export const handler = async (event) => {
             }
           }
         `
-        console.log('updateUserDetailsQuery')
-        console.log(updateUserDetailsQuery)
+        // console.log('updateUserDetailsQuery')
+        // console.log(updateUserDetailsQuery)
 
         const updateUsersCredits = await makeRequest(updateUserDetailsQuery)
-        console.log('updateUsersCredits')
-        console.log(updateUsersCredits)
+        // console.log('updateUsersCredits')
+        // console.log(updateUsersCredits)
 
         // The user now has creditsPerMonth credits, and their subscriptionPeriodStart and subscriptionPeriodEnd have been updated
         response = {
@@ -1356,9 +1356,9 @@ export const handler = async (event) => {
           }
         }
       `
-      console.log('getStripeCustomerQuery', getStripeCustomerQuery);
+      // console.log('getStripeCustomerQuery', getStripeCustomerQuery);
       const stripeCustomer = await makeRequest(getStripeCustomerQuery);
-      console.log('stripeCustomer', JSON.stringify(stripeCustomer))
+      // console.log('stripeCustomer', JSON.stringify(stripeCustomer))
 
       // Now lets make sure that the customer existed.
       if (stripeCustomer?.body?.data?.getStripeCustomer?.user?.id) {
@@ -1374,12 +1374,12 @@ export const handler = async (event) => {
             }
           }
         `
-        console.log('updateUserDetailsQuery')
-        console.log(updateUserDetailsQuery)
+        // console.log('updateUserDetailsQuery')
+        // console.log(updateUserDetailsQuery)
 
         const updateUsersCredits = await makeRequest(updateUserDetailsQuery)
-        console.log('updateUsersCredits')
-        console.log(updateUsersCredits)
+        // console.log('updateUsersCredits')
+        // console.log(updateUsersCredits)
 
         // The user subscriptionStatus is now set to failedPayment
         response = {
@@ -1426,9 +1426,9 @@ export const handler = async (event) => {
           }
         }
       `
-      console.log('getStripeCustomerQuery', getStripeCustomerQuery);
+      // console.log('getStripeCustomerQuery', getStripeCustomerQuery);
       const stripeCustomer = await makeRequest(getStripeCustomerQuery);
-      console.log('stripeCustomer', JSON.stringify(stripeCustomer))
+      // console.log('stripeCustomer', JSON.stringify(stripeCustomer))
 
       // Now lets make sure that the customer existed.
       if (stripeCustomer?.body?.data?.getStripeCustomer?.user?.id) {
@@ -1443,12 +1443,12 @@ export const handler = async (event) => {
           }
         }
         `
-        console.log('updateUserDetailsQuery')
-        console.log(updateUserDetailsQuery)
+        // console.log('updateUserDetailsQuery')
+        // console.log(updateUserDetailsQuery)
 
         const updateUserDetails = await makeRequest(updateUserDetailsQuery)
-        console.log('updateUserDetails')
-        console.log(updateUserDetails)
+        // console.log('updateUserDetails')
+        // console.log(updateUserDetails)
 
         // The user subscriptionStatus is now set to canceled
         response = {
@@ -1500,12 +1500,12 @@ export const handler = async (event) => {
           }
         }
       `
-      console.log('getStripeCheckoutSessionQuery')
-      console.log(getStripeCheckoutSessionQuery)
+      // console.log('getStripeCheckoutSessionQuery')
+      // console.log(getStripeCheckoutSessionQuery)
 
       const getStripeCheckoutSession = await makeRequest(getStripeCheckoutSessionQuery);
-      console.log('getStripeCheckoutSession')
-      console.log(getStripeCheckoutSession)
+      // console.log('getStripeCheckoutSession')
+      // console.log(getStripeCheckoutSession)
 
       // Now if the checkout session status is open, lets add their credits.
       const userId = getStripeCheckoutSession.body.data.getStripeCheckoutSession.user.id
@@ -1520,12 +1520,12 @@ export const handler = async (event) => {
             }
           }
         `
-        console.log('updateUserDetailsQuery')
-        console.log(updateUserDetailsQuery)
+        // console.log('updateUserDetailsQuery')
+        // console.log(updateUserDetailsQuery)
 
         const updateUsersCredits = await makeRequest(updateUserDetailsQuery)
-        console.log('updateUsersCredits')
-        console.log(updateUsersCredits)
+        // console.log('updateUsersCredits')
+        // console.log(updateUsersCredits)
 
         const updateCheckoutSessionStatus = `
           mutation updateStripeCheckoutSession {
@@ -1534,12 +1534,12 @@ export const handler = async (event) => {
             }
           }
         `
-        console.log('updateCheckoutSessionStatus')
-        console.log(updateCheckoutSessionStatus)
+        // console.log('updateCheckoutSessionStatus')
+        // console.log(updateCheckoutSessionStatus)
 
         const updateCheckoutSession = await makeRequest(updateCheckoutSessionStatus)
-        console.log('updateCheckoutSession')
-        console.log(updateCheckoutSession)
+        // console.log('updateCheckoutSession')
+        // console.log(updateCheckoutSession)
 
         response = {
           statusCode: 200,
@@ -1582,9 +1582,9 @@ export const handler = async (event) => {
           }
         }
       `
-      console.log('getStripeCustomerQuery', getStripeCustomerQuery);
+      // console.log('getStripeCustomerQuery', getStripeCustomerQuery);
       const stripeCustomer = await makeRequest(getStripeCustomerQuery);
-      console.log('stripeCustomer', JSON.stringify(stripeCustomer))
+      // console.log('stripeCustomer', JSON.stringify(stripeCustomer))
 
       // Now lets make sure that the customer existed.
       if (stripeCustomer?.body?.data?.getStripeCustomer?.user?.id) {
@@ -1601,12 +1601,12 @@ export const handler = async (event) => {
             }
           }
         `
-        console.log('updateUserDetailsQuery')
-        console.log(updateUserDetailsQuery)
+        // console.log('updateUserDetailsQuery')
+        // console.log(updateUserDetailsQuery)
 
         const updateUsersCredits = await makeRequest(updateUserDetailsQuery)
-        console.log('updateUsersCredits')
-        console.log(updateUsersCredits)
+        // console.log('updateUsersCredits')
+        // console.log(updateUsersCredits)
 
         // The user now has 69 credits, and their subscriptionPeriodStart and subscriptionPeriodEnd have been updated
         response = {
@@ -1651,9 +1651,9 @@ export const handler = async (event) => {
           }
         }
       `
-      console.log('getStripeCustomerQuery', getStripeCustomerQuery);
+      // console.log('getStripeCustomerQuery', getStripeCustomerQuery);
       const stripeCustomer = await makeRequest(getStripeCustomerQuery);
-      console.log('stripeCustomer', JSON.stringify(stripeCustomer))
+      // console.log('stripeCustomer', JSON.stringify(stripeCustomer))
 
       // Now lets make sure that the customer existed.
       if (stripeCustomer?.body?.data?.getStripeCustomer?.user?.id) {
@@ -1669,12 +1669,12 @@ export const handler = async (event) => {
             }
           }
         `
-        console.log('updateUserDetailsQuery')
-        console.log(updateUserDetailsQuery)
+        // console.log('updateUserDetailsQuery')
+        // console.log(updateUserDetailsQuery)
 
         const updateUsersCredits = await makeRequest(updateUserDetailsQuery)
-        console.log('updateUsersCredits')
-        console.log(updateUsersCredits)
+        // console.log('updateUsersCredits')
+        // console.log(updateUsersCredits)
 
         // The user subscriptionStatus is now set to failedPayment
         response = {
@@ -1721,9 +1721,9 @@ export const handler = async (event) => {
           }
         }
       `
-      console.log('getStripeCustomerQuery', getStripeCustomerQuery);
+      // console.log('getStripeCustomerQuery', getStripeCustomerQuery);
       const stripeCustomer = await makeRequest(getStripeCustomerQuery);
-      console.log('stripeCustomer', JSON.stringify(stripeCustomer))
+      // console.log('stripeCustomer', JSON.stringify(stripeCustomer))
 
       // Now lets make sure that the customer existed.
       if (stripeCustomer?.body?.data?.getStripeCustomer?.user?.id) {
@@ -1738,12 +1738,12 @@ export const handler = async (event) => {
           }
         }
         `
-        console.log('updateUserDetailsQuery')
-        console.log(updateUserDetailsQuery)
+        // console.log('updateUserDetailsQuery')
+        // console.log(updateUserDetailsQuery)
 
         const updateUserDetails = await makeRequest(updateUserDetailsQuery)
-        console.log('updateUserDetails')
-        console.log(updateUserDetails)
+        // console.log('updateUserDetails')
+        // console.log(updateUserDetails)
 
         // The user subscriptionStatus is now set to canceled
         response = {
@@ -1790,12 +1790,12 @@ export const handler = async (event) => {
         }
       }
     `
-      console.log('getNotificationQuery')
-      console.log(getNotificationQuery)
+      // console.log('getNotificationQuery')
+      // console.log(getNotificationQuery)
 
       const getNotification = await makeRequest(getNotificationQuery);
-      console.log('getNotification')
-      console.log(getNotification)
+      // console.log('getNotification')
+      // console.log(getNotification)
 
       if (getNotification.body.data.getUserNotification.user.id === userSub) {
         // If the user sub matches the one associated with the notification, lets make isUnRead: false
@@ -1806,12 +1806,12 @@ export const handler = async (event) => {
             }
           }
         `
-        console.log('updateNotificationQuery')
-        console.log(updateNotificationQuery)
+        // console.log('updateNotificationQuery')
+        // console.log(updateNotificationQuery)
 
         const updateNotification = await makeRequest(updateNotificationQuery);
-        console.log('updateNotification');
-        console.log(updateNotification)
+        // console.log('updateNotification');
+        // console.log(updateNotification)
       } else {
         response = {
           statusCode: 403,
@@ -1847,12 +1847,12 @@ export const handler = async (event) => {
         }
       }
     `
-      console.log('getNotificationQuery')
-      console.log(getNotificationQuery)
+      // console.log('getNotificationQuery')
+      // console.log(getNotificationQuery)
 
       const getNotification = await makeRequest(getNotificationQuery);
-      console.log('getNotification')
-      console.log(getNotification)
+      // console.log('getNotification')
+      // console.log(getNotification)
 
       if (getNotification.body.data.getUserNotification.user.id === userSub) {
         // If the user sub matches the one associated with the notification, lets make isUnRead: true
@@ -1863,12 +1863,12 @@ export const handler = async (event) => {
             }
           }
         `
-        console.log('updateNotificationQuery')
-        console.log(updateNotificationQuery)
+        // console.log('updateNotificationQuery')
+        // console.log(updateNotificationQuery)
 
         const updateNotification = await makeRequest(updateNotificationQuery);
-        console.log('updateNotification');
-        console.log(updateNotification)
+        // console.log('updateNotification');
+        // console.log(updateNotification)
       } else {
         response = {
           statusCode: 403,
@@ -1915,7 +1915,7 @@ export const handler = async (event) => {
         }
       }
     `;
-    console.log('getUsersMetadataQuery', getUsersMetadataQuery);
+    // console.log('getUsersMetadataQuery', getUsersMetadataQuery);
 
     async function fetchAllContentMetadatas(id) {
       let allItems = []; // Array to hold all contentMetadata items
@@ -1948,7 +1948,7 @@ export const handler = async (event) => {
 
     try {
       const getUsersMetadataRequest = await fetchAllContentMetadatas(userSub);
-      console.log('getUsersMetadataRequest', JSON.stringify(getUsersMetadataRequest));
+      // console.log('getUsersMetadataRequest', JSON.stringify(getUsersMetadataRequest));
 
       // If this works it will return an array of the objects in the body
       response = {
@@ -1993,7 +1993,7 @@ export const handler = async (event) => {
         }
       }
     `;
-    console.log('getUsersMetadataQuery', getUsersMetadataQuery);
+    // console.log('getUsersMetadataQuery', getUsersMetadataQuery);
 
     const getContentMetadataQuery = `
     query getV2ContentMetadata($id: ID!) {
@@ -2012,7 +2012,7 @@ export const handler = async (event) => {
       }
     }
     `;
-    console.log('getContentMetadataQuery', getContentMetadataQuery);
+    // console.log('getContentMetadataQuery', getContentMetadataQuery);
 
     const createContentMetadataQuery = `
       mutation createV2ContentMetadata($colorMain: String, $colorSecondary: String, $description: String, $emoji: String, $frameCount: Int, $id: ID!, $status: Int, $title: String!, $version: Int) {
@@ -2031,7 +2031,7 @@ export const handler = async (event) => {
         }
       }
     `
-    console.log('createContentMetadataQuery', createContentMetadataQuery)
+    // console.log('createContentMetadataQuery', createContentMetadataQuery)
 
     const createUserMetadataQuery = `
       mutation createUserV2Metadata($v2ContentMetadataId: ID!, $userDetailsId: ID!) {
@@ -2040,7 +2040,7 @@ export const handler = async (event) => {
         }
       }
     `
-    console.log('createUserMetadataQuery', createUserMetadataQuery)
+    // console.log('createUserMetadataQuery', createUserMetadataQuery)
 
     /* --------------------------- Variables From Body -------------------------- */
 
@@ -2050,7 +2050,7 @@ export const handler = async (event) => {
     /* ----------------------------- Fetch Metadata ----------------------------- */
 
     const metadataUrl = `https://img.memesrc.com/v2/${cid}/00_metadata.json`
-    console.log('metadataUrl', metadataUrl)
+    // console.log('metadataUrl', metadataUrl)
 
     try {
 
@@ -2061,13 +2061,13 @@ export const handler = async (event) => {
       };
       const metadataResponse = await fetch(metadataUrl, requestOptions);
       const result = await metadataResponse.json();
-      console.log('METADATA: ', JSON.stringify(result))
+      // console.log('METADATA: ', JSON.stringify(result))
 
 
       if (cid && result && typeof result === 'object') {
         // First lets make sure the id doesn't exist.
         const getContentMetadataRequest = await makeRequestWithVariables(getContentMetadataQuery, { id: cid })
-        console.log('getContentMetadataRequest', JSON.stringify(getContentMetadataRequest));
+        // console.log('getContentMetadataRequest', JSON.stringify(getContentMetadataRequest));
 
         if (!getContentMetadataRequest?.body?.data?.getV2ContentMetadata?.id) {
           // There was not a match
@@ -2086,11 +2086,11 @@ export const handler = async (event) => {
 
           // Lets make a new one.
           const createContentMetadataRequest = await makeRequestWithVariables(createContentMetadataQuery, { ...newMetadataDetails });
-          console.log('createContentMetadataRequest', JSON.stringify(createContentMetadataRequest));
+          // console.log('createContentMetadataRequest', JSON.stringify(createContentMetadataRequest));
 
           // Now assuming that worked, let's make the connection to the user.
           const createUserMetadataRequest = await makeRequestWithVariables(createUserMetadataQuery, { v2ContentMetadataId: cid, userDetailsId: userSub });
-          console.log('createUserMetadataRequest', JSON.stringify(createUserMetadataRequest));
+          // console.log('createUserMetadataRequest', JSON.stringify(createUserMetadataRequest));
 
           // Now lets return the data so that it can be added to their list on the front end.
           response = {
@@ -2133,14 +2133,14 @@ export const handler = async (event) => {
           }
       
           const getUsersMetadataRequest = await fetchAllContentMetadatas(userSub);
-          console.log('getUsersMetadataRequest', JSON.stringify(getUsersMetadataRequest));
+          // console.log('getUsersMetadataRequest', JSON.stringify(getUsersMetadataRequest));
 
           const foundMetadata = getUsersMetadataRequest?.find(obj => obj.id === cid);
 
           if (!foundMetadata) {
             // We didn't find the object with that ID in their data. Let's make the connection to the user.
             const createUserMetadataRequest = await makeRequestWithVariables(createUserMetadataQuery, { v2ContentMetadataId: cid, userDetailsId: userSub });
-            console.log('createUserMetadataRequest', JSON.stringify(createUserMetadataRequest));
+            // console.log('createUserMetadataRequest', JSON.stringify(createUserMetadataRequest));
 
             response = {
               statusCode: 200,
@@ -2199,7 +2199,7 @@ export const handler = async (event) => {
   
       try {
         const createProSupportMessage = await makeRequestWithVariables(createProSupportMessageQuery, { userId, message });
-        console.log('createProSupportMessage', createProSupportMessage);
+        // console.log('createProSupportMessage', createProSupportMessage);
   
         response = {
           statusCode: 200,
@@ -2249,7 +2249,7 @@ export const handler = async (event) => {
         }
       }
     `;
-    console.log('getUsersMetadataQuery', getUsersMetadataQuery);
+    // console.log('getUsersMetadataQuery', getUsersMetadataQuery);
 
     const deleteUsersMetadataQuery = `
       mutation deleteUserV2Metadata($id: ID!) {
@@ -2295,14 +2295,14 @@ export const handler = async (event) => {
       }
   
       const getUsersMetadataRequest = await fetchAllContentMetadatas(userSub);
-      console.log('getUsersMetadataRequest', JSON.stringify(getUsersMetadataRequest));
+      // console.log('getUsersMetadataRequest', JSON.stringify(getUsersMetadataRequest));
 
       const foundMetadata = getUsersMetadataRequest?.find(obj => obj.v2ContentMetadata.id === cid);
 
       if (foundMetadata?.id) {
         // We didn't find the object with that ID in their data. Let's make the connection to the user.
         const deleteUserMetadataRequest = await makeRequestWithVariables(deleteUsersMetadataQuery, { id: foundMetadata.id });
-        console.log('deleteUserMetadataRequest', JSON.stringify(deleteUserMetadataRequest));
+        // console.log('deleteUserMetadataRequest', JSON.stringify(deleteUserMetadataRequest));
         response = {
           statusCode: 200,
           body: {
@@ -2332,7 +2332,7 @@ export const handler = async (event) => {
     }
   }
 
-  console.log('THE RESPONSE: ', JSON.stringify(response));
+  // console.log('THE RESPONSE: ', JSON.stringify(response));
 
   return {
     statusCode: response.statusCode,
