@@ -75,7 +75,7 @@ export default function FramePage({ shows = [] }) {
   const [surroundingFrames, setSurroundingFrames] = useState([]);
   const [surroundingSubtitles, setSurroundingSubtitles] = useState(null);
   const [loading, setLoading] = useState(false);
-  const { cid, season, episode, frame } = useParams();
+  const { cid, season, episode, frame, fineTuningIndex = null } = useParams();
   const [confirmedCid, setConfirmedCid] = useState();
   const [sliderValue, setSliderValue] = useState(fineTuningFrame || 0);
   const [displayImage, setDisplayImage] = useState();
@@ -530,8 +530,8 @@ useEffect(() => {
     if (frames && frames.length > 0) {
       console.log(frames.length)
       console.log(Math.floor(frames.length / 2))
-      setSelectedFrameIndex(selectedFrameIndex || Math.floor(frames.length / 2))
-      setDisplayImage(selectedFrameIndex ? frames[selectedFrameIndex] : frames[Math.floor(frames.length / 2)])
+      setSelectedFrameIndex(fineTuningIndex || Math.floor(frames.length / 2))
+      setDisplayImage(fineTuningIndex ? frames[fineTuningIndex] : frames[Math.floor(frames.length / 2)])
     }
   }, [frames]);
 
@@ -1082,7 +1082,7 @@ useEffect(() => {
               size="medium"
               fullWidth
               variant="contained"
-              to={`/editor/${cid}/${season}/${episode}/${frame}`}
+              to={`/editor/${cid}/${season}/${episode}/${frame}${(fineTuningIndex || fineTuningLoadStarted) ? `/${selectedFrameIndex}` : ''}`}
               component={RouterLink}
               sx={{ my: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
               startIcon={<Edit />}
