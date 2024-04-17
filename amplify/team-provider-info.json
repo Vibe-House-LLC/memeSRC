@@ -10,7 +10,8 @@
       "StackName": "amplify-memesrc-dev-191629",
       "StackId": "arn:aws:cloudformation:us-east-1:458585755494:stack/amplify-memesrc-dev-191629/3d2f23e0-7044-11ed-b56c-0ef4d44c02c3",
       "AmplifyAppId": "d32pnvtwxwtte5",
-      "APIGatewayAuthURL": "https://s3.amazonaws.com/amplify-memesrc-dev-191629-deployment/amplify-cfn-templates/api/APIGatewayAuthStack.json"
+      "APIGatewayAuthURL": "https://s3.amazonaws.com/amplify-memesrc-dev-191629-deployment/amplify-cfn-templates/api/APIGatewayAuthStack.json",
+      "AuthTriggerTemplateURL": "https://s3.amazonaws.com/amplify-memesrc-dev-191629-deployment/amplify-cfn-templates/auth/auth-trigger-cloudformation-template.json"
     },
     "categories": {
       "auth": {
@@ -140,7 +141,10 @@
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
           "s3Key": "amplify-builds/memesrcIndexToOpenSearch-7444666b685a55316664-build.zip"
         },
-        "memesrcc3c71449PreSignup": {}
+        "memesrcc3c71449PreSignup": {
+          "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
+          "s3Key": "amplify-builds/memesrcc3c71449PreSignup-35574733595445454c37-build.zip"
+        }
       },
       "storage": {
         "memesrcGeneratedImages": {}

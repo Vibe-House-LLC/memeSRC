@@ -1,6 +1,10 @@
 [
   {
-    "Action": [],
-    "Resource": []
+    "Action": [
+      "cognito-idp:ListUsers"
+    ],
+    "Resource": [
+      "*"
+    ]
   }
 ]

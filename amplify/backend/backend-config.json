@@ -1127,6 +1127,22 @@
         }
       ]
     },
+    "AMPLIFY_function_memesrcc3c71449PreSignup_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcc3c71449PreSignup"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcc3c71449PreSignup_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcc3c71449PreSignup"
+        }
+      ]
+    },
     "AMPLIFY_function_memesrcinpainter_deploymentBucketName": {
       "usedBy": [
         {
