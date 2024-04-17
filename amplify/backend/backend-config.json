@@ -246,7 +246,17 @@
   "auth": {
     "memesrcc3c71449": {
       "customAuth": false,
-      "dependsOn": [],
+      "dependsOn": [
+        {
+          "attributes": [
+            "Arn",
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "memesrcc3c71449PreSignup",
+          "triggerProvider": "Cognito"
+        }
+      ],
       "frontendAuthConfig": {
         "mfaConfiguration": "OFF",
         "mfaTypes": [
@@ -602,6 +612,11 @@
           "resourceName": "memesrc"
         }
       ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "memesrcc3c71449PreSignup": {
+      "build": true,
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },

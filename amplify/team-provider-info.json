@@ -139,7 +139,8 @@
         "memesrcIndexToOpenSearch": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
           "s3Key": "amplify-builds/memesrcIndexToOpenSearch-7444666b685a55316664-build.zip"
-        }
+        },
+        "memesrcc3c71449PreSignup": {}
       },
       "storage": {
         "memesrcGeneratedImages": {}
