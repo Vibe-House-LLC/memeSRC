@@ -235,8 +235,14 @@ export default function SearchPage() {
     }
   };
 
-  const handleMediaLoad = (e) => {
-    e.target.style.visibility = 'visible';
+
+  const [videoLoadedStates, setVideoLoadedStates] = useState({});
+
+  const handleMediaLoad = (resultId) => {
+    setVideoLoadedStates((prevState) => ({
+      ...prevState,
+      [resultId]: true,
+    }));
   };
 
   useEffect(() => {
@@ -624,67 +630,72 @@ export default function SearchPage() {
             scrollThreshold={0.90}
           >
             <Grid container spacing={2} alignItems="stretch" paddingX={{ xs: 2, md: 6 }}>
-              {newResults.slice(0, displayedResults).map((result, index) => (
-                <Grid item xs={12} sm={6} md={3} key={index} className="result-item" data-result-index={index}>
-                  {result.isAd ? (
-                    <StyledCard>
-                      <SearchPageResultsAd />
-                    </StyledCard>
-                  ) : (
-                    <Link
-                      to={`/frame/${result.cid}/${result.season}/${result.episode}/${Math.round(
-                        (parseInt(result.start_frame, 10) + parseInt(result.end_frame, 10)) / 2
-                      )}`}
-                      style={{ textDecoration: 'none' }}
-                    >
+              {newResults.slice(0, displayedResults).map((result, index) => {
+                const resultId = `${result.season}-${result.episode}-${result.subtitle_index}`;
+                const isMediaLoaded = videoLoadedStates[resultId] || false;
+
+                return (
+                  <Grid item xs={12} sm={6} md={3} key={index} className="result-item" data-result-index={index}>
+                    {result.isAd ? (
                       <StyledCard>
-                        {animationsEnabled ? (
-                          <StyledCardVideoContainer>
-                            <ImageSkeleton />
-                            <StyledCardMedia
-                              ref={addVideoRef}
-                              src={videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`]}
-                              autoPlay
-                              loop
-                              muted
-                              playsInline
-                              preload="auto"
-                              onError={(e) => console.error('Error loading video:', JSON.stringify(result))}
-                              key={`${result.season}-${result.episode}-${result.subtitle_index}-video`}
-                              style={{ visibility: videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`] ? 'visible' : 'hidden' }}
-                              onLoad={handleMediaLoad}
-                            />
-                          </StyledCardVideoContainer>
-                        ) : (
-                          <StyledCardImageContainer>
-                            <ImageSkeleton />
-                            <StyledCardImage
-                              src={videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`]}
-                              alt={`Frame from S${result.season} E${result.episode}`}
-                              key={`${result.season}-${result.episode}-${result.subtitle_index}-image`}
-                              style={{ visibility: videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`] ? 'visible' : 'hidden' }}
-                              onLoad={handleMediaLoad}
-                            />
-                          </StyledCardImageContainer>
-                        )}
-                        <BottomCardCaption>{result.subtitle_text}</BottomCardCaption>
-                        <BottomCardLabel>
-                          <Chip
-                            size="small"
-                            label={result.cid}
-                            style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', color: 'white', fontWeight: 'bold' }}
-                          />
-                          <Chip
-                            size="small"
-                            label={`S${result.season} E${result.episode}`}
-                            style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', color: 'white', fontWeight: 'bold' }}
-                          />
-                        </BottomCardLabel>
+                        <SearchPageResultsAd />
                       </StyledCard>
-                    </Link>
-                  )}
-                </Grid>
-              ))}
+                    ) : (
+                      <Link
+                        to={`/frame/${result.cid}/${result.season}/${result.episode}/${Math.round(
+                          (parseInt(result.start_frame, 10) + parseInt(result.end_frame, 10)) / 2
+                        )}`}
+                        style={{ textDecoration: 'none' }}
+                      >
+                        <StyledCard>
+                          {animationsEnabled ? (
+                            <StyledCardVideoContainer>
+                              {!isMediaLoaded && <ImageSkeleton />}
+                              <StyledCardMedia
+                                ref={addVideoRef}
+                                src={videoUrls[resultId]}
+                                autoPlay
+                                loop
+                                muted
+                                playsInline
+                                preload="auto"
+                                onError={(e) => console.error('Error loading video:', JSON.stringify(result))}
+                                key={`${resultId}-video`}
+                                style={{ display: isMediaLoaded ? 'block' : 'none' }}
+                                onLoad={() => handleMediaLoad(resultId)}
+                              />
+                            </StyledCardVideoContainer>
+                          ) : (
+                            <StyledCardImageContainer>
+                              {!isMediaLoaded && <ImageSkeleton />}
+                              <StyledCardImage
+                                src={videoUrls[resultId]}
+                                alt={`Frame from S${result.season} E${result.episode}`}
+                                key={`${resultId}-image`}
+                                style={{ display: isMediaLoaded ? 'block' : 'none' }}
+                                onLoad={() => handleMediaLoad(resultId)}
+                              />
+                            </StyledCardImageContainer>
+                          )}
+                          <BottomCardCaption>{result.subtitle_text}</BottomCardCaption>
+                          <BottomCardLabel>
+                            <Chip
+                              size="small"
+                              label={result.cid}
+                              style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', color: 'white', fontWeight: 'bold' }}
+                            />
+                            <Chip
+                              size="small"
+                              label={`S${result.season} E${result.episode}`}
+                              style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', color: 'white', fontWeight: 'bold' }}
+                            />
+                          </BottomCardLabel>
+                        </StyledCard>
+                      </Link>
+                    )}
+                  </Grid>
+                );
+              })}
             </Grid>
           </InfiniteScroll>
         </>
