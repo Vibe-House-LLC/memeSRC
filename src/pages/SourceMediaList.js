@@ -31,10 +31,39 @@ import Scrollbar from '../components/scrollbar';
 import { UserListHead, UserListToolbar } from '../sections/@dashboard/user';
 import UserCountChart from '../sections/@dashboard/app/UserSignupsGraph';
 // graphql
-import { listSourceMedias, listUserDetails } from '../graphql/queries';
+import { listUserDetails } from '../graphql/queries';
 import { updateUserDetails } from '../graphql/mutations';
 // mock
 // import USERLIST from '../_mock/user';
+
+const listSourceMedias = /* GraphQL */ `
+  query ListSourceMedias(
+    $filter: ModelSourceMediaFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listSourceMedias(filter: $filter, limit: $limit, nextToken: $nextToken) {
+      items {
+        id
+        status
+        createdAt
+        updatedAt
+        userDetailsSourceMediaId
+        sourceMediaSeriesId
+        user {
+          id
+          username
+        }
+        series {
+          name
+        }
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
 
 // ----------------------------------------------------------------------
 
