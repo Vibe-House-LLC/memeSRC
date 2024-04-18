@@ -4,7 +4,8 @@
       "cognito-idp:ListUsers"
     ],
     "Resource": [
-      "*"
+      "arn:aws:cognito-idp:us-east-1:458585755494:userpool/us-east-1_fU9hjTCDb",
+      "arn:aws:cognito-idp:us-east-1:458585755494:userpool/us-east-1_h6jZrGaJU"
     ]
   }
 ]
