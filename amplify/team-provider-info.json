@@ -10,7 +10,8 @@
       "StackName": "amplify-memesrc-dev-191629",
       "StackId": "arn:aws:cloudformation:us-east-1:458585755494:stack/amplify-memesrc-dev-191629/3d2f23e0-7044-11ed-b56c-0ef4d44c02c3",
       "AmplifyAppId": "d32pnvtwxwtte5",
-      "APIGatewayAuthURL": "https://s3.amazonaws.com/amplify-memesrc-dev-191629-deployment/amplify-cfn-templates/api/APIGatewayAuthStack.json"
+      "APIGatewayAuthURL": "https://s3.amazonaws.com/amplify-memesrc-dev-191629-deployment/amplify-cfn-templates/api/APIGatewayAuthStack.json",
+      "AuthTriggerTemplateURL": "https://s3.amazonaws.com/amplify-memesrc-dev-191629-deployment/amplify-cfn-templates/auth/auth-trigger-cloudformation-template.json"
     },
     "categories": {
       "auth": {
@@ -116,7 +117,7 @@
         },
         "frameExtractor": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/frameExtractor-6d4135654362614e3954-build.zip"
+          "s3Key": "amplify-builds/frameExtractor-55335541637651307a78-build.zip"
         },
         "memesrcSearchV2": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
@@ -129,7 +130,7 @@
         },
         "memesrcGif": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcGif-464e6379596c4a384965-build.zip"
+          "s3Key": "amplify-builds/memesrcGif-51656b4f564157524661-build.zip"
         },
         "memesrcOpenSearch": {
           "secretsPathAmplifyAppId": "d32pnvtwxwtte5",
@@ -139,6 +140,10 @@
         "memesrcIndexToOpenSearch": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
           "s3Key": "amplify-builds/memesrcIndexToOpenSearch-7444666b685a55316664-build.zip"
+        },
+        "memesrcc3c71449PreSignup": {
+          "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
+          "s3Key": "amplify-builds/memesrcc3c71449PreSignup-35574733595445454c37-build.zip"
         }
       },
       "storage": {

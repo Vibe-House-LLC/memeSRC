@@ -36,7 +36,7 @@
     "sharedId": "c3c71449",
     "resourceName": "memesrcc3c71449",
     "authSelections": "identityPoolAndUserPool",
-    "useDefault": "default",
+    "useDefault": "manual",
     "userPoolGroupList": [
       "admins",
       "mods",
@@ -58,7 +58,32 @@
       ]
     },
     "breakCircularDependency": true,
-    "dependsOn": [],
-    "adminQueryGroup": "admins"
+    "dependsOn": [
+      {
+        "category": "function",
+        "resourceName": "memesrcc3c71449PreSignup",
+        "triggerProvider": "Cognito",
+        "attributes": [
+          "Arn",
+          "Name"
+        ]
+      }
+    ],
+    "adminQueryGroup": "admins",
+    "thirdPartyAuth": true,
+    "authProviders": [],
+    "userPoolGroups": true,
+    "adminQueries": true,
+    "triggers": {
+      "PreSignup": [
+        "custom"
+      ]
+    },
+    "hostedUI": false,
+    "parentStack": {
+      "Ref": "AWS::StackId"
+    },
+    "authTriggerConnections": "[\n  {\n    \"triggerType\": \"PreSignUp\",\n    \"lambdaFunctionName\": \"memesrcc3c71449PreSignup\"\n  }\n]",
+    "permissions": []
   }
 }

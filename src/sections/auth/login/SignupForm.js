@@ -60,6 +60,8 @@ export default function SignupForm(props) {
     agree: false
   });
 
+  const [emailInUse, setEmailInUse] = useState(false);
+
   const checkForErrors = () => {
     let _username;
     let _email;
@@ -146,10 +148,21 @@ export default function SignupForm(props) {
           'error': err.message,
           'text': 'Sign Up'
         });
-        setMessage(err.message)
-        setSeverity('error')
-        setOpen(true)
-        console.log(err.message);
+        if (err.message === "PreSignUp failed with error EmailExistsException.") {
+          setMessage('Email already in use.')
+          setSeverity('error')
+          setOpen(true)
+          setEmailInUse(true)
+          setFormErrors({
+            ...formErrors,
+            email: true
+          })
+        } else {
+          setMessage(err.message)
+          setSeverity('error')
+          setOpen(true)
+        }
+        
       });
     } else {
       setMessage('Please check form for errors')
@@ -204,12 +217,14 @@ export default function SignupForm(props) {
             label="Email address"
             autoComplete='email'
             error={formErrors.email}
+            helperText={emailInUse ? 'The email address you have provided belongs to an existing account.' : ''}
             onChange={(x) => {
               setEmail(x.target.value)
               setFormErrors({
                 ...formErrors,
                 email: false
               })
+              setEmailInUse(false)
             }}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
