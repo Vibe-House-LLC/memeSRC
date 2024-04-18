@@ -23,6 +23,8 @@ import { UserContext } from '../UserContext';
 import fetchShows from '../utils/fetchShows';
 import { getWebsiteSetting } from '../graphql/queries';
 
+import ImageSkeleton from '../components/ImageSkeleton';
+
 
 
 const StyledCard = styled(Card)`
@@ -231,6 +233,10 @@ export default function SearchPage() {
     if (element && !videoRefs.current.includes(element)) {
       videoRefs.current.push(element);
     }
+  };
+
+  const handleMediaLoad = (e) => {
+    e.target.style.visibility = 'visible';
   };
 
   useEffect(() => {
@@ -634,29 +640,31 @@ export default function SearchPage() {
                       <StyledCard>
                         {animationsEnabled ? (
                           <StyledCardVideoContainer>
-                            {videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`] && (
-                              <StyledCardMedia
-                                ref={addVideoRef}
-                                src={videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`]}
-                                autoPlay
-                                loop
-                                muted
-                                playsInline
-                                preload="auto"
-                                onError={(e) => console.error('Error loading video:', JSON.stringify(result))}
-                                key={`${result.season}-${result.episode}-${result.subtitle_index}-video`}
-                              />
-                            )}
+                            <ImageSkeleton />
+                            <StyledCardMedia
+                              ref={addVideoRef}
+                              src={videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`]}
+                              autoPlay
+                              loop
+                              muted
+                              playsInline
+                              preload="auto"
+                              onError={(e) => console.error('Error loading video:', JSON.stringify(result))}
+                              key={`${result.season}-${result.episode}-${result.subtitle_index}-video`}
+                              style={{ visibility: videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`] ? 'visible' : 'hidden' }}
+                              onLoad={handleMediaLoad}
+                            />
                           </StyledCardVideoContainer>
                         ) : (
                           <StyledCardImageContainer>
-                            {videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`] && (
-                              <StyledCardImage
-                                src={videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`]}
-                                alt={`Frame from S${result.season} E${result.episode}`}
-                                key={`${result.season}-${result.episode}-${result.subtitle_index}-image`}
-                              />
-                            )}
+                            <ImageSkeleton />
+                            <StyledCardImage
+                              src={videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`]}
+                              alt={`Frame from S${result.season} E${result.episode}`}
+                              key={`${result.season}-${result.episode}-${result.subtitle_index}-image`}
+                              style={{ visibility: videoUrls[`${result.season}-${result.episode}-${result.subtitle_index}`] ? 'visible' : 'hidden' }}
+                              onLoad={handleMediaLoad}
+                            />
                           </StyledCardImageContainer>
                         )}
                         <BottomCardCaption>{result.subtitle_text}</BottomCardCaption>
