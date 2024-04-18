@@ -31,10 +31,67 @@ import Scrollbar from '../components/scrollbar';
 import { UserListHead, UserListToolbar } from '../sections/@dashboard/user';
 import UserCountChart from '../sections/@dashboard/app/UserSignupsGraph';
 // graphql
-import { getSourceMedia, listSourceMedias, listUserDetails } from '../graphql/queries';
+import { listSourceMedias, listUserDetails } from '../graphql/queries';
 import { updateUserDetails } from '../graphql/mutations';
 // mock
 // import USERLIST from '../_mock/user';
+
+const getSourceMedia = /* GraphQL */ `
+  query GetSourceMedia($id: ID!) {
+    getSourceMedia(id: $id) {
+      id
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        statusText
+        createdAt
+        updatedAt
+        __typename
+      }
+      files {
+        items {
+          id
+        key
+        status
+        createdAt
+        updatedAt
+        sourceMediaFilesId
+        }
+        nextToken
+        __typename
+      }
+      status
+      user {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      createdAt
+      updatedAt
+      userDetailsSourceMediaId
+      sourceMediaSeriesId
+      __typename
+    }
+  }
+`;
 
 // ----------------------------------------------------------------------
 
@@ -131,6 +188,7 @@ export default function SourceMediaFileList() {
     });
   
     const items = response.data.getSourceMedia.files.items;
+    console.log(response)
     result.push(...items);
   
     if (response.data.getSourceMedia.files.nextToken) {
