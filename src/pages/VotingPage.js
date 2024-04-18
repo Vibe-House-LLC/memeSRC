@@ -242,8 +242,8 @@ export default function VotingPage({ shows: searchableShows }) {
       console.log(voteData.lastBoost)
 
       const nextVoteTimes = {};
-      Object.keys(voteData.nextVoteTime).forEach((seriesId) => {
-        nextVoteTimes[seriesId] = voteData.nextVoteTime[seriesId];
+      Object.entries(voteData.nextVoteTime ?? {}).forEach(([seriesId, voteTime]) => {
+        nextVoteTimes[seriesId] = voteTime;
       });
       setNextVoteTimes(nextVoteTimes);  // assuming you have a state variable called nextVoteTimes
 
