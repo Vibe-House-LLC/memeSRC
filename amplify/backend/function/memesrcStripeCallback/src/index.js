@@ -66,7 +66,7 @@ exports.handler = async (event) => {
           stripeCustomerId,
           periodStart,
           periodEnd,
-          creditsPerMonth: creditsPerPrice[invoice.data.lines.data[0].price.id]
+          creditsPerMonth: creditsPerPrice[invoice.lines.data[0].price.id]
         })
       }),
     };
@@ -232,7 +232,7 @@ exports.handler = async (event) => {
     console.log('isRenewel', isRenewel)
 
     const invoice = await stripe.invoices.retrieve(
-      stripeEvent.invoice
+      stripeEvent.id
     );
 
 

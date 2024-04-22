@@ -108,7 +108,7 @@
         "memesrcStripeCallback": {
           "secretsPathAmplifyAppId": "d32pnvtwxwtte5",
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcStripeCallback-5050637a777a39315a35-build.zip"
+          "s3Key": "amplify-builds/memesrcStripeCallback-324f715239474d56424b-build.zip"
         },
         "memesrcOpenAI": {
           "secretsPathAmplifyAppId": "d32pnvtwxwtte5",
