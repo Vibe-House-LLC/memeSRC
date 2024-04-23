@@ -1210,7 +1210,7 @@ export const handler = async (event) => {
       // console.log('getStripeCustomerQuery', getStripeCustomerQuery);
       const stripeCustomer = await makeRequest(getStripeCustomerQuery);
       // console.log('stripeCustomer', JSON.stringify(stripeCustomer))
-      
+
       const creditsPerMonth = body.creditsPerMonth
       const newCreditValue = Math.max(creditsPerMonth, (stripeCustomer.body.data.getStripeCustomer.user.credits || 0));
 
@@ -2106,17 +2106,17 @@ export const handler = async (event) => {
           async function fetchAllContentMetadatas(id) {
             let allItems = []; // Array to hold all contentMetadata items
             let nextToken = null; // Variable to track the nextToken
-      
+
             // Function to recursively fetch contentMetadatas
             async function fetchPage(nt) {
               try {
                 // Adjust your makeRequestWithVariables function to accept nextToken if provided
                 const response = await makeRequestWithVariables(getUsersMetadataQuery, { id: id, nextToken: nt });
                 const contentMetadatas = response?.body.data?.getUserDetails?.v2ContentMetadatas;
-      
+
                 // Concatenate the new items to the allItems array
                 allItems = allItems.concat(contentMetadatas.items.map(item => item.v2ContentMetadata));
-      
+
                 // If there's a nextToken, recursively call fetchPage again
                 if (contentMetadatas.nextToken) {
                   await fetchPage(contentMetadatas.nextToken);
@@ -2126,12 +2126,12 @@ export const handler = async (event) => {
                 throw new Error('Failed to fetch contentMetadatas');
               }
             }
-      
+
             await fetchPage(nextToken); // Start the recursive fetching
-      
+
             return allItems; // Return all fetched items
           }
-      
+
           const getUsersMetadataRequest = await fetchAllContentMetadatas(userSub);
           // console.log('getUsersMetadataRequest', JSON.stringify(getUsersMetadataRequest));
 
@@ -2156,7 +2156,7 @@ export const handler = async (event) => {
               }
             }
           }
-          
+
         }
       }
 
@@ -2175,7 +2175,7 @@ export const handler = async (event) => {
   if (path === `/${process.env.ENV}/public/user/update/proSupportMessage`) {
     const userId = userSub;
     const message = body.message;
-  
+
     if (!userId || !message) {
       response = {
         statusCode: 400,
@@ -2196,11 +2196,11 @@ export const handler = async (event) => {
           }
         }
       `;
-  
+
       try {
         const createProSupportMessage = await makeRequestWithVariables(createProSupportMessageQuery, { userId, message });
         // console.log('createProSupportMessage', createProSupportMessage);
-  
+
         response = {
           statusCode: 200,
           body: {
@@ -2268,17 +2268,17 @@ export const handler = async (event) => {
       async function fetchAllContentMetadatas(id) {
         let allItems = []; // Array to hold all contentMetadata items
         let nextToken = null; // Variable to track the nextToken
-  
+
         // Function to recursively fetch contentMetadatas
         async function fetchPage(nt) {
           try {
             // Adjust your makeRequestWithVariables function to accept nextToken if provided
             const response = await makeRequestWithVariables(getUsersMetadataQuery, { id: id, nextToken: nt });
             const contentMetadatas = response?.body.data?.getUserDetails?.v2ContentMetadatas;
-  
+
             // Concatenate the new items to the allItems array
             allItems = allItems.concat(contentMetadatas.items.map(item => item));
-  
+
             // If there's a nextToken, recursively call fetchPage again
             if (contentMetadatas.nextToken) {
               await fetchPage(contentMetadatas.nextToken);
@@ -2288,12 +2288,12 @@ export const handler = async (event) => {
             throw new Error('Failed to fetch contentMetadatas');
           }
         }
-  
+
         await fetchPage(nextToken); // Start the recursive fetching
-  
+
         return allItems; // Return all fetched items
       }
-  
+
       const getUsersMetadataRequest = await fetchAllContentMetadatas(userSub);
       // console.log('getUsersMetadataRequest', JSON.stringify(getUsersMetadataRequest));
 
@@ -2331,6 +2331,62 @@ export const handler = async (event) => {
       }
     }
   }
+
+  if (path === `/${process.env.ENV}/public/user/update/listInvoices`) {
+    const getStripeCustomerIdQuery = `
+      query getUserDetails {
+        getUserDetails(id: "${userSub}") {
+          stripeCustomerInfo {
+            id
+          }
+          magicSubscription
+        }
+      }
+    `
+    /* -------------------------------------------------------------------------- */
+
+    // Let's get the customers stripe customer ID and make sure they have an active subscription.
+
+    try {
+      const getStripeCustomerIdRequest = await makeRequest(getStripeCustomerIdQuery);
+      const stripeCustomerId = getStripeCustomerIdRequest?.body?.data?.getUserDetails?.stripeCustomerInfo?.id
+      // const isSubscribed = (getStripeCustomerIdRequest?.body?.data?.getUserDetails?.magicSubscription === 'true')
+
+      if (stripeCustomerId) {
+        // The user is subscribed and has a customer id. Let's get and return their invoices.
+        // You can optionally pass the last invoice as the "ending_before" for pagination.
+        // The response should include "has_more": true if there are more to get.
+        const invoices = await stripe.invoices.list({
+          limit: 12,
+          ...(body.lastInvoice && { ending_before: body.lastInvoice }),
+          customer: stripeCustomerId
+        });
+
+        response = {
+          statusCode: 200,
+          body: invoices,
+        };
+
+      } else {
+        response = {
+          statusCode: 401,
+          body: {
+            error: 'User is not subscribed to pro',
+            errorCode: 'UserNotSubscribedException',
+          },
+        };
+      }
+    } catch (error) {
+      console.log(error)
+      response = {
+        statusCode: 401,
+        body: {
+          error
+        },
+      };
+    }
+  }
+  
 
   // console.log('THE RESPONSE: ', JSON.stringify(response));
 

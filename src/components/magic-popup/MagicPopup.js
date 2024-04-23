@@ -1,7 +1,7 @@
 import MuiAlert from '@mui/material/Alert';
 import PropTypes from 'prop-types';
 import { forwardRef, useContext, useEffect, useRef, useState } from 'react';
-import { Box, Chip, Divider, Fab, Popover, Stack, Typography, css, useTheme } from '@mui/material';
+import { Box, Button, Chip, Divider, Fab, Popover, Stack, Typography, css, useTheme } from '@mui/material';
 import { AutoFixHighRounded, Close, SupervisedUserCircle, Verified } from '@mui/icons-material';
 import { API } from 'aws-amplify';
 import { LoadingButton } from '@mui/lab';
@@ -21,6 +21,7 @@ MagicPopup.propTypes = {
 
 export default function MagicPopup({ children }) {
     const location = useLocation();
+    const navigate = useNavigate();
     const [magicToolsPopoverAnchorEl, setMagicToolsPopoverAnchorEl] = useState(null);
     const { user } = useContext(UserContext);
     const [loadingSubscriptionUrl, setLoadingSubscriptionUrl] = useState(false);
@@ -308,15 +309,15 @@ export default function MagicPopup({ children }) {
                 <Box width="100%" px={2} pb={2} pt={1}>
                     <>
                         {user?.userDetails?.magicSubscription === 'true' ? (
-                            <LoadingButton
+                            <Button
                                 loading={loadingSubscriptionUrl}
-                                onClick={logIntoCustomerPortal}
+                                onClick={() => { navigate('/manageSubscription'); setMagicToolsPopoverAnchorEl(); }}
                                 variant="contained"
                                 size="large"
                                 fullWidth
                             >
                                 Manage Subscription
-                            </LoadingButton>
+                            </Button>
                         ) : (
                             <>
                                 <LoadingButton

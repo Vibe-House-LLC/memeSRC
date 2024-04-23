@@ -166,7 +166,7 @@ export default function AccountPopover() {
                 {userDetails?.user?.userDetails?.magicSubscription === 'true' ?
                   <>
                   <Divider sx={{ borderStyle: 'dashed' }} />
-                    <MenuItem onClick={logIntoCustomerPortal} sx={{ m: 1 }}>
+                    <MenuItem onClick={() => { navigate('/manageSubscription'); handleClose(); }} sx={{ m: 1 }}>
                       <Stack direction='row' alignItems='center'>
                         {loadingCustomerPortal ? <><CircularProgress color='success' size={15} sx={{ mr: 1 }} /> Please Wait...</> : 'Manage Subscription'}
                       </Stack>
