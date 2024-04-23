@@ -57,6 +57,7 @@ const ProSupport = lazy(() => import('./pages/ProSupport'));
 const ProSupportAdmin = lazy(() => import('./pages/ProSupportAdmin'));
 const FAQPage = lazy(() => import('./pages/FAQPage'));
 const InvoiceListPage = lazy(() => import('./pages/InvoicesListPage'));
+const AccountPage = lazy(() => import('./pages/AccountPage'));
 
 const DonationRedirect = () => {
   window.location.href = 'https://buy.stripe.com/6oEeYJ2EJ4vH3Ha7ss';
@@ -78,6 +79,7 @@ export default function Router() {
         { path: 'search', element: <SiteWideMaintenance><Navigate to='/' /></SiteWideMaintenance> },
         { path: 'edit', element: <SiteWideMaintenance><EditorNewProjectPage /></SiteWideMaintenance> },
         { path: 'manageSubscription', element: <SiteWideMaintenance><InvoiceListPage /></SiteWideMaintenance> },
+        { path: 'account', element: <SiteWideMaintenance><AccountPage /></SiteWideMaintenance> },
         { path: 'editor/projects', element: <SiteWideMaintenance><EditorProjectsPage /></SiteWideMaintenance> },
         { path: 'editor/new', element: <SiteWideMaintenance><EditorNewProjectPage /></SiteWideMaintenance> },
         { path: 'editor/project/:editorProjectId', element: <SiteWideMaintenance><EditorPage /></SiteWideMaintenance> },
