@@ -85,15 +85,20 @@ exports.handler = async (event) => {
                     data += chunk;
                 });
                 res.on('end', () => {
-                    resolve(JSON.parse(data));
+                    try {
+                        resolve(JSON.parse(data));
+                    } catch (error) {
+                        console.error('JSON Parse Error:', error);
+                        reject(error);
+                    }
                 });
             });
-
+        
             req.on('error', (error) => {
                 console.error('OpenSearch Error:', error);
                 reject(error);
             });
-
+        
             req.write(JSON.stringify(searchPayload));
             req.end();
         });
