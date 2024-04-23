@@ -1663,7 +1663,7 @@ export const handler = async (event) => {
 
         const updateUserDetailsQuery = `
           mutation updateUserDetails {
-            updateUserDetails(input: {id: "${userId}", subscriptionStatus: "failedPayment", credits: 0}) {
+            updateUserDetails(input: {id: "${userId}", subscriptionStatus: "failedPayment", credits: 0, magicSubscription: null}) {
               id
               credits
             }
@@ -2386,7 +2386,7 @@ export const handler = async (event) => {
       };
     }
   }
-  
+
 
   // console.log('THE RESPONSE: ', JSON.stringify(response));
 
