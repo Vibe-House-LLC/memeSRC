@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { Container, Divider, IconButton, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography, Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField } from "@mui/material";
-import { API, graphqlOperation } from 'aws-amplify';
+import { API, Storage, graphqlOperation } from 'aws-amplify';
 import { Add, Edit, Delete } from "@mui/icons-material";
 import { getV2ContentMetadata, listAliases } from '../graphql/queries';
 import { createAlias, updateAlias, deleteAlias, createV2ContentMetadata } from '../graphql/mutations';
@@ -170,28 +170,29 @@ const AliasManagementPageRevised = () => {
       // If the metadata cannot be loaded, the enitire function will stop before any damage is done.
       if (!doesMetadataExist?.data?.getV2ContentMetadata?.id) {
         // Get the metadata
-        const metadataUrl = `https://img.memesrc.com/v2/${aliasData.aliasV2ContentMetadataId}/00_metadata.json`
-        const requestOptions = {
-          method: "GET",
-          redirect: "follow"
-        };
-        const metadataResponse = await fetch(metadataUrl, requestOptions);
-        const result = await metadataResponse.json();
-        console.log(result)
-        const newMetadataDetails = {
-          id: aliasData.aliasV2ContentMetadataId,
-          colorMain: result.colorMain || '#000000',
-          colorSecondary: result.colorSecondary || '#FFFFFF',
-          description: result.description || 'N/A',
-          emoji: result.emoji || '',
-          frameCount: result.frameCount || 0,
-          status: 0,
-          title: result.title || 'N/A',
-          version: 2
-        }
+        Storage.get(`src/${aliasData.aliasV2ContentMetadataId}/00_metadata.json`, { level: 'public', download: true, customPrefix: { public: 'protected/' } }).then(response => {
+          response.Body.text().then(async resultString => {
+            console.log(resultString)
+            const result = JSON.parse(resultString)
 
-        newMetadataCreated = await API.graphql(graphqlOperation(createV2ContentMetadata, { input: { ...newMetadataDetails } }))
-        console.log(newMetadataCreated)
+            const newMetadataDetails = {
+              id: aliasData.aliasV2ContentMetadataId,
+              colorMain: result.colorMain || '#000000',
+              colorSecondary: result.colorSecondary || '#FFFFFF',
+              description: result.description || 'N/A',
+              emoji: result.emoji || '',
+              frameCount: result.frameCount || 0,
+              status: 0,
+              title: result.title || 'N/A',
+              version: 2
+            }
+    
+            newMetadataCreated = await API.graphql(graphqlOperation(createV2ContentMetadata, { input: { ...newMetadataDetails } }))
+            console.log(newMetadataCreated)
+          })
+        }).catch(error => {
+          console.log(error);
+        });
       }
 
       if (isEditing) {

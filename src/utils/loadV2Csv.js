@@ -7,11 +7,12 @@ export default async function loadV2Csv(show) {
     async function loadFile(cid, filename) {
         const url = `https://img.memesrc.com/v2/${cid}/_docs.csv`;
         try {
-            const response = await fetch(url);
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
+            // const response = await fetch(url);
+            // const text = await response.text();
+
+            const response = (await Storage.get(`src/${cid}/_docs.csv`, { level: 'public', download: true, customPrefix: { public: 'protected/' } })).Body
             const text = await response.text();
+
             const lines = text.split("\n");
             const headers = lines[0].split(",").map((header) => header.trim());
             return lines.slice(1).map((line) => {
