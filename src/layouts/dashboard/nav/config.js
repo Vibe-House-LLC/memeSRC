@@ -1,5 +1,5 @@
 // component
-import { Article, Ballot, CardGiftcard, Edit, Favorite, FolderShared, MapsUgc, QuestionAnswer, Search, Settings, Shield, SupportAgent, Upload } from '@mui/icons-material';
+import { Article, Ballot, CardGiftcard, DocumentScanner, Edit, Favorite, FolderShared, MapsUgc, QuestionAnswer, Search, Settings, Shield, SupportAgent, Upload } from '@mui/icons-material';
 import SvgColor from '../../../components/svg-color';
 
 // ----------------------------------------------------------------------
