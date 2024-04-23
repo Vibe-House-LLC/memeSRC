@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext } from 'react';
-import { Box, Typography, Button, Container, Divider, Grid, Card, TextField, List, ListItem, ListItemIcon, ListItemText, IconButton, Avatar, Chip } from '@mui/material';
+import { Box, Typography, Button, Container, Divider, Grid, Card, TextField, List, ListItem, ListItemIcon, ListItemText, IconButton, Avatar, Chip, Skeleton, LinearProgress } from '@mui/material';
 import { Receipt, Download, Edit, Save, Cancel, Block, SupportAgent, Bolt, AutoFixHighRounded } from '@mui/icons-material';
 import { API } from 'aws-amplify';
 import { UserContext } from '../UserContext';
@@ -17,11 +17,13 @@ const AccountPage = () => {
   const [profilePhoto, setProfilePhoto] = useState(userDetails?.user?.profilePhoto || '');
   const [invoices, setInvoices] = useState([]);
   const [hasMore, setHasMore] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loadingInvoices, setLoadingInvoices] = useState(true);
   const [page, setPage] = useState(1);
+  const [loadingSubscription, setLoadingSubscription] = useState(true);
 
   useEffect(() => {
     fetchInvoices();
+    fetchSubscription();
   }, [page]);
 
   useEffect(() => {
@@ -29,14 +31,12 @@ const AccountPage = () => {
   }, [userDetails]);
 
   useEffect(() => {
-    setIsPasswordValid(
-      newPassword.length >= 8 && newPassword === confirmPassword
-    );
+    setIsPasswordValid(newPassword.length >= 8 && newPassword === confirmPassword);
   }, [newPassword, confirmPassword]);
 
   const fetchInvoices = async () => {
     try {
-      setLoading(true);
+      setLoadingInvoices(true);
       const lastInvoiceId = invoices.length > 0 ? invoices[invoices.length - 1].id : null;
       const response = await API.get('publicapi', '/user/update/listInvoices', {
         ...(hasMore && { body: { lastInvoice: lastInvoiceId } }),
@@ -44,10 +44,23 @@ const AccountPage = () => {
       console.log(response);
       setInvoices((prevInvoices) => [...prevInvoices, ...response.data]);
       setHasMore(response.data.has_more);
-      setLoading(false);
+      setLoadingInvoices(false);
     } catch (error) {
       console.error('Error fetching invoices:', error);
-      setLoading(false);
+      setLoadingInvoices(false);
+    }
+  };
+
+  const fetchSubscription = async () => {
+    try {
+      setLoadingSubscription(true);
+      // Add your API call to fetch the current subscription
+      // Example: const response = await API.get('publicapi', '/user/update/getSubscription');
+      // Set the current subscription data based on the response
+      setLoadingSubscription(false);
+    } catch (error) {
+      console.error('Error fetching subscription:', error);
+      setLoadingSubscription(false);
     }
   };
 
@@ -90,6 +103,7 @@ const AccountPage = () => {
     console.log('Uploading profile photo:', file);
   };
 
+  const isLoading = loadingInvoices || loadingSubscription;
   const recentPaidInvoice = invoices.find((invoice) => invoice.paid);
   const currentSubscription = recentPaidInvoice?.lines?.data?.[0]?.description
     ?.replace(/^1\s*×\s*/, '')
@@ -122,22 +136,40 @@ const AccountPage = () => {
               }}
             >
               <Box sx={{ textAlign: 'center' }}>
-                <Typography variant="h4" sx={{ color: 'black', mb: 1 }}>
+                <Typography variant="h4" sx={{ color: userDetails?.user?.userDetails?.magicSubscription === 'true' ? 'black' : 'white', mb: 1 }}>
                   {userDetails?.user?.userDetails?.magicSubscription === 'true' ? 'memeSRC Pro' : 'Upgrade to memeSRC Pro'}
                 </Typography>
-                {userDetails?.user?.userDetails?.magicSubscription === 'true' ? (
+                  {isLoading ? (
+                    <Box sx={{ width: '100%', mt: 1 }}>
+                      <LinearProgress
+                        sx={{
+                          '& .MuiLinearProgress-bar': {
+                            background: 'linear-gradient(to right, red 0%, red 20%, orange 20%, orange 40%, yellow 40%, yellow 60%, green 60%, green 80%, blue 80%, blue 100%)',
+                          },
+                        }}
+                      />
+                        </Box>
+                  ) : userDetails?.user?.userDetails?.magicSubscription === 'true' ? (
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Typography variant="body1" sx={{ color: 'black', mr: 1 }}>
-                      {currentSubscription || 'No current subscription found.'}
-                    </Typography>
-                    <Chip
-                      label="Active"
-                      color="success"
-                      sx={{ fontWeight: 'bold', backgroundColor: 'common.white', color: 'black' }}
-                    />
+                    {currentSubscription ? (
+                      <>
+                        <Typography variant="body1" sx={{ color: 'black', mr: 1 }}>
+                          {currentSubscription}
+                        </Typography>
+                        <Chip
+                          label="Active"
+                          color="success"
+                          sx={{ fontWeight: 'bold', backgroundColor: 'common.white', color: 'black' }}
+                        />
+                      </>
+                    ) : (
+                      <Typography variant="body1" sx={{ color: 'black' }}>
+                        No current subscription found.
+                      </Typography>
+                    )}
                   </Box>
                 ) : (
-                  <Typography variant="body1" sx={{ color: 'common.white' }}>
+                  <Typography variant="body1" sx={{ color: 'white' }}>
                     Unlock enhanced features and benefits!
                   </Typography>
                 )}
@@ -182,17 +214,14 @@ const AccountPage = () => {
             <Typography variant="h5" gutterBottom>
               Account Information
             </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-              <Avatar
-                src={profilePhoto}
-                sx={{ width: 80, height: 80, mr: 2 }}
-              />
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+              <Avatar src={profilePhoto} sx={{ width: 80, height: 80, mr: 3 }} />
               <Button variant="outlined" component="label">
                 Upload Photo
                 <input type="file" hidden onChange={handleProfilePhotoUpload} accept="image/*" />
               </Button>
             </Box>
-            <Box sx={{ mb: 2 }}>
+            <Box sx={{ mb: 3 }}>
               <TextField
                 label="Email"
                 value={email}
@@ -205,10 +234,12 @@ const AccountPage = () => {
                       <IconButton onClick={handleUpdateEmail}>
                         <Save />
                       </IconButton>
-                      <IconButton onClick={() => {
-                        setEmail(userDetails?.user?.userDetails?.email || '');
-                        setEditingEmail(false);
-                      }}>
+                      <IconButton
+                        onClick={() => {
+                          setEmail(userDetails?.user?.userDetails?.email || '');
+                          setEditingEmail(false);
+                        }}
+                      >
                         <Cancel />
                       </IconButton>
                     </>
@@ -220,14 +251,14 @@ const AccountPage = () => {
                 }}
               />
             </Box>
-            <Box sx={{ mb: 2 }}>
+            <Box sx={{ mb: 3 }}>
               <TextField
                 label="Current Password"
                 type="password"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 fullWidth
-                sx={{ mb: 1 }}
+                sx={{ mb: 2 }}
               />
               <TextField
                 label="New Password"
@@ -235,7 +266,7 @@ const AccountPage = () => {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 fullWidth
-                sx={{ mb: 1 }}
+                sx={{ mb: 2 }}
               />
               <TextField
                 label="Confirm New Password"
@@ -245,7 +276,7 @@ const AccountPage = () => {
                 fullWidth
               />
             </Box>
-            <Button variant="contained" onClick={handleUpdatePassword} disabled={!isPasswordValid}>
+            <Button variant="contained" onClick={handleUpdatePassword} disabled={!isPasswordValid} sx={{ mt: 3 }}>
               Update Password
             </Button>
           </Card>
@@ -264,7 +295,9 @@ const AccountPage = () => {
                   </ListItemIcon>
                   <ListItemText
                     primary={`Invoice #${invoice.number}`}
-                    secondary={`Period: ${new Date(invoice.period_start * 1000).toLocaleDateString()} - ${new Date(invoice.period_end * 1000).toLocaleDateString()}`}
+                    secondary={`Period: ${new Date(invoice.period_start * 1000).toLocaleDateString()} - ${new Date(
+                      invoice.period_end * 1000
+                    ).toLocaleDateString()}`}
                   />
                   <IconButton onClick={() => openInvoicePDF(invoice.invoice_pdf)} disabled={!invoice.invoice_pdf}>
                     <Download />
@@ -272,13 +305,19 @@ const AccountPage = () => {
                 </ListItem>
               ))}
             </List>
-            {hasMore && !loading && (
-              <Button variant="outlined" onClick={handleLoadMore}>
+            {hasMore && !loadingInvoices && (
+              <Button variant="outlined" onClick={handleLoadMore} sx={{ mt: 2 }}>
                 Load More
               </Button>
             )}
-            {!loading && invoices.length === 0 && (
-              <Typography variant="body1">No invoices found.</Typography>
+            {loadingInvoices ? (
+              <>
+                {[...Array(3)].map((_, index) => (
+                  <Skeleton key={index} variant="rectangular" height={60} sx={{ borderRadius: 1, mb: 1 }} />
+                ))}
+              </>
+            ) : (
+              invoices.length === 0 && <Typography variant="body1">No invoices found.</Typography>
             )}
           </Card>
         </Grid>
