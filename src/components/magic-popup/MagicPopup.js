@@ -309,15 +309,24 @@ export default function MagicPopup({ children }) {
                 <Box width="100%" px={2} pb={2} pt={1}>
                     <>
                         {user?.userDetails?.magicSubscription === 'true' ? (
-                            <Button
+                            // <Button
+                            //     loading={loadingSubscriptionUrl}
+                            //     onClick={() => { navigate('/manageSubscription'); setMagicToolsPopoverAnchorEl(); }}
+                            //     variant="contained"
+                            //     size="large"
+                            //     fullWidth
+                            // >
+                            //     Manage Subscription
+                            // </Button>
+                            <LoadingButton
                                 loading={loadingSubscriptionUrl}
-                                onClick={() => { navigate('/manageSubscription'); setMagicToolsPopoverAnchorEl(); }}
+                                onClick={logIntoCustomerPortal}
                                 variant="contained"
                                 size="large"
                                 fullWidth
                             >
                                 Manage Subscription
-                            </Button>
+                            </LoadingButton>
                         ) : (
                             <>
                                 <LoadingButton
