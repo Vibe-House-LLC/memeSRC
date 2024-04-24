@@ -1,4 +1,5 @@
 import { Buffer } from "buffer";
+import { Storage } from "aws-amplify";
 import { extractVideoFrames } from './videoFrameExtractor';
 
 // Utility function to fetch JSON data from a given URL
@@ -44,8 +45,12 @@ const fetchFrameSubtitleAndImage = async (cid, season, episode, frame) => {
   episode = parseInt(episode, 10);
   frame = parseInt(frame, 10);
 
-  const csvUrl = `https://img.memesrc.com/v2/${cid}/${season}/${episode}/_docs.csv`;
-  const csvData = await fetchCSV(csvUrl);
+  // const csvUrl = `https://img.memesrc.com/v2/${cid}/${season}/${episode}/_docs.csv`;
+  // const csvData = await fetchCSV(csvUrl);
+
+  const csvDownload = (await Storage.get(`src/${cid}/${season}/${episode}/_docs.csv`, { level: 'public', download: true, customPrefix: { public: 'protected/' } })).Body
+  const csvData = await csvDownload.text().split('\n').map((row) => row.split(','));
+
   const { subtitle } = findSubtitleForFrame(csvData, season, episode, frame);
   // Pass a single-element array with the frame
   const mainFrameImages = await extractVideoFrames(cid, season, episode, [frame], 10, 1.0);
@@ -64,7 +69,7 @@ const fetchFramesFineTuning = async (cid, season, episode, frame) => {
   episode = parseInt(episode, 10);
   frame = parseInt(frame, 10);
   // Generate an array of frame indexes for fine-tuning
-  const frameIndexes = Array.from({length: 11}, (_, i) => frame - 5 + i);
+  const frameIndexes = Array.from({ length: 11 }, (_, i) => frame - 5 + i);
   return extractVideoFrames(cid, season, episode, frameIndexes, 10);
 };
 
@@ -73,7 +78,7 @@ const fetchFramesSurroundingPromises = (cid, season, episode, frame) => {
   season = parseInt(season, 10);
   episode = parseInt(episode, 10);
   frame = parseInt(frame, 10);
-  
+
   const offsets = [-40, -30, -20, -10, 0, 10, 20, 30, 40];
   const scaleFactor = 0.2;
 
@@ -101,15 +106,22 @@ const fetchFrameInfo = async (cid, season, episode, frame, options = {}) => {
     season = parseInt(season, 10);
     episode = parseInt(episode, 10);
     frame = parseInt(frame, 10);
-    
+
     console.log("TEST: 1")
 
-    const metadataUrl = `https://img.memesrc.com/v2/${cid}/00_metadata.json`;
-    const metadata = await fetchJSON(metadataUrl);
+    // const metadataUrl = `https://img.memesrc.com/v2/${cid}/00_metadata.json`;
+    // const metadata = await fetchJSON(metadataUrl);
+
+    const metadataDownload = (await Storage.get(`src/${cid}/00_metadata.json`, { level: 'public', download: true, customPrefix: { public: 'protected/' } })).Body
+    const metadata = await metadataDownload.text().split('\n').map((row) => row.split(','));;
+
     const seriesName = metadata.index_name;
 
-    const csvUrl = `https://img.memesrc.com/v2/${cid}/${season}/${episode}/_docs.csv`;
-    const csvData = await fetchCSV(csvUrl);
+    // const csvUrl = `https://img.memesrc.com/v2/${cid}/${season}/${episode}/_docs.csv`;
+    // const csvData = await fetchCSV(csvUrl);
+
+    const csvDownload = (await Storage.get(`src/${cid}/${season}/${episode}/_docs.csv`, { level: 'public', download: true, customPrefix: { public: 'protected/' } })).Body
+    const csvData = await csvDownload.text().split('\n').map((row) => row.split(','));
 
     console.log("TEST: 2")
 
@@ -148,7 +160,7 @@ const fetchFrameInfo = async (cid, season, episode, frame, options = {}) => {
         const startIndex = Math.max(1, mainSubtitleIndex - 3);
         const endIndex = Math.min(csvData.length - 1, mainSubtitleIndex + 3);
         for (let i = startIndex; i <= endIndex; i += 1) {
-          const [,, , encodedSubtitleText, startFrame, endFrame] = csvData[i];
+          const [, , , encodedSubtitleText, startFrame, endFrame] = csvData[i];
           const subtitleText = Buffer.from(encodedSubtitleText, 'base64').toString(); // Decode subtitle text from base64 here
           const middleFrame = Math.floor((parseInt(startFrame, 10) + parseInt(endFrame, 10)) / 2);
           console.log("TEST: 8")

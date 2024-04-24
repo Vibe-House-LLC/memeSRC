@@ -13,6 +13,7 @@ const DynamicRouteHandler = () => {
   const [metadata, setMetadata] = useState(null);
   const { loadingSavedCids } = useSearchDetailsV2();
   const [error, setError] = useState(false);
+  const [favorites, setFavorites] = useState(false);
 
   useEffect(() => {
 
@@ -35,62 +36,69 @@ const DynamicRouteHandler = () => {
     // fetchContentMetadata();
 
     // First lets try to grab the metadata from v2
-    console.log(seriesId)
-    if (seriesId) {
-      setLoading(true)
-      setError(false)
-      API.graphql({
-        query: getAlias,
-        variables: { id: seriesId },
-        authMode: 'API_KEY'
-      }).then(aliasResponse => {
-        if (aliasResponse?.data?.getAlias?.v2ContentMetadata) {
-          console.log('METADATA LOADED FROM ALIAS')
-          setMetadata(aliasResponse?.data?.getAlias?.v2ContentMetadata)
-          setLoading(false)
-        } else {
-          API.graphql({
-            query: getV2ContentMetadata,
-            variables: { id: seriesId },
-            authMode: 'API_KEY',
-          }).then(response => {
-            if (response?.data?.getV2ContentMetadata) {
-              console.log('METADATA LOADED FROM CID')
-              setMetadata(response?.data?.getV2ContentMetadata)
-              setLoading(false)
-            } else {
-              // That wasn't there, so lets check V2
-              API.graphql({
-                query: getContentMetadata,
-                variables: { id: seriesId },
-                authMode: 'API_KEY',
-              }).then(response => {
-                if (response?.data?.getContentMetadata) {
-                  console.log('METADATA LOADED FROM V1 METADATA')
-                  setMetadata(response?.data?.getContentMetadata)
-                  setLoading(false)
-                } else {
+    if (seriesId === '_favorites') {
+      setFavorites(true)
+      setLoading(false)
+    } else {
+      setFavorites(false)
+      console.log(seriesId)
+      if (seriesId) {
+        setLoading(true)
+        setError(false)
+        API.graphql({
+          query: getAlias,
+          variables: { id: seriesId },
+          authMode: 'API_KEY'
+        }).then(aliasResponse => {
+          if (aliasResponse?.data?.getAlias?.v2ContentMetadata) {
+            console.log('METADATA LOADED FROM ALIAS')
+            setMetadata(aliasResponse?.data?.getAlias?.v2ContentMetadata)
+            setLoading(false)
+          } else {
+            API.graphql({
+              query: getV2ContentMetadata,
+              variables: { id: seriesId },
+              authMode: 'API_KEY',
+            }).then(response => {
+              if (response?.data?.getV2ContentMetadata) {
+                console.log('METADATA LOADED FROM CID')
+                setMetadata(response?.data?.getV2ContentMetadata)
+                setLoading(false)
+              } else {
+                // That wasn't there, so lets check V2
+                API.graphql({
+                  query: getContentMetadata,
+                  variables: { id: seriesId },
+                  authMode: 'API_KEY',
+                }).then(response => {
+                  if (response?.data?.getContentMetadata) {
+                    console.log('METADATA LOADED FROM V1 METADATA')
+                    setMetadata(response?.data?.getContentMetadata)
+                    setLoading(false)
+                  } else {
+                    setLoading(false)
+                    setError(true)
+                  }
+                }).catch(error => {
+                  console.log(error)
                   setLoading(false)
                   setError(true)
-                }
-              }).catch(error => {
-                console.log(error)
-                setLoading(false)
-                setError(true)
-              })
-            }
-          }).catch(error => {
-            console.log(error)
-            setLoading(false)
-            setError(true)
-          })
-        }
-      }).catch(error => {
-        console.log(error)
-        setLoading(false)
-        setError(true)
-      })
+                })
+              }
+            }).catch(error => {
+              console.log(error)
+              setLoading(false)
+              setError(true)
+            })
+          }
+        }).catch(error => {
+          console.log(error)
+          setLoading(false)
+          setError(true)
+        })
+      }
     }
+
   }, [seriesId]);
 
   useEffect(() => {
@@ -106,6 +114,10 @@ const DynamicRouteHandler = () => {
   if (metadata) {
     // return <SeriesPage seriesData={seriesData} />; // Pass seriesData as prop to SeriesPage
     return <HomePage metadata={metadata} />
+  }
+
+  if (favorites) {
+    return <HomePage />
   }
 
   return error ? <Navigate to="/404" replace /> : <center><CircularProgress /></center>;

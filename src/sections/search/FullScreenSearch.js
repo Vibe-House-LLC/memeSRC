@@ -259,14 +259,14 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   //         limit: 10,
   //         nextToken,
   //       }));
-  
+
   //       const fetchedAliases = result.data.listAliases.items;
   //       const updatedAccumulator = [...accumulator, ...fetchedAliases];
-  
+
   //       if (result.data.listAliases.nextToken) {
   //         return fetchAliasesRecursive(result.data.listAliases.nextToken, updatedAccumulator);
   //       }
-  
+
   //       setAliasesWithMetadata(updatedAccumulator);
   //       setAliasesLoading(false);
   //       return updatedAccumulator;
@@ -277,7 +277,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   //       return []; // Return an empty array in case of an error
   //     }
   //   };
-  
+
   //   fetchAliasesRecursive();
   // }, []);
 
@@ -285,11 +285,11 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   const [currentThemeBragText, setCurrentThemeBragText] = useState(metadata?.frameCount ? `Search over ${metadata?.frameCount.toLocaleString('en-US')} frames from ${metadata?.title}` : defaultBragText);
   const [currentThemeTitleText, setCurrentThemeTitleText] = useState(metadata?.title || defaultTitleText);
   const [currentThemeFontColor, setCurrentThemeFontColor] = useState(metadata?.colorSecondary || defaultFontColor);
-  const [currentThemeBackground, setCurrentThemeBackground] = useState(metadata?.colorMain ? { backgroundColor: `${metadata?.colorMain}`}
-  :
-  {
-    backgroundImage: defaultBackground,
-  } 
+  const [currentThemeBackground, setCurrentThemeBackground] = useState(metadata?.colorMain ? { backgroundColor: `${metadata?.colorMain}` }
+    :
+    {
+      backgroundImage: defaultBackground,
+    }
   );
 
   const { sectionIndex, seriesId } = useParams();
@@ -328,7 +328,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       setAliasesWithMetadata(fetchedShows);
       setLoading(false);
       setAliasesLoading(false);
-  
+
       // Get homepage sections
       const fetchedSections = await fetchSections();
       setSections(fetchedSections);
@@ -341,8 +341,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
     // Check if shows have been loaded
     if (shows.length > 0) {
       // Determine the series to use based on the URL or default to '_universal'
-      const currentSeriesId = seriesId || '_universal';
-
+      const currentSeriesId = seriesId || window.localStorage.getItem(`defaultsearch${user?.sub}`) || '_universal';
       setShow(currentSeriesId)
 
       if (currentSeriesId !== seriesTitle) {
@@ -350,10 +349,21 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
         handleChangeSeries(currentSeriesId); // Update the theme
 
         // Navigation logic
-        navigate(currentSeriesId === '_universal' ? '/' : `/${currentSeriesId}`);
+        navigate((currentSeriesId === '_universal') ? '/' : `/${currentSeriesId}`);
       }
     }
   }, [seriesId, seriesTitle, shows, handleChangeSeries, navigate]);
+
+  useEffect(() => {
+    if (pathname === '/_favorites') {
+      setCurrentThemeBragText(defaultBragText)
+      setCurrentThemeTitleText(defaultTitleText)
+      setCurrentThemeFontColor(defaultFontColor)
+      setCurrentThemeBackground({
+        backgroundImage: defaultBackground,
+      })
+    }
+  }, [pathname])
 
 
   useEffect(() => {
@@ -535,13 +545,15 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   }
 
   useEffect(() => {
-    setCid(metadata?.id || '_universal')
+    const defaultSeries = window.localStorage.getItem(`defaultsearch${user?.sub}`)
+    setCid(seriesId || metadata?.id || defaultSeries || '_universal')
 
     return () => {
       if (pathname === '/') {
-        setCid(null)
+        setCid(defaultSeries || null)
         setShowObj(null)
         setSearchQuery(null)
+        setCidSearchQuery('')
         console.log('Unset CID')
       }
     }
@@ -559,7 +571,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                 fontSize={34}
                 sx={{ color: currentThemeFontColor, textShadow: '1px 1px 3px rgba(0, 0, 0, 0.30);' }}
               >
-                <Box onClick={() => handleChangeSeries('_universal')}>
+                <Box onClick={() => handleChangeSeries(window.localStorage.getItem(`defaultsearch${user?.sub}`) || '_universal')}>
                   <Logo
                     sx={{ display: 'inline', width: '130px', height: 'auto', margin: '-18px', color: 'yellow' }}
                     color="white"
@@ -612,7 +624,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
           <StyledSearchForm onSubmit={(e) => searchFunction(e)}>
             <Grid container justifyContent="center">
               <Grid item sm={3.5} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
-              <Select
+                <Select
                   value={cid || seriesTitle}
                   onChange={(e) => {
                     const selectedId = e.target.value;
@@ -626,7 +638,10 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                       setCid(selectedId || '_universal');
                       setSeriesTitle(newSeriesTitle);
                       handleChangeSeries(newSeriesTitle);
-                      navigate(newSeriesTitle === '_universal' ? '/' : `/${newSeriesTitle}`);
+                      if (newSeriesTitle === '_universal' || newSeriesTitle === '_favorites') {
+                        window.localStorage.setItem(`defaultsearch${user?.sub}`, newSeriesTitle)
+                      }
+                      navigate((newSeriesTitle === '_universal') ? '/' : `/${newSeriesTitle}`);
                     }
                   }}
                   displayEmpty
@@ -649,6 +664,10 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                   }}
                 >
                   <MenuItem value="_universal">🌈 All Shows & Movies</MenuItem>
+
+                  {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
+                    <MenuItem value="_favorites">⭐ All Favorites</MenuItem>
+                  ) : null}
 
                   {/* Check if user is subscribed or has favorites and directly render each item */}
                   {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
@@ -816,11 +835,11 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
         />
       ))} */}
       <Container data-scroll-to id='editor-updates' maxWidth='true' sx={{ height: '100vh', backgroundColor: '#34933f' }}>
-        <EditorUpdates backgroundColor='#34933f'textColor='white' large />
+        <EditorUpdates backgroundColor='#34933f' textColor='white' large />
       </Container>
 
       <Container data-scroll-to id='platform-updates' maxWidth='true' sx={{ height: '100vh', backgroundColor: '#ff8d0a' }}>
-        <PlatformUpdates backgroundColor='#ff8d0a'textColor='white' large />
+        <PlatformUpdates backgroundColor='#ff8d0a' textColor='white' large />
       </Container>
 
       <Container data-scroll-to id='memesrc-pro' maxWidth='true' sx={{ height: '100vh', backgroundColor: '#0069cc' }}>

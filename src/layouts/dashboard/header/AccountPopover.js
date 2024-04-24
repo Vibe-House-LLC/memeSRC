@@ -48,12 +48,14 @@ export default function AccountPopover() {
   };
 
   const logIntoCustomerPortal = () => {
+    setLoadingCustomerPortal(true)
     API.post('publicapi', '/user/update/getPortalLink', {
       body: {
         currentUrl: window.location.href
       }
     }).then(results => {
       console.log(results)
+      setLoadingCustomerPortal(false)
       window.location.href = results
     }).catch(error => {
       console.log(error.response)
@@ -166,7 +168,12 @@ export default function AccountPopover() {
                 {userDetails?.user?.userDetails?.magicSubscription === 'true' ?
                   <>
                   <Divider sx={{ borderStyle: 'dashed' }} />
-                    <MenuItem onClick={() => { navigate('/manageSubscription'); handleClose(); }} sx={{ m: 1 }}>
+                    {/* <MenuItem onClick={() => { navigate('/manageSubscription'); handleClose(); }} sx={{ m: 1 }}>
+                      <Stack direction='row' alignItems='center'>
+                        {loadingCustomerPortal ? <><CircularProgress color='success' size={15} sx={{ mr: 1 }} /> Please Wait...</> : 'Manage Subscription'}
+                      </Stack>
+                    </MenuItem> */}
+                    <MenuItem onClick={logIntoCustomerPortal} sx={{ m: 1 }}>
                       <Stack direction='row' alignItems='center'>
                         {loadingCustomerPortal ? <><CircularProgress color='success' size={15} sx={{ mr: 1 }} /> Please Wait...</> : 'Manage Subscription'}
                       </Stack>

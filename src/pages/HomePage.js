@@ -1,10 +1,11 @@
 import { API } from 'aws-amplify';
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import FullScreenSearch from '../sections/search/FullScreenSearch';
 import useSearchDetails from '../hooks/useSearchDetails';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
+import { UserContext } from '../UserContext';
 
 const prepSessionID = async () => {
   let sessionID;
@@ -23,8 +24,10 @@ const prepSessionID = async () => {
 
 export default function SearchPage({ metadata }) {
   const { setSearchQuery } = useSearchDetails();
+  const { user } = useContext(UserContext)
   const [searchTerm, setSearchTerm] = useState('');
-  const [seriesTitle, setSeriesTitle] = useState('_universal');
+  const defaultSeries = window.localStorage.getItem(`defaultsearch${user?.sub}`)
+  const [seriesTitle, setSeriesTitle] = useState(defaultSeries || '_universal');
   const [shows, setShows] = useState([]);
   const { savedCids, setSearchQuery: setV2SearchQuery } = useSearchDetailsV2()
 

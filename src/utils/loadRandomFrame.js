@@ -75,7 +75,14 @@ function useLoadRandomFrame() {
         try {
             const shows = await fetchShows();
             console.log(show)
-            const showObject = (show !== '_universal') ? shows.find(singleShow => singleShow.id === show) : getRandomIndex(shows);
+            let showObject;
+            if (show === '_universal') {
+                showObject = getRandomIndex(shows)
+            } else if (show === '_favorites') {
+                showObject = getRandomIndex(shows.filter(show => show.isFavorite))
+            } else {
+                showObject = shows.find(singleShow => singleShow.id === show)
+            }
             console.log(showObject)
 
             if (showObject?.version === 2) {

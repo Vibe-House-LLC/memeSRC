@@ -261,50 +261,56 @@ export default function IpfsSearchBar(props) {
         <Grid container wrap="nowrap" sx={{ overflowX: "scroll", flexWrap: "nowrap", scrollbarWidth: 'none', '&::-webkit-scrollbar': { height: '0 !important', width: '0 !important', display: 'none' } }} paddingX={2}>
           <Grid item marginLeft={{ md: 6 }}>
 
-          <FormControl variant="standard" sx={{ minWidth: 120 }}>
-  <Select
-    labelId="demo-simple-select-standard-label"
-    id="demo-simple-select-standard"
-    value={cid}
-    onChange={(event) => handleSelectSeries(event.target.value)}
-    label="Series"
-    size="small"
-    autoWidth
-    disableUnderline
-  >
-    <MenuItem key="_universal" value="_universal">
-      🌈 All Shows & Movies
-    </MenuItem>
+            <FormControl variant="standard" sx={{ minWidth: 120 }}>
+              <Select
+                labelId="demo-simple-select-standard-label"
+                id="demo-simple-select-standard"
+                value={cid}
+                onChange={(event) => handleSelectSeries(event.target.value)}
+                label="Series"
+                size="small"
+                autoWidth
+                disableUnderline
+              >
+                <MenuItem key="_universal" value="_universal">
+                  🌈 All Shows & Movies
+                </MenuItem>
 
-    {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
-      <ListSubheader key="favorites-subheader">Favorites</ListSubheader>
-    ) : null}
+                {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
+                  <MenuItem value="_favorites">
+                    ⭐ All Favorites
+                  </MenuItem>
+                ) : null}
 
-    {(user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite)) && (
-      shows.filter(show => show.isFavorite).map(show => (
-        <MenuItem key={show.id} value={show.id}>
-          ⭐ {show.emoji} {show.title}
-        </MenuItem>
-      ))
-    )}
+                {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
+                  <ListSubheader key="favorites-subheader">Favorites</ListSubheader>
+                ) : null}
 
-    {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
-      <MenuItem value="editFavorites" style={{ fontSize: "0.9rem", opacity: 0.7 }}>
-        ⚙ Edit Favorites
-      </MenuItem>
-    ) : null}
+                {(user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite)) && (
+                  shows.filter(show => show.isFavorite).map(show => (
+                    <MenuItem key={show.id} value={show.id}>
+                      ⭐ {show.emoji} {show.title}
+                    </MenuItem>
+                  ))
+                )}
 
-    {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
-      <ListSubheader key="other-subheader">Other</ListSubheader>
-    ) : null}
+                {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
+                  <MenuItem value="editFavorites" style={{ fontSize: "0.9rem", opacity: 0.7 }}>
+                    ⚙ Edit Favorites
+                  </MenuItem>
+                ) : null}
 
-    {shows.filter(show => !show.isFavorite).map(show => (
-      <MenuItem key={show.id} value={show.id}>
-        {show.emoji} {show.title}
-      </MenuItem>
-    ))}
-  </Select>
-</FormControl>
+                {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
+                  <ListSubheader key="other-subheader">Other</ListSubheader>
+                ) : null}
+
+                {shows.filter(show => !show.isFavorite).map(show => (
+                  <MenuItem key={show.id} value={show.id}>
+                    {show.emoji} {show.title}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
 
 
           </Grid>
@@ -346,8 +352,8 @@ export default function IpfsSearchBar(props) {
             </Link>
           </Box>
           <Typography variant='h2' mt={1} pl={2}>
-              {savedCids ? `${shows.find(obj => obj.id === params?.cid)?.emoji || savedCids.find(obj => obj.id === params?.cid)?.emoji} ${shows.find(obj => obj.id === params?.cid)?.title || savedCids.find(obj => obj.id === params?.cid)?.title}` : ''}
-            </Typography>
+            {savedCids ? `${shows.find(obj => obj.id === params?.cid)?.emoji || savedCids.find(obj => obj.id === params?.cid)?.emoji} ${shows.find(obj => obj.id === params?.cid)?.title || savedCids.find(obj => obj.id === params?.cid)?.title}` : ''}
+          </Typography>
         </Container>
       }
       {pathname.startsWith("/editor") &&
