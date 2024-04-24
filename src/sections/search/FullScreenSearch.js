@@ -341,19 +341,29 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
     // Check if shows have been loaded
     if (shows.length > 0) {
       // Determine the series to use based on the URL or default to '_universal'
-      const currentSeriesId = seriesTitle === '_favorites' ? '_favorites' : seriesId || '_universal';
-
-      setShow(currentSeriesId)
+      const currentSeriesId = seriesId || '_universal';
+      setShow(seriesId)
 
       if (currentSeriesId !== seriesTitle) {
         setSeriesTitle(currentSeriesId); // Update the series title based on the URL parameter
         handleChangeSeries(currentSeriesId); // Update the theme
 
         // Navigation logic
-        navigate((currentSeriesId === '_universal' || currentSeriesId === '_favorites') ? '/' : `/${currentSeriesId}`);
+        navigate((currentSeriesId === '_universal') ? '/' : `/${currentSeriesId}`);
       }
     }
   }, [seriesId, seriesTitle, shows, handleChangeSeries, navigate]);
+
+  useEffect(() => {
+    if (pathname === '/_favorites') {
+      setCurrentThemeBragText(defaultBragText)
+      setCurrentThemeTitleText(defaultTitleText)
+      setCurrentThemeFontColor(defaultFontColor)
+      setCurrentThemeBackground({
+        backgroundImage: defaultBackground,
+      })
+    }
+  }, [pathname])
 
 
   useEffect(() => {
@@ -535,7 +545,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   }
 
   useEffect(() => {
-    setCid(metadata?.id || '_universal')
+    setCid(seriesId || metadata?.id || '_universal')
 
     return () => {
       if (pathname === '/') {
@@ -627,7 +637,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                       setCid(selectedId || '_universal');
                       setSeriesTitle(newSeriesTitle);
                       handleChangeSeries(newSeriesTitle);
-                      navigate((newSeriesTitle === '_universal' || newSeriesTitle === '_favorites') ? '/' : `/${newSeriesTitle}`);
+                      navigate((newSeriesTitle === '_universal') ? '/' : `/${newSeriesTitle}`);
                     }
                   }}
                   displayEmpty
@@ -653,7 +663,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
 
                   {/* Check if user is subscribed or has favorites and directly render each item */}
                   {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
-                      <ListSubheader key="favorites-subheader">Favorites</ListSubheader>
+                    <ListSubheader key="favorites-subheader">Favorites</ListSubheader>
                   ) : null}
 
                   {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
