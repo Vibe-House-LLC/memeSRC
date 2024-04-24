@@ -113,7 +113,7 @@ const fetchFrameInfo = async (cid, season, episode, frame, options = {}) => {
     // const metadata = await fetchJSON(metadataUrl);
 
     const metadataDownload = (await Storage.get(`src/${cid}/00_metadata.json`, { level: 'public', download: true, customPrefix: { public: 'protected/' } })).Body
-    const metadata = await metadataDownload.text().split('\n').map((row) => row.split(','));;
+    const metadata = (await metadataDownload.text()).split('\n').map((row) => row.split(','));;
 
     const seriesName = metadata.index_name;
 
@@ -121,7 +121,7 @@ const fetchFrameInfo = async (cid, season, episode, frame, options = {}) => {
     // const csvData = await fetchCSV(csvUrl);
 
     const csvDownload = (await Storage.get(`src/${cid}/${season}/${episode}/_docs.csv`, { level: 'public', download: true, customPrefix: { public: 'protected/' } })).Body
-    const csvData = await csvDownload.text().split('\n').map((row) => row.split(','));
+    const csvData = (await csvDownload.text()).split('\n').map((row) => row.split(','));
 
     console.log("TEST: 2")
 
