@@ -208,7 +208,7 @@ const FavoritesPage = () => {
 
   const clearSessionCache = async () => {
     const cacheKey = await getCacheKey();
-    sessionStorage.removeItem(cacheKey);
+    localStorage.removeItem(cacheKey);
   };
 
   const addFavorite = async (indexId) => {

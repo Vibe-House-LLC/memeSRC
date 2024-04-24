@@ -112,14 +112,14 @@ async function updateCacheAndReturnData(data, cacheKey) {
     data,
     updatedAt: Date.now(),
   };
-  sessionStorage.setItem(cacheKey, JSON.stringify(cacheData));
+  localStorage.setItem(cacheKey, JSON.stringify(cacheData));
 
   return data;
 }
 
 export default async function fetchShows() {
   const CACHE_KEY = await getCacheKey();
-  const cachedData = sessionStorage.getItem(CACHE_KEY);
+  const cachedData = localStorage.getItem(CACHE_KEY);
 
   async function refreshDataInBackground() {
     const freshData = await fetchShowsFromAPI();
