@@ -341,7 +341,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
     // Check if shows have been loaded
     if (shows.length > 0) {
       // Determine the series to use based on the URL or default to '_universal'
-      const currentSeriesId = seriesId || '_universal';
+      const currentSeriesId = seriesId || window.localStorage.getItem(`defaultsearch${user?.sub}`) || '_universal';
       setShow(seriesId)
 
       if (currentSeriesId !== seriesTitle) {
@@ -545,11 +545,12 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   }
 
   useEffect(() => {
-    setCid(seriesId || metadata?.id || '_universal')
+    const defaultSeries = window.localStorage.getItem(`defaultsearch${user?.sub}`)
+    setCid(seriesId || metadata?.id || defaultSeries || '_universal')
 
     return () => {
       if (pathname === '/') {
-        setCid(null)
+        setCid(defaultSeries || null)
         setShowObj(null)
         setSearchQuery(null)
         setCidSearchQuery('')
@@ -570,7 +571,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                 fontSize={34}
                 sx={{ color: currentThemeFontColor, textShadow: '1px 1px 3px rgba(0, 0, 0, 0.30);' }}
               >
-                <Box onClick={() => handleChangeSeries('_universal')}>
+                <Box onClick={() => handleChangeSeries(window.localStorage.getItem(`defaultsearch${user?.sub}`) || '_universal')}>
                   <Logo
                     sx={{ display: 'inline', width: '130px', height: 'auto', margin: '-18px', color: 'yellow' }}
                     color="white"
@@ -637,6 +638,9 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                       setCid(selectedId || '_universal');
                       setSeriesTitle(newSeriesTitle);
                       handleChangeSeries(newSeriesTitle);
+                      if (newSeriesTitle === '_universal' || newSeriesTitle === '_favorites') {
+                        window.localStorage.setItem(`defaultsearch${user?.sub}`, newSeriesTitle)
+                      }
                       navigate((newSeriesTitle === '_universal') ? '/' : `/${newSeriesTitle}`);
                     }
                   }}
@@ -661,13 +665,13 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                 >
                   <MenuItem value="_universal">🌈 All Shows & Movies</MenuItem>
 
+                  {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
+                    <MenuItem value="_favorites">⭐ All Favorites</MenuItem>
+                  ) : null}
+
                   {/* Check if user is subscribed or has favorites and directly render each item */}
                   {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
                     <ListSubheader key="favorites-subheader">Favorites</ListSubheader>
-                  ) : null}
-
-                  {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
-                    <MenuItem value="_favorites">⭐🌈 All Favorites</MenuItem>
                   ) : null}
 
                   {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (

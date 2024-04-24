@@ -277,13 +277,13 @@ export default function IpfsSearchBar(props) {
                 </MenuItem>
 
                 {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
-                  <ListSubheader key="favorites-subheader">Favorites</ListSubheader>
+                  <MenuItem value="_favorites">
+                    ⭐ All Favorites
+                  </MenuItem>
                 ) : null}
 
                 {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
-                  <MenuItem value="_favorites">
-                    ⭐🌈 All Favorites
-                  </MenuItem>
+                  <ListSubheader key="favorites-subheader">Favorites</ListSubheader>
                 ) : null}
 
                 {(user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite)) && (
