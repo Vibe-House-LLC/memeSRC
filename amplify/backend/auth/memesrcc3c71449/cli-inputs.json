@@ -26,13 +26,26 @@
     "userpoolClientGenerateSecret": false,
     "userpoolClientRefreshTokenValidity": 30,
     "userpoolClientWriteAttributes": [
+      "birthdate",
+      "family_name",
+      "middle_name",
+      "gender",
+      "given_name",
+      "name",
+      "picture",
       "email"
     ],
     "userpoolClientReadAttributes": [
-      "email"
+      "email",
+      "family_name",
+      "middle_name",
+      "gender",
+      "given_name",
+      "name",
+      "picture"
     ],
     "userpoolClientLambdaRole": "memesrc3c71449_userpoolclient_lambda_role",
-    "userpoolClientSetAttributes": false,
+    "userpoolClientSetAttributes": true,
     "sharedId": "c3c71449",
     "resourceName": "memesrcc3c71449",
     "authSelections": "identityPoolAndUserPool",
