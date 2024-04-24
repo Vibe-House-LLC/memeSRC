@@ -342,7 +342,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
     if (shows.length > 0) {
       // Determine the series to use based on the URL or default to '_universal'
       const currentSeriesId = seriesId || window.localStorage.getItem(`defaultsearch${user?.sub}`) || '_universal';
-      setShow(seriesId)
+      setShow(currentSeriesId)
 
       if (currentSeriesId !== seriesTitle) {
         setSeriesTitle(currentSeriesId); // Update the series title based on the URL parameter
