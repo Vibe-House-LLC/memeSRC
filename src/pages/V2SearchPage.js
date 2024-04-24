@@ -390,6 +390,7 @@ export default function SearchPage() {
 
   useEffect(() => {
     async function searchText() {
+      const shows = await fetchShows();
       setNewResults(null);
       setLoadingResults(true);
       setDisplayedResults(RESULTS_PER_PAGE / 2);
@@ -406,7 +407,16 @@ export default function SearchPage() {
       }
 
       try {
-        const response = await fetch(`https://v2-${process.env.REACT_APP_USER_BRANCH}.memesrc.com/search/${cid || params?.cid}/${searchTerm}`);
+        let seriesToSearch;
+        if (cid === '_favorites' || params?.cid === '_favorites') {
+          console.log(shows)
+          seriesToSearch = shows.filter(show => show.isFavorite).map(show => show.id).join(',');
+        } else {
+          seriesToSearch = cid || params?.cid
+        }
+
+        const response = await fetch(`https://v2-${process.env.REACT_APP_USER_BRANCH}.memesrc.com/search/${seriesToSearch}/${searchTerm}`);
+        
         // const response = await fetch(`http://the-internet.herokuapp.com/status_codes/500`);
         if (!response.ok) {
           throw new Error(`HTTP error! Status: ${response.status}`);
