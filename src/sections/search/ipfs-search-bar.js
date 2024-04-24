@@ -6,7 +6,7 @@ import { ArrowBack, Close, Favorite, MapsUgc, Search, Shuffle } from "@mui/icons
 import { API, graphqlOperation } from 'aws-amplify';
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { LoadingButton } from "@mui/lab";
-import { Outlet, Link as RouterLink, useLocation, useNavigate, useParams } from "react-router-dom";
+import { Outlet, Link as RouterLink, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { searchPropTypes } from "./SearchPropTypes";
 import Logo from "../../components/logo/Logo";
 import { contentMetadataByStatus, listContentMetadata } from '../../graphql/queries';
@@ -95,12 +95,14 @@ export default function IpfsSearchBar(props) {
   const { pathname } = useLocation();
   const { user } = useContext(UserContext);
   const { loadRandomFrame, loadingRandom, error } = useLoadRandomFrame();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const searchTerm = searchParams.get('searchTerm');
 
   /* ----------------------------------- New ---------------------------------- */
 
   const searchInputRef = useRef(null);
 
-  const [search, setSearch] = useState(searchQuery || '');
+  const [search, setSearch] = useState(params?.searchTerms || '');
   const [addNewCidOpen, setAddNewCidOpen] = useState(false);
   const navigate = useNavigate();
 
@@ -129,11 +131,11 @@ export default function IpfsSearchBar(props) {
   });
 
   useEffect(() => {
-    if (params.searchTerms) {
-      setSearchQuery(params.searchTerms)
-      setSearch(params?.searchTerms)
+    if (searchTerm) {
+      setSearchQuery(searchTerm);
+      setSearch(searchTerm);
     }
-  }, [params?.searchTerms]);
+  }, [searchTerm]);
 
   useEffect(() => {
     console.log(cid)
@@ -334,7 +336,7 @@ export default function IpfsSearchBar(props) {
           >
             <Link
               component={RouterLink}
-              to={search ? `/search/${cid}/${search}` : "/"}
+              to={search ? `/search/${cid}${searchQuery ? `?searchTerm=${searchQuery}` : ''}` : "/"}
               sx={{
                 color: 'white',
                 textDecoration: 'none',
@@ -363,7 +365,7 @@ export default function IpfsSearchBar(props) {
           >
             <Link
               component={RouterLink}
-              to={`/frame/${params?.cid}/${params?.season}/${params?.episode}/${params?.frame}${selectedFrameIndex ? `/${selectedFrameIndex}` : ''}`}
+              to={`/frame/${params?.cid}/${params?.season}/${params?.episode}/${params?.frame}${selectedFrameIndex ? `/${selectedFrameIndex}` : ''}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`}
               sx={{
                 color: 'white',
                 textDecoration: 'none',

@@ -77,10 +77,11 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const [openNavWithoutSavingDialog, setOpenNavWithoutSavingDialog] = useState(false);
   const [selectedNavItemFid, setSelectedNavItemFid] = useState(null);
   const [searchParams, setSearchParams] = useSearchParams();
+  const searchQuery = searchParams.get('searchTerm');
 
   // console.log(searchDetails.fineTuningFrame)
   // Get everything ready
-  const { fid, editorProjectId, fineTuningIndex } = useParams();
+  const { fid, editorProjectId, fineTuningIndex, searchTerms } = useParams();
   const { user, setUser } = useContext(UserContext);
   const [defaultFrame, setDefaultFrame] = useState(null);
   const [pickingColor, setPickingColor] = useState(false);
@@ -1154,7 +1155,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   };
 
   const handleNavigate = (cid, season, episode, frame) => {
-    navigate(`/editor/${cid}/${season}/${episode}/${frame}`);
+    navigate(`/editor/${cid}/${season}/${episode}/${frame}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`);
     setOpenNavWithoutSavingDialog(false);
     editor.canvas.discardActiveObject().requestRenderAll();
     setFutureStates([]);
@@ -1625,7 +1626,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                         onMouseDown={loadFineTuningImages}
                         onTouchStart={loadFineTuningImages}
                         onChange={(e, newValue) => handleSliderChange(newValue)}
-                        onChangeCommitted={(e, value) => {navigate(`/editor/${cid}/${season}/${episode}/${frame}/${value}`)}}
+                        onChangeCommitted={(e, value) => {navigate(`/editor/${cid}/${season}/${episode}/${frame}/${value}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`)}}
                         valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
                         marks
                         disabled={loadingFineTuning}
@@ -1935,7 +1936,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                           src={`${surroundingFrame.frameImage}`}
                           title={surroundingFrame.subtitle || 'No subtitle'}
                           onClick={() => {
-                            navigate(`/editor/${cid}/${season}/${episode}/${surroundingFrame.frame}`);
+                            alert(searchTerms)
+                            navigate(`/editor/${cid}/${season}/${episode}/${surroundingFrame.frame}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`);
                           }}
                         />
                       </StyledCard>

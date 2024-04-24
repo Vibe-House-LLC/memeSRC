@@ -2,7 +2,7 @@
 
 // eslint-disable camelcase
 import { Helmet } from 'react-helmet-async';
-import { Navigate, Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
+import { Navigate, Link as RouterLink, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useCallback, useEffect, useRef, useState, useContext } from 'react';
 import { API } from 'aws-amplify';
 import { styled } from '@mui/material/styles';
@@ -75,7 +75,7 @@ export default function FramePage({ shows = [] }) {
   const [surroundingFrames, setSurroundingFrames] = useState([]);
   const [surroundingSubtitles, setSurroundingSubtitles] = useState(null);
   const [loading, setLoading] = useState(false);
-  const { cid, season, episode, frame, fineTuningIndex = null } = useParams();
+  const { cid, season, episode, frame, fineTuningIndex = null, searchTerms } = useParams();
   const [confirmedCid, setConfirmedCid] = useState();
   const [sliderValue, setSliderValue] = useState(fineTuningFrame || 0);
   const [displayImage, setDisplayImage] = useState();
@@ -91,6 +91,8 @@ export default function FramePage({ shows = [] }) {
   const [loadingFineTuning, setLoadingFineTuning] = useState(false);
   const [fineTuningLoadStarted, setFineTuningLoadStarted] = useState(false);
   const [fineTuningBlobs, setFineTuningBlobs] = useState([]);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const searchQuery = searchParams.get('searchTerm');
 
   const throttleTimeoutRef = useRef(null);
 
@@ -625,7 +627,7 @@ useEffect(() => {
               onMouseDown={loadFineTuningImages}
               onTouchStart={loadFineTuningImages}
               onChange={(e, newValue) => handleSliderChange(newValue)}
-              onChangeCommitted={(e, value) => {navigate(`/frame/${cid}/${season}/${episode}/${frame}/${value}`)}}
+              onChangeCommitted={(e, value) => {navigate(`/frame/${cid}/${season}/${episode}/${frame}/${value}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`)}}
               valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
               marks
               componentsProps={{
@@ -1083,7 +1085,7 @@ useEffect(() => {
               size="medium"
               fullWidth
               variant="contained"
-              to={`/editor/${cid}/${season}/${episode}/${frame}${(fineTuningIndex || fineTuningLoadStarted) ? `/${selectedFrameIndex}` : ''}`}
+              to={`/editor/${cid}/${season}/${episode}/${frame}${(fineTuningIndex || fineTuningLoadStarted) ? `/${selectedFrameIndex}` : ''}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`}
               component={RouterLink}
               sx={{ my: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
               startIcon={<Edit />}
@@ -1233,7 +1235,7 @@ useEffect(() => {
                           src={`${surroundingFrame.frameImage}`}
                           title={surroundingFrame.subtitle || 'No subtitle'}
                           onClick={() => {
-                            navigate(`/frame/${cid}/${season}/${episode}/${surroundingFrame.frame}`);
+                            navigate(`/frame/${cid}/${season}/${episode}/${surroundingFrame.frame}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`);
                           }}
                         />
                       </StyledCard>

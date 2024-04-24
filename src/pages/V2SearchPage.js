@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useContext } from 'react';
 import { Grid, CircularProgress, Card, Chip, Typography, Button, Collapse, IconButton, FormControlLabel, Switch, Dialog, DialogTitle, DialogContent, List, ListItem, ListItemText, DialogActions, Box, CardContent, TextField } from '@mui/material';
 import styled from '@emotion/styled';
 import { API, graphqlOperation } from 'aws-amplify';
-import { Link, useParams, useNavigate } from 'react-router-dom';
+import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import JSZip from 'jszip';
 import { ReportProblem, Settings } from '@mui/icons-material';
@@ -224,6 +224,8 @@ export default function SearchPage() {
   const [loadingResults, setLoadingResults] = useState(true);
   const [videoUrls, setVideoUrls] = useState({});
   const [showBanner, setShowBanner] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const searchQuery = searchParams.get('searchTerm');
 
   const [autoplay, setAutoplay] = useState(true);
 
@@ -394,7 +396,7 @@ export default function SearchPage() {
       setNewResults(null);
       setLoadingResults(true);
       setDisplayedResults(RESULTS_PER_PAGE / 2);
-      const searchTerm = encodeURIComponent(params?.searchTerms.trim().toLowerCase());
+      const searchTerm = encodeURIComponent(searchQuery.trim().toLowerCase());
       if (searchTerm === "") {
         console.log("Search term is empty.");
         return;
@@ -436,14 +438,14 @@ export default function SearchPage() {
     }
 
     // if (cid !== '_universal') {
-    if (params?.searchTerms) {
+    if (searchQuery) {
       searchText();
     } else {
       setLoadingResults(false);
       setNewResults([]);
     }
     // }
-  }, [loadingCsv, showObj, params?.searchTerms, cid, universalSearchMaintenance]);
+  }, [loadingCsv, showObj, searchQuery, cid, universalSearchMaintenance]);
 
   useEffect(() => {
     console.log(newResults);
@@ -654,7 +656,7 @@ export default function SearchPage() {
                       <Link
                         to={`/frame/${result.cid}/${result.season}/${result.episode}/${Math.round(
                           (parseInt(result.start_frame, 10) + parseInt(result.end_frame, 10)) / 2
-                        )}`}
+                        )}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`}
                         style={{ textDecoration: 'none' }}
                       >
                         <StyledCard>
@@ -775,7 +777,7 @@ export default function SearchPage() {
               <Grid item xs={12} key={show.id}>
                 <Card
                   onClick={() => {
-                    window.location.href = `/search/${show.cid}/${params?.searchTerms || ''}`;
+                    window.location.href = `/search/${show.cid}/${searchQuery || ''}`;
                   }}
                   sx={{
                     backgroundColor: show.colorMain,
