@@ -1,6 +1,6 @@
 import { useState, useEffect, useContext, useRef } from 'react';
 import { Outlet, useLocation, useParams } from 'react-router-dom';
-import { styled } from '@mui/material/styles';
+import { styled, keyframes } from '@mui/material/styles';
 import { Box, Typography } from '@mui/material';
 import HomePageBannerAd from '../../ads/HomePageBannerAd';
 import Header from './header';
@@ -25,6 +25,15 @@ const Main = styled('div')(({ theme, isRootPath }) => ({
   },
 }));
 
+const shimmerAnimation = keyframes`
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+`;
+
 const AdSpace = styled(Box)(({ theme }) => ({
   backgroundColor: theme.palette.primary.main,
   width: '100%',
@@ -39,8 +48,25 @@ const AdSpace = styled(Box)(({ theme }) => ({
   zIndex: theme.zIndex.appBar + 1,
   cursor: 'pointer',
   padding: theme.spacing(2, 4),
+  overflow: 'hidden',
   '&:hover': {
     backgroundColor: theme.palette.primary.dark,
+  },
+  '&::after': {
+    content: '""',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    background: `linear-gradient(
+      110deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.2) 50%,
+      rgba(255, 255, 255, 0) 100%
+    )`,
+    transform: 'translateX(-100%)',
+    animation: `${shimmerAnimation} 3s infinite`,
   },
 }));
 
@@ -120,7 +146,7 @@ export default function DashboardLayout() {
                 {selectedTitleSubtitle?.subtitle}
               </Typography>
               <Typography variant="body2" component="span" color="rgba(255, 255, 255, 0.9)" ml={1} style={{ whiteSpace: 'normal' }}>
-                Unlock perks like no ads, pro support, and bonus magic credits every month!
+                Unlock perks like no ads, pro support, early access features, and more magic credits!
               </Typography>
             </Box>
           </Box>
