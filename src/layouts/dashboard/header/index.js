@@ -50,10 +50,11 @@ const HEADER_MOBILE = 45;
 
 const HEADER_DESKTOP = 45;
 
-const StyledRoot = styled(AppBar)(({ theme }) => ({
+const StyledRoot = styled(AppBar)(({ theme, adSpaceHeight }) => ({
   ...bgBlur({ color: theme.palette.background.default }),
   boxShadow: 'none',
   overflow: 'hidden', // This line will hide the slide in/out animation outside the AppBar
+  top: adSpaceHeight, // Move the header down based on adSpaceHeight
 }));
 
 const StyledToolbar = styled(Toolbar)(({ theme }) => ({
@@ -64,9 +65,10 @@ const StyledToolbar = styled(Toolbar)(({ theme }) => ({
 
 Header.propTypes = {
   onOpenNav: PropTypes.func,
+  adSpaceHeight: PropTypes.number,
 };
 
-export default function Header({ onOpenNav }) {
+export default function Header({ onOpenNav, adSpaceHeight }) {
   const navigate = useNavigate();
   const buttonRef = useRef(null);
   const { user, setUser } = useContext(UserContext);
@@ -154,8 +156,8 @@ export default function Header({ onOpenNav }) {
 
   return (
     <>
-      <StyledRoot>
-        <StyledToolbar sx={{ position: 'relative', minHeight: { xs: 45, md: '45px !important' } }} ref={containerRef}>
+      <StyledRoot adSpaceHeight={adSpaceHeight}>
+      <StyledToolbar sx={{ position: 'relative', minHeight: { xs: 45, md: '45px !important' } }} ref={containerRef}>
           <IconButton
             onClick={onOpenNav}
             sx={{
