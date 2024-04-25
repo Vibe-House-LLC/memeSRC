@@ -1,7 +1,7 @@
 import { useState, useEffect, useContext } from 'react';
 import { Box, Typography, Button, Container, Divider, Grid, Card, TextField, List, ListItem, ListItemIcon, ListItemText, IconButton, Avatar, Chip, Skeleton, LinearProgress } from '@mui/material';
 import { Receipt, Download, Edit, Save, Cancel, Block, SupportAgent, Bolt, AutoFixHighRounded } from '@mui/icons-material';
-import { API } from 'aws-amplify';
+import { API, Auth, Storage } from 'aws-amplify';
 import { UserContext } from '../UserContext';
 import { useSubscribeDialog } from '../contexts/useSubscribeDialog';
 
@@ -96,11 +96,37 @@ const AccountPage = () => {
     }
   };
 
-  const handleProfilePhotoUpload = (event) => {
-    const file = event.target.files[0];
-    // Logic to upload the profile photo and update the profilePhoto state
-    // Make API calls to upload the photo and update the user's profile
-    console.log('Uploading profile photo:', file);
+  const handleProfilePhotoUpload = async (event) => {
+    console.log(userDetails)
+    if (userDetails?.user?.sub) {
+      const file = event.target.files[0];
+      try {
+        // Upload the profile photo to Storage
+        const response = await Storage.put(`profilePictures/${userDetails?.user?.sub}`, file, {
+          contentType: file.type, // contentType is optional
+        });
+        
+        // Get the current authenticated user
+        const userObj = await Auth.currentAuthenticatedUser();
+        
+        // Update the user's profile with the uploaded photo key
+        const updatePictureResponse = await Auth.updateUserAttributes(userObj, {
+          picture: response.key
+        });
+
+        const newProfilePicture = await Storage.get(response.key)
+        userDetails?.setUser({
+          ...userDetails.user,
+          profilePhoto: newProfilePicture
+        })
+        console.log(newProfilePicture)
+        
+        console.log(updatePictureResponse);
+      } catch (error) {
+        console.error('Error uploading profile photo:', error);
+      }
+      console.log('Uploading profile photo:', file);
+    }
   };
 
   const isLoading = loadingInvoices || loadingSubscription;
@@ -215,7 +241,7 @@ const AccountPage = () => {
               Account Information
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-              <Avatar src={profilePhoto} sx={{ width: 80, height: 80, mr: 3 }} />
+              <Avatar src={userDetails?.user?.profilePhoto || null} sx={{ width: 80, height: 80, mr: 3 }} />
               <Button variant="outlined" component="label">
                 Upload Photo
                 <input type="file" hidden onChange={handleProfilePhotoUpload} accept="image/*" />

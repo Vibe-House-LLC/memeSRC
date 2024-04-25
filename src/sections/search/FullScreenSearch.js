@@ -546,6 +546,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
 
   useEffect(() => {
     const defaultSeries = window.localStorage.getItem(`defaultsearch${user?.sub}`)
+    console.log(user?.sub)
     setCid(seriesId || metadata?.id || defaultSeries || '_universal')
 
     return () => {

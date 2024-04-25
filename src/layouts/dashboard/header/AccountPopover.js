@@ -65,7 +65,7 @@ export default function AccountPopover() {
   const logout = () => {
     Auth.signOut().then(() => {
       window.localStorage.removeItem('memeSRCUserInfo')
-      userDetails?.setUser(null);
+      userDetails?.setUser(false);
       navigate('/login')
     }).catch((err) => {
       alert(err)
@@ -97,7 +97,7 @@ export default function AccountPopover() {
             }),
           }}
         >
-          <Avatar src={account.photoURL} alt="photoURL" sx={{ width: 35, height: 35 }} />
+          <Avatar src={userDetails?.user?.profilePhoto || account.photoURL} alt="photoURL" sx={{ width: 35, height: 35 }} />
         </IconButton>
       }
 
