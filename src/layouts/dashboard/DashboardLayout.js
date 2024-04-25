@@ -112,6 +112,8 @@ export default function DashboardLayout() {
     const updateAdSpaceHeight = () => {
       if (adSpaceRef.current) {
         setAdSpaceHeight(adSpaceRef.current.offsetHeight);
+      } else {
+        setAdSpaceHeight(0);
       }
     };
 
@@ -121,7 +123,7 @@ export default function DashboardLayout() {
     return () => {
       window.removeEventListener('resize', updateAdSpaceHeight);
     };
-  }, [selectedTitleSubtitle]);
+  }, [user?.userDetails?.magicSubscription, selectedTitleSubtitle]);
 
   useEffect(() => {
     const randomIndex = Math.floor(Math.random() * titleSubtitlePairs.length);
