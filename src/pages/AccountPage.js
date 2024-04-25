@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext } from 'react';
-import { Box, Typography, Button, Container, Divider, Grid, Card, TextField, List, ListItem, ListItemIcon, ListItemText, IconButton, Avatar, Chip, Skeleton, LinearProgress } from '@mui/material';
+import { Box, Typography, Button, Container, Divider, Grid, Card, TextField, List, ListItem, ListItemIcon, ListItemText, IconButton, Avatar, Chip, Skeleton, LinearProgress, CircularProgress } from '@mui/material';
 import { Receipt, Download, Edit, Save, Cancel, Block, SupportAgent, Bolt, AutoFixHighRounded } from '@mui/icons-material';
 import { API, Auth, Storage } from 'aws-amplify';
 import { LoadingButton } from '@mui/lab';
@@ -10,8 +10,10 @@ import { SnackbarContext } from '../SnackbarContext';
 const AccountPage = () => {
   const userDetails = useContext(UserContext);
   const { openSubscriptionDialog } = useSubscribeDialog();
-  const [email, setEmail] = useState(userDetails?.user?.email || '');
+  const [email, setEmail] = useState(userDetails?.user?.attributes?.email || '');
   const [editingEmail, setEditingEmail] = useState(false);
+  const [verificationCode, setVerificationCode] = useState('');
+  const [isVerifyingEmail, setIsVerifyingEmail] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -25,7 +27,8 @@ const AccountPage = () => {
   const [loadingInvoices, setLoadingInvoices] = useState(true);
   const [page, setPage] = useState(1);
   const [loadingSubscription, setLoadingSubscription] = useState(true);
-  const { setOpen, setSeverity, setMessage } = useContext(SnackbarContext)
+  const { setOpen, setSeverity, setMessage } = useContext(SnackbarContext);
+  const [updatingEmail, setUpdatingEmail] = useState(false);
 
   useEffect(() => {
     fetchInvoices();
@@ -33,7 +36,8 @@ const AccountPage = () => {
   }, [page]);
 
   useEffect(() => {
-    setEmail(userDetails?.user?.userDetails?.email);
+    setEmail(userDetails?.user?.attributes?.email);
+    console.log(userDetails)
   }, [userDetails]);
 
   useEffect(() => {
@@ -86,11 +90,37 @@ const AccountPage = () => {
 
   const handleUpdateEmail = async () => {
     try {
-      // Make API call to update the user's email
-      await API.post('publicapi', '/user/update/email', { body: { email } });
+      setUpdatingEmail(true);
+      const user = await Auth.currentAuthenticatedUser();
+      await Auth.updateUserAttributes(user, { email });
       setEditingEmail(false);
+      setIsVerifyingEmail(true);
+      setMessage('Verification code sent to your email. Please enter the code to verify your new email address.');
+      setSeverity('info');
+      setOpen(true);
     } catch (error) {
       console.error('Error updating email:', error);
+      setMessage('Something went wrong. Please try again.');
+      setSeverity('error');
+      setOpen(true);
+    } finally {
+      setUpdatingEmail(false);
+    }
+  };
+
+  const handleVerifyEmail = async () => {
+    try {
+      await Auth.verifyCurrentUserAttributeSubmit('email', verificationCode);
+      setIsVerifyingEmail(false);
+      setVerificationCode('');
+      setMessage('Email address verified successfully!');
+      setSeverity('success');
+      setOpen(true);
+    } catch (error) {
+      console.error('Error verifying email:', error);
+      setMessage('Invalid verification code. Please try again.');
+      setSeverity('error');
+      setOpen(true);
     }
   };
 
@@ -288,35 +318,50 @@ const AccountPage = () => {
               </Box>
             }
             <Box sx={{ mb: 3 }}>
-              <TextField
-                label="Email"
-                autoComplete='off'
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                fullWidth
-                disabled={!editingEmail}
-                InputProps={{
-                  endAdornment: editingEmail ? (
-                    <>
-                      <IconButton onClick={handleUpdateEmail}>
-                        <Save />
-                      </IconButton>
-                      <IconButton
-                        onClick={() => {
-                          setEmail(userDetails?.user?.userDetails?.email || '');
-                          setEditingEmail(false);
-                        }}
-                      >
-                        <Cancel />
-                      </IconButton>
-                    </>
-                  ) : (
-                    <IconButton onClick={() => setEditingEmail(true)}>
-                      <Edit />
+            <TextField
+              label="Email"
+              autoComplete="off"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              fullWidth
+              disabled={!editingEmail || isVerifyingEmail || updatingEmail}
+              InputProps={{
+                endAdornment: editingEmail ? (
+                  <>
+                    <IconButton onClick={handleUpdateEmail} disabled={isVerifyingEmail || updatingEmail}>
+                      {updatingEmail ? <CircularProgress size={24} /> : <Save />}
                     </IconButton>
-                  ),
-                }}
-              />
+                    <IconButton
+                      onClick={() => {
+                        setEmail(userDetails?.user?.userDetails?.email || '');
+                        setEditingEmail(false);
+                      }}
+                      disabled={isVerifyingEmail || updatingEmail}
+                    >
+                      <Cancel />
+                    </IconButton>
+                  </>
+                ) : (
+                  <IconButton onClick={() => setEditingEmail(true)} disabled={isVerifyingEmail || updatingEmail}>
+                    <Edit />
+                  </IconButton>
+                ),
+              }}
+            />
+              {isVerifyingEmail && (
+                <Box sx={{ mt: 2 }}>
+                  <TextField
+                    label="Verification Code"
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value)}
+                    fullWidth
+                    sx={{ mb: 2 }}
+                  />
+                  <Button variant="contained" onClick={handleVerifyEmail}>
+                    Verify Email
+                  </Button>
+                </Box>
+              )}
             </Box>
             <Box sx={{ mb: 3 }}>
               <form onSubmit={handleUpdatePassword}>
@@ -324,7 +369,7 @@ const AccountPage = () => {
                   label="Username"
                   type="text"
                   autoComplete="username"
-                  value={userDetails?.user?.username}
+                  value={userDetails?.user?.username || ''}
                   fullWidth
                   disabled
                   sx={{ mb: 2 }}
