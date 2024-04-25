@@ -255,6 +255,15 @@
           "category": "function",
           "resourceName": "memesrcc3c71449PreSignup",
           "triggerProvider": "Cognito"
+        },
+        {
+          "attributes": [
+            "Arn",
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "memesrcc3c71449PostConfirmation",
+          "triggerProvider": "Cognito"
         }
       ],
       "frontendAuthConfig": {
@@ -612,6 +621,11 @@
           "resourceName": "memesrc"
         }
       ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "memesrcc3c71449PostConfirmation": {
+      "build": true,
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
@@ -1124,6 +1138,22 @@
         {
           "category": "function",
           "resourceName": "memesrcVote"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcc3c71449PostConfirmation_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcc3c71449PostConfirmation"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcc3c71449PostConfirmation_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcc3c71449PostConfirmation"
         }
       ]
     },

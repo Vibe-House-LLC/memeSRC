@@ -2,8 +2,10 @@ import { useState, useEffect, useContext } from 'react';
 import { Box, Typography, Button, Container, Divider, Grid, Card, TextField, List, ListItem, ListItemIcon, ListItemText, IconButton, Avatar, Chip, Skeleton, LinearProgress } from '@mui/material';
 import { Receipt, Download, Edit, Save, Cancel, Block, SupportAgent, Bolt, AutoFixHighRounded } from '@mui/icons-material';
 import { API, Auth, Storage } from 'aws-amplify';
+import { LoadingButton } from '@mui/lab';
 import { UserContext } from '../UserContext';
 import { useSubscribeDialog } from '../contexts/useSubscribeDialog';
+import { SnackbarContext } from '../SnackbarContext';
 
 const AccountPage = () => {
   const userDetails = useContext(UserContext);
@@ -14,12 +16,16 @@ const AccountPage = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isPasswordValid, setIsPasswordValid] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [updatingPassword, setUpdatingPassword] = useState(false);
   const [profilePhoto, setProfilePhoto] = useState(userDetails?.user?.profilePhoto || '');
+  const [uploadingProfilePhoto, setUploadingProfilePhoto] = useState(false);
   const [invoices, setInvoices] = useState([]);
   const [hasMore, setHasMore] = useState(false);
   const [loadingInvoices, setLoadingInvoices] = useState(true);
   const [page, setPage] = useState(1);
   const [loadingSubscription, setLoadingSubscription] = useState(true);
+  const { setOpen, setSeverity, setMessage } = useContext(SnackbarContext)
 
   useEffect(() => {
     fetchInvoices();
@@ -31,7 +37,13 @@ const AccountPage = () => {
   }, [userDetails]);
 
   useEffect(() => {
-    setIsPasswordValid(newPassword.length >= 8 && newPassword === confirmPassword);
+    if (newPassword === confirmPassword) {
+      setIsPasswordValid(newPassword.length >= 8);
+      setPasswordError('');
+    } else {
+      setIsPasswordValid(false);
+      setPasswordError('Passwords do not match');
+    }
   }, [newPassword, confirmPassword]);
 
   const fetchInvoices = async () => {
@@ -82,21 +94,38 @@ const AccountPage = () => {
     }
   };
 
-  const handleUpdatePassword = async () => {
+  const handleUpdatePassword = async (event) => {
+    event.preventDefault();
+
+    if (!isPasswordValid) {
+      setPasswordError('Passwords do not match');
+      return;
+    }
+
     try {
-      // Make API call to update the user's password
-      await API.post('publicapi', '/user/update/password', {
-        body: { currentPassword, newPassword },
-      });
+      setUpdatingPassword(true);
+      const user = await Auth.currentAuthenticatedUser();
+      await Auth.changePassword(user, currentPassword, newPassword);
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
+      setPasswordError('');
     } catch (error) {
       console.error('Error updating password:', error);
+      setPasswordError('Failed to update password. Please try again.');
+      setMessage('Something went wrong. Please try again.')
+      setSeverity('error')
+      setOpen(true)
+    } finally {
+      setUpdatingPassword(false);
+      setMessage('Your password has been updated!')
+      setSeverity('success')
+      setOpen(true)
     }
   };
 
   const handleProfilePhotoUpload = async (event) => {
+    setUploadingProfilePhoto(true)
     console.log(userDetails)
     if (userDetails?.user?.sub) {
       const file = event.target.files[0];
@@ -105,10 +134,10 @@ const AccountPage = () => {
         const response = await Storage.put(`profilePictures/${userDetails?.user?.sub}`, file, {
           contentType: file.type, // contentType is optional
         });
-        
+
         // Get the current authenticated user
         const userObj = await Auth.currentAuthenticatedUser();
-        
+
         // Update the user's profile with the uploaded photo key
         const updatePictureResponse = await Auth.updateUserAttributes(userObj, {
           picture: response.key
@@ -120,12 +149,15 @@ const AccountPage = () => {
           profilePhoto: newProfilePicture
         })
         console.log(newProfilePicture)
-        
+
         console.log(updatePictureResponse);
+        setUploadingProfilePhoto(false)
       } catch (error) {
         console.error('Error uploading profile photo:', error);
+        setUploadingProfilePhoto(false)
       }
       console.log('Uploading profile photo:', file);
+      setUploadingProfilePhoto(false)
     }
   };
 
@@ -165,17 +197,17 @@ const AccountPage = () => {
                 <Typography variant="h4" sx={{ color: userDetails?.user?.userDetails?.magicSubscription === 'true' ? 'black' : 'white', mb: 1 }}>
                   {userDetails?.user?.userDetails?.magicSubscription === 'true' ? 'memeSRC Pro' : 'Upgrade to memeSRC Pro'}
                 </Typography>
-                  {isLoading ? (
-                    <Box sx={{ width: '100%', mt: 1 }}>
-                      <LinearProgress
-                        sx={{
-                          '& .MuiLinearProgress-bar': {
-                            background: 'linear-gradient(to right, red 0%, red 20%, orange 20%, orange 40%, yellow 40%, yellow 60%, green 60%, green 80%, blue 80%, blue 100%)',
-                          },
-                        }}
-                      />
-                        </Box>
-                  ) : userDetails?.user?.userDetails?.magicSubscription === 'true' ? (
+                {isLoading ? (
+                  <Box sx={{ width: '100%', mt: 1 }}>
+                    <LinearProgress
+                      sx={{
+                        '& .MuiLinearProgress-bar': {
+                          background: 'linear-gradient(to right, red 0%, red 20%, orange 20%, orange 40%, yellow 40%, yellow 60%, green 60%, green 80%, blue 80%, blue 100%)',
+                        },
+                      }}
+                    />
+                  </Box>
+                ) : userDetails?.user?.userDetails?.magicSubscription === 'true' ? (
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {currentSubscription ? (
                       <>
@@ -240,16 +272,25 @@ const AccountPage = () => {
             <Typography variant="h5" gutterBottom>
               Account Information
             </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: uploadingProfilePhoto ? 1 : 4 }}>
               <Avatar src={userDetails?.user?.profilePhoto || null} sx={{ width: 80, height: 80, mr: 3 }} />
-              <Button variant="outlined" component="label">
+              <Button variant="outlined" component="label" disabled={uploadingProfilePhoto}>
                 Upload Photo
                 <input type="file" hidden onChange={handleProfilePhotoUpload} accept="image/*" />
               </Button>
             </Box>
+            {uploadingProfilePhoto &&
+              <Box>
+                <Typography textAlign='center' fontSize={14} mb={1}>
+                  Uploading...
+                </Typography>
+                <LinearProgress sx={{ mb: 4 }} />
+              </Box>
+            }
             <Box sx={{ mb: 3 }}>
               <TextField
                 label="Email"
+                autoComplete='off'
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 fullWidth
@@ -278,33 +319,57 @@ const AccountPage = () => {
               />
             </Box>
             <Box sx={{ mb: 3 }}>
-              <TextField
-                label="Current Password"
-                type="password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                fullWidth
-                sx={{ mb: 2 }}
-              />
-              <TextField
-                label="New Password"
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                fullWidth
-                sx={{ mb: 2 }}
-              />
-              <TextField
-                label="Confirm New Password"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                fullWidth
-              />
+              <form onSubmit={handleUpdatePassword}>
+                <TextField
+                  label="Username"
+                  type="text"
+                  autoComplete="username"
+                  value={userDetails?.user?.username}
+                  fullWidth
+                  disabled
+                  sx={{ mb: 2 }}
+                />
+                <TextField
+                  label="Current Password"
+                  type="password"
+                  autoComplete="current-password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  fullWidth
+                  sx={{ mb: 2 }}
+                />
+                <TextField
+                  label="New Password"
+                  type="password"
+                  autoComplete="new-password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  fullWidth
+                  sx={{ mb: 2 }}
+                  error={!!passwordError}
+                  helperText={passwordError}
+                />
+                <TextField
+                  label="Confirm New Password"
+                  type="password"
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  fullWidth
+                  error={!!passwordError}
+                  helperText={passwordError}
+                />
+                <LoadingButton
+                  type="submit"
+                  variant="contained"
+                  disabled={!isPasswordValid || updatingPassword}
+                  sx={{ mt: 3 }}
+                  loading={updatingPassword}
+                >
+                  {updatingPassword ? 'Updating...' : 'Update Password'}
+                </LoadingButton>
+              </form>
             </Box>
-            <Button variant="contained" onClick={handleUpdatePassword} disabled={!isPasswordValid} sx={{ mt: 3 }}>
-              Update Password
-            </Button>
           </Card>
         </Grid>
 
