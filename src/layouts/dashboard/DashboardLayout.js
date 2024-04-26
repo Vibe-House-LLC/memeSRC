@@ -281,7 +281,7 @@ export default function DashboardLayout() {
         <StyledDialogTitle>Will you reconsider?</StyledDialogTitle>
         <StyledDialogContent>
           <Typography variant="body1" align="center">
-            Remove ads, support the site, and more <b>with memeSRC&nbsp;Pro.</b>
+            Remove ads, support the site, and more with <b>memeSRC&nbsp;Pro.</b>
           </Typography>
         </StyledDialogContent>
         <StyledDialogActions>
