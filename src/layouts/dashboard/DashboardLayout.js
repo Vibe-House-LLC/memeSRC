@@ -70,6 +70,75 @@ const AdSpace = styled(Box)(({ theme }) => ({
   },
 }));
 
+// Custom styled dialog components
+const StyledDialog = styled(Dialog)(({ theme }) => ({
+  '& .MuiPaper-root': {
+    backgroundColor: theme.palette.grey[900],
+    color: theme.palette.common.white,
+    borderRadius: theme.shape.borderRadius,
+    boxShadow: theme.shadows[5],
+    maxWidth: '750px',
+    width: '100%',
+  },
+}));
+
+const StyledDialogTitle = styled(DialogTitle)(({ theme }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  minHeight: '64px',
+  backgroundColor: theme.palette.grey[800],
+  padding: theme.spacing(3),
+  '& .MuiTypography-root': {
+    fontWeight: 'bold',
+    marginLeft: theme.spacing(2),
+  },
+  '&::before': {
+    content: '""',
+    backgroundImage: `url('/assets/memeSRC-white.svg')`,
+    backgroundRepeat: 'no-repeat',
+    backgroundPosition: 'center',
+    backgroundSize: 'contain',
+    marginRight: theme.spacing(2),
+    width: '50px',
+    height: '50px',
+    opacity: 0.9,
+  },
+}));
+
+const StyledDialogContent = styled(DialogContent)(({ theme }) => ({
+  color: theme.palette.common.white,
+  backgroundColor: theme.palette.grey[900],
+  padding: theme.spacing(4),
+  textAlign: 'center',
+  display: 'flex',
+  flexDirection: 'column',
+  justifyContent: 'center', // Ensures content is vertically centered
+  '& .MuiTypography-root': {
+    marginTop: theme.spacing(2),
+  },
+}));
+
+const StyledDialogActions = styled(DialogActions)(({ theme }) => ({
+  backgroundColor: theme.palette.grey[900],
+  justifyContent: 'center',
+  padding: theme.spacing(3),
+  '& .MuiButton-root': {
+    margin: theme.spacing(0, 2),
+    width: '120px',
+  },
+  '& .MuiButton-contained': {
+    color: theme.palette.primary.contrastText,
+    backgroundColor: theme.palette.primary.main, // Primary button color matching the banner
+  },
+  '& .MuiButton-outlined': {
+    color: theme.palette.primary.main, // Text color matching the banner primary color
+    borderColor: theme.palette.primary.main, // Border color matching the banner primary color
+    '&:hover': {
+      backgroundColor: theme.palette.primary.dark, // Darker shade on hover for better visibility
+    },
+  },
+}));
+
 export default function DashboardLayout() {
   const [open, setOpen] = useState(false);
   const { seriesId } = useParams();
@@ -208,24 +277,41 @@ export default function DashboardLayout() {
           </Box>
         </AdSpace>
       )}
-      <Dialog open={dismissDialogOpen} onClose={handleCancelDismiss}>
-        <DialogTitle>Just a second!</DialogTitle>
-        <DialogContent>
-          <Typography>
-            Skipping Pro? You're also skipping on supporting memeSRC.
+      <StyledDialog open={dismissDialogOpen} onClose={handleCancelDismiss}>
+        <StyledDialogTitle>Will you reconsider?</StyledDialogTitle>
+        <StyledDialogContent>
+          <Typography variant="body1" align="center">
+            Remove ads, support the site, plus unlock even more perks with memeSRC Pro.
           </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleConfirmDismiss}>No, thanks</Button>
-          <Button onClick={openSubscriptionDialog} variant="contained" color="primary">
-            I'll consider
+        </StyledDialogContent>
+        <StyledDialogActions>
+          <Button
+            onClick={handleConfirmDismiss}
+            variant="outlined" // Maintained as outlined, but now will match the banner colors
+            color="primary" // Ensures the color theme is consistent with the primary palette
+            style={{
+              color: 'rgba(255, 255, 255, 0.5)',
+              borderColor: 'rgba(255, 255, 255, 0.5)',
+              backgroundColor: 'transparent'
+            }}
+          >
+            Dismiss
           </Button>
-        </DialogActions>
-      </Dialog>
-      <StyledRoot theme={null} adSpaceHeight={adSpaceHeight}>
+          <Button
+            onClick={() => {
+              handleCancelDismiss();
+              openSubscriptionDialog();
+            }}
+            variant="contained" // Use the primary style for the dismiss button for visual consistency
+          >
+            Learn more
+          </Button>
+        </StyledDialogActions>
+      </StyledDialog>
+      <StyledRoot adSpaceHeight={adSpaceHeight}>
         <Header onOpenNav={() => setOpen(true)} adSpaceHeight={adSpaceHeight} />
         <Nav openNav={open} onCloseNav={() => setOpen(false)} />
-        <Main theme={null} isRootPath={isRootPath}>
+        <Main isRootPath={isRootPath}>
           <Outlet />
         </Main>
       </StyledRoot>
