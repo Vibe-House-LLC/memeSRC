@@ -85,9 +85,9 @@ const StyledDialog = styled(Dialog)(({ theme }) => ({
 const StyledDialogTitle = styled(DialogTitle)(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
-  minHeight: '64px',
+  minHeight: '55px',
   backgroundColor: theme.palette.grey[800],
-  padding: theme.spacing(3),
+  padding: theme.spacing(2),
   '& .MuiTypography-root': {
     fontWeight: 'bold',
     marginLeft: theme.spacing(2),
@@ -108,7 +108,7 @@ const StyledDialogTitle = styled(DialogTitle)(({ theme }) => ({
 const StyledDialogContent = styled(DialogContent)(({ theme }) => ({
   color: theme.palette.common.white,
   backgroundColor: theme.palette.grey[900],
-  padding: theme.spacing(4),
+  // padding: theme.spacing(4),
   textAlign: 'center',
   display: 'flex',
   flexDirection: 'column',
@@ -121,9 +121,9 @@ const StyledDialogContent = styled(DialogContent)(({ theme }) => ({
 const StyledDialogActions = styled(DialogActions)(({ theme }) => ({
   backgroundColor: theme.palette.grey[900],
   justifyContent: 'center',
-  padding: theme.spacing(3),
+  paddingBottom: theme.spacing(3),
   '& .MuiButton-root': {
-    margin: theme.spacing(0, 2),
+    // margin: theme.spacing(0, 2),
     width: '120px',
   },
   '& .MuiButton-contained': {
@@ -281,7 +281,7 @@ export default function DashboardLayout() {
         <StyledDialogTitle>Will you reconsider?</StyledDialogTitle>
         <StyledDialogContent>
           <Typography variant="body1" align="center">
-            Remove ads, support the site, plus unlock even more perks with memeSRC Pro.
+            Remove ads, support the site, and more <b>with memeSRC&nbsp;Pro.</b>
           </Typography>
         </StyledDialogContent>
         <StyledDialogActions>
