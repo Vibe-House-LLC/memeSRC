@@ -4,6 +4,10 @@ import { Typography, Container, Grid, Paper, Card, CardContent, Button, Alert } 
 import { UserContext } from '../UserContext';
 import { SnackbarContext } from '../SnackbarContext';
 
+const isMobileDevice = () => {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+};
+
 export default function FacebookAuthDemo() {
   const { user, setUser } = useContext(UserContext);
   const { setOpen, setMessage: setSnackbarMessage, setSeverity } = useContext(SnackbarContext);
@@ -61,9 +65,6 @@ export default function FacebookAuthDemo() {
       });
       fetchProfileInfo(response.authResponse.accessToken);
       fetchGroupPosts(response.authResponse.userID, response.authResponse.accessToken);
-    } else if (response.status === 'not_authorized') {
-      // User is logged into Facebook but not your app
-      setIsConnected(false);
     } else {
       // User is not logged into Facebook or your app
       setIsConnected(false);
@@ -71,20 +72,22 @@ export default function FacebookAuthDemo() {
   };
 
   const handleFacebookLogin = () => {
-    window.FB.login(
-      (response) => {
-        if (response.authResponse) {
-          // User is logged in and granted permissions
-          statusChangeCallback(response);
-        } else {
-          // User cancelled login or did not fully authorize
-          setSnackbarMessage('Facebook authentication failed');
-          setSeverity('error');
-          setOpen(true);
-        }
-      },
-      { scope: 'public_profile' }
-    );
+    const loginOptions = {
+      scope: 'public_profile',
+      ...(isMobileDevice() && { display: 'redirect' }),
+    };
+
+    window.FB.login((response) => {
+      if (response.authResponse) {
+        // User is logged in and granted permissions
+        statusChangeCallback(response);
+      } else {
+        // User cancelled login or did not fully authorize
+        setSnackbarMessage('Facebook authentication failed');
+        setSeverity('error');
+        setOpen(true);
+      }
+    }, loginOptions);
   };
 
   const fetchProfileInfo = (accessToken) => {
@@ -110,7 +113,7 @@ export default function FacebookAuthDemo() {
             });
           })
         );
-  
+
         Promise.all(groupPostPromises).then((groupPostsData) => {
           setProfileInfo((prevProfileInfo) => ({
             ...prevProfileInfo,
