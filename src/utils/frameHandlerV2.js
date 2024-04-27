@@ -45,9 +45,6 @@ const fetchFrameSubtitleAndImage = async (cid, season, episode, frame) => {
   episode = parseInt(episode, 10);
   frame = parseInt(frame, 10);
 
-  // const csvUrl = `https://img.memesrc.com/v2/${cid}/${season}/${episode}/_docs.csv`;
-  // const csvData = await fetchCSV(csvUrl);
-
   const csvDownload = (await Storage.get(`src/${cid}/${season}/${episode}/_docs.csv`, { level: 'public', download: true, customPrefix: { public: 'protected/' } })).Body
   const csvData = await csvDownload.text().split('\n').map((row) => row.split(','));
 
@@ -109,16 +106,10 @@ const fetchFrameInfo = async (cid, season, episode, frame, options = {}) => {
 
     console.log("TEST: 1")
 
-    // const metadataUrl = `https://img.memesrc.com/v2/${cid}/00_metadata.json`;
-    // const metadata = await fetchJSON(metadataUrl);
-
     const metadataDownload = (await Storage.get(`src/${cid}/00_metadata.json`, { level: 'public', download: true, customPrefix: { public: 'protected/' } })).Body
     const metadata = (await metadataDownload.text()).split('\n').map((row) => row.split(','));;
 
     const seriesName = metadata.index_name;
-
-    // const csvUrl = `https://img.memesrc.com/v2/${cid}/${season}/${episode}/_docs.csv`;
-    // const csvData = await fetchCSV(csvUrl);
 
     const csvDownload = (await Storage.get(`src/${cid}/${season}/${episode}/_docs.csv`, { level: 'public', download: true, customPrefix: { public: 'protected/' } })).Body
     const csvData = (await csvDownload.text()).split('\n').map((row) => row.split(','));
@@ -150,11 +141,6 @@ const fetchFrameInfo = async (cid, season, episode, frame, options = {}) => {
 
     // Fetch surrounding subtitles and images if requested
     if (options.subtitlesSurrounding) {
-      // Adjusted to handle the returned object with subtitle and index
-      const { subtitle: mainSubtitle, index: mainSubtitleIndex } = findSubtitleForFrame(csvData, season, episode, frame);
-
-      // Fetch surrounding subtitles with images, adjusted to use mainSubtitleIndex and decode base64
-      const subtitlesSurroundingPromises = [];
       if (mainSubtitleIndex !== -1) { // Ensure mainSubtitleIndex was found
         console.log("TEST: 7")
         const startIndex = Math.max(1, mainSubtitleIndex - 3);
@@ -171,10 +157,34 @@ const fetchFrameInfo = async (cid, season, episode, frame, options = {}) => {
             }
           );
         }
-      }
+      } else { // If no current subtitle found, use the nearest subtitle for surrounding subtitles
+        let closestSubtitleIndex = -1;
+        let minDistance = Infinity;
+        for (let i = 1; i < csvData.length; i += 1) {
+          const [, , , , startFrame, endFrame] = csvData[i];
+          const distance = Math.min(Math.abs(frame - startFrame), Math.abs(frame - endFrame));
+          if (distance < minDistance) {
+            minDistance = distance;
+            closestSubtitleIndex = i;
+          }
+        }
 
-      // Resolve all promises for surrounding subtitles with images
-      // subtitlesSurrounding = await Promise.all(subtitlesSurroundingPromises);
+        if (closestSubtitleIndex !== -1) {
+          const startIndex = Math.max(1, closestSubtitleIndex - 3);
+          const endIndex = Math.min(csvData.length - 1, closestSubtitleIndex + 3);
+          for (let i = startIndex; i <= endIndex; i += 1) {
+            const [, , , encodedSubtitleText, startFrame, endFrame] = csvData[i];
+            const subtitleText = Buffer.from(encodedSubtitleText, 'base64').toString();
+            const middleFrame = Math.floor((parseInt(startFrame, 10) + parseInt(endFrame, 10)) / 2);
+            subtitlesSurrounding.push(
+              {
+                subtitle: subtitleText,
+                frame: middleFrame,
+              }
+            );
+          }
+        }
+      }
     }
     console.log("TEST: 9")
     // Fetch frames_surrounding as an array of promises for image extraction if requested
