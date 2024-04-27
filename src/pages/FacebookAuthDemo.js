@@ -1,6 +1,6 @@
 import { useContext, useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Typography, Container, Grid, Paper, Card, CardContent, Button } from '@mui/material';
+import { Typography, Container, Grid, Paper, Card, CardContent, Button, Alert } from '@mui/material';
 import { UserContext } from '../UserContext';
 import { SnackbarContext } from '../SnackbarContext';
 
@@ -136,13 +136,16 @@ export default function FacebookAuthDemo() {
             <Typography variant="h2" gutterBottom mb={4}>
               Facebook Auth Demo
             </Typography>
+            <Alert severity="warning" sx={{ mb: 4 }}>
+              This page and the Sign in with Facebook functionality is currently just a development demo and serves no purpose yet.
+            </Alert>
             {!isConnected ? (
               <Paper elevation={3} sx={{ p: 2 }}>
                 <Typography variant="subtitle1" gutterBottom mt={1} mb={2}>
-                  Connect your Facebook account to view your profile information:
+                  Connect your Facebook account:
                 </Typography>
                 <Button variant="contained" size="large" fullWidth onClick={handleFacebookLogin}>
-                  Connect with Facebook
+                  Sign in with Facebook
                 </Button>
               </Paper>
             ) : (
