@@ -4,6 +4,10 @@ import { Typography, Container, Grid, Paper, Card, CardContent, Button, Alert } 
 import { UserContext } from '../UserContext';
 import { SnackbarContext } from '../SnackbarContext';
 
+const isMobileDevice = () => {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+};
+
 export default function FacebookAuthDemo() {
   const { user, setUser } = useContext(UserContext);
   const { setOpen, setMessage: setSnackbarMessage, setSeverity } = useContext(SnackbarContext);
@@ -40,33 +44,7 @@ export default function FacebookAuthDemo() {
 
   useEffect(() => {
     if (isFbSDKInitialized) {
-      const urlParams = new URLSearchParams(window.location.search);
-      const code = urlParams.get('code');
-
-      if (code) {
-        window.FB.api('/oauth/access_token', {
-          client_id: '1983174058744030',
-          redirect_uri: window.location.origin + window.location.pathname,
-          client_secret: 'YOUR_APP_SECRET',
-          code,
-        }, (response) => {
-          if (response && !response.error) {
-            setUser({
-              ...user,
-              facebookAccessToken: response.access_token,
-            });
-            fetchProfileInfo(response.access_token);
-            setIsConnected(true);
-            window.history.replaceState({}, document.title, window.location.origin + window.location.pathname);
-          } else {
-            setSnackbarMessage('Failed to obtain access token');
-            setSeverity('error');
-            setOpen(true);
-          }
-        });
-      } else {
-        checkLoginState();
-      }
+      checkLoginState();
     }
   }, [isFbSDKInitialized]);
 
@@ -87,9 +65,6 @@ export default function FacebookAuthDemo() {
       });
       fetchProfileInfo(response.authResponse.accessToken);
       fetchGroupPosts(response.authResponse.userID, response.authResponse.accessToken);
-    } else if (response.status === 'not_authorized') {
-      // User is logged into Facebook but not your app
-      setIsConnected(false);
     } else {
       // User is not logged into Facebook or your app
       setIsConnected(false);
@@ -97,8 +72,22 @@ export default function FacebookAuthDemo() {
   };
 
   const handleFacebookLogin = () => {
-    const facebookLoginUrl = `https://www.facebook.com/v12.0/dialog/oauth?client_id=1983174058744030&redirect_uri=${encodeURIComponent(window.location.origin + window.location.pathname)}&scope=public_profile`;
-    window.location.href = facebookLoginUrl;
+    const loginOptions = {
+      scope: 'public_profile',
+      ...(isMobileDevice() && { display: 'redirect' }),
+    };
+
+    window.FB.login((response) => {
+      if (response.authResponse) {
+        // User is logged in and granted permissions
+        statusChangeCallback(response);
+      } else {
+        // User cancelled login or did not fully authorize
+        setSnackbarMessage('Facebook authentication failed');
+        setSeverity('error');
+        setOpen(true);
+      }
+    }, loginOptions);
   };
 
   const fetchProfileInfo = (accessToken) => {
