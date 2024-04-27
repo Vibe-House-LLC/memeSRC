@@ -40,7 +40,33 @@ export default function FacebookAuthDemo() {
 
   useEffect(() => {
     if (isFbSDKInitialized) {
-      checkLoginState();
+      const urlParams = new URLSearchParams(window.location.search);
+      const code = urlParams.get('code');
+
+      if (code) {
+        window.FB.api('/oauth/access_token', {
+          client_id: '1983174058744030',
+          redirect_uri: window.location.origin + window.location.pathname,
+          client_secret: 'YOUR_APP_SECRET',
+          code,
+        }, (response) => {
+          if (response && !response.error) {
+            setUser({
+              ...user,
+              facebookAccessToken: response.access_token,
+            });
+            fetchProfileInfo(response.access_token);
+            setIsConnected(true);
+            window.history.replaceState({}, document.title, window.location.origin + window.location.pathname);
+          } else {
+            setSnackbarMessage('Failed to obtain access token');
+            setSeverity('error');
+            setOpen(true);
+          }
+        });
+      } else {
+        checkLoginState();
+      }
     }
   }, [isFbSDKInitialized]);
 
@@ -71,20 +97,8 @@ export default function FacebookAuthDemo() {
   };
 
   const handleFacebookLogin = () => {
-    window.FB.login(
-      (response) => {
-        if (response.authResponse) {
-          // User is logged in and granted permissions
-          statusChangeCallback(response);
-        } else {
-          // User cancelled login or did not fully authorize
-          setSnackbarMessage('Facebook authentication failed');
-          setSeverity('error');
-          setOpen(true);
-        }
-      },
-      { scope: 'public_profile' }
-    );
+    const facebookLoginUrl = `https://www.facebook.com/v12.0/dialog/oauth?client_id=1983174058744030&redirect_uri=${encodeURIComponent(window.location.origin + window.location.pathname)}&scope=public_profile`;
+    window.location.href = facebookLoginUrl;
   };
 
   const fetchProfileInfo = (accessToken) => {
@@ -110,7 +124,7 @@ export default function FacebookAuthDemo() {
             });
           })
         );
-  
+
         Promise.all(groupPostPromises).then((groupPostsData) => {
           setProfileInfo((prevProfileInfo) => ({
             ...prevProfileInfo,
