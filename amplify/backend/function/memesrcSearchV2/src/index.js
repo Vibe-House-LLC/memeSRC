@@ -122,7 +122,7 @@ exports.handler = async (event) => {
     } catch (error) {
         console.error(`OpenSearch is down: ${error}`);
         
-        if (id === '_universal') {
+        if (id === '_universal' || (id.split(',').length - 1) >= 2) {
             return {
                 statusCode: 500,
                 headers: {
