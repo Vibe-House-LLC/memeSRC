@@ -39,7 +39,10 @@ import {
   Snackbar,
   Alert,
   FormControl,
-  FormLabel
+  FormLabel,
+  MenuItem, 
+  Select,
+  InputLabel
 } from '@mui/material';
 import { Add, ArrowBack, ArrowBackIos, ArrowForward, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, FormatLineSpacing, FormatSize, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu, OpenInBrowser, OpenInNew, VerticalAlignBottom, VerticalAlignTop, Visibility, VisibilityOff } from '@mui/icons-material';
 import useSearchDetails from '../hooks/useSearchDetails';
@@ -102,6 +105,25 @@ export default function FramePage({ shows = [] }) {
 
   /* -------------------------------------------------------------------------- */
 
+  const FontSelector = ({ selectedFont, onSelectFont }) => {
+    const fonts = ["Arial", "Courier New", "Georgia", "Times New Roman", "Verdana"];
+    return (
+      <FormControl fullWidth>
+        <InputLabel>Font Style</InputLabel>
+        <Select
+          value={selectedFont}
+          label="Font Style"
+          onChange={(e) => onSelectFont(e.target.value)}
+        >
+          {fonts.map((font) => (
+            <MenuItem key={font} value={font}>{font}</MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+    );
+  };
+  
+
   useEffect(() => {
     getV2Metadata(cid).then(metadata => {
       setConfirmedCid(metadata.id)
@@ -137,7 +159,7 @@ export default function FramePage({ shows = [] }) {
     // Split text into paragraphs (on new lines)
     const paragraphs = text.split('\n');
     let totalLines = 0;
-
+  
     paragraphs.forEach((paragraph) => {
       if (paragraph.trim() === '') {
         // If the paragraph is just a new line
@@ -149,16 +171,25 @@ export default function FramePage({ shows = [] }) {
         // Process each paragraph
         const words = paragraph.split(' ');
         let line = '';
-
+  
         words.forEach((word, n) => {
           const testLine = `${line}${word} `;
           const metrics = context.measureText(testLine);
           const testWidth = metrics.width;
-
+  
           if (testWidth > maxWidth && n > 0) {
             if (shouldDraw) {
-              context.strokeText(line, x, y);
-              context.fillText(line, x, y);
+              // Apply bold styling to the line if it contains bold tags
+              const boldRegex = /<b>(.*?)<\/b>/g;
+              const formattedLine = line.replace(boldRegex, (match, boldText) => {
+                const startIndex = line.indexOf(match);
+                const endIndex = startIndex + boldText.length;
+                context.setSelectionStyles({ fontWeight: 'bold' }, startIndex, endIndex);
+                return boldText;
+              });
+  
+              context.strokeText(formattedLine, x, y);
+              context.fillText(formattedLine, x, y);
             }
             y += lineHeight;
             totalLines += 1;
@@ -167,18 +198,27 @@ export default function FramePage({ shows = [] }) {
             line = testLine;
           }
         });
-
+  
         if (line.trim() !== '') {
           if (shouldDraw) {
-            context.strokeText(line, x, y);
-            context.fillText(line, x, y);
+            // Apply bold styling to the line if it contains bold tags
+            const boldRegex = /<b>(.*?)<\/b>/g;
+            const formattedLine = line.replace(boldRegex, (match, boldText) => {
+              const startIndex = line.indexOf(match);
+              const endIndex = startIndex + boldText.length;
+              context.setSelectionStyles({ fontWeight: 'bold' }, startIndex, endIndex);
+              return boldText;
+            });
+  
+            context.strokeText(formattedLine, x, y);
+            context.fillText(formattedLine, x, y);
           }
           y += lineHeight;
           totalLines += 1;
         }
       }
     });
-
+  
     return totalLines;
   }
 
@@ -228,7 +268,7 @@ export default function FramePage({ shows = [] }) {
 
         if (showText && loadedSubtitle) {
           // Styling the text
-          ctx.font = `700 ${isMd ? `${scaledFontSizeDesktop * fontSizeScaleFactor}px` : `${scaledFontSizeMobile * fontSizeScaleFactor}px`} Arial`;
+          ctx.font = `400 ${isMd ? `${scaledFontSizeDesktop * fontSizeScaleFactor}px` : `${scaledFontSizeMobile * fontSizeScaleFactor}px`} ${fontFamily}`;
           ctx.textAlign = 'center';
           ctx.fillStyle = 'white';
           ctx.strokeStyle = 'black';
@@ -508,6 +548,7 @@ useEffect(() => {
 
   const { showObj, setShowObj, selectedFrameIndex, setSelectedFrameIndex } = useSearchDetailsV2();
   const [loadingCsv, setLoadingCsv] = useState();
+  const [fontFamily, setFontFamily] = useState('Arial'); // Default font
   const [frames, setFrames] = useState();
   const [loadedSubtitle, setLoadedSubtitle] = useState('');  // TODO
   const [loadedSeason, setLoadedSeason] = useState('');  // TODO
@@ -524,7 +565,7 @@ useEffect(() => {
 
   useEffect(() => {
     updateCanvasUnthrottled();
-  }, [displayImage, loadedSubtitle, frame, fineTuningBlobs, selectedFrameIndex]);
+  }, [displayImage, loadedSubtitle, frame, fineTuningBlobs, selectedFrameIndex, fontFamily]);
 
   useEffect(() => {
     if (frames && frames.length > 0) {
@@ -793,6 +834,7 @@ useEffect(() => {
                   setShowText(true);
                 }}
               >
+                <FontSelector selectedFont={fontFamily} onSelectFont={setFontFamily} />
                 <CardContent sx={{ pt: 3 }}>
                   {/* <Typography variant="h3" component="div" style={{ marginBottom: '0.5rem' }} textAlign='left'>
                          {showTitle}
