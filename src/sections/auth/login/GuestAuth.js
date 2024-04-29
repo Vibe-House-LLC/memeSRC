@@ -62,8 +62,39 @@ export default function GuestAuth(props) {
         });
     };
 
+    const login = (username, password) => {
+        return new Promise((resolve, reject) => {
+          Auth.signIn(username, password)
+            .then((user) => {
+              API.post('publicapi', '/user/update/status')
+                .then(async (response) => {
+                  const userDetails = await API.get('publicapi', '/user/get');
+                  let profilePhoto = null;
+                  if (user?.attributes?.picture) {
+                    profilePhoto = await getProfilePicture(user.attributes.picture);
+                  }
+                  const updatedUser = {
+                    ...user,
+                    ...user.signInUserSession.accessToken.payload,
+                    userDetails: userDetails?.data?.getUserDetails,
+                    profilePhoto,
+                  };
+                  setUser(updatedUser);
+                  window.localStorage.setItem('memeSRCUserDetails', JSON.stringify(updatedUser));
+                  resolve(updatedUser);
+                })
+                .catch((error) => {
+                  reject(error);
+                });
+            })
+            .catch((error) => {
+              reject(error);
+            });
+        });
+      };
+
     return (
-        <UserContext.Provider value={{ user, setUser, logout }}>
+        <UserContext.Provider value={{ user, setUser, logout, login }}>
             {props.children}
         </UserContext.Provider>
     );
