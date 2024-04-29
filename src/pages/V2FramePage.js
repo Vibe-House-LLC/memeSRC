@@ -835,46 +835,50 @@ useEffect(() => {
                     <Skeleton variant='text' height={150} width={'max(100px, 50%)'} />
                     :
                     <>
-                      <TextField
-                        multiline
-                        fullWidth
-                        variant="outlined"
-                        size="small"
-                        placeholder="Type a caption..."
-                        value={loadedSubtitle}
-                        onMouseDown={() => {
-                          setShowText(true)
-                        }}
-                        onTouchStart={() => {
-                          setShowText(true)
-                        }}
-                        onChange={(e) => setLoadedSubtitle(e.target.value)}
-                        InputProps={{
-                          style: {
-                              fontWeight: isBold ? 'bold' : 'normal',
-                              fontStyle: isItalic ? 'italic' : 'normal',
-                              fontFamily
-                            }
-                        }}
-                        sx={{
-                          '& .MuiOutlinedInput-root': {
-                            backgroundColor: 'white',
-                            color: 'black',
-                            '& fieldset': {
-                              borderColor: 'rgba(0, 0, 0, 0.23)',
-                            },
-                            '&:hover fieldset': {
-                              borderColor: 'rgba(0, 0, 0, 0.87)',
-                            },
-                            '&.Mui-focused fieldset': {
-                              borderColor: 'primary.main',
-                            },
-                          },
-                          '& .MuiInputBase-input': {
-                            color: 'black',
-                          },
-                        }}
-                      />
+                      <Stack direction='row' spacing={1} alignItems='center'>
+                        <Stack direction='row' alignItems='center' sx={{ width: '100%' }}>
+                          <TextField
+                            multiline
+                            fullWidth
+                            variant="outlined"
+                            size="small"
+                            placeholder="Type a caption..."
+                            value={loadedSubtitle}
+                            onMouseDown={() => {
+                              setShowText(true)
+                            }}
+                            onTouchStart={() => {
+                              setShowText(true)
+                            }}
+                            onChange={(e) => setLoadedSubtitle(e.target.value)}
+                            InputProps={{
+                              style: {
+                                  fontWeight: isBold ? 'bold' : 'normal',
+                                  fontStyle: isItalic ? 'italic' : 'normal',
+                                  fontFamily
+                                }
+                            }}
+                            sx={{
+                              '& .MuiOutlinedInput-root': {
+                                backgroundColor: 'white',
+                                color: 'black',
+                                '& fieldset': {
+                                  borderColor: 'rgba(0, 0, 0, 0.23)',
+                                },
+                                '&:hover fieldset': {
+                                  borderColor: 'rgba(0, 0, 0, 0.87)',
+                                },
+                                '&.Mui-focused fieldset': {
+                                  borderColor: 'primary.main',
+                                },
+                              },
+                              '& .MuiInputBase-input': {
+                                color: 'black',
+                              },
+                            }}
+                          />
+                        </Stack>
+                      </Stack>
                       {showText && loadedSubtitle?.trim() !== '' && (
                         <Button
                           size="medium"
