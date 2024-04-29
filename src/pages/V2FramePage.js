@@ -205,7 +205,7 @@ export default function FramePage({ shows = [] }) {
   const updateCanvasUnthrottled = (scaleDown) => {
     const offScreenCanvas = document.createElement('canvas');
     const ctx = offScreenCanvas.getContext('2d');
-
+  
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.src = displayImage;
@@ -227,13 +227,13 @@ export default function FramePage({ shows = [] }) {
         const referenceWidth = 1000;
         const referenceFontSizeDesktop = 40;
         const referenceFontSizeMobile = 40;
-        const referenceBottomAnch = 35;  // Reference distance from bottom for desktop
-        const referenceBottomAnchMobile = 35; // Reference distance for mobile
+        const referenceBottomAnch = 25;  // Reference distance from bottom for desktop
+        const referenceBottomAnchMobile = 25; // Reference distance for mobile
 
         const scaleFactor = 1000 / referenceWidth;
 
-        const scaledFontSizeDesktop = referenceFontSizeDesktop * scaleFactor;
-        const scaledFontSizeMobile = referenceFontSizeMobile * scaleFactor;
+        const scaledFontSizeDesktop = referenceFontSizeDesktop * scaleFactor * fontSizeScaleFactor;
+        const scaledFontSizeMobile = referenceFontSizeMobile * scaleFactor * fontSizeScaleFactor;
         const scaledBottomAnch = isMd ? referenceBottomAnch * scaleFactor * fontBottomMarginScaleFactor : referenceBottomAnchMobile * scaleFactor * fontBottomMarginScaleFactor;
         const referenceLineHeight = 50;
         const scaledLineHeight = referenceLineHeight * scaleFactor * fontLineHeightScaleFactor * fontSizeScaleFactor;
@@ -246,8 +246,12 @@ export default function FramePage({ shows = [] }) {
         setLoading(false)
 
         if (showText && loadedSubtitle) {
-          // Styling the text
-          ctx.font = `700 ${isMd ? `${scaledFontSizeDesktop * fontSizeScaleFactor}px` : `${scaledFontSizeMobile * fontSizeScaleFactor}px`} ${fontFamily}`;
+          // Styling the text with bold and italic
+          const fontStyle = isItalic ? 'italic' : 'normal';
+          const fontWeight = isBold ? 'bold' : 'normal';
+  
+          // Apply the font style and weight along with size and family
+          ctx.font = `${fontStyle} ${fontWeight} ${isMd ? scaledFontSizeDesktop : scaledFontSizeMobile}px ${fontFamily}`;
           ctx.textAlign = 'center';
           ctx.fillStyle = 'white';
           ctx.strokeStyle = 'black';
@@ -546,7 +550,7 @@ useEffect(() => {
 
   useEffect(() => {
     updateCanvasUnthrottled();
-  }, [displayImage, loadedSubtitle, frame, fineTuningBlobs, selectedFrameIndex, fontFamily]);
+  }, [displayImage, loadedSubtitle, frame, fineTuningBlobs, selectedFrameIndex, fontFamily, isBold, isItalic]);
 
   useEffect(() => {
     if (frames && frames.length > 0) {
