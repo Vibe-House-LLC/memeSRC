@@ -179,17 +179,8 @@ export default function FramePage({ shows = [] }) {
   
           if (testWidth > maxWidth && n > 0) {
             if (shouldDraw) {
-              // Apply bold styling to the line if it contains bold tags
-              const boldRegex = /<b>(.*?)<\/b>/g;
-              const formattedLine = line.replace(boldRegex, (match, boldText) => {
-                const startIndex = line.indexOf(match);
-                const endIndex = startIndex + boldText.length;
-                context.setSelectionStyles({ fontWeight: 'bold' }, startIndex, endIndex);
-                return boldText;
-              });
-  
-              context.strokeText(formattedLine, x, y);
-              context.fillText(formattedLine, x, y);
+              context.strokeText(line, x, y);
+              context.fillText(line, x, y);
             }
             y += lineHeight;
             totalLines += 1;
@@ -201,17 +192,8 @@ export default function FramePage({ shows = [] }) {
   
         if (line.trim() !== '') {
           if (shouldDraw) {
-            // Apply bold styling to the line if it contains bold tags
-            const boldRegex = /<b>(.*?)<\/b>/g;
-            const formattedLine = line.replace(boldRegex, (match, boldText) => {
-              const startIndex = line.indexOf(match);
-              const endIndex = startIndex + boldText.length;
-              context.setSelectionStyles({ fontWeight: 'bold' }, startIndex, endIndex);
-              return boldText;
-            });
-  
-            context.strokeText(formattedLine, x, y);
-            context.fillText(formattedLine, x, y);
+            context.strokeText(line, x, y);
+            context.fillText(line, x, y);
           }
           y += lineHeight;
           totalLines += 1;
@@ -268,7 +250,7 @@ export default function FramePage({ shows = [] }) {
 
         if (showText && loadedSubtitle) {
           // Styling the text
-          ctx.font = `400 ${isMd ? `${scaledFontSizeDesktop * fontSizeScaleFactor}px` : `${scaledFontSizeMobile * fontSizeScaleFactor}px`} ${fontFamily}`;
+          ctx.font = `700 ${isMd ? `${scaledFontSizeDesktop * fontSizeScaleFactor}px` : `${scaledFontSizeMobile * fontSizeScaleFactor}px`} ${fontFamily}`;
           ctx.textAlign = 'center';
           ctx.fillStyle = 'white';
           ctx.strokeStyle = 'black';
