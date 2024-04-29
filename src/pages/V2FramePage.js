@@ -42,9 +42,9 @@ import {
   FormLabel,
   MenuItem, 
   Select,
-  InputLabel
+  InputLabel,
 } from '@mui/material';
-import { Add, ArrowBack, ArrowBackIos, ArrowForward, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, FormatLineSpacing, FormatSize, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu, OpenInBrowser, OpenInNew, VerticalAlignBottom, VerticalAlignTop, Visibility, VisibilityOff } from '@mui/icons-material';
+import { Add, ArrowBack, ArrowBackIos, ArrowForward, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, FormatBold, FormatItalic, FormatLineSpacing, FormatSize, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu, OpenInBrowser, OpenInNew, VerticalAlignBottom, VerticalAlignTop, Visibility, VisibilityOff } from '@mui/icons-material';
 import useSearchDetails from '../hooks/useSearchDetails';
 import { fetchFrameInfo, fetchFramesFineTuning, fetchFramesSurroundingPromises } from '../utils/frameHandlerV2';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
@@ -108,21 +108,18 @@ export default function FramePage({ shows = [] }) {
   const FontSelector = ({ selectedFont, onSelectFont }) => {
     const fonts = ["Arial", "Courier New", "Georgia", "Times New Roman", "Verdana", "Akbar"];
     return (
-      <FormControl fullWidth>
-        <InputLabel>Font Style</InputLabel>
-        <Select
-          value={selectedFont}
-          label="Font Style"
-          onChange={(e) => onSelectFont(e.target.value)}
-        >
-          {fonts.map((font) => (
-            <MenuItem key={font} value={font}>{font}</MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+      <Select
+        value={selectedFont}
+        onChange={(e) => onSelectFont(e.target.value)}
+        displayEmpty
+        inputProps={{ 'aria-label': 'Without label' }}
+      >
+        {fonts.map((font) => (
+          <MenuItem key={font} value={font}>{font}</MenuItem>
+        ))}
+      </Select>
     );
-  };  
-  
+  };
 
   useEffect(() => {
     getV2Metadata(cid).then(metadata => {
@@ -530,6 +527,8 @@ useEffect(() => {
 
   const { showObj, setShowObj, selectedFrameIndex, setSelectedFrameIndex } = useSearchDetailsV2();
   const [loadingCsv, setLoadingCsv] = useState();
+  const [isBold, setIsBold] = useState(false);
+  const [isItalic, setIsItalic] = useState(false);
   const [fontFamily, setFontFamily] = useState('Arial'); // Default font
   const [frames, setFrames] = useState();
   const [loadedSubtitle, setLoadedSubtitle] = useState('');  // TODO
@@ -816,55 +815,62 @@ useEffect(() => {
                   setShowText(true);
                 }}
               >
-                <FontSelector selectedFont={fontFamily} onSelectFont={setFontFamily} />
                 <CardContent sx={{ pt: 3 }}>
-                  {/* <Typography variant="h3" component="div" style={{ marginBottom: '0.5rem' }} textAlign='left'>
-                         {showTitle}
-                        </Typography> */}
+                  {/* Formatting Toolbar */}
+                  <Box sx={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
+                    <IconButton onClick={() => setIsBold(!isBold)} sx={{ marginRight: '8px' }}>
+                      <FormatBold color={isBold ? 'primary' : 'action'} />
+                    </IconButton>
+                    <IconButton onClick={() => setIsItalic(!isItalic)} sx={{ marginRight: '8px' }}>
+                      <FormatItalic color={isItalic ? 'primary' : 'action'} />
+                    </IconButton>
+                    <FontSelector selectedFont={fontFamily} onSelectFont={setFontFamily} />
+                  </Box>
+
                   {loading ?
                     <Skeleton variant='text' height={150} width={'max(100px, 50%)'} />
                     :
                     <>
-                      <Stack direction='row' spacing={1} alignItems='center'>
-                        <Stack direction='row' alignItems='center' sx={{ width: '100%' }}>
-                          <TextField
-                            multiline
-                            fullWidth
-                            variant="outlined"
-                            size="small"
-                            placeholder="Type a caption..."
-                            value={loadedSubtitle}
-                            onMouseDown={() => {
-                              setShowText(true)
-                            }}
-                            onTouchStart={() => {
-                              setShowText(true)
-                            }}
-                            onChange={(e) => setLoadedSubtitle(e.target.value)}
-                            sx={{
-                              '& .MuiOutlinedInput-root': {
-                                backgroundColor: 'white',
-                                color: 'black',
-                                '& fieldset': {
-                                  borderColor: 'rgba(0, 0, 0, 0.23)',
-                                },
-                                '&:hover fieldset': {
-                                  borderColor: 'rgba(0, 0, 0, 0.87)',
-                                },
-                                '&.Mui-focused fieldset': {
-                                  borderColor: 'primary.main',
-                                },
-                              },
-                              '& .MuiInputBase-input': {
-                                color: 'black',
-                              },
-                              '& .MuiFormLabel-root': {
-                                color: 'text.secondary',
-                              },
-                            }}
-                          />
-                        </Stack>
-                      </Stack>
+                      <TextField
+                        multiline
+                        fullWidth
+                        variant="outlined"
+                        size="small"
+                        placeholder="Type a caption..."
+                        value={loadedSubtitle}
+                        onMouseDown={() => {
+                          setShowText(true)
+                        }}
+                        onTouchStart={() => {
+                          setShowText(true)
+                        }}
+                        onChange={(e) => setLoadedSubtitle(e.target.value)}
+                        InputProps={{
+                          style: {
+                              fontWeight: isBold ? 'bold' : 'normal',
+                              fontStyle: isItalic ? 'italic' : 'normal',
+                              fontFamily
+                            }
+                        }}
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            backgroundColor: 'white',
+                            color: 'black',
+                            '& fieldset': {
+                              borderColor: 'rgba(0, 0, 0, 0.23)',
+                            },
+                            '&:hover fieldset': {
+                              borderColor: 'rgba(0, 0, 0, 0.87)',
+                            },
+                            '&.Mui-focused fieldset': {
+                              borderColor: 'primary.main',
+                            },
+                          },
+                          '& .MuiInputBase-input': {
+                            color: 'black',
+                          },
+                        }}
+                      />
                       {showText && loadedSubtitle?.trim() !== '' && (
                         <Button
                           size="medium"
