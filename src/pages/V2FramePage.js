@@ -159,7 +159,7 @@ export default function FramePage({ shows = [] }) {
     // Split text into paragraphs (on new lines)
     const paragraphs = text.split('\n');
     let totalLines = 0;
-  
+
     paragraphs.forEach((paragraph) => {
       if (paragraph.trim() === '') {
         // If the paragraph is just a new line
@@ -171,12 +171,12 @@ export default function FramePage({ shows = [] }) {
         // Process each paragraph
         const words = paragraph.split(' ');
         let line = '';
-  
+
         words.forEach((word, n) => {
           const testLine = `${line}${word} `;
           const metrics = context.measureText(testLine);
           const testWidth = metrics.width;
-  
+
           if (testWidth > maxWidth && n > 0) {
             if (shouldDraw) {
               context.strokeText(line, x, y);
@@ -189,7 +189,7 @@ export default function FramePage({ shows = [] }) {
             line = testLine;
           }
         });
-  
+
         if (line.trim() !== '') {
           if (shouldDraw) {
             context.strokeText(line, x, y);
@@ -200,7 +200,7 @@ export default function FramePage({ shows = [] }) {
         }
       }
     });
-  
+
     return totalLines;
   }
 
