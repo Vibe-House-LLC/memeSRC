@@ -106,7 +106,7 @@ export default function FramePage({ shows = [] }) {
   /* -------------------------------------------------------------------------- */
 
   const FontSelector = ({ selectedFont, onSelectFont }) => {
-    const fonts = ["Arial", "Courier New", "Georgia", "Times New Roman", "Verdana"];
+    const fonts = ["Arial", "Courier New", "Georgia", "Times New Roman", "Verdana", "Akbar"];
     return (
       <FormControl fullWidth>
         <InputLabel>Font Style</InputLabel>
@@ -121,7 +121,7 @@ export default function FramePage({ shows = [] }) {
         </Select>
       </FormControl>
     );
-  };
+  };  
   
 
   useEffect(() => {
