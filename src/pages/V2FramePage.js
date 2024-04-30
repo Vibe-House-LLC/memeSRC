@@ -560,6 +560,11 @@ useEffect(() => {
     b: '255',
     a: '100'
   });
+  const [mainImageLoaded, setMainImageLoaded] = useState(false);
+
+  const handleMainImageLoad = () => {
+    setMainImageLoaded(true);
+  };
 
   const textFieldRef = useRef(null);
 
@@ -629,12 +634,23 @@ useEffect(() => {
     return (
       <>
         <div style={{ position: 'relative' }}>
-          <CardMedia
-            component={!imgSrc ? () => <Skeleton variant='rectangular' sx={{ width: '100%', height: 'auto', aspectRatio }} /> : 'img'}
-            alt={`Fine-tuning ${sliderValue}`}
-            image={imgSrc}
-            id='frameImage'
-          />
+        {!mainImageLoaded && (
+          <Skeleton variant='rounded' sx={{ width: '100%', height: 'auto', aspectRatio, paddingTop: '56.25%' }} />
+        )}
+        <CardMedia
+          component={'img'}
+          alt={`Fine-tuning ${sliderValue}`}
+          image={imgSrc}
+          id='frameImage'
+          onLoad={handleMainImageLoad}
+          onError={() => {
+            console.error(`Failed to load main image`);
+            handleMainImageLoad();
+          }}
+          sx={{
+            display: mainImageLoaded ? 'block' : 'none',
+          }}
+        />
           {loadingFineTuning && (
             <div
               style={{
@@ -788,6 +804,12 @@ useEffect(() => {
       </>
 
     );
+  };
+
+  const [imagesLoaded, setImagesLoaded] = useState({});
+
+  const handleImageLoad = (frameId) => {
+    setImagesLoaded((prevState) => ({ ...prevState, [frameId]: true }));
   };
 
 
@@ -1389,11 +1411,7 @@ useEffect(() => {
                 const identifier = `${frame?.cid}-${frame?.season}-${frame?.episode}-${frame?.frame}`;
                 return (self.findIndex(f => `${f?.cid}-${f?.season}-${f?.episode}-${f?.frame}` === identifier) === index) || frame === 'loading';
               }).map((surroundingFrame, index) => (
-                // .filter(frame => {
-                //   console.log("frame", frame)
-                //     return frame?.cid === parseInt(cid, 10) && frame?.season === parseInt(season, 10) && frame?.episode === parseInt(episode, 10) && frame?.frame === parseInt(frame, 10);
-                //   })
-                <Grid item xs={4} sm={4} md={12 / 9} key={`surrounding-frame-${surroundingFrame?.frame || index}`}>
+                <Grid item xs={4} sm={4} md={12 / 9} key={`surrounding-frame-${index}`}>
                   {surroundingFrame !== 'loading' ? (
                     // Render the actual content if the surrounding frame data is available
                     <a style={{ textDecoration: 'none' }}>
@@ -1410,12 +1428,23 @@ useEffect(() => {
                           onClick={() => {
                             navigate(`/frame/${cid}/${season}/${episode}/${surroundingFrame.frame}`);
                           }}
+                          onLoad={() => handleImageLoad(surroundingFrame.frame)}
+                          onError={() => {
+                            console.error(`Failed to load image for frame ${surroundingFrame.frame}`);
+                            handleImageLoad(surroundingFrame.frame);
+                          }}
+                          sx={{
+                            display: imagesLoaded[surroundingFrame.frame] ? 'block' : 'none',
+                          }}
                         />
+                        {!imagesLoaded[surroundingFrame.frame] && (
+                          <Skeleton variant='rounded' sx={{ width: '100%', height: 0, paddingTop: '56.25%' }} />
+                        )}
                       </StyledCard>
                     </a>
                   ) : (
-                    // Render a skeleton if the data is not yet available (undefined)
-                    <Skeleton variant='rounded' sx={{ width: '100%', height: 'auto', aspectRatio }} />
+                    // Render a skeleton if the data is not yet available (loading)
+                    <Skeleton variant='rounded' sx={{ width: '100%', height: 0, paddingTop: '56.25%' }} />
                   )}
                 </Grid>
               ))}
