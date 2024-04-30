@@ -110,7 +110,7 @@ export default function FramePage({ shows = [] }) {
   /* -------------------------------------------------------------------------- */
 
   const FontSelector = ({ selectedFont, onSelectFont }) => {
-    const fonts = ["Arial", "Courier New", "Georgia", "Times New Roman", "Verdana", "Akbar"];
+    const fonts = ["Arial", "Courier New", "Georgia", "Verdana", "Akbar"];
     return (
       <Select
         value={selectedFont}
@@ -119,6 +119,13 @@ export default function FramePage({ shows = [] }) {
         inputProps={{ 'aria-label': 'Without label' }}
         size='small'
         startAdornment={<FontDownloadOutlined sx={{ mr: 0.5}} />}
+        sx={{
+          '& .MuiSelect-select': {
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          },
+        }}
       >
         {fonts.map((font) => (
           <MenuItem key={font} value={font} sx={{ fontFamily: font }}>{font}</MenuItem>
@@ -856,9 +863,10 @@ useEffect(() => {
                       onChange={(event, newFormats) => {
                         setIsBold(newFormats.includes('bold'));
                         setIsItalic(newFormats.includes('italic'));
-                        setColorPickerShowing(newFormats.includes('fontColor'))
+                        setShowText(true)
                       }}
                       aria-label="text formatting"
+                      sx={{ flexShrink: 0 }}
                     >
                       <ToggleButton size='small' value="bold" aria-label="bold">
                         <FormatBold />
@@ -868,10 +876,11 @@ useEffect(() => {
                       </ToggleButton>
                     </ToggleButtonGroup>
                     <ToggleButtonGroup
-                      sx={{ mx: 1 }}
+                      sx={{ mx: 1, flexShrink: 0 }}
                       value={[isBold && 'bold', isItalic && 'italic'].filter(Boolean)}
                       onChange={(event, newFormats) => {
                         setColorPickerShowing(newFormats.includes('fontColor'))
+                        setShowText(true)
                       }}
                       aria-label="text formatting"
                     >
