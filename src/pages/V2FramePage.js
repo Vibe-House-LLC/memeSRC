@@ -545,7 +545,7 @@ useEffect(() => {
 
   const { showObj, setShowObj, selectedFrameIndex, setSelectedFrameIndex } = useSearchDetailsV2();
   const [loadingCsv, setLoadingCsv] = useState();
-  const [isBold, setIsBold] = useState(false);
+  const [isBold, setIsBold] = useState(true);
   const [isItalic, setIsItalic] = useState(false);
   const [fontFamily, setFontFamily] = useState('Arial'); // Default font
   const [frames, setFrames] = useState();
@@ -560,6 +560,29 @@ useEffect(() => {
     b: '255',
     a: '100'
   });
+
+  const textFieldRef = useRef(null);
+
+  const moveCursorToEnd = () => {
+    if (textFieldRef.current) {
+      const input = textFieldRef.current;
+      input.setSelectionRange(input.value.length, input.value.length);
+    }
+  };
+
+  useEffect(() => {
+    const moveCursorToEnd = () => {
+      if (textFieldRef.current) {
+        const input = textFieldRef.current;
+        input.setSelectionRange(input.value.length, input.value.length);
+      }
+    };
+  
+    if (showText && textFieldRef.current) {
+      moveCursorToEnd();
+    }
+  }, [showText]);
+  
 
   const colorPicker = useRef();
 
@@ -838,7 +861,7 @@ useEffect(() => {
 
           <Grid item xs={12} md={6}>
             <Box sx={{ width: '100%' }}>
-              <Card
+              {/* <Card
                 style={{ boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}
                 onClick={(e) => {
                   // Prevent card click event when clicking on any button or other interactive element inside the card
@@ -855,9 +878,10 @@ useEffect(() => {
                   setShowText(true);
                 }}
               >
-                <CardContent sx={{ pt: 3 }}>
+                <CardContent sx={{ pt: 3 }}> */}
                   {/* Formatting Toolbar */}
-                  <Box sx={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
+                  {showText &&
+                    <Box sx={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
                     <ToggleButtonGroup
                       value={[isBold && 'bold', isItalic && 'italic'].filter(Boolean)}
                       onChange={(event, newFormats) => {
@@ -925,6 +949,7 @@ useEffect(() => {
                       </div>
                     </Popover>
                   </Box>
+                  }
 
                   {loading ?
                     <Skeleton variant='text' height={150} width={'max(100px, 50%)'} />
@@ -932,46 +957,44 @@ useEffect(() => {
                     <>
                       <Stack direction='row' spacing={1} alignItems='center'>
                         <Stack direction='row' alignItems='center' sx={{ width: '100%' }}>
-                          <TextField
-                            multiline
-                            fullWidth
-                            variant="outlined"
-                            size="small"
-                            placeholder="Type a caption..."
-                            value={loadedSubtitle}
-                            onMouseDown={() => {
-                              setShowText(true)
-                            }}
-                            onTouchStart={() => {
-                              setShowText(true)
-                            }}
-                            onChange={(e) => setLoadedSubtitle(e.target.value)}
-                            InputProps={{
-                              style: {
-                                  fontWeight: isBold ? 'bold' : 'normal',
-                                  fontStyle: isItalic ? 'italic' : 'normal',
-                                  fontFamily
-                                }
-                            }}
-                            sx={{
-                              '& .MuiOutlinedInput-root': {
-                                backgroundColor: 'white',
-                                color: 'black',
-                                '& fieldset': {
-                                  borderColor: 'rgba(0, 0, 0, 0.23)',
-                                },
-                                '&:hover fieldset': {
-                                  borderColor: 'rgba(0, 0, 0, 0.87)',
-                                },
-                                '&.Mui-focused fieldset': {
-                                  borderColor: 'primary.main',
-                                },
+                        <TextField
+                          multiline
+                          minRows={2}
+                          fullWidth
+                          variant="outlined"
+                          size="small"
+                          placeholder="Type a caption..."
+                          value={loadedSubtitle}
+                          onMouseDown={() => setShowText(true)}
+                          onTouchStart={() => setShowText(true)}
+                          onChange={(e) => setLoadedSubtitle(e.target.value)}
+                          InputProps={{
+                            style: {
+                              fontWeight: isBold ? 'bold' : 'normal',
+                              fontStyle: isItalic ? 'italic' : 'normal',
+                              fontFamily,
+                            },
+                          }}
+                          sx={{
+                            '& .MuiOutlinedInput-root': {
+                              backgroundColor: 'white',
+                              color: 'black',
+                              '& fieldset': {
+                                borderColor: 'rgba(0, 0, 0, 0.23)',
                               },
-                              '& .MuiInputBase-input': {
-                                color: 'black',
+                              '&:hover fieldset': {
+                                borderColor: 'rgba(0, 0, 0, 0.87)',
                               },
-                            }}
-                          />
+                              '&.Mui-focused fieldset': {
+                                borderColor: 'primary.main',
+                              },
+                            },
+                            '& .MuiInputBase-input': {
+                              color: 'black',
+                            },
+                          }}
+                          inputRef={textFieldRef}
+                        />
                         </Stack>
                       </Stack>
                       {showText && loadedSubtitle?.trim() !== '' && (
@@ -986,197 +1009,201 @@ useEffect(() => {
                           Clear Caption
                         </Button>
                       )}
-                      <FormControl fullWidth variant="outlined" sx={{ mt: 2, border: '1px solid rgba(191, 191, 191, 0.57)', borderRadius: '8px', py: 1, px: 2 }}>
-                        <FormLabel sx={{ fontSize: '0.875rem', fontWeight: 'bold', mb: 1, textAlign: 'center' }}>Bottom Margin</FormLabel>
-                        <Stack spacing={2} direction="row" p={0} alignItems={'center'}>
-                          {/* <Tooltip title="Line Height">
-                            <IconButton>
-                              <VerticalAlignTop alt="Line Height" />
-                            </IconButton>
-                          </Tooltip> */}
-                          <Slider
-                            componentsProps={{
-                              root: {
-                                style: {
-                                  ...(isSm && { pointerEvents: 'none' }),
+                      {showText &&
+                        <>
+                        <FormControl fullWidth variant="outlined" sx={{ mt: 2, border: '1px solid rgba(191, 191, 191, 0.57)', borderRadius: '8px', py: 1, px: 2 }}>
+                          <FormLabel sx={{ fontSize: '0.875rem', fontWeight: 'bold', mb: 1, textAlign: 'center' }}>Bottom Margin</FormLabel>
+                          <Stack spacing={2} direction="row" p={0} alignItems={'center'}>
+                            {/* <Tooltip title="Line Height">
+                              <IconButton>
+                                <VerticalAlignTop alt="Line Height" />
+                              </IconButton>
+                            </Tooltip> */}
+                            <Slider
+                              componentsProps={{
+                                root: {
+                                  style: {
+                                    ...(isSm && { pointerEvents: 'none' }),
+                                  }
+                                },
+                                track: {
+                                  style: {
+                                    ...(isSm && { pointerEvents: 'none' }),
+                                    backgroundColor: 'white',
+                                    height: 6,
+                                  }
+                                },
+                                rail: {
+                                  style: {
+                                    backgroundColor: 'white',
+                                    height: 6,
+                                  }
+                                },
+                                thumb: {
+                                  style: {
+                                    ...(isSm && { pointerEvents: 'auto' }),
+                                    backgroundColor: '#2079fe',
+                                    width: 20,
+                                    height: 20,
+                                  }
                                 }
-                              },
-                              track: {
-                                style: {
-                                  ...(isSm && { pointerEvents: 'none' }),
-                                  backgroundColor: 'white',
-                                  height: 6,
+                              }}
+                              size="small"
+                              defaultValue={1}
+                              min={1}
+                              max={10}
+                              step={0.2}
+                              value={fontBottomMarginScaleFactor}
+                              onChange={(e, newValue) => {
+                                if (e.type === 'mousedown') {
+                                  return;
                                 }
-                              },
-                              rail: {
-                                style: {
-                                  backgroundColor: 'white',
-                                  height: 6,
+                                setFontBottomMarginScaleFactor(newValue)
+                              }}
+                              onChangeCommitted={() => updateCanvas()}
+                              marks
+                              valueLabelFormat='Bottom Margin'
+                              valueLabelDisplay
+                              onMouseDown={() => {
+                                setShowText(true)
+                              }}
+                              onTouchStart={() => {
+                                setShowText(true)
+                              }}
+                            />
+                          </Stack>
+                        </FormControl>
+                        <FormControl fullWidth variant="outlined" sx={{ mt: 2, border: '1px solid rgba(191, 191, 191, 0.57)', borderRadius: '8px', py: 1, px: 2 }}>
+                          <FormLabel sx={{ fontSize: '0.875rem', fontWeight: 'bold', mb: 1, textAlign: 'center' }}>Font Size</FormLabel>
+                          <Stack spacing={2} direction="row" p={0} alignItems={'center'}>
+                            {/* <Tooltip title="Font Size">
+                              <IconButton>
+                                <FormatSize alt="Font Size" />
+                              </IconButton>
+                            </Tooltip> */}
+                            <Slider
+                              componentsProps={{
+                                root: {
+                                  style: {
+                                    ...(isSm && { pointerEvents: 'none' }),
+                                  }
+                                },
+                                track: {
+                                  style: {
+                                    ...(isSm && { pointerEvents: 'none' }),
+                                    backgroundColor: 'white',
+                                    height: 6,
+                                  }
+                                },
+                                rail: {
+                                  style: {
+                                    backgroundColor: 'white',
+                                    height: 6,
+                                  }
+                                },
+                                thumb: {
+                                  style: {
+                                    ...(isSm && { pointerEvents: 'auto' }),
+                                    backgroundColor: '#2079fe',
+                                    width: 20,
+                                    height: 20,
+                                  }
                                 }
-                              },
-                              thumb: {
-                                style: {
-                                  ...(isSm && { pointerEvents: 'auto' }),
-                                  backgroundColor: '#2079fe',
-                                  width: 20,
-                                  height: 20,
+                              }}
+                              size="small"
+                              defaultValue={25}
+                              min={0.25}
+                              max={50}
+                              step={1}
+                              value={fontSizeScaleFactor * 25}
+                              onChange={(e, newValue) => {
+                                if (e.type === 'mousedown') {
+                                  return;
                                 }
-                              }
-                            }}
-                            size="small"
-                            defaultValue={1}
-                            min={1}
-                            max={10}
-                            step={0.2}
-                            value={fontBottomMarginScaleFactor}
-                            onChange={(e, newValue) => {
-                              if (e.type === 'mousedown') {
-                                return;
-                              }
-                              setFontBottomMarginScaleFactor(newValue)
-                            }}
-                            onChangeCommitted={() => updateCanvas()}
-                            marks
-                            valueLabelFormat='Bottom Margin'
-                            valueLabelDisplay
-                            onMouseDown={() => {
-                              setShowText(true)
-                            }}
-                            onTouchStart={() => {
-                              setShowText(true)
-                            }}
-                          />
-                        </Stack>
-                      </FormControl>
-                      <FormControl fullWidth variant="outlined" sx={{ mt: 2, border: '1px solid rgba(191, 191, 191, 0.57)', borderRadius: '8px', py: 1, px: 2 }}>
-                        <FormLabel sx={{ fontSize: '0.875rem', fontWeight: 'bold', mb: 1, textAlign: 'center' }}>Font Size</FormLabel>
-                        <Stack spacing={2} direction="row" p={0} alignItems={'center'}>
-                          {/* <Tooltip title="Font Size">
-                            <IconButton>
-                              <FormatSize alt="Font Size" />
-                            </IconButton>
-                          </Tooltip> */}
-                          <Slider
-                            componentsProps={{
-                              root: {
-                                style: {
-                                  ...(isSm && { pointerEvents: 'none' }),
+                                setFontSizeScaleFactor(newValue / 25)
+                              }}
+                              onChangeCommitted={() => updateCanvas()}
+                              marks
+                              valueLabelFormat='Font Size'
+                              valueLabelDisplay
+                              onMouseDown={() => {
+                                setShowText(true)
+                              }}
+                              onTouchStart={() => {
+                                setShowText(true)
+                              }}
+                            />
+                          </Stack>
+                        </FormControl>
+                        <FormControl fullWidth variant="outlined" sx={{ mt: 2, border: '1px solid rgba(191, 191, 191, 0.57)', borderRadius: '8px', py: 1, px: 2 }}>
+                          <FormLabel sx={{ fontSize: '0.875rem', fontWeight: 'bold', mb: 1, textAlign: 'center' }}>Line Height</FormLabel>
+                          <Stack spacing={2} direction="row" p={0} alignItems={'center'}>
+                            {/* <Tooltip title="Line Height">
+                              <IconButton>
+                                <FormatLineSpacing alt="Line Height" />
+                              </IconButton>
+                            </Tooltip> */}
+                            <Slider
+                              componentsProps={{
+                                root: {
+                                  style: {
+                                    ...(isSm && { pointerEvents: 'none' }),
+                                  }
+                                },
+                                track: {
+                                  style: {
+                                    ...(isSm && { pointerEvents: 'none' }),
+                                    backgroundColor: 'white',
+                                    height: 6,
+                                  }
+                                },
+                                rail: {
+                                  style: {
+                                    backgroundColor: 'white',
+                                    height: 6,
+                                  }
+                                },
+                                thumb: {
+                                  style: {
+                                    ...(isSm && { pointerEvents: 'auto' }),
+                                    backgroundColor: '#2079fe',
+                                    width: 20,
+                                    height: 20,
+                                  }
                                 }
-                              },
-                              track: {
-                                style: {
-                                  ...(isSm && { pointerEvents: 'none' }),
-                                  backgroundColor: 'white',
-                                  height: 6,
+                              }}
+                              size="small"
+                              defaultValue={1}
+                              min={1}
+                              max={5}
+                              step={0.2}
+                              value={fontLineHeightScaleFactor}
+                              onChange={(e, newValue) => {
+                                if (e.type === 'mousedown') {
+                                  return;
                                 }
-                              },
-                              rail: {
-                                style: {
-                                  backgroundColor: 'white',
-                                  height: 6,
-                                }
-                              },
-                              thumb: {
-                                style: {
-                                  ...(isSm && { pointerEvents: 'auto' }),
-                                  backgroundColor: '#2079fe',
-                                  width: 20,
-                                  height: 20,
-                                }
-                              }
-                            }}
-                            size="small"
-                            defaultValue={25}
-                            min={0.25}
-                            max={50}
-                            step={1}
-                            value={fontSizeScaleFactor * 25}
-                            onChange={(e, newValue) => {
-                              if (e.type === 'mousedown') {
-                                return;
-                              }
-                              setFontSizeScaleFactor(newValue / 25)
-                            }}
-                            onChangeCommitted={() => updateCanvas()}
-                            marks
-                            valueLabelFormat='Font Size'
-                            valueLabelDisplay
-                            onMouseDown={() => {
-                              setShowText(true)
-                            }}
-                            onTouchStart={() => {
-                              setShowText(true)
-                            }}
-                          />
-                        </Stack>
-                      </FormControl>
-                      <FormControl fullWidth variant="outlined" sx={{ mt: 2, border: '1px solid rgba(191, 191, 191, 0.57)', borderRadius: '8px', py: 1, px: 2 }}>
-                        <FormLabel sx={{ fontSize: '0.875rem', fontWeight: 'bold', mb: 1, textAlign: 'center' }}>Line Height</FormLabel>
-                        <Stack spacing={2} direction="row" p={0} alignItems={'center'}>
-                          {/* <Tooltip title="Line Height">
-                            <IconButton>
-                              <FormatLineSpacing alt="Line Height" />
-                            </IconButton>
-                          </Tooltip> */}
-                          <Slider
-                            componentsProps={{
-                              root: {
-                                style: {
-                                  ...(isSm && { pointerEvents: 'none' }),
-                                }
-                              },
-                              track: {
-                                style: {
-                                  ...(isSm && { pointerEvents: 'none' }),
-                                  backgroundColor: 'white',
-                                  height: 6,
-                                }
-                              },
-                              rail: {
-                                style: {
-                                  backgroundColor: 'white',
-                                  height: 6,
-                                }
-                              },
-                              thumb: {
-                                style: {
-                                  ...(isSm && { pointerEvents: 'auto' }),
-                                  backgroundColor: '#2079fe',
-                                  width: 20,
-                                  height: 20,
-                                }
-                              }
-                            }}
-                            size="small"
-                            defaultValue={1}
-                            min={1}
-                            max={5}
-                            step={0.2}
-                            value={fontLineHeightScaleFactor}
-                            onChange={(e, newValue) => {
-                              if (e.type === 'mousedown') {
-                                return;
-                              }
-                              setFontLineHeightScaleFactor(newValue);
-                            }}
-                            onChangeCommitted={() => updateCanvas()}
-                            valueLabelFormat='Line Height'
-                            valueLabelDisplay
-                            onMouseDown={() => {
-                              setShowText(true)
-                            }}
-                            onTouchStart={() => {
-                              setShowText(true)
-                            }}
-                            marks
-                          />
-                        </Stack>
-                      </FormControl>
+                                setFontLineHeightScaleFactor(newValue);
+                              }}
+                              onChangeCommitted={() => updateCanvas()}
+                              valueLabelFormat='Line Height'
+                              valueLabelDisplay
+                              onMouseDown={() => {
+                                setShowText(true)
+                              }}
+                              onTouchStart={() => {
+                                setShowText(true)
+                              }}
+                              marks
+                            />
+                          </Stack>
+                        </FormControl>
+                      </>
+                      }
                     </>
                   }
 
-                </CardContent>
-              </Card>
+                {/* </CardContent>
+              </Card> */}
             </Box>
             {/* {alertOpenTapToEdit && (
               <Alert
@@ -1211,6 +1238,22 @@ useEffect(() => {
             >
               {showText ? "Disable" : "Enable"} Caption
             </Button> */}
+
+            {!showText &&
+              <Button
+              size="medium"
+              fullWidth
+              variant="contained"
+              component={RouterLink}
+              sx={{ my: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: theme => theme.palette.grey[400] } }}
+              // startIcon={<Edit />}
+              onClick={() => {
+                setShowText(true)
+              }}
+            >
+              Make A Meme
+            </Button>
+            }
 
             <Button
               size="medium"
