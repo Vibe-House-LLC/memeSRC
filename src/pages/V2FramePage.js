@@ -3,7 +3,7 @@
 // eslint-disable camelcase
 import { Helmet } from 'react-helmet-async';
 import { Navigate, Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
-import { useCallback, useEffect, useRef, useState, useContext } from 'react';
+import { useCallback, useEffect, useRef, useState, useContext, memo } from 'react';
 import { API } from 'aws-amplify';
 import { styled } from '@mui/material/styles';
 import { useTheme } from '@emotion/react';
@@ -43,8 +43,12 @@ import {
   MenuItem, 
   Select,
   InputLabel,
+  ToggleButtonGroup,
+  ToggleButton,
+  Popover,
 } from '@mui/material';
-import { Add, ArrowBack, ArrowBackIos, ArrowForward, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, FormatBold, FormatItalic, FormatLineSpacing, FormatSize, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu, OpenInBrowser, OpenInNew, VerticalAlignBottom, VerticalAlignTop, Visibility, VisibilityOff } from '@mui/icons-material';
+import { Add, ArrowBack, ArrowBackIos, ArrowForward, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, FontDownload, FontDownloadOutlined, FormatBold, FormatColorFill, FormatItalic, FormatLineSpacing, FormatSize, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu, OpenInBrowser, OpenInNew, VerticalAlignBottom, VerticalAlignTop, Visibility, VisibilityOff } from '@mui/icons-material';
+import { TwitterPicker } from 'react-color';
 import useSearchDetails from '../hooks/useSearchDetails';
 import { fetchFrameInfo, fetchFramesFineTuning, fetchFramesSurroundingPromises } from '../utils/frameHandlerV2';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
@@ -113,9 +117,11 @@ export default function FramePage({ shows = [] }) {
         onChange={(e) => onSelectFont(e.target.value)}
         displayEmpty
         inputProps={{ 'aria-label': 'Without label' }}
+        size='small'
+        startAdornment={<FontDownloadOutlined sx={{ mr: 0.5}} />}
       >
         {fonts.map((font) => (
-          <MenuItem key={font} value={font}>{font}</MenuItem>
+          <MenuItem key={font} value={font} sx={{ fontFamily: font }}>{font}</MenuItem>
         ))}
       </Select>
     );
@@ -249,11 +255,12 @@ export default function FramePage({ shows = [] }) {
           // Styling the text with bold and italic
           const fontStyle = isItalic ? 'italic' : 'normal';
           const fontWeight = isBold ? 'bold' : 'normal';
+          const fontColor = (typeof colorPickerColor === 'object') ? '#FFFFFF' : colorPickerColor;
   
           // Apply the font style and weight along with size and family
           ctx.font = `${fontStyle} ${fontWeight} ${isMd ? scaledFontSizeDesktop : scaledFontSizeMobile}px ${fontFamily}`;
           ctx.textAlign = 'center';
-          ctx.fillStyle = 'white';
+          ctx.fillStyle = fontColor;
           ctx.strokeStyle = 'black';
           ctx.lineWidth = 6;
           ctx.lineJoin = 'round'; // Add this line to round the joints
@@ -538,6 +545,28 @@ useEffect(() => {
   const [loadedSubtitle, setLoadedSubtitle] = useState('');  // TODO
   const [loadedSeason, setLoadedSeason] = useState('');  // TODO
   const [loadedEpisode, setLoadedEpisode] = useState('');  // TODO
+  const [formats, setFormats] = useState(() => ['bold', 'italic']);
+  const [colorPickerShowing, setColorPickerShowing] = useState(false);
+  const [colorPickerColor, setColorPickerColor] = useState({
+    r: '255',
+    g: '255',
+    b: '255',
+    a: '100'
+  });
+
+  const colorPicker = useRef();
+
+  const StyledTwitterPicker = styled(TwitterPicker)`
+  span div {
+      border: 1px solid rgb(240, 240, 240);
+  }`;
+
+  const TwitterPickerWrapper = memo(StyledTwitterPicker);
+
+  const changeColor = (color) => {
+    setColorPickerColor(color.hex);
+    setColorPickerShowing(false);
+  }
 
   // Scroll to top when this component loads
   useEffect(() => {
@@ -550,7 +579,7 @@ useEffect(() => {
 
   useEffect(() => {
     updateCanvasUnthrottled();
-  }, [displayImage, loadedSubtitle, frame, fineTuningBlobs, selectedFrameIndex, fontFamily, isBold, isItalic]);
+  }, [displayImage, loadedSubtitle, frame, fineTuningBlobs, selectedFrameIndex, fontFamily, isBold, isItalic, colorPickerColor]);
 
   useEffect(() => {
     if (frames && frames.length > 0) {
@@ -822,13 +851,70 @@ useEffect(() => {
                 <CardContent sx={{ pt: 3 }}>
                   {/* Formatting Toolbar */}
                   <Box sx={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
-                    <IconButton onClick={() => setIsBold(!isBold)} sx={{ marginRight: '8px' }}>
-                      <FormatBold color={isBold ? 'primary' : 'action'} />
-                    </IconButton>
-                    <IconButton onClick={() => setIsItalic(!isItalic)} sx={{ marginRight: '8px' }}>
-                      <FormatItalic color={isItalic ? 'primary' : 'action'} />
-                    </IconButton>
+                    <ToggleButtonGroup
+                      value={[isBold && 'bold', isItalic && 'italic'].filter(Boolean)}
+                      onChange={(event, newFormats) => {
+                        setIsBold(newFormats.includes('bold'));
+                        setIsItalic(newFormats.includes('italic'));
+                        setColorPickerShowing(newFormats.includes('fontColor'))
+                      }}
+                      aria-label="text formatting"
+                    >
+                      <ToggleButton size='small' value="bold" aria-label="bold">
+                        <FormatBold />
+                      </ToggleButton>
+                      <ToggleButton size='small' value="italic" aria-label="italic">
+                        <FormatItalic />
+                      </ToggleButton>
+                    </ToggleButtonGroup>
+                    <ToggleButtonGroup
+                      sx={{ mx: 1 }}
+                      value={[isBold && 'bold', isItalic && 'italic'].filter(Boolean)}
+                      onChange={(event, newFormats) => {
+                        setColorPickerShowing(newFormats.includes('fontColor'))
+                      }}
+                      aria-label="text formatting"
+                    >
+                      <ToggleButton ref={colorPicker} size='small' value="fontColor" aria-label="font color">
+                        <FormatColorFill sx={{ color: colorPickerColor }} />
+                      </ToggleButton>
+                    </ToggleButtonGroup>
                     <FontSelector selectedFont={fontFamily} onSelectFont={setFontFamily} />
+                    <Popover
+                      open={colorPickerShowing}
+                      anchorEl={colorPicker.current}
+                      onClose={() => setColorPickerShowing(false)}
+                      id="colorPicker"
+                      anchorOrigin={{
+                        vertical: 'bottom',
+                        horizontal: 'center',
+                      }}
+                      transformOrigin={{
+                        vertical: 'top',
+                        horizontal: 'center',
+                      }}
+                    >
+                      <div>
+                        <TwitterPickerWrapper
+                          onChangeComplete={(color) => changeColor(color)}
+                          color={colorPickerColor}
+                          colors={[
+                            '#FFFFFF',
+                            'yellow',
+                            'black',
+                            'orange',
+                            '#8ED1FC',
+                            '#0693E3',
+                            '#ABB8C3',
+                            '#EB144C',
+                            '#F78DA7',
+                            '#9900EF',
+                          ]}
+                          width="280px"
+                        // TODO: Fix background color to match other cards
+                        />
+                      </div>
+                    </Popover>
                   </Box>
 
                   {loading ?
