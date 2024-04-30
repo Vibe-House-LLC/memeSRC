@@ -24,7 +24,7 @@ exports.handler = async function (event, context) {
   // Extract the users sub from the key
   const keyParts = key.split('/');
 
-  if (keyParts[0] === 'protected' && keyParts[1] === 'src') {
+  if (keyParts[0] === 'protected' && keyParts[1] !== 'src') {
 
     const sourceMediaId = keyParts[2];
 
