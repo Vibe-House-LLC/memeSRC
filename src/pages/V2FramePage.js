@@ -966,7 +966,6 @@ useEffect(() => {
                           placeholder="Type a caption..."
                           value={loadedSubtitle}
                           onMouseDown={() => setShowText(true)}
-                          onTouchStart={() => setShowText(true)}
                           onChange={(e) => setLoadedSubtitle(e.target.value)}
                           InputProps={{
                             style: {
