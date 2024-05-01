@@ -10,6 +10,7 @@ function CreateIndex({ onProcessComplete }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [frameCount, setFrameCount] = useState(10);
+  const [fontFamily, setFontFamily] = useState('');
   const [colorMain, setColorMain] = useState('');
   const [colorSecondary, setColorSecondary] = useState('');
   const [emoji, setEmoji] = useState('');
@@ -42,6 +43,7 @@ function CreateIndex({ onProcessComplete }) {
       colorMain,
       colorSecondary,
       emoji,
+      fontFamily
     };
   
     // Save the folderPath in jobs.json
@@ -62,7 +64,7 @@ function CreateIndex({ onProcessComplete }) {
       console.error('JavaScript processing error:', error);
       setIsProcessing(false);
     });
-  }, [folderPath, id, title, description, frameCount, colorMain, colorSecondary, emoji, onProcessComplete]);
+  }, [folderPath, id, title, description, frameCount, colorMain, colorSecondary, emoji, fontFamily, onProcessComplete]);
 
   const fetchPreviousJobs = useCallback(async () => {
     const electron = window.require('electron');
@@ -85,6 +87,7 @@ function CreateIndex({ onProcessComplete }) {
     setColorMain(job.colorMain);
     setColorSecondary(job.colorSecondary);
     setEmoji(job.emoji);
+    setFontFamily(job.fontFamily)
     
     // setIsProcessing(true);
     // setIsDialogOpen(true);
@@ -147,6 +150,7 @@ function CreateIndex({ onProcessComplete }) {
         <TextField label="Main Color" variant="outlined" fullWidth margin="normal" value={colorMain} onChange={(e) => setColorMain(e.target.value)} />
         <TextField label="Secondary Color" variant="outlined" fullWidth margin="normal" value={colorSecondary} onChange={(e) => setColorSecondary(e.target.value)} />
         <TextField label="Emoji" variant="outlined" fullWidth margin="normal" value={emoji} onChange={(e) => setEmoji(e.target.value)} />
+        <TextField label="Font Family" variant="outlined" fullWidth margin="normal" value={fontFamily} onChange={(e) => setFontFamily(e.target.value)} />
         <Button color="primary" variant="contained" disabled={isProcessing || !folderPath || !id} onClick={handleProcessStart} sx={{ mt: 2 }}>
           Start Processing
         </Button>
