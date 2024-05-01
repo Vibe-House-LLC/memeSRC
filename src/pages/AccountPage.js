@@ -286,7 +286,7 @@ const AccountPage = () => {
             </Box>
             <Box sx={{ mt: 3, textAlign: 'center' }}>
               {userDetails?.user?.userDetails?.magicSubscription === 'true' ? (
-                <Button variant="outlined" color="primary" onClick={openSubscriptionDialog}>
+                <Button variant="contained" size="large" onClick={openSubscriptionDialog}>
                   Manage Subscription
                 </Button>
               ) : (
@@ -304,7 +304,7 @@ const AccountPage = () => {
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: uploadingProfilePhoto ? 1 : 4 }}>
               <Avatar src={userDetails?.user?.profilePhoto || null} sx={{ width: 80, height: 80, mr: 3 }} />
-              <Button variant="outlined" component="label" disabled={uploadingProfilePhoto}>
+              <Button variant="contained" component="label" disabled={uploadingProfilePhoto}>
                 Upload Photo
                 <input type="file" hidden onChange={handleProfilePhotoUpload} accept="image/*" />
               </Button>
