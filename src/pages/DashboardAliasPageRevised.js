@@ -1,9 +1,9 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { Container, Divider, IconButton, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography, Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField } from "@mui/material";
+import { Container, Divider, IconButton, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography, Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField, CircularProgress } from "@mui/material";
 import { API, Storage, graphqlOperation } from 'aws-amplify';
-import { Add, Edit, Delete } from "@mui/icons-material";
+import { Add, Edit, Delete, Refresh } from "@mui/icons-material";
 import { getV2ContentMetadata, listAliases } from '../graphql/queries';
-import { createAlias, updateAlias, deleteAlias, createV2ContentMetadata } from '../graphql/mutations';
+import { createAlias, updateAlias, deleteAlias, createV2ContentMetadata, updateV2ContentMetadata } from '../graphql/mutations';
 import { SnackbarContext } from '../SnackbarContext';
 
 /* Utility Functions */
@@ -98,6 +98,7 @@ const AliasManagementPageRevised = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [currentAlias, setCurrentAlias] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [refreshingMetadata, setRefreshingMetadata] = useState(false);
   const { setOpen: setSnackbarOpen, setMessage, setSeverity } = useContext(SnackbarContext)
 
   useEffect(() => {
@@ -154,6 +155,56 @@ const AliasManagementPageRevised = () => {
     });
   };
 
+  const refreshMetadata = (metadataId) => {
+    setRefreshingMetadata(metadataId)
+    Storage.get(`src/${metadataId}/00_metadata.json`, { level: 'public', download: true, customPrefix: { public: 'protected/' } }).then(response => {
+      response.Body.text().then(async resultString => {
+        console.log(resultString)
+        const result = JSON.parse(resultString)
+
+        const input = {
+          id: metadataId,
+          colorMain: result.colorMain || '#000000',
+          colorSecondary: result.colorSecondary || '#FFFFFF',
+          description: result.description || 'N/A',
+          emoji: result.emoji || '',
+          frameCount: result.frameCount || 0,
+          status: 0,
+          title: result.title || 'N/A',
+          version: 2,
+          fontFamily: result?.fontFamily || null
+        }
+
+        try {
+          await API.graphql(graphqlOperation(updateV2ContentMetadata, { input }));
+          setMessage(`${result.title}'s metadata has been refreshed.`)
+          setSeverity('success')
+          setSnackbarOpen(true)
+          setRefreshingMetadata(false)
+        } catch (error) {
+          console.error("Error updating V2ContentMetadata: ", error);
+          setMessage('Error updating V2ContentMetadata')
+          setSeverity('error')
+          setSnackbarOpen(true)
+          setRefreshingMetadata(false)
+        }
+
+      }).catch(error => {
+        console.error("Error parsing response: ", error);
+        setMessage('Error parsing response')
+        setSeverity('error')
+        setSnackbarOpen(true)
+        setRefreshingMetadata(false)
+      })
+    }).catch(error => {
+      console.error("Error loading 00_metadata.json: ", error);
+      setMessage('Error loading 00_metadata.json')
+      setSeverity('error')
+      setSnackbarOpen(true)
+      setRefreshingMetadata(false)
+    });
+  }
+
   const handleSubmitForm = async (aliasData) => {
     try {
       const input = {
@@ -184,9 +235,10 @@ const AliasManagementPageRevised = () => {
               frameCount: result.frameCount || 0,
               status: 0,
               title: result.title || 'N/A',
-              version: 2
+              version: 2,
+              fontFamily: result?.fontFamily || null
             }
-    
+
             newMetadataCreated = await API.graphql(graphqlOperation(createV2ContentMetadata, { input: { ...newMetadataDetails } }))
             console.log(newMetadataCreated)
           })
@@ -242,6 +294,12 @@ const AliasManagementPageRevised = () => {
                   <TableCell>{alias.id}</TableCell>
                   <TableCell>{alias.aliasV2ContentMetadataId}</TableCell>
                   <TableCell align="right">
+                    <IconButton
+                      onClick={() => refreshMetadata(alias.aliasV2ContentMetadataId)}
+                      disabled={refreshingMetadata === alias.aliasV2ContentMetadataId}
+                    >
+                      {refreshingMetadata === alias.aliasV2ContentMetadataId ? <CircularProgress size={24} /> : <Refresh />}
+                    </IconButton>
                     <IconButton onClick={() => handleOpenDialog(alias)}><Edit /></IconButton>
                     <IconButton onClick={() => handleOpenDeleteDialog(alias)} color="error"><Delete /></IconButton>
                   </TableCell>
