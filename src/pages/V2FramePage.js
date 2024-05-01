@@ -3,7 +3,7 @@
 // eslint-disable camelcase
 import { Helmet } from 'react-helmet-async';
 import { Navigate, Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
-import { useCallback, useEffect, useRef, useState, useContext } from 'react';
+import { useCallback, useEffect, useRef, useState, useContext, memo } from 'react';
 import { API } from 'aws-amplify';
 import { styled } from '@mui/material/styles';
 import { useTheme } from '@emotion/react';
@@ -39,9 +39,16 @@ import {
   Snackbar,
   Alert,
   FormControl,
-  FormLabel
+  FormLabel,
+  MenuItem, 
+  Select,
+  InputLabel,
+  ToggleButtonGroup,
+  ToggleButton,
+  Popover,
 } from '@mui/material';
-import { Add, ArrowBack, ArrowBackIos, ArrowForward, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, FormatLineSpacing, FormatSize, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu, OpenInBrowser, OpenInNew, VerticalAlignBottom, VerticalAlignTop, Visibility, VisibilityOff } from '@mui/icons-material';
+import { Add, ArrowBack, ArrowBackIos, ArrowForward, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, FontDownload, FontDownloadOutlined, FormatBold, FormatColorFill, FormatItalic, FormatLineSpacing, FormatSize, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu, OpenInBrowser, OpenInNew, VerticalAlignBottom, VerticalAlignTop, Visibility, VisibilityOff } from '@mui/icons-material';
+import { TwitterPicker } from 'react-color';
 import useSearchDetails from '../hooks/useSearchDetails';
 import { fetchFrameInfo, fetchFramesFineTuning, fetchFramesSurroundingPromises } from '../utils/frameHandlerV2';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
@@ -101,6 +108,31 @@ export default function FramePage({ shows = [] }) {
   const isSm = useMediaQuery((theme) => theme.breakpoints.down('md'));
 
   /* -------------------------------------------------------------------------- */
+
+  const FontSelector = ({ selectedFont, onSelectFont }) => {
+    const fonts = ["Arial", "Courier New", "Georgia", "Verdana", "Akbar"];
+    return (
+      <Select
+        value={selectedFont}
+        onChange={(e) => onSelectFont(e.target.value)}
+        displayEmpty
+        inputProps={{ 'aria-label': 'Without label' }}
+        size='small'
+        startAdornment={<FontDownloadOutlined sx={{ mr: 0.5}} />}
+        sx={{
+          '& .MuiSelect-select': {
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          },
+        }}
+      >
+        {fonts.map((font) => (
+          <MenuItem key={font} value={font} sx={{ fontFamily: font }}>{font}</MenuItem>
+        ))}
+      </Select>
+    );
+  };
 
   useEffect(() => {
     getV2Metadata(cid).then(metadata => {
@@ -186,7 +218,7 @@ export default function FramePage({ shows = [] }) {
   const updateCanvasUnthrottled = (scaleDown) => {
     const offScreenCanvas = document.createElement('canvas');
     const ctx = offScreenCanvas.getContext('2d');
-
+  
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.src = displayImage;
@@ -208,13 +240,13 @@ export default function FramePage({ shows = [] }) {
         const referenceWidth = 1000;
         const referenceFontSizeDesktop = 40;
         const referenceFontSizeMobile = 40;
-        const referenceBottomAnch = 35;  // Reference distance from bottom for desktop
-        const referenceBottomAnchMobile = 35; // Reference distance for mobile
+        const referenceBottomAnch = 25;  // Reference distance from bottom for desktop
+        const referenceBottomAnchMobile = 25; // Reference distance for mobile
 
         const scaleFactor = 1000 / referenceWidth;
 
-        const scaledFontSizeDesktop = referenceFontSizeDesktop * scaleFactor;
-        const scaledFontSizeMobile = referenceFontSizeMobile * scaleFactor;
+        const scaledFontSizeDesktop = referenceFontSizeDesktop * scaleFactor * fontSizeScaleFactor;
+        const scaledFontSizeMobile = referenceFontSizeMobile * scaleFactor * fontSizeScaleFactor;
         const scaledBottomAnch = isMd ? referenceBottomAnch * scaleFactor * fontBottomMarginScaleFactor : referenceBottomAnchMobile * scaleFactor * fontBottomMarginScaleFactor;
         const referenceLineHeight = 50;
         const scaledLineHeight = referenceLineHeight * scaleFactor * fontLineHeightScaleFactor * fontSizeScaleFactor;
@@ -227,10 +259,15 @@ export default function FramePage({ shows = [] }) {
         setLoading(false)
 
         if (showText && loadedSubtitle) {
-          // Styling the text
-          ctx.font = `700 ${isMd ? `${scaledFontSizeDesktop * fontSizeScaleFactor}px` : `${scaledFontSizeMobile * fontSizeScaleFactor}px`} Arial`;
+          // Styling the text with bold and italic
+          const fontStyle = isItalic ? 'italic' : 'normal';
+          const fontWeight = isBold ? 'bold' : 'normal';
+          const fontColor = (typeof colorPickerColor === 'object') ? '#FFFFFF' : colorPickerColor;
+  
+          // Apply the font style and weight along with size and family
+          ctx.font = `${fontStyle} ${fontWeight} ${isMd ? scaledFontSizeDesktop : scaledFontSizeMobile}px ${fontFamily}`;
           ctx.textAlign = 'center';
-          ctx.fillStyle = 'white';
+          ctx.fillStyle = fontColor;
           ctx.strokeStyle = 'black';
           ctx.lineWidth = 6;
           ctx.lineJoin = 'round'; // Add this line to round the joints
@@ -508,10 +545,63 @@ useEffect(() => {
 
   const { showObj, setShowObj, selectedFrameIndex, setSelectedFrameIndex } = useSearchDetailsV2();
   const [loadingCsv, setLoadingCsv] = useState();
+  const [isBold, setIsBold] = useState(true);
+  const [isItalic, setIsItalic] = useState(false);
+  const [fontFamily, setFontFamily] = useState('Arial'); // Default font
   const [frames, setFrames] = useState();
   const [loadedSubtitle, setLoadedSubtitle] = useState('');  // TODO
   const [loadedSeason, setLoadedSeason] = useState('');  // TODO
   const [loadedEpisode, setLoadedEpisode] = useState('');  // TODO
+  const [formats, setFormats] = useState(() => ['bold', 'italic']);
+  const [colorPickerShowing, setColorPickerShowing] = useState(false);
+  const [colorPickerColor, setColorPickerColor] = useState({
+    r: '255',
+    g: '255',
+    b: '255',
+    a: '100'
+  });
+  const [mainImageLoaded, setMainImageLoaded] = useState(false);
+
+  const handleMainImageLoad = () => {
+    setMainImageLoaded(true);
+  };
+
+  const textFieldRef = useRef(null);
+
+  const moveCursorToEnd = () => {
+    if (textFieldRef.current) {
+      const input = textFieldRef.current;
+      input.setSelectionRange(input.value.length, input.value.length);
+    }
+  };
+
+  useEffect(() => {
+    const moveCursorToEnd = () => {
+      if (textFieldRef.current) {
+        const input = textFieldRef.current;
+        input.setSelectionRange(input.value.length, input.value.length);
+      }
+    };
+  
+    if (showText && textFieldRef.current) {
+      moveCursorToEnd();
+    }
+  }, [showText]);
+  
+
+  const colorPicker = useRef();
+
+  const StyledTwitterPicker = styled(TwitterPicker)`
+  span div {
+      border: 1px solid rgb(240, 240, 240);
+  }`;
+
+  const TwitterPickerWrapper = memo(StyledTwitterPicker);
+
+  const changeColor = (color) => {
+    setColorPickerColor(color.hex);
+    setColorPickerShowing(false);
+  }
 
   // Scroll to top when this component loads
   useEffect(() => {
@@ -524,7 +614,7 @@ useEffect(() => {
 
   useEffect(() => {
     updateCanvasUnthrottled();
-  }, [displayImage, loadedSubtitle, frame, fineTuningBlobs, selectedFrameIndex]);
+  }, [displayImage, loadedSubtitle, frame, fineTuningBlobs, selectedFrameIndex, fontFamily, isBold, isItalic, colorPickerColor]);
 
   useEffect(() => {
     if (frames && frames.length > 0) {
@@ -544,12 +634,23 @@ useEffect(() => {
     return (
       <>
         <div style={{ position: 'relative' }}>
-          <CardMedia
-            component={!imgSrc ? () => <Skeleton variant='rectangular' sx={{ width: '100%', height: 'auto', aspectRatio }} /> : 'img'}
-            alt={`Fine-tuning ${sliderValue}`}
-            image={imgSrc}
-            id='frameImage'
-          />
+        {!mainImageLoaded && (
+          <Skeleton variant='rounded' sx={{ width: '100%', height: 'auto', aspectRatio, paddingTop: '56.25%' }} />
+        )}
+        <CardMedia
+          component={'img'}
+          alt={`Fine-tuning ${sliderValue}`}
+          image={imgSrc}
+          id='frameImage'
+          onLoad={handleMainImageLoad}
+          onError={() => {
+            console.error(`Failed to load main image`);
+            handleMainImageLoad();
+          }}
+          sx={{
+            display: mainImageLoaded ? 'block' : 'none',
+          }}
+        />
           {loadingFineTuning && (
             <div
               style={{
@@ -705,6 +806,12 @@ useEffect(() => {
     );
   };
 
+  const [imagesLoaded, setImagesLoaded] = useState({});
+
+  const handleImageLoad = (frameId) => {
+    setImagesLoaded((prevState) => ({ ...prevState, [frameId]: true }));
+  };
+
 
   return (
     <>
@@ -776,7 +883,7 @@ useEffect(() => {
 
           <Grid item xs={12} md={6}>
             <Box sx={{ width: '100%' }}>
-              <Card
+              {/* <Card
                 style={{ boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}
                 onClick={(e) => {
                   // Prevent card click event when clicking on any button or other interactive element inside the card
@@ -793,52 +900,122 @@ useEffect(() => {
                   setShowText(true);
                 }}
               >
-                <CardContent sx={{ pt: 3 }}>
-                  {/* <Typography variant="h3" component="div" style={{ marginBottom: '0.5rem' }} textAlign='left'>
-                         {showTitle}
-                        </Typography> */}
+                <CardContent sx={{ pt: 3 }}> */}
+                  {/* Formatting Toolbar */}
+                  {showText &&
+                    <Box sx={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
+                    <ToggleButtonGroup
+                      value={[isBold && 'bold', isItalic && 'italic'].filter(Boolean)}
+                      onChange={(event, newFormats) => {
+                        setIsBold(newFormats.includes('bold'));
+                        setIsItalic(newFormats.includes('italic'));
+                        setShowText(true)
+                      }}
+                      aria-label="text formatting"
+                      sx={{ flexShrink: 0 }}
+                    >
+                      <ToggleButton size='small' value="bold" aria-label="bold">
+                        <FormatBold />
+                      </ToggleButton>
+                      <ToggleButton size='small' value="italic" aria-label="italic">
+                        <FormatItalic />
+                      </ToggleButton>
+                    </ToggleButtonGroup>
+                    <ToggleButtonGroup
+                      sx={{ mx: 1, flexShrink: 0 }}
+                      value={[isBold && 'bold', isItalic && 'italic'].filter(Boolean)}
+                      onChange={(event, newFormats) => {
+                        setColorPickerShowing(newFormats.includes('fontColor'))
+                        setShowText(true)
+                      }}
+                      aria-label="text formatting"
+                    >
+                      <ToggleButton ref={colorPicker} size='small' value="fontColor" aria-label="font color">
+                        <FormatColorFill sx={{ color: colorPickerColor }} />
+                      </ToggleButton>
+                    </ToggleButtonGroup>
+                    <FontSelector selectedFont={fontFamily} onSelectFont={setFontFamily} />
+                    <Popover
+                      open={colorPickerShowing}
+                      anchorEl={colorPicker.current}
+                      onClose={() => setColorPickerShowing(false)}
+                      id="colorPicker"
+                      anchorOrigin={{
+                        vertical: 'bottom',
+                        horizontal: 'center',
+                      }}
+                      transformOrigin={{
+                        vertical: 'top',
+                        horizontal: 'center',
+                      }}
+                    >
+                      <div>
+                        <TwitterPickerWrapper
+                          onChangeComplete={(color) => changeColor(color)}
+                          color={colorPickerColor}
+                          colors={[
+                            '#FFFFFF',
+                            'yellow',
+                            'black',
+                            'orange',
+                            '#8ED1FC',
+                            '#0693E3',
+                            '#ABB8C3',
+                            '#EB144C',
+                            '#F78DA7',
+                            '#9900EF',
+                          ]}
+                          width="280px"
+                        // TODO: Fix background color to match other cards
+                        />
+                      </div>
+                    </Popover>
+                  </Box>
+                  }
+
                   {loading ?
                     <Skeleton variant='text' height={150} width={'max(100px, 50%)'} />
                     :
                     <>
                       <Stack direction='row' spacing={1} alignItems='center'>
                         <Stack direction='row' alignItems='center' sx={{ width: '100%' }}>
-                          <TextField
-                            multiline
-                            fullWidth
-                            variant="outlined"
-                            size="small"
-                            placeholder="Type a caption..."
-                            value={loadedSubtitle}
-                            onMouseDown={() => {
-                              setShowText(true)
-                            }}
-                            onTouchStart={() => {
-                              setShowText(true)
-                            }}
-                            onChange={(e) => setLoadedSubtitle(e.target.value)}
-                            sx={{
-                              '& .MuiOutlinedInput-root': {
-                                backgroundColor: 'white',
-                                color: 'black',
-                                '& fieldset': {
-                                  borderColor: 'rgba(0, 0, 0, 0.23)',
-                                },
-                                '&:hover fieldset': {
-                                  borderColor: 'rgba(0, 0, 0, 0.87)',
-                                },
-                                '&.Mui-focused fieldset': {
-                                  borderColor: 'primary.main',
-                                },
+                        <TextField
+                          multiline
+                          minRows={2}
+                          fullWidth
+                          variant="outlined"
+                          size="small"
+                          placeholder="Type a caption..."
+                          value={loadedSubtitle}
+                          onMouseDown={() => setShowText(true)}
+                          onChange={(e) => setLoadedSubtitle(e.target.value)}
+                          InputProps={{
+                            style: {
+                              fontWeight: isBold ? 'bold' : 'normal',
+                              fontStyle: isItalic ? 'italic' : 'normal',
+                              fontFamily,
+                            },
+                          }}
+                          sx={{
+                            '& .MuiOutlinedInput-root': {
+                              backgroundColor: 'white',
+                              color: 'black',
+                              '& fieldset': {
+                                borderColor: 'rgba(0, 0, 0, 0.23)',
                               },
-                              '& .MuiInputBase-input': {
-                                color: 'black',
+                              '&:hover fieldset': {
+                                borderColor: 'rgba(0, 0, 0, 0.87)',
                               },
-                              '& .MuiFormLabel-root': {
-                                color: 'text.secondary',
+                              '&.Mui-focused fieldset': {
+                                borderColor: 'primary.main',
                               },
-                            }}
-                          />
+                            },
+                            '& .MuiInputBase-input': {
+                              color: 'black',
+                            },
+                          }}
+                          inputRef={textFieldRef}
+                        />
                         </Stack>
                       </Stack>
                       {showText && loadedSubtitle?.trim() !== '' && (
@@ -853,197 +1030,201 @@ useEffect(() => {
                           Clear Caption
                         </Button>
                       )}
-                      <FormControl fullWidth variant="outlined" sx={{ mt: 2, border: '1px solid rgba(191, 191, 191, 0.57)', borderRadius: '8px', py: 1, px: 2 }}>
-                        <FormLabel sx={{ fontSize: '0.875rem', fontWeight: 'bold', mb: 1, textAlign: 'center' }}>Bottom Margin</FormLabel>
-                        <Stack spacing={2} direction="row" p={0} alignItems={'center'}>
-                          {/* <Tooltip title="Line Height">
-                            <IconButton>
-                              <VerticalAlignTop alt="Line Height" />
-                            </IconButton>
-                          </Tooltip> */}
-                          <Slider
-                            componentsProps={{
-                              root: {
-                                style: {
-                                  ...(isSm && { pointerEvents: 'none' }),
+                      {showText &&
+                        <>
+                        <FormControl fullWidth variant="outlined" sx={{ mt: 2, border: '1px solid rgba(191, 191, 191, 0.57)', borderRadius: '8px', py: 1, px: 2 }}>
+                          <FormLabel sx={{ fontSize: '0.875rem', fontWeight: 'bold', mb: 1, textAlign: 'center' }}>Bottom Margin</FormLabel>
+                          <Stack spacing={2} direction="row" p={0} alignItems={'center'}>
+                            {/* <Tooltip title="Line Height">
+                              <IconButton>
+                                <VerticalAlignTop alt="Line Height" />
+                              </IconButton>
+                            </Tooltip> */}
+                            <Slider
+                              componentsProps={{
+                                root: {
+                                  style: {
+                                    ...(isSm && { pointerEvents: 'none' }),
+                                  }
+                                },
+                                track: {
+                                  style: {
+                                    ...(isSm && { pointerEvents: 'none' }),
+                                    backgroundColor: 'white',
+                                    height: 6,
+                                  }
+                                },
+                                rail: {
+                                  style: {
+                                    backgroundColor: 'white',
+                                    height: 6,
+                                  }
+                                },
+                                thumb: {
+                                  style: {
+                                    ...(isSm && { pointerEvents: 'auto' }),
+                                    backgroundColor: '#2079fe',
+                                    width: 20,
+                                    height: 20,
+                                  }
                                 }
-                              },
-                              track: {
-                                style: {
-                                  ...(isSm && { pointerEvents: 'none' }),
-                                  backgroundColor: 'white',
-                                  height: 6,
+                              }}
+                              size="small"
+                              defaultValue={1}
+                              min={1}
+                              max={10}
+                              step={0.2}
+                              value={fontBottomMarginScaleFactor}
+                              onChange={(e, newValue) => {
+                                if (e.type === 'mousedown') {
+                                  return;
                                 }
-                              },
-                              rail: {
-                                style: {
-                                  backgroundColor: 'white',
-                                  height: 6,
+                                setFontBottomMarginScaleFactor(newValue)
+                              }}
+                              onChangeCommitted={() => updateCanvas()}
+                              marks
+                              valueLabelFormat='Bottom Margin'
+                              valueLabelDisplay
+                              onMouseDown={() => {
+                                setShowText(true)
+                              }}
+                              onTouchStart={() => {
+                                setShowText(true)
+                              }}
+                            />
+                          </Stack>
+                        </FormControl>
+                        <FormControl fullWidth variant="outlined" sx={{ mt: 2, border: '1px solid rgba(191, 191, 191, 0.57)', borderRadius: '8px', py: 1, px: 2 }}>
+                          <FormLabel sx={{ fontSize: '0.875rem', fontWeight: 'bold', mb: 1, textAlign: 'center' }}>Font Size</FormLabel>
+                          <Stack spacing={2} direction="row" p={0} alignItems={'center'}>
+                            {/* <Tooltip title="Font Size">
+                              <IconButton>
+                                <FormatSize alt="Font Size" />
+                              </IconButton>
+                            </Tooltip> */}
+                            <Slider
+                              componentsProps={{
+                                root: {
+                                  style: {
+                                    ...(isSm && { pointerEvents: 'none' }),
+                                  }
+                                },
+                                track: {
+                                  style: {
+                                    ...(isSm && { pointerEvents: 'none' }),
+                                    backgroundColor: 'white',
+                                    height: 6,
+                                  }
+                                },
+                                rail: {
+                                  style: {
+                                    backgroundColor: 'white',
+                                    height: 6,
+                                  }
+                                },
+                                thumb: {
+                                  style: {
+                                    ...(isSm && { pointerEvents: 'auto' }),
+                                    backgroundColor: '#2079fe',
+                                    width: 20,
+                                    height: 20,
+                                  }
                                 }
-                              },
-                              thumb: {
-                                style: {
-                                  ...(isSm && { pointerEvents: 'auto' }),
-                                  backgroundColor: '#2079fe',
-                                  width: 20,
-                                  height: 20,
+                              }}
+                              size="small"
+                              defaultValue={25}
+                              min={0.25}
+                              max={50}
+                              step={1}
+                              value={fontSizeScaleFactor * 25}
+                              onChange={(e, newValue) => {
+                                if (e.type === 'mousedown') {
+                                  return;
                                 }
-                              }
-                            }}
-                            size="small"
-                            defaultValue={1}
-                            min={1}
-                            max={10}
-                            step={0.2}
-                            value={fontBottomMarginScaleFactor}
-                            onChange={(e, newValue) => {
-                              if (e.type === 'mousedown') {
-                                return;
-                              }
-                              setFontBottomMarginScaleFactor(newValue)
-                            }}
-                            onChangeCommitted={() => updateCanvas()}
-                            marks
-                            valueLabelFormat='Bottom Margin'
-                            valueLabelDisplay
-                            onMouseDown={() => {
-                              setShowText(true)
-                            }}
-                            onTouchStart={() => {
-                              setShowText(true)
-                            }}
-                          />
-                        </Stack>
-                      </FormControl>
-                      <FormControl fullWidth variant="outlined" sx={{ mt: 2, border: '1px solid rgba(191, 191, 191, 0.57)', borderRadius: '8px', py: 1, px: 2 }}>
-                        <FormLabel sx={{ fontSize: '0.875rem', fontWeight: 'bold', mb: 1, textAlign: 'center' }}>Font Size</FormLabel>
-                        <Stack spacing={2} direction="row" p={0} alignItems={'center'}>
-                          {/* <Tooltip title="Font Size">
-                            <IconButton>
-                              <FormatSize alt="Font Size" />
-                            </IconButton>
-                          </Tooltip> */}
-                          <Slider
-                            componentsProps={{
-                              root: {
-                                style: {
-                                  ...(isSm && { pointerEvents: 'none' }),
+                                setFontSizeScaleFactor(newValue / 25)
+                              }}
+                              onChangeCommitted={() => updateCanvas()}
+                              marks
+                              valueLabelFormat='Font Size'
+                              valueLabelDisplay
+                              onMouseDown={() => {
+                                setShowText(true)
+                              }}
+                              onTouchStart={() => {
+                                setShowText(true)
+                              }}
+                            />
+                          </Stack>
+                        </FormControl>
+                        <FormControl fullWidth variant="outlined" sx={{ mt: 2, border: '1px solid rgba(191, 191, 191, 0.57)', borderRadius: '8px', py: 1, px: 2 }}>
+                          <FormLabel sx={{ fontSize: '0.875rem', fontWeight: 'bold', mb: 1, textAlign: 'center' }}>Line Height</FormLabel>
+                          <Stack spacing={2} direction="row" p={0} alignItems={'center'}>
+                            {/* <Tooltip title="Line Height">
+                              <IconButton>
+                                <FormatLineSpacing alt="Line Height" />
+                              </IconButton>
+                            </Tooltip> */}
+                            <Slider
+                              componentsProps={{
+                                root: {
+                                  style: {
+                                    ...(isSm && { pointerEvents: 'none' }),
+                                  }
+                                },
+                                track: {
+                                  style: {
+                                    ...(isSm && { pointerEvents: 'none' }),
+                                    backgroundColor: 'white',
+                                    height: 6,
+                                  }
+                                },
+                                rail: {
+                                  style: {
+                                    backgroundColor: 'white',
+                                    height: 6,
+                                  }
+                                },
+                                thumb: {
+                                  style: {
+                                    ...(isSm && { pointerEvents: 'auto' }),
+                                    backgroundColor: '#2079fe',
+                                    width: 20,
+                                    height: 20,
+                                  }
                                 }
-                              },
-                              track: {
-                                style: {
-                                  ...(isSm && { pointerEvents: 'none' }),
-                                  backgroundColor: 'white',
-                                  height: 6,
+                              }}
+                              size="small"
+                              defaultValue={1}
+                              min={1}
+                              max={5}
+                              step={0.2}
+                              value={fontLineHeightScaleFactor}
+                              onChange={(e, newValue) => {
+                                if (e.type === 'mousedown') {
+                                  return;
                                 }
-                              },
-                              rail: {
-                                style: {
-                                  backgroundColor: 'white',
-                                  height: 6,
-                                }
-                              },
-                              thumb: {
-                                style: {
-                                  ...(isSm && { pointerEvents: 'auto' }),
-                                  backgroundColor: '#2079fe',
-                                  width: 20,
-                                  height: 20,
-                                }
-                              }
-                            }}
-                            size="small"
-                            defaultValue={25}
-                            min={0.25}
-                            max={50}
-                            step={1}
-                            value={fontSizeScaleFactor * 25}
-                            onChange={(e, newValue) => {
-                              if (e.type === 'mousedown') {
-                                return;
-                              }
-                              setFontSizeScaleFactor(newValue / 25)
-                            }}
-                            onChangeCommitted={() => updateCanvas()}
-                            marks
-                            valueLabelFormat='Font Size'
-                            valueLabelDisplay
-                            onMouseDown={() => {
-                              setShowText(true)
-                            }}
-                            onTouchStart={() => {
-                              setShowText(true)
-                            }}
-                          />
-                        </Stack>
-                      </FormControl>
-                      <FormControl fullWidth variant="outlined" sx={{ mt: 2, border: '1px solid rgba(191, 191, 191, 0.57)', borderRadius: '8px', py: 1, px: 2 }}>
-                        <FormLabel sx={{ fontSize: '0.875rem', fontWeight: 'bold', mb: 1, textAlign: 'center' }}>Line Height</FormLabel>
-                        <Stack spacing={2} direction="row" p={0} alignItems={'center'}>
-                          {/* <Tooltip title="Line Height">
-                            <IconButton>
-                              <FormatLineSpacing alt="Line Height" />
-                            </IconButton>
-                          </Tooltip> */}
-                          <Slider
-                            componentsProps={{
-                              root: {
-                                style: {
-                                  ...(isSm && { pointerEvents: 'none' }),
-                                }
-                              },
-                              track: {
-                                style: {
-                                  ...(isSm && { pointerEvents: 'none' }),
-                                  backgroundColor: 'white',
-                                  height: 6,
-                                }
-                              },
-                              rail: {
-                                style: {
-                                  backgroundColor: 'white',
-                                  height: 6,
-                                }
-                              },
-                              thumb: {
-                                style: {
-                                  ...(isSm && { pointerEvents: 'auto' }),
-                                  backgroundColor: '#2079fe',
-                                  width: 20,
-                                  height: 20,
-                                }
-                              }
-                            }}
-                            size="small"
-                            defaultValue={1}
-                            min={1}
-                            max={5}
-                            step={0.2}
-                            value={fontLineHeightScaleFactor}
-                            onChange={(e, newValue) => {
-                              if (e.type === 'mousedown') {
-                                return;
-                              }
-                              setFontLineHeightScaleFactor(newValue);
-                            }}
-                            onChangeCommitted={() => updateCanvas()}
-                            valueLabelFormat='Line Height'
-                            valueLabelDisplay
-                            onMouseDown={() => {
-                              setShowText(true)
-                            }}
-                            onTouchStart={() => {
-                              setShowText(true)
-                            }}
-                            marks
-                          />
-                        </Stack>
-                      </FormControl>
+                                setFontLineHeightScaleFactor(newValue);
+                              }}
+                              onChangeCommitted={() => updateCanvas()}
+                              valueLabelFormat='Line Height'
+                              valueLabelDisplay
+                              onMouseDown={() => {
+                                setShowText(true)
+                              }}
+                              onTouchStart={() => {
+                                setShowText(true)
+                              }}
+                              marks
+                            />
+                          </Stack>
+                        </FormControl>
+                      </>
+                      }
                     </>
                   }
 
-                </CardContent>
-              </Card>
+                {/* </CardContent>
+              </Card> */}
             </Box>
             {/* {alertOpenTapToEdit && (
               <Alert
@@ -1078,6 +1259,22 @@ useEffect(() => {
             >
               {showText ? "Disable" : "Enable"} Caption
             </Button> */}
+
+            {!showText &&
+              <Button
+              size="medium"
+              fullWidth
+              variant="contained"
+              component={RouterLink}
+              sx={{ mt: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: theme => theme.palette.grey[400] } }}
+              // startIcon={<Edit />}
+              onClick={() => {
+                setShowText(true)
+              }}
+            >
+              Make A Meme
+            </Button>
+            }
 
             <Button
               size="medium"
@@ -1214,11 +1411,7 @@ useEffect(() => {
                 const identifier = `${frame?.cid}-${frame?.season}-${frame?.episode}-${frame?.frame}`;
                 return (self.findIndex(f => `${f?.cid}-${f?.season}-${f?.episode}-${f?.frame}` === identifier) === index) || frame === 'loading';
               }).map((surroundingFrame, index) => (
-                // .filter(frame => {
-                //   console.log("frame", frame)
-                //     return frame?.cid === parseInt(cid, 10) && frame?.season === parseInt(season, 10) && frame?.episode === parseInt(episode, 10) && frame?.frame === parseInt(frame, 10);
-                //   })
-                <Grid item xs={4} sm={4} md={12 / 9} key={`surrounding-frame-${surroundingFrame?.frame || index}`}>
+                <Grid item xs={4} sm={4} md={12 / 9} key={`surrounding-frame-${index}`}>
                   {surroundingFrame !== 'loading' ? (
                     // Render the actual content if the surrounding frame data is available
                     <a style={{ textDecoration: 'none' }}>
@@ -1235,12 +1428,23 @@ useEffect(() => {
                           onClick={() => {
                             navigate(`/frame/${cid}/${season}/${episode}/${surroundingFrame.frame}`);
                           }}
+                          onLoad={() => handleImageLoad(surroundingFrame.frame)}
+                          onError={() => {
+                            console.error(`Failed to load image for frame ${surroundingFrame.frame}`);
+                            handleImageLoad(surroundingFrame.frame);
+                          }}
+                          sx={{
+                            display: imagesLoaded[surroundingFrame.frame] ? 'block' : 'none',
+                          }}
                         />
+                        {!imagesLoaded[surroundingFrame.frame] && (
+                          <Skeleton variant='rounded' sx={{ width: '100%', height: 0, paddingTop: '56.25%' }} />
+                        )}
                       </StyledCard>
                     </a>
                   ) : (
-                    // Render a skeleton if the data is not yet available (undefined)
-                    <Skeleton variant='rounded' sx={{ width: '100%', height: 'auto', aspectRatio }} />
+                    // Render a skeleton if the data is not yet available (loading)
+                    <Skeleton variant='rounded' sx={{ width: '100%', height: 0, paddingTop: '56.25%' }} />
                   )}
                 </Grid>
               ))}

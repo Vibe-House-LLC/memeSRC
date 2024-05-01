@@ -8,11 +8,11 @@ const { LambdaClient, InvokeCommand } = require("@aws-sdk/client-lambda");
 
 exports.handler = async function (event, context) {
   // All the logging
-  console.log('Received S3 event:', JSON.stringify(event, null, 2));
-  console.log(event)
-  console.log(event.Records[0].s3)
-  console.log(event.Records)
-  console.log(context)
+  // console.log('Received S3 event:', JSON.stringify(event, null, 2));
+  // console.log(event)
+  // console.log(event.Records[0].s3)
+  // console.log(event.Records)
+  // console.log(context)
 
   // Create a new Lambda client
   const lambdaClient = new LambdaClient({ region: "us-east-1" });
@@ -24,7 +24,7 @@ exports.handler = async function (event, context) {
   // Extract the users sub from the key
   const keyParts = key.split('/');
 
-  if (keyParts[0] === 'protected') {
+  if (keyParts[0] === 'protected' && keyParts[1] !== 'src') {
 
     const sourceMediaId = keyParts[2];
 
@@ -45,12 +45,12 @@ exports.handler = async function (event, context) {
     const userDetailsString = new TextDecoder().decode(userDetailsResult.Payload);
 
     // Parse the result of the user details function
-    console.log(userDetailsString);
+    // console.log(userDetailsString);
     const userDetailsParsed = JSON.parse(userDetailsString);
-    console.log(userDetailsParsed)
+    // console.log(userDetailsParsed)
 
   }
 
   // Log the bucket and key
-  console.log(`Bucket: ${bucket}`, `Key: ${key}`);
+  // console.log(`Bucket: ${bucket}`, `Key: ${key}`);
 };
