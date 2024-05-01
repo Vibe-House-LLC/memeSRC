@@ -524,6 +524,7 @@ export const getV2ContentMetadata = /* GraphQL */ `
         aliasV2ContentMetadataId
         __typename
       }
+      fontFamily
       createdAt
       updatedAt
       v2ContentMetadataAliasId
@@ -552,6 +553,7 @@ export const listV2ContentMetadata = /* GraphQL */ `
         emoji
         status
         version
+        fontFamily
         createdAt
         updatedAt
         v2ContentMetadataAliasId
@@ -587,6 +589,7 @@ export const v2ContentMetadataByStatus = /* GraphQL */ `
         emoji
         status
         version
+        fontFamily
         createdAt
         updatedAt
         v2ContentMetadataAliasId
@@ -611,6 +614,7 @@ export const getAlias = /* GraphQL */ `
         emoji
         status
         version
+        fontFamily
         createdAt
         updatedAt
         v2ContentMetadataAliasId
@@ -1364,6 +1368,7 @@ export const getUserV2Metadata = /* GraphQL */ `
         emoji
         status
         version
+        fontFamily
         createdAt
         updatedAt
         v2ContentMetadataAliasId

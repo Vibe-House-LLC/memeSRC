@@ -731,6 +731,7 @@ export const onCreateV2ContentMetadata = /* GraphQL */ `
         aliasV2ContentMetadataId
         __typename
       }
+      fontFamily
       createdAt
       updatedAt
       v2ContentMetadataAliasId
@@ -763,6 +764,7 @@ export const onUpdateV2ContentMetadata = /* GraphQL */ `
         aliasV2ContentMetadataId
         __typename
       }
+      fontFamily
       createdAt
       updatedAt
       v2ContentMetadataAliasId
@@ -795,6 +797,7 @@ export const onDeleteV2ContentMetadata = /* GraphQL */ `
         aliasV2ContentMetadataId
         __typename
       }
+      fontFamily
       createdAt
       updatedAt
       v2ContentMetadataAliasId
@@ -816,6 +819,7 @@ export const onCreateAlias = /* GraphQL */ `
         emoji
         status
         version
+        fontFamily
         createdAt
         updatedAt
         v2ContentMetadataAliasId
@@ -842,6 +846,7 @@ export const onUpdateAlias = /* GraphQL */ `
         emoji
         status
         version
+        fontFamily
         createdAt
         updatedAt
         v2ContentMetadataAliasId
@@ -868,6 +873,7 @@ export const onDeleteAlias = /* GraphQL */ `
         emoji
         status
         version
+        fontFamily
         createdAt
         updatedAt
         v2ContentMetadataAliasId
@@ -2086,6 +2092,7 @@ export const onCreateUserV2Metadata = /* GraphQL */ `
         emoji
         status
         version
+        fontFamily
         createdAt
         updatedAt
         v2ContentMetadataAliasId
@@ -2133,6 +2140,7 @@ export const onUpdateUserV2Metadata = /* GraphQL */ `
         emoji
         status
         version
+        fontFamily
         createdAt
         updatedAt
         v2ContentMetadataAliasId
@@ -2180,6 +2188,7 @@ export const onDeleteUserV2Metadata = /* GraphQL */ `
         emoji
         status
         version
+        fontFamily
         createdAt
         updatedAt
         v2ContentMetadataAliasId
