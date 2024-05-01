@@ -1,7 +1,7 @@
 // FullScreenSearch.js
 
 import styled from '@emotion/styled';
-import { Alert, AlertTitle, Button, Fab, Grid, Typography, IconButton, Stack, useMediaQuery, Select, MenuItem, Chip, Container, ListSubheader } from '@mui/material';
+import { Alert, AlertTitle, Button, Fab, Grid, Typography, IconButton, Stack, useMediaQuery, Select, MenuItem, Chip, Container, ListSubheader, useTheme } from '@mui/material';
 import { Box } from '@mui/system';
 import { ArrowDownwardRounded, Favorite, MapsUgc, Shuffle } from '@mui/icons-material';
 import { API, graphqlOperation } from 'aws-amplify';
@@ -282,8 +282,10 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   // }, []);
 
   // Theme States
+  const theme = useTheme();
   const [currentThemeBragText, setCurrentThemeBragText] = useState(metadata?.frameCount ? `Search over ${metadata?.frameCount.toLocaleString('en-US')} frames from ${metadata?.title}` : defaultBragText);
   const [currentThemeTitleText, setCurrentThemeTitleText] = useState(metadata?.title || defaultTitleText);
+  const [currentThemeFontFamily, setCurrentThemeFontFamily] = useState(metadata?.fontFamily || theme?.typography?.fontFamily);
   const [currentThemeFontColor, setCurrentThemeFontColor] = useState(metadata?.colorSecondary || defaultFontColor);
   const [currentThemeBackground, setCurrentThemeBackground] = useState(metadata?.colorMain ? { backgroundColor: `${metadata?.colorMain}` }
     :
@@ -359,6 +361,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       setCurrentThemeBragText(defaultBragText)
       setCurrentThemeTitleText(defaultTitleText)
       setCurrentThemeFontColor(defaultFontColor)
+      setCurrentThemeFontFamily(theme?.typography?.fontFamily)
       setCurrentThemeBackground({
         backgroundImage: defaultBackground,
       })
@@ -569,6 +572,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                 component="h1"
                 variant="h1"
                 fontSize={34}
+                fontFamily={currentThemeFontFamily}
                 sx={{ color: currentThemeFontColor, textShadow: '1px 1px 3px rgba(0, 0, 0, 0.30);' }}
               >
                 <Box onClick={() => handleChangeSeries(window.localStorage.getItem(`defaultsearch${user?.sub}`) || '_universal')}>
