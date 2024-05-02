@@ -112,7 +112,7 @@ export default function FramePage({ shows = [] }) {
   /* -------------------------------------------------------------------------- */
 
   const FontSelector = ({ selectedFont, onSelectFont }) => {
-    const fonts = ["Arial", "Courier New", "Georgia", "Verdana", "Akbar"];
+    const fonts = ["Arial", "Courier New", "Georgia", "Verdana", "Futurama"];
     return (
       <Select
         value={selectedFont}
