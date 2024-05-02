@@ -11,6 +11,7 @@ import { ReportProblem, Settings } from '@mui/icons-material';
 import InfiniteScroll from 'react-infinite-scroll-component';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@emotion/react';
+import sanitizeHtml from 'sanitize-html';
 import useSearchDetails from '../hooks/useSearchDetails';
 import IpfsSearchBar from '../sections/search/ipfs-search-bar';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
@@ -645,6 +646,10 @@ export default function SearchPage() {
               {newResults.slice(0, displayedResults).map((result, index) => {
                 const resultId = `${result.season}-${result.episode}-${result.subtitle_index}`;
                 const isMediaLoaded = videoLoadedStates[resultId] || false;
+                const sanitizedSubtitleText = sanitizeHtml(result.subtitle_text, {
+                  allowedTags: [], // Allow no tags
+                  allowedAttributes: {}, // Allow no attributes
+                });
 
                 return (
                   <Grid item xs={12} sm={6} md={3} key={index} className="result-item" data-result-index={index}>
@@ -689,7 +694,7 @@ export default function SearchPage() {
                               />
                             </StyledCardImageContainer>
                           )}
-                          <BottomCardCaption>{result.subtitle_text}</BottomCardCaption>
+                          <BottomCardCaption>{sanitizedSubtitleText}</BottomCardCaption>
                           <BottomCardLabel>
                             <Chip
                               size="small"
