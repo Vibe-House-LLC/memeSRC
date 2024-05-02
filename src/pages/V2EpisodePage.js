@@ -6,7 +6,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { CircularProgress, Container, Typography, Card, CardMedia, CardContent, Button, Grid, useMediaQuery, Box, List, ListItem, ListItemAvatar, Avatar, ListItemText, Skeleton } from '@mui/material';
 import PropTypes from 'prop-types';
 import { Storage } from "aws-amplify";
-import * as sanitizeHtml from 'sanitize-html';
+import sanitizeHtml from 'sanitize-html';
 import { extractVideoFrames } from '../utils/videoFrameExtractor';
 import { UserContext } from '../UserContext';
 import getV2Metadata from '../utils/getV2Metadata';
@@ -64,11 +64,20 @@ export default function V2EpisodePage({ setSeriesTitle }) {
 
         const parsedSubtitles = subtitlesCsv.split('\n').slice(1).map(line => {
           const parts = line.split(',');
-          const decodedSubtitle = Buffer.from(parts[3], 'base64').toString();
-          const sanitizedSubtitle = sanitizeHtml(decodedSubtitle, {
-            allowedTags: [],
-            allowedAttributes: {},
-          });
+          const subtitleText = parts[3] || '';
+          let decodedSubtitle = '';
+          let sanitizedSubtitle = '';
+
+          try {
+            decodedSubtitle = Buffer.from(subtitleText, 'base64').toString();
+            sanitizedSubtitle = sanitizeHtml(decodedSubtitle, {
+              allowedTags: [],
+              allowedAttributes: {},
+            });
+          } catch (error) {
+            console.error('Error decoding subtitle:', error);
+          }
+
           return {
             season: parts[0],
             episode: parts[1],
