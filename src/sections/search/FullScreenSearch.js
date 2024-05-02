@@ -12,7 +12,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import { UserContext } from '../../UserContext';
 import useSearchDetails from '../../hooks/useSearchDetails';
 import { searchPropTypes } from './SearchPropTypes';
-import Logo from '../../components/logo/Logo';
+// import Logo from '../../components/logo/Logo';
 import { contentMetadataByStatus, listContentMetadata, listFavorites, listHomepageSections } from '../../graphql/queries';
 import HomePageSection from './HomePageSection';
 import HomePageBannerAd from '../../ads/HomePageBannerAd';
@@ -24,6 +24,7 @@ import { useSubscribeDialog } from '../../contexts/useSubscribeDialog';
 import EditorUpdates from '../../components/v2-feature-section/sections/editor-updates';
 import PlatformUpdates from '../../components/v2-feature-section/sections/platform-updates';
 import MemeSrcPro from '../../components/v2-feature-section/sections/memesrc-pro';
+import Logo from '../../logo/logo';
 
 const seriesOptions = [
   { id: '_universal', title: 'All Shows & Movies', emoji: '🌈' },
@@ -577,9 +578,15 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                 sx={{ color: currentThemeFontColor, textShadow: '1px 1px 3px rgba(0, 0, 0, 0.30);' }}
               >
                 <Box onClick={() => handleChangeSeries(window.localStorage.getItem(`defaultsearch${user?.sub}`) || '_universal')}>
-                  <Logo
+                  {/* <Logo
                     sx={{ display: 'inline', width: '130px', height: 'auto', margin: '-18px', color: 'yellow' }}
                     color="white"
+                  /> */}
+
+                  <Box
+                    component="img"
+                    src={Logo({ color: currentThemeFontColor || 'white' })}
+                    sx={{ objectFit: 'contain', cursor: 'pointer', display: 'inline', width: '130px', height: 'auto', margin: '-18px', color: 'yellow' }}
                   />
                 </Box>
                 {`${currentThemeTitleText} ${currentThemeTitleText === 'memeSRC' ? (user?.userDetails?.magicSubscription === 'true' ? 'Pro' : '') : ''}`}

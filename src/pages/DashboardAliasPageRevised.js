@@ -157,6 +157,7 @@ const AliasManagementPageRevised = () => {
 
   const refreshMetadata = (metadataId) => {
     setRefreshingMetadata(metadataId)
+    console.log(metadataId)
     Storage.get(`src/${metadataId}/00_metadata.json`, { level: 'public', download: true, customPrefix: { public: 'protected/' } }).then(response => {
       response.Body.text().then(async resultString => {
         console.log(resultString)
