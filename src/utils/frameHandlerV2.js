@@ -1,6 +1,6 @@
 import { Buffer } from "buffer";
 import { Storage } from "aws-amplify";
-import * as sanitizeHtml from 'sanitize-html';
+import sanitizeHtml from 'sanitize-html';
 import { extractVideoFrames } from './videoFrameExtractor';
 
 // Utility function to fetch JSON data from a given URL

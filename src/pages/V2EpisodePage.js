@@ -6,7 +6,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { CircularProgress, Container, Typography, Card, CardMedia, CardContent, Button, Grid, useMediaQuery, Box, List, ListItem, ListItemAvatar, Avatar, ListItemText, Skeleton } from '@mui/material';
 import PropTypes from 'prop-types';
 import { Storage } from "aws-amplify";
-import * as sanitizeHtml from 'sanitize-html';
+import sanitizeHtml from 'sanitize-html';
 import { extractVideoFrames } from '../utils/videoFrameExtractor';
 import { UserContext } from '../UserContext';
 import getV2Metadata from '../utils/getV2Metadata';
@@ -64,11 +64,25 @@ export default function V2EpisodePage({ setSeriesTitle }) {
 
         const parsedSubtitles = subtitlesCsv.split('\n').slice(1).map(line => {
           const parts = line.split(',');
+          const subtitleText = parts[3] || '';
+          let decodedSubtitle = '';
+          let sanitizedSubtitle = '';
+
+          try {
+            decodedSubtitle = Buffer.from(subtitleText, 'base64').toString();
+            sanitizedSubtitle = sanitizeHtml(decodedSubtitle, {
+              allowedTags: [],
+              allowedAttributes: {},
+            });
+          } catch (error) {
+            console.error('Error decoding subtitle:', error);
+          }
+
           return {
             season: parts[0],
             episode: parts[1],
             subtitle_index: parseInt(parts[2], 10),
-            subtitle_text: parts[3],
+            subtitle_text: sanitizedSubtitle,
             start_frame: parseInt(parts[4], 10),
             end_frame: parseInt(parts[5], 10),
           };
@@ -102,14 +116,10 @@ export default function V2EpisodePage({ setSeriesTitle }) {
         const frameResults = frameIndexes.map((frameId, index) => {
           const frameUrl = frames[index];
           const subtitle = subtitles.find(sub => frameId >= sub.start_frame && frameId <= sub.end_frame);
-          const sanitizedSubtitle = subtitle ? sanitizeHtml(Buffer.from(subtitle.subtitle_text, 'base64').toString(), {
-            allowedTags: [],
-            allowedAttributes: {},
-          }) : null;
           return {
             fid: frameId.toString(),
             frame_image: frameUrl,
-            subtitle: sanitizedSubtitle,
+            subtitle: subtitle ? subtitle.subtitle_text : null,
             timecode: formatTimecode(frameId, fps),
           };
         });
@@ -143,14 +153,10 @@ export default function V2EpisodePage({ setSeriesTitle }) {
     const frameResults = frameIndexes.map((frameId, index) => {
       const frameUrl = frames[index];
       const subtitle = subtitles.find(sub => frameId >= sub.start_frame && frameId <= sub.end_frame);
-      const sanitizedSubtitle = subtitle ? sanitizeHtml(Buffer.from(subtitle.subtitle_text, 'base64').toString(), {
-        allowedTags: [],
-        allowedAttributes: {},
-      }) : null;
       return {
         fid: frameId.toString(),
         frame_image: frameUrl,
-        subtitle: sanitizedSubtitle,
+        subtitle: subtitle ? subtitle.subtitle_text : null,
         timecode: formatTimecode(frameId, fps),
       };
     });
@@ -294,7 +300,7 @@ export default function V2EpisodePage({ setSeriesTitle }) {
                   </Box>
                   <CardContent sx={{ backgroundColor: '#1f1f1f', padding: '16px' }}>
                     <Typography variant="subtitle1" color="textPrimary" style={{ marginBottom: '8px', minHeight: '3em' }}>
-                      {result.subtitle ? Buffer.from(result.subtitle, 'base64').toString() : '(...)'}
+                      {result.subtitle || '(...)'}
                     </Typography>
                     <Typography variant="caption" color="textSecondary">
                       Timecode: {result.timecode}
