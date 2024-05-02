@@ -64,11 +64,16 @@ export default function V2EpisodePage({ setSeriesTitle }) {
 
         const parsedSubtitles = subtitlesCsv.split('\n').slice(1).map(line => {
           const parts = line.split(',');
+          const decodedSubtitle = Buffer.from(parts[3], 'base64').toString();
+          const sanitizedSubtitle = sanitizeHtml(decodedSubtitle, {
+            allowedTags: [],
+            allowedAttributes: {},
+          });
           return {
             season: parts[0],
             episode: parts[1],
             subtitle_index: parseInt(parts[2], 10),
-            subtitle_text: parts[3],
+            subtitle_text: sanitizedSubtitle,
             start_frame: parseInt(parts[4], 10),
             end_frame: parseInt(parts[5], 10),
           };
@@ -102,14 +107,10 @@ export default function V2EpisodePage({ setSeriesTitle }) {
         const frameResults = frameIndexes.map((frameId, index) => {
           const frameUrl = frames[index];
           const subtitle = subtitles.find(sub => frameId >= sub.start_frame && frameId <= sub.end_frame);
-          const sanitizedSubtitle = subtitle ? sanitizeHtml(Buffer.from(subtitle.subtitle_text, 'base64').toString(), {
-            allowedTags: [],
-            allowedAttributes: {},
-          }) : null;
           return {
             fid: frameId.toString(),
             frame_image: frameUrl,
-            subtitle: sanitizedSubtitle,
+            subtitle: subtitle ? subtitle.subtitle_text : null,
             timecode: formatTimecode(frameId, fps),
           };
         });
@@ -143,14 +144,10 @@ export default function V2EpisodePage({ setSeriesTitle }) {
     const frameResults = frameIndexes.map((frameId, index) => {
       const frameUrl = frames[index];
       const subtitle = subtitles.find(sub => frameId >= sub.start_frame && frameId <= sub.end_frame);
-      const sanitizedSubtitle = subtitle ? sanitizeHtml(Buffer.from(subtitle.subtitle_text, 'base64').toString(), {
-        allowedTags: [],
-        allowedAttributes: {},
-      }) : null;
       return {
         fid: frameId.toString(),
         frame_image: frameUrl,
-        subtitle: sanitizedSubtitle,
+        subtitle: subtitle ? subtitle.subtitle_text : null,
         timecode: formatTimecode(frameId, fps),
       };
     });
@@ -294,7 +291,7 @@ export default function V2EpisodePage({ setSeriesTitle }) {
                   </Box>
                   <CardContent sx={{ backgroundColor: '#1f1f1f', padding: '16px' }}>
                     <Typography variant="subtitle1" color="textPrimary" style={{ marginBottom: '8px', minHeight: '3em' }}>
-                      {result.subtitle ? Buffer.from(result.subtitle, 'base64').toString() : '(...)'}
+                      {result.subtitle || '(...)'}
                     </Typography>
                     <Typography variant="caption" color="textSecondary">
                       Timecode: {result.timecode}
