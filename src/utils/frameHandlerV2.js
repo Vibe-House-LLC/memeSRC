@@ -1,5 +1,6 @@
 import { Buffer } from "buffer";
 import { Storage } from "aws-amplify";
+import sanitizeHtml from 'sanitize-html';
 import { extractVideoFrames } from './videoFrameExtractor';
 
 // Utility function to fetch JSON data from a given URL
@@ -32,8 +33,12 @@ const findSubtitleForFrame = (csvData, season, episode, frame) => {
       frame >= parseInt(startFrame, 10) &&
       frame <= parseInt(endFrame, 10)
     ) {
-      const subtitleText = Buffer.from(encodedSubtitleText, 'base64').toString(); // Decode subtitle text from base64
-      return { subtitle: subtitleText, index: i }; // Return decoded text and index
+      let subtitleText = Buffer.from(encodedSubtitleText, 'base64').toString(); // Decode subtitle text from base64
+      subtitleText = sanitizeHtml(subtitleText, {
+        allowedTags: [], // Allow no tags
+        allowedAttributes: {}, // Allow no attributes
+      });
+      return { subtitle: subtitleText, index: i }; // Return sanitized text and index
     }
   }
   return { subtitle: null, index: -1 }; // Return null and -1 if not found
