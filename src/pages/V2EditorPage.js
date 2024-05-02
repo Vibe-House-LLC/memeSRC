@@ -71,7 +71,7 @@ const StyledCardMedia = styled('img')`
 
 
 
-const EditorPage = ({ setSeriesTitle, shows }) => {
+const EditorPage = ({ shows }) => {
   const searchDetails = useSearchDetails();
   const [hasFabricPaths, setHasFabricPaths] = useState(false);
   const [openNavWithoutSavingDialog, setOpenNavWithoutSavingDialog] = useState(false);
@@ -172,13 +172,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   useEffect(() => {
     setFineTuningValue(searchDetails.fineTuningFrame);
   }, [searchDetails])
-
-  useEffect(() => {
-    if (shows?.length > 0) {
-      // console.log(loadedSeriesTitle);
-      setSeriesTitle(loadedSeriesTitle);
-    }
-  }, [shows, loadedSeriesTitle])
 
   const { selectedObjects, editor, onReady } = useFabricJSEditor()
 

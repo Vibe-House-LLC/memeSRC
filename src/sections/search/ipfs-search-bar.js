@@ -108,7 +108,7 @@ export default function IpfsSearchBar(props) {
 
   useEffect(() => {
     if (!cid) {
-      setCid('_universal')
+      setCid(params?.seriesId || window.localStorage.getItem(`defaultsearch${user?.sub}`) || '_universal')
     }
   }, [cid]);
 

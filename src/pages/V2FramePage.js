@@ -1278,19 +1278,17 @@ useEffect(() => {
             </Button>
             }
 
-            {!showText &&
               <Button
                 size="medium"
                 fullWidth
                 variant="contained"
-                to={`/editor/${cid}/${season}/${episode}/${frame}${(fineTuningIndex || fineTuningLoadStarted) ? `/${selectedFrameIndex}` : ''}`}
+                to={`/editor/${cid}/${season}/${episode}/${frame}${(fineTuningIndex || fineTuningLoadStarted) ? `/${selectedFrameIndex}` : ''}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`}
                 component={RouterLink}
                 sx={{ my: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
                 startIcon={<Edit />}
               >
                 Advanced Editor
               </Button>
-            }
           </Grid>
           <Grid item xs={12} md={6}>
             <Card sx={{ mt: 0 }}>
@@ -1458,7 +1456,7 @@ useEffect(() => {
               <Button
                 variant="contained"
                 fullWidth
-                href={`/episode/${cid}/${season}/${episode}/${frame}`}
+                href={`/episode/${cid}/${season}/${episode}/${frame}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`}
               >
                 View Episode
               </Button>
