@@ -4,7 +4,7 @@ import styled from "@emotion/styled";
 import { Link, Fab, FormControl, Grid, InputBase, MenuItem, Select, Typography, Divider, Box, Stack, Container, ListSubheader } from "@mui/material";
 import { ArrowBack, Close, Favorite, MapsUgc, Search, Shuffle } from "@mui/icons-material";
 import { API, graphqlOperation } from 'aws-amplify';
-import { useCallback, useContext, useEffect, useRef, useState } from "react";
+import { Children, cloneElement, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { LoadingButton } from "@mui/lab";
 import { Outlet, Link as RouterLink, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { searchPropTypes } from "./SearchPropTypes";
@@ -200,7 +200,7 @@ export default function IpfsSearchBar(props) {
   const searchFunction = (searchEvent) => {
     searchEvent?.preventDefault();
     console.log(search)
-    navigate(`/search/${cid}/${encodeURIComponent(search)}`)
+    navigate(`/search/${cid}/?searchTerm=${encodeURIComponent(search)}`)
     return false
   }
 
@@ -384,7 +384,9 @@ export default function IpfsSearchBar(props) {
           </Box>
         </Container>
       }
-      {props.children}
+      {Children.map(props.children, (child) => {
+        return cloneElement(child, { shows });
+      })}
       <StyledLeftFooter className="bottomBtn">
         <a href="https://forms.gle/8CETtVbwYoUmxqbi7" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
           <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black", zIndex: '1300' }} size='medium'>
