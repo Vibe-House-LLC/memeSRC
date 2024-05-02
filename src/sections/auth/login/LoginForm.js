@@ -44,69 +44,75 @@ export default function LoginForm() {
 
   const loginForm = useRef();
 
-  const { setUser, login } = useContext(UserContext)
+  const { setUser } = useContext(UserContext)
 
   // Use the useLocation hook to get the location object
   const location = useLocation();
   const queryString = location.search;
   const queryParams = new URLSearchParams(queryString);
   const dest = queryParams.get('dest');
-
   const handleClick = () => {
-  setLoading(true);
+    setLoading(true);
 
-  if (username && password) {
-    login(username, password)
-      .then((user) => {
-        navigate(dest ? decodeURIComponent(dest) : '/', { replace: true });
-      })
-      .catch((error) => {
-        console.log(error.name);
+    // TODO: Get the session/local storage thing figured out. Currently if it's set to session, if you manually go to another page on the site it logs you out.
+
+    // Handle sign in
+    // if (!staySignedIn) {
+    //   Auth.configure({ storage: window.sessionStorage })
+    // } else {
+    //   Auth.configure({ storage: window.localStorage })
+    // }
+
+
+    if (username && password) {
+      Auth.signIn(username, password).then((x) => {
+        API.post('publicapi', '/user/update/status').then(response => {
+          setUser(x)
+          navigate(dest ? decodeURIComponent(dest) : '/', { replace: true })
+        })
+      }).catch((error) => {
+        console.log(error.name)
 
         switch (error.name) {
           case 'UserNotConfirmedException':
             setUser({
               userConfirmed: false,
-              username,
+              username
             });
             setOpen(true);
             setMessage('Please verify your account.');
             setSeverity('error');
             navigate('/verify');
-            setLoading(false);
+            setLoading(false)
             break;
           case 'UserNotFoundException':
             setOpen(true);
             setMessage('Account not found. Please try again.');
-            setSeverity('error');
+            setSeverity('error')
             setFormErrors({
               ...formErrors,
-              username: true,
-            });
-            setLoading(false);
+              username: true
+            })
+            setLoading(false)
             break;
           default:
             setOpen(true);
             setMessage(`Error: ${error.message}`);
-            setSeverity('error');
-            setLoading(false);
+            setSeverity('error')
+            setLoading(false)
         }
-      });
-  } else {
-    setFormErrors({
-      username: !username,
-      password: !password,
-    });
-    setOpen(true);
-    setMessage(
-      `${username ? '' : 'Username'}${!username && !password ? ' & ' : ''}${
-        password ? '' : 'Password'
-      } required.`
-    );
-    setSeverity('error');
-    setLoading(false);
-  }
-};
+      })
+    } else {
+      setFormErrors({
+        username: (!username),
+        password: (!password)
+      })
+      setOpen(true);
+      setMessage(`${username ? '' : 'Username'}${(!username && !password) ? ' & ' : ''}${password ? '' : 'Password'} required.`);
+      setSeverity('error')
+      setLoading(false)
+    }
+  };
 
   return (
     <>
