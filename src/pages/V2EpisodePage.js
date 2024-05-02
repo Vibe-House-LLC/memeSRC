@@ -6,6 +6,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { CircularProgress, Container, Typography, Card, CardMedia, CardContent, Button, Grid, useMediaQuery, Box, List, ListItem, ListItemAvatar, Avatar, ListItemText, Skeleton } from '@mui/material';
 import PropTypes from 'prop-types';
 import { Storage } from "aws-amplify";
+import * as sanitizeHtml from 'sanitize-html';
 import { extractVideoFrames } from '../utils/videoFrameExtractor';
 import { UserContext } from '../UserContext';
 import getV2Metadata from '../utils/getV2Metadata';
@@ -101,10 +102,14 @@ export default function V2EpisodePage({ setSeriesTitle }) {
         const frameResults = frameIndexes.map((frameId, index) => {
           const frameUrl = frames[index];
           const subtitle = subtitles.find(sub => frameId >= sub.start_frame && frameId <= sub.end_frame);
+          const sanitizedSubtitle = subtitle ? sanitizeHtml(Buffer.from(subtitle.subtitle_text, 'base64').toString(), {
+            allowedTags: [],
+            allowedAttributes: {},
+          }) : null;
           return {
             fid: frameId.toString(),
             frame_image: frameUrl,
-            subtitle: subtitle ? subtitle.subtitle_text : null,
+            subtitle: sanitizedSubtitle,
             timecode: formatTimecode(frameId, fps),
           };
         });
@@ -138,10 +143,14 @@ export default function V2EpisodePage({ setSeriesTitle }) {
     const frameResults = frameIndexes.map((frameId, index) => {
       const frameUrl = frames[index];
       const subtitle = subtitles.find(sub => frameId >= sub.start_frame && frameId <= sub.end_frame);
+      const sanitizedSubtitle = subtitle ? sanitizeHtml(Buffer.from(subtitle.subtitle_text, 'base64').toString(), {
+        allowedTags: [],
+        allowedAttributes: {},
+      }) : null;
       return {
         fid: frameId.toString(),
         frame_image: frameUrl,
-        subtitle: subtitle ? subtitle.subtitle_text : null,
+        subtitle: sanitizedSubtitle,
         timecode: formatTimecode(frameId, fps),
       };
     });
