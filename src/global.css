@@ -2,3 +2,8 @@
     font-family: 'Akbar';
     src: url('./fonts/akbar.ttf') format('truetype');
 }
+
+@font-face {
+    font-family: 'Futurama';
+    src: url('./fonts/fr-bold.ttf') format('truetype');
+}
