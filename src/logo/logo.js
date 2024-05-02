@@ -1,9 +1,10 @@
 import React from 'react';
 import { lighten, darken } from '@mui/material/styles';
+import colorToHex from '../utils/colorToHex';
 
 const Logo = ({ color = '#FFFFFF' }) => {
-  const colorStop1 = lighten(color, 0.2);
-  const colorStop2 = darken(color, 0.1);
+  const colorStop1 = lighten(colorToHex(color), 0.2);
+  const colorStop2 = darken(colorToHex(color), 0.1);
 
   const svgString = encodeURIComponent(`
     <svg
