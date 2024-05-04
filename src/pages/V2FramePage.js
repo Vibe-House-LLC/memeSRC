@@ -1296,7 +1296,7 @@ useEffect(() => {
               </Button>
           </Grid>
           {user?.userDetails?.subscriptionStatus !== 'active' &&
-            <Grid item xs={12} my={2}>
+            <Grid item xs={12} my={1}>
               <center>
                 <Box sx={{ maxWidth: '800px' }}>
                   <HomePageBannerAd />
