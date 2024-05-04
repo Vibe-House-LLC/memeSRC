@@ -368,6 +368,9 @@ export default function FramePage({ shows = [] }) {
           setLoadedSubtitle(initialInfo.subtitle);
           setLoadedSeason(season);
           setLoadedEpisode(episode);
+          if (initialInfo.fontFamily && fonts.includes(initialInfo.fontFamily)) {
+            setFontFamily(initialInfo.fontFamily);
+          }        
         } catch (error) {
           console.error("Failed to fetch initial frame info:", error);
         } finally {
