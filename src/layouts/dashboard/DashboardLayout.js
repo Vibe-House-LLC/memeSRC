@@ -219,7 +219,7 @@ export default function DashboardLayout() {
 
   return (
     <>
-      {user?.userDetails?.magicSubscription !== 'true' && !isAdDismissed && (
+      {/* {user?.userDetails?.magicSubscription !== 'true' && !isAdDismissed && (
         <AdSpace ref={adSpaceRef} onClick={openSubscriptionDialog}>
           <Box display="flex" alignItems="center" justifyContent="space-between" width="100%">
             <Box display="flex" alignItems="center">
@@ -276,7 +276,7 @@ export default function DashboardLayout() {
             </Box>
           </Box>
         </AdSpace>
-      )}
+      )} */}
       <StyledDialog open={dismissDialogOpen} onClose={handleCancelDismiss}>
         <StyledDialogTitle>Will you reconsider?</StyledDialogTitle>
         <StyledDialogContent>
