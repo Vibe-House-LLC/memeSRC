@@ -782,7 +782,7 @@ export default function SearchPage() {
               <Grid item xs={12} key={show.id}>
                 <Card
                   onClick={() => {
-                    window.location.href = `/search/${show.cid}/${searchQuery || ''}`;
+                    window.location.href = `/search/${show.cid}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`;
                   }}
                   sx={{
                     backgroundColor: show.colorMain,

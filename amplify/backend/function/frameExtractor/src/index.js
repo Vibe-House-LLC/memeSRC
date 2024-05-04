@@ -43,7 +43,7 @@ exports.handler = async (event) => {
     const internalFrameIndex = ((frameNumber - 1) % (CHUNK_DURATION * FPS)) / FPS;
 
     const bucketName = process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME;
-    const objectKey = `src/${index}/${season}/${episode}/${fileIndex}.mp4`;
+    const objectKey = `protected/src/${index}/${season}/${episode}/${fileIndex}.mp4`;
     const videoFile = path.join('/tmp', `video-${Date.now()}.mp4`);
     const outputFile = path.join('/tmp', `frame-${Date.now()}.jpg`);
 
