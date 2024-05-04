@@ -1370,22 +1370,22 @@ const EditorPage = ({ shows }) => {
       <Container maxWidth='xl' disableGutters>
         <ParentContainer sx={{ padding: { xs: 1.5, md: 2 } }} id="parent-container">
 
+          {user?.userDetails?.subscriptionStatus !== 'active' &&
+            <Grid container>
+              <Grid item xs={12} mt={2}>
+                <center>
+                  <Box sx={{ maxWidth: '800px' }}>
+                    <EditorPageBottomBannerAd />
+                  </Box>
+                </center>
+              </Grid>
+            </Grid>
+          }
+
           <Card sx={{ padding: { xs: 1.5, md: 2 } }}>
             <Grid container spacing={2}>
 
               {/* Editor */}
-
-              {user?.userDetails?.subscriptionStatus !== 'active' &&
-                <Grid container>
-                  <Grid item xs={12} mt={2}>
-                    <center>
-                      <Box sx={{ maxWidth: '800px' }}>
-                        <EditorPageBottomBannerAd />
-                      </Box>
-                    </center>
-                  </Grid>
-                </Grid>
-              }
 
               <Grid item xs={12} md={7} lg={7} marginRight={{ xs: '', md: 'auto' }}>
                 <Grid container item mb={1.5}>
@@ -1763,7 +1763,7 @@ const EditorPage = ({ shows }) => {
                 </Grid>
 
                 {user?.userDetails?.subscriptionStatus !== 'active' &&
-                  <Grid item xs={12} mt={2} mb={-8}>
+                  <Grid item xs={12} my={2}>
                     <center>
                       <Box sx={{ maxWidth: '800px' }}>
                         <HomePageBannerAd />
