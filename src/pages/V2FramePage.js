@@ -109,10 +109,11 @@ export default function FramePage({ shows = [] }) {
 
   const isSm = useMediaQuery((theme) => theme.breakpoints.down('md'));
 
+  const fonts = ["Arial", "Courier New", "Georgia", "Verdana", "Akbar"];
+
   /* -------------------------------------------------------------------------- */
 
   const FontSelector = ({ selectedFont, onSelectFont }) => {
-    const fonts = ["Arial", "Courier New", "Georgia", "Verdana"];
     return (
       <Select
         value={selectedFont}
@@ -367,6 +368,9 @@ export default function FramePage({ shows = [] }) {
           setLoadedSubtitle(initialInfo.subtitle);
           setLoadedSeason(season);
           setLoadedEpisode(episode);
+          if (initialInfo.fontFamily && fonts.includes(initialInfo.fontFamily)) {
+            setFontFamily(initialInfo.fontFamily);
+          }        
         } catch (error) {
           console.error("Failed to fetch initial frame info:", error);
         } finally {
