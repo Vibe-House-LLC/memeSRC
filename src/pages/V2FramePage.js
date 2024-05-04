@@ -55,6 +55,7 @@ import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
 import getV2Metadata from '../utils/getV2Metadata';
 import FramePageBottomBannerAd from '../ads/FramePageBottomBannerAd';
 import { UserContext } from '../UserContext';
+import HomePageBannerAd from '../ads/HomePageBannerAd';
 
 // import { listGlobalMessages } from '../../../graphql/queries'
 
@@ -1294,6 +1295,15 @@ useEffect(() => {
                 Advanced Editor
               </Button>
           </Grid>
+          {user?.userDetails?.subscriptionStatus !== 'active' &&
+            <Grid item xs={12} mt={2} mb={-8}>
+              <center>
+                <Box sx={{ maxWidth: '800px' }}>
+                  <HomePageBannerAd />
+                </Box>
+              </center>
+            </Grid>
+          }
           <Grid item xs={12} md={6}>
             <Card sx={{ mt: 0 }}>
               <Accordion expanded={subtitlesExpanded} disableGutters>
