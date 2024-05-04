@@ -109,10 +109,11 @@ export default function FramePage({ shows = [] }) {
 
   const isSm = useMediaQuery((theme) => theme.breakpoints.down('md'));
 
+  const fonts = ["Arial", "Courier New", "Georgia", "Verdana", "Akbar"];
+
   /* -------------------------------------------------------------------------- */
 
   const FontSelector = ({ selectedFont, onSelectFont }) => {
-    const fonts = ["Arial", "Courier New", "Georgia", "Verdana"];
     return (
       <Select
         value={selectedFont}
