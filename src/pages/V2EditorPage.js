@@ -27,6 +27,7 @@ import EditorPageBottomBannerAd from '../ads/EditorPageBottomBannerAd';
 
 import { fetchFrameInfo, fetchFramesFineTuning, fetchFramesSurroundingPromises } from '../utils/frameHandlerV2';
 import getV2Metadata from '../utils/getV2Metadata';
+import HomePageBannerAd from '../ads/HomePageBannerAd';
 
 const Alert = forwardRef((props, ref) => <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />);
 
@@ -1369,6 +1370,18 @@ const EditorPage = ({ shows }) => {
       <Container maxWidth='xl' disableGutters>
         <ParentContainer sx={{ padding: { xs: 1.5, md: 2 } }} id="parent-container">
 
+          {user?.userDetails?.subscriptionStatus !== 'active' &&
+            <Grid container>
+              <Grid item xs={12} mt={2}>
+                <center>
+                  <Box sx={{ maxWidth: '800px' }}>
+                    <EditorPageBottomBannerAd />
+                  </Box>
+                </center>
+              </Grid>
+            </Grid>
+          }
+
           <Card sx={{ padding: { xs: 1.5, md: 2 } }}>
             <Grid container spacing={2}>
 
@@ -1748,6 +1761,17 @@ const EditorPage = ({ shows }) => {
                     Save/Copy/Share
                   </Button>
                 </Grid>
+
+                {user?.userDetails?.subscriptionStatus !== 'active' &&
+                  <Grid item xs={12} my={2}>
+                    <center>
+                      <Box sx={{ maxWidth: '800px' }}>
+                        <HomePageBannerAd />
+                      </Box>
+                    </center>
+                  </Grid>
+                }
+
                 {surroundingFrames && surroundingFrames.length > 0 && (
                   <Card sx={{ my: 2 }}>
                     <Accordion expanded={subtitlesExpanded} disableGutters>
