@@ -10,7 +10,7 @@ import SnackBar from './utils/Snackbar';
 import StripeWatcher from './utils/StripeWatcher';
 import { V2SearchDetailsProvider } from './contexts/V2SearchDetailsProvider';
 import { DialogProvider } from './contexts/SubscribeDialog';
-import FeatureSectionPopover from './components/v2-feature-section/v2-feature-section-popover';
+// import FeatureSectionPopover from './components/v2-feature-section/v2-feature-section-popover';
 // import AutoAdWrapper from './ads/AutoAdWrapper';
 // import FeaturePopover from './components/features-popover/featurePopover';
 // components
@@ -39,9 +39,9 @@ export default function App() {
           }>
             {/* <FeaturePopover> */}
             <SearchDetailsProvider>
-              <FeatureSectionPopover>
+              {/* <FeatureSectionPopover> */}
                 <Router />
-              </FeatureSectionPopover>
+              {/* </FeatureSectionPopover> */}
             </SearchDetailsProvider>
             {/* </FeaturePopover> */}
           </Suspense>
