@@ -90,6 +90,10 @@ exports.handler = async (event) => {
     const imageBuffer = fs.readFileSync(outputFile);
     const base64Image = imageBuffer.toString('base64');
 
+    // Clean up temporary files
+    fs.unlinkSync(videoFile);
+    fs.unlinkSync(outputFile);
+
     const lambdaResponse = {
       statusCode: 200,
       headers: {
