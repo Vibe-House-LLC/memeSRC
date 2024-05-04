@@ -207,6 +207,7 @@ const fetchFrameInfo = async (cid, season, episode, frame, options = {}) => {
       frames_surrounding: framesSurrounding,
       frames_fine_tuning: framesFineTuning,
       subtitles_surrounding: subtitlesSurrounding,
+      fontFamily: metadata.fontFamily || '',
       source: 'IPFS',
     };
   } catch (error) {
