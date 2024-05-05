@@ -591,7 +591,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                 </Box>
                 {`${currentThemeTitleText} ${currentThemeTitleText === 'memeSRC' ? (user?.userDetails?.magicSubscription === 'true' ? 'Pro' : '') : ''}`}
               </Typography>
-              {!localStorage.getItem('alertDismissed-PRO-REMOVE-ADS-y78ifu') && user?.userDetails?.magicSubscription !== 'true' && (
+              {/* {!localStorage.getItem('alertDismissed-PRO-REMOVE-ADS-y78ifu') && user?.userDetails?.magicSubscription !== 'true' && (
                 <center>
                   <Alert
                     severity="info"
@@ -630,7 +630,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                     <b>New:</b> Remove ads!
                   </Alert>
                 </center>
-              )}
+              )} */}
             </Grid>
           </Grid>
           <StyledSearchForm onSubmit={(e) => searchFunction(e)}>
