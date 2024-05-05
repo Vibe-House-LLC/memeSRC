@@ -54,12 +54,17 @@ const FontSelector = ({ selectedFont, onSelectFont, index }) => {
 export default function TextEditorControls(props) {
     const [formats, setFormats] = React.useState(() => ['bold']);
     const [editorVisible, setEditorVisible] = React.useState(false);
-    // const [layerFonts, setLayerFonts] = React.useState({});
 
     const handleFormat = (event, newFormats) => {
+        console.log("HANDLE FORMAT EVENT:", event)
+        console.log("HANDLE FORMAT newFormats:", newFormats)
         setFormats(newFormats);
         props.handleStyle(props.index, newFormats);
     };
+
+    React.useEffect(() => {
+        handleFormat({}, 'font')
+    }, [props.layerFonts])
 
     return (
         <div>
@@ -104,7 +109,9 @@ export default function TextEditorControls(props) {
                     </ToggleButtonGroup>
                     <FontSelector
                         selectedFont={props.layerFonts[props.index] || 'Arial'}
-                        onSelectFont={(font, index) => props.setLayerFonts({ ...props.layerFonts, [index]: font })}
+                        onSelectFont={(font, index) => {
+                            props.setLayerFonts({ ...props.layerFonts, [index]: font })
+                        }}
                         index={props.index}
                     />
                 </>

@@ -613,7 +613,7 @@ const EditorPage = ({ shows }) => {
     item.fontWeight = customStyles.includes('bold') ? 900 : 400
     item.fontStyle = customStyles.includes('italic') ? 'italic' : 'normal'
     item.underline = customStyles.includes('underlined')
-    item.fontFamily = layerFonts[index]
+    item.fontFamily = layerFonts[index] || 'Arial'
     // Update the canvas
     editor.canvas.item(index).dirty = true;
     setCanvasObjects([...editor.canvas._objects]);
