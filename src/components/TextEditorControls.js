@@ -21,6 +21,7 @@ TextEditorControls.propTypes = {
     showFontSizePicker: PropTypes.func,
     colorPickerShowing: PropTypes.bool,
     showColorPicker: PropTypes.func,
+    handleFontChange: PropTypes.func,
 };
 
 const fonts = ["Arial", "Courier New", "Georgia", "Verdana", "Akbar"];
@@ -59,10 +60,6 @@ export default function TextEditorControls(props) {
         setFormats(newFormats);
         props.handleStyle(props.index, newFormats);
     };
-
-    React.useEffect(() => {
-        handleFormat({}, 'font')
-    }, [props.layerFonts])
 
     return (
         <div>
@@ -109,6 +106,7 @@ export default function TextEditorControls(props) {
                         selectedFont={props.layerFonts[props.index] || 'Arial'}
                         onSelectFont={(font, index) => {
                             props.setLayerFonts({ ...props.layerFonts, [index]: font })
+                            props.handleFontChange(index, font)
                         }}
                         index={props.index}
                     />

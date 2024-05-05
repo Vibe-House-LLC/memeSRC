@@ -607,13 +607,26 @@ const EditorPage = ({ shows }) => {
 
 
   const handleStyle = (index, customStyles) => {
+    console.log("index, customStyles:", index, customStyles)
     // Select the item
     const item = editor.canvas.item(index);
     // Update the style
     item.fontWeight = customStyles.includes('bold') ? 900 : 400
     item.fontStyle = customStyles.includes('italic') ? 'italic' : 'normal'
     item.underline = customStyles.includes('underlined')
-    item.fontFamily = layerFonts[index] || 'Arial'
+    // Update the canvas
+    editor.canvas.item(index).dirty = true;
+    setCanvasObjects([...editor.canvas._objects]);
+    // console.log(editor.canvas.item(index));
+    editor?.canvas.renderAll();
+    addToHistory();
+  }
+
+  const handleFontChange = (index, font) => {
+    // Select the item
+    const item = editor.canvas.item(index);
+    // Update the style
+    item.fontFamily = font || 'Arial'
     // Update the canvas
     editor.canvas.item(index).dirty = true;
     setCanvasObjects([...editor.canvas._objects]);
@@ -1526,6 +1539,7 @@ const EditorPage = ({ shows }) => {
                                     showFontSizePicker={(event) => showFontSizePicker(event, index)}
                                     fontSizePickerShowing={fontSizePickerShowing}
                                     handleStyle={handleStyle}
+                                    handleFontChange={handleFontChange}
                                     layerFonts={layerFonts}
                                     setLayerFonts={setLayerFonts}
                                   />
