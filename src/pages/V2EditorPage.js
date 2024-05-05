@@ -613,6 +613,7 @@ const EditorPage = ({ shows }) => {
     item.fontWeight = customStyles.includes('bold') ? 900 : 400
     item.fontStyle = customStyles.includes('italic') ? 'italic' : 'normal'
     item.underline = customStyles.includes('underlined')
+    item.fontFamily = layerFonts[index]
     // Update the canvas
     editor.canvas.item(index).dirty = true;
     setCanvasObjects([...editor.canvas._objects]);
@@ -1176,6 +1177,7 @@ const EditorPage = ({ shows }) => {
   const [loadingFineTuning, setLoadingFineTuning] = useState(false);
   const [fineTuningLoadStarted, setFineTuningLoadStarted] = useState(false);
   const [fineTuningBlobs, setFineTuningBlobs] = useState([]);
+  const [layerFonts, setLayerFonts] = useState({})
 
   useEffect(() => {
     getV2Metadata(cid).then(metadata => {
@@ -1524,6 +1526,8 @@ const EditorPage = ({ shows }) => {
                                     showFontSizePicker={(event) => showFontSizePicker(event, index)}
                                     fontSizePickerShowing={fontSizePickerShowing}
                                     handleStyle={handleStyle}
+                                    layerFonts={layerFonts}
+                                    setLayerFonts={setLayerFonts}
                                   />
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
