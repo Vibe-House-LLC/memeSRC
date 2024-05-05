@@ -29,13 +29,11 @@ const FontSelector = ({ selectedFont, onSelectFont, index }) => {
     return (
       <Select
         value={selectedFont || 'Arial'}
-        onChange={(e) => {
-          onSelectFont(e.target.value, index);
-        }}
+        onChange={(e) => onSelectFont(e.target.value, index)}
         displayEmpty
         inputProps={{ 'aria-label': 'Without label' }}
         size='small'
-        startAdornment={<FontDownloadOutlined sx={{ mr: 0.5}} />}
+        startAdornment={<FontDownloadOutlined sx={{ mr: 0.5 }} />}
         sx={{
           '& .MuiSelect-select': {
             overflow: 'hidden',
@@ -49,7 +47,7 @@ const FontSelector = ({ selectedFont, onSelectFont, index }) => {
         ))}
       </Select>
     );
-  };
+};
 
 export default function TextEditorControls(props) {
     const [formats, setFormats] = React.useState(() => ['bold']);
