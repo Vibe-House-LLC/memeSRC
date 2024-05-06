@@ -640,7 +640,20 @@ const EditorPage = ({ shows }) => {
     setCanvasObjects([...editor.canvas._objects]);
     editor?.canvas.renderAll();
     addToHistory();
-  }
+  
+    // Update the layerFonts state by adjusting the index numbers
+    setLayerFonts((prevFonts) => {
+      const updatedFonts = {};
+      Object.entries(prevFonts).forEach(([layerIndex, font]) => {
+        if (parseInt(layerIndex, 10) < index) {
+          updatedFonts[layerIndex] = font;
+        } else if (parseInt(layerIndex, 10) > index) {
+          updatedFonts[parseInt(layerIndex, 10) - 1] = font;
+        }
+      });
+      return updatedFonts;
+    });
+  };
 
   // Function to move a layer up in the stack
   const moveLayerUp = (index) => {
@@ -1983,15 +1996,17 @@ const EditorPage = ({ shows }) => {
                   )}
                 </Grid>
               ))}
-              <Grid item xs={12}>
-                <Button
-                  variant="contained"
-                  fullWidth
-                  href={`/episode/${cid}/${season}/${episode}/${frame}`}
-                >
-                  View Episode
-                </Button>
-              </Grid>
+              {surroundingFrames?.length > 0 && (
+                <Grid item xs={12}>
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    href={`/episode/${cid}/${season}/${episode}/${frame}`}
+                  >
+                    View Episode
+                  </Button>
+                </Grid>
+              )}
             </Grid>
           </Card>
 
