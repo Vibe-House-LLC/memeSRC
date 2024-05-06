@@ -640,7 +640,20 @@ const EditorPage = ({ shows }) => {
     setCanvasObjects([...editor.canvas._objects]);
     editor?.canvas.renderAll();
     addToHistory();
-  }
+  
+    // Update the layerFonts state by adjusting the index numbers
+    setLayerFonts((prevFonts) => {
+      const updatedFonts = {};
+      Object.entries(prevFonts).forEach(([layerIndex, font]) => {
+        if (parseInt(layerIndex, 10) < index) {
+          updatedFonts[layerIndex] = font;
+        } else if (parseInt(layerIndex, 10) > index) {
+          updatedFonts[parseInt(layerIndex, 10) - 1] = font;
+        }
+      });
+      return updatedFonts;
+    });
+  };
 
   // Function to move a layer up in the stack
   const moveLayerUp = (index) => {
@@ -1190,7 +1203,7 @@ const EditorPage = ({ shows }) => {
   const [loadingFineTuning, setLoadingFineTuning] = useState(false);
   const [fineTuningLoadStarted, setFineTuningLoadStarted] = useState(false);
   const [fineTuningBlobs, setFineTuningBlobs] = useState([]);
-  const [layerFonts, setLayerFonts] = useState({"0": "Arial"})
+  const [layerFonts, setLayerFonts] = useState({})
 
   useEffect(() => {
     getV2Metadata(cid).then(metadata => {
