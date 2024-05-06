@@ -1190,7 +1190,7 @@ const EditorPage = ({ shows }) => {
   const [loadingFineTuning, setLoadingFineTuning] = useState(false);
   const [fineTuningLoadStarted, setFineTuningLoadStarted] = useState(false);
   const [fineTuningBlobs, setFineTuningBlobs] = useState([]);
-  const [layerFonts, setLayerFonts] = useState({})
+  const [layerFonts, setLayerFonts] = useState({"0": "Arial"})
 
   useEffect(() => {
     getV2Metadata(cid).then(metadata => {
@@ -1983,15 +1983,17 @@ const EditorPage = ({ shows }) => {
                   )}
                 </Grid>
               ))}
-              <Grid item xs={12}>
-                <Button
-                  variant="contained"
-                  fullWidth
-                  href={`/episode/${cid}/${season}/${episode}/${frame}`}
-                >
-                  View Episode
-                </Button>
-              </Grid>
+              {surroundingFrames?.length > 0 && (
+                <Grid item xs={12}>
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    href={`/episode/${cid}/${season}/${episode}/${frame}`}
+                  >
+                    View Episode
+                  </Button>
+                </Grid>
+              )}
             </Grid>
           </Card>
 
