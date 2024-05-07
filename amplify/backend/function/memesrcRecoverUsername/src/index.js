@@ -27,7 +27,6 @@ async function listAllUsers(userParams) {
         const { Users, PaginationToken } = await identity.listUsers(userParams).promise();
         users = users.concat(Users);
         paginationToken = PaginationToken;
-        console.log("Pulled another page");
     } while (paginationToken);
 
     return users;
@@ -55,9 +54,7 @@ async function sendEmail(toAddress, subject, body) {
 }
 
 exports.handler = async (event) => {
-    console.log(`EVENT: ${JSON.stringify(event)}`);
     const email = event["email"];
-
     if (email) {
         console.log(process.env.AUTH_MEMESRCC3C71449_USERPOOLID);
         console.log(`email = \"${email}\"`);
