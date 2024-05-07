@@ -54,7 +54,7 @@ async function sendEmail(toAddress, subject, body) {
 }
 
 exports.handler = async (event) => {
-    const email = event["email"];
+    const email = JSON.parse(event["body"]).email;
     if (email) {
         console.log(process.env.AUTH_MEMESRCC3C71449_USERPOOLID);
         console.log(`email = \"${email}\"`);
