@@ -237,6 +237,14 @@
           ],
           "category": "function",
           "resourceName": "memesrcGif"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcRecoverUsername"
         }
       ],
       "providerPlugin": "awscloudformation",
@@ -1008,6 +1016,22 @@
         {
           "category": "function",
           "resourceName": "memesrcRandom"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcRecoverUsername_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcRecoverUsername"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcRecoverUsername_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcRecoverUsername"
         }
       ]
     },

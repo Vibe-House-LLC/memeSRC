@@ -281,6 +281,13 @@
       "permissions": {
         "setting": "open"
       }
+    },
+    "/forgotusername": {
+      "name": "/forgotusername",
+      "lambdaFunction": "memesrcRecoverUsername",
+      "permissions": {
+        "setting": "open"
+      }
     }
   }
 }
