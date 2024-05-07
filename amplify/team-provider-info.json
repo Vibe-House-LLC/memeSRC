@@ -151,7 +151,7 @@
         },
         "memesrcRecoverUsername": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcRecoverUsername-6a6e33335830426d5839-build.zip"
+          "s3Key": "amplify-builds/memesrcRecoverUsername-4a44426e6954544a7167-build.zip"
         }
       },
       "storage": {
