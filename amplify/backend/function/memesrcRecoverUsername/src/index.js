@@ -25,7 +25,7 @@ async function listAllUsers(userParams) {
         const { Users, PaginationToken } = await identity.listUsers(userParams).promise();
         users = users.concat(Users);
         paginationToken = PaginationToken;
-        console.log("Pulled another page")
+        console.log("Pulled another page");
     } while (paginationToken);
 
     return users;
@@ -33,11 +33,11 @@ async function listAllUsers(userParams) {
 
 exports.handler = async (event) => {
     console.log(`EVENT: ${JSON.stringify(event)}`);
-    const email = event["email"]
+    const email = event["email"];
 
-    if (event.email) {
+    if (email) {
         console.log(process.env.AUTH_MEMESRCC3C71449_USERPOOLID);
-        console.log(`email = \"${email}\"`)
+        console.log(`email = \"${email}\"`);
         const userParams = {
             UserPoolId: process.env.AUTH_MEMESRCC3C71449_USERPOOLID,
             AttributesToGet: ['email'],
@@ -49,13 +49,18 @@ exports.handler = async (event) => {
             const filteredUsers = await listAllUsers(userParams);
 
             if (filteredUsers.length > 0) {
-                console.log(JSON.stringify(filteredUsers));
+                // Sort the users by the creation date in ascending order
+                filteredUsers.sort((a, b) => new Date(a.UserCreateDate) - new Date(b.UserCreateDate));
+                const userList = filteredUsers.map(user => ({
+                    Username: user.Username,
+                    UserCreateDate: user.UserCreateDate
+                }));
+                console.log(JSON.stringify(userList, null, 2));
             } else {
                 console.log("No users found with the provided email.");
             }
         } catch (error) {
             console.log({ error }, JSON.stringify(error));
-            // callback({ error }, null);
         }
     } else {
         console.log('FAILED: MissingParameters');
@@ -63,11 +68,6 @@ exports.handler = async (event) => {
 
     return {
         statusCode: 200,
-        //  Uncomment below to enable CORS requests
-        //  headers: {
-        //      "Access-Control-Allow-Origin": "*",
-        //      "Access-Control-Allow-Headers": "*"
-        //  },
         body: JSON.stringify('Hello from Lambda!'),
     };
 };
