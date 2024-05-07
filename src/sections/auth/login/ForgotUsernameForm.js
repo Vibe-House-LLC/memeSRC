@@ -5,6 +5,7 @@ import { API, Auth } from 'aws-amplify';
 import { useContext, useState } from 'react';
 import { UserContext } from '../../../UserContext';
 import { SnackbarContext } from '../../../SnackbarContext';
+import validateEmail from '../../../utils/validateEmail';
 
 const AutoFillTextField = styled(TextField)`
 input:-webkit-autofill,
@@ -26,48 +27,24 @@ export default function ResetPasswordForm(props) {
   const [loading, setLoading] = useState(false);
   const [backdropOpen, setBackdropOpen] = useState(false);
   const [resetSent, setResetSent] = useState(false);
-
-  // const handleResetPassword = () => {
-  //   setLoading(true)
-  //   alert("TODO...")
-  //   // Auth.forgotPassword(username)
-  //   //   .then(() => {
-  //   //     setLoading(false);
-  //   //     setSeverity('info');
-  //   //     setMessage(`Verification code sent to ${email}. Please check your email.`);
-  //   //     setOpen(true);
-  //   //     setResetSent(true)
-  //   //   })
-  //   //   .catch(err => {
-  //   //     setLoading(false);
-  //   //     console.log(err);
-  //   //     setSeverity('error');
-  //   //     setMessage(`Error: ${err.message}`);
-  //   //     setOpen(true);
-  //   //   });
-  // }
+  const [invalidEmail, setInvalidEmail] = useState(false);
 
   const handleRecoverUsernameSubmit = () => {
-    setLoading(true)
-    setTimeout(() => {
-      setLoading(false);
-      setResetSent(true);
-    }, 2000);
-    // Auth.forgotPasswordSubmit(username, code, password)
-    //   .then(() => {
-    //     setLoading(false);
-    //     setSeverity('success');
-    //     setMessage(`Password reset successfully! Please log in with your new password.`);
-    //     setOpen(true);
-    //     navigate('/login', { replace: true });
-    //   })
-    //   .catch(err => {
-    //     setLoading(false);
-    //     console.log(err);
-    //     setSeverity('error');
-    //     setMessage(`Error: ${err.message}`);
-    //     setOpen(true);
-    //   });
+    if (validateEmail(email)) {
+      setLoading(true)
+      API.post('publicapi', '/forgotusername', { body: { email } }).then(response => {
+        setLoading(false);
+        setResetSent(true);
+      }).catch(err => {
+        setLoading(false);
+        setResetSent(true);
+        setSeverity('error');
+        setMessage("Something went wrong. Please try again.");
+        setOpen(true);
+      })
+    } else {
+      setInvalidEmail(true)
+    }
   }
 
   return (
@@ -83,11 +60,22 @@ export default function ResetPasswordForm(props) {
           </Typography>
           <Stack spacing={3} marginBottom={3}>
             <AutoFillTextField
-              name="text"
+              name="email"
               label="Email Address"
               autoComplete='email'
               value={email}
-              onChange={(event) => setEmail(event.target.value)}
+              error={invalidEmail}
+              helperText={invalidEmail ? 'Email invalid. Check for errors.' : null}
+              onChange={(event) => {
+                setEmail(event.target.value);
+                setInvalidEmail(false)
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleRecoverUsernameSubmit();
+                }
+              }}
             />
             <LoadingButton loading={loading} fullWidth size="large" type="submit" variant="contained" onClick={handleRecoverUsernameSubmit}>
               Send Username
@@ -105,8 +93,8 @@ export default function ResetPasswordForm(props) {
             If you have an account, we emailed your username.
           </Typography>
           <LoadingButton fullWidth size="large" type="submit" variant="contained" onClick={() => navigate('/login')}>
-              Back to login
-            </LoadingButton>
+            Back to login
+          </LoadingButton>
           {/* <form onSubmit={(e) => {
             e.preventDefault();
             handleRecoverUsernameSubmit();
