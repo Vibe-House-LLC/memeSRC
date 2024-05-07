@@ -1,7 +1,7 @@
 /* Amplify Params - DO NOT EDIT
-	AUTH_MEMESRCC3C71449_USERPOOLID
-	ENV
-	REGION
+    AUTH_MEMESRCC3C71449_USERPOOLID
+    ENV
+    REGION
 Amplify Params - DO NOT EDIT */
 
 /**
@@ -85,12 +85,20 @@ exports.handler = async (event) => {
             await sendEmail(email, 'Username Recovery', emailBody);
             return {
                 statusCode: 200,
+                headers: {
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Headers': '*',
+                },
                 body: JSON.stringify('Email sent successfully'),
             };
         } catch (error) {
             console.log({ error }, JSON.stringify(error));
             return {
                 statusCode: 500,
+                headers: {
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Headers': '*',
+                },
                 body: JSON.stringify(`CAUGHT ERROR: ${error}`),
             };
         }
@@ -98,6 +106,10 @@ exports.handler = async (event) => {
         console.log('FAILED: MissingParameters');
         return {
             statusCode: 404,
+            headers: {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Headers': '*',
+            },
             body: JSON.stringify('FAILED: MissingParameters'),
         };
     }
