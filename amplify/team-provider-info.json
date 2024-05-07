@@ -148,7 +148,8 @@
         "memesrcc3c71449PostConfirmation": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
           "s3Key": "amplify-builds/memesrcc3c71449PostConfirmation-786e613362595969716b-build.zip"
-        }
+        },
+        "memesrcRecoverUsername": {}
       },
       "storage": {
         "memesrcGeneratedImages": {}
