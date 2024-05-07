@@ -548,20 +548,6 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
-    "memesrcRecoverUsername": {
-      "build": true,
-      "dependsOn": [
-        {
-          "attributes": [
-            "UserPoolId"
-          ],
-          "category": "auth",
-          "resourceName": "memesrcc3c71449"
-        }
-      ],
-      "providerPlugin": "awscloudformation",
-      "service": "Lambda"
-    },
     "memesrcSearchV2": {
       "build": true,
       "dependsOn": [

@@ -117,7 +117,7 @@
         },
         "frameExtractor": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/frameExtractor-55335541637651307a78-build.zip"
+          "s3Key": "amplify-builds/frameExtractor-636d7a5a39366e4f6149-build.zip"
         },
         "memesrcSearchV2": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
@@ -147,7 +147,7 @@
         },
         "memesrcc3c71449PostConfirmation": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcc3c71449PostConfirmation-786e613362595969716b-build.zip"
+          "s3Key": "amplify-builds/memesrcc3c71449PostConfirmation-7458386c325936696b76-build.zip"
         },
         "memesrcRecoverUsername": {}
       },
