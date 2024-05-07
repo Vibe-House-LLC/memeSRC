@@ -48,7 +48,7 @@ async function sendEmail(toAddress, subject, body) {
                 Data: subject,
             },
         },
-        Source: 'no-reply@memesrc.com', // Replace with your verified SES email address
+        Source: 'memeSRC <no-reply@memesrc.com>',
     };
 
     await sesClient.send(new SendEmailCommand(params));
@@ -74,17 +74,13 @@ exports.handler = async (event) => {
             if (filteredUsers.length > 0) {
                 // Sort the users by the creation date in ascending order
                 filteredUsers.sort((a, b) => new Date(a.UserCreateDate) - new Date(b.UserCreateDate));
-                const userList = filteredUsers.map(user => ({
-                    Username: user.Username,
-                    UserCreateDate: user.UserCreateDate
-                }));
-                console.log(JSON.stringify(userList, null, 2));
+                const userList = filteredUsers.map(user => user.Username);
 
                 // Create the email body with the list of usernames
-                const emailBody = `Here are the usernames associated with your email address:\n\n${userList.map(user => `- ${user.Username} (Created on: ${user.UserCreateDate})`).join('\n')}`;
+                const emailBody = `Your memeSRC username${userList.length > 0 ? 's' : ''}:\n\n • ${userList.join('\n • ')}\n\n`;
 
                 // Send the email
-                await sendEmail(email, 'Your Usernames', emailBody);
+                await sendEmail(email, 'Username Recovery (memeSRC)', emailBody);
                 console.log(`Email sent to ${email}`);
             } else {
                 console.log("No users found with the provided email.");
