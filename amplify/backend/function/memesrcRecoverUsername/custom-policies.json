@@ -1,6 +1,11 @@
 [
   {
-    "Action": [],
-    "Resource": []
+    "Action": [
+      "ses:SendEmail",
+      "ses:SendRawEmail"
+    ],
+    "Resource": [
+      "arn:aws:ses:us-east-1:458585755494:identity/memesrc.com"
+    ]
   }
 ]
