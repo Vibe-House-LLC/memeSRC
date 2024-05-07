@@ -70,14 +70,14 @@ exports.handler = async (event) => {
             let emailBody = '';
 
             if (filteredUsers.length === 0) {
-                emailBody = `You requested a memeSRC username recovery, but we couldn't find an account using this email address (${email}). You may have used a different email or haven't yet registered an account.\n\nIf you didn't request this lookup, you can ignore this email.`;
+                emailBody = `You requested a memeSRC username recovery, but we couldn't find an account using this email address:\n\n(${email}).\n\nYou may have used a different email or haven't yet registered an account.\n\nIf you didn't request this lookup, you can ignore this email.`;
             } else {
                 // Sort the users by the creation date in ascending order
                 filteredUsers.sort((a, b) => new Date(a.UserCreateDate) - new Date(b.UserCreateDate));
                 const userList = filteredUsers.map(user => user.Username);
 
                 emailBody = filteredUsers.length === 1
-                    ? `Your memeSRC username: '${userList[0]}'.\n\nIf you didn't request this lookup, you can ignore this email.`
+                    ? `Your memeSRC username:\n\n${userList[0]}\n\nIf you didn't request this lookup, you can ignore this email.`
                     : `You asked us to find your memeSRC username and we found ${userList.length} of them:\n\n • ${userList.join('\n • ')}\n\nIf you didn't request this lookup, you can ignore this email.`;
             }
 
