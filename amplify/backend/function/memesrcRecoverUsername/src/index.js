@@ -70,34 +70,26 @@ exports.handler = async (event) => {
 
         try {
             const filteredUsers = await listAllUsers(userParams);
+            let emailBody = '';
 
-            if (filteredUsers.length > 0) {
+            if (filteredUsers.length === 0) {
+                emailBody = `You requested a memeSRC username recovery, but we couldn't find an account using this email address (${email}). You may have used a different email or haven't yet registered an account.`;
+            } else {
                 // Sort the users by the creation date in ascending order
                 filteredUsers.sort((a, b) => new Date(a.UserCreateDate) - new Date(b.UserCreateDate));
                 const userList = filteredUsers.map(user => user.Username);
 
-                // Create the email body with the list of usernames
-                const emailBody = userList.length < 2 
-                    ? `Your memeSRC username is: ${userList.join('\n • ')}`  // single username found
-                    : `Your memeSRC username${userList.length > 0 ? 's' : ''}:\n\n • ${userList.join('\n • ')}\n\n`;  // multiple usernames found
-
-                // Send the email
-                await sendEmail(email, 'Username Recovery', emailBody);
-                return {
-                    statusCode: 200,
-                    body: JSON.stringify('Email sent successfully'),
-                }
-            } else {
-                // Create the email body with the list of usernames
-                const emailBody = `You requested a memeSRC username recovery, but we couldn't find an account using this email address (${email}). You may have used a different email or haven't yet registered an account.`;
-
-                // Send the email
-                await sendEmail(email, 'Username Recovery', emailBody);
-                return {
-                    statusCode: 200,
-                    body: JSON.stringify('Email sent successfully'),
-                }
+                emailBody = filteredUsers.length === 1
+                    ? `Your memeSRC username is: ${userList[0]}`
+                    : `Your memeSRC usernames:\n\n • ${userList.join('\n • ')}\n\n`;
             }
+
+            // Send the email
+            await sendEmail(email, 'Username Recovery', emailBody);
+            return {
+                statusCode: 200,
+                body: JSON.stringify('Email sent successfully'),
+            };
         } catch (error) {
             console.log({ error }, JSON.stringify(error));
             return {
