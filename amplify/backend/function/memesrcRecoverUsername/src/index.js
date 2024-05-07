@@ -77,17 +77,26 @@ exports.handler = async (event) => {
                 const userList = filteredUsers.map(user => user.Username);
 
                 // Create the email body with the list of usernames
-                const emailBody = `Your memeSRC username${userList.length > 0 ? 's' : ''}:\n\n • ${userList.join('\n • ')}\n\n`;
+                const emailBody = userList.length < 2 
+                    ? `Your memeSRC username is: ${userList.join('\n • ')}`  // single username found
+                    : `Your memeSRC username${userList.length > 0 ? 's' : ''}:\n\n • ${userList.join('\n • ')}\n\n`;  // multiple usernames found
 
                 // Send the email
-                await sendEmail(email, 'Username Recovery (memeSRC)', emailBody);
-                console.log(`Email sent to ${email}`);
+                await sendEmail(email, 'Username Recovery', emailBody);
                 return {
                     statusCode: 200,
                     body: JSON.stringify('Email sent successfully'),
                 }
             } else {
-                console.log("No users found with the provided email.");
+                // Create the email body with the list of usernames
+                const emailBody = `You requested a memeSRC username recovery, but we couldn't find an account using this email address (${email}). You may have used a different email or haven't yet registered an account.`;
+
+                // Send the email
+                await sendEmail(email, 'Username Recovery', emailBody);
+                return {
+                    statusCode: 200,
+                    body: JSON.stringify('Email sent successfully'),
+                }
             }
         } catch (error) {
             console.log({ error }, JSON.stringify(error));
@@ -103,9 +112,4 @@ exports.handler = async (event) => {
             body: JSON.stringify('FAILED: MissingParameters'),
         };
     }
-
-    return {
-        statusCode: 500,
-        body: JSON.stringify("FAILED: Something didn't go right, but I'm not sure what happened."),
-    };
 };
