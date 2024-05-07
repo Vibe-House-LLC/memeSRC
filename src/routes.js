@@ -23,6 +23,7 @@ const LoginForm = lazy(() => import('./sections/auth/login/LoginForm'));
 const SignupForm = lazy(() => import('./sections/auth/login/SignupForm'));
 const VerifyForm = lazy(() => import('./sections/auth/login/VerifyForm'));
 const ForgotPasswordForm = lazy(() => import('./sections/auth/login/ForgotPasswordForm'));
+const ForgotUsernameForm = lazy(() => import('./sections/auth/login/ForgotUsernameForm'));
 const UserPage = lazy(() => import('./pages/UserPage'));
 const PrivacyPolicy = lazy(() => import('./sections/legal/PrivacyPolicy'));
 const TermsOfService = lazy(() => import('./sections/legal/TermsOfService'));
@@ -147,6 +148,10 @@ export default function Router() {
     {
       path: '/forgotpassword',
       element: <CheckAuth><AuthPage><ForgotPasswordForm /></AuthPage></CheckAuth>,
+    },
+    {
+      path: '/forgotusername',
+      element: <CheckAuth><AuthPage><ForgotUsernameForm /></AuthPage></CheckAuth>,
     },
     {
       path: '/section/:sectionIndex',
