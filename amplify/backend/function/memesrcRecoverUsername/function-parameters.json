@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "auth": {
+      "memesrcc3c71449": [
+        "read"
+      ]
+    }
+  },
+  "lambdaLayers": []
+}

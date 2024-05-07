@@ -237,6 +237,14 @@
           ],
           "category": "function",
           "resourceName": "memesrcGif"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcRecoverUsername"
         }
       ],
       "providerPlugin": "awscloudformation",
@@ -543,6 +551,20 @@
           ],
           "category": "storage",
           "resourceName": "memesrcGeneratedImages"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "memesrcRecoverUsername": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "UserPoolId"
+          ],
+          "category": "auth",
+          "resourceName": "memesrcc3c71449"
         }
       ],
       "providerPlugin": "awscloudformation",
@@ -994,6 +1016,22 @@
         {
           "category": "function",
           "resourceName": "memesrcRandom"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcRecoverUsername_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcRecoverUsername"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcRecoverUsername_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcRecoverUsername"
         }
       ]
     },

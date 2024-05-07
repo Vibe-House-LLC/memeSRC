@@ -5,6 +5,7 @@ import { API, Auth } from 'aws-amplify';
 import { useContext, useState } from 'react';
 import { UserContext } from '../../../UserContext';
 import { SnackbarContext } from '../../../SnackbarContext';
+import validateEmail from '../../../utils/validateEmail';
 
 const AutoFillTextField = styled(TextField)`
 input:-webkit-autofill,
@@ -20,80 +21,68 @@ export default function ResetPasswordForm(props) {
   const navigate = useNavigate();
   const { user, setUser } = useContext(UserContext);
   const { setSeverity, setMessage, setOpen } = useContext(SnackbarContext);
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [backdropOpen, setBackdropOpen] = useState(false);
   const [resetSent, setResetSent] = useState(false);
+  const [invalidEmail, setInvalidEmail] = useState(false);
 
-  const handleResetPassword = () => {
-    setLoading(true)
-    Auth.forgotPassword(username)
-      .then(() => {
+  const handleRecoverUsernameSubmit = () => {
+    if (validateEmail(email)) {
+      setLoading(true)
+      API.post('publicapi', '/forgotusername', { body: { email } }).then(response => {
         setLoading(false);
-        setSeverity('info');
-        setMessage(`Verification code sent to ${username}. Please check your email.`);
-        setOpen(true);
-        setResetSent(true)
-      })
-      .catch(err => {
+        setResetSent(true);
+      }).catch(err => {
         setLoading(false);
-        console.log(err);
+        setResetSent(true);
         setSeverity('error');
-        setMessage(`Error: ${err.message}`);
+        setMessage("Something went wrong. Please try again.");
         setOpen(true);
-      });
-  }
-
-  const handleResetPasswordSubmit = () => {
-    setLoading(true)
-    Auth.forgotPasswordSubmit(username, code, password)
-      .then(() => {
-        setLoading(false);
-        setSeverity('success');
-        setMessage(`Password reset successfully! Please log in with your new password.`);
-        setOpen(true);
-        navigate('/login', { replace: true });
       })
-      .catch(err => {
-        setLoading(false);
-        console.log(err);
-        setSeverity('error');
-        setMessage(`Error: ${err.message}`);
-        setOpen(true);
-      });
+    } else {
+      setInvalidEmail(true)
+    }
   }
 
   return (
     <>
       <Typography variant="h4" textAlign='center'>
-        Reset memeSRC password
+        Username Recovery
       </Typography>
-
 
       {!resetSent &&
         <>
-          <Typography variant='subheading' mt={1} textAlign='center'>
-            Enter your memeSRC username below to reset your password
+          <Typography variant='subheading' mb={5} mt={1} textAlign='center'>
+            Enter your email and we'll send your username.
           </Typography>
-          <Link mb={5} sx={{ cursor: 'pointer', display: 'block', textAlign: 'center' }} onClick={() => { navigate('/forgotusername') }}>
-            Forgot your username?
-          </Link>
           <Stack spacing={3} marginBottom={3}>
             <AutoFillTextField
-              name="text"
-              label="Username"
-              autoComplete='username'
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
+              name="email"
+              label="Email Address"
+              autoComplete='email'
+              value={email}
+              error={invalidEmail}
+              helperText={invalidEmail ? 'Email invalid. Check for errors.' : null}
+              onChange={(event) => {
+                setEmail(event.target.value);
+                setInvalidEmail(false)
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleRecoverUsernameSubmit();
+                }
+              }}
             />
-            <LoadingButton loading={loading} fullWidth size="large" type="submit" variant="contained" onClick={handleResetPassword}>
-              Send Verification Code
+            <LoadingButton loading={loading} fullWidth size="large" type="submit" variant="contained" onClick={handleRecoverUsernameSubmit}>
+              Send Username
             </LoadingButton>
           </Stack>
-          <Link sx={{ cursor: 'pointer', display: 'block', textAlign: 'center', marginTop: '1rem' }} onClick={() => { setResetSent(true) }}>
-            Already have a code? Click here.
+          <Link sx={{ cursor: 'pointer', display: 'block', textAlign: 'center', marginTop: '1rem' }} onClick={() => { navigate('/login') }}>
+            Already know it? Log in here.
           </Link>
         </>
       }
@@ -101,20 +90,23 @@ export default function ResetPasswordForm(props) {
       {resetSent &&
         <>
           <Typography variant='subheading' mb={5} mt={1} textAlign='center'>
-            Check your email for the code to enter below.
+            If you have an account, we emailed your username.
           </Typography>
-          <form onSubmit={(e) => {
+          <LoadingButton fullWidth size="large" type="submit" variant="contained" onClick={() => navigate('/login')}>
+            Back to login
+          </LoadingButton>
+          {/* <form onSubmit={(e) => {
             e.preventDefault();
-            handleResetPasswordSubmit();
+            handleRecoverUsernameSubmit();
             return false
           }}>
             <Stack spacing={3} marginBottom={3}>
               <AutoFillTextField
                 name="text"
-                label="Username"
-                autoComplete='username'
-                value={username}
-                onChange={(event) => setUsername(event.target.value)}
+                label="Email"
+                autoComplete='email'
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
               />
               <AutoFillTextField
                 name="text"
@@ -130,14 +122,14 @@ export default function ResetPasswordForm(props) {
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
               />
-              <LoadingButton loading={loading} fullWidth size="large" type="submit" variant="contained" onClick={handleResetPasswordSubmit}>
+              <LoadingButton loading={loading} fullWidth size="large" type="submit" variant="contained" onClick={handleRecoverUsernameSubmit}>
                 Reset Password
               </LoadingButton>
               <Link sx={{ cursor: 'pointer', display: 'block', textAlign: 'center', marginTop: '1rem' }} onClick={handleResetPassword}>
                 Click here to resend code.
               </Link>
             </Stack>
-          </form>
+          </form> */}
         </>
       }
 
