@@ -108,53 +108,47 @@ const fetchFrameInfo = async (cid, season, episode, frame, options = {}) => {
     season = parseInt(season, 10);
     episode = parseInt(episode, 10);
     frame = parseInt(frame, 10);
-
-    console.log("TEST: 1")
+  
 
     const metadataDownload = (await Storage.get(`src/${cid}/00_metadata.json`, { level: 'public', download: true, customPrefix: { public: 'protected/' } })).Body
-    const metadata = (await metadataDownload.text()).split('\n').map((row) => row.split(','));;
+
+    const metadata = JSON.parse((await metadataDownload.text()))
 
     const seriesName = metadata.index_name;
 
     const csvDownload = (await Storage.get(`src/${cid}/${season}/${episode}/_docs.csv`, { level: 'public', download: true, customPrefix: { public: 'protected/' } })).Body
     const csvData = (await csvDownload.text()).split('\n').map((row) => row.split(','));
-
-    console.log("TEST: 2")
+  
 
     const { subtitle: mainSubtitle, index: mainSubtitleIndex } = findSubtitleForFrame(csvData, season, episode, frame);
     let mainFrameImage = 'No image available';
     let framesFineTuning = [];
     const subtitlesSurrounding = [];
     let framesSurrounding = [];
-
-    console.log("TEST: 3")
+  
 
     // Fetch the main frame image and subtitle only if no specific options are set or the relevant option is true
     if (Object.keys(options).length === 0 || options.mainImage) {
       const mainFrameImages = await extractVideoFrames(cid, season, episode, [frame], 10);
       mainFrameImage = mainFrameImages.length > 0 ? mainFrameImages[0] : 'No image available';
     }
-
-    console.log("TEST: 4")
+  
 
     // Fetch frames_fine_tuning array if requested
     if (options.framesFineTuning) {
       framesFineTuning = await fetchFramesFineTuning(cid, season, episode, frame);
     }
-
-    console.log("TEST: 5")
+  
 
     // Fetch surrounding subtitles and images if requested
     if (options.subtitlesSurrounding) {
-      if (mainSubtitleIndex !== -1) { // Ensure mainSubtitleIndex was found
-        console.log("TEST: 7")
+      if (mainSubtitleIndex !== -1) { // Ensure mainSubtitleIndex was found      
         const startIndex = Math.max(1, mainSubtitleIndex - 3);
         const endIndex = Math.min(csvData.length - 1, mainSubtitleIndex + 3);
         for (let i = startIndex; i <= endIndex; i += 1) {
           const [, , , encodedSubtitleText, startFrame, endFrame] = csvData[i];
           const subtitleText = Buffer.from(encodedSubtitleText, 'base64').toString(); // Decode subtitle text from base64 here
-          const middleFrame = Math.floor((parseInt(startFrame, 10) + parseInt(endFrame, 10)) / 2);
-          console.log("TEST: 8")
+          const middleFrame = Math.floor((parseInt(startFrame, 10) + parseInt(endFrame, 10)) / 2);        
           subtitlesSurrounding.push(
             {
               subtitle: subtitleText, // Use decoded subtitle text
