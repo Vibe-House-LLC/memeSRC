@@ -9,9 +9,11 @@ Amplify Params - DO NOT EDIT */
  */
 
 const AWS = require('aws-sdk');
-AWS.config.region = 'us-east-1';
+const { SESClient, SendEmailCommand } = require('@aws-sdk/client-ses');
 
+const region = 'us-east-1';
 const identity = new AWS.CognitoIdentityServiceProvider();
+const sesClient = new SESClient({ region });
 
 async function listAllUsers(userParams) {
     let users = [];
@@ -29,6 +31,27 @@ async function listAllUsers(userParams) {
     } while (paginationToken);
 
     return users;
+}
+
+async function sendEmail(toAddress, subject, body) {
+    const params = {
+        Destination: {
+            ToAddresses: [toAddress],
+        },
+        Message: {
+            Body: {
+                Text: {
+                    Data: body,
+                },
+            },
+            Subject: {
+                Data: subject,
+            },
+        },
+        Source: 'no-reply@memesrc.com', // Replace with your verified SES email address
+    };
+
+    await sesClient.send(new SendEmailCommand(params));
 }
 
 exports.handler = async (event) => {
@@ -56,6 +79,13 @@ exports.handler = async (event) => {
                     UserCreateDate: user.UserCreateDate
                 }));
                 console.log(JSON.stringify(userList, null, 2));
+
+                // Create the email body with the list of usernames
+                const emailBody = `Here are the usernames associated with your email address:\n\n${userList.map(user => `- ${user.Username} (Created on: ${user.UserCreateDate})`).join('\n')}`;
+
+                // Send the email
+                await sendEmail(email, 'Your Usernames', emailBody);
+                console.log(`Email sent to ${email}`);
             } else {
                 console.log("No users found with the provided email.");
             }
@@ -68,6 +98,6 @@ exports.handler = async (event) => {
 
     return {
         statusCode: 200,
-        body: JSON.stringify('Hello from Lambda!'),
+        body: JSON.stringify('Email sent successfully'),
     };
 };
