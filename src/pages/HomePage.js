@@ -32,6 +32,10 @@ export default function SearchPage({ metadata }) {
   const { shows } = useShows();
   const { savedCids, setSearchQuery: setV2SearchQuery } = useSearchDetailsV2()
 
+  useEffect(() => {
+    console.log('Loaded Default')
+  }, [defaultSeries]);
+
   const navigate = useNavigate();
 
   useEffect(() => {

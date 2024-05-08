@@ -4,7 +4,7 @@ import styled from '@emotion/styled';
 import { Alert, AlertTitle, Button, Fab, Grid, Typography, IconButton, Stack, useMediaQuery, Select, MenuItem, Chip, Container, ListSubheader, useTheme } from '@mui/material';
 import { Box } from '@mui/system';
 import { ArrowDownwardRounded, Favorite, MapsUgc, Shuffle } from '@mui/icons-material';
-import { API, graphqlOperation } from 'aws-amplify';
+import { API, Auth, graphqlOperation } from 'aws-amplify';
 import React, { useCallback, useContext, useEffect, useState } from 'react';
 import { LoadingButton } from '@mui/lab';
 import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
@@ -549,13 +549,19 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   }
 
   useEffect(() => {
-    const defaultSeries = window.localStorage.getItem(`defaultsearch${user?.sub}`)
-    console.log(user?.sub)
-    setCid(seriesId || metadata?.id || defaultSeries || '_universal')
+
+    Auth.currentAuthenticatedUser().then(authUser => {
+      console.log(authUser)
+      const defaultSeries = window.localStorage.getItem(`defaultsearch${authUser?.attributes?.sub}`)
+      console.log(user?.sub)
+      setCid(seriesId || metadata?.id || defaultSeries || '_universal')
+    }).catch(() => {
+      setCid(seriesId || metadata?.id || '_universal')
+    });
+
 
     return () => {
       if (pathname === '/') {
-        setCid(defaultSeries || null)
         setShowObj(null)
         setSearchQuery(null)
         setCidSearchQuery('')
