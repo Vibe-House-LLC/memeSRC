@@ -343,17 +343,31 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   useEffect(() => {
     // Check if shows have been loaded
     if (shows.length > 0) {
-      // Determine the series to use based on the URL or default to '_universal'
-      const currentSeriesId = seriesId || window.localStorage.getItem(`defaultsearch${user?.sub}`) || '_universal';
-      setShow(currentSeriesId)
 
-      if (currentSeriesId !== seriesTitle) {
-        setSeriesTitle(currentSeriesId); // Update the series title based on the URL parameter
-        handleChangeSeries(currentSeriesId); // Update the theme
+      Auth.currentAuthenticatedUser().then(authUser => {
+        const currentSeriesId = seriesId || window.localStorage.getItem(`defaultsearch${authUser?.attributes?.sub}`) || '_universal'
+        setShow(currentSeriesId)
+        if (currentSeriesId !== seriesTitle) {
+          setSeriesTitle(currentSeriesId); // Update the series title based on the URL parameter
+          handleChangeSeries(currentSeriesId); // Update the theme
 
-        // Navigation logic
-        navigate((currentSeriesId === '_universal') ? '/' : `/${currentSeriesId}`);
-      }
+          // Navigation logic
+          navigate((currentSeriesId === '_universal') ? '/' : `/${currentSeriesId}`);
+        }
+      }).catch(() => {
+        // Determine the series to use based on the URL or default to '_universal'
+        const currentSeriesId = seriesId || '_universal';
+        setShow(currentSeriesId)
+
+        if (currentSeriesId !== seriesTitle) {
+          setSeriesTitle(currentSeriesId); // Update the series title based on the URL parameter
+          handleChangeSeries(currentSeriesId); // Update the theme
+
+          // Navigation logic
+          navigate((currentSeriesId === '_universal') ? '/' : `/${currentSeriesId}`);
+        }
+      });
+
     }
   }, [seriesId, seriesTitle, shows, handleChangeSeries, navigate]);
 
