@@ -148,6 +148,9 @@ export const ShowProvider = ({ children }) => {
 
         if (currentUser) {
             // If user exists, fetch fresh data and update the cache
+            if (cachedData) {
+                setShows(JSON.parse(cachedData).data);
+            }
             await refreshDataAndUpdateCache();
         } else if (cachedData) {
             // If user doesn't exist and there is cached data, return the cached data first
