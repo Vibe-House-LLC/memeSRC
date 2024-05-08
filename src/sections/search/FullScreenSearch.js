@@ -697,16 +697,16 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                 >
                   <MenuItem value="_universal">🌈 All Shows & Movies</MenuItem>
 
-                  {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
+                  {shows.some(show => show.isFavorite) ? (
                     <MenuItem value="_favorites">⭐ All Favorites</MenuItem>
                   ) : null}
 
                   {/* Check if user is subscribed or has favorites and directly render each item */}
-                  {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
+                  {shows.some(show => show.isFavorite) ? (
                     <ListSubheader key="favorites-subheader">Favorites</ListSubheader>
                   ) : null}
 
-                  {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
+                  {shows.some(show => show.isFavorite) ? (
                     shows.filter(show => show.isFavorite).map(show => (
                       <MenuItem key={show.id} value={show.id}>
                         ⭐ {show.emoji} {show.title}
