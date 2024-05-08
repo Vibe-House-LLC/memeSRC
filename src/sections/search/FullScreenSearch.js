@@ -343,17 +343,31 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   useEffect(() => {
     // Check if shows have been loaded
     if (shows.length > 0) {
-      // Determine the series to use based on the URL or default to '_universal'
-      const currentSeriesId = seriesId || window.localStorage.getItem(`defaultsearch${user?.sub}`) || '_universal';
-      setShow(currentSeriesId)
 
-      if (currentSeriesId !== seriesTitle) {
-        setSeriesTitle(currentSeriesId); // Update the series title based on the URL parameter
-        handleChangeSeries(currentSeriesId); // Update the theme
+      Auth.currentAuthenticatedUser().then(authUser => {
+        const currentSeriesId = seriesId || window.localStorage.getItem(`defaultsearch${authUser?.attributes?.sub}`) || '_universal'
+        setShow(currentSeriesId)
+        if (currentSeriesId !== seriesTitle) {
+          setSeriesTitle(currentSeriesId); // Update the series title based on the URL parameter
+          handleChangeSeries(currentSeriesId); // Update the theme
 
-        // Navigation logic
-        navigate((currentSeriesId === '_universal') ? '/' : `/${currentSeriesId}`);
-      }
+          // Navigation logic
+          navigate((currentSeriesId === '_universal') ? '/' : `/${currentSeriesId}`);
+        }
+      }).catch(() => {
+        // Determine the series to use based on the URL or default to '_universal'
+        const currentSeriesId = seriesId || '_universal';
+        setShow(currentSeriesId)
+
+        if (currentSeriesId !== seriesTitle) {
+          setSeriesTitle(currentSeriesId); // Update the series title based on the URL parameter
+          handleChangeSeries(currentSeriesId); // Update the theme
+
+          // Navigation logic
+          navigate((currentSeriesId === '_universal') ? '/' : `/${currentSeriesId}`);
+        }
+      });
+
     }
   }, [seriesId, seriesTitle, shows, handleChangeSeries, navigate]);
 
@@ -683,16 +697,16 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                 >
                   <MenuItem value="_universal">🌈 All Shows & Movies</MenuItem>
 
-                  {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
+                  {shows.some(show => show.isFavorite) ? (
                     <MenuItem value="_favorites">⭐ All Favorites</MenuItem>
                   ) : null}
 
                   {/* Check if user is subscribed or has favorites and directly render each item */}
-                  {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
+                  {shows.some(show => show.isFavorite) ? (
                     <ListSubheader key="favorites-subheader">Favorites</ListSubheader>
                   ) : null}
 
-                  {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
+                  {shows.some(show => show.isFavorite) ? (
                     shows.filter(show => show.isFavorite).map(show => (
                       <MenuItem key={show.id} value={show.id}>
                         ⭐ {show.emoji} {show.title}

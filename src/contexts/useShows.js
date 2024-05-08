@@ -48,6 +48,7 @@ export const ShowProvider = ({ children }) => {
 
     useEffect(() => {
         fetchShows();
+        console.log('loading')
     }, [user]);
 
     async function getCacheKey() {
@@ -84,8 +85,6 @@ export const ShowProvider = ({ children }) => {
     }
 
     async function fetchFavorites() {
-        const currentUser = await Auth.currentAuthenticatedUser();
-
         let nextToken = null;
         let allFavorites = [];
 
@@ -107,8 +106,8 @@ export const ShowProvider = ({ children }) => {
 
     async function updateCacheAndReturnData(data, cacheKey) {
         try {
-            const currentUser = await Auth.currentAuthenticatedUser();
-            const favorites = user ? await fetchFavorites() : [];
+            await Auth.currentAuthenticatedUser();
+            const favorites = await fetchFavorites()
             const favoriteShowIds = new Set(favorites.map(favorite => favorite.cid));
 
             data = data.map(show => ({
@@ -137,26 +136,25 @@ export const ShowProvider = ({ children }) => {
             const updatedData = await updateCacheAndReturnData(freshData, CACHE_KEY);
             setShows(updatedData);
         }
-
-        let currentUser = null;
-        try {
-            currentUser = await Auth.currentAuthenticatedUser();
-        } catch (error) {
-            // If an error occurs, set currentUser to null
-            currentUser = null;
-        }
-
-        if (currentUser) {
-            // If user exists, fetch fresh data and update the cache
-            await refreshDataAndUpdateCache();
-        } else if (cachedData) {
-            // If user doesn't exist and there is cached data, return the cached data first
+        
+        if (cachedData) {
             setShows(JSON.parse(cachedData).data);
-            refreshDataAndUpdateCache();
-        } else {
-            // If user doesn't exist and there is no cached data, fetch fresh data and update the cache
-            await refreshDataAndUpdateCache();
+            console.log(JSON.parse(cachedData).data)
         }
+
+        await refreshDataAndUpdateCache();
+
+        // if (currentUser) {
+        //     // If user exists, fetch fresh data and update the cache
+            
+        //     await refreshDataAndUpdateCache();
+        // } else if (cachedData) {
+
+        //     refreshDataAndUpdateCache();
+        // } else {
+        //     // If user doesn't exist and there is no cached data, fetch fresh data and update the cache
+        //     await refreshDataAndUpdateCache();
+        // }
     }
 
     return (
