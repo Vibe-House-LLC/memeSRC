@@ -5,6 +5,7 @@ import EditorProjectsPage from './pages/EditorProjectsPage';
 import { V2SearchDetailsProvider } from './contexts/V2SearchDetailsProvider';
 import SiteWideMaintenance from './pages/SiteWideMaintenance';
 import { DialogProvider } from './contexts/SubscribeDialog';
+import { ShowProvider } from './contexts/useShows';
 
 
 // ----------------------------------------------------------------------
@@ -74,7 +75,7 @@ export default function Router() {
   const routes = useRoutes([
     {
       path: '/',
-      element: <GuestAuth><DialogProvider><MagicPopup><V2SearchDetailsProvider><DashboardLayout /></V2SearchDetailsProvider></MagicPopup></DialogProvider></GuestAuth>,
+      element: <GuestAuth><ShowProvider><DialogProvider><MagicPopup><V2SearchDetailsProvider><DashboardLayout /></V2SearchDetailsProvider></MagicPopup></DialogProvider></ShowProvider></GuestAuth>,
       children: [
         { element: <SiteWideMaintenance><HomePage /></SiteWideMaintenance>, index: true },
         { path: 'pro', element: <SiteWideMaintenance><HomePage /></SiteWideMaintenance>, index: true },

@@ -16,6 +16,7 @@ import AddCidPopup from "../../components/ipfs/add-cid-popup";
 import { UserContext } from "../../UserContext";
 import fetchShows from "../../utils/fetchShows";
 import useLoadRandomFrame from "../../utils/loadRandomFrame";
+import { useShows } from "../../contexts/useShows";
 
 // Define constants for colors and fonts
 const PRIMARY_COLOR = '#4285F4';
@@ -89,7 +90,8 @@ export default function IpfsSearchBar(props) {
   const { show, setShow, searchQuery, setSearchQuery, cid = '', setCid, localCids, setLocalCids, showObj, setShowObj, selectedFrameIndex, setSelectedFrameIndex, savedCids, loadingSavedCids } = useSearchDetailsV2();
   const { setShow: setV1Show, setSeriesTitle: setV1SeriesTitle } = useSearchDetails();
   const params = useParams();
-  const [shows, setShows] = useState([]);
+  // const [shows, setShows] = useState([]);
+  const { shows } = useShows();
   const [loading, setLoading] = useState(true);
   const { children } = props
   const { pathname } = useLocation();
@@ -169,16 +171,16 @@ export default function IpfsSearchBar(props) {
 
   /* -------------------------------------------------------------------------- */
 
-  useEffect(() => {
-    async function getData() {
-      // Get shows
-      const shows = await fetchShows();
-      console.log(shows)
-      setShows(shows);
-      setLoading(false);
-    }
-    getData();
-  }, []);
+  // useEffect(() => {
+  //   async function getData() {
+  //     // Get shows
+  //     const shows = await fetchShows();
+  //     console.log(shows)
+  //     setShows(shows);
+  //     setLoading(false);
+  //   }
+  //   getData();
+  // }, []);
 
   const getSessionID = async () => {
     let sessionID;
