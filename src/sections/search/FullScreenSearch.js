@@ -325,10 +325,10 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   useEffect(() => {
     async function getData() {
       // Get shows
-      const fetchedShows = await fetchShows();
-      console.log(fetchedShows)
-      setShows(fetchedShows);
-      setAliasesWithMetadata(fetchedShows);
+      // const fetchedShows = await fetchShows();
+      // console.log(fetchedShows)
+      // setShows(fetchedShows);
+      // setAliasesWithMetadata(fetchedShows);
       setLoading(false);
       setAliasesLoading(false);
 

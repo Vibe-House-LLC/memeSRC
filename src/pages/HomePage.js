@@ -6,6 +6,7 @@ import FullScreenSearch from '../sections/search/FullScreenSearch';
 import useSearchDetails from '../hooks/useSearchDetails';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
 import { UserContext } from '../UserContext';
+import { useShows } from '../contexts/useShows';
 
 const prepSessionID = async () => {
   let sessionID;
@@ -28,7 +29,7 @@ export default function SearchPage({ metadata }) {
   const [searchTerm, setSearchTerm] = useState('');
   const defaultSeries = window.localStorage.getItem(`defaultsearch${user?.sub}`)
   const [seriesTitle, setSeriesTitle] = useState(defaultSeries || '_universal');
-  const [shows, setShows] = useState([]);
+  const { shows } = useShows();
   const { savedCids, setSearchQuery: setV2SearchQuery } = useSearchDetailsV2()
 
   const navigate = useNavigate();
@@ -80,7 +81,7 @@ export default function SearchPage({ metadata }) {
         searchTerm={searchTerm}
         seriesTitle={seriesTitle}
         shows={shows}
-        setShows={setShows}
+        // setShows={setShows}
         metadata={metadata}
       />
     </>
