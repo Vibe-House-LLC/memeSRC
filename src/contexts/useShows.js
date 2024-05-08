@@ -48,6 +48,7 @@ export const ShowProvider = ({ children }) => {
 
     useEffect(() => {
         fetchShows();
+        console.log('loading')
     }, [user]);
 
     async function getCacheKey() {
@@ -84,8 +85,6 @@ export const ShowProvider = ({ children }) => {
     }
 
     async function fetchFavorites() {
-        const currentUser = await Auth.currentAuthenticatedUser();
-
         let nextToken = null;
         let allFavorites = [];
 
@@ -107,7 +106,7 @@ export const ShowProvider = ({ children }) => {
 
     async function updateCacheAndReturnData(data, cacheKey) {
         try {
-            const currentUser = await Auth.currentAuthenticatedUser();
+            await Auth.currentAuthenticatedUser();
             const favorites = await fetchFavorites()
             const favoriteShowIds = new Set(favorites.map(favorite => favorite.cid));
 
@@ -140,14 +139,7 @@ export const ShowProvider = ({ children }) => {
         
         if (cachedData) {
             setShows(JSON.parse(cachedData).data);
-        }
-
-        let currentUser = null;
-        try {
-            currentUser = await Auth.currentAuthenticatedUser();
-        } catch (error) {
-            // If an error occurs, set currentUser to null
-            currentUser = null;
+            console.log(JSON.parse(cachedData).data)
         }
 
         await refreshDataAndUpdateCache();
