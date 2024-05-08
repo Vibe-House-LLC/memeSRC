@@ -7,17 +7,34 @@ AWS.config.region = 'us-east-1';
 const identity = new AWS.CognitoIdentityServiceProvider();
 
 exports.handler = async (event, context, callback) => {
+
+  async function listAllUsers(userParams) {
+    let users = [];
+    let paginationToken = null;
+
+    do {
+      if (paginationToken) {
+        userParams.PaginationToken = paginationToken;
+      }
+
+      const { Users, PaginationToken } = await identity.listUsers(userParams).promise();
+      users = users.concat(Users);
+      paginationToken = PaginationToken;
+    } while (paginationToken);
+
+    return users;
+  }
+
   if (event.request.userAttributes.email) {
     const { email } = event.request.userAttributes
     const userParams = {
       UserPoolId: event.userPoolId,
       AttributesToGet: ['email'],
       Filter: `email = \"${email}\"`,
-      Limit: 1,
+      Limit: 60,
     };
     try {
-      const { Users } = await identity.listUsers(userParams).promise();
-      console.log({ Users })
+      const Users = await listAllUsers(userParams)
       if (Users && Users.length > 0) {
         callback('EmailExistsException', null);
       } else {
