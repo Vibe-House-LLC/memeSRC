@@ -1,5 +1,5 @@
 import { API } from 'aws-amplify';
-import React, { useState, useCallback, useEffect, useContext } from 'react';
+import React, { useState, useCallback, useEffect, useContext, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import FullScreenSearch from '../sections/search/FullScreenSearch';
@@ -73,21 +73,24 @@ export default function SearchPage({ metadata }) {
 
   }, [seriesTitle, searchTerm, navigate, savedCids]);
 
+  const memoizedFullScreenSearch = useMemo(() => (
+    <FullScreenSearch
+      searchFunction={handleSearch}
+      setSearchTerm={setSearchTerm}
+      setSeriesTitle={setSeriesTitle}
+      searchTerm={searchTerm}
+      seriesTitle={seriesTitle}
+      shows={shows}
+      metadata={metadata}
+    />
+  ), [handleSearch, setSearchTerm, setSeriesTitle, searchTerm, seriesTitle, shows, metadata]);
+
   return (
     <>
       <Helmet>
         <title>memeSRC</title>
       </Helmet>
-      <FullScreenSearch
-        searchFunction={handleSearch}
-        setSearchTerm={setSearchTerm}
-        setSeriesTitle={setSeriesTitle}
-        searchTerm={searchTerm}
-        seriesTitle={seriesTitle}
-        shows={shows}
-        // setShows={setShows}
-        metadata={metadata}
-      />
+      {memoizedFullScreenSearch}
     </>
   );
 }
