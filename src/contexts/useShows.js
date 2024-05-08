@@ -108,7 +108,7 @@ export const ShowProvider = ({ children }) => {
     async function updateCacheAndReturnData(data, cacheKey) {
         try {
             const currentUser = await Auth.currentAuthenticatedUser();
-            const favorites = user ? await fetchFavorites() : [];
+            const favorites = await fetchFavorites()
             const favoriteShowIds = new Set(favorites.map(favorite => favorite.cid));
 
             data = data.map(show => ({
