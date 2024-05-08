@@ -137,6 +137,10 @@ export const ShowProvider = ({ children }) => {
             const updatedData = await updateCacheAndReturnData(freshData, CACHE_KEY);
             setShows(updatedData);
         }
+        
+        if (cachedData) {
+            setShows(JSON.parse(cachedData).data);
+        }
 
         let currentUser = null;
         try {
@@ -146,20 +150,19 @@ export const ShowProvider = ({ children }) => {
             currentUser = null;
         }
 
-        if (currentUser) {
-            // If user exists, fetch fresh data and update the cache
-            if (cachedData) {
-                setShows(JSON.parse(cachedData).data);
-            }
-            await refreshDataAndUpdateCache();
-        } else if (cachedData) {
-            // If user doesn't exist and there is cached data, return the cached data first
-            setShows(JSON.parse(cachedData).data);
-            refreshDataAndUpdateCache();
-        } else {
-            // If user doesn't exist and there is no cached data, fetch fresh data and update the cache
-            await refreshDataAndUpdateCache();
-        }
+        await refreshDataAndUpdateCache();
+
+        // if (currentUser) {
+        //     // If user exists, fetch fresh data and update the cache
+            
+        //     await refreshDataAndUpdateCache();
+        // } else if (cachedData) {
+
+        //     refreshDataAndUpdateCache();
+        // } else {
+        //     // If user doesn't exist and there is no cached data, fetch fresh data and update the cache
+        //     await refreshDataAndUpdateCache();
+        // }
     }
 
     return (
