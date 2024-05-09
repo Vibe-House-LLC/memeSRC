@@ -87,7 +87,6 @@ const StyledHeader = styled('header')(() => ({
 IpfsSearchBar.propTypes = searchPropTypes;
 
 export default function IpfsSearchBar(props) {
-  const { show, setShow, searchQuery, setSearchQuery, cid = '', setCid, localCids, setLocalCids, showObj, setShowObj, selectedFrameIndex, setSelectedFrameIndex, savedCids, loadingSavedCids } = useSearchDetailsV2();
   const { setShow: setV1Show, setSeriesTitle: setV1SeriesTitle } = useSearchDetails();
   const params = useParams();
   // const [shows, setShows] = useState([]);
@@ -95,6 +94,7 @@ export default function IpfsSearchBar(props) {
   const { children } = props
   const { pathname } = useLocation();
   const { user, shows, defaultShow, handleUpdateDefaultShow } = useContext(UserContext);
+  const { show, setShow, searchQuery, setSearchQuery, cid = defaultShow, setCid, localCids, setLocalCids, showObj, setShowObj, selectedFrameIndex, setSelectedFrameIndex, savedCids, loadingSavedCids } = useSearchDetailsV2();
   const { loadRandomFrame, loadingRandom, error } = useLoadRandomFrame();
   const [searchParams, setSearchParams] = useSearchParams();
   const searchTerm = searchParams.get('searchTerm');
@@ -201,7 +201,7 @@ export default function IpfsSearchBar(props) {
   const searchFunction = (searchEvent) => {
     searchEvent?.preventDefault();
     console.log(search)
-    navigate(`/search/${cid}/?searchTerm=${encodeURIComponent(search)}`)
+    navigate(`/search/${params?.seriesId || defaultShow}/?searchTerm=${encodeURIComponent(search)}`)
     return false
   }
 
@@ -279,17 +279,17 @@ export default function IpfsSearchBar(props) {
                   🌈 All Shows & Movies
                 </MenuItem>
 
-                {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
+                {shows.some(show => show.isFavorite) ? (
                   <MenuItem value="_favorites">
                     ⭐ All Favorites
                   </MenuItem>
                 ) : null}
 
-                {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
+                {shows.some(show => show.isFavorite) ? (
                   <ListSubheader key="favorites-subheader">Favorites</ListSubheader>
                 ) : null}
 
-                {(user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite)) && (
+                {(shows.some(show => show.isFavorite)) && (
                   shows.filter(show => show.isFavorite).map(show => (
                     <MenuItem key={show.id} value={show.id}>
                       ⭐ {show.emoji} {show.title}
