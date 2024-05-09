@@ -136,7 +136,7 @@ export default function Router() {
     },
     {
       path: '/login',
-      element: <CheckAuth><AuthPage><LoginForm /></AuthPage></CheckAuth>,
+      element: <GuestAuth><AuthPage><LoginForm /></AuthPage></GuestAuth>,
     },
     {
       path: '/signup',

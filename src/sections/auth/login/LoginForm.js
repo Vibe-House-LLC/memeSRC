@@ -8,6 +8,7 @@ import { API, Auth } from 'aws-amplify';
 import Iconify from '../../../components/iconify';
 import { UserContext } from '../../../UserContext';
 import { SnackbarContext } from '../../../SnackbarContext';
+import { getShowsWithFavorites } from '../../../utils/fetchShowsRevised';
 
 
 // ----------------------------------------------------------------------
@@ -44,7 +45,7 @@ export default function LoginForm() {
 
   const loginForm = useRef();
 
-  const { setUser } = useContext(UserContext)
+  const { setUser, handleUpdateDefaultShow, setShows } = useContext(UserContext)
 
   // Use the useLocation hook to get the location object
   const location = useLocation();
@@ -67,8 +68,13 @@ export default function LoginForm() {
     if (username && password) {
       Auth.signIn(username, password).then((x) => {
         API.post('publicapi', '/user/update/status').then(response => {
-          setUser(x)
-          navigate(dest ? decodeURIComponent(dest) : '/', { replace: true })
+          getShowsWithFavorites().then(loadedShows => {
+            setShows(loadedShows)
+            window.localStorage.setItem('memeSRCShows', JSON.stringify(loadedShows))
+            setUser(x)
+            handleUpdateDefaultShow(window.localStorage.getItem('memeSRCDefaultShow'))
+            navigate(dest ? decodeURIComponent(dest) : '/', { replace: true })
+          })
         })
       }).catch((error) => {
         console.log(error.name)
