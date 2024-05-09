@@ -91,11 +91,10 @@ export default function IpfsSearchBar(props) {
   const { setShow: setV1Show, setSeriesTitle: setV1SeriesTitle } = useSearchDetails();
   const params = useParams();
   // const [shows, setShows] = useState([]);
-  const { shows } = useShows();
   const [loading, setLoading] = useState(true);
   const { children } = props
   const { pathname } = useLocation();
-  const { user } = useContext(UserContext);
+  const { user, shows, defaultShow, handleUpdateDefaultShow } = useContext(UserContext);
   const { loadRandomFrame, loadingRandom, error } = useLoadRandomFrame();
   const [searchParams, setSearchParams] = useSearchParams();
   const searchTerm = searchParams.get('searchTerm');
@@ -110,7 +109,7 @@ export default function IpfsSearchBar(props) {
 
   useEffect(() => {
     if (!cid) {
-      setCid(params?.seriesId || window.localStorage.getItem(`defaultsearch${user?.sub}`) || '_universal')
+      setCid(params?.seriesId || defaultShow)
     }
   }, [cid]);
 
