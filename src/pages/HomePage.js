@@ -25,16 +25,14 @@ const prepSessionID = async () => {
 
 export default function SearchPage({ metadata }) {
   const { setSearchQuery } = useSearchDetails();
-  const { user } = useContext(UserContext)
+  const { user, defaultShow, shows } = useContext(UserContext)
   const [searchTerm, setSearchTerm] = useState('');
-  const defaultSeries = window.localStorage.getItem(`defaultsearch${user?.sub}`)
-  const [seriesTitle, setSeriesTitle] = useState(defaultSeries || '_universal');
-  const { shows } = useShows();
+  const [seriesTitle, setSeriesTitle] = useState(shows.some(show => show.isFavorite) ? defaultShow : '_universal');
   const { savedCids, setSearchQuery: setV2SearchQuery } = useSearchDetailsV2()
 
   useEffect(() => {
-    console.log('Loaded Default')
-  }, [defaultSeries]);
+    console.log(shows.some(show => show.isFavorite))
+  }, []);
 
   const navigate = useNavigate();
 

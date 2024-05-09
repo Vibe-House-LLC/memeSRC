@@ -225,7 +225,7 @@ const defaultBackground = `linear-gradient(45deg,
   #00ab84 0, #00ab84 87.5% /* 7*12.5% */,
   #00a3e0 0)`;
 
-export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction, shows, setShows, metadata }) {
+export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction, metadata }) {
   const { localCids, setLocalCids, savedCids, cid, setCid, searchQuery: cidSearchQuery, setSearchQuery: setCidSearchQuery, setShowObj, loadingSavedCids } = useSearchDetailsV2()
   const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -234,7 +234,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   const { show, setShow, searchQuery, setSearchQuery } = useSearchDetails();
   const isMd = useMediaQuery((theme) => theme.breakpoints.up('sm'));
   const [addNewCidOpen, setAddNewCidOpen] = useState(false);
-  const { user, setUser } = useContext(UserContext);
+  const { user, setUser, shows, setShows, defaultShow, handleUpdateDefaultShow } = useContext(UserContext);
   const { pathname } = useLocation();
   const { loadRandomFrame, loadingRandom, error } = useLoadRandomFrame();
 
@@ -342,34 +342,22 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   // This useEffect ensures the theme is applied based on the seriesId once the data is loaded
   useEffect(() => {
     // Check if shows have been loaded
+    console.log(defaultShow)
     if (shows.length > 0) {
+      // Determine the series to use based on the URL or default to '_universal'
+      const currentSeriesId = seriesId || (shows.some(show => show.isFavorite) ? defaultShow : '_universal');
+      console.log(seriesId || shows.some(show => show.isFavorite) ? defaultShow : '_universal')
+      setShow(currentSeriesId)
 
-      Auth.currentAuthenticatedUser().then(authUser => {
-        const currentSeriesId = seriesId || window.localStorage.getItem(`defaultsearch${authUser?.attributes?.sub}`) || '_universal'
-        setShow(currentSeriesId)
-        if (currentSeriesId !== seriesTitle) {
-          setSeriesTitle(currentSeriesId); // Update the series title based on the URL parameter
-          handleChangeSeries(currentSeriesId); // Update the theme
+      if (currentSeriesId !== seriesTitle) {
+        setSeriesTitle(currentSeriesId); // Update the series title based on the URL parameter
+        handleChangeSeries(currentSeriesId); // Update the theme
 
-          // Navigation logic
-          navigate((currentSeriesId === '_universal') ? '/' : `/${currentSeriesId}`);
-        }
-      }).catch(() => {
-        // Determine the series to use based on the URL or default to '_universal'
-        const currentSeriesId = seriesId || '_universal';
-        setShow(currentSeriesId)
-
-        if (currentSeriesId !== seriesTitle) {
-          setSeriesTitle(currentSeriesId); // Update the series title based on the URL parameter
-          handleChangeSeries(currentSeriesId); // Update the theme
-
-          // Navigation logic
-          navigate((currentSeriesId === '_universal') ? '/' : `/${currentSeriesId}`);
-        }
-      });
-
+        // Navigation logic
+        navigate((currentSeriesId === '_universal') ? '/' : `/${currentSeriesId}`);
+      }
     }
-  }, [seriesId, seriesTitle, shows, handleChangeSeries, navigate]);
+  }, [seriesId, seriesTitle, shows, handleChangeSeries, navigate, defaultShow]);
 
   useEffect(() => {
     if (pathname === '/_favorites') {
@@ -564,25 +552,24 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
 
   useEffect(() => {
 
-    Auth.currentAuthenticatedUser().then(authUser => {
-      console.log(authUser)
-      const defaultSeries = window.localStorage.getItem(`defaultsearch${authUser?.attributes?.sub}`)
-      console.log(user?.sub)
-      setCid(seriesId || metadata?.id || defaultSeries || '_universal')
-    }).catch(() => {
-      setCid(seriesId || metadata?.id || '_universal')
-    });
+    setCid(seriesId || metadata?.id || (shows.some(show => show.isFavorite) ? defaultShow : '_universal'))
+    console.log(seriesId || metadata?.id || shows.some(show => show.isFavorite) ? defaultShow : '_universal')
 
 
     return () => {
       if (pathname === '/') {
+        // setCid(defaultShow || '_universal')
         setShowObj(null)
         setSearchQuery(null)
         setCidSearchQuery('')
         console.log('Unset CID')
       }
     }
-  }, [pathname]);
+  }, [pathname, defaultShow]);
+
+  useEffect(() => {
+    console.log('CHANGING DEFAULT: ', defaultShow)
+  }, [defaultShow]);
 
   return (
     <>
@@ -657,7 +644,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
             <Grid container justifyContent="center">
               <Grid item sm={3.5} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
                 <Select
-                  value={cid || seriesTitle}
+                  value={cid || seriesTitle || (shows.some(show => show.isFavorite) ? defaultShow : '_universal')}
                   onChange={(e) => {
                     const selectedId = e.target.value;
 
@@ -671,7 +658,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                       setSeriesTitle(newSeriesTitle);
                       handleChangeSeries(newSeriesTitle);
                       if (newSeriesTitle === '_universal' || newSeriesTitle === '_favorites') {
-                        window.localStorage.setItem(`defaultsearch${user?.sub}`, newSeriesTitle)
+                        handleUpdateDefaultShow(newSeriesTitle)
                       }
                       navigate((newSeriesTitle === '_universal') ? '/' : `/${newSeriesTitle}`);
                     }
@@ -695,6 +682,9 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                     },
                   }}
                 >
+                  {console.log(shows || 'WAITING ON SHOWS')}
+                  {console.log(cid || seriesTitle || defaultShow)}
+                  {console.log(shows.some(show => show.isFavorite))}
                   <MenuItem value="_universal">🌈 All Shows & Movies</MenuItem>
 
                   {shows.some(show => show.isFavorite) ? (

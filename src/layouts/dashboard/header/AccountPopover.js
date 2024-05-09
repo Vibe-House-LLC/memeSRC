@@ -8,6 +8,7 @@ import { API, Auth } from 'aws-amplify';
 import { UserContext } from '../../../UserContext';
 import account from '../../../_mock/account';
 import { useSubscribeDialog } from '../../../contexts/useSubscribeDialog';
+import { getShowsWithFavorites } from '../../../utils/fetchShowsRevised';
 
 // ----------------------------------------------------------------------
 
@@ -64,11 +65,18 @@ export default function AccountPopover() {
 
   const logout = () => {
     Auth.signOut().then(() => {
-      window.localStorage.removeItem('memeSRCUserInfo')
-      userDetails?.setUser(false);
-      navigate('/login')
+      userDetails?.setUser(null);
+      window.localStorage.removeItem('memeSRCUserDetails')
+      console.log('USER GONE')
+      userDetails?.setDefaultShow('_universal')
+      getShowsWithFavorites().then(loadedShows => {
+        window.localStorage.setItem('memeSRCShows', JSON.stringify(loadedShows))
+        userDetails?.setShows(loadedShows)
+      })
     }).catch((err) => {
       alert(err)
+    }).finally(() => {
+      navigate('/login')
     })
   }
 
