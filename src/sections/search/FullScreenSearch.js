@@ -235,8 +235,6 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   const isMd = useMediaQuery((theme) => theme.breakpoints.up('sm'));
   const [addNewCidOpen, setAddNewCidOpen] = useState(false);
   const { user, setUser, shows, setShows, defaultShow, handleUpdateDefaultShow } = useContext(UserContext);
-  console.log('SHOWS: ', shows || 'NO SHOWS')
-  console.log('DEFAULT SHOW: ', defaultShow || 'NO DEFAULT SHOW')
   const { pathname } = useLocation();
   const { loadRandomFrame, loadingRandom, error } = useLoadRandomFrame();
 
@@ -347,7 +345,8 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
     console.log(defaultShow)
     if (shows.length > 0) {
       // Determine the series to use based on the URL or default to '_universal'
-      const currentSeriesId = seriesId || defaultShow;
+      const currentSeriesId = seriesId || (shows.some(show => show.isFavorite) ? defaultShow : '_universal');
+      console.log(seriesId || shows.some(show => show.isFavorite) ? defaultShow : '_universal')
       setShow(currentSeriesId)
 
       if (currentSeriesId !== seriesTitle) {
@@ -553,7 +552,8 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
 
   useEffect(() => {
 
-    setCid(seriesId || metadata?.id || defaultShow)
+    setCid(seriesId || metadata?.id || (shows.some(show => show.isFavorite) ? defaultShow : '_universal'))
+    console.log(seriesId || metadata?.id || shows.some(show => show.isFavorite) ? defaultShow : '_universal')
 
 
     return () => {
@@ -644,7 +644,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
             <Grid container justifyContent="center">
               <Grid item sm={3.5} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
                 <Select
-                  value={cid || seriesTitle || defaultShow}
+                  value={cid || seriesTitle || (shows.some(show => show.isFavorite) ? defaultShow : '_universal')}
                   onChange={(e) => {
                     const selectedId = e.target.value;
 

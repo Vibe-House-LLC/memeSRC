@@ -94,7 +94,7 @@ export default function IpfsSearchBar(props) {
   const { children } = props
   const { pathname } = useLocation();
   const { user, shows, defaultShow, handleUpdateDefaultShow } = useContext(UserContext);
-  const { show, setShow, searchQuery, setSearchQuery, cid = defaultShow, setCid, localCids, setLocalCids, showObj, setShowObj, selectedFrameIndex, setSelectedFrameIndex, savedCids, loadingSavedCids } = useSearchDetailsV2();
+  const { show, setShow, searchQuery, setSearchQuery, cid = shows.some(show => show.isFavorite) ? defaultShow : '_universal', setCid, localCids, setLocalCids, showObj, setShowObj, selectedFrameIndex, setSelectedFrameIndex, savedCids, loadingSavedCids } = useSearchDetailsV2();
   const { loadRandomFrame, loadingRandom, error } = useLoadRandomFrame();
   const [searchParams, setSearchParams] = useSearchParams();
   const searchTerm = searchParams.get('searchTerm');
@@ -109,7 +109,7 @@ export default function IpfsSearchBar(props) {
 
   useEffect(() => {
     if (!cid) {
-      setCid(params?.seriesId || defaultShow)
+      setCid(params?.seriesId || (shows.some(show => show.isFavorite) ? defaultShow : '_universal'))
     }
   }, [cid]);
 
@@ -201,7 +201,7 @@ export default function IpfsSearchBar(props) {
   const searchFunction = (searchEvent) => {
     searchEvent?.preventDefault();
     console.log(search)
-    navigate(`/search/${params?.seriesId || defaultShow}/?searchTerm=${encodeURIComponent(search)}`)
+    navigate(`/search/${params?.seriesId || (shows.some(show => show.isFavorite) ? defaultShow : '_universal')}/?searchTerm=${encodeURIComponent(search)}`)
     return false
   }
 

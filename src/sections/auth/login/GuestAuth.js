@@ -55,7 +55,8 @@ export default function GuestAuth(props) {
       console.log(localStorageUser)
 
       if (localStorageUser) {
-        setDefaultShow(localStorageDefaultShow)
+        console.log(localStorageShows.some(show => show.isFavorite))
+        setDefaultShow(localStorageShows.some(show => show.isFavorite) ? localStorageDefaultShow : '_universal')
         setUser(localStorageUser)
       } else {
         setUser(false)
@@ -73,6 +74,9 @@ export default function GuestAuth(props) {
       Auth.currentAuthenticatedUser().then((x) => {
         API.get('publicapi', '/user/get').then(userDetails => {
           getShowsWithFavorites().then(loadedShows => {
+            if (!shows.some(show => show.isFavorite)) {
+              setDefaultShow('_universal')
+            }
             setUser({ ...x, ...x.signInUserSession.accessToken.payload, userDetails: userDetails?.data?.getUserDetails })  // if an authenticated user is found, set it into the context
             // console.log(x)
             window.localStorage.setItem('memeSRCUserDetails', JSON.stringify({ ...x.signInUserSession.accessToken.payload, userDetails: userDetails?.data?.getUserDetails }))
@@ -88,6 +92,9 @@ export default function GuestAuth(props) {
         }).catch(err => console.log(err))
       }).catch(() => {
         getShowsWithFavorites().then(loadedShows => {
+          if (!shows.some(show => show.isFavorite)) {
+            setDefaultShow('_universal')
+          }
           setUser(false)  // indicate the context is ready but user is not auth'd
           window.localStorage.removeItem('memeSRCUserInfo')
           window.localStorage.setItem('memeSRCShows', JSON.stringify(loadedShows))
