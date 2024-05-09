@@ -55,8 +55,10 @@ export default function GuestAuth(props) {
       console.log(localStorageUser)
 
       if (localStorageUser) {
-        console.log(localStorageShows?.some(show => show.isFavorite))
-        setDefaultShow(localStorageShows?.some(show => show.isFavorite) ? localStorageDefaultShow : '_universal')
+        if (localStorageShows) {
+          console.log(localStorageShows?.some(show => show.isFavorite))
+          setDefaultShow(localStorageShows?.some(show => show.isFavorite) ? localStorageDefaultShow : '_universal')
+        }
         setUser(localStorageUser)
       } else {
         setUser(false)
