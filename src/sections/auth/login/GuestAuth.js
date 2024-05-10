@@ -19,19 +19,19 @@ export default function GuestAuth(props) {
 
   useEffect(() => {
     if (location.pathname !== 'login') {
-      console.log(user)
+      // console.log(user)
       const userDetails = window.localStorage.getItem('memeSRCUserDetails')
       const userObject = { ...userDetails }
-      console.log(userDetails)
+      // console.log(userDetails)
 
       if (user && (user.userDetails !== userObject.userDetails)) {
         window.localStorage.setItem('memeSRCUserDetails', JSON.stringify({ ...user?.signInUserSession?.accessToken?.payload, userDetails: { ...user.userDetails } }))
       }
 
       if (user) {
-        console.log(user)
+        // console.log(user)
         const localStorageDefaultShow = window.localStorage.getItem(`memeSRCDefaultShow`) || '_universal'
-        console.log('DEFAULT SHOW: ', window.localStorage.getItem(`memeSRCDefaultShow`))
+        // console.log('DEFAULT SHOW: ', window.localStorage.getItem(`memeSRCDefaultShow`))
         setDefaultShow(localStorageDefaultShow)
       } else {
         setDefaultShow('_universal')
@@ -52,11 +52,11 @@ export default function GuestAuth(props) {
       const localStorageShows = JSON.parse(window.localStorage.getItem('memeSRCShows'))
       const localStorageDefaultShow = window.localStorage.getItem('memeSRCDefaultShow')
 
-      console.log(localStorageUser)
+      // console.log(localStorageUser)
 
       if (localStorageUser) {
         if (localStorageShows) {
-          console.log(localStorageShows?.some(show => show.isFavorite))
+          // console.log(localStorageShows?.some(show => show.isFavorite))
           setDefaultShow(localStorageShows?.some(show => show.isFavorite) ? localStorageDefaultShow : '_universal')
         }
         setUser(localStorageUser)
