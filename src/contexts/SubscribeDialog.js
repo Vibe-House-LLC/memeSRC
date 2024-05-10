@@ -219,106 +219,6 @@ export const DialogProvider = ({ children }) => {
           </IconButton>
         </DialogTitle>
         <Divider />
-        {countryCode === 'US' && (
-          <DialogContent sx={{ py: 4 }}>
-            <Box
-              p={3}
-              sx={{
-                backgroundColor: 'error.main',
-                borderRadius: 4,
-                mb: 4,
-              }}
-            >
-              <Typography fontSize={23} fontWeight={700} color="common.white" gutterBottom>
-                memeSRC Pro is currently unavailable in your country.
-              </Typography>
-              <Typography fontSize={14} color="common.white">
-                We really appreciate your interest and support, but sadly memeSRC&nbsp;Pro is currently unavailable to buy in your country.
-              </Typography>
-            </Box>
-            <Box sx={{ mt: 4, mx: 2 }}>
-              <Typography variant="h6" gutterBottom>
-                Other ways to support memeSRC:
-              </Typography>
-              <Box sx={{ pl: 4, mt: 2 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <Box
-                    sx={{
-                      backgroundColor: 'primary.main',
-                      borderRadius: '50%',
-                      width: 32,
-                      height: 32,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      mr: 2,
-                    }}
-                  >
-                    <Share sx={{ color: 'common.white' }} />
-                  </Box>
-                  <Typography variant="body1">Help spread the word</Typography>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <Box
-                    sx={{
-                      backgroundColor: 'primary.main',
-                      borderRadius: '50%',
-                      width: 32,
-                      height: 32,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      mr: 2,
-                    }}
-                  >
-                    <ThumbUp sx={{ color: 'common.white' }} />
-                  </Box>
-                  <Typography variant="body1">Make and share more memes</Typography>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Box
-                    sx={{
-                      backgroundColor: 'primary.main', 
-                      borderRadius: '50%',
-                      width: 32,
-                      height: 32,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      mr: 2,
-                    }}
-                  >
-                    <Feedback sx={{ color: 'common.white' }} />
-                  </Box>
-                  <Typography variant="body1">Give feedback and contribute</Typography>
-                </Box>
-              </Box>
-            </Box>
-            <Box sx={{ mt: 4, mx: 1 }}>
-              <Typography variant="body1">
-                Thanks for understanding! We love our community around the world and want to keep making these tools more accessible to everyone.
-              </Typography>
-            </Box>
-            <Button
-              ref={subscribeButtonRef}
-              variant="contained"
-              size="small"
-              onClick={closeDialog}
-              fullWidth
-              sx={{
-                borderRadius: 50,
-                px: 4,
-                fontSize: 17,
-                mt: 5,
-                // backgroundColor: getColor(),
-                // color: getTextColor(),
-              }}
-            >
-              Dismiss
-            </Button>
-          </DialogContent>
-        )}
-        {countryCode !== 'US' && (
           <>
           {!loading && !checkoutLink && (
             <Fade in timeout={400}>
@@ -583,7 +483,14 @@ export const DialogProvider = ({ children }) => {
                     ref={subscribeButtonRef}
                     variant="contained"
                     size="large"
-                    onClick={buySubscription}
+                    onClick={() => {
+                      if (countryCode === 'US') {
+                        buySubscription();
+                      } else {
+                        setCheckoutLink('unsupported_country');
+                        console.log('unsupported_country')
+                      }
+                    }}
                     fullWidth
                     sx={{
                       borderRadius: 50,
@@ -646,57 +553,159 @@ export const DialogProvider = ({ children }) => {
             </Fade>
           )}
           {(loading || checkoutLink) && (
-            <DialogContent sx={{ minHeight: 500, display: 'flex', flexDirection: 'column', mb: 5 }}>
-              <Box sx={{ m: 'auto' }}>
-                <Typography fontSize={20} textAlign='center' fontWeight={700}>
-                  Powered by
-                </Typography>
-                <Typography fontSize={45} textAlign='center' fontWeight={700} pt={0.5}>
-                  Vibe House
-                </Typography>
+            <>
+            {countryCode !== 'US' && (
+          <DialogContent sx={{ py: 4 }}>
+            <Box
+              p={3}
+              sx={{
+                backgroundColor: 'error.main',
+                borderRadius: 4,
+                mb: 4,
+              }}
+            >
+              <Typography fontSize={23} fontWeight={700} color="common.white" gutterBottom>
+                memeSRC Pro is currently unavailable in your country.
+              </Typography>
+              <Typography fontSize={14} color="common.white">
+                We really appreciate your interest and support, but sadly memeSRC&nbsp;Pro is currently unavailable to buy in your country.
+              </Typography>
+            </Box>
+            <Box sx={{ mt: 4, mx: 2 }}>
+              <Typography variant="h6" gutterBottom>
+                Other ways to support memeSRC:
+              </Typography>
+              <Box sx={{ pl: 4, mt: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                  <Box
+                    sx={{
+                      backgroundColor: 'primary.main',
+                      borderRadius: '50%',
+                      width: 32,
+                      height: 32,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      mr: 2,
+                    }}
+                  >
+                    <Share sx={{ color: 'common.white' }} />
+                  </Box>
+                  <Typography variant="body1">Help spread the word</Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                  <Box
+                    sx={{
+                      backgroundColor: 'primary.main',
+                      borderRadius: '50%',
+                      width: 32,
+                      height: 32,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      mr: 2,
+                    }}
+                  >
+                    <ThumbUp sx={{ color: 'common.white' }} />
+                  </Box>
+                  <Typography variant="body1">Make and share more memes</Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Box
+                    sx={{
+                      backgroundColor: 'primary.main', 
+                      borderRadius: '50%',
+                      width: 32,
+                      height: 32,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      mr: 2,
+                    }}
+                  >
+                    <Feedback sx={{ color: 'common.white' }} />
+                  </Box>
+                  <Typography variant="body1">Give feedback and contribute</Typography>
+                </Box>
               </Box>
-              <Box sx={{ mx: 'auto', mt: 'auto', textAlign: 'center' }}>
-                <LoadingButton
-                  loading={loading || !checkoutLink}
-                  loadingIndicator={
-                    <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-                      <CircularProgress color="inherit" size={16} sx={{ mr: 1 }} />
-                      <span>Preparing&nbsp;Checkout...</span>
-                    </Box>
-                  }
-                  variant="contained"
-                  size="large"
-                  fullWidth
-                  sx={{
-                    borderRadius: 50,
-                    px: 0,
-                    py: 1.5,
-                    fontSize: 20,
-                    backgroundColor: getColor(),
-                    color: getTextColor(),
-                  }}
-                  onClick={() => {
-                    window.location.href = checkoutLink;
-                  }}
-                >
-                  {!loading && checkoutLink ? 'Agree & Continue' : ''}
-                </LoadingButton>
-                <Typography variant="caption" sx={{ mt: 2, lineHeight: 1.2, }}>
-                  I understand memeSRC Pro is billed as Vibe&nbsp;House&nbsp;LLC and agree to the{' '}
-                  <a href="/termsofservice" target="_blank" style={{ color: 'white', textDecoration: 'none', fontWeight: 'bold' }}>
-                    Terms of Service
-                  </a>{' '}
-                  and{' '}
-                  <a href="/privacypolicy" target="_blank" style={{ color: 'white', textDecoration: 'none', fontWeight: 'bold' }}>
-                    Privacy Policy
-                  </a>
-                  .
-                </Typography>
-              </Box>
-            </DialogContent>
-          )}
-          </>
+            </Box>
+            <Box sx={{ mt: 4, mx: 1 }}>
+              <Typography variant="body1">
+                Thanks for understanding! We love our community around the world and want to keep making these tools more accessible to everyone.
+              </Typography>
+            </Box>
+            <Button
+              ref={subscribeButtonRef}
+              variant="contained"
+              size="small"
+              onClick={closeDialog}
+              fullWidth
+              sx={{
+                borderRadius: 50,
+                px: 4,
+                fontSize: 17,
+                mt: 5,
+                // backgroundColor: getColor(),
+                // color: getTextColor(),
+              }}
+            >
+              Dismiss
+            </Button>
+          </DialogContent>
         )}
+        {countryCode === 'US' && (
+          <DialogContent sx={{ minHeight: 500, display: 'flex', flexDirection: 'column', mb: 5 }}>
+          <Box sx={{ m: 'auto' }}>
+            <Typography fontSize={20} textAlign='center' fontWeight={700}>
+              Powered by
+            </Typography>
+            <Typography fontSize={45} textAlign='center' fontWeight={700} pt={0.5}>
+              Vibe House
+            </Typography>
+          </Box>
+          <Box sx={{ mx: 'auto', mt: 'auto', textAlign: 'center' }}>
+            <LoadingButton
+              loading={loading || !checkoutLink}
+              loadingIndicator={
+                <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                  <CircularProgress color="inherit" size={16} sx={{ mr: 1 }} />
+                  <span>Preparing&nbsp;Checkout...</span>
+                </Box>
+              }
+              variant="contained"
+              size="large"
+              fullWidth
+              sx={{
+                borderRadius: 50,
+                px: 0,
+                py: 1.5,
+                fontSize: 20,
+                backgroundColor: getColor(),
+                color: getTextColor(),
+              }}
+              onClick={() => {
+                window.location.href = checkoutLink;
+              }}
+            >
+              {!loading && checkoutLink ? 'Agree & Continue' : ''}
+            </LoadingButton>
+            <Typography variant="caption" sx={{ mt: 2, lineHeight: 1.2, }}>
+              I understand memeSRC Pro is billed as Vibe&nbsp;House&nbsp;LLC and agree to the{' '}
+              <a href="/termsofservice" target="_blank" style={{ color: 'white', textDecoration: 'none', fontWeight: 'bold' }}>
+                Terms of Service
+              </a>{' '}
+              and{' '}
+              <a href="/privacypolicy" target="_blank" style={{ color: 'white', textDecoration: 'none', fontWeight: 'bold' }}>
+                Privacy Policy
+              </a>
+              .
+            </Typography>
+          </Box>
+        </DialogContent>
+        )}
+            </>
+            )}
+          </>
       </Dialog>
     </SubscribeDialogContext.Provider>
   );
