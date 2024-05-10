@@ -9,7 +9,7 @@ export default function getV2Metadata(seriesId) {
             authMode: 'API_KEY'
         }).then(aliasResponse => {
             if (aliasResponse?.data?.getAlias?.v2ContentMetadata) {
-                console.log('METADATA LOADED FROM ALIAS')
+                // console.log('METADATA LOADED FROM ALIAS')
                 resolve(aliasResponse.data.getAlias.v2ContentMetadata)
             } else {
                 API.graphql({
@@ -18,7 +18,7 @@ export default function getV2Metadata(seriesId) {
                     authMode: 'API_KEY',
                 }).then(response => {
                     if (response?.data?.getV2ContentMetadata) {
-                        console.log('METADATA LOADED FROM CID')
+                        // console.log('METADATA LOADED FROM CID')
                         resolve(response.data.getV2ContentMetadata)
                     } else {
                         reject(new Error('No metadata found'))

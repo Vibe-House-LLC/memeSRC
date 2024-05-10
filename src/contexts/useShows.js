@@ -48,7 +48,7 @@ export const ShowProvider = ({ children }) => {
 
     useEffect(() => {
         fetchShows();
-        console.log('loading')
+        // console.log('loading')
     }, [user]);
 
     async function getCacheKey() {
@@ -139,7 +139,7 @@ export const ShowProvider = ({ children }) => {
         
         if (cachedData) {
             setShows(JSON.parse(cachedData).data);
-            console.log(JSON.parse(cachedData).data)
+            // console.log(JSON.parse(cachedData).data)
         }
 
         await refreshDataAndUpdateCache();

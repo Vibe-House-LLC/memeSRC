@@ -362,7 +362,7 @@ export default function FramePage({ shows = [] }) {
         try {
           // Fetch initial frame information including the main image and subtitle
           const initialInfo = await fetchFrameInfo(confirmedCid, season, episode, frame, { mainImage: true });
-          console.log("initialInfo: ", initialInfo);
+          // console.log("initialInfo: ", initialInfo);
           setFrame(initialInfo.frame_image);
           setFrameData(initialInfo);
           setDisplayImage(initialInfo.frame_image);
@@ -414,7 +414,7 @@ export default function FramePage({ shows = [] }) {
                 updatedFrames[index] = resolvedFrame; // This ensures that frames are kept in order
                 return updatedFrames;
               });
-              console.log("Loaded Frame: ", resolvedFrame);
+              // console.log("Loaded Frame: ", resolvedFrame);
             }).catch(error => {
               console.error("Failed to fetch a frame:", error);
             });
@@ -465,7 +465,7 @@ export default function FramePage({ shows = [] }) {
 
   const loadFineTuningImages = () => {
     if (fineTuningFrames && !fineTuningLoadStarted) {
-      console.log('LOADING THE IMAGES');
+      // console.log('LOADING THE IMAGES');
       setFineTuningLoadStarted(true);
       setLoadingFineTuning(true);
 
@@ -625,8 +625,8 @@ useEffect(() => {
 
   useEffect(() => {
     if (frames && frames.length > 0) {
-      console.log(frames.length)
-      console.log(Math.floor(frames.length / 2))
+      // console.log(frames.length)
+      // console.log(Math.floor(frames.length / 2))
       setSelectedFrameIndex(fineTuningIndex || Math.floor(frames.length / 2))
       setDisplayImage(fineTuningIndex ? frames[fineTuningIndex] : frames[Math.floor(frames.length / 2)])
     }
