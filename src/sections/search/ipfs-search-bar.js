@@ -138,9 +138,9 @@ export default function IpfsSearchBar(props) {
     }
   }, [searchTerm]);
 
-  useEffect(() => {
-    console.log(cid)
-  }, [cid]);
+  // useEffect(() => {
+  //   console.log(cid)
+  // }, [cid]);
 
   const handleSelectSeries = (data) => {
     if (data === "editFavorites") {
@@ -200,7 +200,7 @@ export default function IpfsSearchBar(props) {
 
   const searchFunction = (searchEvent) => {
     searchEvent?.preventDefault();
-    console.log(search)
+    // console.log(search)
     navigate(`/search/${params?.seriesId || (shows.some(show => show.isFavorite) ? defaultShow : '_universal')}/?searchTerm=${encodeURIComponent(search)}`)
     return false
   }

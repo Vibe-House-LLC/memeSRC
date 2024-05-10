@@ -30,9 +30,9 @@ export default function SearchPage({ metadata }) {
   const [seriesTitle, setSeriesTitle] = useState(shows.some(show => show.isFavorite) ? defaultShow : '_universal');
   const { savedCids, setSearchQuery: setV2SearchQuery } = useSearchDetailsV2()
 
-  useEffect(() => {
-    console.log(shows.some(show => show.isFavorite))
-  }, []);
+  // useEffect(() => {
+  //   console.log(shows.some(show => show.isFavorite))
+  // }, []);
 
   const navigate = useNavigate();
 
@@ -51,7 +51,7 @@ export default function SearchPage({ metadata }) {
 
     setV2SearchQuery(searchTerm)
     const encodedSearchTerms = encodeURI(searchTerm)
-    console.log(`Navigating to: '${`/search/${seriesTitle}/${encodedSearchTerms}`}'`)
+    // console.log(`Navigating to: '${`/search/${seriesTitle}/${encodedSearchTerms}`}'`)
     navigate(`/search/${seriesTitle}?searchTerm=${encodedSearchTerms}`)
     // console.log(seriesTitle)
 

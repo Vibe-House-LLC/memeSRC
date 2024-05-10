@@ -35,7 +35,7 @@ export default function MagicPopup({ children }) {
         user !== null &&
         user.userDetails?.subscriptionStatus === 'active'
       ) {
-        console.log(user.userDetails);
+        // console.log(user.userDetails);
         // Set the anchorEl to magicPopup if the element with ID 'magicPopup' exists
         const magicPopupElement = document.getElementById('magicChip');
         if (magicPopupElement) {

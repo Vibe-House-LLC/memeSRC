@@ -304,7 +304,7 @@ export default function SearchPage() {
           ...graphqlOperation(getWebsiteSetting, { id: 'globalSettings' }),
           authMode: 'API_KEY',
         });
-        console.log("setUniversalSearchMaintenance to: ", response?.data?.getWebsiteSetting?.universalSearchMaintenance);
+        // console.log("setUniversalSearchMaintenance to: ", response?.data?.getWebsiteSetting?.universalSearchMaintenance);
         return response?.data?.getWebsiteSetting?.universalSearchMaintenance;
       } catch (error) {
         console.log(error);
@@ -412,7 +412,7 @@ export default function SearchPage() {
       try {
         let seriesToSearch;
         if (cid === '_favorites' || params?.cid === '_favorites') {
-          console.log(shows)
+          // console.log(shows)
           seriesToSearch = shows.filter(show => show.isFavorite).map(show => show.id).join(',');
         } else {
           seriesToSearch = cid || params?.cid
@@ -448,9 +448,9 @@ export default function SearchPage() {
     // }
   }, [loadingCsv, showObj, searchQuery, cid, universalSearchMaintenance]);
 
-  useEffect(() => {
-    console.log(newResults);
-  }, [newResults]);
+  // useEffect(() => {
+  //   console.log(newResults);
+  // }, [newResults]);
 
   const ReportProblemButton = styled(IconButton)`
     top: 10px;

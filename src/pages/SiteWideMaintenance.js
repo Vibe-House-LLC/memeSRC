@@ -45,7 +45,7 @@ export default function SiteWideMaintenance({ children }) {
       }
     ).then(response => {
       setMaintenance(response?.data?.getWebsiteSetting?.fullSiteMaintenance);
-      console.log(response?.data?.getWebsiteSetting?.fullSiteMaintenance)
+      // console.log(response?.data?.getWebsiteSetting?.fullSiteMaintenance)
       setLoading(false)
     }).catch(error => {
       console.log(error)

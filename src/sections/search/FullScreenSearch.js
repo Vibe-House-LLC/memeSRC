@@ -317,9 +317,9 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
     // }
   }, [shows, savedCids]);
 
-  useEffect(() => {
-    console.log(metadata)
-  }, [metadata]);
+  // useEffect(() => {
+  //   console.log(metadata)
+  // }, [metadata]);
 
   // This useEffect handles the data fetching
   useEffect(() => {
@@ -342,11 +342,11 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   // This useEffect ensures the theme is applied based on the seriesId once the data is loaded
   useEffect(() => {
     // Check if shows have been loaded
-    console.log(defaultShow)
+    // console.log(defaultShow)
     if (shows.length > 0) {
       // Determine the series to use based on the URL or default to '_universal'
       const currentSeriesId = seriesId || (shows.some(show => show.isFavorite) ? defaultShow : '_universal');
-      console.log(seriesId || shows.some(show => show.isFavorite) ? defaultShow : '_universal')
+      // console.log(seriesId || shows.some(show => show.isFavorite) ? defaultShow : '_universal')
       setShow(currentSeriesId)
 
       if (currentSeriesId !== seriesTitle) {
@@ -466,7 +466,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       }
     } else {
       const scrolltoelm = document.getElementById(element);
-      console.log(scrolltoelm);
+      // console.log(scrolltoelm);
       scrolltoelm.scrollIntoView({ behavior: 'smooth' });
     }
   };
@@ -553,7 +553,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   useEffect(() => {
 
     setCid(seriesId || metadata?.id || (shows.some(show => show.isFavorite) ? defaultShow : '_universal'))
-    console.log(seriesId || metadata?.id || shows.some(show => show.isFavorite) ? defaultShow : '_universal')
+    // console.log(seriesId || metadata?.id || shows.some(show => show.isFavorite) ? defaultShow : '_universal')
 
 
     return () => {
@@ -562,14 +562,14 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
         setShowObj(null)
         setSearchQuery(null)
         setCidSearchQuery('')
-        console.log('Unset CID')
+        // console.log('Unset CID')
       }
     }
   }, [pathname, defaultShow]);
 
-  useEffect(() => {
-    console.log('CHANGING DEFAULT: ', defaultShow)
-  }, [defaultShow]);
+  // useEffect(() => {
+  //   console.log('CHANGING DEFAULT: ', defaultShow)
+  // }, [defaultShow]);
 
   return (
     <>
@@ -682,9 +682,9 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                     },
                   }}
                 >
-                  {console.log(shows || 'WAITING ON SHOWS')}
+                  {/* {console.log(shows || 'WAITING ON SHOWS')}
                   {console.log(cid || seriesTitle || defaultShow)}
-                  {console.log(shows.some(show => show.isFavorite))}
+                  {console.log(shows.some(show => show.isFavorite))} */}
                   <MenuItem value="_universal">🌈 All Shows & Movies</MenuItem>
 
                   {shows.some(show => show.isFavorite) ? (

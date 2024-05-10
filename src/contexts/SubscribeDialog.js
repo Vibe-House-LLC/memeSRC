@@ -30,7 +30,7 @@ export const DialogProvider = ({ children }) => {
       user !== null &&
       user.userDetails?.subscriptionStatus !== 'active'
     ) {
-      console.log(user.userDetails);
+      // console.log(user.userDetails);
       setSubscriptionDialogOpen(true);
     }
   }, [user, location]);
@@ -72,7 +72,7 @@ export const DialogProvider = ({ children }) => {
   };
 
   const buySubscription = () => {
-    console.log(selectedPlan)
+    // console.log(selectedPlan)
     setLoading(true)
     API.post('publicapi', '/user/update/getCheckoutSession', {
       body: {
@@ -80,7 +80,7 @@ export const DialogProvider = ({ children }) => {
         priceKey: selectedPlan
       }
     }).then(results => {
-      console.log(results)
+      // console.log(results)
       setCheckoutLink(results)
       setLoading(false)
     }).catch(error => {
@@ -474,7 +474,7 @@ export const DialogProvider = ({ children }) => {
                 </Grid>
               </Grid>
               <Box mt={4} textAlign="center">
-                {console.log(user)}
+                {/* {console.log(user)} */}
                 {user?.userDetails ? <Button
                   ref={subscribeButtonRef}
                   variant="contained"

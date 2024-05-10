@@ -24,7 +24,7 @@ const fetchCSV = async (url) => {
 
 // Helper function to find subtitle info for a frame and decode base64 subtitle
 const findSubtitleForFrame = (csvData, season, episode, frame) => {
-  console.log('finding subtitle for ', season, episode, frame);
+  // console.log('finding subtitle for ', season, episode, frame);
   for (let i = 1; i < csvData.length; i += 1) {
     const [csvSeason, csvEpisode, , encodedSubtitleText, startFrame, endFrame] = csvData[i];
     if (
@@ -86,7 +86,7 @@ const fetchFramesSurroundingPromises = (cid, season, episode, frame) => {
 
   const surroundingFramePromises = offsets.map(offset => {
     const surroundingFrameIndex = frame + offset;
-    console.log("surroundingFrameIndex", surroundingFrameIndex)
+    // console.log("surroundingFrameIndex", surroundingFrameIndex)
     // Now, each surrounding frame is an array of a single index for consistency with extractVideoFrames
     return extractVideoFrames(cid, season, episode, [surroundingFrameIndex], 10, scaleFactor)
       .then(frameImages => {
@@ -185,14 +185,14 @@ const fetchFrameInfo = async (cid, season, episode, frame, options = {}) => {
         }
       }
     }
-    console.log("TEST: 9")
+    // console.log("TEST: 9")
     // Fetch frames_surrounding as an array of promises for image extraction if requested
     if (options.framesSurroundingPromises) {
       framesSurrounding = fetchFramesSurroundingPromises(cid, season, episode, frame);
       // Note: framesSurrounding is returned as an array of promises, to be resolved by the caller
     }
 
-    console.log("TEST: 10")
+    // console.log("TEST: 10")
 
     return {
       series_name: seriesName,
@@ -205,7 +205,7 @@ const fetchFrameInfo = async (cid, season, episode, frame, options = {}) => {
       source: 'IPFS',
     };
   } catch (error) {
-    console.log("TEST: -1")
+    // console.log("TEST: -1")
     console.error('Failed to fetch frame information:', error);
     throw error;
   }
