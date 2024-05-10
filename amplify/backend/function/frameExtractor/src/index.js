@@ -7,9 +7,10 @@ const fs = require('fs');
 const path = require('path');
 const ffmpeg = require('fluent-ffmpeg');
 const ffmpegPath = require('ffmpeg-static');
-const { S3Client, GetObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client, GetObjectCommand, PutObjectCommand } = require('@aws-sdk/client-s3');
 
 ffmpeg.setFfmpegPath(ffmpegPath);
+console.log(ffmpegPath)
 
 const CHUNK_DURATION = 25; // Duration of each chunk in seconds
 const FPS = 10; // Frames per second of the source
@@ -44,69 +45,107 @@ exports.handler = async (event) => {
 
     const bucketName = process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME;
     const objectKey = `protected/src/${index}/${season}/${episode}/${fileIndex}.mp4`;
-    const videoFile = path.join('/tmp', `video-${Date.now()}.mp4`);
-    const outputFile = path.join('/tmp', `frame-${Date.now()}.jpg`);
+    const extractedImageKey = `src-extracted/${index}/${season}/${episode}/${frameNumber}.jpg`;
 
-    const getObjectParams = {
-      Bucket: bucketName,
-      Key: objectKey,
-    };
+    // Check if the extracted image already exists in S3
+    try {
+      await s3Client.send(new GetObjectCommand({
+        Bucket: bucketName,
+        Key: extractedImageKey,
+      }));
 
-    const getObjectCommand = new GetObjectCommand(getObjectParams);
-    const response = await s3Client.send(getObjectCommand);
-    const videoStream = response.Body;
+      // If the image exists, fetch it from S3
+      const response = await s3Client.send(new GetObjectCommand({
+        Bucket: bucketName,
+        Key: extractedImageKey,
+      }));
 
-    await new Promise((resolve, reject) => {
-      const fileStream = fs.createWriteStream(videoFile);
-      videoStream.pipe(fileStream);
-      fileStream.on('finish', resolve);
-      fileStream.on('error', reject);
-    });
+      const imageBuffer = await response.Body.toArray();
+      const base64Image = Buffer.concat(imageBuffer).toString('base64');
 
-    await new Promise((resolve, reject) => {
-      const command = ffmpeg(videoFile)
-        .outputOptions([
-          `-ss ${internalFrameIndex}`,
-          '-vframes 1',
-          '-vf scale=iw*sar:ih,setsar=1',
-          '-c:v mjpeg',
-          '-f image2',
-        ])
-        .output(outputFile)
-        .on('end', resolve)
-        .on('error', (err) => {
-          console.error('FFmpeg error:', err);
-          reject(err);
-        });
+      return {
+        statusCode: 200,
+        headers: {
+          'Content-Type': 'image/jpeg',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': '*',
+        },
+        body: base64Image,
+        isBase64Encoded: true,
+      };
+    } catch (error) {
+      // If the image doesn't exist, proceed with extraction from the video
+      const videoFile = path.join('/tmp', `video-${Date.now()}.mp4`);
+      const outputFile = path.join('/tmp', `frame-${Date.now()}.jpg`);
 
-      console.log('FFmpeg command:', JSON.stringify(command.toString()));
-      console.log('S3 Object Key:', objectKey);
-      console.log('Internal Frame Index:', internalFrameIndex);
-      console.log('Output File:', outputFile);
+      const getObjectParams = {
+        Bucket: bucketName,
+        Key: objectKey,
+      };
 
-      command.run();
-    });
+      const getObjectCommand = new GetObjectCommand(getObjectParams);
+      const response = await s3Client.send(getObjectCommand);
+      const videoStream = response.Body;
 
-    const imageBuffer = fs.readFileSync(outputFile);
-    const base64Image = imageBuffer.toString('base64');
+      await new Promise((resolve, reject) => {
+        const fileStream = fs.createWriteStream(videoFile);
+        videoStream.pipe(fileStream);
+        fileStream.on('finish', resolve);
+        fileStream.on('error', reject);
+      });
 
-    // Clean up temporary files
-    fs.unlinkSync(videoFile);
-    fs.unlinkSync(outputFile);
+      await new Promise((resolve, reject) => {
+        const command = ffmpeg(videoFile)
+          .outputOptions([
+            `-ss ${internalFrameIndex}`,
+            '-vframes 1',
+            '-vf scale=iw*sar:ih,setsar=1',
+            '-c:v mjpeg',
+            '-f image2',
+          ])
+          .output(outputFile)
+          .on('end', resolve)
+          .on('error', (err) => {
+            console.error('FFmpeg error:', err);
+            reject(err);
+          });
 
-    const lambdaResponse = {
-      statusCode: 200,
-      headers: {
-        'Content-Type': 'image/jpeg',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': '*',
-        'Cache-Control': 'max-age=31536000',
-      },
-      body: base64Image,
-      isBase64Encoded: true,
-    };
+        console.log('FFmpeg command:', JSON.stringify(command.toString()));
+        console.log('S3 Object Key:', objectKey);
+        console.log('Internal Frame Index:', internalFrameIndex);
+        console.log('Output File:', outputFile);
 
-    return lambdaResponse;
+        command.run();
+      });
+
+      const imageBuffer = fs.readFileSync(outputFile);
+      const base64Image = imageBuffer.toString('base64');
+
+      // Upload the extracted image to S3 for caching
+      await s3Client.send(new PutObjectCommand({
+        Bucket: bucketName,
+        Key: extractedImageKey,
+        Body: imageBuffer,
+        ContentType: 'image/jpeg',
+      }));
+
+      // Clean up temporary files
+      fs.unlinkSync(videoFile);
+      fs.unlinkSync(outputFile);
+
+      const lambdaResponse = {
+        statusCode: 200,
+        headers: {
+          'Content-Type': 'image/jpeg',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': '*',
+        },
+        body: base64Image,
+        isBase64Encoded: true,
+      };
+
+      return lambdaResponse;
+    }
   } catch (error) {
     console.error('Error:', error);
     return {
