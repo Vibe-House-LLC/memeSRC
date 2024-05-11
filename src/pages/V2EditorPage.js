@@ -2001,7 +2001,7 @@ const EditorPage = ({ shows }) => {
                   <Button
                     variant="contained"
                     fullWidth
-                    href={`/episode/${cid}/${season}/${episode}/${frame}`}
+                    href={`/episode/${cid}/${season}/${episode}/${Math.round(frame / 10) * 10}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`}
                   >
                     View Episode
                   </Button>

@@ -343,8 +343,8 @@ export default function SearchPage() {
   const loadVideoUrl = async (result, metadataCid) => {
     const resultCid = result.cid || metadataCid;
     const thumbnailUrl = animationsEnabled
-      ? `https://v2-${process.env.REACT_APP_USER_BRANCH}.memesrc.com/thumbnail/${resultCid}/${result.season}/${result.episode}/${result.subtitle_index}`
-      : `https://v2-${process.env.REACT_APP_USER_BRANCH}.memesrc.com/frame/${resultCid}/${result.season}/${result.episode}/${Math.round((parseInt(result.start_frame, 10) + parseInt(result.end_frame, 10)) / 2)}`;
+      ? `unsupported`
+      : `https://v2-${process.env.REACT_APP_USER_BRANCH}.memesrc.com/frame/${resultCid}/${result.season}/${result.episode}/${Math.round(((parseInt(result.start_frame, 10) + parseInt(result.end_frame, 10)) / 2) / 10) * 10}`;
     const resultId = `${result.season}-${result.episode}-${result.subtitle_index}`;
     setVideoUrls((prevVideoUrls) => ({ ...prevVideoUrls, [resultId]: thumbnailUrl }));
   };
@@ -659,9 +659,7 @@ export default function SearchPage() {
                       </StyledCard>
                     ) : (
                       <Link
-                        to={`/frame/${result.cid}/${result.season}/${result.episode}/${Math.round(
-                          (parseInt(result.start_frame, 10) + parseInt(result.end_frame, 10)) / 2
-                        )}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`}
+                        to={`/frame/${result.cid}/${result.season}/${result.episode}/${Math.round(((parseInt(result.start_frame, 10) + parseInt(result.end_frame, 10)) / 2) / 10) * 10}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`}
                         style={{ textDecoration: 'none' }}
                       >
                         <StyledCard>

@@ -533,23 +533,6 @@ useEffect(() => {
     setSubtitlesExpanded(!subtitlesExpanded);
   };
 
-  const frameToTimecode = (frameNumber, fps) => {
-    const totalSeconds = Math.floor(frameNumber / fps);
-
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds - (hours * 3600)) / 60);
-    const seconds = totalSeconds - (hours * 3600) - (minutes * 60);
-    const frames = frameNumber % fps;
-
-    // Format the output with leading zeroes where necessary
-    const hoursStr = String(hours).padStart(2, '0');
-    const minutesStr = String(minutes).padStart(2, '0');
-    const secondsStr = String(seconds).padStart(2, '0');
-    const framesStr = String(frames).padStart(2, '0');
-
-    return `${hoursStr}:${minutesStr}:${secondsStr}`;
-  };
-
   const { showObj, setShowObj, selectedFrameIndex, setSelectedFrameIndex } = useSearchDetailsV2();
   const [loadingCsv, setLoadingCsv] = useState();
   const [isBold, setIsBold] = useState(true);
@@ -850,7 +833,12 @@ useEffect(() => {
               size='small'
               icon={<OpenInNew />}
               label={`Season ${season} / Episode ${episode}`}
-              onClick={() => navigate(`/episode/${cid}/${season}/${episode}/1`)}
+              onClick={() => {
+                const frameRate = 10;
+                const totalSeconds = Math.round(frame / frameRate);
+                const nearestSecondFrame = totalSeconds * frameRate;
+                navigate(`/episode/${cid}/${season}/${episode}/${nearestSecondFrame}`);
+              }}
               sx={{
                 marginBottom: '15px',
                 "& .MuiChip-label": {
@@ -861,9 +849,13 @@ useEffect(() => {
             <Chip
               size='small'
               icon={<BrowseGallery />}
-              // TODO: I'm assuming there's probably some easy math to put the time code here
               label={`${frameToTimeCode(frame)}`}
-              onClick={() => navigate(`/episode/${cid}/${season}/${episode}/${frame}`)}
+              onClick={() => {
+                const frameRate = 10;
+                const totalSeconds = Math.round(frame / frameRate);
+                const nearestSecondFrame = totalSeconds * frameRate;
+                navigate(`/episode/${cid}/${season}/${episode}/${nearestSecondFrame}`);
+              }}
               sx={{
                 marginBottom: '15px',
                 marginLeft: '5px',
@@ -1470,7 +1462,7 @@ useEffect(() => {
               <Button
                 variant="contained"
                 fullWidth
-                href={`/episode/${cid}/${season}/${episode}/${frame}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`}
+                href={`/episode/${cid}/${season}/${episode}/${Math.round(frame / 10) * 10}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`}
               >
                 View Episode
               </Button>
