@@ -6,7 +6,6 @@ import {
   Typography,
   List,
   ListItem,
-  ListItemText,
   IconButton,
   useMediaQuery,
 } from "@mui/material";
@@ -26,10 +25,10 @@ const CollageImage = styled("img")({
 });
 
 const ThumbnailImage = styled("img")({
-  width: "50px",
-  height: "50px",
-  objectFit: "cover",
-  marginRight: "8px",
+  width: "100%",
+  height: "auto",
+  objectFit: "contain",
+  marginBottom: "8px",
 });
 
 export default function CollagePage() {
@@ -102,32 +101,34 @@ export default function CollagePage() {
   };
 
   const moveImage = (index, direction) => {
-    const newImages = [...images];
-    const temp = newImages[index];
-  
-    if (direction === -1) {
-      if (index === 0) {
-        // Moving the first image up, shift all others down
-        newImages.shift();
-        newImages.push(temp);
-      } else {
-        // Swap the current image with the one above it
-        newImages[index] = newImages[index - 1];
-        newImages[index - 1] = temp;
+    setImages((prevImages) => {
+      const newImages = [...prevImages];
+      const temp = newImages[index];
+
+      if (direction === -1) {
+        if (index === 0) {
+          // Moving the first image up, shift all others down
+          newImages.shift();
+          newImages.push(temp);
+        } else {
+          // Swap the current image with the one above it
+          newImages[index] = newImages[index - 1];
+          newImages[index - 1] = temp;
+        }
+      } else if (direction === 1) {
+        if (index === newImages.length - 1) {
+          // Moving the last image down, shift all others up
+          newImages.pop();
+          newImages.unshift(temp);
+        } else {
+          // Swap the current image with the one below it
+          newImages[index] = newImages[index + 1];
+          newImages[index + 1] = temp;
+        }
       }
-    } else if (direction === 1) {
-      if (index === newImages.length - 1) {
-        // Moving the last image down, shift all others up
-        newImages.pop();
-        newImages.unshift(temp);
-      } else {
-        // Swap the current image with the one below it
-        newImages[index] = newImages[index + 1];
-        newImages[index + 1] = temp;
-      }
-    }
-  
-    setImages(newImages);
+
+      return newImages;
+    });
   };
 
   return (
@@ -144,40 +145,42 @@ export default function CollagePage() {
         <input type="file" accept="image/*" multiple hidden onChange={handleImageUpload} />
       </Button>
 
-      <List>
-        {images.map((image, index) => (
-          <ListItem key={image.id} sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
-            <Box sx={{ display: "flex", alignItems: "center" }}>
-              <ThumbnailImage src={image.src} alt={`Thumbnail ${index + 1}`} />
-              <ListItemText primary={`Image ${index + 1}`} />
-            </Box>
-            <Box>
-              <IconButton
-                onClick={() => moveImage(index, -1)}
-                disabled={index === 0}
-              >
-                <ArrowUpward />
-              </IconButton>
-              <IconButton
-                onClick={() => moveImage(index, 1)}
-                disabled={index === images.length - 1}
-              >
-                <ArrowDownward />
-              </IconButton>
-            </Box>
-          </ListItem>
-        ))}
-      </List>
-
-      {collageBlob && (
-        <CollageContainer>
-          <CollageImage
-            src={collageBlob}
-            alt="Collage Result"
-            style={{ width: isMobile ? "100%" : "auto" }}
-          />
-        </CollageContainer>
-      )}
+      <Box sx={{ display: "flex" }}>
+        <Box sx={{ flex: 1, mr: 2 }}>
+          <List>
+            {images.map((image, index) => (
+              <ListItem key={image.id} sx={{ display: "flex", alignItems: "center", mb: 1 }}>
+                <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", mr: 2 }}>
+                  <IconButton
+                    onClick={() => moveImage(index, -1)}
+                    disabled={index === 0}
+                  >
+                    <ArrowUpward />
+                  </IconButton>
+                  <IconButton
+                    onClick={() => moveImage(index, 1)}
+                    disabled={index === images.length - 1}
+                  >
+                    <ArrowDownward />
+                  </IconButton>
+                </Box>
+                <ThumbnailImage src={image.src} alt={`Thumbnail ${index + 1}`} />
+              </ListItem>
+            ))}
+          </List>
+        </Box>
+        <Box sx={{ flex: 1 }}>
+          {collageBlob && (
+            <CollageContainer>
+              <CollageImage
+                src={collageBlob}
+                alt="Collage Result"
+                style={{ width: isMobile ? "100%" : "auto" }}
+              />
+            </CollageContainer>
+          )}
+        </Box>
+      </Box>
 
       <canvas ref={canvasRef} style={{ display: "none" }} />
     </BasePage>
