@@ -169,10 +169,10 @@ export default function CollagePage() {
           {images.length === 0 ? (
             <EmptyStateContainer>
               <Typography variant="h6" gutterBottom>
-                No images added yet
+                No images added
               </Typography>
               <Typography variant="body1" marginBottom={2}>
-                Click the button below to add your first image.
+                Select your first image
               </Typography>
               <Fab
                 color="primary"
@@ -232,25 +232,33 @@ export default function CollagePage() {
                 </ImageContainer>
               ))}
 
-              {images.map((_, index) => (
-                index < images.length - 1 && (
-                  <UploadButton
-                    key={index}
-                    color="primary"
-                    size="small"
-                    component="label"
-                    sx={{ top: `${(index + 1) * 100 / images.length}%`, left: "50%", transform: "translate(-50%, -50%)" }}
-                  >
-                    <Add />
-                    <input
-                      type="file"
-                      accept="image/*"
-                      hidden
-                      onChange={(event) => handleImageUpload(event, index + 1)}
-                    />
-                  </UploadButton>
-                )
-              ))}
+                {images.map((_, index) => (
+                    index < images.length - 1 && (
+                        <UploadButton
+                        key={index}
+                        color="primary"
+                        size="small"
+                        component="label"
+                        sx={{
+                            top: `${images.slice(0, index + 1).reduce((totalHeight, image) => {
+                            const scaleFactor = 350 / image.width;
+                            const scaledHeight = image.height * scaleFactor;
+                            return totalHeight + scaledHeight;
+                            }, 0)}px`,
+                            left: "50%",
+                            transform: "translate(-50%, -50%)"
+                        }}
+                        >
+                        <Add />
+                        <input
+                            type="file"
+                            accept="image/*"
+                            hidden
+                            onChange={(event) => handleImageUpload(event, index + 1)}
+                        />
+                        </UploadButton>
+                    )
+                ))}
             </Box>
           )}
 
