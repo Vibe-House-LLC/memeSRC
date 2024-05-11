@@ -30,7 +30,7 @@ const ImageContainer = styled(Box)({
 
 const ImageWrapper = styled(Box)({
   position: "relative",
-  width: "200px",
+  width: "350px",
   margin: "auto",
 });
 
@@ -168,7 +168,7 @@ export default function CollagePage() {
                   color="primary"
                   size="small"
                   component="label"
-                  sx={{ top: "-16px" }}
+                  sx={{ top: "-25px" }}
                 >
                   <Add />
                   <input
@@ -192,7 +192,7 @@ export default function CollagePage() {
                         color="primary"
                         size="small"
                         component="label"
-                        sx={{ bottom: "-16px" }}
+                        sx={{ bottom: "-25px" }}
                       >
                         <Add />
                         <input
@@ -245,11 +245,9 @@ export default function CollagePage() {
       ) : (
         <>
           <CollageContainer>
-            <CollageImage
-              src={collageBlob}
-              alt="Collage Result"
-              style={{ width: isMobile ? "100%" : "auto" }}
-            />
+            <ImageWrapper>
+              <CollageImage src={collageBlob} alt="Collage Result" />
+            </ImageWrapper>
           </CollageContainer>
           <Button
             variant="contained"
