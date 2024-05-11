@@ -89,8 +89,10 @@ function useLoadRandomFrame() {
                 const loadedShowSubtitles = await loadV2Csv(showObject.id);
                 setShowObj(loadedShowSubtitles)
                 const randomSubtitle = getRandomIndex(loadedShowSubtitles);
+                const midpointFrame = findMidpoint(randomSubtitle.start_frame, randomSubtitle.end_frame);
+                const roundedFrame = Math.round(midpointFrame / 10) * 10; // Round to the nearest whole second
                 setLoadingRandom(false)
-                navigate(`/frame/${showObject.id}/${randomSubtitle.season}/${randomSubtitle.episode}/${findMidpoint(randomSubtitle.start_frame, randomSubtitle.end_frame)}`)
+                navigate(`/frame/${showObject.id}/${randomSubtitle.season}/${randomSubtitle.episode}/${roundedFrame}`)
             } else {
                 const sessionId = await getSessionID();
                 const apiName = 'publicapi';
