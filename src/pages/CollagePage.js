@@ -213,7 +213,7 @@ export default function CollagePage() {
                       color="primary"
                       size="small"
                       component="label"
-                      sx={{ top: `${(index + 1) * 100 / images.length}%`, transform: "translateY(-50%)" }}
+                      sx={{ top: `${(index + 1) * 100 / images.length}%`, left: "50%", transform: "translate(-50%, -50%)" }}
                     >
                       <Add />
                       <input
