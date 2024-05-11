@@ -67,7 +67,7 @@ exports.handler = async (event) => {
             "minimum_should_match": 1
           }
         },
-        "size": 500
+        "size": 350
       }
       
 
