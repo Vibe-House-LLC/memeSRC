@@ -51,6 +51,19 @@ const DeleteButton = styled(IconButton)({
   zIndex: 1,
 });
 
+const EmptyStateContainer = styled(Box)({
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  minHeight: "300px",
+  border: "2px dashed #ccc",
+  borderRadius: "8px",
+  padding: "16px",
+  textAlign: "center",
+  marginBottom: "32px",
+});
+
 export default function CollagePage() {
   const [images, setImages] = useState([]);
   const [borderThickness, setBorderThickness] = useState(0);
@@ -96,26 +109,26 @@ export default function CollagePage() {
 
   const createCollage = () => {
     if (images.length === 0) return;
-  
+
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
-  
+
     const maxWidth = Math.max(...images.map((image) => image.width), 0);
     let totalHeight = 0;
-  
+
     images.forEach((image) => {
       const scaleFactor = maxWidth / image.width;
       const scaledHeight = image.height * scaleFactor;
       totalHeight += scaledHeight;
     });
-  
+
     totalHeight += borderThickness * (images.length + 1);
     canvas.width = maxWidth + borderThickness * 2;
     canvas.height = totalHeight;
-  
+
     ctx.fillStyle = 'white';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-  
+
     let currentHeight = borderThickness;
     images.forEach((image) => {
       const scaleFactor = maxWidth / image.width;
@@ -124,7 +137,7 @@ export default function CollagePage() {
       img.onload = () => {
         ctx.drawImage(img, borderThickness, currentHeight, maxWidth, scaledHeight);
         currentHeight += scaledHeight + borderThickness;
-  
+
         if (currentHeight >= totalHeight) {
           canvas.toBlob((blob) => {
             const url = URL.createObjectURL(blob);
@@ -138,9 +151,9 @@ export default function CollagePage() {
 
   return (
     <BasePage
-      pageTitle="Collage Tool"
+      pageTitle="Create a collage"
       breadcrumbLinks={[
-        { name: "Editor", path: "/" },
+        { name: "Edit", path: "/edit" },
         { name: "Collage Tool" },
       ]}
     >
@@ -153,14 +166,18 @@ export default function CollagePage() {
           <Typography variant="body1" marginBottom={5} gutterBottom>
             Upload images to create a collage:
           </Typography>
-
-          <Box sx={{ position: "relative" }}>
-            {images.length === 0 ? (
+          {images.length === 0 ? (
+            <EmptyStateContainer>
+              <Typography variant="h6" gutterBottom>
+                No images added yet
+              </Typography>
+              <Typography variant="body1" marginBottom={2}>
+                Click the button below to add your first image.
+              </Typography>
               <Fab
                 color="primary"
                 size="large"
                 component="label"
-                sx={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)" }}
               >
                 <Add />
                 <input
@@ -170,72 +187,72 @@ export default function CollagePage() {
                   onChange={(event) => handleImageUpload(event, 0)}
                 />
               </Fab>
-            ) : (
-              <>
-                <UploadButton
-                  color="primary"
-                  size="small"
-                  component="label"
-                  sx={{ top: "-25px" }}
-                >
-                  <Add />
-                  <input
-                    type="file"
-                    accept="image/*"
-                    hidden
-                    onChange={(event) => handleImageUpload(event, 0)}
-                  />
-                </UploadButton>
+            </EmptyStateContainer>
+          ) : (
+            <Box sx={{ position: "relative" }}>
+              <UploadButton
+                color="primary"
+                size="small"
+                component="label"
+                sx={{ top: "-25px" }}
+              >
+                <Add />
+                <input
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={(event) => handleImageUpload(event, 0)}
+                />
+              </UploadButton>
 
-                {images.map((image, index) => (
-                  <ImageContainer key={image.id}>
-                    <ImageWrapper>
-                      <img src={image.src} alt={`layer ${index + 1}`} style={{ width: "100%" }} />
-                      <DeleteButton onClick={() => deleteImage(index)}>
-                        <Delete />
-                      </DeleteButton>
-                    </ImageWrapper>
-                    {index === images.length - 1 && (
-                      <UploadButton
-                        color="primary"
-                        size="small"
-                        component="label"
-                        sx={{ bottom: "-25px" }}
-                      >
-                        <Add />
-                        <input
-                          type="file"
-                          accept="image/*"
-                          hidden
-                          onChange={(event) => handleImageUpload(event, images.length)}
-                        />
-                      </UploadButton>
-                    )}
-                  </ImageContainer>
-                ))}
-
-                {images.map((_, index) => (
-                  index < images.length - 1 && (
+              {images.map((image, index) => (
+                <ImageContainer key={image.id}>
+                  <ImageWrapper>
+                    <img src={image.src} alt={`layer ${index + 1}`} style={{ width: "100%" }} />
+                    <DeleteButton onClick={() => deleteImage(index)}>
+                      <Delete />
+                    </DeleteButton>
+                  </ImageWrapper>
+                  {index === images.length - 1 && (
                     <UploadButton
-                      key={index}
                       color="primary"
                       size="small"
                       component="label"
-                      sx={{ top: `${(index + 1) * 100 / images.length}%`, left: "50%", transform: "translate(-50%, -50%)" }}
+                      sx={{ bottom: "-25px" }}
                     >
                       <Add />
                       <input
                         type="file"
                         accept="image/*"
                         hidden
-                        onChange={(event) => handleImageUpload(event, index + 1)}
+                        onChange={(event) => handleImageUpload(event, images.length)}
                       />
                     </UploadButton>
-                  )
-                ))}
-              </>
-            )}
-          </Box>
+                  )}
+                </ImageContainer>
+              ))}
+
+              {images.map((_, index) => (
+                index < images.length - 1 && (
+                  <UploadButton
+                    key={index}
+                    color="primary"
+                    size="small"
+                    component="label"
+                    sx={{ top: `${(index + 1) * 100 / images.length}%`, left: "50%", transform: "translate(-50%, -50%)" }}
+                  >
+                    <Add />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      onChange={(event) => handleImageUpload(event, index + 1)}
+                    />
+                  </UploadButton>
+                )
+              ))}
+            </Box>
+          )}
 
           {images.length > 0 && (
             <Button
@@ -255,52 +272,52 @@ export default function CollagePage() {
         </>
       ) : (
         <CollageContainer>
-            <Button
-                variant="contained"
-                startIcon={<ArrowBack />}
-                onClick={() => setEditMode(true)}
-                fullWidth
-                sx={{
-                    mb: 2
-                }}
-            >
-                Edit Photos
-            </Button>
-            <ImageWrapper>
-                <CollageImage src={collageBlob} alt="Collage Result" />
-            </ImageWrapper>
-            <Box sx={{ width: 300 }}>
-                <Typography id="border-thickness-slider" gutterBottom>
-                Border Thickness
-                </Typography>
-                <Slider
-                value={borderThickness}
-                min={0}
-                max={20}
-                onChange={(event, newValue) => {
-                    setBorderThickness(newValue);
-                    createCollage();
-                }}
-                aria-labelledby="border-thickness-slider"
-                />
-            </Box>
-            <Button
-              variant="contained"
-              startIcon={<Check />}
-              onClick={() => {
-                createCollage();
-                setEditMode(false);
-              }}
-              sx={{ 
-                marginTop: "10px",
-                color:"#000000",
-                backgroundColor:"#54D62C"
+          <Button
+            variant="contained"
+            startIcon={<ArrowBack />}
+            onClick={() => setEditMode(true)}
+            fullWidth
+            sx={{
+              mb: 2
             }}
-              fullWidth
-              size="large"
-            >
-              Save Image
-            </Button>
+          >
+            Edit Photos
+          </Button>
+          <ImageWrapper>
+            <CollageImage src={collageBlob} alt="Collage Result" />
+          </ImageWrapper>
+          <Box sx={{ width: 300 }}>
+            <Typography id="border-thickness-slider" gutterBottom>
+              Border Thickness
+            </Typography>
+            <Slider
+              value={borderThickness}
+              min={0}
+              max={20}
+              onChange={(event, newValue) => {
+                setBorderThickness(newValue);
+                createCollage();
+              }}
+              aria-labelledby="border-thickness-slider"
+            />
+          </Box>
+          <Button
+            variant="contained"
+            startIcon={<Check />}
+            onClick={() => {
+              createCollage();
+              setEditMode(false);
+            }}
+            sx={{
+              marginTop: "10px",
+              color: "#000000",
+              backgroundColor: "#54D62C"
+            }}
+            fullWidth
+            size="large"
+          >
+            Save Image
+          </Button>
         </CollageContainer>
       )}
 
