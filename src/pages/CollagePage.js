@@ -4,13 +4,12 @@ import {
   Box,
   Button,
   Typography,
-  List,
-  ListItem,
   IconButton,
+  Fab,
   useMediaQuery,
 } from "@mui/material";
 import { styled } from "@mui/system";
-import { ArrowUpward, ArrowDownward } from "@mui/icons-material";
+import { Delete, Add, Edit } from "@mui/icons-material";
 import BasePage from "./BasePage";
 
 const CollageContainer = styled(Box)({
@@ -24,47 +23,76 @@ const CollageImage = styled("img")({
   height: "auto",
 });
 
-const ThumbnailImage = styled("img")({
-  width: "100%",
-  height: "auto",
-  objectFit: "contain",
-  marginBottom: "8px",
+const ImageContainer = styled(Box)({
+  position: "relative",
+  marginBottom: "16px",
+});
+
+const ImageWrapper = styled(Box)({
+  position: "relative",
+  width: "200px",
+  margin: "auto",
+});
+
+const UploadButton = styled(Fab)({
+  position: "absolute",
+  left: "50%",
+  transform: "translateX(-50%)",
+  zIndex: 1,
+});
+
+const DeleteButton = styled(IconButton)({
+  position: "absolute",
+  top: "8px",
+  left: "8px",
+  zIndex: 1,
 });
 
 export default function CollagePage() {
   const [images, setImages] = useState([]);
   const [collageBlob, setCollageBlob] = useState(null);
+  const [editMode, setEditMode] = useState(true);
   const canvasRef = useRef(null);
   const isMobile = useMediaQuery("(max-width:600px)");
 
   useEffect(() => {
-    if (images.length > 0) {
-      createCollage();
-    }
+    createCollage();
   }, [images]);
 
-  const handleImageUpload = (event) => {
-    const uploadedImages = Array.from(event.target.files);
-    const imagePromises = uploadedImages.map((file) => {
-      return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const img = new Image();
-          img.onload = () => {
-            resolve({ id: Date.now().toString(), src: e.target.result, width: img.width, height: img.height });
-          };
-          img.src = e.target.result;
+  const handleImageUpload = (event, index) => {
+    const uploadedImage = event.target.files[0];
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const newImage = {
+          id: Date.now().toString(),
+          src: e.target.result,
+          width: img.width,
+          height: img.height,
         };
-        reader.readAsDataURL(file);
-      });
-    });
+        setImages((prevImages) => {
+          const newImages = [...prevImages];
+          newImages.splice(index, 0, newImage);
+          return newImages;
+        });
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(uploadedImage);
+  };
 
-    Promise.all(imagePromises).then((loadedImages) => {
-      setImages((prevImages) => [...prevImages, ...loadedImages]);
+  const deleteImage = (index) => {
+    setImages((prevImages) => {
+      const newImages = [...prevImages];
+      newImages.splice(index, 1);
+      return newImages;
     });
   };
 
   const createCollage = () => {
+    if (images.length === 0) return;
+
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
 
@@ -100,87 +128,138 @@ export default function CollagePage() {
     });
   };
 
-  const moveImage = (index, direction) => {
-    setImages((prevImages) => {
-      const newImages = [...prevImages];
-      const temp = newImages[index];
-
-      if (direction === -1) {
-        if (index === 0) {
-          // Moving the first image up, shift all others down
-          newImages.shift();
-          newImages.push(temp);
-        } else {
-          // Swap the current image with the one above it
-          newImages[index] = newImages[index - 1];
-          newImages[index - 1] = temp;
-        }
-      } else if (direction === 1) {
-        if (index === newImages.length - 1) {
-          // Moving the last image down, shift all others up
-          newImages.pop();
-          newImages.unshift(temp);
-        } else {
-          // Swap the current image with the one below it
-          newImages[index] = newImages[index + 1];
-          newImages[index + 1] = temp;
-        }
-      }
-
-      return newImages;
-    });
-  };
-
   return (
-    <BasePage pageTitle="Collage Tool" breadcrumbLinks={[{ name: "Editor", path: "/" }, { name: "Collage Tool" }]}>
+    <BasePage
+      pageTitle="Collage Tool"
+      breadcrumbLinks={[
+        { name: "Editor", path: "/" },
+        { name: "Collage Tool" },
+      ]}
+    >
       <Helmet>
         <title>Collage Tool - Editor - memeSRC</title>
       </Helmet>
 
-      <Typography variant="body1" gutterBottom>
-        Upload images to create a collage:
-      </Typography>
-      <Button variant="contained" component="label">
-        Upload Images
-        <input type="file" accept="image/*" multiple hidden onChange={handleImageUpload} />
-      </Button>
+      {editMode ? (
+        <>
+          <Typography variant="body1" gutterBottom>
+            Upload images to create a collage:
+          </Typography>
 
-      <Box sx={{ display: "flex" }}>
-        <Box sx={{ flex: 1, mr: 2 }}>
-          <List>
-            {images.map((image, index) => (
-              <ListItem key={image.id} sx={{ display: "flex", alignItems: "center", mb: 1 }}>
-                <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", mr: 2 }}>
-                  <IconButton
-                    onClick={() => moveImage(index, -1)}
-                    disabled={index === 0}
-                  >
-                    <ArrowUpward />
-                  </IconButton>
-                  <IconButton
-                    onClick={() => moveImage(index, 1)}
-                    disabled={index === images.length - 1}
-                  >
-                    <ArrowDownward />
-                  </IconButton>
-                </Box>
-                <ThumbnailImage src={image.src} alt={`Thumbnail ${index + 1}`} />
-              </ListItem>
-            ))}
-          </List>
-        </Box>
-        <Box sx={{ flex: 1 }}>
-          {collageBlob && (
-            <CollageContainer>
-              <CollageImage
-                src={collageBlob}
-                alt="Collage Result"
-                style={{ width: isMobile ? "100%" : "auto" }}
-              />
-            </CollageContainer>
+          <Box sx={{ position: "relative" }}>
+            {images.length === 0 ? (
+              <Fab
+                color="primary"
+                size="large"
+                component="label"
+                sx={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)" }}
+              >
+                <Add />
+                <input
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={(event) => handleImageUpload(event, 0)}
+                />
+              </Fab>
+            ) : (
+              <>
+                <UploadButton
+                  color="primary"
+                  size="small"
+                  component="label"
+                  sx={{ top: "-16px" }}
+                >
+                  <Add />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    onChange={(event) => handleImageUpload(event, 0)}
+                  />
+                </UploadButton>
+
+                {images.map((image, index) => (
+                  <ImageContainer key={image.id}>
+                    <ImageWrapper>
+                      <img src={image.src} alt={`layer ${index + 1}`} style={{ width: "100%" }} />
+                      <DeleteButton onClick={() => deleteImage(index)}>
+                        <Delete />
+                      </DeleteButton>
+                    </ImageWrapper>
+                    {index === images.length - 1 && (
+                      <UploadButton
+                        color="primary"
+                        size="small"
+                        component="label"
+                        sx={{ bottom: "-16px" }}
+                      >
+                        <Add />
+                        <input
+                          type="file"
+                          accept="image/*"
+                          hidden
+                          onChange={(event) => handleImageUpload(event, images.length)}
+                        />
+                      </UploadButton>
+                    )}
+                  </ImageContainer>
+                ))}
+
+                {images.map((_, index) => (
+                  index < images.length - 1 && (
+                    <UploadButton
+                      key={index}
+                      color="primary"
+                      size="small"
+                      component="label"
+                      sx={{ top: `${(index + 1) * 100 / images.length}%`, transform: "translateY(-50%)" }}
+                    >
+                      <Add />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        hidden
+                        onChange={(event) => handleImageUpload(event, index + 1)}
+                      />
+                    </UploadButton>
+                  )
+                ))}
+              </>
+            )}
+          </Box>
+
+          {images.length > 0 && (
+            <Button
+              variant="contained"
+              onClick={() => {
+                createCollage();
+                setEditMode(false);
+              }}
+              sx={{ marginTop: "32px" }}
+            >
+              Create & Save
+            </Button>
           )}
-        </Box>
-      </Box>
+        </>
+      ) : (
+        <>
+          <CollageContainer>
+            <CollageImage
+              src={collageBlob}
+              alt="Collage Result"
+              style={{ width: isMobile ? "100%" : "auto" }}
+            />
+          </CollageContainer>
+          <Button
+            variant="contained"
+            startIcon={<Edit />}
+            onClick={() => setEditMode(true)}
+          >
+            Back to Edit
+          </Button>
+        </>
+      )}
 
       <canvas ref={canvasRef} style={{ display: "none" }} />
     </BasePage>
