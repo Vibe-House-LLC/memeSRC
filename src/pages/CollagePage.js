@@ -14,13 +14,15 @@ import BasePage from "./BasePage";
 
 const CollageContainer = styled(Box)({
   display: "flex",
-  justifyContent: "center",
-  marginTop: "16px",
+  flexDirection: "column",
+  alignItems: "center",
+  marginTop: "32px",
 });
 
 const CollageImage = styled("img")({
   maxWidth: "100%",
   height: "auto",
+  marginBottom: "24px",
 });
 
 const ImageContainer = styled(Box)({
@@ -243,12 +245,10 @@ export default function CollagePage() {
           )}
         </>
       ) : (
-        <>
-          <CollageContainer>
-            <ImageWrapper>
-              <CollageImage src={collageBlob} alt="Collage Result" />
-            </ImageWrapper>
-          </CollageContainer>
+        <CollageContainer>
+          <ImageWrapper>
+            <CollageImage src={collageBlob} alt="Collage Result" />
+          </ImageWrapper>
           <Button
             variant="contained"
             startIcon={<Edit />}
@@ -256,7 +256,7 @@ export default function CollagePage() {
           >
             Back to Edit
           </Button>
-        </>
+        </CollageContainer>
       )}
 
       <canvas ref={canvasRef} style={{ display: "none" }} />
