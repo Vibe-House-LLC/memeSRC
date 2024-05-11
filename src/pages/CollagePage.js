@@ -7,9 +7,10 @@ import {
   IconButton,
   Fab,
   useMediaQuery,
+  Slider,
 } from "@mui/material";
 import { styled } from "@mui/system";
-import { Delete, Add, Edit } from "@mui/icons-material";
+import { Delete, Add, Edit, ArrowBack, Check, ArrowForward } from "@mui/icons-material";
 import BasePage from "./BasePage";
 
 const CollageContainer = styled(Box)({
@@ -52,6 +53,7 @@ const DeleteButton = styled(IconButton)({
 
 export default function CollagePage() {
   const [images, setImages] = useState([]);
+  const [borderThickness, setBorderThickness] = useState(0);
   const [collageBlob, setCollageBlob] = useState(null);
   const [editMode, setEditMode] = useState(true);
   const canvasRef = useRef(null);
@@ -94,31 +96,35 @@ export default function CollagePage() {
 
   const createCollage = () => {
     if (images.length === 0) return;
-
+  
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
-
+  
     const maxWidth = Math.max(...images.map((image) => image.width), 0);
     let totalHeight = 0;
-
+  
     images.forEach((image) => {
       const scaleFactor = maxWidth / image.width;
       const scaledHeight = image.height * scaleFactor;
       totalHeight += scaledHeight;
     });
-
-    canvas.width = maxWidth;
+  
+    totalHeight += borderThickness * (images.length + 1);
+    canvas.width = maxWidth + borderThickness * 2;
     canvas.height = totalHeight;
-
-    let currentHeight = 0;
+  
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+    let currentHeight = borderThickness;
     images.forEach((image) => {
       const scaleFactor = maxWidth / image.width;
       const scaledHeight = image.height * scaleFactor;
       const img = new Image();
       img.onload = () => {
-        ctx.drawImage(img, 0, currentHeight, maxWidth, scaledHeight);
-        currentHeight += scaledHeight;
-
+        ctx.drawImage(img, borderThickness, currentHeight, maxWidth, scaledHeight);
+        currentHeight += scaledHeight + borderThickness;
+  
         if (currentHeight >= totalHeight) {
           canvas.toBlob((blob) => {
             const url = URL.createObjectURL(blob);
@@ -144,7 +150,7 @@ export default function CollagePage() {
 
       {editMode ? (
         <>
-          <Typography variant="body1" gutterBottom>
+          <Typography variant="body1" marginBottom={5} gutterBottom>
             Upload images to create a collage:
           </Typography>
 
@@ -234,28 +240,67 @@ export default function CollagePage() {
           {images.length > 0 && (
             <Button
               variant="contained"
+              startIcon={<ArrowForward />}
               onClick={() => {
                 createCollage();
                 setEditMode(false);
               }}
               sx={{ marginTop: "32px" }}
+              fullWidth
+              size="large"
             >
-              Create & Save
+              Continue
             </Button>
           )}
         </>
       ) : (
         <CollageContainer>
-          <ImageWrapper>
-            <CollageImage src={collageBlob} alt="Collage Result" />
-          </ImageWrapper>
-          <Button
-            variant="contained"
-            startIcon={<Edit />}
-            onClick={() => setEditMode(true)}
-          >
-            Back to Edit
-          </Button>
+            <Button
+                variant="contained"
+                startIcon={<ArrowBack />}
+                onClick={() => setEditMode(true)}
+                fullWidth
+                sx={{
+                    mb: 2
+                }}
+            >
+                Edit Photos
+            </Button>
+            <ImageWrapper>
+                <CollageImage src={collageBlob} alt="Collage Result" />
+            </ImageWrapper>
+            <Box sx={{ width: 300 }}>
+                <Typography id="border-thickness-slider" gutterBottom>
+                Border Thickness
+                </Typography>
+                <Slider
+                value={borderThickness}
+                min={0}
+                max={20}
+                onChange={(event, newValue) => {
+                    setBorderThickness(newValue);
+                    createCollage();
+                }}
+                aria-labelledby="border-thickness-slider"
+                />
+            </Box>
+            <Button
+              variant="contained"
+              startIcon={<Check />}
+              onClick={() => {
+                createCollage();
+                setEditMode(false);
+              }}
+              sx={{ 
+                marginTop: "10px",
+                color:"#000000",
+                backgroundColor:"#54D62C"
+            }}
+              fullWidth
+              size="large"
+            >
+              Save Image
+            </Button>
         </CollageContainer>
       )}
 
