@@ -85,12 +85,9 @@ const fetchFramesSurroundingPromises = (cid, season, episode, frame) => {
   const scaleFactor = 0.2;
 
   const surroundingFramePromises = offsets.map(offset => {
-    const surroundingFrameIndex = frame + offset;
-    // console.log("surroundingFrameIndex", surroundingFrameIndex)
-    // Now, each surrounding frame is an array of a single index for consistency with extractVideoFrames
+    const surroundingFrameIndex = Math.round((frame + offset) / 10) * 10; // Round to the nearest whole second
     return extractVideoFrames(cid, season, episode, [surroundingFrameIndex], 10, scaleFactor)
       .then(frameImages => {
-        // Assuming extractVideoFrames returns an array of blob URLs, even for single frames
         return {
           frame: surroundingFrameIndex,
           frameImage: frameImages.length > 0 ? frameImages[0] : 'No image available',
@@ -147,8 +144,8 @@ const fetchFrameInfo = async (cid, season, episode, frame, options = {}) => {
         const endIndex = Math.min(csvData.length - 1, mainSubtitleIndex + 3);
         for (let i = startIndex; i <= endIndex; i += 1) {
           const [, , , encodedSubtitleText, startFrame, endFrame] = csvData[i];
-          const subtitleText = Buffer.from(encodedSubtitleText, 'base64').toString(); // Decode subtitle text from base64 here
-          const middleFrame = Math.floor((parseInt(startFrame, 10) + parseInt(endFrame, 10)) / 2);        
+          const subtitleText = Buffer.from(encodedSubtitleText, 'base64').toString();
+          const middleFrame = Math.round(((parseInt(startFrame, 10) + parseInt(endFrame, 10)) / 2) / 10) * 10; // Round to the nearest whole second
           subtitlesSurrounding.push(
             {
               subtitle: subtitleText, // Use decoded subtitle text
