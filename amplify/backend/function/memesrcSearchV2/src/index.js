@@ -45,15 +45,31 @@ exports.handler = async (event) => {
         const processedIndices = indices.map(index => `v2-${index}`);
         searchPath = `/${processedIndices.join(',')}/_search`;
     }
-    
+
     const searchPayload = {
         "query": {
-            "match": {
-                "subtitle_text": decodedQuery
-            }
+          "bool": {
+            "should": [
+              {
+                "match_phrase": {
+                  "subtitle_text": {
+                    "query": decodedQuery,
+                    "boost": 2  // Boosts the score of exact matches
+                  }
+                }
+              },
+              {
+                "match": {
+                  "subtitle_text": decodedQuery
+                }
+              }
+            ],
+            "minimum_should_match": 1
+          }
         },
-        "size": 500
-    };
+        "size": 350
+      }
+      
 
     const ssmClient = new SSMClient();
     const { Parameters } = await ssmClient.send(
