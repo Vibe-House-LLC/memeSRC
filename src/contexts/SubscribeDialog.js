@@ -484,7 +484,7 @@ export const DialogProvider = ({ children }) => {
                     variant="contained"
                     size="large"
                     onClick={() => {
-                      if (countryCode === 'US') {
+                      if (countryCode === 'US' || countryCode === 'AU') {
                         buySubscription();
                       } else {
                         setCheckoutLink('unsupported_country');
@@ -554,7 +554,7 @@ export const DialogProvider = ({ children }) => {
           )}
           {(loading || checkoutLink) && (
             <>
-            {countryCode !== 'US' && (
+            {countryCode !== 'US' && countryCode !== 'AU' && (
           <DialogContent sx={{ py: 4 }}>
             <Box
               p={3}
@@ -653,7 +653,7 @@ export const DialogProvider = ({ children }) => {
             </Button>
           </DialogContent>
         )}
-        {countryCode === 'US' && (
+        {(countryCode === 'US' || countryCode === 'AU') && (
           <DialogContent sx={{ minHeight: 500, display: 'flex', flexDirection: 'column', mb: 5 }}>
           <Box sx={{ m: 'auto' }}>
             <Typography fontSize={20} textAlign='center' fontWeight={700}>
@@ -690,13 +690,13 @@ export const DialogProvider = ({ children }) => {
               {!loading && checkoutLink ? 'Agree & Continue' : ''}
             </LoadingButton>
             <Typography variant="caption" sx={{ mt: 2, lineHeight: 1.2, }}>
-              I understand memeSRC Pro is billed as Vibe&nbsp;House&nbsp;LLC and agree to the{' '}
+              I am a U.S. resident and understand memeSRC&nbsp;Pro is billed as Vibe&nbsp;House&nbsp;LLC and agree to the{' '}
               <a href="/termsofservice" target="_blank" style={{ color: 'white', textDecoration: 'none', fontWeight: 'bold' }}>
-                Terms of Service
+                Terms&nbsp;of&nbsp;Service
               </a>{' '}
               and{' '}
               <a href="/privacypolicy" target="_blank" style={{ color: 'white', textDecoration: 'none', fontWeight: 'bold' }}>
-                Privacy Policy
+                Privacy&nbsp;Policy
               </a>
               .
             </Typography>
