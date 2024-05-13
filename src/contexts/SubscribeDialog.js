@@ -1,11 +1,12 @@
 import { AutoFixHighRounded, Block, Close, Favorite, Star, SupportAgent, ExpandMore, Clear, Check, Bolt, Share, ThumbUp, Feedback } from '@mui/icons-material';
 import { Box, Button, Card, Checkbox, Chip, CircularProgress, Collapse, Dialog, DialogContent, DialogTitle, Divider, Fade, Grid, IconButton, LinearProgress, Typography, useMediaQuery, FormControlLabel } from '@mui/material';
-import { API } from 'aws-amplify';
+import { API, graphqlOperation } from 'aws-amplify';
 import { createContext, useState, useRef, useEffect, useContext } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { LoadingButton } from '@mui/lab';
 import { UserContext } from '../UserContext';
 import useUserLocation from '../utils/geo/useUserLocation';
+import { createLocationLeads } from '../graphql/mutations';
 
 export const SubscribeDialogContext = createContext();
 
@@ -175,6 +176,16 @@ export const DialogProvider = ({ children }) => {
     setSubscriptionDialogOpen(false);
     navigate('/login?dest=%2Fpro')
   }
+
+  useEffect(() => {
+    if (countryCode !== 'US' && countryCode !== 'AU' && checkoutLink) {
+      API.graphql(
+        graphqlOperation(createLocationLeads, { input: { countryCode } })
+      ).then().catch(error => {
+        console.log(error)
+      })
+    }
+  }, [countryCode, checkoutLink]);
 
   return (
     <SubscribeDialogContext.Provider value={{ openSubscriptionDialog }}>
