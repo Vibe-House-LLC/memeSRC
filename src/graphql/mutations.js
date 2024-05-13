@@ -2035,6 +2035,51 @@ export const deleteProSupportMessage = /* GraphQL */ `
     }
   }
 `;
+export const createLocationLeads = /* GraphQL */ `
+  mutation CreateLocationLeads(
+    $input: CreateLocationLeadsInput!
+    $condition: ModelLocationLeadsConditionInput
+  ) {
+    createLocationLeads(input: $input, condition: $condition) {
+      id
+      countryCode
+      createdAt
+      updatedAt
+      owner
+      __typename
+    }
+  }
+`;
+export const updateLocationLeads = /* GraphQL */ `
+  mutation UpdateLocationLeads(
+    $input: UpdateLocationLeadsInput!
+    $condition: ModelLocationLeadsConditionInput
+  ) {
+    updateLocationLeads(input: $input, condition: $condition) {
+      id
+      countryCode
+      createdAt
+      updatedAt
+      owner
+      __typename
+    }
+  }
+`;
+export const deleteLocationLeads = /* GraphQL */ `
+  mutation DeleteLocationLeads(
+    $input: DeleteLocationLeadsInput!
+    $condition: ModelLocationLeadsConditionInput
+  ) {
+    deleteLocationLeads(input: $input, condition: $condition) {
+      id
+      countryCode
+      createdAt
+      updatedAt
+      owner
+      __typename
+    }
+  }
+`;
 export const createUserMetadata = /* GraphQL */ `
   mutation CreateUserMetadata(
     $input: CreateUserMetadataInput!
