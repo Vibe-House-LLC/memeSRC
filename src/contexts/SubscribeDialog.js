@@ -631,7 +631,7 @@ export const DialogProvider = ({ children }) => {
             </Box>
             <Box sx={{ mt: 4, mx: 1 }}>
               <Typography variant="body1">
-                Thanks for understanding! We love our community around the world and want to keep making these tools more accessible to everyone.
+                We love our community around the world and want to keep making these tools more accessible to everyone. We're always trying to support more regions and have noted your interest. Thanks for understanding! 
               </Typography>
             </Box>
             <Button
