@@ -565,10 +565,10 @@ export const DialogProvider = ({ children }) => {
               }}
             >
               <Typography fontSize={23} fontWeight={700} color="common.white" gutterBottom>
-                memeSRC Pro is currently unavailable in your country.
+                Pro is currently not available in your country.
               </Typography>
               <Typography fontSize={14} color="common.white">
-                We really appreciate your interest and support, but sadly memeSRC&nbsp;Pro is currently unavailable to buy in your country.
+                We appreciate your interest and support, but memeSRC&nbsp;Pro is currently unavailable to purchase in your country.
               </Typography>
             </Box>
             <Box sx={{ mt: 4, mx: 2 }}>
