@@ -1936,6 +1936,48 @@ export const onDeleteProSupportMessage = /* GraphQL */ `
     }
   }
 `;
+export const onCreateLocationLeads = /* GraphQL */ `
+  subscription OnCreateLocationLeads(
+    $filter: ModelSubscriptionLocationLeadsFilterInput
+  ) {
+    onCreateLocationLeads(filter: $filter) {
+      id
+      countryCode
+      createdAt
+      updatedAt
+      owner
+      __typename
+    }
+  }
+`;
+export const onUpdateLocationLeads = /* GraphQL */ `
+  subscription OnUpdateLocationLeads(
+    $filter: ModelSubscriptionLocationLeadsFilterInput
+  ) {
+    onUpdateLocationLeads(filter: $filter) {
+      id
+      countryCode
+      createdAt
+      updatedAt
+      owner
+      __typename
+    }
+  }
+`;
+export const onDeleteLocationLeads = /* GraphQL */ `
+  subscription OnDeleteLocationLeads(
+    $filter: ModelSubscriptionLocationLeadsFilterInput
+  ) {
+    onDeleteLocationLeads(filter: $filter) {
+      id
+      countryCode
+      createdAt
+      updatedAt
+      owner
+      __typename
+    }
+  }
+`;
 export const onCreateUserMetadata = /* GraphQL */ `
   subscription OnCreateUserMetadata(
     $filter: ModelSubscriptionUserMetadataFilterInput

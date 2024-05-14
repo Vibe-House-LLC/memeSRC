@@ -310,3 +310,13 @@ type ProSupportMessage @model @auth(
   message: String!
   createdAt: AWSDateTime!
 }
+
+type LocationLeads @model @auth(
+  rules: [
+    { allow: groups, groups: ["admins", "mods"] },
+    { allow: owner,  operations: [create] },
+  ]
+) {
+  id: ID!,
+  countryCode: String
+}

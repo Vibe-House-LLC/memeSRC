@@ -121,7 +121,7 @@
         },
         "memesrcSearchV2": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcSearchV2-52387852557a4d464d33-build.zip",
+          "s3Key": "amplify-builds/memesrcSearchV2-374e77303370714a6663-build.zip",
           "secretsPathAmplifyAppId": "d32pnvtwxwtte5"
         },
         "memesrcThumbnailZipExtractor": {
@@ -143,7 +143,7 @@
         },
         "memesrcc3c71449PreSignup": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcc3c71449PreSignup-62375736774134666949-build.zip"
+          "s3Key": "amplify-builds/memesrcc3c71449PreSignup-6a6e473648465877676b-build.zip"
         },
         "memesrcc3c71449PostConfirmation": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",

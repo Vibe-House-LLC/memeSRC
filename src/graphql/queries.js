@@ -1232,6 +1232,38 @@ export const listProSupportMessages = /* GraphQL */ `
     }
   }
 `;
+export const getLocationLeads = /* GraphQL */ `
+  query GetLocationLeads($id: ID!) {
+    getLocationLeads(id: $id) {
+      id
+      countryCode
+      createdAt
+      updatedAt
+      owner
+      __typename
+    }
+  }
+`;
+export const listLocationLeads = /* GraphQL */ `
+  query ListLocationLeads(
+    $filter: ModelLocationLeadsFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listLocationLeads(filter: $filter, limit: $limit, nextToken: $nextToken) {
+      items {
+        id
+        countryCode
+        createdAt
+        updatedAt
+        owner
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
 export const getUserMetadata = /* GraphQL */ `
   query GetUserMetadata($id: ID!) {
     getUserMetadata(id: $id) {
