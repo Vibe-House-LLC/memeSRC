@@ -700,7 +700,7 @@ useEffect(() => {
               margin: '-10px'
             }}
             onClick={() => {
-              navigate(`/frame/${cid}/${season}/${episode}/${Number(frame) - 10}`)
+              navigate(`/frame/${cid}/${season}/${episode}/${Number(frame) - 10}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`)
             }}
           >
             <ArrowBackIos style={{ fontSize: '2rem' }} />
@@ -718,7 +718,7 @@ useEffect(() => {
               margin: '-10px'
             }}
             onClick={() => {
-              navigate(`/frame/${cid}/${season}/${episode}/${Number(frame) + 10}`)
+              navigate(`/frame/${cid}/${season}/${episode}/${Number(frame) + 10}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`)
             }}
           >
             <ArrowForwardIos style={{ fontSize: '2rem' }} />
@@ -867,7 +867,7 @@ useEffect(() => {
                 const frameRate = 10;
                 const totalSeconds = Math.round(frame / frameRate);
                 const nearestSecondFrame = totalSeconds * frameRate;
-                navigate(`/episode/${cid}/${season}/${episode}/${nearestSecondFrame}`);
+                navigate(`/episode/${cid}/${season}/${episode}/${nearestSecondFrame}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`);
               }}
               sx={{
                 marginBottom: '15px',
@@ -884,7 +884,7 @@ useEffect(() => {
                 const frameRate = 10;
                 const totalSeconds = Math.round(frame / frameRate);
                 const nearestSecondFrame = totalSeconds * frameRate;
-                navigate(`/episode/${cid}/${season}/${episode}/${nearestSecondFrame}`);
+                navigate(`/episode/${cid}/${season}/${episode}/${nearestSecondFrame}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`);
               }}
               sx={{
                 marginBottom: '15px',
@@ -1363,7 +1363,7 @@ useEffect(() => {
                                     },
                                   },
                                 }}
-                                onClick={() => navigate(`/frame/${cid}/${season}/${episode}/${result?.frame}`)}
+                                onClick={() => navigate(`/frame/${cid}/${season}/${episode}/${result?.frame}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`)}
                               >
                                 {loading ? (
                                   <CircularProgress size={20} sx={{ color: '#565656' }} />
@@ -1464,7 +1464,7 @@ useEffect(() => {
                           src={`${surroundingFrame.frameImage}`}
                           title={surroundingFrame.subtitle || 'No subtitle'}
                           onClick={() => {
-                            navigate(`/frame/${cid}/${season}/${episode}/${surroundingFrame.frame}`);
+                            navigate(`/frame/${cid}/${season}/${episode}/${surroundingFrame.frame}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`);
                           }}
                           onLoad={() => handleImageLoad(surroundingFrame.frame)}
                           onError={() => {
