@@ -1984,7 +1984,6 @@ const EditorPage = ({ shows }) => {
                           src={`${surroundingFrame.frameImage}`}
                           title={surroundingFrame.subtitle || 'No subtitle'}
                           onClick={() => {
-                            alert(searchTerms)
                             navigate(`/editor/${cid}/${season}/${episode}/${surroundingFrame.frame}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`);
                           }}
                         />
