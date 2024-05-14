@@ -329,7 +329,7 @@ export default function IpfsSearchBar(props) {
           >
             <Link
               component={RouterLink}
-              to={search ? `/search/${cid}${searchQuery ? `?searchTerm=${searchQuery}` : ''}` : "/"}
+              to={searchTerm ? `/search/${cid}${searchQuery ? `?searchTerm=${searchQuery}` : ''}` : "/"}
               sx={{
                 color: 'white',
                 textDecoration: 'none',
@@ -341,7 +341,7 @@ export default function IpfsSearchBar(props) {
               <Stack direction='row' alignItems='center'>
                 <ArrowBack fontSize="small" />
                 <Typography variant="body1" ml={1}>
-                  Back to {search ? 'search results' : 'home'}
+                  Back to {searchTerm ? 'search results' : 'home'}
                 </Typography>
               </Stack>
             </Link>
