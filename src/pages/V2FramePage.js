@@ -535,22 +535,48 @@ useEffect(() => {
 
   const { showObj, setShowObj, selectedFrameIndex, setSelectedFrameIndex } = useSearchDetailsV2();
   const [loadingCsv, setLoadingCsv] = useState();
-  const [isBold, setIsBold] = useState(true);
-  const [isItalic, setIsItalic] = useState(false);
-  const [fontFamily, setFontFamily] = useState('Arial'); // Default font
   const [frames, setFrames] = useState();
   const [loadedSubtitle, setLoadedSubtitle] = useState('');  // TODO
   const [loadedSeason, setLoadedSeason] = useState('');  // TODO
   const [loadedEpisode, setLoadedEpisode] = useState('');  // TODO
   const [formats, setFormats] = useState(() => ['bold', 'italic']);
   const [colorPickerShowing, setColorPickerShowing] = useState(false);
-  const [colorPickerColor, setColorPickerColor] = useState({
-    r: '255',
-    g: '255',
-    b: '255',
-    a: '100'
-  });
   const [mainImageLoaded, setMainImageLoaded] = useState(false);
+
+  const [isBold, setIsBold] = useState(() => {
+    const storedValue = localStorage.getItem(`formatting-${user?.username}-${cid}`);
+    return storedValue ? JSON.parse(storedValue).isBold : true;
+  });
+  
+  const [isItalic, setIsItalic] = useState(() => {
+    const storedValue = localStorage.getItem(`formatting-${user?.username}-${cid}`);
+    return storedValue ? JSON.parse(storedValue).isItalic : false;
+  });
+  
+  const [colorPickerColor, setColorPickerColor] = useState(() => {
+    const storedValue = localStorage.getItem(`formatting-${user?.username}-${cid}`);
+    return storedValue ? JSON.parse(storedValue).colorPickerColor : {
+      r: '255',
+      g: '255',
+      b: '255',
+      a: '100'
+    };
+  });
+  
+  const [fontFamily, setFontFamily] = useState(() => {
+    const storedValue = localStorage.getItem(`formatting-${user?.username}-${cid}`);
+    return storedValue ? JSON.parse(storedValue).fontFamily : 'Arial';
+  });
+
+  const updateLocalStorage = () => {
+    const formattingOptions = {
+      isBold,
+      isItalic,
+      colorPickerColor,
+      fontFamily,
+    };
+    localStorage.setItem(`formatting-${user?.username}-${cid}`, JSON.stringify(formattingOptions));
+  };
 
   const handleMainImageLoad = () => {
     setMainImageLoaded(true);
@@ -605,6 +631,10 @@ useEffect(() => {
   useEffect(() => {
     updateCanvasUnthrottled();
   }, [displayImage, loadedSubtitle, frame, fineTuningBlobs, selectedFrameIndex, fontFamily, isBold, isItalic, colorPickerColor]);
+
+  useEffect(() => {
+    updateLocalStorage();
+  }, [isBold, isItalic, colorPickerColor, fontFamily]);
 
   useEffect(() => {
     if (frames && frames.length > 0) {
