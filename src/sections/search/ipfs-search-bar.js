@@ -94,7 +94,7 @@ export default function IpfsSearchBar(props) {
   const { children } = props
   const { pathname } = useLocation();
   const { user, shows, defaultShow, handleUpdateDefaultShow } = useContext(UserContext);
-  const { show, setShow, searchQuery, setSearchQuery, cid = shows.some(show => show.isFavorite) ? defaultShow : '_universal', setCid, localCids, setLocalCids, showObj, setShowObj, selectedFrameIndex, setSelectedFrameIndex, savedCids, loadingSavedCids } = useSearchDetailsV2();
+  const { show, setShow, searchQuery, setSearchQuery, cid = shows.some(show => show.isFavorite) ? params?.cid || defaultShow : params?.cid || '_universal', setCid, localCids, setLocalCids, showObj, setShowObj, selectedFrameIndex, setSelectedFrameIndex, savedCids, loadingSavedCids } = useSearchDetailsV2();
   const { loadRandomFrame, loadingRandom, error } = useLoadRandomFrame();
   const [searchParams, setSearchParams] = useSearchParams();
   const searchTerm = searchParams.get('searchTerm');
@@ -109,7 +109,7 @@ export default function IpfsSearchBar(props) {
 
   useEffect(() => {
     if (!cid) {
-      setCid(params?.seriesId || (shows.some(show => show.isFavorite) ? defaultShow : '_universal'))
+      setCid(params?.cid || (shows.some(show => show.isFavorite) ? defaultShow : '_universal'))
     }
   }, [cid]);
 
@@ -147,20 +147,12 @@ export default function IpfsSearchBar(props) {
       navigate("/favorites"); // Navigate to the favorites editing page
     } else if (data === "addNewCid") {
       setAddNewCidOpen(true);
+    } else if (pathname.split('/')[1] === 'search') {
+      navigate(`/search/${data}/${searchTerm ? `?searchTerm=${searchTerm}` : ''}`)
+      setCid(data);
     } else {
       setCid(data);
     }
-    // if (data?.addNew) {
-    //   setAddNewCidOpen(true)
-    // } else {
-    //   const savedCid = shows?.find(obj => obj.id === data && obj.version === 2) || savedCids?.find(obj => obj.id === data)
-    //   if (savedCid) {
-    //     navigate(`/v2/search/${savedCid.id}/${encodeURIComponent(search)}`)
-    //   } else {
-    //     setV1Show(data)
-    //     navigate(`/search/${data}/${encodeURIComponent(search)}`)
-    //   }
-    // }
   };
 
   useEffect(() => {
@@ -201,7 +193,7 @@ export default function IpfsSearchBar(props) {
   const searchFunction = (searchEvent) => {
     searchEvent?.preventDefault();
     // console.log(search)
-    navigate(`/search/${params?.seriesId || (shows.some(show => show.isFavorite) ? defaultShow : '_universal')}/?searchTerm=${encodeURIComponent(search)}`)
+    navigate(`/search/${cid || params?.cid || (shows.some(show => show.isFavorite) ? defaultShow : '_universal')}/?searchTerm=${encodeURIComponent(search)}`)
     return false
   }
 
