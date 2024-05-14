@@ -103,7 +103,7 @@ export default function IpfsSearchBar(props) {
 
   const searchInputRef = useRef(null);
 
-  const [search, setSearch] = useState(params?.searchTerms || '');
+  const [search, setSearch] = useState(searchTerm || '');
   const [addNewCidOpen, setAddNewCidOpen] = useState(false);
   const navigate = useNavigate();
 
@@ -112,6 +112,10 @@ export default function IpfsSearchBar(props) {
       setCid(params?.cid || (shows.some(show => show.isFavorite) ? defaultShow : '_universal'))
     }
   }, [cid]);
+
+  useEffect(() => {
+    setSearch(searchTerm)
+  }, [pathname]);
 
   useEffect(() => {
     // Function to check and parse the local storage value
