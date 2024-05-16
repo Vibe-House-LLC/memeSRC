@@ -8,6 +8,8 @@ import {
   Fab,
   useMediaQuery,
   Slider,
+  Menu,
+  MenuItem,
 } from "@mui/material";
 import { styled } from "@mui/system";
 import { Delete, Add, Edit, ArrowBack, Check, ArrowForward } from "@mui/icons-material";
@@ -71,6 +73,8 @@ export default function CollagePage() {
   const [editMode, setEditMode] = useState(true);
   const canvasRef = useRef(null);
   const isMobile = useMediaQuery("(max-width:600px)");
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [menuIndex, setMenuIndex] = useState(null);
 
   useEffect(() => {
     createCollage();
@@ -97,6 +101,38 @@ export default function CollagePage() {
       img.src = e.target.result;
     };
     reader.readAsDataURL(uploadedImage);
+  };
+
+  const addTextArea = (index) => {
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const text = "My reaction to the collage editor";
+    const fontSize = 24;
+    const padding = 20;
+
+    ctx.font = `${fontSize}px Arial`;
+    const textWidth = ctx.measureText(text).width;
+
+    canvas.width = textWidth + padding * 2;
+    canvas.height = fontSize + padding * 2;
+
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "black";
+    ctx.fillText(text, padding, fontSize + padding);
+
+    const newImage = {
+      id: Date.now().toString(),
+      src: canvas.toDataURL(),
+      width: canvas.width,
+      height: canvas.height,
+    };
+
+    setImages((prevImages) => {
+      const newImages = [...prevImages];
+      newImages.splice(index, 0, newImage);
+      return newImages;
+    });
   };
 
   const deleteImage = (index) => {
@@ -126,7 +162,7 @@ export default function CollagePage() {
     canvas.width = maxWidth + borderThickness * 2;
     canvas.height = totalHeight;
 
-    ctx.fillStyle = 'white';
+    ctx.fillStyle = "white";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     let currentHeight = borderThickness;
@@ -147,6 +183,20 @@ export default function CollagePage() {
       };
       img.src = image.src;
     });
+  };
+
+  const handleMenuClick = (event, index) => {
+    setAnchorEl(event.currentTarget);
+    setMenuIndex(index);
+  };
+
+  const handleMenuClose = (action) => {
+    setAnchorEl(null);
+    if (action === "image") {
+      document.getElementById(`file-input-${menuIndex}`).click();
+    } else if (action === "text") {
+      addTextArea(menuIndex);
+    }
   };
 
   return (
@@ -178,15 +228,25 @@ export default function CollagePage() {
                 color="primary"
                 size="large"
                 component="label"
+                onClick={(event) => handleMenuClick(event, 0)}
               >
                 <Add />
-                <input
-                  type="file"
-                  accept="image/*"
-                  hidden
-                  onChange={(event) => handleImageUpload(event, 0)}
-                />
               </Fab>
+              <Menu
+                anchorEl={anchorEl}
+                open={Boolean(anchorEl)}
+                onClose={() => handleMenuClose(null)}
+              >
+                <MenuItem onClick={() => handleMenuClose("image")}>Add Image</MenuItem>
+                <MenuItem onClick={() => handleMenuClose("text")}>Add Text</MenuItem>
+              </Menu>
+              <input
+                type="file"
+                accept="image/*"
+                hidden
+                id="file-input-0"
+                onChange={(event) => handleImageUpload(event, 0)}
+              />
             </EmptyStateContainer>
           ) : (
             <Box sx={{ position: "relative" }}>
@@ -195,15 +255,25 @@ export default function CollagePage() {
                 size="small"
                 component="label"
                 sx={{ top: "-25px" }}
+                onClick={(event) => handleMenuClick(event, 0)}
               >
                 <Add />
-                <input
-                  type="file"
-                  accept="image/*"
-                  hidden
-                  onChange={(event) => handleImageUpload(event, 0)}
-                />
               </UploadButton>
+              <Menu
+                anchorEl={anchorEl}
+                open={Boolean(anchorEl)}
+                onClose={() => handleMenuClose(null)}
+              >
+                <MenuItem onClick={() => handleMenuClose("image")}>Add Image</MenuItem>
+                <MenuItem onClick={() => handleMenuClose("text")}>Add Text</MenuItem>
+              </Menu>
+              <input
+                type="file"
+                accept="image/*"
+                hidden
+                id="file-input-0"
+                onChange={(event) => handleImageUpload(event, 0)}
+              />
 
               {images.map((image, index) => (
                 <ImageContainer key={image.id}>
@@ -219,46 +289,51 @@ export default function CollagePage() {
                       size="small"
                       component="label"
                       sx={{ bottom: "-25px" }}
+                      onClick={(event) => handleMenuClick(event, index + 1)}
                     >
                       <Add />
-                      <input
-                        type="file"
-                        accept="image/*"
-                        hidden
-                        onChange={(event) => handleImageUpload(event, images.length)}
-                      />
                     </UploadButton>
                   )}
+                  <Menu
+                    anchorEl={anchorEl}
+                    open={Boolean(anchorEl)}
+                    onClose={() => handleMenuClose(null)}
+                  >
+                    <MenuItem onClick={() => handleMenuClose("image", index + 1)}>Add Image</MenuItem>
+                    <MenuItem onClick={() => handleMenuClose("text", index + 1)}>Add Text</MenuItem>
+                  </Menu>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    id={`file-input-${index + 1}`}
+                    onChange={(event) => handleImageUpload(event, index + 1)}
+                  />
                 </ImageContainer>
               ))}
 
-                {images.map((_, index) => (
-                    index < images.length - 1 && (
-                        <UploadButton
-                        key={index}
-                        color="primary"
-                        size="small"
-                        component="label"
-                        sx={{
-                            top: `${images.slice(0, index + 1).reduce((totalHeight, image) => {
-                            const scaleFactor = 350 / image.width;
-                            const scaledHeight = image.height * scaleFactor;
-                            return totalHeight + scaledHeight;
-                            }, 0)}px`,
-                            left: "50%",
-                            transform: "translate(-50%, -50%)"
-                        }}
-                        >
-                        <Add />
-                        <input
-                            type="file"
-                            accept="image/*"
-                            hidden
-                            onChange={(event) => handleImageUpload(event, index + 1)}
-                        />
-                        </UploadButton>
-                    )
-                ))}
+              {images.map((_, index) => (
+                index < images.length - 1 && (
+                  <UploadButton
+                    key={index}
+                    color="primary"
+                    size="small"
+                    component="label"
+                    sx={{
+                      top: `${images.slice(0, index + 1).reduce((totalHeight, image) => {
+                        const scaleFactor = 350 / image.width;
+                        const scaledHeight = image.height * scaleFactor;
+                        return totalHeight + scaledHeight;
+                      }, 0)}px`,
+                      left: "50%",
+                      transform: "translate(-50%, -50%)"
+                    }}
+                    onClick={(event) => handleMenuClick(event, index + 1)}
+                  >
+                    <Add />
+                  </UploadButton>
+                )
+              ))}
             </Box>
           )}
 
@@ -285,9 +360,7 @@ export default function CollagePage() {
             startIcon={<ArrowBack />}
             onClick={() => setEditMode(true)}
             fullWidth
-            sx={{
-              mb: 2
-            }}
+            sx={{ mb: 2 }}
           >
             Edit Photos
           </Button>
