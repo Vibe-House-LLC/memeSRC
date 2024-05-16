@@ -437,8 +437,39 @@ export const handler = async (event) => {
   if (path === `/${process.env.ENV}/public/user/get`) {
     const subId = userSub;
 
+    const getUserQuery = `
+      query {
+        getUserDetails(id: "${subId}") {
+          createdAt
+          email
+          id
+          stripeId
+          username
+          updatedAt
+          status
+          earlyAccessStatus
+          contributorAccessStatus
+          magicSubscription
+          subscriptionStatus
+          userNotifications(sortDirection: DESC) {
+            items {
+              avatar
+              createdAt
+              description
+              id
+              isUnRead
+              title
+              type
+              path
+            }
+          }
+          credits
+        }
+      }
+    `
+
     if (subId) {
-      response = await makeRequest(getUserDetails({ subId }));
+      response = await makeRequest(getUserQuery);
     } else {
       response = {
         statusCode: 400,

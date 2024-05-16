@@ -200,7 +200,7 @@ export default function SearchPage() {
 
   const params = useParams();
 
-  const { user } = useContext(UserContext);
+  const { user, shows } = useContext(UserContext);
 
   const RESULTS_PER_PAGE = 8;
 
@@ -320,7 +320,7 @@ export default function SearchPage() {
         initialize(params.cid);
       } else {
         setMaintenanceDialogOpen(true);
-        const shows = await fetchShows();
+        // const shows = await fetchShows();
         setAvailableShows(shows);
       }
     }
@@ -393,7 +393,7 @@ export default function SearchPage() {
 
   useEffect(() => {
     async function searchText() {
-      const shows = await fetchShows();
+      // const shows = await fetchShows();
       setNewResults(null);
       setLoadingResults(true);
       setDisplayedResults(RESULTS_PER_PAGE / 2);
@@ -432,7 +432,7 @@ export default function SearchPage() {
       } catch (error) {
         console.error("Error searching:", error);
         setMaintenanceDialogOpen(true);
-        const shows = await fetchShows();
+        // const shows = await fetchShows();
         setAvailableShows(shows);
         setUniversalSearchMaintenance(true)
       }

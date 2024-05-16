@@ -76,7 +76,7 @@ export default function Router() {
   const routes = useRoutes([
     {
       path: '/',
-      element: <GuestAuth><ShowProvider><DialogProvider><MagicPopup><V2SearchDetailsProvider><DashboardLayout /></V2SearchDetailsProvider></MagicPopup></DialogProvider></ShowProvider></GuestAuth>,
+      element: <GuestAuth><DialogProvider><MagicPopup><V2SearchDetailsProvider><DashboardLayout /></V2SearchDetailsProvider></MagicPopup></DialogProvider></GuestAuth>,
       children: [
         { element: <SiteWideMaintenance><HomePage /></SiteWideMaintenance>, index: true },
         { path: 'pro', element: <SiteWideMaintenance><HomePage /></SiteWideMaintenance>, index: true },

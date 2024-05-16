@@ -50,7 +50,7 @@
 // }
 
 
-import { useState } from 'react';
+import { useContext, useState } from 'react';
 import { API } from "aws-amplify";
 import { useNavigate } from 'react-router-dom';
 import getSessionID from "./getSessionsId";
@@ -59,9 +59,11 @@ import getRandomIndex from "./getRandomIndex";
 import loadV2Csv from "./loadV2Csv";
 import findMidpoint from './findMidpoint';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
+import { UserContext } from '../UserContext';
 
 function useLoadRandomFrame() {
     const [loadingRandom, setLoadingRandom] = useState(false);
+    const { shows } = useContext(UserContext)
     const [error, setError] = useState(null);
     const [frameData, setFrameData] = useState(null);
     const navigate = useNavigate();
@@ -73,7 +75,7 @@ function useLoadRandomFrame() {
         setFrameData(null);
 
         try {
-            const shows = await fetchShows();
+            // const shows = await fetchShows();
             console.log(show)
             let showObject;
             if (show === '_universal') {
