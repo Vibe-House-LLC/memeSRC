@@ -234,31 +234,8 @@ export default function CollagePage() {
   const buttonPositions = calculateButtonPositions();
 
   const handleBorderChange = (event) => {
-    const value = event.target.value;
-  
-    let thickness = 10; // Default to normal
-  
-    switch (value) {
-      case "none":
-        thickness = 0;
-        break;
-      case "thin":
-        thickness = 5;
-        break;
-      case "normal":
-        thickness = 10;
-        break;
-      case "thicc":
-        thickness = 15;
-        break;
-      case "thiccer":
-        thickness = 20;
-        break;
-      default:
-        thickness = 10;
-    }
-  
-    setBorderThickness(thickness);
+    const value = parseInt(event.target.value, 10);
+    setBorderThickness(value);
   };
   
 
@@ -464,17 +441,20 @@ export default function CollagePage() {
               >
                 Edit Photos
               </Button>
-              <Accordion>
+              <Accordion sx={{ mb: 2 }}>
                 <AccordionSummary expandIcon={<ExpandMore />}>
                   <Typography>Adjust Border Thickness</Typography>
                 </AccordionSummary>
                 <AccordionDetails>
-                  <RadioGroup value={borderThickness.toString()} onChange={handleBorderChange}>
-                    <FormControlLabel value="none" control={<Radio />} label="None" />
-                    <FormControlLabel value="thin" control={<Radio />} label="Thin" />
-                    <FormControlLabel value="normal" control={<Radio />} label="Normal" />
-                    <FormControlLabel value="thicc" control={<Radio />} label="Thicc" />
-                    <FormControlLabel value="thiccer" control={<Radio />} label="Thiccer" />
+                  <RadioGroup
+                    value={borderThickness.toString()}
+                    onChange={handleBorderChange}
+                  >
+                    <FormControlLabel value="0" control={<Radio />} label="None" />
+                    <FormControlLabel value="5" control={<Radio />} label="Thin" />
+                    <FormControlLabel value="10" control={<Radio />} label="Normal" />
+                    <FormControlLabel value="15" control={<Radio />} label="Thicc" />
+                    <FormControlLabel value="20" control={<Radio />} label="Thiccer" />
                   </RadioGroup>
                 </AccordionDetails>
               </Accordion>
