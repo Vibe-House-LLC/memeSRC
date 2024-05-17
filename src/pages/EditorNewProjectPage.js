@@ -7,6 +7,7 @@ import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import SearchIcon from '@mui/icons-material/Search';
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
+import PhotoLibraryIcon from '@mui/icons-material/PhotoLibrary';
 import BasePage from './BasePage';
 import { createEditorProject } from '../graphql/mutations';
 
@@ -56,7 +57,7 @@ export default function EditorNewProjectPage() {
   // Rest of your component rendering logic remains the same...
   return (
     <BasePage
-      pageTitle="New Project"
+      pageTitle="Meme Tools"
       breadcrumbLinks={[
         { path: "/", name: "Home" },
         { name: "Editor" },
@@ -85,17 +86,6 @@ export default function EditorNewProjectPage() {
                     height: '100%',
                   }}
                 >
-                  <Chip 
-                    label="New!" 
-                    color="success" 
-                    size="small"
-                    sx={{ 
-                      position: 'absolute',
-                      top: 20,
-                      left: 20,
-                      fontWeight: 'bold'
-                    }} 
-                  />
                   <CloudUploadIcon sx={{ fontSize: 60, mb: 2 }} />
                   <Typography variant="h5" component="div" gutterBottom>
                     Upload Image
@@ -114,6 +104,38 @@ export default function EditorNewProjectPage() {
             </label>
           </Grid>
 
+          <Grid item xs={12} sm={6} md={4} lg={3}>
+          <CardActionArea onClick={() => navigate('/collage')}>
+            <Paper
+              elevation={6}
+              sx={{
+                p: 3,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+                height: '100%',
+              }}
+            >
+               <Chip 
+                    label="Early Access!" 
+                    color="success" 
+                    size="small"
+                    sx={{ 
+                      position: 'absolute',
+                      top: 20,
+                      left: 20,
+                      fontWeight: 'bold'
+                    }} 
+                  />
+              <PhotoLibraryIcon sx={{ fontSize: 60, mb: 2 }} />
+              <Typography variant="h5" component="div" gutterBottom>
+                Create Collage
+              </Typography>
+              <Typography color="text.secondary">Combine multiple images</Typography>
+            </Paper>
+          </CardActionArea>
+        </Grid>
 
           <Grid item xs={12} sm={6} md={4} lg={3}>
             <CardActionArea onClick={() => navigate('/')}>
@@ -132,7 +154,7 @@ export default function EditorNewProjectPage() {
                 <Typography variant="h5" component="div" gutterBottom>
                   Search Images
                 </Typography>
-                <Typography color="text.secondary">Find 64 million+ on memeSRC</Typography>
+                <Typography color="text.secondary">Find 70 million+ on memeSRC</Typography>
               </Paper>
             </CardActionArea>
           </Grid>
