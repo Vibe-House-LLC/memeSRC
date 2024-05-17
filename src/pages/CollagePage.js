@@ -78,9 +78,10 @@ const EmptyStateContainer = styled(Box)({
 
 export default function CollagePage() {
   const [images, setImages] = useState([]);
-  const [borderThickness, setBorderThickness] = useState(10);
+  const [borderThickness, setBorderThickness] = useState(25);
   const [collageBlob, setCollageBlob] = useState(null);
   const [editMode, setEditMode] = useState(true);
+  const [accordionExpanded, setAccordionExpanded] = useState(false);
   const canvasRef = useRef(null);
   const isMobile = useMediaQuery("(max-width:600px)");
   const [anchorEl, setAnchorEl] = useState(null);
@@ -236,8 +237,8 @@ export default function CollagePage() {
   const handleBorderChange = (event) => {
     const value = parseInt(event.target.value, 10);
     setBorderThickness(value);
+    setAccordionExpanded(false); // Collapse the accordion
   };
-  
 
   return (
     <BasePage
@@ -288,6 +289,22 @@ export default function CollagePage() {
               <Typography variant="body1" marginBottom={5} gutterBottom>
                 Upload images to create a collage:
               </Typography>
+              {images.length > 0 && (
+                <Button
+                  variant="contained"
+                  startIcon={<ArrowForward />}
+                  onClick={() => {
+                    createCollage();
+                    setEditMode(false);
+                    window.scrollTo(0, 0);
+                  }}
+                  sx={{ marginTop: "32px" }}
+                  fullWidth
+                  size="large"
+                >
+                  Continue
+                </Button>
+              )}
               {images.length === 0 ? (
                 <EmptyStateContainer>
                   <Typography variant="h6" gutterBottom>
@@ -441,7 +458,7 @@ export default function CollagePage() {
               >
                 Edit Photos
               </Button>
-              <Accordion sx={{ mb: 2 }}>
+              <Accordion sx={{ mb: 2 }} expanded={accordionExpanded} onChange={() => setAccordionExpanded(!accordionExpanded)}>
                 <AccordionSummary expandIcon={<ExpandMore />}>
                   <Typography>Adjust Border Thickness</Typography>
                 </AccordionSummary>
@@ -451,10 +468,10 @@ export default function CollagePage() {
                     onChange={handleBorderChange}
                   >
                     <FormControlLabel value="0" control={<Radio />} label="None" />
-                    <FormControlLabel value="5" control={<Radio />} label="Thin" />
-                    <FormControlLabel value="10" control={<Radio />} label="Normal" />
-                    <FormControlLabel value="15" control={<Radio />} label="Thicc" />
-                    <FormControlLabel value="20" control={<Radio />} label="Thiccer" />
+                    <FormControlLabel value="10" control={<Radio />} label="Thin" />
+                    <FormControlLabel value="15" control={<Radio />} label="Normal" />
+                    <FormControlLabel value="35" control={<Radio />} label="Thicc" />
+                    <FormControlLabel value="65" control={<Radio />} label="Thiccer" />
                   </RadioGroup>
                 </AccordionDetails>
               </Accordion>
