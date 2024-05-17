@@ -67,7 +67,7 @@ export default function EditorNewProjectPage() {
   <Container sx={{ padding: 0 }}> {/* Adjust padding here */}
     {/* New Feature Description */}
     <Alert severity="success" sx={{ mb: -4, mt: -2 }}> {/* Adjust margin here */}
-      You can now edit your own photos with the advanced editor, including <b>Magic Tools</b>!
+      <b>New:</b> Check out the Collage tool (early access)!
     </Alert>
   </Container>
       <Grid container justifyContent="center" spacing={2} sx={{ mt: 4 }}>
