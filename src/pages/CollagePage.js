@@ -40,7 +40,7 @@ const ImageWrapper = styled(Box)({
 });
 
 const UploadButton = styled(Fab)({
-  position: "absolute",
+  // position: "absolute",
   left: "50%",
   transform: "translateX(-50%)",
   zIndex: 1,
@@ -200,6 +200,19 @@ export default function CollagePage() {
     }
   };
 
+  const calculateButtonPositions = useCallback(() => {
+    const positions = [];
+    imageRefs.current.forEach((ref, index) => {
+      if (ref) {
+        const { top, height } = ref.getBoundingClientRect();
+        positions[index] = top + height / 2;
+      }
+    });
+    return positions;
+  }, [images]);
+  
+  const buttonPositions = calculateButtonPositions();
+
   return (
     <BasePage
       pageTitle="Create a collage"
@@ -255,7 +268,7 @@ export default function CollagePage() {
                 color="primary"
                 size="small"
                 component="label"
-                sx={{ top: "-25px" }}
+                sx={{ marginTop: '16px', marginBottom: '16px' }}
                 onClick={(event) => handleMenuClick(event, 0)}
               >
                 <Add />
@@ -315,6 +328,31 @@ export default function CollagePage() {
                   )}
                 </>
               ))}
+
+              <UploadButton
+                color="primary"
+                size="small"
+                component="label"
+                // sx={{ bottom: "-50px" }}
+                onClick={(event) => handleMenuClick(event, images.length)}
+              >
+                <Add />
+              </UploadButton>
+              <Menu
+                anchorEl={anchorEl}
+                open={Boolean(anchorEl)}
+                onClose={() => handleMenuClose(null)}
+              >
+                <MenuItem onClick={() => handleMenuClose("image", images.length)}>Add Image</MenuItem>
+                <MenuItem onClick={() => handleMenuClose("text", images.length)}>Add Text</MenuItem>
+              </Menu>
+              <input
+                type="file"
+                accept="image/*"
+                hidden
+                id={`file-input-${images.length}`}
+                onChange={(event) => handleImageUpload(event, images.length)}
+              />
             </Box>
           )}
 
