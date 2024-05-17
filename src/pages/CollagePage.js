@@ -15,6 +15,7 @@ import {
   Paper,
   Card,
   CardContent,
+  Alert,
 } from "@mui/material";
 import { styled } from "@mui/system";
 import { Delete, Add, ArrowBack, Check, ArrowForward } from "@mui/icons-material";
@@ -75,7 +76,7 @@ const EmptyStateContainer = styled(Box)({
 
 export default function CollagePage() {
   const [images, setImages] = useState([]);
-  const [borderThickness, setBorderThickness] = useState(0);
+  const [borderThickness, setBorderThickness] = useState(10);
   const [collageBlob, setCollageBlob] = useState(null);
   const [editMode, setEditMode] = useState(true);
   const canvasRef = useRef(null);
@@ -92,7 +93,7 @@ export default function CollagePage() {
 
   useEffect(() => {
     createCollage();
-  }, [images]);
+  }, [images, borderThickness]);
 
   const handleImageUpload = (event, index) => {
     const uploadedImage = event.target.files[0];
@@ -409,6 +410,7 @@ export default function CollagePage() {
                   onClick={() => {
                     createCollage();
                     setEditMode(false);
+                    window.scrollTo(0, 0);
                   }}
                   sx={{ marginTop: "32px" }}
                   fullWidth
@@ -429,41 +431,41 @@ export default function CollagePage() {
               >
                 Edit Photos
               </Button>
-              <ImageWrapper>
-                <CollageImage src={collageBlob} alt="Collage Result" />
-              </ImageWrapper>
               <Box sx={{ width: 300 }}>
                 <Typography id="border-thickness-slider" gutterBottom>
                   Border Thickness
                 </Typography>
                 <Slider
-                  value={borderThickness}
+                  value={borderThickness / 5}
                   min={0}
-                  max={20}
+                  max={4}
+                  step={1}
+                  marks
                   onChange={(event, newValue) => {
-                    setBorderThickness(newValue);
+                    setBorderThickness(newValue * 5);
                     createCollage();
                   }}
                   aria-labelledby="border-thickness-slider"
                 />
               </Box>
-              <Button
-                variant="contained"
-                startIcon={<Check />}
-                onClick={() => {
-                  createCollage();
-                  setEditMode(false);
-                }}
-                sx={{
-                  marginTop: "10px",
-                  color: "#000000",
-                  backgroundColor: "#54D62C"
-                }}
-                fullWidth
-                size="large"
+              <ImageWrapper>
+                <CollageImage src={collageBlob} alt="Collage Result" />
+              </ImageWrapper>
+              <Alert
+                severity='success'
+                sx={{ marginTop: 1.5 }}
+                // action={
+                //   <IconButton
+                //     aria-label="close"
+                //     color="inherit"
+                //     size="small"
+                //   >
+                //     <Close fontSize="inherit" />
+                //   </IconButton>
+                // }
               >
-                Save Image
-              </Button>
+                <b>{'ontouchstart' in window ? 'Tap and hold ' : 'Right click '} ☝️ the image to save</b>
+              </Alert>
             </CollageContainer>
           )}
         </>
