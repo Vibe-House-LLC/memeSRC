@@ -78,7 +78,7 @@ const EmptyStateContainer = styled(Box)({
 
 export default function CollagePage() {
   const [images, setImages] = useState([]);
-  const [borderThickness, setBorderThickness] = useState(25);
+  const [borderThickness, setBorderThickness] = useState(15);
   const [collageBlob, setCollageBlob] = useState(null);
   const [editMode, setEditMode] = useState(true);
   const [accordionExpanded, setAccordionExpanded] = useState(false);
@@ -287,7 +287,7 @@ export default function CollagePage() {
           {editMode ? (
             <>
               <Typography variant="body1" marginBottom={5} gutterBottom>
-                Upload images to create a collage:
+                Add images to create a collage:
               </Typography>
               {images.length > 0 && (
                 <Button
@@ -298,7 +298,6 @@ export default function CollagePage() {
                     setEditMode(false);
                     window.scrollTo(0, 0);
                   }}
-                  sx={{ marginTop: "32px" }}
                   fullWidth
                   size="large"
                 >
