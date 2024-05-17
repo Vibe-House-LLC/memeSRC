@@ -213,7 +213,7 @@ const StyledGridContainer = styled(Grid)`
 
 // Theme Defaults
 const defaultTitleText = 'memeSRC';
-const defaultBragText = 'Search 64 million+ screencaps';
+const defaultBragText = 'Search 70 million+ screencaps';
 const defaultFontColor = '#FFFFFF';
 const defaultBackground = `linear-gradient(45deg,
   #5461c8 12.5% /* 1*12.5% */,
