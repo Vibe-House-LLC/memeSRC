@@ -76,6 +76,7 @@ export default function CollagePage() {
   const [anchorEl, setAnchorEl] = useState(null);
   const [menuIndex, setMenuIndex] = useState(null);
   const imageRefs = useRef([]);
+  const imagesOnly = true; // Set this to true to use images as default option
 
   useEffect(() => {
     createCollage();
@@ -187,8 +188,12 @@ export default function CollagePage() {
   };
 
   const handleMenuClick = (event, index) => {
-    setAnchorEl(event.currentTarget);
-    setMenuIndex(index);
+    if (imagesOnly) {
+      document.getElementById(`file-input-${index}`).click();
+    } else {
+      setAnchorEl(event.currentTarget);
+      setMenuIndex(index);
+    }
   };
 
   const handleMenuClose = (action) => {
