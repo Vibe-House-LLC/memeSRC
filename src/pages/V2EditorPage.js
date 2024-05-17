@@ -186,11 +186,46 @@ const EditorPage = ({ shows }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // console.log(`uploadedImage: ${location.state?.uploadedImage}`)
+  const saveCollageImage = () => {
+    // Create the resulting image blob
+    const resultImage = editor.canvas.toDataURL({
+      format: 'jpeg',
+      quality: 0.6,
+      multiplier: imageScale
+    });
+  
+    fetch(resultImage)
+      .then(res => res.blob())
+      .then(blob => {
+        // Update the collage state with the new image
+        const { images, editingImageIndex } = location.state.collageState;
+        const updatedImages = [...images];
+        updatedImages[editingImageIndex] = {
+          ...updatedImages[editingImageIndex],
+          src: URL.createObjectURL(blob),
+        };
+  
+        // Create the updated collage state
+        const updatedCollageState = {
+          ...location.state.collageState,
+          images: updatedImages,
+          editingImageIndex: null,
+        };
+  
+        // Navigate back to the collage page with the updated state
+        navigate('/collage', { state: { updatedCollageState } });
+      });
+  };
 
   const handleClickDialogOpen = () => {
-    setOpenDialog(true);
-    saveImage();
+    if (location.state?.collageState) {
+      // If there's a collage state available
+      saveCollageImage();
+    } else {
+      // If there's no collage state, proceed with the normal save process
+      setOpenDialog(true);
+      saveImage();
+    }
   };
 
   const handleDialogClose = () => {
@@ -360,38 +395,71 @@ const EditorPage = ({ shows }) => {
     setLoading(true);
     // Check if the uploadedImage exists in the location state
     const uploadedImage = location.state?.uploadedImage;
-
-    if (uploadedImage && !defaultFrame) {
+    const collageState = location.state?.collageState;
+  
+    if (collageState) {
+      const { images, editingImageIndex } = collageState;
+  
+      if (images && editingImageIndex !== null) {
+        const imageToEdit = images[editingImageIndex];
+        fabric.Image.fromURL(imageToEdit.src, (oImg) => {
+          setDefaultFrame(oImg);
+  
+          // Set the canvas size based on the image aspect ratio
+          const imageAspectRatio = oImg.width / oImg.height;
+          setEditorAspectRatio(imageAspectRatio);
+          const [desiredHeight, desiredWidth] = calculateEditorSize(imageAspectRatio);
+          setCanvasSize({ height: desiredHeight, width: desiredWidth });
+  
+          // Scale the image to fit the canvas
+          oImg.scale(desiredWidth / oImg.width);
+  
+          // Center the image within the canvas
+          oImg.set({ left: 0, top: 0 });
+          const minWidth = 750;
+          const x = (oImg.width > minWidth) ? oImg.width : minWidth;
+          setImageScale(x / desiredWidth);
+          resizeCanvas(desiredWidth, desiredHeight);
+  
+          editor?.canvas.setBackgroundImage(oImg);
+          setImageLoaded(true);
+  
+          // Rendering the canvas after applying all changes
+          editor.canvas.renderAll();
+          setLoading(false);
+        }, { crossOrigin: 'anonymous' });
+      }
+    } else if (uploadedImage && !defaultFrame) {
       // Use the uploadedImage as the background instead of the default image
       fabric.Image.fromURL(uploadedImage, (oImg) => {
         setDefaultFrame(oImg);
         // You can set a default subtitle or any other properties here if needed
         setLoadedSeriesTitle("");
         setSurroundingFrames([]);
-        setDefaultSubtitle(false)
+        setDefaultSubtitle(false);
         setLoading(false);
       }, { crossOrigin: 'anonymous' });
     } else if (editorProjectId) {
       try {
         // Generate the file name/path based on the editorProjectId
         const fileName = `projects/${editorProjectId}.json`;
-
+  
         // Fetch the serialized canvas state from S3 under the user's protected folder
         const serializedCanvas = await Storage.get(fileName, { level: 'protected' });
-
+  
         if (serializedCanvas) {
           // Fetch the actual content from S3. 
           // Storage.get provides a pre-signed URL, so we need to fetch the actual content.
           const response = await fetch(serializedCanvas);
           const canvasStateJSON = await response.json();
-
+  
           editor?.canvas.loadFromJSON(canvasStateJSON, () => {
             const oImg = editor.canvas.backgroundImage;
             const imageAspectRatio = oImg.width / oImg.height;
             setEditorAspectRatio(imageAspectRatio);
             const [desiredHeight, desiredWidth] = calculateEditorSize(imageAspectRatio);
             setCanvasSize({ height: desiredHeight, width: desiredWidth });
-
+  
             // Scale the image to fit the canvas
             const scale = desiredWidth / oImg.width;
             oImg.scale(desiredWidth / oImg.width);
@@ -400,21 +468,21 @@ const EditorPage = ({ shows }) => {
               obj.top *= scale;
               obj.scaleY *= scale;
               obj.scaleX *= scale;
-            })
-
+            });
+  
             // Center the image within the canvas
             oImg.set({ left: 0, top: 0 });
             const minWidth = 750;
             const x = (oImg.width > minWidth) ? oImg.width : minWidth;
             setImageScale(x / desiredWidth);
             resizeCanvas(desiredWidth, desiredHeight);
-
+  
             editor?.canvas.setBackgroundImage(oImg);
             if (defaultSubtitle) {
-              addText(defaultSubtitle)
+              addText(defaultSubtitle);
             }
             setImageLoaded(true);
-
+  
             // Rendering the canvas after applying all changes
             editor.canvas.renderAll();
           });
@@ -436,8 +504,7 @@ const EditorPage = ({ shows }) => {
           });
           // Background image from the given URL
           fabric.Image.fromURL(
-            `https://memesrc.com${(typeof searchDetails.fineTuningFrame === 'number') ? data.frames_fine_tuning[searchDetails.fineTuningFrame] : data.frame_image
-            }`,
+            `https://memesrc.com${(typeof searchDetails.fineTuningFrame === 'number') ? data.frames_fine_tuning[searchDetails.fineTuningFrame] : data.frame_image}`,
             (oImg) => {
               setDefaultFrame(oImg);
               setDefaultSubtitle(data.subtitle);
@@ -448,7 +515,7 @@ const EditorPage = ({ shows }) => {
         })
         .catch((err) => console.log(err));
     }
-  }, [resizeCanvas, selectedFid, editor, addText, location]);
+  }, [resizeCanvas, selectedFid, editor, addText, location, searchDetails]);
 
   // Look up data for the fid and set defaults
   useEffect(() => {
@@ -1436,7 +1503,7 @@ const EditorPage = ({ shows }) => {
                         onClick={handleClickDialogOpen}
                         sx={{ zIndex: '50', backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
                       >
-                        Save/Copy/Share
+                        {location.state?.collageState ? "Save" : "Save/Copy/Share"}
                       </Button>
 
                     </Stack>
@@ -1789,7 +1856,7 @@ const EditorPage = ({ shows }) => {
                     startIcon={<Share />}
                     size="large"
                   >
-                    Save/Copy/Share
+                    {location.state?.collageState ? "Save" : "Save/Copy/Share"}
                   </Button>
                 </Grid>
 

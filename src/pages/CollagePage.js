@@ -21,7 +21,7 @@ import {
 } from "@mui/material";
 import { styled } from "@mui/system";
 import { Delete, Add, ArrowBack, ArrowForward, ExpandMore, Close, Edit } from "@mui/icons-material";
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { LoadingButton } from "@mui/lab";
 import BasePage from "./BasePage";
 import { UserContext } from "../UserContext";
@@ -127,6 +127,28 @@ export default function CollagePage() {
     createCollage();
   }, [images, borderThickness]);
 
+  const location = useLocation();
+
+  useEffect(() => {
+    const storedCollageState = localStorage.getItem('collageState');
+    if (storedCollageState) {
+      const parsedCollageState = JSON.parse(storedCollageState);
+      setImages(parsedCollageState.images);
+      setBorderThickness(parsedCollageState.borderThickness);
+      setEditMode(parsedCollageState.editMode);
+      setAccordionExpanded(parsedCollageState.accordionExpanded);
+      localStorage.removeItem('collageState');
+    }
+
+    if (location.state?.updatedCollageState) {
+      const { images, borderThickness, editMode, accordionExpanded } = location.state.updatedCollageState;
+      setImages(images);
+      setBorderThickness(borderThickness);
+      setEditMode(editMode);
+      setAccordionExpanded(accordionExpanded);
+    }
+  }, [location.state]);
+
   const handleImageUpload = (event, index) => {
     const uploadedImage = event.target.files[0];
     const reader = new FileReader();
@@ -150,7 +172,7 @@ export default function CollagePage() {
     reader.readAsDataURL(uploadedImage);
   };
 
-  const handleEditImage = (image, index) => {
+  const handleEditImage = (index) => {
     const collageState = {
       images,
       editingImageIndex: index,
@@ -159,7 +181,7 @@ export default function CollagePage() {
       accordionExpanded,
     };
     localStorage.setItem('collageState', JSON.stringify(collageState));
-    navigate(`/editor/project/new`, { state: { uploadedImage: image.src, collageState } });
+    navigate(`/editor/project/new`, { state: { collageState } });
   };
 
   const addTextArea = (index) => {
@@ -410,7 +432,7 @@ export default function CollagePage() {
                           <DeleteButton className="delete-button" onClick={() => deleteImage(index)}>
                             <Close />
                           </DeleteButton>
-                          <EditButton className="edit-button" onClick={() => handleEditImage(image)}>
+                          <EditButton className="edit-button" onClick={() => handleEditImage(index)}>
                             <Edit />
                           </EditButton>
                         </ImageWrapper>
