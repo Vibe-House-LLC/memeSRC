@@ -20,7 +20,7 @@ import {
   Radio,
 } from "@mui/material";
 import { styled } from "@mui/system";
-import { Delete, Add, ArrowBack, ArrowForward, ExpandMore } from "@mui/icons-material";
+import { Delete, Add, ArrowBack, ArrowForward, ExpandMore, Close } from "@mui/icons-material";
 import { LoadingButton } from "@mui/lab";
 import BasePage from "./BasePage";
 import { UserContext } from "../UserContext";
@@ -42,6 +42,9 @@ const CollageImage = styled("img")({
 const ImageContainer = styled(Box)({
   position: "relative",
   marginBottom: "16px",
+  "&:hover .delete-button, &:active .delete-button": {
+    display: "flex",
+  },
 });
 
 const ImageWrapper = styled(Box)({
@@ -59,8 +62,16 @@ const UploadButton = styled(Fab)({
 const DeleteButton = styled(IconButton)({
   position: "absolute",
   top: "8px",
-  left: "8px",
+  right: "8px",
   zIndex: 1,
+  backgroundColor: "white",
+  color: "red",
+  border: "2px solid red",
+  padding: "4px",
+  display: "none",
+  '&:hover': {
+    backgroundColor: "#ffe6e6",
+  },
 });
 
 const EmptyStateContainer = styled(Box)({
@@ -265,21 +276,19 @@ export default function CollagePage() {
                 memeSRC&nbsp;Collage Tool
               </Typography>
               <Typography variant="body" textAlign="center">
-                The Collage Tool is available for memeSRC&nbsp;Pro subscribers. Upgrade to create awesome collages.
+                While in Early Access, the Collage Tool is only available for memeSRC&nbsp;Pro subscribers.
               </Typography>
             </Stack>
             <center>
-              <LoadingButton
-                variant="contained"
-                size="large"
-                onClick={openSubscriptionDialog}
-                loading={!user}
-                loadingIndicator="Loading..."
-                sx={{ mt: 3, minWidth: "150px" }}
-              >
-                {user ? "Subscribe Now" : "Loading..."}
-              </LoadingButton>
-            </center>
+                <LoadingButton
+                  onClick={openSubscriptionDialog}
+                  variant="contained"
+                  size="large"
+                  sx={{ mt: 5, fontSize: 17 }}
+                >
+                  Upgrade to Pro
+                </LoadingButton>
+              </center>
           </Grid>
         </Grid>
       ) : (
@@ -368,8 +377,8 @@ export default function CollagePage() {
                       <ImageContainer ref={(el) => { imageRefs.current[index] = el; }}>
                         <ImageWrapper>
                           <img src={image.src} alt={`layer ${index + 1}`} style={{ width: "100%" }} />
-                          <DeleteButton onClick={() => deleteImage(index)}>
-                            <Delete />
+                          <DeleteButton className="delete-button" onClick={() => deleteImage(index)}>
+                            <Close />
                           </DeleteButton>
                         </ImageWrapper>
                       </ImageContainer>
