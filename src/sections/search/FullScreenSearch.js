@@ -598,7 +598,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                 </Box>
                 {`${currentThemeTitleText} ${currentThemeTitleText === 'memeSRC' ? (user?.userDetails?.magicSubscription === 'true' ? 'Pro' : '') : ''}`}
               </Typography>
-              {/* {!localStorage.getItem('alertDismissed-PRO-REMOVE-ADS-y78ifu') && user?.userDetails?.magicSubscription !== 'true' && (
+              {!localStorage.getItem('alertDismissed-EARLY-ACCESS-COLLAGE-8fs667') && (
                 <center>
                   <Alert
                     severity="info"
@@ -610,16 +610,16 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                           size="small"
                           style={{ marginRight: '5px' }}
                           onClick={async () => {
-                            openSubscriptionDialog();
+                            navigate('/collage');
                           }}
                         >
-                          Upgrade
+                          Early Access
                         </Button>
                         <IconButton
                           color="inherit"
                           size="small"
                           onClick={() => {
-                            localStorage.setItem('alertDismissed-PRO-REMOVE-ADS-y78ifu', 'true');
+                            localStorage.setItem('alertDismissed-EARLY-ACCESS-COLLAGE-8fs667', 'true');
                             setAlertOpen(false);
                           }}
                         >
@@ -634,10 +634,10 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                       maxWidth: 400,
                     }}
                   >
-                    <b>New:</b> Remove ads!
+                    <b>New:</b> Collages!
                   </Alert>
                 </center>
-              )} */}
+              )}
             </Grid>
           </Grid>
           <StyledSearchForm onSubmit={(e) => searchFunction(e)}>
