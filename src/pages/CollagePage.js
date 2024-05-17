@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useContext, useEffect, useRef, useState, useCallback } from "react";
 import { Helmet } from "react-helmet-async";
 import {
   Box,
@@ -10,10 +10,18 @@ import {
   Slider,
   Menu,
   MenuItem,
+  Grid,
+  Stack,
+  Paper,
+  Card,
+  CardContent,
 } from "@mui/material";
 import { styled } from "@mui/system";
 import { Delete, Add, ArrowBack, Check, ArrowForward } from "@mui/icons-material";
+import { LoadingButton } from "@mui/lab";
 import BasePage from "./BasePage";
+import { UserContext } from "../UserContext";
+import { useSubscribeDialog } from "../contexts/useSubscribeDialog";
 
 const CollageContainer = styled(Box)({
   display: "flex",
@@ -40,7 +48,6 @@ const ImageWrapper = styled(Box)({
 });
 
 const UploadButton = styled(Fab)({
-  // position: "absolute",
   left: "50%",
   transform: "translateX(-50%)",
   zIndex: 1,
@@ -77,6 +84,11 @@ export default function CollagePage() {
   const [menuIndex, setMenuIndex] = useState(null);
   const imageRefs = useRef([]);
   const imagesOnly = true; // Set this to true to use images as default option
+
+  const { user } = useContext(UserContext);
+  const { openSubscriptionDialog } = useSubscribeDialog();
+
+  const authorized = user?.userDetails?.magicSubscription === "true";
 
   useEffect(() => {
     createCollage();
@@ -230,200 +242,231 @@ export default function CollagePage() {
         <title>Collage Tool - Editor - memeSRC</title>
       </Helmet>
 
-      {editMode ? (
-        <>
-          <Typography variant="body1" marginBottom={5} gutterBottom>
-            Upload images to create a collage:
-          </Typography>
-          {images.length === 0 ? (
-            <EmptyStateContainer>
-              <Typography variant="h6" gutterBottom>
-                No images added
+      {!authorized ? (
+        <Grid container height="100%" justifyContent="center" alignItems="center" mt={6}>
+          <Grid item>
+            <Stack spacing={3} justifyContent="center">
+              <img
+                src="/assets/memeSRC-white.svg"
+                alt="memeSRC logo"
+                style={{ height: 48, marginBottom: -15 }}
+              />
+              <Typography variant="h3" textAlign="center">
+                memeSRC&nbsp;Collage Tool
               </Typography>
-              <Typography variant="body1" marginBottom={2}>
-                Select your first image
+              <Typography variant="body" textAlign="center">
+                The Collage Tool is available for memeSRC&nbsp;Pro subscribers. Upgrade to create awesome collages.
               </Typography>
-              <Fab
-                color="primary"
+            </Stack>
+            <center>
+              <LoadingButton
+                onClick={openSubscriptionDialog}
+                variant="contained"
                 size="large"
-                component="label"
-                onClick={(event) => handleMenuClick(event, 0)}
+                sx={{ mt: 5, fontSize: 17 }}
               >
-                <Add />
-              </Fab>
-              <Menu
-                anchorEl={anchorEl}
-                open={Boolean(anchorEl)}
-                onClose={() => handleMenuClose(null)}
-              >
-                <MenuItem onClick={() => handleMenuClose("image")}>Add Image</MenuItem>
-                <MenuItem onClick={() => handleMenuClose("text")}>Add Text</MenuItem>
-              </Menu>
-              <input
-                type="file"
-                accept="image/*"
-                hidden
-                id="file-input-0"
-                onChange={(event) => handleImageUpload(event, 0)}
-              />
-            </EmptyStateContainer>
+                Upgrade to Pro
+              </LoadingButton>
+            </center>
+          </Grid>
+        </Grid>
+      ) : (
+        <>
+          {editMode ? (
+            <>
+              <Typography variant="body1" marginBottom={5} gutterBottom>
+                Upload images to create a collage:
+              </Typography>
+              {images.length === 0 ? (
+                <EmptyStateContainer>
+                  <Typography variant="h6" gutterBottom>
+                    No images added
+                  </Typography>
+                  <Typography variant="body1" marginBottom={2}>
+                    Select your first image
+                  </Typography>
+                  <Fab
+                    color="primary"
+                    size="large"
+                    component="label"
+                    onClick={(event) => handleMenuClick(event, 0)}
+                  >
+                    <Add />
+                  </Fab>
+                  <Menu
+                    anchorEl={anchorEl}
+                    open={Boolean(anchorEl)}
+                    onClose={() => handleMenuClose(null)}
+                  >
+                    <MenuItem onClick={() => handleMenuClose("image")}>Add Image</MenuItem>
+                    <MenuItem onClick={() => handleMenuClose("text")}>Add Text</MenuItem>
+                  </Menu>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    id="file-input-0"
+                    onChange={(event) => handleImageUpload(event, 0)}
+                  />
+                </EmptyStateContainer>
+              ) : (
+                <Box sx={{ position: "relative" }}>
+                  <UploadButton
+                    color="primary"
+                    size="small"
+                    component="label"
+                    sx={{ marginTop: '16px', marginBottom: '16px' }}
+                    onClick={(event) => handleMenuClick(event, 0)}
+                  >
+                    <Add />
+                  </UploadButton>
+                  <Menu
+                    anchorEl={anchorEl}
+                    open={Boolean(anchorEl)}
+                    onClose={() => handleMenuClose(null)}
+                  >
+                    <MenuItem onClick={() => handleMenuClose("image")}>Add Image</MenuItem>
+                    <MenuItem onClick={() => handleMenuClose("text")}>Add Text</MenuItem>
+                  </Menu>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    id="file-input-0"
+                    onChange={(event) => handleImageUpload(event, 0)}
+                  />
+
+                  {images.map((image, index) => (
+                    <>
+                      <ImageContainer ref={(el) => { imageRefs.current[index] = el; }}>
+                        <ImageWrapper>
+                          <img src={image.src} alt={`layer ${index + 1}`} style={{ width: "100%" }} />
+                          <DeleteButton onClick={() => deleteImage(index)}>
+                            <Delete />
+                          </DeleteButton>
+                        </ImageWrapper>
+                      </ImageContainer>
+                      {index < images.length - 1 && (
+                        <Box sx={{ display: 'flex', justifyContent: 'center', marginTop: '16px', marginBottom: '16px' }}>
+                          <Fab
+                            color="primary"
+                            size="small"
+                            component="label"
+                            onClick={(event) => handleMenuClick(event, index + 1)}
+                          >
+                            <Add />
+                          </Fab>
+                          <Menu
+                            anchorEl={anchorEl}
+                            open={Boolean(anchorEl)}
+                            onClose={() => handleMenuClose(null)}
+                          >
+                            <MenuItem onClick={() => handleMenuClose("image", index + 1)}>Add Image</MenuItem>
+                            <MenuItem onClick={() => handleMenuClose("text", index + 1)}>Add Text</MenuItem>
+                          </Menu>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            hidden
+                            id={`file-input-${index + 1}`}
+                            onChange={(event) => handleImageUpload(event, index + 1)}
+                          />
+                        </Box>
+                      )}
+                    </>
+                  ))}
+
+                  <UploadButton
+                    color="primary"
+                    size="small"
+                    component="label"
+                    onClick={(event) => handleMenuClick(event, images.length)}
+                  >
+                    <Add />
+                  </UploadButton>
+                  <Menu
+                    anchorEl={anchorEl}
+                    open={Boolean(anchorEl)}
+                    onClose={() => handleMenuClose(null)}
+                  >
+                    <MenuItem onClick={() => handleMenuClose("image", images.length)}>Add Image</MenuItem>
+                    <MenuItem onClick={() => handleMenuClose("text", images.length)}>Add Text</MenuItem>
+                  </Menu>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    id={`file-input-${images.length}`}
+                    onChange={(event) => handleImageUpload(event, images.length)}
+                  />
+                </Box>
+              )}
+
+              {images.length > 0 && (
+                <Button
+                  variant="contained"
+                  startIcon={<ArrowForward />}
+                  onClick={() => {
+                    createCollage();
+                    setEditMode(false);
+                  }}
+                  sx={{ marginTop: "32px" }}
+                  fullWidth
+                  size="large"
+                >
+                  Continue
+                </Button>
+              )}
+            </>
           ) : (
-            <Box sx={{ position: "relative" }}>
-              <UploadButton
-                color="primary"
-                size="small"
-                component="label"
-                sx={{ marginTop: '16px', marginBottom: '16px' }}
-                onClick={(event) => handleMenuClick(event, 0)}
+            <CollageContainer>
+              <Button
+                variant="contained"
+                startIcon={<ArrowBack />}
+                onClick={() => setEditMode(true)}
+                fullWidth
+                sx={{ mb: 2 }}
               >
-                <Add />
-              </UploadButton>
-              <Menu
-                anchorEl={anchorEl}
-                open={Boolean(anchorEl)}
-                onClose={() => handleMenuClose(null)}
+                Edit Photos
+              </Button>
+              <ImageWrapper>
+                <CollageImage src={collageBlob} alt="Collage Result" />
+              </ImageWrapper>
+              <Box sx={{ width: 300 }}>
+                <Typography id="border-thickness-slider" gutterBottom>
+                  Border Thickness
+                </Typography>
+                <Slider
+                  value={borderThickness}
+                  min={0}
+                  max={20}
+                  onChange={(event, newValue) => {
+                    setBorderThickness(newValue);
+                    createCollage();
+                  }}
+                  aria-labelledby="border-thickness-slider"
+                />
+              </Box>
+              <Button
+                variant="contained"
+                startIcon={<Check />}
+                onClick={() => {
+                  createCollage();
+                  setEditMode(false);
+                }}
+                sx={{
+                  marginTop: "10px",
+                  color: "#000000",
+                  backgroundColor: "#54D62C"
+                }}
+                fullWidth
+                size="large"
               >
-                <MenuItem onClick={() => handleMenuClose("image")}>Add Image</MenuItem>
-                <MenuItem onClick={() => handleMenuClose("text")}>Add Text</MenuItem>
-              </Menu>
-              <input
-                type="file"
-                accept="image/*"
-                hidden
-                id="file-input-0"
-                onChange={(event) => handleImageUpload(event, 0)}
-              />
-
-              {images.map((image, index) => (
-                <>
-                  <ImageContainer ref={(el) => { imageRefs.current[index] = el; }}>
-                    <ImageWrapper>
-                      <img src={image.src} alt={`layer ${index + 1}`} style={{ width: "100%" }} />
-                      <DeleteButton onClick={() => deleteImage(index)}>
-                        <Delete />
-                      </DeleteButton>
-                    </ImageWrapper>
-                  </ImageContainer>
-                  {index < images.length - 1 && (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', marginTop: '16px', marginBottom: '16px' }}>
-                      <Fab
-                        color="primary"
-                        size="small"
-                        component="label"
-                        onClick={(event) => handleMenuClick(event, index + 1)}
-                      >
-                        <Add />
-                      </Fab>
-                      <Menu
-                        anchorEl={anchorEl}
-                        open={Boolean(anchorEl)}
-                        onClose={() => handleMenuClose(null)}
-                      >
-                        <MenuItem onClick={() => handleMenuClose("image", index + 1)}>Add Image</MenuItem>
-                        <MenuItem onClick={() => handleMenuClose("text", index + 1)}>Add Text</MenuItem>
-                      </Menu>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        hidden
-                        id={`file-input-${index + 1}`}
-                        onChange={(event) => handleImageUpload(event, index + 1)}
-                      />
-                    </Box>
-                  )}
-                </>
-              ))}
-
-              <UploadButton
-                color="primary"
-                size="small"
-                component="label"
-                // sx={{ bottom: "-50px" }}
-                onClick={(event) => handleMenuClick(event, images.length)}
-              >
-                <Add />
-              </UploadButton>
-              <Menu
-                anchorEl={anchorEl}
-                open={Boolean(anchorEl)}
-                onClose={() => handleMenuClose(null)}
-              >
-                <MenuItem onClick={() => handleMenuClose("image", images.length)}>Add Image</MenuItem>
-                <MenuItem onClick={() => handleMenuClose("text", images.length)}>Add Text</MenuItem>
-              </Menu>
-              <input
-                type="file"
-                accept="image/*"
-                hidden
-                id={`file-input-${images.length}`}
-                onChange={(event) => handleImageUpload(event, images.length)}
-              />
-            </Box>
-          )}
-
-          {images.length > 0 && (
-            <Button
-              variant="contained"
-              startIcon={<ArrowForward />}
-              onClick={() => {
-                createCollage();
-                setEditMode(false);
-              }}
-              sx={{ marginTop: "32px" }}
-              fullWidth
-              size="large"
-            >
-              Continue
-            </Button>
+                Save Image
+              </Button>
+            </CollageContainer>
           )}
         </>
-      ) : (
-        <CollageContainer>
-          <Button
-            variant="contained"
-            startIcon={<ArrowBack />}
-            onClick={() => setEditMode(true)}
-            fullWidth
-            sx={{ mb: 2 }}
-          >
-            Edit Photos
-          </Button>
-          <ImageWrapper>
-            <CollageImage src={collageBlob} alt="Collage Result" />
-          </ImageWrapper>
-          <Box sx={{ width: 300 }}>
-            <Typography id="border-thickness-slider" gutterBottom>
-              Border Thickness
-            </Typography>
-            <Slider
-              value={borderThickness}
-              min={0}
-              max={20}
-              onChange={(event, newValue) => {
-                setBorderThickness(newValue);
-                createCollage();
-              }}
-              aria-labelledby="border-thickness-slider"
-            />
-          </Box>
-          <Button
-            variant="contained"
-            startIcon={<Check />}
-            onClick={() => {
-              createCollage();
-              setEditMode(false);
-            }}
-            sx={{
-              marginTop: "10px",
-              color: "#000000",
-              backgroundColor: "#54D62C"
-            }}
-            fullWidth
-            size="large"
-          >
-            Save Image
-          </Button>
-        </CollageContainer>
       )}
 
       <canvas ref={canvasRef} style={{ display: "none" }} />
