@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Helmet } from "react-helmet-async";
 import {
   Box,
@@ -12,7 +12,7 @@ import {
   MenuItem,
 } from "@mui/material";
 import { styled } from "@mui/system";
-import { Delete, Add, Edit, ArrowBack, Check, ArrowForward } from "@mui/icons-material";
+import { Delete, Add, ArrowBack, Check, ArrowForward } from "@mui/icons-material";
 import BasePage from "./BasePage";
 
 const CollageContainer = styled(Box)({
@@ -75,6 +75,7 @@ export default function CollagePage() {
   const isMobile = useMediaQuery("(max-width:600px)");
   const [anchorEl, setAnchorEl] = useState(null);
   const [menuIndex, setMenuIndex] = useState(null);
+  const imageRefs = useRef([]);
 
   useEffect(() => {
     createCollage();
@@ -276,63 +277,43 @@ export default function CollagePage() {
               />
 
               {images.map((image, index) => (
-                <ImageContainer key={image.id}>
-                  <ImageWrapper>
-                    <img src={image.src} alt={`layer ${index + 1}`} style={{ width: "100%" }} />
-                    <DeleteButton onClick={() => deleteImage(index)}>
-                      <Delete />
-                    </DeleteButton>
-                  </ImageWrapper>
-                  {index === images.length - 1 && (
-                    <UploadButton
-                      color="primary"
-                      size="small"
-                      component="label"
-                      sx={{ bottom: "-25px" }}
-                      onClick={(event) => handleMenuClick(event, index + 1)}
-                    >
-                      <Add />
-                    </UploadButton>
+                <>
+                  <ImageContainer ref={(el) => { imageRefs.current[index] = el; }}>
+                    <ImageWrapper>
+                      <img src={image.src} alt={`layer ${index + 1}`} style={{ width: "100%" }} />
+                      <DeleteButton onClick={() => deleteImage(index)}>
+                        <Delete />
+                      </DeleteButton>
+                    </ImageWrapper>
+                  </ImageContainer>
+                  {index < images.length - 1 && (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', marginTop: '16px', marginBottom: '16px' }}>
+                      <Fab
+                        color="primary"
+                        size="small"
+                        component="label"
+                        onClick={(event) => handleMenuClick(event, index + 1)}
+                      >
+                        <Add />
+                      </Fab>
+                      <Menu
+                        anchorEl={anchorEl}
+                        open={Boolean(anchorEl)}
+                        onClose={() => handleMenuClose(null)}
+                      >
+                        <MenuItem onClick={() => handleMenuClose("image", index + 1)}>Add Image</MenuItem>
+                        <MenuItem onClick={() => handleMenuClose("text", index + 1)}>Add Text</MenuItem>
+                      </Menu>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        hidden
+                        id={`file-input-${index + 1}`}
+                        onChange={(event) => handleImageUpload(event, index + 1)}
+                      />
+                    </Box>
                   )}
-                  <Menu
-                    anchorEl={anchorEl}
-                    open={Boolean(anchorEl)}
-                    onClose={() => handleMenuClose(null)}
-                  >
-                    <MenuItem onClick={() => handleMenuClose("image", index + 1)}>Add Image</MenuItem>
-                    <MenuItem onClick={() => handleMenuClose("text", index + 1)}>Add Text</MenuItem>
-                  </Menu>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    hidden
-                    id={`file-input-${index + 1}`}
-                    onChange={(event) => handleImageUpload(event, index + 1)}
-                  />
-                </ImageContainer>
-              ))}
-
-              {images.map((_, index) => (
-                index < images.length - 1 && (
-                  <UploadButton
-                    key={index}
-                    color="primary"
-                    size="small"
-                    component="label"
-                    sx={{
-                      top: `${images.slice(0, index + 1).reduce((totalHeight, image) => {
-                        const scaleFactor = 350 / image.width;
-                        const scaledHeight = image.height * scaleFactor;
-                        return totalHeight + scaledHeight;
-                      }, 0)}px`,
-                      left: "50%",
-                      transform: "translate(-50%, -50%)"
-                    }}
-                    onClick={(event) => handleMenuClick(event, index + 1)}
-                  >
-                    <Add />
-                  </UploadButton>
-                )
+                </>
               ))}
             </Box>
           )}
