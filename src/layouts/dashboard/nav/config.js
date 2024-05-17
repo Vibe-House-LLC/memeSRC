@@ -15,7 +15,14 @@ const navConfig = [
     sectionTitle: 'Tools',
     adminOnly: false,
     items: [
-
+      {
+        title: 'collage',
+        path: '/collage',
+        externalLink: false,
+        icon: <PhotoLibrary />,
+        chipText: 'Pro',
+        chipColor: 'info',
+      },
       {
         title: 'search',
         path: '/search',
@@ -27,14 +34,6 @@ const navConfig = [
         path: '/edit',
         externalLink: false,
         icon: <Edit />,
-      },
-      {
-        title: 'collage',
-        path: '/collage',
-        externalLink: false,
-        icon: <PhotoLibrary />,
-        chipText: 'Early Access',
-        chipColor: 'success',
       },
       {
         title: 'Vote',
@@ -73,16 +72,18 @@ const navConfig = [
     adminOnly: false,
     items: [
       {
-        title: 'FAQs',
-        path: '/faq',
-        externalLink: false,
-        icon: <QuestionAnswer />,
-      },
-      {
         title: 'Pro Support',
         path: '/support',
         externalLink: false,
         icon: <SupportAgent />,
+        chipText: 'Pro',
+        chipColor: 'info',
+      },
+      {
+        title: 'FAQs',
+        path: '/faq',
+        externalLink: false,
+        icon: <QuestionAnswer />,
       },
       {
         title: 'Feedback',
