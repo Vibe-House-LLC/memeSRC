@@ -20,7 +20,8 @@ import {
   Radio,
 } from "@mui/material";
 import { styled } from "@mui/system";
-import { Delete, Add, ArrowBack, ArrowForward, ExpandMore, Close } from "@mui/icons-material";
+import { Delete, Add, ArrowBack, ArrowForward, ExpandMore, Close, Edit } from "@mui/icons-material";
+import { useNavigate } from 'react-router-dom';
 import { LoadingButton } from "@mui/lab";
 import BasePage from "./BasePage";
 import { UserContext } from "../UserContext";
@@ -42,7 +43,7 @@ const CollageImage = styled("img")({
 const ImageContainer = styled(Box)({
   position: "relative",
   marginBottom: "16px",
-  "&:hover .delete-button, &:active .delete-button": {
+  "&:hover .delete-button, &:active .delete-button, &:hover .edit-button, &:active .edit-button": {
     display: "flex",
   },
 });
@@ -57,6 +58,21 @@ const UploadButton = styled(Fab)({
   left: "50%",
   transform: "translateX(-50%)",
   zIndex: 1,
+});
+
+const EditButton = styled(IconButton)({
+  position: "absolute",
+  top: "8px",
+  right: "48px",
+  zIndex: 1,
+  backgroundColor: "white",
+  color: "blue",
+  border: "2px solid blue",
+  padding: "4px",
+  display: "none",
+  '&:hover': {
+    backgroundColor: "#e6e6ff",
+  },
 });
 
 const DeleteButton = styled(IconButton)({
@@ -103,6 +119,8 @@ export default function CollagePage() {
   const { user } = useContext(UserContext);
   const { openSubscriptionDialog } = useSubscribeDialog();
 
+  const navigate = useNavigate();
+
   const authorized = user?.userDetails?.magicSubscription === "true";
 
   useEffect(() => {
@@ -130,6 +148,10 @@ export default function CollagePage() {
       img.src = e.target.result;
     };
     reader.readAsDataURL(uploadedImage);
+  };
+
+  const handleEditImage = (image) => {
+    navigate(`/editor/project/new`, { state: { uploadedImage: image.src } });
   };
 
   const addTextArea = (index) => {
@@ -380,6 +402,9 @@ export default function CollagePage() {
                           <DeleteButton className="delete-button" onClick={() => deleteImage(index)}>
                             <Close />
                           </DeleteButton>
+                          <EditButton className="edit-button" onClick={() => handleEditImage(image)}>
+                            <Edit />
+                          </EditButton>
                         </ImageWrapper>
                       </ImageContainer>
                       {index < images.length - 1 && (
