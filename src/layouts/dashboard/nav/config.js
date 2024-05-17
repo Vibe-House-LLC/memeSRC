@@ -1,5 +1,5 @@
 // component
-import { Article, Ballot, CardGiftcard, Create, DocumentScanner, Edit, Favorite, FolderShared, Grid3x3, Grid4x4, MapsUgc, PhotoAlbum, QuestionAnswer, Search, Settings, Shield, SupportAgent, Upload } from '@mui/icons-material';
+import { Article, Ballot, CardGiftcard, Create, DocumentScanner, Edit, Favorite, FolderShared, Grid3x3, Grid4x4, MapsUgc, PhotoAlbum, PhotoLibrary, QuestionAnswer, Search, Settings, Shield, SupportAgent, Upload } from '@mui/icons-material';
 import SvgColor from '../../../components/svg-color';
 
 // ----------------------------------------------------------------------
@@ -32,7 +32,9 @@ const navConfig = [
         title: 'collage',
         path: '/collage',
         externalLink: false,
-        icon: <Grid4x4 />,
+        icon: <PhotoLibrary />,
+        chipText: 'Early Access',
+        chipColor: 'success',
       },
       {
         title: 'Vote',
