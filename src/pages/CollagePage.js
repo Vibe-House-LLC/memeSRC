@@ -150,8 +150,16 @@ export default function CollagePage() {
     reader.readAsDataURL(uploadedImage);
   };
 
-  const handleEditImage = (image) => {
-    navigate(`/editor/project/new`, { state: { uploadedImage: image.src } });
+  const handleEditImage = (image, index) => {
+    const collageState = {
+      images,
+      editingImageIndex: index,
+      borderThickness,
+      editMode,
+      accordionExpanded,
+    };
+    localStorage.setItem('collageState', JSON.stringify(collageState));
+    navigate(`/editor/project/new`, { state: { uploadedImage: image.src, collageState } });
   };
 
   const addTextArea = (index) => {
