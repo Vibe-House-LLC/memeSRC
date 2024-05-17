@@ -7,18 +7,20 @@ import {
   IconButton,
   Fab,
   useMediaQuery,
-  Slider,
   Menu,
   MenuItem,
   Grid,
   Stack,
-  Paper,
-  Card,
-  CardContent,
   Alert,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
 } from "@mui/material";
 import { styled } from "@mui/system";
-import { Delete, Add, ArrowBack, Check, ArrowForward } from "@mui/icons-material";
+import { Delete, Add, ArrowBack, ArrowForward, ExpandMore } from "@mui/icons-material";
 import { LoadingButton } from "@mui/lab";
 import BasePage from "./BasePage";
 import { UserContext } from "../UserContext";
@@ -160,35 +162,35 @@ export default function CollagePage() {
 
   const createCollage = () => {
     if (images.length === 0) return;
-
+  
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
-
+  
     const maxWidth = Math.max(...images.map((image) => image.width), 0);
     let totalHeight = 0;
-
+  
     images.forEach((image) => {
       const scaleFactor = maxWidth / image.width;
       const scaledHeight = image.height * scaleFactor;
       totalHeight += scaledHeight;
     });
-
+  
     totalHeight += borderThickness * (images.length + 1);
     canvas.width = maxWidth + borderThickness * 2;
     canvas.height = totalHeight;
-
+  
     ctx.fillStyle = "white";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-
+  
     let currentHeight = borderThickness;
-    images.forEach((image) => {
+    images.forEach((image, index) => {
       const scaleFactor = maxWidth / image.width;
       const scaledHeight = image.height * scaleFactor;
       const img = new Image();
       img.onload = () => {
         ctx.drawImage(img, borderThickness, currentHeight, maxWidth, scaledHeight);
         currentHeight += scaledHeight + borderThickness;
-
+  
         if (currentHeight >= totalHeight) {
           canvas.toBlob((blob) => {
             const url = URL.createObjectURL(blob);
@@ -228,8 +230,37 @@ export default function CollagePage() {
     });
     return positions;
   }, [images]);
-  
+
   const buttonPositions = calculateButtonPositions();
+
+  const handleBorderChange = (event) => {
+    const value = event.target.value;
+  
+    let thickness = 10; // Default to normal
+  
+    switch (value) {
+      case "none":
+        thickness = 0;
+        break;
+      case "thin":
+        thickness = 5;
+        break;
+      case "normal":
+        thickness = 10;
+        break;
+      case "thicc":
+        thickness = 15;
+        break;
+      case "thiccer":
+        thickness = 20;
+        break;
+      default:
+        thickness = 10;
+    }
+  
+    setBorderThickness(thickness);
+  };
+  
 
   return (
     <BasePage
@@ -261,12 +292,14 @@ export default function CollagePage() {
             </Stack>
             <center>
               <LoadingButton
-                onClick={openSubscriptionDialog}
                 variant="contained"
                 size="large"
-                sx={{ mt: 5, fontSize: 17 }}
+                onClick={openSubscriptionDialog}
+                loading={!user}
+                loadingIndicator="Loading..."
+                sx={{ mt: 3, minWidth: "150px" }}
               >
-                Upgrade to Pro
+                {user ? "Subscribe Now" : "Loading..."}
               </LoadingButton>
             </center>
           </Grid>
@@ -431,38 +464,27 @@ export default function CollagePage() {
               >
                 Edit Photos
               </Button>
-              <Box sx={{ width: 300 }}>
-                <Typography id="border-thickness-slider" gutterBottom>
-                  Border Thickness
-                </Typography>
-                <Slider
-                  value={borderThickness / 5}
-                  min={0}
-                  max={4}
-                  step={1}
-                  marks
-                  onChange={(event, newValue) => {
-                    setBorderThickness(newValue * 5);
-                    createCollage();
-                  }}
-                  aria-labelledby="border-thickness-slider"
-                />
-              </Box>
+              <Accordion>
+                <AccordionSummary expandIcon={<ExpandMore />}>
+                  <Typography>Adjust Border Thickness</Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <RadioGroup value={borderThickness.toString()} onChange={handleBorderChange}>
+                    <FormControlLabel value="none" control={<Radio />} label="None" />
+                    <FormControlLabel value="thin" control={<Radio />} label="Thin" />
+                    <FormControlLabel value="normal" control={<Radio />} label="Normal" />
+                    <FormControlLabel value="thicc" control={<Radio />} label="Thicc" />
+                    <FormControlLabel value="thiccer" control={<Radio />} label="Thiccer" />
+                  </RadioGroup>
+                </AccordionDetails>
+              </Accordion>
+
               <ImageWrapper>
                 <CollageImage src={collageBlob} alt="Collage Result" />
               </ImageWrapper>
               <Alert
                 severity='success'
                 sx={{ marginTop: 1.5 }}
-                // action={
-                //   <IconButton
-                //     aria-label="close"
-                //     color="inherit"
-                //     size="small"
-                //   >
-                //     <Close fontSize="inherit" />
-                //   </IconButton>
-                // }
               >
                 <b>{'ontouchstart' in window ? 'Tap and hold ' : 'Right click '} ☝️ the image to save</b>
               </Alert>
