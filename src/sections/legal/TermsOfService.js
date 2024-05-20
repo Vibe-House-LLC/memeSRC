@@ -141,7 +141,7 @@ While we strive to ensure that the Service is always available, interruptions ma
 
 ## memeSRC Pro Subscription
 
-memeSRC Pro is a premium subscription service available exclusively to residents of the United States and Australia. By subscribing to memeSRC Pro, you gain access to a range of enhanced features designed to improve your experience on our platform.
+memeSRC Pro is a premium subscription service available exclusively to residents of the United States, Canada, and Australia. By subscribing to memeSRC Pro, you gain access to a range of enhanced features designed to improve your experience on our platform.
 
 ### Benefits of memeSRC Pro
 As a memeSRC Pro subscriber, you will enjoy the following benefits:
@@ -162,18 +162,18 @@ You may use up to the number of credits issued in your plan each month. Unused c
 By subscribing to memeSRC Pro, you authorize Vibe House LLC to automatically charge your payment method each month. Charges will appear on your statement as "VIBE HOUSE LLC". The subscription fee will be charged at the beginning of the paying portion of your subscription and each month thereafter unless and until you cancel your subscription.
 
 ### Geographic Restrictions
-memeSRC Pro is available to residents of the United States and Australia only. By subscribing, you confirm that you are a resident of one of these countries.
+memeSRC Pro is available to residents of the United States, Canada, and Australia only. By subscribing, you confirm that you are a resident of one of these countries.
 
 ### Cancellation
 You may cancel your memeSRC Pro subscription at any time. Please note that upon cancellation, access to subscription benefits, including unused Magic Credits, will be terminated immediately without any entitlement to a refund (unless explicitly required by the laws of your region). 
 
-We recommend that you carefully review this policy, ensuring that it aligns with your operational practices and legal advice, particularly regarding consumer protection laws in both the U.S. and Australia.
+We recommend that you carefully review this policy, ensuring that it aligns with your operational practices and legal advice, particularly regarding consumer protection laws in both the U.S., Canada, and Australia.
 
 Please note that by subscribing to memeSRC Pro, you agree to these terms and the conditions outlined in the rest of this agreement. If you have any questions or need assistance with your subscription, please contact our support team.
 
 ## Donations
 
-memeSRC accepts donations from users who wish to support our platform. Please note that memeSRC is not a charitable organization, and therefore, donations made to memeSRC are not tax-deductible as charitable contributions. This applies to residents of the United States and Australia, where our donation feature is available.
+memeSRC accepts donations from users who wish to support our platform. Please note that memeSRC is not a charitable organization, and therefore, donations made to memeSRC are not tax-deductible as charitable contributions. This applies to residents of the United States, Canada, and Australia, where our donation feature is available.
 
 By making a donation, you understand and agree that your contribution is a voluntary gift to support the operations of memeSRC and is not connected to any tangible goods or services in return. We offer no guarantees regarding the use of donated funds; however, we commit to utilizing these contributions to enhance the platform and user experience.
 
