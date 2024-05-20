@@ -178,7 +178,7 @@ export const DialogProvider = ({ children }) => {
   }
 
   useEffect(() => {
-    if (countryCode !== 'US' && countryCode !== 'AU' && checkoutLink) {
+    if (countryCode !== 'US' && countryCode !== 'AU' && countryCode !== 'CA' && checkoutLink) {
       API.graphql(
         graphqlOperation(createLocationLeads, { input: { countryCode } })
       ).then().catch(error => {
@@ -495,7 +495,7 @@ export const DialogProvider = ({ children }) => {
                     variant="contained"
                     size="large"
                     onClick={() => {
-                      if (countryCode === 'US' || countryCode === 'AU') {
+                      if (countryCode === 'US' || countryCode === 'AU' || countryCode === 'CA') {
                         buySubscription();
                       } else {
                         setCheckoutLink('unsupported_country');
@@ -565,7 +565,7 @@ export const DialogProvider = ({ children }) => {
           )}
           {(loading || checkoutLink) && (
             <>
-            {countryCode !== 'US' && countryCode !== 'AU' && (
+            {countryCode !== 'US' && countryCode !== 'AU' && countryCode !== 'CA' && (
           <DialogContent sx={{ py: 4 }}>
             <Box
               p={3}
@@ -664,7 +664,7 @@ export const DialogProvider = ({ children }) => {
             </Button>
           </DialogContent>
         )}
-        {(countryCode === 'US' || countryCode === 'AU') && (
+        {(countryCode === 'US' || countryCode === 'AU' || countryCode === 'CA') && (
           <DialogContent sx={{ minHeight: 500, display: 'flex', flexDirection: 'column', mb: 5 }}>
           <Box sx={{ m: 'auto' }}>
             <Typography fontSize={20} textAlign='center' fontWeight={700}>
