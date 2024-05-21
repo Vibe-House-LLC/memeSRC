@@ -120,7 +120,7 @@ const DynamicRouteHandler = () => {
   }
 
   if (favorites) {
-    window.localStorage.setItem('memeSRCDefaultShow', '_favorites')
+    window.localStorage.setItem('memeSRCDefaultIndex', '_favorites')
     navigate('/')
   }
 
