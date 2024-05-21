@@ -7,5 +7,6 @@ export const UserContext = createContext({
     setShows: () => {},
     defaultShow: false,
     handleUpdateDefaultShow: () => {},
-    setDefaultShow: () => {}
+    setDefaultShow: () => {},
+    handleUpdateUserDetails: () => {}
 });

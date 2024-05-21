@@ -78,17 +78,17 @@ async function fetchFavorites() {
     return allFavorites;
 }
 
-async function getShowsWithFavorites() {
+async function getShowsWithFavorites(favorites = []) {
     const shows = await fetchShows();
     
     try {
         await Auth.currentAuthenticatedUser();
-        const favorites = await fetchFavorites();
-        const favoriteShowIds = new Set(favorites.map(favorite => favorite.cid));
+        // const favorites = await fetchFavorites();
+        // const favoriteShowIds = new Set(favorites.map(favorite => favorite.cid));
 
         const showsWithFavorites = shows.map(show => ({
             ...show,
-            isFavorite: favoriteShowIds.has(show.id)
+            isFavorite: favorites.has(show.id)
         }));
 
         return showsWithFavorites;

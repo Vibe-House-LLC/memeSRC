@@ -46,6 +46,36 @@ export default function GuestAuth(props) {
     setDefaultShow(show)
   }
 
+  const handleUpdateUserDetails = (newUserDetails) => {
+    return new Promise((resolve, reject) => {
+      const favorites = newUserDetails?.favorites || [];
+      getShowsWithFavorites(favorites)
+        .then((loadedShows) => {
+          if (!shows?.some((show) => show.isFavorite)) {
+            setDefaultShow('_universal');
+          }
+          setUser({
+            ...user,
+            userDetails: { ...newUserDetails },
+          });
+          window.localStorage.setItem(
+            'memeSRCUserDetails',
+            JSON.stringify({
+              ...user,
+              userDetails: { ...newUserDetails },
+            })
+          );
+          window.localStorage.setItem('memeSRCShows', JSON.stringify(loadedShows));
+          setShows(loadedShows);
+          resolve();
+        })
+        .catch((error) => {
+          console.log(error);
+          reject(error);
+        });
+    });
+  };
+
   useEffect(() => {
     if (location.pathname !== 'login') {
       const localStorageUser = JSON.parse(window.localStorage.getItem('memeSRCUserDetails'))
@@ -75,7 +105,7 @@ export default function GuestAuth(props) {
       // console.log(user)
       Auth.currentAuthenticatedUser().then((x) => {
         API.get('publicapi', '/user/get').then(userDetails => {
-          getShowsWithFavorites().then(loadedShows => {
+          getShowsWithFavorites(userDetails?.data?.getUserDetails?.favorites || []).then(loadedShows => {
             if (!shows?.some(show => show.isFavorite)) {
               setDefaultShow('_universal')
             }
@@ -110,7 +140,7 @@ export default function GuestAuth(props) {
   }, [location.pathname])
 
   return (
-    <UserContext.Provider value={{ user, setUser, shows, setShows, defaultShow, handleUpdateDefaultShow, setDefaultShow }}>
+    <UserContext.Provider value={{ user, setUser, shows, setShows, defaultShow, handleUpdateDefaultShow, setDefaultShow, handleUpdateUserDetails }}>
       {props.children}
     </UserContext.Provider>
   )
