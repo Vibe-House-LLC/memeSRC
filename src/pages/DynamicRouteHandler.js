@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useParams, Navigate } from 'react-router-dom';
+import { useParams, Navigate, useNavigate } from 'react-router-dom';
 import { API, graphqlOperation } from 'aws-amplify';
 import { CircularProgress } from '@mui/material';
 import { getAlias, getContentMetadata, getV2ContentMetadata } from '../graphql/queries'; // Import the getContentMetadata
 import SeriesPage from './SeriesPage';
 import HomePage from './HomePage';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
+import Page404 from './Page404';
 
 const DynamicRouteHandler = () => {
   const { seriesId } = useParams();
@@ -14,6 +15,8 @@ const DynamicRouteHandler = () => {
   const { loadingSavedCids } = useSearchDetailsV2();
   const [error, setError] = useState(false);
   const [favorites, setFavorites] = useState(false);
+
+  const navigate = useNavigate();
 
   useEffect(() => {
 
@@ -117,10 +120,11 @@ const DynamicRouteHandler = () => {
   }
 
   if (favorites) {
-    return <HomePage />
+    window.localStorage.setItem('memeSRCDefaultShow', '_favorites')
+    navigate('/')
   }
 
-  return error ? <Navigate to="/404" replace /> : <center><CircularProgress /></center>;
+  return error ? <Page404 /> : <center><CircularProgress /></center>;
 };
 
 export default DynamicRouteHandler;
