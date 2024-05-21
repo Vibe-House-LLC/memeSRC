@@ -526,6 +526,8 @@ export const getV2ContentMetadata = /* GraphQL */ `
         __typename
       }
       fontFamily
+      isIndexing
+      lastIndexingStartedAt
       createdAt
       updatedAt
       v2ContentMetadataAliasId
@@ -555,6 +557,8 @@ export const listV2ContentMetadata = /* GraphQL */ `
         status
         version
         fontFamily
+        isIndexing
+        lastIndexingStartedAt
         createdAt
         updatedAt
         v2ContentMetadataAliasId
@@ -591,6 +595,8 @@ export const v2ContentMetadataByStatus = /* GraphQL */ `
         status
         version
         fontFamily
+        isIndexing
+        lastIndexingStartedAt
         createdAt
         updatedAt
         v2ContentMetadataAliasId
@@ -616,6 +622,8 @@ export const getAlias = /* GraphQL */ `
         status
         version
         fontFamily
+        isIndexing
+        lastIndexingStartedAt
         createdAt
         updatedAt
         v2ContentMetadataAliasId
@@ -1412,6 +1420,8 @@ export const getUserV2Metadata = /* GraphQL */ `
         status
         version
         fontFamily
+        isIndexing
+        lastIndexingStartedAt
         createdAt
         updatedAt
         v2ContentMetadataAliasId

@@ -231,6 +231,9 @@ export type AmplifyDependentResourcesAttributes = {
       "Name": "string",
       "Region": "string"
     },
+    "memesrcgraphqlPackagesLayer": {
+      "Arn": "string"
+    },
     "memesrcinpainter": {
       "Arn": "string",
       "LambdaExecutionRole": "string",

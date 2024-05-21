@@ -148,6 +148,8 @@ type V2ContentMetadata @model @auth(
   users: [UserDetails] @manyToMany(relationName: "UserV2Metadata")
   alias: Alias @hasOne
   fontFamily: String
+  isIndexing: Boolean
+  lastIndexingStartedAt: AWSDateTime
 }
 
 type Alias @model @auth(
@@ -321,4 +323,3 @@ type LocationLeads @model @auth(
   id: ID!,
   countryCode: String
 }
-

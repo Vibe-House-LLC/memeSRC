@@ -790,6 +790,8 @@ export const createV2ContentMetadata = /* GraphQL */ `
         __typename
       }
       fontFamily
+      isIndexing
+      lastIndexingStartedAt
       createdAt
       updatedAt
       v2ContentMetadataAliasId
@@ -824,6 +826,8 @@ export const updateV2ContentMetadata = /* GraphQL */ `
         __typename
       }
       fontFamily
+      isIndexing
+      lastIndexingStartedAt
       createdAt
       updatedAt
       v2ContentMetadataAliasId
@@ -858,6 +862,8 @@ export const deleteV2ContentMetadata = /* GraphQL */ `
         __typename
       }
       fontFamily
+      isIndexing
+      lastIndexingStartedAt
       createdAt
       updatedAt
       v2ContentMetadataAliasId
@@ -883,6 +889,8 @@ export const createAlias = /* GraphQL */ `
         status
         version
         fontFamily
+        isIndexing
+        lastIndexingStartedAt
         createdAt
         updatedAt
         v2ContentMetadataAliasId
@@ -913,6 +921,8 @@ export const updateAlias = /* GraphQL */ `
         status
         version
         fontFamily
+        isIndexing
+        lastIndexingStartedAt
         createdAt
         updatedAt
         v2ContentMetadataAliasId
@@ -943,6 +953,8 @@ export const deleteAlias = /* GraphQL */ `
         status
         version
         fontFamily
+        isIndexing
+        lastIndexingStartedAt
         createdAt
         updatedAt
         v2ContentMetadataAliasId
@@ -2271,6 +2283,8 @@ export const createUserV2Metadata = /* GraphQL */ `
         status
         version
         fontFamily
+        isIndexing
+        lastIndexingStartedAt
         createdAt
         updatedAt
         v2ContentMetadataAliasId
@@ -2321,6 +2335,8 @@ export const updateUserV2Metadata = /* GraphQL */ `
         status
         version
         fontFamily
+        isIndexing
+        lastIndexingStartedAt
         createdAt
         updatedAt
         v2ContentMetadataAliasId
@@ -2371,6 +2387,8 @@ export const deleteUserV2Metadata = /* GraphQL */ `
         status
         version
         fontFamily
+        isIndexing
+        lastIndexingStartedAt
         createdAt
         updatedAt
         v2ContentMetadataAliasId

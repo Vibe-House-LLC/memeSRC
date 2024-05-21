@@ -493,6 +493,22 @@
       "dependsOn": [
         {
           "attributes": [
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcgraphqlPackagesLayer"
+        },
+        {
+          "attributes": [
+            "GraphQLAPIIdOutput",
+            "GraphQLAPIEndpointOutput",
+            "GraphQLAPIKeyOutput"
+          ],
+          "category": "api",
+          "resourceName": "memesrc"
+        },
+        {
+          "attributes": [
             "Name"
           ],
           "category": "function",
@@ -655,6 +671,11 @@
       "build": true,
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
+    },
+    "memesrcgraphqlPackagesLayer": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "LambdaLayer"
     },
     "memesrcinpainter": {
       "build": true,
@@ -1208,6 +1229,22 @@
         {
           "category": "function",
           "resourceName": "memesrcc3c71449PreSignup"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcgraphqlPackagesLayer_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcgraphqlPackagesLayer"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcgraphqlPackagesLayer_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcgraphqlPackagesLayer"
         }
       ]
     },
