@@ -121,7 +121,7 @@ export default function CollagePage() {
 
   const navigate = useNavigate();
 
-  const authorized = user?.userDetails?.magicSubscription === "true";
+  const authorized = (user?.userDetails?.magicSubscription === "true" || user?.['cognito:groups']?.includes('admins'));
 
   useEffect(() => {
     createCollage();

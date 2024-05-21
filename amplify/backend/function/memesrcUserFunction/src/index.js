@@ -464,6 +464,7 @@ export const handler = async (event) => {
             }
           }
           credits
+          favorites
         }
       }
     `
@@ -2412,6 +2413,94 @@ export const handler = async (event) => {
       response = {
         statusCode: 401,
         body: {
+          error
+        },
+      };
+    }
+  }
+
+  if (path === `/${process.env.ENV}/public/user/update/updateFavorites`) {
+    /* --------------------------------- Queries -------------------------------- */
+
+    const getUserDetailsQuery = `
+      query getUserDetails {
+        getUserDetails(id: "${userSub}") {
+          favorites
+        }
+      }
+    `;
+
+    const updateUsersFavoritesQuery = `
+      mutation updateUserDetails($favorites: AWSJSON) {
+        updateUserDetails(input: {id: "${userSub}", favorites: $favorites}) {
+          createdAt
+          email
+          id
+          stripeId
+          username
+          updatedAt
+          status
+          earlyAccessStatus
+          contributorAccessStatus
+          magicSubscription
+          subscriptionStatus
+          userNotifications(sortDirection: DESC) {
+            items {
+              avatar
+              createdAt
+              description
+              id
+              isUnRead
+              title
+              type
+              path
+            }
+          }
+          credits
+          favorites
+        }
+      }
+    `
+    /* -------------------------------------------------------------------------- */
+    try {
+      const currentFavoritesString = await makeRequest(getUserDetailsQuery)
+      const currentFavoritesParsed = currentFavoritesString?.body?.data?.getUserDetails?.favorites ? JSON.parse(currentFavoritesString?.body?.data?.getUserDetails?.favorites) : []
+      let newFavorites;
+
+      if (body?.removeFavorite) {
+        newFavorites = currentFavoritesParsed?.filter(favorite => favorite !== body?.favoriteId)
+      } else {
+        newFavorites = [
+          ...currentFavoritesParsed,
+          body?.favoriteId
+        ]
+      }
+
+      if (newFavorites) {
+        const newFavoritesString = JSON.stringify(newFavorites)
+        const updateUsersFavoritesRequest = await makeRequestWithVariables(updateUsersFavoritesQuery, { favorites: newFavoritesString })
+        response = {
+          statusCode: 200,
+          body: {
+            updatedUserDetails: {
+              ...updateUsersFavoritesRequest?.body?.data?.updateUserDetails
+            }
+          },
+        };
+      } else {
+        response = {
+          statusCode: 500,
+          body: {
+            message: 'Something went wrong when trying to add to newFavorites variable',
+          },
+        };
+      }
+    } catch (error) {
+      console.log(error)
+      response = {
+        statusCode: 500,
+        body: {
+          message: 'Something went wrong.',
           error
         },
       };
