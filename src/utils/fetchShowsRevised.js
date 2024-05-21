@@ -80,6 +80,8 @@ async function fetchFavorites() {
 
 async function getShowsWithFavorites(favorites = []) {
     const shows = await fetchShows();
+
+    console.log(favorites)
     
     try {
         await Auth.currentAuthenticatedUser();
@@ -88,7 +90,7 @@ async function getShowsWithFavorites(favorites = []) {
 
         const showsWithFavorites = shows.map(show => ({
             ...show,
-            isFavorite: favorites.has(show.id)
+            isFavorite: favorites.includes(show.id)
         }));
 
         return showsWithFavorites;

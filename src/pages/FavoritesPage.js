@@ -1,6 +1,6 @@
 // FavoritesPage.js
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { API, graphqlOperation, Auth } from 'aws-amplify';
 import { Typography, IconButton, Badge, Fab, Grid, Card, CardContent, Button, Collapse } from '@mui/material';
 import StarBorderIcon from '@mui/icons-material/StarBorder';
@@ -9,6 +9,7 @@ import { styled } from '@mui/material/styles';
 import { createFavorite, deleteFavorite } from '../graphql/mutations';
 import { listFavorites } from '../graphql/queries';
 import fetchShows from '../utils/fetchShows';
+import { UserContext } from '../UserContext';
 
 const StyledBadge = styled(Badge)(() => ({
   '& .MuiBadge-badge': {
@@ -132,6 +133,7 @@ async function getCacheKey() {
 }
 
 const FavoritesPage = () => {
+  const { user, handleUpdateUserDetails } = useContext(UserContext)
   const [favorites, setFavorites] = useState([]);
   const [availableIndexes, setAvailableIndexes] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -153,10 +155,20 @@ const FavoritesPage = () => {
   }, []);
 
   useEffect(() => {
-    if (availableIndexes.length > 0) {
-      fetchFavorites();
+    if (availableIndexes.length > 0 && user && user?.userDetails?.favorites) {
+      const parsedFavorites = JSON.parse(user?.userDetails?.favorites);
+      const matchedFavorites = availableIndexes.filter((index) =>
+        parsedFavorites.includes(index.id)
+      );
+    
+      const enrichedFavorites = matchedFavorites.map((favorite) => {
+        const match = availableIndexes.find((index) => index.id === favorite.id);
+        return match ? { ...favorite, alias: match } : favorite;
+      });
+    
+      setFavorites(enrichedFavorites);
     }
-  }, [availableIndexes]);
+  }, [availableIndexes, user]);
 
   const fetchAvailableIndexes = async () => {
     try {
@@ -197,7 +209,7 @@ const FavoritesPage = () => {
         const titleA = (a.alias?.title || "").toLowerCase().replace(/^the\s+/, '');
         const titleB = (b.alias?.title || "").toLowerCase().replace(/^the\s+/, '');
         return titleA.localeCompare(titleB);
-      });      
+      });
 
       setFavorites(enrichedFavorites);
     } catch (err) {
@@ -211,33 +223,39 @@ const FavoritesPage = () => {
     localStorage.removeItem(cacheKey);
   };
 
-  const addFavorite = async (indexId) => {
-    try {
-      setIsSaving(true);
-      const input = { cid: indexId };
-      await API.graphql(graphqlOperation(createFavorite, { input }));
-      await clearSessionCache();
-      fetchFavorites();
-    } catch (err) {
+  const addFavorite = (indexId) => {
+    setIsSaving(true);
+    API.post('publicapi', '/user/update/updateFavorites', {
+      body: {
+        favoriteId: indexId
+      }
+    }).then(results => {
+      console.log(results)
+      handleUpdateUserDetails(results?.updatedUserDetails)
+    }).catch(err => {
       console.error('Error adding favorite:', err);
       setError('Failed to add favorite.');
-    } finally {
+    }).finally( () => {
       setIsSaving(false);
-    }
+    })
   };
 
   const removeFavorite = async (favoriteId) => {
-    try {
-      setIsSaving(true);
-      await API.graphql(graphqlOperation(deleteFavorite, { input: { id: favoriteId } }));
-      await clearSessionCache();
-      setFavorites(favorites.filter(favorite => favorite.id !== favoriteId));
-    } catch (err) {
-      console.error('Error removing favorite:', err);
-      setError('Failed to remove favorite.');
-    } finally {
+    setIsSaving(true);
+    API.post('publicapi', '/user/update/updateFavorites', {
+      body: {
+        favoriteId,
+        removeFavorite: true
+      }
+    }).then(results => {
+      console.log(results)
+      handleUpdateUserDetails(results?.updatedUserDetails)
+    }).catch(err => {
+      console.error('Error adding favorite:', err);
+      setError('Failed to add favorite.');
+    }).finally( () => {
       setIsSaving(false);
-    }
+    });
   };
 
   const filteredAvailableIndexes = availableIndexes.filter(
@@ -249,7 +267,7 @@ const FavoritesPage = () => {
     const titleA = a.title.toLowerCase().replace(/^the\s+/, '');
     const titleB = b.title.toLowerCase().replace(/^the\s+/, '');
     return titleA.localeCompare(titleB);
-  });  
+  });
 
   if (loading) {
     return <div style={{ padding: '20px' }}>Loading...</div>;
@@ -266,8 +284,8 @@ const FavoritesPage = () => {
               <UpgradedIndexSubtext>
                 Use the ⭐️ to set favorites.
               </UpgradedIndexSubtext>
-              <UpgradedIndexSubtext sx={{fontSize: 12}}>
-              As a memeSRC Pro, you get early access.{' '}
+              <UpgradedIndexSubtext sx={{ fontSize: 12 }}>
+                As a memeSRC Pro, you get early access.{' '}
                 <a href="https://forms.gle/8CETtVbwYoUmxqbi7" target="_blank" rel="noopener noreferrer">
                   Report&nbsp;a&nbsp;problem
                 </a>

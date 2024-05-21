@@ -48,7 +48,7 @@ export default function GuestAuth(props) {
 
   const handleUpdateUserDetails = (newUserDetails) => {
     return new Promise((resolve, reject) => {
-      const favorites = newUserDetails?.favorites || [];
+      const favorites = newUserDetails?.favorites ? JSON.parse(newUserDetails?.favorites) : [];
       getShowsWithFavorites(favorites)
         .then((loadedShows) => {
           if (!shows?.some((show) => show.isFavorite)) {
@@ -105,12 +105,12 @@ export default function GuestAuth(props) {
       // console.log(user)
       Auth.currentAuthenticatedUser().then((x) => {
         API.get('publicapi', '/user/get').then(userDetails => {
-          getShowsWithFavorites(userDetails?.data?.getUserDetails?.favorites || []).then(loadedShows => {
+          getShowsWithFavorites(userDetails?.data?.getUserDetails?.favorites ? JSON.parse(userDetails?.data?.getUserDetails?.favorites) : []).then(loadedShows => {
             if (!shows?.some(show => show.isFavorite)) {
               setDefaultShow('_universal')
             }
             setUser({ ...x, ...x.signInUserSession.accessToken.payload, userDetails: userDetails?.data?.getUserDetails })  // if an authenticated user is found, set it into the context
-            // console.log(x)
+            console.log({ ...x, ...x.signInUserSession.accessToken.payload, userDetails: userDetails?.data?.getUserDetails })
             window.localStorage.setItem('memeSRCUserDetails', JSON.stringify({ ...x.signInUserSession.accessToken.payload, userDetails: userDetails?.data?.getUserDetails }))
             window.localStorage.setItem('memeSRCShows', JSON.stringify(loadedShows))
             setShows(loadedShows)
