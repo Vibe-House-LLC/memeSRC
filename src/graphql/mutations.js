@@ -111,6 +111,7 @@ export const createSourceMedia = /* GraphQL */ `
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
+        favorites
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -162,6 +163,7 @@ export const updateSourceMedia = /* GraphQL */ `
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
+        favorites
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -213,6 +215,7 @@ export const deleteSourceMedia = /* GraphQL */ `
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
+        favorites
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -1068,6 +1071,7 @@ export const createUserDetails = /* GraphQL */ `
         nextToken
         __typename
       }
+      favorites
       createdAt
       updatedAt
       userDetailsStripeCustomerInfoId
@@ -1128,6 +1132,7 @@ export const updateUserDetails = /* GraphQL */ `
         nextToken
         __typename
       }
+      favorites
       createdAt
       updatedAt
       userDetailsStripeCustomerInfoId
@@ -1188,6 +1193,7 @@ export const deleteUserDetails = /* GraphQL */ `
         nextToken
         __typename
       }
+      favorites
       createdAt
       updatedAt
       userDetailsStripeCustomerInfoId
@@ -1215,6 +1221,7 @@ export const createStripeCustomer = /* GraphQL */ `
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
+        favorites
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -1247,6 +1254,7 @@ export const updateStripeCustomer = /* GraphQL */ `
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
+        favorites
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -1279,6 +1287,7 @@ export const deleteStripeCustomer = /* GraphQL */ `
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
+        favorites
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -1311,6 +1320,7 @@ export const createStripeCheckoutSession = /* GraphQL */ `
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
+        favorites
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -1344,6 +1354,7 @@ export const updateStripeCheckoutSession = /* GraphQL */ `
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
+        favorites
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -1377,6 +1388,7 @@ export const deleteStripeCheckoutSession = /* GraphQL */ `
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
+        favorites
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -1410,6 +1422,7 @@ export const createSeriesUserVote = /* GraphQL */ `
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
+        favorites
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -1457,6 +1470,7 @@ export const updateSeriesUserVote = /* GraphQL */ `
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
+        favorites
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -1504,6 +1518,7 @@ export const deleteSeriesUserVote = /* GraphQL */ `
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
+        favorites
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -1551,6 +1566,7 @@ export const createUserNotification = /* GraphQL */ `
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
+        favorites
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -1589,6 +1605,7 @@ export const updateUserNotification = /* GraphQL */ `
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
+        favorites
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -1627,6 +1644,7 @@ export const deleteUserNotification = /* GraphQL */ `
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
+        favorites
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -1707,6 +1725,7 @@ export const createMagicResult = /* GraphQL */ `
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
+        favorites
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -1741,6 +1760,7 @@ export const updateMagicResult = /* GraphQL */ `
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
+        favorites
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -1775,6 +1795,7 @@ export const deleteMagicResult = /* GraphQL */ `
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
+        favorites
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -1809,6 +1830,7 @@ export const createEditorProject = /* GraphQL */ `
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
+        favorites
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -1843,6 +1865,7 @@ export const updateEditorProject = /* GraphQL */ `
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
+        favorites
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -1877,6 +1900,7 @@ export const deleteEditorProject = /* GraphQL */ `
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
+        favorites
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -1956,6 +1980,7 @@ export const createProSupportMessage = /* GraphQL */ `
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
+        favorites
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -1989,6 +2014,7 @@ export const updateProSupportMessage = /* GraphQL */ `
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
+        favorites
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -2022,6 +2048,7 @@ export const deleteProSupportMessage = /* GraphQL */ `
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
+        favorites
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -2116,6 +2143,7 @@ export const createUserMetadata = /* GraphQL */ `
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
+        favorites
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -2163,6 +2191,7 @@ export const updateUserMetadata = /* GraphQL */ `
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
+        favorites
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -2210,6 +2239,7 @@ export const deleteUserMetadata = /* GraphQL */ `
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
+        favorites
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -2259,6 +2289,7 @@ export const createUserV2Metadata = /* GraphQL */ `
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
+        favorites
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -2308,6 +2339,7 @@ export const updateUserV2Metadata = /* GraphQL */ `
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
+        favorites
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId
@@ -2357,6 +2389,7 @@ export const deleteUserV2Metadata = /* GraphQL */ `
         subscriptionPeriodEnd
         subscriptionStatus
         magicSubscription
+        favorites
         createdAt
         updatedAt
         userDetailsStripeCustomerInfoId

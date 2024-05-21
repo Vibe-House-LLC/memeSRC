@@ -204,6 +204,7 @@ type UserDetails @model @auth(
   contentMetadatas: [ContentMetadata] @manyToMany(relationName: "UserMetadata")
   v2ContentMetadatas: [V2ContentMetadata] @manyToMany(relationName: "UserV2Metadata")
   proSupportMessages: [ProSupportMessage] @hasMany
+  favorites: AWSJSON
 }
 
 type StripeCustomer @model @auth(
@@ -320,3 +321,4 @@ type LocationLeads @model @auth(
   id: ID!,
   countryCode: String
 }
+
