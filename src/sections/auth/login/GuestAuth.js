@@ -110,7 +110,7 @@ export default function GuestAuth(props) {
               setDefaultShow('_universal')
             }
             setUser({ ...x, ...x.signInUserSession.accessToken.payload, userDetails: userDetails?.data?.getUserDetails })  // if an authenticated user is found, set it into the context
-            console.log({ ...x, ...x.signInUserSession.accessToken.payload, userDetails: userDetails?.data?.getUserDetails })
+            
             window.localStorage.setItem('memeSRCUserDetails', JSON.stringify({ ...x.signInUserSession.accessToken.payload, userDetails: userDetails?.data?.getUserDetails }))
             window.localStorage.setItem('memeSRCShows', JSON.stringify(loadedShows))
             setShows(loadedShows)

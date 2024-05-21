@@ -2479,7 +2479,6 @@ export const handler = async (event) => {
       if (newFavorites) {
         const newFavoritesString = JSON.stringify(newFavorites)
         const updateUsersFavoritesRequest = await makeRequestWithVariables(updateUsersFavoritesQuery, { favorites: newFavoritesString })
-        console.log(updateUsersFavoritesRequest)
         response = {
           statusCode: 200,
           body: {

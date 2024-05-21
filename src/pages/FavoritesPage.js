@@ -230,7 +230,6 @@ const FavoritesPage = () => {
         favoriteId: indexId
       }
     }).then(results => {
-      console.log(results)
       handleUpdateUserDetails(results?.updatedUserDetails)
     }).catch(err => {
       console.error('Error adding favorite:', err);
@@ -248,7 +247,6 @@ const FavoritesPage = () => {
         removeFavorite: true
       }
     }).then(results => {
-      console.log(results)
       handleUpdateUserDetails(results?.updatedUserDetails)
     }).catch(err => {
       console.error('Error adding favorite:', err);
