@@ -72,7 +72,7 @@ export default function LoginForm() {
             setShows(loadedShows)
             window.localStorage.setItem('memeSRCShows', JSON.stringify(loadedShows))
             setUser(x)
-            handleUpdateDefaultShow(window.localStorage.getItem('memeSRCDefaultShow'))
+            handleUpdateDefaultShow(window.localStorage.getItem('memeSRCDefaultIndex'))
             navigate(dest ? decodeURIComponent(dest) : '/', { replace: true })
           })
         })

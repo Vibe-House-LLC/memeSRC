@@ -30,8 +30,7 @@ export default function GuestAuth(props) {
 
       if (user) {
         // console.log(user)
-        const localStorageDefaultShow = window.localStorage.getItem(`memeSRCDefaultShow`) || '_universal'
-        // console.log('DEFAULT SHOW: ', window.localStorage.getItem(`memeSRCDefaultShow`))
+        const localStorageDefaultShow = window.localStorage.getItem(`memeSRCDefaultIndex`) || '_universal'
         setDefaultShow(localStorageDefaultShow)
       } else {
         setDefaultShow('_universal')
@@ -41,7 +40,7 @@ export default function GuestAuth(props) {
 
   const handleUpdateDefaultShow = (show) => {
     if (user) {
-      window.localStorage.setItem('memeSRCDefaultShow', show)
+      window.localStorage.setItem('memeSRCDefaultIndex', show)
     }
     setDefaultShow(show)
   }
@@ -80,7 +79,7 @@ export default function GuestAuth(props) {
     if (location.pathname !== 'login') {
       const localStorageUser = JSON.parse(window.localStorage.getItem('memeSRCUserDetails'))
       const localStorageShows = JSON.parse(window.localStorage.getItem('memeSRCShows'))
-      const localStorageDefaultShow = window.localStorage.getItem('memeSRCDefaultShow')
+      const localStorageDefaultShow = window.localStorage.getItem('memeSRCDefaultIndex')
 
       // console.log(localStorageUser)
 
