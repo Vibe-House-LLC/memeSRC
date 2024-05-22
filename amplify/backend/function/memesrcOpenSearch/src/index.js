@@ -1,4 +1,10 @@
-const aws = require('aws-sdk');
+/* Amplify Params - DO NOT EDIT
+	API_MEMESRC_GRAPHQLAPIENDPOINTOUTPUT
+	API_MEMESRC_GRAPHQLAPIIDOUTPUT
+	API_MEMESRC_GRAPHQLAPIKEYOUTPUT
+	ENV
+	REGION
+Amplify Params - DO NOT EDIT */const aws = require('aws-sdk');
 const { Client } = require('@opensearch-project/opensearch');
 const axios = require('axios');
 const csv = require('csv-parser');
@@ -24,6 +30,41 @@ Parameters will be of the form { Name: 'secretName', Value: 'secretValue', ... }
  */
 exports.handler = async (event) => {
   console.log(`EVENT: ${JSON.stringify(event)}`);
+
+  const GRAPHQL_ENDPOINT = process.env.API_MEMESRC_GRAPHQLAPIENDPOINTOUTPUT;
+
+  /* -------------------- GraphQL Metadata Update Functions ------------------- */
+
+  const updateV2ContentMetadataQuery = `
+  mutation MyMutation($id: ID!, $isIndexing: Boolean, $lastIndexingStartedAt: AWSDateTime) {
+      updateV2ContentMetadata(input: {id: $id, isIndexing: $isIndexing, lastIndexingStartedAt: $lastIndexingStartedAt}) {
+      id
+      isIndexing
+      lastIndexingStartedAt
+      title
+      colorMain
+      colorSecondary
+      createdAt
+      description
+      emoji
+      fontFamily
+      frameCount
+      status
+      updatedAt
+      version
+      }
+  }
+`
+// Call this function with the indexId when finished indexing
+const setMetadataAsFinishedProcessing = async (indexId) => {
+  try {
+      await makeRequestWithVariables(GRAPHQL_ENDPOINT, updateV2ContentMetadataQuery, { id: indexId, isIndexing: false })
+  } catch (error) {
+      console.log('ERROR SETTING METADATA AS FINISHED PROCESSING: ', error)
+  }
+}
+
+/* -------------------------------------------------------------------------- */
 
   const { Parameters } = await new aws.SSM()
     .getParameters({

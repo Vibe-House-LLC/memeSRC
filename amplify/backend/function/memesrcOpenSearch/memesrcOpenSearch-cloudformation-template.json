@@ -18,6 +18,22 @@
     },
     "secretsPathAmplifyAppId": {
       "Type": "String"
+    },
+    "functionmemesrcgraphqlPackagesLayerArn": {
+      "Type": "String",
+      "Default": "functionmemesrcgraphqlPackagesLayerArn"
+    },
+    "apimemesrcGraphQLAPIIdOutput": {
+      "Type": "String",
+      "Default": "apimemesrcGraphQLAPIIdOutput"
+    },
+    "apimemesrcGraphQLAPIEndpointOutput": {
+      "Type": "String",
+      "Default": "apimemesrcGraphQLAPIEndpointOutput"
+    },
+    "apimemesrcGraphQLAPIKeyOutput": {
+      "Type": "String",
+      "Default": "apimemesrcGraphQLAPIKeyOutput"
     }
   },
   "Conditions": {
@@ -116,6 +132,15 @@
                   "opensearchPass"
                 ]
               ]
+            },
+            "API_MEMESRC_GRAPHQLAPIIDOUTPUT": {
+              "Ref": "apimemesrcGraphQLAPIIdOutput"
+            },
+            "API_MEMESRC_GRAPHQLAPIENDPOINTOUTPUT": {
+              "Ref": "apimemesrcGraphQLAPIEndpointOutput"
+            },
+            "API_MEMESRC_GRAPHQLAPIKEYOUTPUT": {
+              "Ref": "apimemesrcGraphQLAPIKeyOutput"
             }
           }
         },
@@ -126,7 +151,11 @@
           ]
         },
         "Runtime": "nodejs18.x",
-        "Layers": [],
+        "Layers": [
+          {
+            "Ref": "functionmemesrcgraphqlPackagesLayerArn"
+          }
+        ],
         "MemorySize": 1024,
         "Timeout": 750
       }
@@ -269,6 +298,73 @@
       "DependsOn": [
         "LambdaExecutionRole"
       ]
+    },
+    "AmplifyResourcesPolicy": {
+      "DependsOn": [
+        "LambdaExecutionRole"
+      ],
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyName": "amplify-lambda-execution-policy",
+        "Roles": [
+          {
+            "Ref": "LambdaExecutionRole"
+          }
+        ],
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "appsync:GraphQL"
+              ],
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:appsync:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":",
+                      {
+                        "Ref": "AWS::AccountId"
+                      },
+                      ":apis/",
+                      {
+                        "Ref": "apimemesrcGraphQLAPIIdOutput"
+                      },
+                      "/types/Query/*"
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:appsync:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":",
+                      {
+                        "Ref": "AWS::AccountId"
+                      },
+                      ":apis/",
+                      {
+                        "Ref": "apimemesrcGraphQLAPIIdOutput"
+                      },
+                      "/types/Mutation/*"
+                    ]
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
     }
   },
   "Outputs": {
