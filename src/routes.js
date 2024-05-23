@@ -111,7 +111,7 @@ export default function Router() {
     },
     {
       path: '/dashboard',
-      element: <CheckAuth><DialogProvider><MagicPopup><DashboardLayout /></MagicPopup></DialogProvider></CheckAuth>,
+      element: <GuestAuth><DialogProvider><MagicPopup><DashboardLayout /></MagicPopup></DialogProvider></GuestAuth>,
       children: [
         { element: <Navigate to="/dashboard/app" />, index: true },
         { path: 'app', element: <DashboardAppPage /> },

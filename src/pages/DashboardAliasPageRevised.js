@@ -1,19 +1,65 @@
-import React, { useContext, useEffect, useState } from 'react';
-import { Container, Divider, IconButton, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography, Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField, CircularProgress } from "@mui/material";
+import React, { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { Container, Divider, IconButton, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography, Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField, CircularProgress, Stack } from "@mui/material";
 import { API, Storage, graphqlOperation } from 'aws-amplify';
-import { Add, Edit, Delete, Refresh } from "@mui/icons-material";
-import { getV2ContentMetadata, listAliases } from '../graphql/queries';
+import { Add, Edit, Delete, Refresh, StorageOutlined } from "@mui/icons-material";
+import { LoadingButton } from '@mui/lab';
+import { getV2ContentMetadata, listAliases, listV2ContentMetadata } from '../graphql/queries';
 import { createAlias, updateAlias, deleteAlias, createV2ContentMetadata, updateV2ContentMetadata } from '../graphql/mutations';
 import { SnackbarContext } from '../SnackbarContext';
+import { onUpdateV2ContentMetadata } from '../graphql/subscriptions';
+
+const useTimeout = () => {
+  const timeoutRef = useRef();
+  const callbackRef = useRef();
+
+  const set = useCallback((callback, delay) => {
+    callbackRef.current = callback;
+    timeoutRef.current = setTimeout(() => callbackRef.current(), delay);
+  }, []);
+
+  const clear = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+  }, []);
+
+  useEffect(() => {
+    return clear;
+  }, [clear]);
+
+  return { clear, set };
+};
 
 /* Utility Functions */
 
+const fetchAllItems = async (queryOperation, itemsKey, nextToken = null, accumulator = []) => {
+  const response = await API.graphql(graphqlOperation(queryOperation, { nextToken }));
+  const items = response.data[itemsKey].items;
+  const newNextToken = response.data[itemsKey].nextToken;
+
+  const updatedAccumulator = [...accumulator, ...items];
+
+  if (newNextToken) {
+    return fetchAllItems(queryOperation, itemsKey, newNextToken, updatedAccumulator);
+  }
+
+  return updatedAccumulator;
+};
+
 const fetchAliases = async () => {
   try {
-    const response = await API.graphql(graphqlOperation(listAliases));
-    return response.data.listAliases.items;
+    return await fetchAllItems(listAliases, 'listAliases');
   } catch (error) {
     console.error("Error fetching aliases:", error);
+    throw error;
+  }
+};
+
+const fetchV2ContentMetadata = async () => {
+  try {
+    return await fetchAllItems(listV2ContentMetadata, 'listV2ContentMetadata');
+  } catch (error) {
+    console.error("Error fetching V2 content metadata:", error);
     throw error;
   }
 };
@@ -93,6 +139,7 @@ const ConfirmDeleteDialog = ({ open, onClose, onConfirm }) => {
 
 const AliasManagementPageRevised = () => {
   const [aliases, setAliases] = useState([]);
+  const [v2ContentMetadatas, setV2ContentMetadatas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -100,11 +147,92 @@ const AliasManagementPageRevised = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [refreshingMetadata, setRefreshingMetadata] = useState(false);
   const { setOpen: setSnackbarOpen, setMessage, setSeverity } = useContext(SnackbarContext)
+  const [reindexing, setReindexing] = useState(null);
+  const [reindexAll, setReindexAll] = useState(false);
+  const [completedIndexes, setCompletedIndexes] = useState([]);
+  const { clear, set } = useTimeout();
 
   useEffect(() => {
     fetchAliases().then(data => {
       setAliases(data);
-      setLoading(false);
+      fetchV2ContentMetadata().then(metadatas => {
+        const indexingMetadata = metadatas.find(obj => obj.isIndexing);
+        if (indexingMetadata) {
+
+          // Calculate the time difference between the current time and lastIndexingStartedAt
+          const lastIndexingStartedAt = new Date(indexingMetadata.lastIndexingStartedAt);
+          const currentTime = new Date();
+          const timeDifference = currentTime - lastIndexingStartedAt;
+
+          // Check if the time difference is less than 5 minutes
+          if (timeDifference < 5 * 60 * 1000) {
+
+            setReindexing(indexingMetadata?.id);
+            // Set a timeout to show the alert after 5 minutes
+
+            let isIndexingPrevious = true;
+            const indexUpdateSub = API.graphql({
+              query: onUpdateV2ContentMetadata,
+              variables: {
+                id: indexingMetadata?.id,
+              },
+            }).subscribe({
+              next: async ({ provider, value }) => {
+                const isIndexingCurrent = value?.data?.onUpdateV2ContentMetadata?.isIndexing;
+
+                if (isIndexingPrevious && !isIndexingCurrent) {
+                  indexUpdateSub.unsubscribe();
+
+                  setCompletedIndexes((prevCompletedIndexes) => {
+                    const updatedCompletedIndexes = [...prevCompletedIndexes, indexingMetadata?.id];
+                    completedIndexesRef.current = updatedCompletedIndexes;
+                    return updatedCompletedIndexes;
+                  });
+
+                  if (reindexAllRef.current) {
+                    const filteredIndexes = aliases.filter(
+                      (obj) => !completedIndexesRef.current.includes(obj.id)
+                    );
+
+                    if (filteredIndexes.length > 0) {
+                      await handleReindex(filteredIndexes[0].id);
+                    } else {
+                      setReindexAll(false);
+                      setReindexing(null);
+                      setSnackbarOpen(true)
+                      setMessage(`All shows have been reindexed!`)
+                      setSeverity('success')
+                    }
+                  } else {
+                    clear();
+                    setReindexing(null);
+                    setSnackbarOpen(true);
+                    setMessage(`${indexingMetadata?.id} has been reindexed!`)
+                    setSeverity('success')
+                  }
+                }
+
+                isIndexingPrevious = isIndexingCurrent;
+              },
+              error: (error) => console.warn(error),
+            });
+            set(() => {
+              setSnackbarOpen(true);
+              setReindexAll(false);
+              setReindexing(null);
+              setMessage(`Indexing for ${indexingMetadata.id} has been running for more than 5 minutes.`);
+              setSeverity('error');
+              indexUpdateSub.unsubscribe();
+            }, 5 * 60 * 1000 - timeDifference);
+            console.log(5 * 60 * 1000 - timeDifference)
+          } else {
+            setSnackbarOpen(true);
+            setMessage(`Indexing for ${indexingMetadata.id} did not finish after 5 minutes.`);
+            setSeverity('error');
+          }
+        }
+        setLoading(false);
+      });
     });
   }, []);
 
@@ -270,6 +398,153 @@ const AliasManagementPageRevised = () => {
     }
   };
 
+  // const indexUpdateSub = API.graphql({
+  //   query: onUpdateV2ContentMetadata,
+  //   variables: {
+  //     id: reindexing,
+  //   },
+  // }).subscribe({
+  //   next: ({ provider, value }) => {
+  //     if (!isUnsubscribed && !value?.data?.onUpdateV2ContentMetadata?.isIndexing) {
+  //       console.log(value?.data?.onUpdateV2ContentMetadata?.isIndexing);
+  //       indexUpdateSub.unsubscribe();
+  //       isUnsubscribed = true;
+  //       if (reindexAll) {
+  //         const filteredIndexes = aliases.filter(obj => !completedIndexes.includes(obj.id) && obj.id !== reindexing);
+  //         console.log(filteredIndexes)
+  //         if (filteredIndexes.length > 0) {
+  //           setCompletedIndexes(currentCompletedIndexes => [
+  //             ...currentCompletedIndexes,
+  //             reindexing
+  //           ])
+  //           handleReindex(filteredIndexes?.[0]?.id)
+  //         } else {
+  //           setReindexAll(false)
+  //           setReindexing(null)
+  //         }
+  //       } else {
+  //         clear();
+  //       }
+  //     }
+  //   },
+  //   error: (error) => console.warn(error),
+  // });
+
+  const reindexAllRef = useRef(false);
+  const completedIndexesRef = useRef([]);
+
+  useEffect(() => {
+    reindexAllRef.current = reindexAll;
+  }, [reindexAll]);
+
+  useEffect(() => {
+    completedIndexesRef.current = completedIndexes;
+  }, [completedIndexes]);
+
+  const handleReindex = async (indexId) => {
+    setReindexing(indexId);
+    clear();
+    let isIndexingPrevious = true;
+
+    const indexUpdateSub = API.graphql({
+      query: onUpdateV2ContentMetadata,
+      variables: {
+        id: indexId,
+      },
+    }).subscribe({
+      next: async ({ provider, value }) => {
+        const isIndexingCurrent = value?.data?.onUpdateV2ContentMetadata?.isIndexing;
+
+        if (isIndexingPrevious && !isIndexingCurrent) {
+          indexUpdateSub.unsubscribe();
+
+          setCompletedIndexes((prevCompletedIndexes) => {
+            const updatedCompletedIndexes = [...prevCompletedIndexes, indexId];
+            completedIndexesRef.current = updatedCompletedIndexes;
+            return updatedCompletedIndexes;
+          });
+
+          if (reindexAllRef.current) {
+            const filteredIndexes = aliases.filter(
+              (obj) => !completedIndexesRef.current.includes(obj.id)
+            );
+
+            if (filteredIndexes.length > 0) {
+              await handleReindex(filteredIndexes[0].id);
+            } else {
+              setReindexAll(false);
+              setReindexing(null);
+              setSnackbarOpen(true)
+              setMessage(`All shows have been reindexed!`)
+              setSeverity('success')
+            }
+          } else {
+            clear();
+            setReindexing(null);
+            setSnackbarOpen(true)
+            setMessage(`${indexId} has been reindexed!`)
+            setSeverity('success')
+          }
+        }
+
+        isIndexingPrevious = isIndexingCurrent;
+      },
+      error: (error) => console.warn(error),
+    });
+
+    try {
+      await API.graphql({
+        query: updateV2ContentMetadata,
+        variables: {
+          input: {
+            id: indexId,
+            isIndexing: true,
+            lastIndexingStartedAt: new Date().toISOString(),
+          },
+        },
+      });
+
+      set(() => {
+        setSnackbarOpen(true);
+        setMessage(`Indexing for ${indexId} has been running for more than 5 minutes.`);
+        setSeverity('error');
+        indexUpdateSub.unsubscribe();
+        setReindexAll(false);
+        setReindexing(null);
+      }, 300000);
+
+      setTimeout(async () => {
+        await API.graphql({
+          query: updateV2ContentMetadata,
+          variables: {
+            input: {
+              id: indexId,
+              isIndexing: false,
+            },
+          },
+        });
+        console.log(`Finished indexing ${indexId}`);
+      }, 3000);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+
+  useEffect(() => {
+    console.log(aliases)
+  }, [aliases]);
+
+  const handleReindexAll = () => {
+    setReindexAll(true);
+    setCompletedIndexes([]);
+    handleReindex(aliases?.[0]?.id);
+  };
+
+  const handleReindexNextIndex = (lastIndex) => {
+
+  }
+
   return (
     <>
       <Container maxWidth="md">
@@ -277,9 +552,14 @@ const AliasManagementPageRevised = () => {
           Alias Management
         </Typography>
         <Divider sx={{ my: 3 }} />
-        <Button startIcon={<Add />} onClick={() => handleOpenDialog()} variant="contained">
-          Add New Alias
-        </Button>
+        <Stack direction='row' justifyContent='space-between'>
+          <Button startIcon={<Add />} onClick={() => handleOpenDialog()} variant="contained">
+            Add New Alias
+          </Button>
+          <LoadingButton loading={reindexing && reindexAll} disabled={reindexing} startIcon={<StorageOutlined />} onClick={handleReindexAll} variant="contained">
+            Reindex All
+          </LoadingButton>
+        </Stack>
         <TableContainer component={Paper} sx={{ mt: 2 }}>
           <Table sx={{ minWidth: 650 }} aria-label="simple table">
             <TableHead>
@@ -295,14 +575,19 @@ const AliasManagementPageRevised = () => {
                   <TableCell>{alias.id}</TableCell>
                   <TableCell>{alias.aliasV2ContentMetadataId}</TableCell>
                   <TableCell align="right">
-                    <IconButton
-                      onClick={() => refreshMetadata(alias.aliasV2ContentMetadataId)}
-                      disabled={refreshingMetadata === alias.aliasV2ContentMetadataId}
-                    >
-                      {refreshingMetadata === alias.aliasV2ContentMetadataId ? <CircularProgress size={24} /> : <Refresh />}
-                    </IconButton>
-                    <IconButton onClick={() => handleOpenDialog(alias)}><Edit /></IconButton>
-                    <IconButton onClick={() => handleOpenDeleteDialog(alias)} color="error"><Delete /></IconButton>
+                    <Stack direction='row' justifyContent='end' spacing={1}>
+                      <LoadingButton loading={reindexing === alias.id} disabled={reindexing} startIcon={<StorageOutlined />} onClick={() => { handleReindex(alias?.id) }} variant="contained">
+                        Reindex
+                      </LoadingButton>
+                      <IconButton
+                        onClick={() => refreshMetadata(alias.aliasV2ContentMetadataId)}
+                        disabled={refreshingMetadata === alias.aliasV2ContentMetadataId}
+                      >
+                        {refreshingMetadata === alias.aliasV2ContentMetadataId ? <CircularProgress size={24} /> : <Refresh />}
+                      </IconButton>
+                      <IconButton onClick={() => handleOpenDialog(alias)}><Edit /></IconButton>
+                      <IconButton onClick={() => handleOpenDeleteDialog(alias)} color="error"><Delete /></IconButton>
+                    </Stack>
                   </TableCell>
                 </TableRow>
               ))}
