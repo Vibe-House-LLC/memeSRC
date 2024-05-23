@@ -172,6 +172,7 @@ const AliasManagementPageRevised = () => {
 
             setReindexing(indexingMetadata?.id);
             // Set a timeout to show the alert after 5 minutes
+            
 
             let isIndexingPrevious = true;
             const indexUpdateSub = API.graphql({
@@ -219,7 +220,9 @@ const AliasManagementPageRevised = () => {
               },
               error: (error) => console.warn(error),
             });
-
+            setSnackbarOpen(true);
+            setMessage(`${indexingMetadata?.id} did not finish indexing. Please wait.`)
+            setSeverity('warning')
             set(() => {
               setSnackbarOpen(true);
               setReindexAll(false);
@@ -466,20 +469,20 @@ const AliasManagementPageRevised = () => {
     try {
 
       // TODO: Comment this out when the API is ready
-      await API.graphql({
-        query: updateV2ContentMetadata,
-        variables: {
-          input: {
-            id: indexId,
-            isIndexing: true,
-            lastIndexingStartedAt: new Date().toISOString(),
-          },
-        },
-      });
+      // await API.graphql({
+      //   query: updateV2ContentMetadata,
+      //   variables: {
+      //     input: {
+      //       id: indexId,
+      //       isIndexing: true,
+      //       lastIndexingStartedAt: new Date().toISOString(),
+      //     },
+      //   },
+      // });
 
 
       // TODO: Uncomment this when the API is ready
-      // await API.post('publicapi', '/openSearch/reindex', { body: { indexId } })
+      await API.post('publicapi', '/openSearch/reindex', { body: { indexId } })
 
       // This is set to 5 minutes
       set(() => {
