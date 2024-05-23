@@ -245,6 +245,14 @@
           ],
           "category": "function",
           "resourceName": "memesrcRecoverUsername"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcIndexToOpenSearch"
         }
       ],
       "providerPlugin": "awscloudformation",

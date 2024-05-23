@@ -288,6 +288,21 @@
       "permissions": {
         "setting": "open"
       }
+    },
+    "/openSearch/reindex": {
+      "name": "/openSearch/reindex",
+      "lambdaFunction": "memesrcIndexToOpenSearch",
+      "permissions": {
+        "groups": {
+          "admins": [
+            "create",
+            "read",
+            "update",
+            "delete"
+          ]
+        },
+        "setting": "private"
+      }
     }
   }
 }

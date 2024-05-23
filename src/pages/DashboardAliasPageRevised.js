@@ -152,6 +152,9 @@ const AliasManagementPageRevised = () => {
   const [completedIndexes, setCompletedIndexes] = useState([]);
   const { clear, set } = useTimeout();
 
+  // This is currently set to 5 minutes. All "timeout" functions look at this. It'd probably be best to set this to whatever the timeout on the function will be.
+  const timeoutTime = 5 * 60 * 1000
+
   useEffect(() => {
     fetchAliases().then(data => {
       setAliases(data);
@@ -216,6 +219,7 @@ const AliasManagementPageRevised = () => {
               },
               error: (error) => console.warn(error),
             });
+
             set(() => {
               setSnackbarOpen(true);
               setReindexAll(false);
@@ -223,8 +227,7 @@ const AliasManagementPageRevised = () => {
               setMessage(`Indexing for ${indexingMetadata.id} has been running for more than 5 minutes.`);
               setSeverity('error');
               indexUpdateSub.unsubscribe();
-            }, 5 * 60 * 1000 - timeDifference);
-            console.log(5 * 60 * 1000 - timeDifference)
+            }, timeoutTime - timeDifference);
           } else {
             setSnackbarOpen(true);
             setMessage(`Indexing for ${indexingMetadata.id} did not finish after 5 minutes.`);
@@ -398,38 +401,6 @@ const AliasManagementPageRevised = () => {
     }
   };
 
-  // const indexUpdateSub = API.graphql({
-  //   query: onUpdateV2ContentMetadata,
-  //   variables: {
-  //     id: reindexing,
-  //   },
-  // }).subscribe({
-  //   next: ({ provider, value }) => {
-  //     if (!isUnsubscribed && !value?.data?.onUpdateV2ContentMetadata?.isIndexing) {
-  //       console.log(value?.data?.onUpdateV2ContentMetadata?.isIndexing);
-  //       indexUpdateSub.unsubscribe();
-  //       isUnsubscribed = true;
-  //       if (reindexAll) {
-  //         const filteredIndexes = aliases.filter(obj => !completedIndexes.includes(obj.id) && obj.id !== reindexing);
-  //         console.log(filteredIndexes)
-  //         if (filteredIndexes.length > 0) {
-  //           setCompletedIndexes(currentCompletedIndexes => [
-  //             ...currentCompletedIndexes,
-  //             reindexing
-  //           ])
-  //           handleReindex(filteredIndexes?.[0]?.id)
-  //         } else {
-  //           setReindexAll(false)
-  //           setReindexing(null)
-  //         }
-  //       } else {
-  //         clear();
-  //       }
-  //     }
-  //   },
-  //   error: (error) => console.warn(error),
-  // });
-
   const reindexAllRef = useRef(false);
   const completedIndexesRef = useRef([]);
 
@@ -493,6 +464,8 @@ const AliasManagementPageRevised = () => {
     });
 
     try {
+
+      // TODO: Comment this out when the API is ready
       await API.graphql({
         query: updateV2ContentMetadata,
         variables: {
@@ -504,6 +477,11 @@ const AliasManagementPageRevised = () => {
         },
       });
 
+
+      // TODO: Uncomment this when the API is ready
+      // await API.post('publicapi', '/openSearch/reindex', { body: { indexId } })
+
+      // This is set to 5 minutes
       set(() => {
         setSnackbarOpen(true);
         setMessage(`Indexing for ${indexId} has been running for more than 5 minutes.`);
@@ -511,8 +489,10 @@ const AliasManagementPageRevised = () => {
         indexUpdateSub.unsubscribe();
         setReindexAll(false);
         setReindexing(null);
-      }, 300000);
+      }, timeoutTime);
 
+
+      // TODO: This can be removed. This is just to test the subscription
       setTimeout(async () => {
         await API.graphql({
           query: updateV2ContentMetadata,
@@ -525,25 +505,17 @@ const AliasManagementPageRevised = () => {
         });
         console.log(`Finished indexing ${indexId}`);
       }, 3000);
+
     } catch (error) {
       console.log(error);
     }
   };
-
-
-  useEffect(() => {
-    console.log(aliases)
-  }, [aliases]);
 
   const handleReindexAll = () => {
     setReindexAll(true);
     setCompletedIndexes([]);
     handleReindex(aliases?.[0]?.id);
   };
-
-  const handleReindexNextIndex = (lastIndex) => {
-
-  }
 
   return (
     <>
