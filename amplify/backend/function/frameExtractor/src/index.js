@@ -21,6 +21,9 @@ const s3Client = new S3Client({ region: process.env.REGION });
  * @type {import('@types/aws-lambda').APIGatewayProxyHandler}
  */
 exports.handler = async (event) => {
+  
+  console.log("EVENT: ", JSON.stringify(event))
+
   try {
     const { index, season, episode, frame } = event.pathParameters;
 
@@ -47,18 +50,15 @@ exports.handler = async (event) => {
     const objectKey = `protected/src/${index}/${season}/${episode}/${fileIndex}.mp4`;
     const extractedImageKey = `src-extracted/${index}/${season}/${episode}/${frameNumber}.jpg`;
 
-    // Check if the extracted image already exists in S3
+    // Try getting the image if it already exists in S3
     try {
-      await s3Client.send(new GetObjectCommand({
-        Bucket: bucketName,
-        Key: extractedImageKey,
-      }));
 
-      // If the image exists, fetch it from S3
       const response = await s3Client.send(new GetObjectCommand({
         Bucket: bucketName,
         Key: extractedImageKey,
       }));
+
+      console.log("The image exists in S3 already")
 
       const imageBuffer = await response.Body.toArray();
       const base64Image = Buffer.concat(imageBuffer).toString('base64');
@@ -75,6 +75,7 @@ exports.handler = async (event) => {
       };
     } catch (error) {
       // If the image doesn't exist, proceed with extraction from the video
+      console.log("The image has never been extracted")
       const videoFile = path.join('/tmp', `video-${Date.now()}.mp4`);
       const outputFile = path.join('/tmp', `frame-${Date.now()}.jpg`);
 
