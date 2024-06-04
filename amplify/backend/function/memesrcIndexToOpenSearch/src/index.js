@@ -16,10 +16,55 @@ const { makeRequestWithVariables } = require('/opt/graphql-request');
  */
 exports.handler = async (event) => {
     console.log(`EVENT: ${JSON.stringify(event)}`);
-
     const GRAPHQL_ENDPOINT = process.env.API_MEMESRC_GRAPHQLAPIENDPOINTOUTPUT;
     const body = event.body ? JSON.parse(event.body) : '';
     let response;
+
+    const setMetadataAsProcessing = async (indexId) => {
+        try {
+            const updateRequest = await makeRequestWithVariables(GRAPHQL_ENDPOINT, updateV2ContentMetadataQuery, { id: indexId, isIndexing: true, lastIndexingStartedAt: new Date().toISOString() })
+            response = {
+                statusCode: 200,
+                body: updateRequest
+            }
+        } catch (error) {
+            console.log('ERROR SETTING METADATA AS PROCESSING: ', error)
+            response = {
+                statusCode: 500,
+                body: {
+                    message: "Something went wrong when trying to update GraphQL before starting indexing."
+                }
+            }
+        }
+    }
+
+    const startIndexerFunction = async (index) => {
+        const lambda = new aws.Lambda({ region: process.env.REGION });
+        const params = {
+            FunctionName: process.env.FUNCTION_MEMESRCOPENSEARCH_NAME,
+            InvocationType: 'Event',
+            Payload: JSON.stringify({ index }),
+        };
+
+        try {
+            try {
+                await setMetadataAsProcessing(index);
+                await lambda.invoke(params).promise();
+            } catch (error) {
+                console.log(error);
+            }
+            return {
+                statusCode: 200,
+                body: JSON.stringify({ message: 'CSV indexing job started' }),
+            };
+        } catch (error) {
+            console.error('Error starting CSV indexing job:', error);
+            return {
+                statusCode: 500,
+                body: JSON.stringify({ error: 'An error occurred while starting the CSV indexing job' }),
+            };
+        }
+    }
 
     /* -------------------- GraphQL Metadata Update Functions ------------------- */
 
@@ -44,35 +89,11 @@ exports.handler = async (event) => {
         }
     `
 
-    const setMetadataAsProcessing = async (indexId) => {
-        try {
-            const updateRequest = await makeRequestWithVariables(GRAPHQL_ENDPOINT, updateV2ContentMetadataQuery, { id: indexId, isIndexing: true, lastIndexingStartedAt: new Date().toISOString() })
-            response = {
-                statusCode: 200,
-                body: updateRequest
-            }
-        } catch (error) {
-            console.log('ERROR SETTING METADATA AS PROCESSING: ', error)
-            response = {
-                statusCode: 500,
-                body: {
-                    message: "Something went wrong when trying to update GraphQL before starting indexing."
-                }
-            }
-        }
-    }
-
     /* -------------------------------------------------------------------------- */
     
-    const indexId = body?.indexId
+    const indexId = body?.indexId;
 
-    try {
-        await setMetadataAsProcessing(indexId)
-    } catch (error) {
-        console.log(error)
-    }
-    
-    // TODO: Handle re-indexing here
+    startIndexerFunction(indexId);
 
     return {
         statusCode: response.statusCode,
