@@ -131,7 +131,7 @@ const UserList = () => {
     return (
         <Box>
             <Typography variant="h4" gutterBottom>
-                User List
+                User List ({users?.length}{nextToken && '+'})
             </Typography>
             <Stack direction='row' alignItems='center' justifyContent='space-between'>
                 <TextField
@@ -175,9 +175,7 @@ const UserList = () => {
                     onClick={() => handlePageChange(currentPage - 1)}
                     disabled={currentPage === 1 || isLoadingAll}
                     startIcon={<ArrowBack />}
-                >
-                    Previous Page
-                </Button>
+                />
                 <Typography
                     variant="body1"
                     component="span"
@@ -264,9 +262,7 @@ const UserList = () => {
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={(!nextToken && currentPage === Math.ceil(filteredUsers.length / itemsPerPage)) || isLoadingAll}
                     endIcon={<ArrowForward />}
-                >
-                    Next Page
-                </LoadingButton>
+                />
             </Stack>
         </Box>
     );
