@@ -15,7 +15,7 @@ const UserList = () => {
     const [isLoadingAll, setIsLoadingAll] = useState(false);
     const itemsPerPage = 10;
 
-    // Placeholder function for loading users
+    // Function for loading users
     const loadUsers = async () => {
         API.graphql({
             query: listUserDetails,
@@ -35,7 +35,7 @@ const UserList = () => {
         loadUsers();
     }, []);
 
-    // Placeholder function for loading more users
+    // Function for loading more users
     const loadMoreUsers = async () => {
         setIsLoadingMore(true)
         API.graphql({
@@ -54,7 +54,7 @@ const UserList = () => {
         })
     };
 
-    // Placeholder function for loading all users
+    // Function for loading all users
     const loadAllUsers = async () => {
         setIsLoadingAll(true);
         try {
