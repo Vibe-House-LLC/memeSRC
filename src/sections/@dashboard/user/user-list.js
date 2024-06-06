@@ -20,7 +20,7 @@ const UserList = () => {
         API.graphql({
             query: listUserDetails,
             variables: {
-                limit: 10
+                limit: 50
             }
         }).then(response => {
             setUsers(response?.data?.listUserDetails?.items)
@@ -41,7 +41,7 @@ const UserList = () => {
         API.graphql({
             query: listUserDetails,
             variables: {
-                limit: 10,
+                limit: 50,
                 nextToken
             }
         }).then(response => {
