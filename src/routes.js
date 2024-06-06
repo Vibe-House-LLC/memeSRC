@@ -6,7 +6,6 @@ import { V2SearchDetailsProvider } from './contexts/V2SearchDetailsProvider';
 import SiteWideMaintenance from './pages/SiteWideMaintenance';
 import { DialogProvider } from './contexts/SubscribeDialog';
 import { ShowProvider } from './contexts/useShows';
-import UserListPage from './pages/UserPage-Refactor';
 
 
 // ----------------------------------------------------------------------
@@ -63,6 +62,7 @@ const InvoiceListPage = lazy(() => import('./pages/InvoicesListPage'));
 const AccountPage = lazy(() => import('./pages/AccountPage'));
 const FacebookAuthDemo = lazy(() => import('./pages/FacebookAuthDemo'));
 const CollagePage = lazy(() => import('./pages/CollagePage'));
+const UserListPage = lazy(() => import('./pages/UserPage-Refactor'));
 
 const DonationRedirect = () => {
   window.location.href = 'https://buy.stripe.com/6oEeYJ2EJ4vH3Ha7ss';
