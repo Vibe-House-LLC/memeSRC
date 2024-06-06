@@ -6,6 +6,7 @@ import { V2SearchDetailsProvider } from './contexts/V2SearchDetailsProvider';
 import SiteWideMaintenance from './pages/SiteWideMaintenance';
 import { DialogProvider } from './contexts/SubscribeDialog';
 import { ShowProvider } from './contexts/useShows';
+import UserListPage from './pages/UserPage-Refactor';
 
 
 // ----------------------------------------------------------------------
@@ -116,7 +117,7 @@ export default function Router() {
         { element: <Navigate to="/dashboard/app" />, index: true },
         { path: 'app', element: <DashboardAppPage /> },
         { path: 'imageupload', element: <ImageUploadPage /> },
-        { path: 'user', element: <UserPage /> },
+        { path: 'user', element: <UserListPage /> },
         { path: 'support', element: <ProSupportAdmin /> },
         { path: 'products', element: <ProductsPage /> },
         { path: 'blog', element: <BlogPage /> },
