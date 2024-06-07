@@ -223,23 +223,27 @@ export default function CollagePage() {
       return newImages;
     });
   };
-
   const createCollage = () => {
     if (images.length === 0) return;
   
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
   
-    const maxWidth = Math.max(...images.map((image) => image.width), 0);
+    const maxWidth = 1000; // Set a maximum width for the collage
     let totalHeight = 0;
   
-    images.forEach((image) => {
+    const resizedImages = images.map((image) => {
       const scaleFactor = maxWidth / image.width;
       const scaledHeight = image.height * scaleFactor;
       totalHeight += scaledHeight;
+      return {
+        src: image.src,
+        width: maxWidth,
+        height: scaledHeight,
+      };
     });
   
-    totalHeight += borderThickness * (images.length + 1);
+    totalHeight += borderThickness * (resizedImages.length + 1);
     canvas.width = maxWidth + borderThickness * 2;
     canvas.height = totalHeight;
   
@@ -247,15 +251,13 @@ export default function CollagePage() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   
     let currentHeight = borderThickness;
-    images.forEach((image, index) => {
-      const scaleFactor = maxWidth / image.width;
-      const scaledHeight = image.height * scaleFactor;
+    resizedImages.forEach((image, index) => {
       const img = new Image();
       img.onload = () => {
-        ctx.drawImage(img, borderThickness, currentHeight, maxWidth, scaledHeight);
-        currentHeight += scaledHeight + borderThickness;
+        ctx.drawImage(img, borderThickness, currentHeight, image.width, image.height);
+        currentHeight += image.height + borderThickness;
   
-        if (currentHeight >= totalHeight) {
+        if (index === resizedImages.length - 1) {
           canvas.toBlob((blob) => {
             const url = URL.createObjectURL(blob);
             setCollageBlob(url);
