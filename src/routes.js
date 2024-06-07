@@ -62,6 +62,7 @@ const InvoiceListPage = lazy(() => import('./pages/InvoicesListPage'));
 const AccountPage = lazy(() => import('./pages/AccountPage'));
 const FacebookAuthDemo = lazy(() => import('./pages/FacebookAuthDemo'));
 const CollagePage = lazy(() => import('./pages/CollagePage'));
+const UserListPage = lazy(() => import('./pages/UserPage-Refactor'));
 
 const DonationRedirect = () => {
   window.location.href = 'https://buy.stripe.com/6oEeYJ2EJ4vH3Ha7ss';
@@ -116,7 +117,7 @@ export default function Router() {
         { element: <Navigate to="/dashboard/app" />, index: true },
         { path: 'app', element: <DashboardAppPage /> },
         { path: 'imageupload', element: <ImageUploadPage /> },
-        { path: 'user', element: <UserPage /> },
+        { path: 'user', element: <UserListPage /> },
         { path: 'support', element: <ProSupportAdmin /> },
         { path: 'products', element: <ProductsPage /> },
         { path: 'blog', element: <BlogPage /> },
