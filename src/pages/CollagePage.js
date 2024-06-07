@@ -20,7 +20,7 @@ import {
   Radio,
 } from "@mui/material";
 import { styled } from "@mui/system";
-import { Delete, Add, ArrowBack, ArrowForward, ExpandMore, Close, Edit } from "@mui/icons-material";
+import { Delete, Add, ArrowBack, ArrowForward, ExpandMore, Close, Edit, ArrowUpward, ArrowDownward } from "@mui/icons-material";
 import { useNavigate, useLocation } from 'react-router-dom';
 import { LoadingButton } from "@mui/lab";
 import BasePage from "./BasePage";
@@ -43,7 +43,7 @@ const CollageImage = styled("img")({
 const ImageContainer = styled(Box)({
   position: "relative",
   marginBottom: "16px",
-  "&:hover .delete-button, &:active .delete-button, &:hover .edit-button, &:active .edit-button": {
+  "&:hover .delete-button, &:active .delete-button, &:hover .edit-button, &:active .edit-button, &:hover .move-up-button, &:active .move-up-button, &:hover .move-down-button, &:active .move-down-button": {
     display: "flex",
   },
 });
@@ -87,6 +87,36 @@ const DeleteButton = styled(IconButton)({
   display: "none",
   '&:hover': {
     backgroundColor: "#ffe6e6",
+  },
+});
+
+const MoveUpButton = styled(IconButton)({
+  position: "absolute",
+  top: "48px",
+  right: "48px",
+  zIndex: 1,
+  backgroundColor: "white",
+  color: "green",
+  border: "2px solid green",
+  padding: "4px",
+  display: "none",
+  '&:hover': {
+    backgroundColor: "#e6ffe6",
+  },
+});
+
+const MoveDownButton = styled(IconButton)({
+  position: "absolute",
+  top: "48px",
+  right: "8px",
+  zIndex: 1,
+  backgroundColor: "white",
+  color: "orange",
+  border: "2px solid orange",
+  padding: "4px",
+  display: "none",
+  '&:hover': {
+    backgroundColor: "#fff2e6",
   },
 });
 
@@ -231,6 +261,20 @@ export default function CollagePage() {
       return newImages;
     });
   };
+  
+  const moveImage = (index, direction) => {
+    setImages((prevImages) => {
+      const newImages = [...prevImages];
+      if (index + direction < 0 || index + direction >= newImages.length) {
+        return newImages; // Return the original array if the move is out of bounds
+      }
+      const temp = newImages[index];
+      newImages[index] = newImages[index + direction];
+      newImages[index + direction] = temp;
+      return newImages;
+    });
+  };
+
   const createCollage = () => {
     if (images.length === 0) return;
   
@@ -447,6 +491,12 @@ export default function CollagePage() {
                         <EditButton className="edit-button" onClick={() => handleEditImage(index)}>
                           <Edit />
                         </EditButton>
+                        <MoveUpButton className="move-up-button" onClick={() => moveImage(index, -1)}>
+                          <ArrowUpward />
+                        </MoveUpButton>
+                        <MoveDownButton className="move-down-button" onClick={() => moveImage(index, 1)}>
+                          <ArrowDownward />
+                        </MoveDownButton>
                       </ImageWrapper>
                     </ImageContainer>
                     {index < images.length - 1 && (
@@ -525,49 +575,49 @@ export default function CollagePage() {
             )}
           </>
         ) : (
-<CollageContainer>
-              <Button
-                variant="contained"
-                startIcon={<ArrowBack />}
-                onClick={() => setEditMode(true)}
-                fullWidth
-                sx={{ mb: 2 }}
-              >
-                Edit Photos
-              </Button>
-              <Accordion sx={{ mb: 2 }} expanded={accordionExpanded} onChange={() => setAccordionExpanded(!accordionExpanded)}>
-                <AccordionSummary expandIcon={<ExpandMore />}>
-                  <Typography>Adjust Border Thickness</Typography>
-                </AccordionSummary>
-                <AccordionDetails>
-                  <RadioGroup
-                    value={borderThickness.toString()}
-                    onChange={handleBorderChange}
-                  >
-                    <FormControlLabel value="0" control={<Radio />} label="None" />
-                    <FormControlLabel value="10" control={<Radio />} label="Thin" />
-                    <FormControlLabel value="15" control={<Radio />} label="Normal" />
-                    <FormControlLabel value="35" control={<Radio />} label="Thicc" />
-                    <FormControlLabel value="65" control={<Radio />} label="Thiccer" />
-                  </RadioGroup>
-                </AccordionDetails>
-              </Accordion>
-
-              <ImageWrapper>
-                <CollageImage src={collageBlob} alt="Collage Result" />
-              </ImageWrapper>
-              <Alert
-                severity='success'
-                sx={{ marginTop: 1.5 }}
-              >
-                <b>{'ontouchstart' in window ? 'Tap and hold ' : 'Right click '} ☝️ the image to save</b>
-              </Alert>
-            </CollageContainer>
+          <CollageContainer>
+            <Button
+              variant="contained"
+              startIcon={<ArrowBack />}
+              onClick={() => setEditMode(true)}
+              fullWidth
+              sx={{ mb: 2 }}
+            >
+              Edit Photos
+            </Button>
+            <Accordion sx={{ mb: 2 }} expanded={accordionExpanded} onChange={() => setAccordionExpanded(!accordionExpanded)}>
+              <AccordionSummary expandIcon={<ExpandMore />}>
+                <Typography>Adjust Border Thickness</Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <RadioGroup
+                  value={borderThickness.toString()}
+                  onChange={handleBorderChange}
+                >
+                  <FormControlLabel value="0" control={<Radio />} label="None" />
+                  <FormControlLabel value="10" control={<Radio />} label="Thin" />
+                  <FormControlLabel value="15" control={<Radio />} label="Normal" />
+                  <FormControlLabel value="35" control={<Radio />} label="Thicc" />
+                  <FormControlLabel value="65" control={<Radio />} label="Thiccer" />
+                </RadioGroup>
+              </AccordionDetails>
+            </Accordion>
+ 
+            <ImageWrapper>
+              <CollageImage src={collageBlob} alt="Collage Result" />
+            </ImageWrapper>
+            <Alert
+              severity='success'
+              sx={{ marginTop: 1.5 }}
+            >
+              <b>{'ontouchstart' in window ? 'Tap and hold ' : 'Right click '} ☝️ the image to save</b>
+            </Alert>
+          </CollageContainer>
         )}
       </>
       )}
-
+ 
       <canvas ref={canvasRef} style={{ display: "none" }} />
     </BasePage>
   );
-}
+ }
