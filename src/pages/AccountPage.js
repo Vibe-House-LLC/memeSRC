@@ -60,6 +60,17 @@ const AccountPage = () => {
     }
   };
 
+  const downloadInvoicePDF = (url) => {
+    if (url) {
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'invoice.pdf';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
   const logIntoCustomerPortal = () => {
     setLoadingSubscriptionUrl(true);
     API.post('publicapi', '/user/update/getPortalLink', {
@@ -216,7 +227,7 @@ const AccountPage = () => {
                       backgroundColor: invoice.invoice_pdf ? 'action.selected' : 'action.hover',
                     },
                   }}
-                  onClick={() => openInvoicePDF(invoice.invoice_pdf)}
+                  onClick={() => openInvoicePDF(invoice.hosted_invoice_url)}
                 >
                   <ListItemIcon>
                     <Receipt />
@@ -230,7 +241,7 @@ const AccountPage = () => {
                   <IconButton
                     onClick={(e) => {
                       e.stopPropagation();
-                      openInvoicePDF(invoice.invoice_pdf);
+                      downloadInvoicePDF(invoice.invoice_pdf);
                     }}
                     disabled={!invoice.invoice_pdf}
                   >
