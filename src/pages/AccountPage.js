@@ -55,7 +55,9 @@ const AccountPage = () => {
   };
 
   const openInvoicePDF = (url) => {
-    window.open(url, '_blank');
+    if (url) {
+      window.open(url, '_blank');
+    }
   };
 
   const logIntoCustomerPortal = () => {
@@ -203,7 +205,19 @@ const AccountPage = () => {
             </Typography>
             <List>
               {invoices.map((invoice) => (
-                <ListItem key={invoice.id} sx={{ backgroundColor: 'action.hover', mb: 1, borderRadius: 1 }}>
+                <ListItem
+                  key={invoice.id}
+                  sx={{
+                    backgroundColor: 'action.hover',
+                    mb: 1,
+                    borderRadius: 1,
+                    cursor: invoice.invoice_pdf ? 'pointer' : 'default',
+                    '&:hover': {
+                      backgroundColor: invoice.invoice_pdf ? 'action.selected' : 'action.hover',
+                    },
+                  }}
+                  onClick={() => openInvoicePDF(invoice.invoice_pdf)}
+                >
                   <ListItemIcon>
                     <Receipt />
                   </ListItemIcon>
@@ -213,7 +227,13 @@ const AccountPage = () => {
                       invoice.period_end * 1000
                     ).toLocaleDateString()}`}
                   />
-                  <IconButton onClick={() => openInvoicePDF(invoice.invoice_pdf)} disabled={!invoice.invoice_pdf}>
+                  <IconButton
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openInvoicePDF(invoice.invoice_pdf);
+                    }}
+                    disabled={!invoice.invoice_pdf}
+                  >
                     <Download />
                   </IconButton>
                 </ListItem>
