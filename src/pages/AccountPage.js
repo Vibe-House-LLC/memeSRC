@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext } from 'react';
-import { Box, Typography, Button, Container, Divider, Grid, Card, List, ListItem, ListItemIcon, ListItemText, IconButton, Chip, Skeleton, LinearProgress } from '@mui/material';
+import { Box, Typography, Button, Container, Divider, Grid, Card, List, ListItem, ListItemIcon, ListItemText, IconButton, Chip, Skeleton, LinearProgress, CircularProgress } from '@mui/material';
 import { Receipt, Download, Block, SupportAgent, Bolt, AutoFixHighRounded } from '@mui/icons-material';
 import { API } from 'aws-amplify';
 import { UserContext } from '../UserContext';
@@ -11,6 +11,7 @@ const AccountPage = () => {
   const [invoices, setInvoices] = useState([]);
   const [hasMore, setHasMore] = useState(false);
   const [loadingInvoices, setLoadingInvoices] = useState(true);
+  const [loadingSubscriptionUrl, setLoadingSubscriptionUrl] = useState(false);
   const [page, setPage] = useState(1);
   const [loadingSubscription, setLoadingSubscription] = useState(true);
 
@@ -55,6 +56,22 @@ const AccountPage = () => {
 
   const openInvoicePDF = (url) => {
     window.open(url, '_blank');
+  };
+
+  const logIntoCustomerPortal = () => {
+    setLoadingSubscriptionUrl(true);
+    API.post('publicapi', '/user/update/getPortalLink', {
+      body: {
+        currentUrl: window.location.href
+      }
+    }).then(results => {
+      console.log(results);
+      setLoadingSubscriptionUrl(false);
+      window.location.href = results;
+    }).catch(error => {
+      console.log(error.response);
+      setLoadingSubscriptionUrl(false);
+    });
   };
 
   const isLoading = loadingInvoices || loadingSubscription;
@@ -152,11 +169,26 @@ const AccountPage = () => {
             </Box>
             <Box sx={{ mt: 3, textAlign: 'center' }}>
               {userDetails?.user?.userDetails?.magicSubscription === 'true' ? (
-                <Button variant="contained" size="large" onClick={openSubscriptionDialog}>
-                  Manage Subscription
+                <Button 
+                  variant="contained" 
+                  size="large" 
+                  onClick={logIntoCustomerPortal}
+                  disabled={loadingSubscriptionUrl}
+                  sx={{ minWidth: '200px' }}
+                >
+                  {loadingSubscriptionUrl ? (
+                    <CircularProgress size={24} color="inherit" />
+                  ) : (
+                    'Manage Subscription'
+                  )}
                 </Button>
               ) : (
-                <Button variant="contained" size="large" onClick={openSubscriptionDialog}>
+                <Button 
+                  variant="contained" 
+                  size="large" 
+                  onClick={openSubscriptionDialog}
+                  sx={{ minWidth: '200px' }}
+                >
                   Subscribe Now
                 </Button>
               )}
