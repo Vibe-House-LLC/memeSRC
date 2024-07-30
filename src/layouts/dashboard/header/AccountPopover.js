@@ -175,13 +175,8 @@ export default function AccountPopover() {
               <>
                 {userDetails?.user?.userDetails?.magicSubscription === 'true' ?
                   <>
-                  <Divider sx={{ borderStyle: 'dashed' }} />
-                    {/* <MenuItem onClick={() => { navigate('/manageSubscription'); handleClose(); }} sx={{ m: 1 }}>
-                      <Stack direction='row' alignItems='center'>
-                        {loadingCustomerPortal ? <><CircularProgress color='success' size={15} sx={{ mr: 1 }} /> Please Wait...</> : 'Manage Subscription'}
-                      </Stack>
-                    </MenuItem> */}
-                    <MenuItem onClick={logIntoCustomerPortal} sx={{ m: 1 }}>
+                    <Divider sx={{ borderStyle: 'dashed' }} />
+                    <MenuItem onClick={() => { navigate('/account'); handleClose(); }} sx={{ m: 1 }}>
                       <Stack direction='row' alignItems='center'>
                         {loadingCustomerPortal ? <><CircularProgress color='success' size={15} sx={{ mr: 1 }} /> Please Wait...</> : 'Manage Subscription'}
                       </Stack>
@@ -189,14 +184,14 @@ export default function AccountPopover() {
                   </>
                   :
                   <>
-                  <Divider sx={{ borderStyle: 'dashed' }} />
+                    <Divider sx={{ borderStyle: 'dashed' }} />
                     <MenuItem onClick={handleSubscribe} sx={{ m: 1, color: theme => theme.palette.success.main }}>
                       memeSRC Pro
                     </MenuItem>
                   </>
                 }
               </>
-            }
+            }         
 
             <Divider sx={{ borderStyle: 'dashed' }} />
 
