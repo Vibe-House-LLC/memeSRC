@@ -320,12 +320,12 @@ export default function MagicPopup({ children }) {
                             // </Button>
                             <LoadingButton
                                 loading={loadingSubscriptionUrl}
-                                onClick={logIntoCustomerPortal}
+                                onClick={() => { navigate('/account'); }}
                                 variant="contained"
                                 size="large"
                                 fullWidth
                             >
-                                Manage Subscription
+                                Manage Account
                             </LoadingButton>
                         ) : (
                             <>
