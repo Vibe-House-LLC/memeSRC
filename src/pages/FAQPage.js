@@ -137,8 +137,8 @@ const FAQPage = () => {
 
   const filteredFAQs = [
     {
-      question: 'How can I find a specific scene or quote?',
-      answer: `Type a quote into [the search bar](/) to find moments:
+      question: 'How can I find templates for a specific scene or quote?',
+      answer: `Type a quote into [the search bar](/) to find templates:
 
 1. Search by quote across "🌈 All Shows & Movies", or
 2. Use the dropdown to select a specific index.
