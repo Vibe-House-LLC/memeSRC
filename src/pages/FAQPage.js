@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -12,6 +13,7 @@ import {
   InputAdornment,
   IconButton,
   Link,
+  Divider,
 } from '@mui/material';
 import { styled } from '@mui/system';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -148,9 +150,22 @@ const MarkdownLink = styled('a')(({ theme }) => ({
   },
 }));
 
+const FocusedFAQCard = styled(Card)(({ theme }) => ({
+  marginBottom: theme.spacing(4),
+  padding: theme.spacing(3),
+  backgroundColor: theme.palette.background.paper,
+}));
+
+const OtherFAQsTitle = styled(Typography)(({ theme }) => ({
+  marginTop: theme.spacing(4),
+  marginBottom: theme.spacing(2),
+}));
+
 const FAQPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const { openSubscriptionDialog } = useSubscribeDialog();
+  const { slug } = useParams();
+  const [focusedFAQ, setFocusedFAQ] = useState(null);
 
   const handleSearch = (event) => {
     setSearchQuery(event.target.value);
@@ -227,13 +242,38 @@ For memes created with the Advanced Editor:
     }
   ];
 
+  useEffect(() => {
+    if (slug) {
+      const matchingFAQ = faqList.find(faq => faq.slug === slug);
+      setFocusedFAQ(matchingFAQ || null);
+    } else {
+      setFocusedFAQ(null);
+    }
+  }, [slug]);
+
   const filteredFAQs = faqList.filter((faq) =>
-    faq.question.toLowerCase().includes(searchQuery.toLowerCase())
+    faq.question.toLowerCase().includes(searchQuery.toLowerCase()) &&
+    (!focusedFAQ || faq.slug !== focusedFAQ.slug)
   );
 
   return (
     <FAQContainer>
       <FAQTitle variant="h4">Frequently Asked Questions</FAQTitle>
+      
+      {focusedFAQ && (
+        <FocusedFAQCard>
+          <Typography variant="h5" gutterBottom>{focusedFAQ.question}</Typography>
+          <ReactMarkdown
+            components={{
+              li: MarkdownListItem,
+              a: MarkdownLink,
+            }}
+          >
+            {focusedFAQ.answer}
+          </ReactMarkdown>
+        </FocusedFAQCard>
+      )}
+
       <ProCard>
         <ProCardBackground />
         <ProCardContent>
@@ -248,29 +288,35 @@ For memes created with the Advanced Editor:
           </ProButton>
         </ProCardContent>
       </ProCard>
-      <TextField
-        label="Search FAQs"
-        variant="outlined"
-        fullWidth
-        margin="normal"
-        value={searchQuery}
-        onChange={handleSearch}
-        InputProps={{
-          endAdornment: (
-            <InputAdornment position="end">
-              {searchQuery && (
-                <IconButton
-                  aria-label="clear search"
-                  onClick={() => setSearchQuery('')}
-                  edge="end"
-                >
-                  <ClearIcon />
-                </IconButton>
-              )}
-            </InputAdornment>
-          ),
-        }}
-      />
+
+      {focusedFAQ ? (
+        <OtherFAQsTitle variant="h5">Other FAQs</OtherFAQsTitle>
+      ) : (
+        <TextField
+          label="Search FAQs"
+          variant="outlined"
+          fullWidth
+          margin="normal"
+          value={searchQuery}
+          onChange={handleSearch}
+          InputProps={{
+            endAdornment: (
+              <InputAdornment position="end">
+                {searchQuery && (
+                  <IconButton
+                    aria-label="clear search"
+                    onClick={() => setSearchQuery('')}
+                    edge="end"
+                  >
+                    <ClearIcon />
+                  </IconButton>
+                )}
+              </InputAdornment>
+            ),
+          }}
+        />
+      )}
+
       {filteredFAQs.map((faq, index) => (
         <FAQAccordion key={index}>
           <FAQAccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -287,12 +333,13 @@ For memes created with the Advanced Editor:
               {faq.answer}
             </ReactMarkdown>
             <StandaloneLink href={`/faq/${faq.slug}`} target="_blank" rel="noopener noreferrer">
-              <OpenInNew fontSize="small" sx={{mr: 1}}/>
+              <OpenInNew fontSize="small" />
               Open this in new tab →
             </StandaloneLink>
           </FAQAccordionDetails>
         </FAQAccordion>
       ))}
+      
       <FAQReminder variant="body2">
         Just remember, all the content on memeSRC comes from users like you, so
         let's keep things creative and respectful. Have fun memeing!
