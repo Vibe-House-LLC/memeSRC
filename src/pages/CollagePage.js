@@ -126,7 +126,7 @@ const EmptyStateContainer = styled(Box)(({ theme }) => ({
   alignItems: "center",
   justifyContent: "center",
   minHeight: "300px",
-  border: `2px dashed ${theme.palette.divider}`,
+  border: `2px dashed #ccc`,
   borderRadius: "8px",
   padding: "16px",
   textAlign: "center",
