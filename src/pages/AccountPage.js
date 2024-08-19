@@ -109,7 +109,7 @@ const AccountPage = () => {
 
       <Grid container spacing={3} alignItems="flex-start">
         <Grid item xs={12} md={6}>
-          <Card sx={{ p: 3, backgroundColor: 'background.paper', mb: 3 }}>
+          <Card sx={{ p: 3, backgroundColor: 'background.paper'}}>
             <Typography variant="h5" gutterBottom>
               Subscription
             </Typography>
@@ -188,21 +188,7 @@ const AccountPage = () => {
               </Box>
             </Box>
             <Box sx={{ mt: 3, textAlign: 'center' }}>
-              {userDetails?.user?.userDetails?.magicSubscription === 'true' ? (
-                <Button 
-                  variant="contained" 
-                  size="large" 
-                  onClick={() => openCustomerPortal()}
-                  disabled={loadingPortalUrl}
-                  sx={{ minWidth: '200px' }}
-                >
-                  {loadingPortalUrl ? (
-                    <CircularProgress size={24} color="inherit" />
-                  ) : (
-                    'Manage Subscription'
-                  )}
-                </Button>
-              ) : (
+              {userDetails?.user?.userDetails?.magicSubscription !== 'true' && (
                 <Button
                   variant="contained" 
                   size="large" 
@@ -218,25 +204,24 @@ const AccountPage = () => {
 
         <Grid item xs={12} md={6}>
           <Card sx={{ p: 3, backgroundColor: 'background.paper', mb: 2 }}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-              <Typography variant="h5" gutterBottom>
-                Payment Methods
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', m: 5}}>
+              <Typography variant="h4" gutterBottom>
+                Billing Settings
               </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <CreditCard sx={{ color: 'action.active', mr: 1 }} />
-                <Typography variant="body1">Manage your payment methods</Typography>
-              </Box>
+              <Typography variant="p">
+                Update payment methods or cancel your subscription
+              </Typography>
               <Button 
                 variant="contained" 
                 size="large" 
                 onClick={() => openCustomerPortal()}
                 disabled={loadingPortalUrl}
-                sx={{ minWidth: '200px' }}
+                sx={{ minWidth: '200px', m: 2 }}
               >
                 {loadingPortalUrl ? (
                   <CircularProgress size={24} color="inherit" />
                 ) : (
-                  'Manage Payment Methods'
+                  'Open Settings'
                 )}
               </Button>
             </Box>
