@@ -25,7 +25,7 @@ import EditorUpdates from '../../components/v2-feature-section/sections/editor-u
 import PlatformUpdates from '../../components/v2-feature-section/sections/platform-updates';
 import MemeSrcPro from '../../components/v2-feature-section/sections/memesrc-pro';
 import Logo from '../../logo/logo';
-import FavoritesResetDialog from './FavoritesResetDialog';
+// import FavoritesResetDialog from './FavoritesResetDialog';
 
 const seriesOptions = [
   { id: '_universal', title: 'All Shows & Movies', emoji: '🌈' },
@@ -576,12 +576,12 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
 
   return (
     <>
-      {user?.userDetails?.subscriptionStatus === 'active' && (
+      {/* {user?.userDetails?.subscriptionStatus === 'active' && (
         <FavoritesResetDialog
           open={favoritesInfoOpen}
           onClose={() => setFavoritesInfoOpen(false)}
         />
-      )}
+      )} */}
       <StyledGridContainer container paddingX={3} sx={currentThemeBackground}>
         <Grid container marginY="auto" justifyContent="center" pb={isMd ? 0 : 8}>
           <Grid container justifyContent="center">
