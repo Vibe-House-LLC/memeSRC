@@ -191,6 +191,10 @@ For memes created with the Advanced Editor:
       question: 'How can I provide feedback or support?',
       answer: `We value your feedback and support! Click the feedback icon, located near the donation icon at the bottom of the page, to share your thoughts or to donate. Your contributions help us improve and expand the platform.`,
     },
+    {
+      question: 'Why do I have a charge from "VIBE HOUSE LLC"?',
+      answer: `When you subscribe to memeSRC Pro, the charge will appear as "VIBE HOUSE LLC" on your bank statement. Vibe House LLC is the parent company of memeSRC and handles billing for memeSRC Pro subscriptions. If you have any questions about this charge or your memeSRC Pro subscription, please contact us at contact@vibehouse.net.`,
+    }
   ].filter((faq) =>
     faq.question.toLowerCase().includes(searchQuery.toLowerCase())
   );
