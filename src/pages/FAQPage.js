@@ -11,9 +11,11 @@ import {
   Button,
   InputAdornment,
   IconButton,
+  Link,
 } from '@mui/material';
 import { styled } from '@mui/system';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { OpenInNew } from '@mui/icons-material';
 import ClearIcon from '@mui/icons-material/Clear';
 import ReactMarkdown from 'react-markdown';
 import { useSubscribeDialog } from '../contexts/useSubscribeDialog';
@@ -24,6 +26,25 @@ const FAQContainer = styled(Box)(({ theme }) => ({
   padding: theme.spacing(4),
   [theme.breakpoints.down('sm')]: {
     padding: theme.spacing(2),
+  },
+}));
+
+const StandaloneLink = styled(Link)(({ theme }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'flex-end',
+  marginTop: theme.spacing(2),
+  textAlign: 'right',
+  fontSize: '0.9rem',
+  fontWeight: 'bold',
+  color: '#ffffff !important',
+  textDecoration: 'none',
+  '&:hover': {
+    textDecoration: 'underline',
+    color: '#ffffff !important',
+  },
+  '&.MuiLink-root': {
+    color: '#ffffff !important',
   },
 }));
 
@@ -135,7 +156,7 @@ const FAQPage = () => {
     setSearchQuery(event.target.value);
   };
 
-  const filteredFAQs = [
+  const faqList = [
     {
       question: 'How can I find templates for a specific scene or quote?',
       answer: `Type a quote into [the search bar](/) to find templates:
@@ -144,6 +165,7 @@ const FAQPage = () => {
 2. Use the dropdown to select a specific index.
 
 Remember, content is indexed from user uploads, so if it's not there it might not have been indexed yet.`,
+      slug: 'find-templates'
     },
     {
       question: 'Is it possible to edit images or add captions?',
@@ -153,6 +175,7 @@ Remember, content is indexed from user uploads, so if it's not there it might no
 2. Enable captions.
 3. Add or change captions directly under the image using our Caption Editor.
 4. For more complex edits, like adding multiple text layers or using Magic Tools, switch to the Advanced Editor by clicking the button under the caption.`,
+      slug: 'edit-images-add-captions'
     },
     {
       question: 'Can I edit my own pictures with memeSRC?',
@@ -163,10 +186,12 @@ Remember, content is indexed from user uploads, so if it's not there it might no
 3. Use the Magic Tools like the Magic Eraser and Magic Fill to customize your image in creative ways.
 4. Add one or more captions, click (or tap) and drag to move them, change their color, adjust formatting, etc.
 5. Click "Save, Copy, Share" to download your masterpiece and share it with the world!`,
+      slug: 'edit-own-pictures'
     },
     {
       question: 'What are Magic Tools, and how do they work?',
       answer: `Magic Tools in the Advanced Editor allow for sophisticated edits, such as erasing parts of an image with the Magic Eraser or creatively adding to it with Magic Fill. These tools are a great way to quickly make the assets you need`,
+      slug: 'magic-tools'
     },
     {
       question: 'How can I save the memes I create?',
@@ -178,24 +203,31 @@ For memes created with the Basic Editor:
 For memes created with the Advanced Editor:
 1. Use the Magic Tools or add text layers to customize your meme.
 2. Click the "Save, Copy, Share" option to download your creation.`,
+      slug: 'save-memes'
     },
     {
       question: 'What is the Random Button and how does it function?',
       answer: `The Random Button, located at the bottom right of every page, fetches a random frame from our database. If you're browsing a specific show or movie, it'll pull a frame from that selection. It's a great way to find inspiration or start a new meme!`,
+      slug: 'random-button'
     },
     {
       question: 'Can I request for a show or movie to be added?',
       answer: `Yes, we welcome your requests! If your favorite show or movie isn't on memeSRC, use the Request and Voting feature found in the menu. We regularly review these requests to add new content based on popularity and demand.`,
+      slug: 'request-show-movie'
     },
     {
       question: 'How can I provide feedback or support?',
       answer: `We value your feedback and support! Click the feedback icon, located near the donation icon at the bottom of the page, to share your thoughts or to donate. Your contributions help us improve and expand the platform.`,
+      slug: 'provide-feedback'
     },
     {
       question: 'Why do I have a charge from "VIBE HOUSE LLC"?',
       answer: `When you subscribe to memeSRC Pro, the charge will appear as "VIBE HOUSE LLC" on your bank statement. Vibe House LLC is the parent company of memeSRC and handles billing for memeSRC Pro subscriptions. If you have any questions about this charge or your memeSRC Pro subscription, please contact us at contact@vibehouse.net.`,
+      slug: 'vibe-house-charge'
     }
-  ].filter((faq) =>
+  ];
+
+  const filteredFAQs = faqList.filter((faq) =>
     faq.question.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -254,6 +286,10 @@ For memes created with the Advanced Editor:
             >
               {faq.answer}
             </ReactMarkdown>
+            <StandaloneLink href={`/faq/${faq.slug}`} target="_blank" rel="noopener noreferrer">
+              <OpenInNew fontSize="small" sx={{mr: 1}}/>
+              Open this in new tab →
+            </StandaloneLink>
           </FAQAccordionDetails>
         </FAQAccordion>
       ))}
