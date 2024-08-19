@@ -120,18 +120,23 @@ const MoveDownButton = styled(IconButton)({
   },
 });
 
-const EmptyStateContainer = styled(Box)({
+const EmptyStateContainer = styled(Box)(({ theme }) => ({
   display: "flex",
   flexDirection: "column",
   alignItems: "center",
   justifyContent: "center",
   minHeight: "300px",
-  border: "2px dashed #ccc",
+  border: `2px dashed #ccc`,
   borderRadius: "8px",
   padding: "16px",
   textAlign: "center",
   marginBottom: "32px",
-});
+  cursor: "pointer",
+  transition: "background-color 0.3s",
+  "&:hover": {
+    backgroundColor: theme.palette.action.hover,
+  },
+}));
 
 export default function CollagePage() {
   const [images, setImages] = useState([]);
@@ -420,18 +425,17 @@ export default function CollagePage() {
               </Button>
             )}
             {images.length === 0 ? (
-              <EmptyStateContainer>
+                <EmptyStateContainer onClick={(event) => handleMenuClick(event, 0)}>
                 <Typography variant="h6" gutterBottom>
                   No images added
                 </Typography>
                 <Typography variant="body1" marginBottom={2}>
-                  Select your first image
+                  Click anywhere to select your first image
                 </Typography>
                 <Fab
                   color="primary"
                   size="large"
                   component="label"
-                  onClick={(event) => handleMenuClick(event, 0)}
                 >
                   <Add />
                 </Fab>

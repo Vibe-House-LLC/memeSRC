@@ -1,6 +1,7 @@
 import { useState, useEffect, useContext } from 'react';
 import { Box, Typography, Button, Container, Divider, Grid, Card, List, ListItem, ListItemIcon, ListItemText, IconButton, Chip, Skeleton, LinearProgress, CircularProgress } from '@mui/material';
-import { Receipt, Download, Block, SupportAgent, Bolt, AutoFixHighRounded } from '@mui/icons-material';
+import { Navigate } from 'react-router-dom';
+import { Receipt, Download, Block, SupportAgent, Bolt, AutoFixHighRounded, CreditCard } from '@mui/icons-material';
 import { API } from 'aws-amplify';
 import { UserContext } from '../UserContext';
 import { useSubscribeDialog } from '../contexts/useSubscribeDialog';
@@ -11,7 +12,7 @@ const AccountPage = () => {
   const [invoices, setInvoices] = useState([]);
   const [hasMore, setHasMore] = useState(false);
   const [loadingInvoices, setLoadingInvoices] = useState(true);
-  const [loadingSubscriptionUrl, setLoadingSubscriptionUrl] = useState(false);
+  const [loadingPortalUrl, setLoadingPortalUrl] = useState(false);
   const [page, setPage] = useState(1);
   const [loadingSubscription, setLoadingSubscription] = useState(true);
 
@@ -71,19 +72,19 @@ const AccountPage = () => {
     }
   };
 
-  const logIntoCustomerPortal = () => {
-    setLoadingSubscriptionUrl(true);
+  const openCustomerPortal = () => {
+    setLoadingPortalUrl(true);
     API.post('publicapi', '/user/update/getPortalLink', {
       body: {
         currentUrl: window.location.href
       }
     }).then(results => {
       console.log(results);
-      setLoadingSubscriptionUrl(false);
+      setLoadingPortalUrl(false);
       window.location.href = results;
     }).catch(error => {
       console.log(error.response);
-      setLoadingSubscriptionUrl(false);
+      setLoadingPortalUrl(false);
     });
   };
 
@@ -92,6 +93,12 @@ const AccountPage = () => {
   const currentSubscription = recentPaidInvoice?.lines?.data?.[0]?.description
     ?.replace(/^1\s*×\s*/, '')
     ?.replace(/\s*\(memeSRC\)/i, '');
+
+
+  // Check if user is logged in
+  if (!userDetails?.user?.userDetails) {
+    return <Navigate to="/login" replace />;
+  }
 
   return (
     <Container maxWidth="lg" sx={{ mt: 5 }}>
@@ -102,7 +109,7 @@ const AccountPage = () => {
 
       <Grid container spacing={3} alignItems="flex-start">
         <Grid item xs={12} md={6}>
-          <Card sx={{ p: 3, backgroundColor: 'background.paper' }}>
+          <Card sx={{ p: 3, backgroundColor: 'background.paper'}}>
             <Typography variant="h5" gutterBottom>
               Subscription
             </Typography>
@@ -181,22 +188,8 @@ const AccountPage = () => {
               </Box>
             </Box>
             <Box sx={{ mt: 3, textAlign: 'center' }}>
-              {userDetails?.user?.userDetails?.magicSubscription === 'true' ? (
-                <Button 
-                  variant="contained" 
-                  size="large" 
-                  onClick={logIntoCustomerPortal}
-                  disabled={loadingSubscriptionUrl}
-                  sx={{ minWidth: '200px' }}
-                >
-                  {loadingSubscriptionUrl ? (
-                    <CircularProgress size={24} color="inherit" />
-                  ) : (
-                    'Manage Subscription'
-                  )}
-                </Button>
-              ) : (
-                <Button 
+              {userDetails?.user?.userDetails?.magicSubscription !== 'true' && (
+                <Button
                   variant="contained" 
                   size="large" 
                   onClick={openSubscriptionDialog}
@@ -210,6 +203,29 @@ const AccountPage = () => {
         </Grid>
 
         <Grid item xs={12} md={6}>
+          <Card sx={{ p: 3, backgroundColor: 'background.paper', mb: 2 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', m: 5}}>
+              <Typography variant="h4" gutterBottom>
+                Billing Settings
+              </Typography>
+              <Typography variant="p">
+                Update payment methods or cancel your subscription
+              </Typography>
+              <Button 
+                variant="contained" 
+                size="large" 
+                onClick={() => openCustomerPortal()}
+                disabled={loadingPortalUrl}
+                sx={{ minWidth: '200px', m: 2 }}
+              >
+                {loadingPortalUrl ? (
+                  <CircularProgress size={24} color="inherit" />
+                ) : (
+                  'Open Settings'
+                )}
+              </Button>
+            </Box>
+          </Card>
           <Card sx={{ p: 3, backgroundColor: 'background.paper' }}>
             <Typography variant="h5" gutterBottom>
               Invoices

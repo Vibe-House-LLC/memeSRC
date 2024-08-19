@@ -181,7 +181,7 @@ export default function AccountPopover() {
                         <CircularProgress color='success' size={15} sx={{ mr: 1 }} /> Please Wait...
                       </>
                     ) : (
-                      'Manage Subscription'
+                      'Manage Account'
                     )}
                   </Stack>
                 </MenuItem>
