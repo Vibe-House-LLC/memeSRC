@@ -624,10 +624,26 @@ const EditorPage = ({ shows }) => {
 
   const changeColor = (color, index) => {
     setColorPickerColor(color);
-    editor.canvas.item(index).set('fill', color.hex);
-    // console.log(`Length of object:  + ${selectedObjects.length}`)
-    setCanvasObjects([...editor.canvas._objects])
-    // console.log(editor.canvas.item(index));
+    const textObject = editor.canvas.item(index);
+  
+    if (color.hex === '#000000') {
+      // If the color is black, remove the stroke
+      textObject.set({
+        fill: color.hex,
+        stroke: null,
+        strokeWidth: 0
+      });
+    } else {
+      // For other colors, keep the stroke
+      textObject.set({
+        fill: color.hex,
+        stroke: 'black',
+        strokeWidth: editor?.canvas.getWidth() * 0.0040,
+        strokeUniform: false
+      });
+    }
+
+    setCanvasObjects([...editor.canvas._objects]);
     editor?.canvas.renderAll();
     setColorPickerShowing(false);
     addToHistory();
