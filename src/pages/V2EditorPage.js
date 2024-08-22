@@ -1628,35 +1628,37 @@ const EditorPage = ({ shows }) => {
                         </Button>
                       </Stack>
 
-                      {!showWhiteSpaceSlider ? (
-                        <Button
-                          variant="contained"
-                          fullWidth
-                          onClick={toggleWhiteSpaceSlider}
-                        >
-                          Add White Space
-                        </Button>
-                      ) : (
-                        <Stack direction="row" spacing={1} alignItems="center">
-                          <Typography>Whitespace</Typography>
-                          <Slider
-                            value={whiteSpacePreview / canvasSize.height * 100}
-                            onChange={(event, newValue) => handleWhiteSpaceChange(newValue)}
-                            onChangeCommitted={applyWhiteSpace}
-                            onMouseDown={startWhiteSpaceChange}
-                            onTouchStart={startWhiteSpaceChange}
-                            aria-labelledby="white-space-slider"
-                            valueLabelDisplay="auto"
-                            min={0}
-                            max={100}
-                            step={5}
-                            sx={{ flexGrow: 1, zIndex: 100 }}
-                            valueLabelFormat={(value) => `${value}%`}
-                          />
-                          <IconButton onClick={toggleWhiteSpaceSlider}>
-                            <Close />
-                          </IconButton>
-                        </Stack>
+                      {process.env.REACT_APP_USER_BRANCH === 'dev' && (
+                        !showWhiteSpaceSlider ? (
+                          <Button
+                            variant="contained"
+                            fullWidth
+                            onClick={toggleWhiteSpaceSlider}
+                          >
+                            Add White Space
+                          </Button>
+                        ) : (
+                          <Stack direction="row" spacing={1} alignItems="center">
+                            <Typography>Whitespace</Typography>
+                            <Slider
+                              value={whiteSpacePreview / canvasSize.height * 100}
+                              onChange={(event, newValue) => handleWhiteSpaceChange(newValue)}
+                              onChangeCommitted={applyWhiteSpace}
+                              onMouseDown={startWhiteSpaceChange}
+                              onTouchStart={startWhiteSpaceChange}
+                              aria-labelledby="white-space-slider"
+                              valueLabelDisplay="auto"
+                              min={0}
+                              max={100}
+                              step={5}
+                              sx={{ flexGrow: 1, zIndex: 100 }}
+                              valueLabelFormat={(value) => `${value}%`}
+                            />
+                            <IconButton onClick={toggleWhiteSpaceSlider}>
+                              <Close />
+                            </IconButton>
+                          </Stack>
+                        )
                       )}
                     </Stack>
                   </Grid>
