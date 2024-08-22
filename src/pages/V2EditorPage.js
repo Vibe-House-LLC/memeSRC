@@ -132,7 +132,9 @@ const EditorPage = ({ shows }) => {
   const [showBrushSize, setShowBrushSize] = useState(false);
   const [editorLoaded, setEditorLoaded] = useState(false);
   const [editorStates, setEditorStates] = useState([]);
+  const [canvasSizes, setCanvasSizes] = useState([]);
   const [futureStates, setFutureStates] = useState([]);
+  const [futureCanvasSizes, setFutureCanvasSizes] = useState([]);
   const [bgEditorStates, setBgEditorStates] = useState([]);
   const [bgFutureStates, setBgFutureStates] = useState([]);
   const [loadingFineTuningFrames, setLoadingFineTuningFrames] = useState(true);
@@ -624,10 +626,26 @@ const EditorPage = ({ shows }) => {
 
   const changeColor = (color, index) => {
     setColorPickerColor(color);
-    editor.canvas.item(index).set('fill', color.hex);
-    // console.log(`Length of object:  + ${selectedObjects.length}`)
-    setCanvasObjects([...editor.canvas._objects])
-    // console.log(editor.canvas.item(index));
+    const textObject = editor.canvas.item(index);
+  
+    if (color.hex === '#000000') {
+      // If the color is black, remove the stroke
+      textObject.set({
+        fill: color.hex,
+        stroke: null,
+        strokeWidth: 0
+      });
+    } else {
+      // For other colors, keep the stroke
+      textObject.set({
+        fill: color.hex,
+        stroke: 'black',
+        strokeWidth: editor?.canvas.getWidth() * 0.0040,
+        strokeUniform: false
+      });
+    }
+
+    setCanvasObjects([...editor.canvas._objects]);
     editor?.canvas.renderAll();
     setColorPickerShowing(false);
     addToHistory();
@@ -1016,13 +1034,16 @@ const EditorPage = ({ shows }) => {
     try {
       // Save the current state of the canvas for local undo/redo before any scaling or modifications
       const serializedCanvas = JSON.stringify(editor.canvas);
-      const backgroundImage = editor.canvas.backgroundImage;
+      const currentCanvasSize = {
+        width: editor.canvas.width,
+        height: editor.canvas.height
+      };
 
       setFutureStates([]);
-      setBgFutureStates([]);
+      setFutureCanvasSizes([]);
 
       setEditorStates(prevHistory => [...prevHistory, serializedCanvas]);
-      setBgEditorStates(prevHistory => [...prevHistory, backgroundImage]);
+      setCanvasSizes(prevSizes => [...prevSizes, currentCanvasSize]);
 
     } catch (error) {
       console.error('Failed to update editor state or canvas image in S3:', error);
@@ -1053,19 +1074,19 @@ const EditorPage = ({ shows }) => {
 
     // Move the latest action to futureStates before going back
     setFutureStates(prevFuture => [editorStates[editorStates.length - 1], ...prevFuture]);
-    setBgFutureStates(prevFuture => [bgEditorStates[bgEditorStates.length - 1], ...prevFuture]);
+    setFutureCanvasSizes(prevFuture => [canvasSizes[canvasSizes.length - 1], ...prevFuture]);
 
     // Go back in history
     setEditorStates(prevHistory => prevHistory.slice(0, prevHistory.length - 1));
-    setBgEditorStates(prevHistory => prevHistory.slice(0, prevHistory.length - 1));
+    setCanvasSizes(prevSizes => prevSizes.slice(0, prevSizes.length - 1));
 
     // Load the previous state into the canvas
     editor.canvas.loadFromJSON(editorStates[editorStates.length - 2], () => {
-      // After loading the state, set the background image
-      editor.canvas.setBackgroundImage(bgEditorStates[bgEditorStates.length - 2], () => {
-        editor.canvas.renderAll.bind(editor.canvas)()
-        setCanvasObjects([...editor.canvas._objects]);
-      });
+      editor.canvas.setWidth(canvasSizes[canvasSizes.length - 2].width);
+      editor.canvas.setHeight(canvasSizes[canvasSizes.length - 2].height);
+      editor.canvas.renderAll();
+      setCanvasObjects([...editor.canvas._objects]);
+      setWhiteSpaceHeight(canvasSizes[canvasSizes.length - 2].height - canvasSize.height);
     });
   }
 
@@ -1074,19 +1095,19 @@ const EditorPage = ({ shows }) => {
 
     // Move the first future state back to editorStates
     setEditorStates(prevHistory => [...prevHistory, futureStates[0]]);
-    setBgEditorStates(prevHistory => [...prevHistory, bgFutureStates[0]]);
+    setCanvasSizes(prevSizes => [...prevSizes, futureCanvasSizes[0]]);
 
     // Remove the state we've just moved from futureStates
     setFutureStates(prevFuture => prevFuture.slice(1));
-    setBgFutureStates(prevFuture => prevFuture.slice(1));
+    setFutureCanvasSizes(prevFuture => prevFuture.slice(1));
 
     // Load the restored state into the canvas
     editor.canvas.loadFromJSON(futureStates[0], () => {
-      // After loading the state, set the background image
-      editor.canvas.setBackgroundImage(bgFutureStates[0], () => {
-        editor.canvas.renderAll.bind(editor.canvas)()
-        setCanvasObjects([...editor.canvas._objects]);
-      });
+      editor.canvas.setWidth(futureCanvasSizes[0].width);
+      editor.canvas.setHeight(futureCanvasSizes[0].height);
+      editor.canvas.renderAll();
+      setCanvasObjects([...editor.canvas._objects]);
+      setWhiteSpaceHeight(futureCanvasSizes[0].height - canvasSize.height);
     });
   }
 
@@ -1204,7 +1225,6 @@ const EditorPage = ({ shows }) => {
   }, [promptEnabled])
 
   useEffect(() => {
-
     if (searchParams.has('magicTools', 'true')) {
       if (!user || user?.userDetails?.credits <= 0) {
         setMagicToolsPopoverAnchorEl(magicToolsButtonRef.current);
@@ -1320,6 +1340,11 @@ const EditorPage = ({ shows }) => {
 
   useEffect(() => {
     if (confirmedCid) {
+      // Reset whitespace-related state variables
+      setShowWhiteSpaceSlider(false);
+      setWhiteSpaceValue(10);
+      setWhiteSpaceHeight(0);
+
       const loadInitialFrameInfo = async () => {
         setLoading(true);
         try {
@@ -1456,7 +1481,103 @@ const EditorPage = ({ shows }) => {
     }
   };
 
-  // Outputs
+  // Add these state variables near the top of your component, with the other useState declarations
+  const [showWhiteSpaceSlider, setShowWhiteSpaceSlider] = useState(false);
+  const [whiteSpaceValue, setWhiteSpaceValue] = useState(10);
+  const [whiteSpaceHeight, setWhiteSpaceHeight] = useState(0);
+  const [whiteSpacePreview, setWhiteSpacePreview] = useState(0);
+  const [isSliding, setIsSliding] = useState(false);
+
+  // Add this function to handle white space changes
+  const handleWhiteSpaceChange = (newValue) => {
+    const newWhiteSpaceHeight = (newValue / 100) * canvasSize.height;
+    setWhiteSpacePreview(newWhiteSpaceHeight);
+  };
+
+  const startWhiteSpaceChange = () => {
+    setIsSliding(true);
+    // Remove whitespace from canvas and reposition elements
+    if (editor && whiteSpaceHeight > 0) {
+      editor.canvas.setHeight(canvasSize.height);
+      editor.canvas.getObjects().forEach((obj) => {
+        obj.set('top', obj.top - whiteSpaceHeight);
+      });
+      if (editor.canvas.backgroundImage) {
+        editor.canvas.backgroundImage.set('top', editor.canvas.backgroundImage.top - whiteSpaceHeight);
+      }
+      editor.canvas.renderAll();
+    }
+    setWhiteSpacePreview(whiteSpaceHeight);
+  };
+
+  const applyWhiteSpace = () => {
+    setIsSliding(false);
+    const newHeight = canvasSize.height + whiteSpacePreview;
+    
+    if (editor) {
+      editor.canvas.setHeight(newHeight);
+      editor.canvas.getObjects().forEach((obj) => {
+        obj.set('top', obj.top + whiteSpacePreview);
+      });
+      if (editor.canvas.backgroundImage) {
+        editor.canvas.backgroundImage.set('top', editor.canvas.backgroundImage.top + whiteSpacePreview);
+      }
+      editor.canvas.renderAll();
+    }
+
+    setWhiteSpaceHeight(whiteSpacePreview);
+    addToHistory();
+  };
+
+  const toggleWhiteSpaceSlider = () => {
+    if (!showWhiteSpaceSlider) {
+      setShowWhiteSpaceSlider(true);
+      setWhiteSpacePreview(whiteSpaceHeight);
+    } else {
+      setShowWhiteSpaceSlider(false);
+      if (editor) {
+        const newHeight = canvasSize.height - whiteSpaceHeight;
+        editor.canvas.setHeight(newHeight);
+        editor.canvas.getObjects().forEach((obj) => {
+          obj.set('top', obj.top - whiteSpaceHeight);
+        });
+        if (editor.canvas.backgroundImage) {
+          editor.canvas.backgroundImage.set('top', editor.canvas.backgroundImage.top - whiteSpaceHeight);
+        }
+        editor.canvas.renderAll();
+      }
+      setWhiteSpaceHeight(0);
+      setWhiteSpacePreview(0);
+      addToHistory();
+    }
+  };
+
+  const updateCanvasSize = useCallback((heightDifference) => {
+    if (editor && canvasSize) {
+      const newHeight = canvasSize.height + whiteSpaceHeight;
+      editor.canvas.setHeight(newHeight);
+      editor.canvas.setWidth(canvasSize.width);
+
+      // Move all objects by the height difference
+      editor.canvas.getObjects().forEach((obj) => {
+        obj.set('top', obj.top + heightDifference);
+      });
+
+      // Move the background image
+      if (editor.canvas.backgroundImage) {
+        editor.canvas.backgroundImage.set('top', editor.canvas.backgroundImage.top + heightDifference);
+      }
+
+      editor.canvas.renderAll();
+    }
+  }, [editor, canvasSize, whiteSpaceHeight]);
+
+  useEffect(() => {
+    updateCanvasSize(0);
+  }, [whiteSpaceHeight, updateCanvasSize]);
+
+  // ... (rest of the code remains unchanged)
+
   return (
     <>
       <Helmet>
@@ -1485,48 +1606,93 @@ const EditorPage = ({ shows }) => {
               <Grid item xs={12} md={7} lg={7} marginRight={{ xs: '', md: 'auto' }}>
                 <Grid container item mb={1.5}>
                   <Grid item xs={12}>
-                    <Stack direction='row' width='100%' justifyContent='space-between' alignItems='center'>
+                    <Stack direction='column' width='100%' spacing={1}>
+                      <Stack direction='row' width='100%' justifyContent='space-between' alignItems='center'>
+                        <ButtonGroup variant="contained" size="small">
+                          <IconButton disabled={(editorStates.length <= 1)} onClick={undo}>
+                            <Undo />
+                          </IconButton>
+                          <IconButton disabled={(futureStates.length === 0)} onClick={redo}>
+                            <Redo />
+                          </IconButton>
+                        </ButtonGroup>
 
-                      <ButtonGroup variant="contained" size="small">
-                        <IconButton disabled={(editorStates.length <= 1)} onClick={undo}>
-                          <Undo />
-                        </IconButton>
-                        <IconButton disabled={(futureStates.length === 0)} onClick={redo}>
-                          <Redo />
-                        </IconButton>
-                      </ButtonGroup>
+                        <Button
+                          variant="contained"
+                          size="medium"
+                          startIcon={<Save />}
+                          onClick={handleClickDialogOpen}
+                          sx={{ zIndex: '50', backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
+                        >
+                          {location.state?.collageState ? "Save" : "Save/Copy/Share"}
+                        </Button>
+                      </Stack>
 
-                      <Button
-                        variant="contained"
-                        size="medium"
-                        startIcon={<Save />}
-                        onClick={handleClickDialogOpen}
-                        sx={{ zIndex: '50', backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
-                      >
-                        {location.state?.collageState ? "Save" : "Save/Copy/Share"}
-                      </Button>
-
+                      {process.env.REACT_APP_USER_BRANCH === 'dev' && (
+                        !showWhiteSpaceSlider ? (
+                          <Button
+                            variant="contained"
+                            fullWidth
+                            onClick={toggleWhiteSpaceSlider}
+                          >
+                            Add White Space
+                          </Button>
+                        ) : (
+                          <Stack direction="row" spacing={1} alignItems="center">
+                            <Typography>Whitespace</Typography>
+                            <Slider
+                              value={whiteSpacePreview / canvasSize.height * 100}
+                              onChange={(event, newValue) => handleWhiteSpaceChange(newValue)}
+                              onChangeCommitted={applyWhiteSpace}
+                              onMouseDown={startWhiteSpaceChange}
+                              onTouchStart={startWhiteSpaceChange}
+                              aria-labelledby="white-space-slider"
+                              valueLabelDisplay="auto"
+                              min={0}
+                              max={100}
+                              step={1}
+                              sx={{ flexGrow: 1, zIndex: 100 }}
+                              valueLabelFormat={(value) => `${Math.round(value)}%`}
+                            />
+                            <IconButton onClick={toggleWhiteSpaceSlider}>
+                              <Close />
+                            </IconButton>
+                          </Stack>
+                        )
+                      )}
                     </Stack>
                   </Grid>
                 </Grid>
                 <div style={{ width: '100%', padding: 0, margin: 0, boxSizing: 'border-box', position: 'relative' }} id="canvas-container">
-                  <FabricJSCanvas onReady={onReady} />
-                  {showBrushSize &&
-                    <div style={{
-                      width: brushToolSize,
-                      height: brushToolSize,
-                      position: 'absolute',
-                      left: '50%',
-                      top: '50%',
-                      transform: 'translate(-50%, -50%)',
-                      borderRadius: '50%',
-                      background: 'red',
-                      borderColor: 'black',
-                      borderStyle: 'solid',
-                      borderWidth: '1px',
-                      boxShadow: '0 7px 10px rgba(0, 0, 0, 0.75)'
-                    }} />
-                  }
+                  {showWhiteSpaceSlider && isSliding && (
+                    <div 
+                      style={{
+                        width: '100%',
+                        height: `${whiteSpacePreview}px`,
+                        backgroundColor: 'white',
+                        transition: 'height 0.05s ease-out'
+                      }}
+                    />
+                  )}
+                  <div style={{ height: isSliding ? canvasSize.height : (canvasSize.height + whiteSpaceHeight) }}>
+                    <FabricJSCanvas onReady={onReady} />
+                    {showBrushSize &&
+                      <div style={{
+                        width: brushToolSize,
+                        height: brushToolSize,
+                        position: 'absolute',
+                        left: '50%',
+                        top: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        borderRadius: '50%',
+                        background: 'red',
+                        borderColor: 'black',
+                        borderStyle: 'solid',
+                        borderWidth: '1px',
+                        boxShadow: '0 7px 10px rgba(0, 0, 0, 0.75)'
+                      }} />
+                    }
+                  </div>
                 </div>
 
 
@@ -2107,7 +2273,7 @@ const EditorPage = ({ shows }) => {
                   '#9900EF',
                 ]}
                 width="280px"
-              // TODO: Fix background color to match other cards
+                // TODO: Fix background color to match other cards
               />
             </ColorPickerPopover>
           </Popover>
