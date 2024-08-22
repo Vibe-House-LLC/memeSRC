@@ -1467,6 +1467,19 @@ const EditorPage = ({ shows }) => {
     updateCanvasSize();
   };
 
+  const toggleWhiteSpaceSlider = () => {
+    if (!showWhiteSpaceSlider) {
+      setShowWhiteSpaceSlider(true);
+      // Immediately apply the initial white space when the button is clicked
+      setWhiteSpaceHeight(whiteSpaceValue);
+      updateCanvasSize();
+    } else {
+      setShowWhiteSpaceSlider(false);
+      setWhiteSpaceHeight(0);
+      updateCanvasSize();
+    }
+  };
+
   const updateCanvasSize = useCallback(() => {
     if (editor && canvasSize) {
       const newHeight = canvasSize.height + whiteSpaceHeight;
@@ -1547,7 +1560,7 @@ const EditorPage = ({ shows }) => {
                         <Button
                           variant="contained"
                           fullWidth
-                          onClick={() => setShowWhiteSpaceSlider(true)}
+                          onClick={toggleWhiteSpaceSlider}
                         >
                           Add White Space
                         </Button>
@@ -1565,12 +1578,7 @@ const EditorPage = ({ shows }) => {
                             sx={{ flexGrow: 1, zIndex: 100 }}
                             valueLabelFormat={(value) => `${value} pixels`}
                           />
-                          <IconButton onClick={() => {
-                            setShowWhiteSpaceSlider(false);
-                            setWhiteSpaceValue(0);
-                            setWhiteSpaceHeight(0);
-                            updateCanvasSize();
-                          }}>
+                          <IconButton onClick={toggleWhiteSpaceSlider}>
                             <Close />
                           </IconButton>
                         </Stack>
@@ -2176,7 +2184,7 @@ const EditorPage = ({ shows }) => {
                   '#9900EF',
                 ]}
                 width="280px"
-              // TODO: Fix background color to match other cards
+                // TODO: Fix background color to match other cards
               />
             </ColorPickerPopover>
           </Popover>
