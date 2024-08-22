@@ -1464,8 +1464,9 @@ const EditorPage = ({ shows }) => {
   const handleWhiteSpaceChange = (newValue) => {
     setWhiteSpaceValue(newValue);
     const newWhiteSpaceHeight = (newValue / 100) * canvasSize.height;
+    const heightDifference = newWhiteSpaceHeight - whiteSpaceHeight;
     setWhiteSpaceHeight(newWhiteSpaceHeight);
-    updateCanvasSize();
+    updateCanvasSize(heightDifference);
   };
 
   const toggleWhiteSpaceSlider = () => {
@@ -1473,29 +1474,31 @@ const EditorPage = ({ shows }) => {
       setShowWhiteSpaceSlider(true);
       // Apply the initial white space when the button is clicked
       const initialWhiteSpaceHeight = (whiteSpaceValue / 100) * canvasSize.height;
+      const heightDifference = initialWhiteSpaceHeight - whiteSpaceHeight;
       setWhiteSpaceHeight(initialWhiteSpaceHeight);
-      updateCanvasSize();
+      updateCanvasSize(heightDifference);
     } else {
       setShowWhiteSpaceSlider(false);
+      const heightDifference = -whiteSpaceHeight;
       setWhiteSpaceHeight(0);
-      updateCanvasSize();
+      updateCanvasSize(heightDifference);
     }
   };
 
-  const updateCanvasSize = useCallback(() => {
+  const updateCanvasSize = useCallback((heightDifference) => {
     if (editor && canvasSize) {
       const newHeight = canvasSize.height + whiteSpaceHeight;
       editor.canvas.setHeight(newHeight);
       editor.canvas.setWidth(canvasSize.width);
 
-      // Move all objects down by the white space height
+      // Move all objects by the height difference
       editor.canvas.getObjects().forEach((obj) => {
-        obj.set('top', obj.top + whiteSpaceHeight);
+        obj.set('top', obj.top + heightDifference);
       });
 
-      // Move the background image down
+      // Move the background image
       if (editor.canvas.backgroundImage) {
-        editor.canvas.backgroundImage.set('top', whiteSpaceHeight);
+        editor.canvas.backgroundImage.set('top', editor.canvas.backgroundImage.top + heightDifference);
       }
 
       editor.canvas.renderAll();
@@ -1503,7 +1506,7 @@ const EditorPage = ({ shows }) => {
   }, [editor, canvasSize, whiteSpaceHeight]);
 
   useEffect(() => {
-    updateCanvasSize();
+    updateCanvasSize(0);
   }, [whiteSpaceHeight, updateCanvasSize]);
 
   // ... (rest of the code remains unchanged)
