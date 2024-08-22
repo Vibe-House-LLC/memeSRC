@@ -132,7 +132,9 @@ const EditorPage = ({ shows }) => {
   const [showBrushSize, setShowBrushSize] = useState(false);
   const [editorLoaded, setEditorLoaded] = useState(false);
   const [editorStates, setEditorStates] = useState([]);
+  const [canvasSizes, setCanvasSizes] = useState([]);
   const [futureStates, setFutureStates] = useState([]);
+  const [futureCanvasSizes, setFutureCanvasSizes] = useState([]);
   const [bgEditorStates, setBgEditorStates] = useState([]);
   const [bgFutureStates, setBgFutureStates] = useState([]);
   const [loadingFineTuningFrames, setLoadingFineTuningFrames] = useState(true);
@@ -1032,13 +1034,16 @@ const EditorPage = ({ shows }) => {
     try {
       // Save the current state of the canvas for local undo/redo before any scaling or modifications
       const serializedCanvas = JSON.stringify(editor.canvas);
-      const backgroundImage = editor.canvas.backgroundImage;
+      const currentCanvasSize = {
+        width: editor.canvas.width,
+        height: editor.canvas.height
+      };
 
       setFutureStates([]);
-      setBgFutureStates([]);
+      setFutureCanvasSizes([]);
 
       setEditorStates(prevHistory => [...prevHistory, serializedCanvas]);
-      setBgEditorStates(prevHistory => [...prevHistory, backgroundImage]);
+      setCanvasSizes(prevSizes => [...prevSizes, currentCanvasSize]);
 
     } catch (error) {
       console.error('Failed to update editor state or canvas image in S3:', error);
@@ -1069,19 +1074,19 @@ const EditorPage = ({ shows }) => {
 
     // Move the latest action to futureStates before going back
     setFutureStates(prevFuture => [editorStates[editorStates.length - 1], ...prevFuture]);
-    setBgFutureStates(prevFuture => [bgEditorStates[bgEditorStates.length - 1], ...prevFuture]);
+    setFutureCanvasSizes(prevFuture => [canvasSizes[canvasSizes.length - 1], ...prevFuture]);
 
     // Go back in history
     setEditorStates(prevHistory => prevHistory.slice(0, prevHistory.length - 1));
-    setBgEditorStates(prevHistory => prevHistory.slice(0, prevHistory.length - 1));
+    setCanvasSizes(prevSizes => prevSizes.slice(0, prevSizes.length - 1));
 
     // Load the previous state into the canvas
     editor.canvas.loadFromJSON(editorStates[editorStates.length - 2], () => {
-      // After loading the state, set the background image
-      editor.canvas.setBackgroundImage(bgEditorStates[bgEditorStates.length - 2], () => {
-        editor.canvas.renderAll.bind(editor.canvas)()
-        setCanvasObjects([...editor.canvas._objects]);
-      });
+      editor.canvas.setWidth(canvasSizes[canvasSizes.length - 2].width);
+      editor.canvas.setHeight(canvasSizes[canvasSizes.length - 2].height);
+      editor.canvas.renderAll();
+      setCanvasObjects([...editor.canvas._objects]);
+      setWhiteSpaceHeight(canvasSizes[canvasSizes.length - 2].height - canvasSize.height);
     });
   }
 
@@ -1090,19 +1095,19 @@ const EditorPage = ({ shows }) => {
 
     // Move the first future state back to editorStates
     setEditorStates(prevHistory => [...prevHistory, futureStates[0]]);
-    setBgEditorStates(prevHistory => [...prevHistory, bgFutureStates[0]]);
+    setCanvasSizes(prevSizes => [...prevSizes, futureCanvasSizes[0]]);
 
     // Remove the state we've just moved from futureStates
     setFutureStates(prevFuture => prevFuture.slice(1));
-    setBgFutureStates(prevFuture => prevFuture.slice(1));
+    setFutureCanvasSizes(prevFuture => prevFuture.slice(1));
 
     // Load the restored state into the canvas
     editor.canvas.loadFromJSON(futureStates[0], () => {
-      // After loading the state, set the background image
-      editor.canvas.setBackgroundImage(bgFutureStates[0], () => {
-        editor.canvas.renderAll.bind(editor.canvas)()
-        setCanvasObjects([...editor.canvas._objects]);
-      });
+      editor.canvas.setWidth(futureCanvasSizes[0].width);
+      editor.canvas.setHeight(futureCanvasSizes[0].height);
+      editor.canvas.renderAll();
+      setCanvasObjects([...editor.canvas._objects]);
+      setWhiteSpaceHeight(futureCanvasSizes[0].height - canvasSize.height);
     });
   }
 
@@ -1507,11 +1512,10 @@ const EditorPage = ({ shows }) => {
 
   const applyWhiteSpace = () => {
     setIsSliding(false);
-    const heightDifference = whiteSpacePreview - whiteSpaceHeight;
-    setWhiteSpaceHeight(whiteSpacePreview);
-
+    const newHeight = canvasSize.height + whiteSpacePreview;
+    
     if (editor) {
-      editor.canvas.setHeight(canvasSize.height + whiteSpacePreview);
+      editor.canvas.setHeight(newHeight);
       editor.canvas.getObjects().forEach((obj) => {
         obj.set('top', obj.top + whiteSpacePreview);
       });
@@ -1521,6 +1525,7 @@ const EditorPage = ({ shows }) => {
       editor.canvas.renderAll();
     }
 
+    setWhiteSpaceHeight(whiteSpacePreview);
     addToHistory();
   };
 
@@ -1530,9 +1535,9 @@ const EditorPage = ({ shows }) => {
       setWhiteSpacePreview(whiteSpaceHeight);
     } else {
       setShowWhiteSpaceSlider(false);
-      // Remove whitespace and reset positions
       if (editor) {
-        editor.canvas.setHeight(canvasSize.height);
+        const newHeight = canvasSize.height - whiteSpaceHeight;
+        editor.canvas.setHeight(newHeight);
         editor.canvas.getObjects().forEach((obj) => {
           obj.set('top', obj.top - whiteSpaceHeight);
         });
