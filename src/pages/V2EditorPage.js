@@ -1457,21 +1457,23 @@ const EditorPage = ({ shows }) => {
 
   // Add these state variables near the top of your component, with the other useState declarations
   const [showWhiteSpaceSlider, setShowWhiteSpaceSlider] = useState(false);
-  const [whiteSpaceValue, setWhiteSpaceValue] = useState(50);
+  const [whiteSpaceValue, setWhiteSpaceValue] = useState(10);
   const [whiteSpaceHeight, setWhiteSpaceHeight] = useState(0);
 
   // Add this function to handle white space changes
   const handleWhiteSpaceChange = (newValue) => {
     setWhiteSpaceValue(newValue);
-    setWhiteSpaceHeight(newValue);
+    const newWhiteSpaceHeight = (newValue / 100) * canvasSize.height;
+    setWhiteSpaceHeight(newWhiteSpaceHeight);
     updateCanvasSize();
   };
 
   const toggleWhiteSpaceSlider = () => {
     if (!showWhiteSpaceSlider) {
       setShowWhiteSpaceSlider(true);
-      // Immediately apply the initial white space when the button is clicked
-      setWhiteSpaceHeight(whiteSpaceValue);
+      // Apply the initial white space when the button is clicked
+      const initialWhiteSpaceHeight = (whiteSpaceValue / 100) * canvasSize.height;
+      setWhiteSpaceHeight(initialWhiteSpaceHeight);
       updateCanvasSize();
     } else {
       setShowWhiteSpaceSlider(false);
@@ -1573,10 +1575,10 @@ const EditorPage = ({ shows }) => {
                             aria-labelledby="white-space-slider"
                             valueLabelDisplay="auto"
                             min={0}
-                            max={250}
-                            step={25}
+                            max={100}
+                            step={5}
                             sx={{ flexGrow: 1, zIndex: 100 }}
-                            valueLabelFormat={(value) => `${value} pixels`}
+                            valueLabelFormat={(value) => `${value}%`}
                           />
                           <IconButton onClick={toggleWhiteSpaceSlider}>
                             <Close />
