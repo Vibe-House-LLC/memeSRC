@@ -1204,7 +1204,6 @@ const EditorPage = ({ shows }) => {
   }, [promptEnabled])
 
   useEffect(() => {
-
     if (searchParams.has('magicTools', 'true')) {
       if (!user || user?.userDetails?.credits <= 0) {
         setMagicToolsPopoverAnchorEl(magicToolsButtonRef.current);
@@ -1456,7 +1455,21 @@ const EditorPage = ({ shows }) => {
     }
   };
 
-  // Outputs
+  // Add these state variables near the top of your component, with the other useState declarations
+  const [showWhiteSpaceSlider, setShowWhiteSpaceSlider] = useState(false);
+  const [whiteSpaceValue, setWhiteSpaceValue] = useState(50);
+
+  // Add this function to handle white space changes
+  const handleWhiteSpaceChange = (newValue) => {
+    setWhiteSpaceValue(newValue);
+    // Add logic here to apply white space to your canvas
+    // This might involve resizing the canvas or adding padding
+    // For example:
+    // editor.canvas.setWidth(canvasSize.width + newValue);
+    // editor.canvas.setHeight(canvasSize.height + newValue);
+    // editor.canvas.renderAll();
+  };
+
   return (
     <>
       <Helmet>
@@ -1485,27 +1498,55 @@ const EditorPage = ({ shows }) => {
               <Grid item xs={12} md={7} lg={7} marginRight={{ xs: '', md: 'auto' }}>
                 <Grid container item mb={1.5}>
                   <Grid item xs={12}>
-                    <Stack direction='row' width='100%' justifyContent='space-between' alignItems='center'>
+                    <Stack direction='column' width='100%' spacing={1}>
+                      <Stack direction='row' width='100%' justifyContent='space-between' alignItems='center'>
+                        <ButtonGroup variant="contained" size="small">
+                          <IconButton disabled={(editorStates.length <= 1)} onClick={undo}>
+                            <Undo />
+                          </IconButton>
+                          <IconButton disabled={(futureStates.length === 0)} onClick={redo}>
+                            <Redo />
+                          </IconButton>
+                        </ButtonGroup>
 
-                      <ButtonGroup variant="contained" size="small">
-                        <IconButton disabled={(editorStates.length <= 1)} onClick={undo}>
-                          <Undo />
-                        </IconButton>
-                        <IconButton disabled={(futureStates.length === 0)} onClick={redo}>
-                          <Redo />
-                        </IconButton>
-                      </ButtonGroup>
+                        <Button
+                          variant="contained"
+                          size="medium"
+                          startIcon={<Save />}
+                          onClick={handleClickDialogOpen}
+                          sx={{ zIndex: '50', backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
+                        >
+                          {location.state?.collageState ? "Save" : "Save/Copy/Share"}
+                        </Button>
+                      </Stack>
 
-                      <Button
-                        variant="contained"
-                        size="medium"
-                        startIcon={<Save />}
-                        onClick={handleClickDialogOpen}
-                        sx={{ zIndex: '50', backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
-                      >
-                        {location.state?.collageState ? "Save" : "Save/Copy/Share"}
-                      </Button>
-
+                      {!showWhiteSpaceSlider ? (
+                        <Button
+                          variant="contained"
+                          fullWidth
+                          onClick={() => setShowWhiteSpaceSlider(true)}
+                        >
+                          Add White Space
+                        </Button>
+                      ) : (
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <Typography>Whitespace</Typography>
+                          <Slider
+                            value={whiteSpaceValue}
+                            onChange={(event, newValue) => handleWhiteSpaceChange(newValue)}
+                            aria-labelledby="white-space-slider"
+                            valueLabelDisplay="auto"
+                            min={0}
+                            max={250}
+                            step={25}
+                            sx={{ flexGrow: 1, zIndex: 100 }}
+                            valueLabelFormat={(value) => `${value} pixels`}
+                          />
+                          <IconButton onClick={() => setShowWhiteSpaceSlider(false)}>
+                            <Close />
+                          </IconButton>
+                        </Stack>
+                      )}
                     </Stack>
                   </Grid>
                 </Grid>
