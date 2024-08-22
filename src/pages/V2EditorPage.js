@@ -1458,17 +1458,40 @@ const EditorPage = ({ shows }) => {
   // Add these state variables near the top of your component, with the other useState declarations
   const [showWhiteSpaceSlider, setShowWhiteSpaceSlider] = useState(false);
   const [whiteSpaceValue, setWhiteSpaceValue] = useState(50);
+  const [whiteSpaceHeight, setWhiteSpaceHeight] = useState(0);
 
   // Add this function to handle white space changes
   const handleWhiteSpaceChange = (newValue) => {
     setWhiteSpaceValue(newValue);
-    // Add logic here to apply white space to your canvas
-    // This might involve resizing the canvas or adding padding
-    // For example:
-    // editor.canvas.setWidth(canvasSize.width + newValue);
-    // editor.canvas.setHeight(canvasSize.height + newValue);
-    // editor.canvas.renderAll();
+    setWhiteSpaceHeight(newValue);
+    updateCanvasSize();
   };
+
+  const updateCanvasSize = useCallback(() => {
+    if (editor && canvasSize) {
+      const newHeight = canvasSize.height + whiteSpaceHeight;
+      editor.canvas.setHeight(newHeight);
+      editor.canvas.setWidth(canvasSize.width);
+
+      // Move all objects down by the white space height
+      editor.canvas.getObjects().forEach((obj) => {
+        obj.set('top', obj.top + whiteSpaceHeight);
+      });
+
+      // Move the background image down
+      if (editor.canvas.backgroundImage) {
+        editor.canvas.backgroundImage.set('top', whiteSpaceHeight);
+      }
+
+      editor.canvas.renderAll();
+    }
+  }, [editor, canvasSize, whiteSpaceHeight]);
+
+  useEffect(() => {
+    updateCanvasSize();
+  }, [whiteSpaceHeight, updateCanvasSize]);
+
+  // ... (rest of the code remains unchanged)
 
   return (
     <>
@@ -1542,7 +1565,12 @@ const EditorPage = ({ shows }) => {
                             sx={{ flexGrow: 1, zIndex: 100 }}
                             valueLabelFormat={(value) => `${value} pixels`}
                           />
-                          <IconButton onClick={() => setShowWhiteSpaceSlider(false)}>
+                          <IconButton onClick={() => {
+                            setShowWhiteSpaceSlider(false);
+                            setWhiteSpaceValue(0);
+                            setWhiteSpaceHeight(0);
+                            updateCanvasSize();
+                          }}>
                             <Close />
                           </IconButton>
                         </Stack>
@@ -1550,7 +1578,7 @@ const EditorPage = ({ shows }) => {
                     </Stack>
                   </Grid>
                 </Grid>
-                <div style={{ width: '100%', padding: 0, margin: 0, boxSizing: 'border-box', position: 'relative' }} id="canvas-container">
+                <div style={{ width: '100%', padding: 0, margin: 0, boxSizing: 'border-box', position: 'relative', height: canvasSize.height + whiteSpaceHeight }} id="canvas-container">
                   <FabricJSCanvas onReady={onReady} />
                   {showBrushSize &&
                     <div style={{
