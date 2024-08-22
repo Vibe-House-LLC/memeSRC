@@ -1335,6 +1335,11 @@ const EditorPage = ({ shows }) => {
 
   useEffect(() => {
     if (confirmedCid) {
+      // Reset whitespace-related state variables
+      setShowWhiteSpaceSlider(false);
+      setWhiteSpaceValue(10);
+      setWhiteSpaceHeight(0);
+
       const loadInitialFrameInfo = async () => {
         setLoading(true);
         try {
