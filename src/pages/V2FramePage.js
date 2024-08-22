@@ -218,6 +218,18 @@ export default function FramePage({ shows = [] }) {
     return totalLines;
   }
 
+  function getContrastColor(hexColor) {
+    // Convert hex to RGB
+    const r = parseInt(hexColor.slice(1, 3), 16);
+    const g = parseInt(hexColor.slice(3, 5), 16);
+    const b = parseInt(hexColor.slice(5, 7), 16);
+    
+    // Calculate luminance
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    
+    // Return black for bright colors, white for dark colors
+    return luminance > 0.5 ? '#000000' : '#FFFFFF';
+  }
 
   const updateCanvasUnthrottled = (scaleDown) => {
     const offScreenCanvas = document.createElement('canvas');
@@ -272,8 +284,8 @@ export default function FramePage({ shows = [] }) {
           ctx.font = `${fontStyle} ${fontWeight} ${isMd ? scaledFontSizeDesktop : scaledFontSizeMobile}px ${fontFamily}`;
           ctx.textAlign = 'center';
           ctx.fillStyle = fontColor;
-          ctx.strokeStyle = 'black';
-          ctx.lineWidth = 6;
+          ctx.strokeStyle = getContrastColor(fontColor);
+          ctx.lineWidth = offScreenCanvas.width * 0.0044; // Adjusted to be between 0.002 and 0.0025
           ctx.lineJoin = 'round'; // Add this line to round the joints
 
           const x = offScreenCanvas.width / 2;
@@ -984,18 +996,17 @@ useEffect(() => {
                           color={colorPickerColor}
                           colors={[
                             '#FFFFFF',
-                            'yellow',
-                            'black',
-                            'orange',
-                            '#8ED1FC',
-                            '#0693E3',
-                            '#ABB8C3',
-                            '#EB144C',
-                            '#F78DA7',
-                            '#9900EF',
+                            '#FFFF00',
+                            '#000000',
+                            '#FF4136',
+                            '#2ECC40',
+                            '#0052CC',
+                            '#FF851B',
+                            '#B10DC9',
+                            '#39CCCC',
+                            '#F012BE',
                           ]}
                           width="280px"
-                        // TODO: Fix background color to match other cards
                         />
                       </div>
                     </Popover>

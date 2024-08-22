@@ -628,27 +628,33 @@ const EditorPage = ({ shows }) => {
     setColorPickerColor(color);
     const textObject = editor.canvas.item(index);
   
-    if (color.hex === '#000000') {
-      // If the color is black, remove the stroke
-      textObject.set({
-        fill: color.hex,
-        stroke: null,
-        strokeWidth: 0
-      });
-    } else {
-      // For other colors, keep the stroke
-      textObject.set({
-        fill: color.hex,
-        stroke: 'black',
-        strokeWidth: editor?.canvas.getWidth() * 0.0040,
-        strokeUniform: false
-      });
-    }
-
+    const fontColor = color.hex;
+    const strokeColor = getContrastColor(fontColor);
+  
+    textObject.set({
+      fill: fontColor,
+      stroke: strokeColor,
+      strokeWidth: editor?.canvas.getWidth() * 0.0025, // Reduced from 0.0040 to 0.0025
+      strokeUniform: false
+    });
+  
     setCanvasObjects([...editor.canvas._objects]);
     editor?.canvas.renderAll();
     setColorPickerShowing(false);
     addToHistory();
+  }
+  // Add this function to calculate the contrast color
+  function getContrastColor(hexColor) {
+    // Convert hex to RGB
+    const r = parseInt(hexColor.slice(1, 3), 16);
+    const g = parseInt(hexColor.slice(3, 5), 16);
+    const b = parseInt(hexColor.slice(5, 7), 16);
+    
+    // Calculate luminance
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    
+    // Return black for bright colors, white for dark colors
+    return luminance > 0.5 ? '#000000' : '#FFFFFF';
   }
 
   const handleEdit = (event, index) => {
@@ -2257,24 +2263,23 @@ const EditorPage = ({ shows }) => {
             }}
           >
             <ColorPickerPopover>
-              <TwitterPickerWrapper
-                onChangeComplete={(color) => changeColor(color, pickingColor)}
-                color={colorPickerColor}
-                colors={[
-                  '#FFFFFF',
-                  'yellow',
-                  'black',
-                  'orange',
-                  '#8ED1FC',
-                  '#0693E3',
-                  '#ABB8C3',
-                  '#EB144C',
-                  '#F78DA7',
-                  '#9900EF',
-                ]}
-                width="280px"
-                // TODO: Fix background color to match other cards
-              />
+            <TwitterPickerWrapper
+              onChange={(color) => changeColor(color, pickingColor)}
+              color={colorPickerColor}
+              colors={[
+                '#FFFFFF', // White (unchanged)
+                '#FFFF00', // Yellow (unchanged)
+                '#000000', // Black (unchanged)
+                '#FF4136', // Bright Red
+                '#2ECC40', // Bright Green
+                '#0052CC', // Darker Blue
+                '#FF851B', // Bright Orange
+                '#B10DC9', // Bright Purple
+                '#39CCCC', // Bright Cyan
+                '#F012BE', // Bright Magenta
+              ]}
+              width="280px"
+            />
             </ColorPickerPopover>
           </Popover>
 
