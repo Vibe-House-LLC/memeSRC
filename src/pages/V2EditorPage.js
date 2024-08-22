@@ -1650,9 +1650,9 @@ const EditorPage = ({ shows }) => {
                               valueLabelDisplay="auto"
                               min={0}
                               max={100}
-                              step={5}
+                              step={1}
                               sx={{ flexGrow: 1, zIndex: 100 }}
-                              valueLabelFormat={(value) => `${value}%`}
+                              valueLabelFormat={(value) => `${Math.round(value)}%`}
                             />
                             <IconButton onClick={toggleWhiteSpaceSlider}>
                               <Close />
@@ -1670,7 +1670,7 @@ const EditorPage = ({ shows }) => {
                         width: '100%',
                         height: `${whiteSpacePreview}px`,
                         backgroundColor: 'white',
-                        transition: 'height 0.3s ease-out'
+                        transition: 'height 0.05s ease-out'
                       }}
                     />
                   )}
