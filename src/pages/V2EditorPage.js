@@ -1480,29 +1480,70 @@ const EditorPage = ({ shows }) => {
   const [showWhiteSpaceSlider, setShowWhiteSpaceSlider] = useState(false);
   const [whiteSpaceValue, setWhiteSpaceValue] = useState(10);
   const [whiteSpaceHeight, setWhiteSpaceHeight] = useState(0);
+  const [whiteSpacePreview, setWhiteSpacePreview] = useState(0);
+  const [isSliding, setIsSliding] = useState(false);
 
   // Add this function to handle white space changes
   const handleWhiteSpaceChange = (newValue) => {
-    setWhiteSpaceValue(newValue);
     const newWhiteSpaceHeight = (newValue / 100) * canvasSize.height;
-    const heightDifference = newWhiteSpaceHeight - whiteSpaceHeight;
-    setWhiteSpaceHeight(newWhiteSpaceHeight);
-    updateCanvasSize(heightDifference);
+    setWhiteSpacePreview(newWhiteSpaceHeight);
+  };
+
+  const startWhiteSpaceChange = () => {
+    setIsSliding(true);
+    // Remove whitespace from canvas and reposition elements
+    if (editor && whiteSpaceHeight > 0) {
+      editor.canvas.setHeight(canvasSize.height);
+      editor.canvas.getObjects().forEach((obj) => {
+        obj.set('top', obj.top - whiteSpaceHeight);
+      });
+      if (editor.canvas.backgroundImage) {
+        editor.canvas.backgroundImage.set('top', editor.canvas.backgroundImage.top - whiteSpaceHeight);
+      }
+      editor.canvas.renderAll();
+    }
+    setWhiteSpacePreview(whiteSpaceHeight);
+  };
+
+  const applyWhiteSpace = () => {
+    setIsSliding(false);
+    const heightDifference = whiteSpacePreview - whiteSpaceHeight;
+    setWhiteSpaceHeight(whiteSpacePreview);
+
+    if (editor) {
+      editor.canvas.setHeight(canvasSize.height + whiteSpacePreview);
+      editor.canvas.getObjects().forEach((obj) => {
+        obj.set('top', obj.top + whiteSpacePreview);
+      });
+      if (editor.canvas.backgroundImage) {
+        editor.canvas.backgroundImage.set('top', editor.canvas.backgroundImage.top + whiteSpacePreview);
+      }
+      editor.canvas.renderAll();
+    }
+
+    addToHistory();
   };
 
   const toggleWhiteSpaceSlider = () => {
     if (!showWhiteSpaceSlider) {
       setShowWhiteSpaceSlider(true);
-      // Apply the initial white space when the button is clicked
-      const initialWhiteSpaceHeight = (whiteSpaceValue / 100) * canvasSize.height;
-      const heightDifference = initialWhiteSpaceHeight - whiteSpaceHeight;
-      setWhiteSpaceHeight(initialWhiteSpaceHeight);
-      updateCanvasSize(heightDifference);
+      setWhiteSpacePreview(whiteSpaceHeight);
     } else {
       setShowWhiteSpaceSlider(false);
-      const heightDifference = -whiteSpaceHeight;
+      // Remove whitespace and reset positions
+      if (editor) {
+        editor.canvas.setHeight(canvasSize.height);
+        editor.canvas.getObjects().forEach((obj) => {
+          obj.set('top', obj.top - whiteSpaceHeight);
+        });
+        if (editor.canvas.backgroundImage) {
+          editor.canvas.backgroundImage.set('top', editor.canvas.backgroundImage.top - whiteSpaceHeight);
+        }
+        editor.canvas.renderAll();
+      }
       setWhiteSpaceHeight(0);
-      updateCanvasSize(heightDifference);
+      setWhiteSpacePreview(0);
+      addToHistory();
     }
   };
 
@@ -1594,8 +1635,11 @@ const EditorPage = ({ shows }) => {
                         <Stack direction="row" spacing={1} alignItems="center">
                           <Typography>Whitespace</Typography>
                           <Slider
-                            value={whiteSpaceValue}
+                            value={whiteSpacePreview / canvasSize.height * 100}
                             onChange={(event, newValue) => handleWhiteSpaceChange(newValue)}
+                            onChangeCommitted={applyWhiteSpace}
+                            onMouseDown={startWhiteSpaceChange}
+                            onTouchStart={startWhiteSpaceChange}
                             aria-labelledby="white-space-slider"
                             valueLabelDisplay="auto"
                             min={0}
@@ -1612,24 +1656,36 @@ const EditorPage = ({ shows }) => {
                     </Stack>
                   </Grid>
                 </Grid>
-                <div style={{ width: '100%', padding: 0, margin: 0, boxSizing: 'border-box', position: 'relative', height: canvasSize.height + whiteSpaceHeight }} id="canvas-container">
-                  <FabricJSCanvas onReady={onReady} />
-                  {showBrushSize &&
-                    <div style={{
-                      width: brushToolSize,
-                      height: brushToolSize,
-                      position: 'absolute',
-                      left: '50%',
-                      top: '50%',
-                      transform: 'translate(-50%, -50%)',
-                      borderRadius: '50%',
-                      background: 'red',
-                      borderColor: 'black',
-                      borderStyle: 'solid',
-                      borderWidth: '1px',
-                      boxShadow: '0 7px 10px rgba(0, 0, 0, 0.75)'
-                    }} />
-                  }
+                <div style={{ width: '100%', padding: 0, margin: 0, boxSizing: 'border-box', position: 'relative' }} id="canvas-container">
+                  {showWhiteSpaceSlider && isSliding && (
+                    <div 
+                      style={{
+                        width: '100%',
+                        height: `${whiteSpacePreview}px`,
+                        backgroundColor: 'white',
+                        transition: 'height 0.3s ease-out'
+                      }}
+                    />
+                  )}
+                  <div style={{ height: isSliding ? canvasSize.height : (canvasSize.height + whiteSpaceHeight) }}>
+                    <FabricJSCanvas onReady={onReady} />
+                    {showBrushSize &&
+                      <div style={{
+                        width: brushToolSize,
+                        height: brushToolSize,
+                        position: 'absolute',
+                        left: '50%',
+                        top: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        borderRadius: '50%',
+                        background: 'red',
+                        borderColor: 'black',
+                        borderStyle: 'solid',
+                        borderWidth: '1px',
+                        boxShadow: '0 7px 10px rgba(0, 0, 0, 0.75)'
+                      }} />
+                    }
+                  </div>
                 </div>
 
 
