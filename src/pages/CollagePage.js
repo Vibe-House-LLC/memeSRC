@@ -795,7 +795,7 @@ export default function CollagePage() {
                 </StepButton>
               </ButtonGroup>
 
-              <Grid container spacing={2} sx={{ mt: 2, mb: 3 }}>
+              <Grid container spacing={2} sx={{ mt: 2, mb: 2 }}>
                 <Grid item xs={6}>
                   <FormControl fullWidth>
                     <InputLabel id="border-thickness-label">Border Thickness</InputLabel>
