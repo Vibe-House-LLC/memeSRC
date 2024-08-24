@@ -232,7 +232,7 @@ const ButtonGroup = styled(Box)(({ theme }) => ({
   gridTemplateColumns: '1fr 1fr',
   gap: theme.spacing(2),
   width: '100%',
-  // marginTop: theme.spacing(2),
+  marginTop: theme.spacing(2),
 }));
 
 const FullWidthButtonGroup = styled(Box)(({ theme }) => ({
@@ -286,6 +286,27 @@ export default function CollagePage() {
 
   const authorized = (user?.userDetails?.magicSubscription === "true" || user?.['cognito:groups']?.includes('admins'));
 
+
+  const handleReset = () => {
+    // Clear all state variables
+    setImages([]);
+    setBorderThickness(15);
+    setBorderColor('#FFFFFF');
+    setShowColorPicker(false);
+    setActiveStep(0);
+    setEditMode(true);
+    setAccordionExpanded(false);
+    setCollageBlob(null);
+
+    // Clear localStorage
+    localStorage.removeItem('collageState');
+
+    // Clear any state passed through navigation
+    if (navigate) {
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  };
+
   useEffect(() => {
     createCollage();
   }, [images, borderThickness, borderColor]);
@@ -301,7 +322,7 @@ export default function CollagePage() {
       setEditMode(parsedCollageState.editMode);
       setAccordionExpanded(parsedCollageState.accordionExpanded);
       setActiveStep(parsedCollageState.activeStep);
-      localStorage.removeItem('collageState');
+      // Don't remove the item from localStorage here
     }
 
     if (location.state?.updatedCollageState) {
@@ -638,7 +659,15 @@ export default function CollagePage() {
           {activeStep === 0 && (
             <StepContainer>
               {images.length > 0 && (
-                <FullWidthButtonGroup>
+                <ButtonGroup>
+                  <StepButton
+                    variant="contained"
+                    startIcon={<Delete />}
+                    onClick={handleReset}
+                    fullWidth
+                  >
+                    Reset
+                  </StepButton>
                   <StepButton
                     variant="contained"
                     startIcon={<ArrowForward />}
@@ -647,7 +676,7 @@ export default function CollagePage() {
                   >
                     Continue
                   </StepButton>
-                </FullWidthButtonGroup>
+                </ButtonGroup>
               )}
               {images.length === 0 ? (
                   <EmptyStateContainer onClick={(event) => handleMenuClick(event, 0)}>
@@ -786,7 +815,15 @@ export default function CollagePage() {
                 </Box>
               )}
               {images.length > 0 && (
-                <FullWidthButtonGroup>
+                <ButtonGroup>
+                  <StepButton
+                    variant="contained"
+                    startIcon={<Delete />}
+                    onClick={handleReset}
+                    fullWidth
+                  >
+                    Reset
+                  </StepButton>
                   <StepButton
                     variant="contained"
                     startIcon={<ArrowForward />}
@@ -795,7 +832,7 @@ export default function CollagePage() {
                   >
                     Continue
                   </StepButton>
-                </FullWidthButtonGroup>
+                </ButtonGroup>
               )}
             </StepContainer>
           )}
