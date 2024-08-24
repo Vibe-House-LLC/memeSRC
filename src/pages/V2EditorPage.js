@@ -191,8 +191,8 @@ const EditorPage = ({ shows }) => {
   const saveCollageImage = () => {
     const resultImage = editor.canvas.toDataURL({
       format: 'jpeg',
-      quality: 1,  // Increased to maximum quality
-      multiplier: imageScale || 1  // Use the imageScale if available, or default to 1
+      quality: 1,
+      multiplier: imageScale || 1
     });
 
     fetch(resultImage)
@@ -217,6 +217,8 @@ const EditorPage = ({ shows }) => {
         updatedImages[collageState.editingImageIndex] = {
           ...updatedImages[collageState.editingImageIndex],
           src: URL.createObjectURL(blob),
+          width: editor.canvas.width,
+          height: editor.canvas.height,
         };
 
         const updatedCollageState = {

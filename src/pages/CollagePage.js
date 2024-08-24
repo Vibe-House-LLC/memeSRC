@@ -307,7 +307,11 @@ export default function CollagePage() {
 
     if (location.state?.updatedCollageState) {
       const { images, borderThickness, editMode, accordionExpanded } = location.state.updatedCollageState;
-      setImages(images);
+      setImages(images.map(img => ({
+        ...img,
+        width: img.width || img.naturalWidth,
+        height: img.height || img.naturalHeight,
+      })));
       setBorderThickness(borderThickness);
       setEditMode(editMode);
       setAccordionExpanded(accordionExpanded);
