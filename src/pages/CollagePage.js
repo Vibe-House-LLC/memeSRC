@@ -872,13 +872,21 @@ export default function CollagePage() {
               </Grid>
 
               {showColorPicker && (
-                <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Box sx={{ margin: 0, display: 'flex', alignItems: 'center', gap: 2 }}>
                   <Typography>Custom Color:</Typography>
                   <input
                     type="color"
                     value={borderColor}
                     onChange={handleCustomColorChange}
-                    style={{ width: '50px', height: '30px' }}
+                    style={{
+                      width: '30px',
+                      height: '30px',
+                      padding: 0,
+                      border: 'none',
+                      borderRadius: '50%',
+                      overflow: 'hidden',
+                      cursor: 'pointer',
+                    }}
                   />
                 </Box>
               )}
