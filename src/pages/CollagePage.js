@@ -204,7 +204,7 @@ const BorderThicknessControl = styled(FormControl)(({ theme }) => ({
 
 const StepperContainer = styled(Box)(({ theme }) => ({
   width: '100%',
-  marginBottom: theme.spacing(4),
+  marginBottom: theme.spacing(1),
 }));
 
 const StepButton = styled(Button)(({ theme }) => ({
@@ -762,8 +762,8 @@ export default function CollagePage() {
                   <MenuItem value={0}>No border</MenuItem>
                   <MenuItem value={5}>Thin</MenuItem>
                   <MenuItem value={15}>Medium</MenuItem>
-                  <MenuItem value={30}>Thick</MenuItem>
-                  <MenuItem value={65}>Extra Thick</MenuItem>
+                  <MenuItem value={30}>Thicc</MenuItem>
+                  <MenuItem value={65}>Thiccer</MenuItem>
                 </Select>
               </BorderThicknessControl>
 
