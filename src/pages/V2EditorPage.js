@@ -397,49 +397,41 @@ const EditorPage = ({ shows }) => {
     setLoading(true);
     // Check if the uploadedImage exists in the location state
     const uploadedImage = location.state?.uploadedImage;
-    const collageState = location.state?.collageState;
-  
-    if (collageState) {
-      const { images, editingImageIndex } = collageState;
-  
-      if (images && editingImageIndex !== null) {
-        const imageToEdit = images[editingImageIndex];
-        fabric.Image.fromURL(imageToEdit.src, (oImg) => {
-          setDefaultFrame(oImg);
-  
-          // Set the canvas size based on the image aspect ratio
-          const imageAspectRatio = oImg.width / oImg.height;
-          setEditorAspectRatio(imageAspectRatio);
-          const [desiredHeight, desiredWidth] = calculateEditorSize(imageAspectRatio);
-          setCanvasSize({ height: desiredHeight, width: desiredWidth });
-  
-          // Scale the image to fit the canvas
-          oImg.scale(desiredWidth / oImg.width);
-  
-          // Center the image within the canvas
-          oImg.set({ left: 0, top: 0 });
-          const minWidth = 750;
-          const x = (oImg.width > minWidth) ? oImg.width : minWidth;
-          setImageScale(x / desiredWidth);
-          resizeCanvas(desiredWidth, desiredHeight);
-  
-          editor?.canvas.setBackgroundImage(oImg);
-          setImageLoaded(true);
-  
-          // Rendering the canvas after applying all changes
-          editor.canvas.renderAll();
-          setLoading(false);
-        }, { crossOrigin: 'anonymous' });
-      }
-    } else if (uploadedImage && !defaultFrame) {
-      // Use the uploadedImage as the background instead of the default image
+    const fromCollage = location.state?.fromCollage;
+
+    if (uploadedImage) {
       fabric.Image.fromURL(uploadedImage, (oImg) => {
         setDefaultFrame(oImg);
-        // You can set a default subtitle or any other properties here if needed
-        setLoadedSeriesTitle("");
-        setSurroundingFrames([]);
-        setDefaultSubtitle(false);
+
+        // Set the canvas size based on the image aspect ratio
+        const imageAspectRatio = oImg.width / oImg.height;
+        setEditorAspectRatio(imageAspectRatio);
+        const [desiredHeight, desiredWidth] = calculateEditorSize(imageAspectRatio);
+        setCanvasSize({ height: desiredHeight, width: desiredWidth });
+
+        // Scale the image to fit the canvas
+        oImg.scale(desiredWidth / oImg.width);
+
+        // Center the image within the canvas
+        oImg.set({ left: 0, top: 0 });
+        const minWidth = 750;
+        const x = (oImg.width > minWidth) ? oImg.width : minWidth;
+        setImageScale(x / desiredWidth);
+        resizeCanvas(desiredWidth, desiredHeight);
+
+        editor?.canvas.setBackgroundImage(oImg);
+        setImageLoaded(true);
+
+        // Rendering the canvas after applying all changes
+        editor.canvas.renderAll();
         setLoading(false);
+
+        // If it's from the collage page, set some default states
+        if (fromCollage) {
+          setLoadedSeriesTitle("");
+          setSurroundingFrames([]);
+          setDefaultSubtitle(false);
+        }
       }, { crossOrigin: 'anonymous' });
     } else if (editorProjectId) {
       try {

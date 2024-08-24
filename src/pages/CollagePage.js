@@ -18,10 +18,17 @@ import {
   RadioGroup,
   FormControlLabel,
   Radio,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Select,
+  FormControl,
+  InputLabel,
 } from "@mui/material";
 import { styled } from "@mui/system";
-import { Delete, Add, ArrowBack, ArrowForward, ExpandMore, Close, Edit, ArrowUpward, ArrowDownward } from "@mui/icons-material";
-import { useNavigate, useLocation } from 'react-router-dom';
+import { Delete, Add, ArrowBack, ArrowForward, ExpandMore, Close, Edit, ArrowUpward, ArrowDownward, Save } from "@mui/icons-material";
+import { useNavigate, useLocation } from 'react-router-dom'; 
 import { LoadingButton } from "@mui/lab";
 import BasePage from "./BasePage";
 import { UserContext } from "../UserContext";
@@ -136,6 +143,23 @@ const EmptyStateContainer = styled(Box)(({ theme }) => ({
   "&:hover": {
     backgroundColor: theme.palette.action.hover,
   },
+}));
+
+const ResultContainer = styled(Box)(({ theme }) => ({
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  padding: theme.spacing(3),
+  backgroundColor: theme.palette.background.paper,
+  borderRadius: theme.shape.borderRadius,
+  boxShadow: theme.shadows[3],
+  marginTop: theme.spacing(3),
+  marginBottom: theme.spacing(3),
+}));
+
+const BorderThicknessControl = styled(FormControl)(({ theme }) => ({
+  minWidth: 120,
+  marginBottom: theme.spacing(2),
 }));
 
 export default function CollagePage() {
@@ -362,6 +386,36 @@ export default function CollagePage() {
     setAccordionExpanded(false); // Collapse the accordion
   };
 
+  const [openSaveDialog, setOpenSaveDialog] = useState(false);
+
+  const handleOpenInEditor = () => {
+    // Create the resulting image blob
+    const resultImage = canvasRef.current.toDataURL({
+      format: 'jpeg',
+      quality: 0.8
+    });
+
+    fetch(resultImage)
+      .then(res => res.blob())
+      .then(blob => {
+        const uploadedImage = URL.createObjectURL(blob);
+        navigate('/editor/project/new', { 
+          state: { 
+            uploadedImage,
+            fromCollage: true
+          } 
+        });
+      });
+  };
+
+  const handleSave = () => {
+    setOpenSaveDialog(true);
+  };
+
+  const handleCloseSaveDialog = () => {
+    setOpenSaveDialog(false);
+  };
+
   return (
     <BasePage
       pageTitle="Create a collage"
@@ -579,49 +633,90 @@ export default function CollagePage() {
             )}
           </>
         ) : (
-          <CollageContainer>
+          <ResultContainer>
+            <Typography variant="h4" gutterBottom>
+              Your Collage is Ready!
+            </Typography>
+            <Typography variant="body1" gutterBottom>
+              Adjust the border thickness or save/edit your collage.
+            </Typography>
+            
+            <BorderThicknessControl>
+              <InputLabel id="border-thickness-label">Border Thickness</InputLabel>
+              <Select
+                labelId="border-thickness-label"
+                id="border-thickness-select"
+                value={borderThickness}
+                label="Border Thickness"
+                onChange={handleBorderChange}
+              >
+                <MenuItem value={0}>No border</MenuItem>
+                <MenuItem value={5}>Thin</MenuItem>
+                <MenuItem value={15}>Medium</MenuItem>
+                <MenuItem value={30}>Thicc</MenuItem>
+                <MenuItem value={65}>Thiccer</MenuItem>
+              </Select>
+            </BorderThicknessControl>
+
+            <Box sx={{ display: 'flex', gap: 2, mb: 3, width: '100%' }}>
+              <Button
+                variant="contained"
+                startIcon={<Edit />}
+                onClick={handleOpenInEditor}
+                fullWidth
+              >
+                Add Captions
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={<Save />}
+                onClick={handleSave}
+                fullWidth
+              >
+                Save Collage
+              </Button>
+            </Box>
             <Button
               variant="contained"
               startIcon={<ArrowBack />}
               onClick={() => setEditMode(true)}
               fullWidth
-              sx={{ mb: 2 }}
+              sx={{ mb: 3 }}
             >
-              Edit Photos
+              Adjust Frames
             </Button>
-            <Accordion sx={{ mb: 2 }} expanded={accordionExpanded} onChange={() => setAccordionExpanded(!accordionExpanded)}>
-              <AccordionSummary expandIcon={<ExpandMore />}>
-                <Typography>Adjust Border Thickness</Typography>
-              </AccordionSummary>
-              <AccordionDetails>
-                <RadioGroup
-                  value={borderThickness.toString()}
-                  onChange={handleBorderChange}
-                >
-                  <FormControlLabel value="0" control={<Radio />} label="None" />
-                  <FormControlLabel value="10" control={<Radio />} label="Thin" />
-                  <FormControlLabel value="15" control={<Radio />} label="Normal" />
-                  <FormControlLabel value="35" control={<Radio />} label="Thicc" />
-                  <FormControlLabel value="65" control={<Radio />} label="Thiccer" />
-                </RadioGroup>
-              </AccordionDetails>
-            </Accordion>
- 
+            
             <ImageWrapper>
               <CollageImage src={collageBlob} alt="Collage Result" />
             </ImageWrapper>
-            <Alert
-              severity='success'
-              sx={{ marginTop: 1.5 }}
-            >
-              <b>{'ontouchstart' in window ? 'Tap and hold ' : 'Right click '} ☝️ the image to save</b>
-            </Alert>
-          </CollageContainer>
+          </ResultContainer>
         )}
       </>
       )}
  
       <canvas ref={canvasRef} style={{ display: "none" }} />
+
+      <Dialog open={openSaveDialog} onClose={handleCloseSaveDialog}>
+        <DialogTitle>Save Your Collage</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 2 }}>
+            <CollageImage src={collageBlob} alt="Collage Result" sx={{ maxWidth: '100%', height: 'auto', mb: 2 }} />
+            <Typography variant="body1" gutterBottom>
+              To save your collage:
+            </Typography>
+            <Typography variant="body2" component="ol" sx={{ pl: 2 }}>
+              <li>{'ontouchstart' in window ? 'Tap and hold' : 'Right-click'} on the image above</li>
+              <li>Select "Save image" from the menu</li>
+              <li>Choose a location on your device to save the collage</li>
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseSaveDialog} color="primary">
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
     </BasePage>
   );
  }
