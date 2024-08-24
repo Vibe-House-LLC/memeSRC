@@ -2,7 +2,7 @@
   "name": "memesrc",
   "author": "vibehouse.net",
   "licence": "MIT",
-  "version": "2.1.26",
+  "version": "2.1.27",
   "private": false,
   "scripts": {
     "start": "react-scripts start",
