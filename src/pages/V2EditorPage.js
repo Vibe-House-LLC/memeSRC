@@ -1637,7 +1637,7 @@ const EditorPage = ({ shows }) => {
                           onClick={handleClickDialogOpen}
                           sx={{ zIndex: '50', backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
                         >
-                          "Save"
+                          Save
                         </Button>
                       </Stack>
 
@@ -2035,7 +2035,7 @@ const EditorPage = ({ shows }) => {
                     startIcon={<Share />}
                     size="large"
                   >
-                    "Save"
+                    Save
                   </Button>
                 </Grid>
 
