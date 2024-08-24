@@ -149,12 +149,46 @@ const ResultContainer = styled(Box)(({ theme }) => ({
   display: "flex",
   flexDirection: "column",
   alignItems: "center",
-  padding: theme.spacing(3),
+  padding: theme.spacing(4),
   backgroundColor: theme.palette.background.paper,
   borderRadius: theme.shape.borderRadius,
   boxShadow: theme.shadows[3],
   marginTop: theme.spacing(3),
   marginBottom: theme.spacing(3),
+}));
+
+const ResultOptionsContainer = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: theme.spacing(3),
+  width: '100%',
+  maxWidth: '600px',
+  margin: '0 auto',
+  marginBottom: theme.spacing(4),
+}));
+
+const OptionGroup = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  gap: theme.spacing(2),
+  [theme.breakpoints.down('sm')]: {
+    flexDirection: 'column',
+  },
+}));
+
+const ThumbnailContainer = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  marginTop: theme.spacing(4),
+  marginBottom: theme.spacing(4),
+}));
+
+const CollageThumbnail = styled('img')(({ theme }) => ({
+  maxWidth: '300px',
+  maxHeight: '300px',
+  objectFit: 'contain',
+  borderRadius: theme.shape.borderRadius,
+  boxShadow: theme.shadows[2],
 }));
 
 const BorderThicknessControl = styled(FormControl)(({ theme }) => ({
@@ -641,54 +675,60 @@ export default function CollagePage() {
               Adjust the border thickness or save/edit your collage.
             </Typography>
             
-            <BorderThicknessControl>
-              <InputLabel id="border-thickness-label">Border Thickness</InputLabel>
-              <Select
-                labelId="border-thickness-label"
-                id="border-thickness-select"
-                value={borderThickness}
-                label="Border Thickness"
-                onChange={handleBorderChange}
-              >
-                <MenuItem value={0}>No border</MenuItem>
-                <MenuItem value={5}>Thin</MenuItem>
-                <MenuItem value={15}>Medium</MenuItem>
-                <MenuItem value={30}>Thicc</MenuItem>
-                <MenuItem value={65}>Thiccer</MenuItem>
-              </Select>
-            </BorderThicknessControl>
+            <ThumbnailContainer>
+              <CollageThumbnail src={collageBlob} alt="Collage Result" />
+            </ThumbnailContainer>
 
-            <Box sx={{ display: 'flex', gap: 2, mb: 3, width: '100%' }}>
+            <ResultOptionsContainer>
+              <BorderThicknessControl fullWidth>
+                <InputLabel id="border-thickness-label">Border Thickness</InputLabel>
+                <Select
+                  labelId="border-thickness-label"
+                  id="border-thickness-select"
+                  value={borderThickness}
+                  label="Border Thickness"
+                  onChange={handleBorderChange}
+                  fullWidth
+                >
+                  <MenuItem value={0}>No border</MenuItem>
+                  <MenuItem value={5}>Thin</MenuItem>
+                  <MenuItem value={15}>Medium</MenuItem>
+                  <MenuItem value={30}>Thicc</MenuItem>
+                  <MenuItem value={65}>Thiccer</MenuItem>
+                </Select>
+              </BorderThicknessControl>
+
+              <OptionGroup>
+                <Button
+                  variant="contained"
+                  startIcon={<Edit />}
+                  onClick={handleOpenInEditor}
+                  fullWidth
+                  sx={{ color: 'white' }}
+                >
+                  Add Captions
+                </Button>
+                <Button
+                  variant="contained"
+                  startIcon={<Save />}
+                  onClick={handleSave}
+                  fullWidth
+                  sx={{ color: 'white' }}
+                >
+                  Save Collage
+                </Button>
+              </OptionGroup>
+
               <Button
                 variant="contained"
-                startIcon={<Edit />}
-                onClick={handleOpenInEditor}
+                startIcon={<ArrowBack />}
+                onClick={() => setEditMode(true)}
                 fullWidth
+                sx={{ color: 'white' }}
               >
-                Add Captions
+                Adjust Frames
               </Button>
-              <Button
-                variant="contained"
-                startIcon={<Save />}
-                onClick={handleSave}
-                fullWidth
-              >
-                Save Collage
-              </Button>
-            </Box>
-            <Button
-              variant="contained"
-              startIcon={<ArrowBack />}
-              onClick={() => setEditMode(true)}
-              fullWidth
-              sx={{ mb: 3 }}
-            >
-              Adjust Frames
-            </Button>
-            
-            <ImageWrapper>
-              <CollageImage src={collageBlob} alt="Collage Result" />
-            </ImageWrapper>
+            </ResultOptionsContainer>
           </ResultContainer>
         )}
       </>
