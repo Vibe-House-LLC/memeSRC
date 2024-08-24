@@ -136,6 +136,9 @@ const EmptyStateContainer = styled(Box)(({ theme }) => ({
   alignItems: "center",
   justifyContent: "center",
   minHeight: "300px",
+  width: "100%",
+  maxWidth: "800px", // Set a reasonable maximum width
+  margin: "0 auto", // Center the container
   border: `2px dashed #ccc`,
   borderRadius: "8px",
   padding: "16px",
@@ -196,7 +199,7 @@ const CollageThumbnail = styled('img')(({ theme }) => ({
 
 const BorderThicknessControl = styled(FormControl)(({ theme }) => ({
   minWidth: 120,
-  marginBottom: theme.spacing(2),
+  // marginBottom: theme.spacing(2),
 }));
 
 const StepperContainer = styled(Box)(({ theme }) => ({
@@ -216,10 +219,23 @@ const StepContainer = styled(Box)(({ theme }) => ({
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
-  gap: theme.spacing(3),
+  gap: theme.spacing(1),
   maxWidth: '800px',
   margin: '0 auto',
-  padding: theme.spacing(3),
+  padding: theme.spacing(2),
+}));
+
+const ButtonGroup = styled(Box)(({ theme }) => ({
+  display: 'grid',
+  gridTemplateColumns: '1fr 1fr',
+  gap: theme.spacing(2),
+  width: '100%',
+  // marginTop: theme.spacing(2),
+}));
+
+const FullWidthButtonGroup = styled(Box)(({ theme }) => ({
+  width: '100%',
+  marginTop: theme.spacing(2),
 }));
 
 export default function CollagePage() {
@@ -478,7 +494,7 @@ export default function CollagePage() {
 
   const [activeStep, setActiveStep] = useState(0);
 
-  const steps = ['Add Images', 'Adjust Collage', 'Save or Edit'];
+  const steps = ['Add Images', 'Adjust Borders', 'Save or Edit'];
 
   const handleNext = () => {
     setActiveStep((prevActiveStep) => prevActiveStep + 1);
@@ -550,30 +566,25 @@ export default function CollagePage() {
 
           {activeStep === 0 && (
             <StepContainer>
-              <Typography variant="h4" gutterBottom>
-                Add Images to Your Collage
-              </Typography>
-              <Typography variant="body1" marginBottom={2} textAlign="center">
-                Upload images or add text to create your collage. You can rearrange them later.
-              </Typography>
               {images.length > 0 && (
-                <StepButton
-                  variant="contained"
-                  startIcon={<ArrowForward />}
-                  onClick={handleNext}
-                  fullWidth
-                  size="large"
-                >
-                  Continue to Adjust Collage
-                </StepButton>
+                <FullWidthButtonGroup>
+                  <StepButton
+                    variant="contained"
+                    startIcon={<ArrowForward />}
+                    onClick={handleNext}
+                    fullWidth
+                  >
+                    Continue
+                  </StepButton>
+                </FullWidthButtonGroup>
               )}
               {images.length === 0 ? (
                   <EmptyStateContainer onClick={(event) => handleMenuClick(event, 0)}>
                   <Typography variant="h6" gutterBottom>
-                    No images added
+                    Add Images
                   </Typography>
                   <Typography variant="body1" marginBottom={2}>
-                    Click anywhere to select your first image
+                    Upload images for your collage
                   </Typography>
                   <Fab
                     color="primary"
@@ -703,23 +714,42 @@ export default function CollagePage() {
                   />
                 </Box>
               )}
+              {images.length > 0 && (
+                <FullWidthButtonGroup>
+                  <StepButton
+                    variant="contained"
+                    startIcon={<ArrowForward />}
+                    onClick={handleNext}
+                    fullWidth
+                  >
+                    Continue
+                  </StepButton>
+                </FullWidthButtonGroup>
+              )}
             </StepContainer>
           )}
 
           {activeStep === 1 && (
             <StepContainer>
-              <Typography variant="h4" gutterBottom>
-                Adjust Your Collage
-              </Typography>
-              <Typography variant="body1" gutterBottom textAlign="center">
-                Fine-tune your collage by adjusting the border thickness.
-              </Typography>
-              
-              <ThumbnailContainer>
-                <CollageThumbnail src={collageBlob} alt="Collage Result" />
-              </ThumbnailContainer>
+              <ButtonGroup>
+                <StepButton
+                  onClick={handleBack}
+                  startIcon={<ArrowBack />}
+                  fullWidth
+                >
+                  Back
+                </StepButton>
+                <StepButton
+                  variant="contained"
+                  onClick={handleNext}
+                  endIcon={<ArrowForward />}
+                  fullWidth
+                >
+                  Continue
+                </StepButton>
+              </ButtonGroup>
 
-              <BorderThicknessControl fullWidth>
+              <BorderThicknessControl fullWidth sx={{ my: 3 }}>
                 <InputLabel id="border-thickness-label">Border Thickness</InputLabel>
                 <Select
                   labelId="border-thickness-label"
@@ -737,31 +767,41 @@ export default function CollagePage() {
                 </Select>
               </BorderThicknessControl>
 
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', mt: 3 }}>
-                <StepButton onClick={handleBack} startIcon={<ArrowBack />}>
+              <ThumbnailContainer sx={{ my: 2 }}>
+                <CollageThumbnail src={collageBlob} alt="Collage Result" />
+              </ThumbnailContainer>
+
+              <ButtonGroup>
+                <StepButton
+                  onClick={handleBack}
+                  startIcon={<ArrowBack />}
+                  fullWidth
+                >
                   Back
                 </StepButton>
-                <StepButton variant="contained" onClick={handleNext} endIcon={<ArrowForward />}>
+                <StepButton
+                  variant="contained"
+                  onClick={handleNext}
+                  endIcon={<ArrowForward />}
+                  fullWidth
+                >
                   Continue
                 </StepButton>
-              </Box>
+              </ButtonGroup>
             </StepContainer>
           )}
 
           {activeStep === 2 && (
             <StepContainer>
-              <Typography variant="h4" gutterBottom>
-                Your Collage is Ready!
-              </Typography>
-              <Typography variant="body1" gutterBottom textAlign="center">
-                Save your collage or add captions to further customize it.
+              <Typography variant="h4" gutterBottom sx={{ mb: 1 }}>
+                ✅ Your Collage is Ready!
               </Typography>
               
-              <ThumbnailContainer>
+              <ThumbnailContainer sx={{ my: 2 }}>
                 <CollageThumbnail src={collageBlob} alt="Collage Result" />
               </ThumbnailContainer>
 
-              <ResultOptionsContainer>
+              <ResultOptionsContainer sx={{ gap: 2 }}>
                 <OptionGroup>
                   <StepButton
                     variant="contained"
