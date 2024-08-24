@@ -820,7 +820,7 @@ export default function CollagePage() {
                     onClick={handleOpenInEditor}
                     fullWidth
                   >
-                    Add Captions
+                    Advanced Editor
                   </StepButton>
                   <StepButton
                     variant="contained"
