@@ -204,7 +204,7 @@ const BorderThicknessControl = styled(FormControl)(({ theme }) => ({
 
 const StepperContainer = styled(Box)(({ theme }) => ({
   width: '100%',
-  marginBottom: theme.spacing(1),
+  marginBottom: theme.spacing(4),
 }));
 
 const StepButton = styled(Button)(({ theme }) => ({
@@ -272,6 +272,7 @@ export default function CollagePage() {
       setBorderThickness(parsedCollageState.borderThickness);
       setEditMode(parsedCollageState.editMode);
       setAccordionExpanded(parsedCollageState.accordionExpanded);
+      setActiveStep(parsedCollageState.activeStep);
       localStorage.removeItem('collageState');
     }
 
@@ -465,6 +466,16 @@ export default function CollagePage() {
   const [openSaveDialog, setOpenSaveDialog] = useState(false);
 
   const handleOpenInEditor = () => {
+    // Store the current state in localStorage
+    const collageState = {
+      images,
+      borderThickness,
+      editMode,
+      accordionExpanded,
+      activeStep,
+    };
+    localStorage.setItem('collageState', JSON.stringify(collageState));
+
     // Create the resulting image blob
     const resultImage = canvasRef.current.toDataURL({
       format: 'jpeg',
@@ -762,8 +773,8 @@ export default function CollagePage() {
                   <MenuItem value={0}>No border</MenuItem>
                   <MenuItem value={5}>Thin</MenuItem>
                   <MenuItem value={15}>Medium</MenuItem>
-                  <MenuItem value={30}>Thicc</MenuItem>
-                  <MenuItem value={65}>Thiccer</MenuItem>
+                  <MenuItem value={30}>Thick</MenuItem>
+                  <MenuItem value={65}>Extra Thick</MenuItem>
                 </Select>
               </BorderThicknessControl>
 
