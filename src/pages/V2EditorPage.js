@@ -189,42 +189,53 @@ const EditorPage = ({ shows }) => {
   const location = useLocation();
 
   const saveCollageImage = () => {
-    // Create the resulting image blob
     const resultImage = editor.canvas.toDataURL({
       format: 'jpeg',
-      quality: 0.6,
-      multiplier: imageScale
+      quality: 1,  // Increased to maximum quality
+      multiplier: imageScale || 1  // Use the imageScale if available, or default to 1
     });
-  
+
     fetch(resultImage)
       .then(res => res.blob())
       .then(blob => {
-        // Update the collage state with the new image
-        const { images, editingImageIndex } = location.state.collageState;
-        const updatedImages = [...images];
-        updatedImages[editingImageIndex] = {
-          ...updatedImages[editingImageIndex],
+        console.log('Location state:', location.state);
+
+        if (!location.state || !location.state.collageState) {
+          console.error('Collage state is missing');
+          return;
+        }
+
+        const { collageState } = location.state;
+        console.log('Collage state:', collageState);
+
+        if (!Array.isArray(collageState.images) || typeof collageState.editingImageIndex !== 'number') {
+          console.error('Invalid collage state structure');
+          return;
+        }
+
+        const updatedImages = [...collageState.images];
+        updatedImages[collageState.editingImageIndex] = {
+          ...updatedImages[collageState.editingImageIndex],
           src: URL.createObjectURL(blob),
         };
-  
-        // Create the updated collage state
+
         const updatedCollageState = {
-          ...location.state.collageState,
+          ...collageState,
           images: updatedImages,
           editingImageIndex: null,
         };
-  
-        // Navigate back to the collage page with the updated state
+
         navigate('/collage', { state: { updatedCollageState } });
+      })
+      .catch(error => {
+        console.error('Error in saveCollageImage:', error);
       });
   };
 
   const handleClickDialogOpen = () => {
     if (location.state?.collageState) {
-      // If there's a collage state available
       saveCollageImage();
     } else {
-      // If there's no collage state, proceed with the normal save process
       setOpenDialog(true);
       saveImage();
     }
@@ -347,7 +358,6 @@ const EditorPage = ({ shows }) => {
         // Calculate the scale to fit the image within the canvas, maintaining the aspect ratio
         const canvasWidth = editor.canvas.getWidth();
         const canvasHeight = editor.canvas.getHeight();
-        // Introducing a padding factor of 0.9 for a 10% padding effect
         const paddingFactor = 0.9;
         const scale = Math.min(canvasWidth / imgObj.width, canvasHeight / imgObj.height) * paddingFactor;
 
@@ -357,18 +367,14 @@ const EditorPage = ({ shows }) => {
           scaleX: scale,
           scaleY: scale,
           originX: 'center',
-          originY: 'center'
+          originY: 'center',
+          left: canvasWidth / 2,
+          top: canvasHeight / 2
         });
 
         // Add the image to the canvas and set it as the active object
         editor.canvas.add(image);
-        editor.canvas.setActiveObject(image); // Set the image as the active object
-
-        // Explicitly set the position of the image to the center of the canvas
-        image.set({
-          left: canvasWidth / 2,
-          top: canvasHeight / 2
-        });
+        editor.canvas.setActiveObject(image);
 
         // Update the image object and canvas state
         image.setCoords();
@@ -380,12 +386,13 @@ const EditorPage = ({ shows }) => {
           src: event.target.result,
           scale,
           angle: 0,
-          left: canvasWidth / 2 - (image.width * scale) / 2,
-          top: canvasHeight / 2 - (image.height * scale) / 2
+          left: canvasWidth / 2,
+          top: canvasHeight / 2
         };
 
         // Update the canvasObjects state with the new image object
         setCanvasObjects(prevObjects => [...prevObjects, imageObject]);
+        addToHistory();
       };
     };
     reader.readAsDataURL(imageFile);
@@ -1574,7 +1581,13 @@ const EditorPage = ({ shows }) => {
     updateCanvasSize(0);
   }, [whiteSpaceHeight, updateCanvasSize]);
 
-  // ... (rest of the code remains unchanged)
+  // Add this near the top of the component, with other useEffects
+  useEffect(() => {
+    if (location.state?.fromCollage && location.state?.collageImageFile) {
+      const file = location.state.collageImageFile;
+      addImageLayer(file);
+    }
+  }, [location.state]);
 
   return (
     <>
@@ -1622,7 +1635,7 @@ const EditorPage = ({ shows }) => {
                           onClick={handleClickDialogOpen}
                           sx={{ zIndex: '50', backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
                         >
-                          {location.state?.collageState ? "Save" : "Save/Copy/Share"}
+                          {location.state?.fromCollage ? "Save to Collage" : "Save"}
                         </Button>
                       </Stack>
 
@@ -2020,7 +2033,7 @@ const EditorPage = ({ shows }) => {
                     startIcon={<Share />}
                     size="large"
                   >
-                    {location.state?.collageState ? "Save" : "Save/Copy/Share"}
+                    {location.state?.fromCollage ? "Save to Collage" : "Save"}
                   </Button>
                 </Grid>
 

@@ -346,15 +346,29 @@ export default function CollagePage() {
   };
 
   const handleEditImage = (index) => {
+    const image = images[index];
     const collageState = {
       images,
       editingImageIndex: index,
       borderThickness,
       editMode,
       accordionExpanded,
+      activeStep,
     };
     localStorage.setItem('collageState', JSON.stringify(collageState));
-    navigate(`/editor/project/new`, { state: { collageState } });
+
+    fetch(image.src)
+      .then(res => res.blob())
+      .then(blob => {
+        const uploadedImage = URL.createObjectURL(blob);
+        navigate('/editor/project/new', { 
+          state: { 
+            uploadedImage,
+            fromCollage: true,
+            collageState
+          } 
+        });
+      });
   };
 
   const addTextArea = (index) => {
