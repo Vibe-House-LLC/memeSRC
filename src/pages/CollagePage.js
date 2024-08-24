@@ -35,7 +35,6 @@ import { styled } from "@mui/system";
 import { Delete, Add, ArrowBack, ArrowForward, ExpandMore, Close, Edit, ArrowUpward, ArrowDownward, Save, FormatColorFill } from "@mui/icons-material";
 import { useNavigate, useLocation } from 'react-router-dom'; 
 import { LoadingButton } from "@mui/lab";
-import { TwitterPicker } from 'react-color';
 import BasePage from "./BasePage";
 import { UserContext } from "../UserContext";
 import { useSubscribeDialog } from "../contexts/useSubscribeDialog";
@@ -241,14 +240,6 @@ const FullWidthButtonGroup = styled(Box)(({ theme }) => ({
   marginTop: theme.spacing(2),
 }));
 
-const StyledTwitterPicker = styled(TwitterPicker)`
-  span div {
-    border: 1px solid rgb(240, 240, 240);
-  }
-`;
-
-const TwitterPickerWrapper = memo(StyledTwitterPicker);
-
 const OptionsContainer = styled(Box)(({ theme }) => ({
   display: 'flex',
   flexDirection: 'row',
@@ -264,6 +255,15 @@ const OptionItem = styled(Box)(({ theme }) => ({
   minWidth: 0,
 }));
 
+const borderColorOptions = [
+  { label: 'White', value: '#FFFFFF' },
+  { label: 'Black', value: '#000000' },
+  { label: 'Red', value: '#FF0000' },
+  { label: 'Blue', value: '#0000FF' },
+  { label: 'Green', value: '#00FF00' },
+  { label: 'Custom', value: 'custom' },
+];
+
 export default function CollagePage() {
   const [images, setImages] = useState([]);
   const [borderThickness, setBorderThickness] = useState(15);
@@ -277,8 +277,7 @@ export default function CollagePage() {
   const imageRefs = useRef([]);
   const imagesOnly = true; // Set this to true to use images as default option
   const [borderColor, setBorderColor] = useState('#FFFFFF');
-  const [colorPickerShowing, setColorPickerShowing] = useState(false);
-  const colorPicker = useRef();
+  const [showColorPicker, setShowColorPicker] = useState(false);
 
   const { user } = useContext(UserContext);
   const { openSubscriptionDialog } = useSubscribeDialog();
@@ -570,10 +569,18 @@ export default function CollagePage() {
     }
   };
 
-  const handleBorderColorChange = (color) => {
-    setBorderColor(color.hex);
-    setColorPickerShowing(false);
-    setAccordionExpanded(false);
+  const handleBorderColorChange = (event) => {
+    const value = event.target.value;
+    if (value === 'custom') {
+      setShowColorPicker(true);
+    } else {
+      setBorderColor(value);
+      setShowColorPicker(false);
+    }
+  };
+
+  const handleCustomColorChange = (event) => {
+    setBorderColor(event.target.value);
   };
 
   return (
@@ -838,53 +845,43 @@ export default function CollagePage() {
                     <Select
                       labelId="border-color-label"
                       id="border-color-select"
-                      value={borderColor}
+                      value={showColorPicker ? 'custom' : borderColor}
                       label="Border Color"
-                      onChange={() => setColorPickerShowing(true)}
-                      renderValue={(selected) => (
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <FormatColorFill sx={{ color: selected }} />
-                          <Typography>{selected}</Typography>
-                        </Box>
-                      )}
+                      onChange={handleBorderColorChange}
                     >
-                      <MenuItem value={borderColor}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <FormatColorFill sx={{ color: borderColor }} />
-                          <Typography>{borderColor}</Typography>
-                        </Box>
-                      </MenuItem>
+                      {borderColorOptions.map((option) => (
+                        <MenuItem key={option.value} value={option.value}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            {option.value !== 'custom' && (
+                              <Box
+                                sx={{
+                                  width: 20,
+                                  height: 20,
+                                  backgroundColor: option.value,
+                                  border: '1px solid #ccc',
+                                }}
+                              />
+                            )}
+                            <Typography>{option.label}</Typography>
+                          </Box>
+                        </MenuItem>
+                      ))}
                     </Select>
                   </FormControl>
-                  <Popover
-                    open={colorPickerShowing}
-                    anchorEl={document.getElementById('border-color-select')}
-                    onClose={() => setColorPickerShowing(false)}
-                    anchorOrigin={{
-                      vertical: 'bottom',
-                      horizontal: 'left',
-                    }}
-                    transformOrigin={{
-                      vertical: 'top',
-                      horizontal: 'left',
-                    }}
-                  >
-                    <TwitterPickerWrapper
-                      color={borderColor}
-                      onChangeComplete={(color) => {
-                        handleBorderColorChange(color);
-                        setColorPickerShowing(false);
-                      }}
-                      colors={[
-                        '#FFFFFF', '#FFFF00', '#000000', '#FF4136',
-                        '#2ECC40', '#0052CC', '#FF851B', '#B10DC9',
-                        '#39CCCC', '#F012BE',
-                      ]}
-                      width="280px"
-                    />
-                  </Popover>
                 </Grid>
               </Grid>
+
+              {showColorPicker && (
+                <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Typography>Custom Color:</Typography>
+                  <input
+                    type="color"
+                    value={borderColor}
+                    onChange={handleCustomColorChange}
+                    style={{ width: '50px', height: '30px' }}
+                  />
+                </Box>
+              )}
 
               <ThumbnailContainer sx={{ my: 2 }}>
                 <CollageThumbnail src={collageBlob} alt="Collage Result" />
