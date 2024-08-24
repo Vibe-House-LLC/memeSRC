@@ -1,4 +1,4 @@
-import { useContext, useEffect, useRef, useState, useCallback } from "react";
+import { useContext, useEffect, useRef, useState, useCallback, memo } from "react";
 import { Helmet } from "react-helmet-async";
 import {
   Box,
@@ -28,11 +28,14 @@ import {
   Stepper,
   Step,
   StepLabel,
+  ToggleButton,
+  Popover,
 } from "@mui/material";
 import { styled } from "@mui/system";
-import { Delete, Add, ArrowBack, ArrowForward, ExpandMore, Close, Edit, ArrowUpward, ArrowDownward, Save } from "@mui/icons-material";
+import { Delete, Add, ArrowBack, ArrowForward, ExpandMore, Close, Edit, ArrowUpward, ArrowDownward, Save, FormatColorFill } from "@mui/icons-material";
 import { useNavigate, useLocation } from 'react-router-dom'; 
 import { LoadingButton } from "@mui/lab";
+import { TwitterPicker } from 'react-color';
 import BasePage from "./BasePage";
 import { UserContext } from "../UserContext";
 import { useSubscribeDialog } from "../contexts/useSubscribeDialog";
@@ -238,6 +241,29 @@ const FullWidthButtonGroup = styled(Box)(({ theme }) => ({
   marginTop: theme.spacing(2),
 }));
 
+const StyledTwitterPicker = styled(TwitterPicker)`
+  span div {
+    border: 1px solid rgb(240, 240, 240);
+  }
+`;
+
+const TwitterPickerWrapper = memo(StyledTwitterPicker);
+
+const OptionsContainer = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  flexDirection: 'row',
+  gap: theme.spacing(2),
+  marginBottom: theme.spacing(3),
+  [theme.breakpoints.down('sm')]: {
+    flexDirection: 'column',
+  },
+}));
+
+const OptionItem = styled(Box)(({ theme }) => ({
+  flex: 1,
+  minWidth: 0,
+}));
+
 export default function CollagePage() {
   const [images, setImages] = useState([]);
   const [borderThickness, setBorderThickness] = useState(15);
@@ -250,6 +276,9 @@ export default function CollagePage() {
   const [menuIndex, setMenuIndex] = useState(null);
   const imageRefs = useRef([]);
   const imagesOnly = true; // Set this to true to use images as default option
+  const [borderColor, setBorderColor] = useState('#FFFFFF');
+  const [colorPickerShowing, setColorPickerShowing] = useState(false);
+  const colorPicker = useRef();
 
   const { user } = useContext(UserContext);
   const { openSubscriptionDialog } = useSubscribeDialog();
@@ -260,7 +289,7 @@ export default function CollagePage() {
 
   useEffect(() => {
     createCollage();
-  }, [images, borderThickness]);
+  }, [images, borderThickness, borderColor]);
 
   const location = useLocation();
 
@@ -405,7 +434,7 @@ export default function CollagePage() {
     canvas.width = maxWidth + borderThickness * 2;
     canvas.height = totalHeight;
   
-    ctx.fillStyle = "white";
+    ctx.fillStyle = borderColor;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   
     let currentHeight = borderThickness;
@@ -521,6 +550,12 @@ export default function CollagePage() {
     if (activeStep === 1) {
       setEditMode(true);
     }
+  };
+
+  const handleBorderColorChange = (color) => {
+    setBorderColor(color.hex);
+    setColorPickerShowing(false);
+    setAccordionExpanded(false);
   };
 
   return (
@@ -760,23 +795,78 @@ export default function CollagePage() {
                 </StepButton>
               </ButtonGroup>
 
-              <BorderThicknessControl fullWidth sx={{ my: 3 }}>
-                <InputLabel id="border-thickness-label">Border Thickness</InputLabel>
-                <Select
-                  labelId="border-thickness-label"
-                  id="border-thickness-select"
-                  value={borderThickness}
-                  label="Border Thickness"
-                  onChange={handleBorderChange}
-                  fullWidth
-                >
-                  <MenuItem value={0}>No border</MenuItem>
-                  <MenuItem value={5}>Thin</MenuItem>
-                  <MenuItem value={15}>Medium</MenuItem>
-                  <MenuItem value={30}>Thick</MenuItem>
-                  <MenuItem value={65}>Extra Thick</MenuItem>
-                </Select>
-              </BorderThicknessControl>
+              <Grid container spacing={2} sx={{ mt: 2, mb: 3 }}>
+                <Grid item xs={6}>
+                  <FormControl fullWidth>
+                    <InputLabel id="border-thickness-label">Border Thickness</InputLabel>
+                    <Select
+                      labelId="border-thickness-label"
+                      id="border-thickness-select"
+                      value={borderThickness}
+                      label="Border Thickness"
+                      onChange={handleBorderChange}
+                    >
+                      <MenuItem value={0}>No border</MenuItem>
+                      <MenuItem value={5}>Thin</MenuItem>
+                      <MenuItem value={15}>Medium</MenuItem>
+                      <MenuItem value={30}>Thick</MenuItem>
+                      <MenuItem value={65}>Extra Thick</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={6}>
+                  <FormControl fullWidth>
+                    <InputLabel id="border-color-label">Border Color</InputLabel>
+                    <Select
+                      labelId="border-color-label"
+                      id="border-color-select"
+                      value={borderColor}
+                      label="Border Color"
+                      onChange={() => setColorPickerShowing(true)}
+                      renderValue={(selected) => (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <FormatColorFill sx={{ color: selected }} />
+                          <Typography>{selected}</Typography>
+                        </Box>
+                      )}
+                    >
+                      <MenuItem value={borderColor}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <FormatColorFill sx={{ color: borderColor }} />
+                          <Typography>{borderColor}</Typography>
+                        </Box>
+                      </MenuItem>
+                    </Select>
+                  </FormControl>
+                  <Popover
+                    open={colorPickerShowing}
+                    anchorEl={document.getElementById('border-color-select')}
+                    onClose={() => setColorPickerShowing(false)}
+                    anchorOrigin={{
+                      vertical: 'bottom',
+                      horizontal: 'left',
+                    }}
+                    transformOrigin={{
+                      vertical: 'top',
+                      horizontal: 'left',
+                    }}
+                  >
+                    <TwitterPickerWrapper
+                      color={borderColor}
+                      onChangeComplete={(color) => {
+                        handleBorderColorChange(color);
+                        setColorPickerShowing(false);
+                      }}
+                      colors={[
+                        '#FFFFFF', '#FFFF00', '#000000', '#FF4136',
+                        '#2ECC40', '#0052CC', '#FF851B', '#B10DC9',
+                        '#39CCCC', '#F012BE',
+                      ]}
+                      width="280px"
+                    />
+                  </Popover>
+                </Grid>
+              </Grid>
 
               <ThumbnailContainer sx={{ my: 2 }}>
                 <CollageThumbnail src={collageBlob} alt="Collage Result" />
