@@ -287,7 +287,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
 
   // Theme States
   const theme = useTheme();
-  const [currentThemeBragText, setCurrentThemeBragText] = useState(metadata?.frameCount ? `Search over ${metadata?.frameCount.toLocaleString('en-US')} frames from ${metadata?.title}` : defaultBragText);
+  const [currentThemeBragText, setCurrentThemeBragText] = useState(metadata?.frameCount ? `Search over ${metadata?.frameCount.toLocaleString('en-US')} meme templates from ${metadata?.title}` : defaultBragText);
   const [currentThemeTitleText, setCurrentThemeTitleText] = useState(metadata?.title || defaultTitleText);
   const [currentThemeFontFamily, setCurrentThemeFontFamily] = useState(metadata?.fontFamily || theme?.typography?.fontFamily);
   const [currentThemeFontColor, setCurrentThemeFontColor] = useState(metadata?.colorSecondary || defaultFontColor);
@@ -311,7 +311,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       // setCurrentThemeFontColor(selectedSeriesProperties.colorSecondary);
       // setCurrentThemeTitleText(selectedSeriesProperties.title);
       // setCurrentThemeBragText(
-      //   `Search over ${selectedSeriesProperties.frameCount.toLocaleString('en-US')} frames from ${selectedSeriesProperties.title}`
+      //   `Search over ${selectedSeriesProperties.frameCount.toLocaleString('en-US')} meme templates from ${selectedSeriesProperties.title}`
       // );
       navigate('/')
     }
