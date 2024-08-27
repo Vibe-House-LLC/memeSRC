@@ -9,11 +9,11 @@
 }
 
 @font-face {
-    font-family: 'Spidey';
+    font-family: 'SPIDEY';
     src: url('./fonts/spidey.ttf') format('truetype');
 }
 
 @font-face {
-    font-family: 'Horror';
+    font-family: 'HORROR';
     src: url('./fonts/horror.ttf') format('truetype');
 }
