@@ -24,7 +24,7 @@ TextEditorControls.propTypes = {
     handleFontChange: PropTypes.func,
 };
 
-const fonts = ["Arial", "Courier New", "Georgia", "Verdana", "Akbar"];
+const fonts = ["Arial", "Courier New", "Georgia", "Verdana", "Akbar", "SPIDEY", "HORROR"];
 
 const FontSelector = ({ selectedFont, onSelectFont, index }) => {
     return (
