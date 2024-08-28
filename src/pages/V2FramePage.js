@@ -110,7 +110,7 @@ export default function FramePage({ shows = [] }) {
 
   const isSm = useMediaQuery((theme) => theme.breakpoints.down('md'));
 
-  const fonts = ["Arial", "Courier New", "Georgia", "Verdana", "Akbar", "SPIDEY", "HORROR" ];
+  const fonts = ["Arial", "Courier New", "Georgia", "Verdana", "Akbar", "SPIDEY", "HORROR", "Star Jedi" ];
 
   /* -------------------------------------------------------------------------- */
 
