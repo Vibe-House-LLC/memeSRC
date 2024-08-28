@@ -118,7 +118,11 @@ export default function FramePage({ shows = [] }) {
     return (
       <Select
         value={selectedFont}
-        onChange={(e) => onSelectFont(e.target.value)}
+        onChange={(e) => {
+          const newFont = e.target.value;
+          onSelectFont(newFont);
+          setIsLowercaseFont(newFont === 'Star Jedi');
+        }}
         displayEmpty
         inputProps={{ 'aria-label': 'Without label' }}
         size='small'
@@ -293,7 +297,7 @@ export default function FramePage({ shows = [] }) {
           const lineHeight = 24; // adjust as per your requirements
           const startY = offScreenCanvas.height - (2 * lineHeight); // adjust to position the text properly
 
-          const text = loadedSubtitle;
+          const text = isLowercaseFont ? loadedSubtitle.toLowerCase() : loadedSubtitle;
 
           // Calculate number of lines without drawing
           const numOfLines = wrapText(ctx, text, x, startY, maxWidth, scaledLineHeight, false);
@@ -578,6 +582,11 @@ useEffect(() => {
   const [fontFamily, setFontFamily] = useState(() => {
     const storedValue = localStorage.getItem(`formatting-${user?.username}-${cid}`);
     return storedValue ? JSON.parse(storedValue).fontFamily : 'Arial';
+  });
+
+  const [isLowercaseFont, setIsLowercaseFont] = useState(() => {
+    const storedValue = localStorage.getItem(`formatting-${user?.username}-${cid}`);
+    return storedValue ? JSON.parse(storedValue).fontFamily === 'Star Jedi' : false;
   });
 
   const updateLocalStorage = () => {
@@ -1034,6 +1043,11 @@ useEffect(() => {
                               fontWeight: isBold ? 'bold' : 'normal',
                               fontStyle: isItalic ? 'italic' : 'normal',
                               fontFamily,
+                            },
+                          }}
+                          inputProps={{
+                            style: {
+                              textTransform: isLowercaseFont ? 'lowercase' : 'none',
                             },
                           }}
                           sx={{
