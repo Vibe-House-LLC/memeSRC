@@ -9,11 +9,16 @@
 }
 
 @font-face {
+    font-family: 'HORROR';
+    src: url('./fonts/horror.ttf') format('truetype');
+}
+
+@font-face {
     font-family: 'SPIDEY';
     src: url('./fonts/spidey.ttf') format('truetype');
 }
 
 @font-face {
-    font-family: 'HORROR';
-    src: url('./fonts/horror.ttf') format('truetype');
+    font-family: 'Star Jedi';
+    src: url('./fonts/star-jedi.ttf') format('truetype');
 }
