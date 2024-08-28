@@ -269,6 +269,7 @@ export default function CollagePage() {
   const [borderThickness, setBorderThickness] = useState(15);
   const [collageBlob, setCollageBlob] = useState(null);
   const [editMode, setEditMode] = useState(true);
+  const [activeStep, setActiveStep] = useState(0);
   const [accordionExpanded, setAccordionExpanded] = useState(false);
   const canvasRef = useRef(null);
   const isMobile = useMediaQuery("(max-width:600px)");
@@ -316,13 +317,17 @@ export default function CollagePage() {
   useEffect(() => {
     const storedCollageState = localStorage.getItem('collageState');
     if (storedCollageState) {
-      const parsedCollageState = JSON.parse(storedCollageState);
-      setImages(parsedCollageState.images);
-      setBorderThickness(parsedCollageState.borderThickness);
-      setEditMode(parsedCollageState.editMode);
-      setAccordionExpanded(parsedCollageState.accordionExpanded);
-      setActiveStep(parsedCollageState.activeStep);
-      setBorderColor(parsedCollageState.borderColor || '#FFFFFF'); // Ensure a default value
+      try {
+        const parsedCollageState = JSON.parse(storedCollageState);
+        setImages(parsedCollageState.images);
+        setBorderThickness(parsedCollageState.borderThickness);
+        setBorderColor(parsedCollageState.borderColor || '#FFFFFF');
+        setEditMode(parsedCollageState.editMode);
+        setAccordionExpanded(parsedCollageState.accordionExpanded);
+        setActiveStep(parsedCollageState.activeStep);
+      } catch (error) {
+        console.error('Error parsing stored collage state:', error);
+      }
     }
 
     if (location.state?.updatedCollageState) {
@@ -337,6 +342,19 @@ export default function CollagePage() {
       setAccordionExpanded(accordionExpanded);
     }
   }, [location.state]);
+
+  useEffect(() => {
+    const collageState = {
+      images,
+      borderThickness,
+      borderColor,
+      editMode,
+      accordionExpanded,
+      activeStep,
+    };
+    localStorage.setItem('collageState', JSON.stringify(collageState));
+  }, [images, borderThickness, borderColor, editMode, accordionExpanded, activeStep]);
+  
 
   const handleImageUpload = (event, index) => {
     const uploadedImages = Array.from(event.target.files);
@@ -375,6 +393,7 @@ export default function CollagePage() {
       images,
       editingImageIndex: index,
       borderThickness,
+      borderColor,
       editMode,
       accordionExpanded,
       activeStep,
@@ -570,8 +589,6 @@ export default function CollagePage() {
   const handleCloseSaveDialog = () => {
     setOpenSaveDialog(false);
   };
-
-  const [activeStep, setActiveStep] = useState(0);
 
   const steps = ['Add Images', 'Adjust Borders', 'Save or Edit'];
 
