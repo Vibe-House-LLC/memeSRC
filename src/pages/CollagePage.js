@@ -318,7 +318,14 @@ export default function CollagePage() {
   const isEditing = searchParams.get('editing') === 'true';
 
   useEffect(() => {
-    if (isEditing) {
+    if (!isEditing) {
+      // Clear the state in session storage
+      sessionStorage.removeItem('collageState');
+
+      // Add ?editing=true to the URL
+      searchParams.set('editing', 'true');
+      navigate(`${location.pathname}?${searchParams.toString()}`, { replace: true });
+    } else {
       const storedCollageState = sessionStorage.getItem('collageState');
       if (storedCollageState) {
         try {
@@ -347,7 +354,7 @@ export default function CollagePage() {
       setEditMode(editMode);
       setAccordionExpanded(accordionExpanded);
     }
-  }, [location.state, isEditing]);
+  }, [location.search, location.state, navigate]);
 
   useEffect(() => {
     if (hasAddedImages) {
