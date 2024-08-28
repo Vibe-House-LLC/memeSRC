@@ -322,7 +322,7 @@ export default function CollagePage() {
       setEditMode(parsedCollageState.editMode);
       setAccordionExpanded(parsedCollageState.accordionExpanded);
       setActiveStep(parsedCollageState.activeStep);
-      // Don't remove the item from localStorage here
+      setBorderColor(parsedCollageState.borderColor || '#FFFFFF'); // Ensure a default value
     }
 
     if (location.state?.updatedCollageState) {
@@ -537,6 +537,7 @@ export default function CollagePage() {
     const collageState = {
       images,
       borderThickness,
+      borderColor,
       editMode,
       accordionExpanded,
       activeStep,
