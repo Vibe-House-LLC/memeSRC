@@ -299,8 +299,8 @@ export default function CollagePage() {
     setAccordionExpanded(false);
     setCollageBlob(null);
 
-    // Clear localStorage
-    localStorage.removeItem('collageState');
+    // Clear sessionStorage
+    sessionStorage.removeItem('collageState');
 
     // Clear any state passed through navigation
     if (navigate) {
@@ -315,7 +315,7 @@ export default function CollagePage() {
   const location = useLocation();
 
   useEffect(() => {
-    const storedCollageState = localStorage.getItem('collageState');
+    const storedCollageState = sessionStorage.getItem('collageState');
     if (storedCollageState) {
       try {
         const parsedCollageState = JSON.parse(storedCollageState);
@@ -352,7 +352,7 @@ export default function CollagePage() {
       accordionExpanded,
       activeStep,
     };
-    localStorage.setItem('collageState', JSON.stringify(collageState));
+    sessionStorage.setItem('collageState', JSON.stringify(collageState));
   }, [images, borderThickness, borderColor, editMode, accordionExpanded, activeStep]);
   
 
@@ -398,7 +398,7 @@ export default function CollagePage() {
       accordionExpanded,
       activeStep,
     };
-    localStorage.setItem('collageState', JSON.stringify(collageState));
+    sessionStorage.setItem('collageState', JSON.stringify(collageState));
 
     fetch(image.src)
       .then(res => res.blob())
@@ -552,7 +552,7 @@ export default function CollagePage() {
   const [openSaveDialog, setOpenSaveDialog] = useState(false);
 
   const handleOpenInEditor = () => {
-    // Store the current state in localStorage
+    // Store the current state in sessionStorage
     const collageState = {
       images,
       borderThickness,
@@ -561,7 +561,7 @@ export default function CollagePage() {
       accordionExpanded,
       activeStep,
     };
-    localStorage.setItem('collageState', JSON.stringify(collageState));
+    sessionStorage.setItem('collageState', JSON.stringify(collageState));
 
     // Create the resulting image blob
     const resultImage = canvasRef.current.toDataURL({
