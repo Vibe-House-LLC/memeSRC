@@ -279,6 +279,7 @@ export default function CollagePage() {
   const imagesOnly = true; // Set this to true to use images as default option
   const [borderColor, setBorderColor] = useState('#FFFFFF');
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const [hasAddedImages, setHasAddedImages] = useState(false);
 
   const { user } = useContext(UserContext);
   const { openSubscriptionDialog } = useSubscribeDialog();
@@ -313,20 +314,25 @@ export default function CollagePage() {
   }, [images, borderThickness, borderColor]);
 
   const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const isEditing = searchParams.get('editing') === 'true';
 
   useEffect(() => {
-    const storedCollageState = sessionStorage.getItem('collageState');
-    if (storedCollageState) {
-      try {
-        const parsedCollageState = JSON.parse(storedCollageState);
-        setImages(parsedCollageState.images);
-        setBorderThickness(parsedCollageState.borderThickness);
-        setBorderColor(parsedCollageState.borderColor || '#FFFFFF');
-        setEditMode(parsedCollageState.editMode);
-        setAccordionExpanded(parsedCollageState.accordionExpanded);
-        setActiveStep(parsedCollageState.activeStep);
-      } catch (error) {
-        console.error('Error parsing stored collage state:', error);
+    if (isEditing) {
+      const storedCollageState = sessionStorage.getItem('collageState');
+      if (storedCollageState) {
+        try {
+          const parsedCollageState = JSON.parse(storedCollageState);
+          setImages(parsedCollageState.images);
+          setBorderThickness(parsedCollageState.borderThickness);
+          setBorderColor(parsedCollageState.borderColor || '#FFFFFF');
+          setEditMode(parsedCollageState.editMode);
+          setAccordionExpanded(parsedCollageState.accordionExpanded);
+          setActiveStep(parsedCollageState.activeStep);
+          setHasAddedImages(true);
+        } catch (error) {
+          console.error('Error parsing stored collage state:', error);
+        }
       }
     }
 
@@ -341,19 +347,21 @@ export default function CollagePage() {
       setEditMode(editMode);
       setAccordionExpanded(accordionExpanded);
     }
-  }, [location.state]);
+  }, [location.state, isEditing]);
 
   useEffect(() => {
-    const collageState = {
-      images,
-      borderThickness,
-      borderColor,
-      editMode,
-      accordionExpanded,
-      activeStep,
-    };
-    sessionStorage.setItem('collageState', JSON.stringify(collageState));
-  }, [images, borderThickness, borderColor, editMode, accordionExpanded, activeStep]);
+    if (hasAddedImages) {
+      const collageState = {
+        images,
+        borderThickness,
+        borderColor,
+        editMode,
+        accordionExpanded,
+        activeStep,
+      };
+      sessionStorage.setItem('collageState', JSON.stringify(collageState));
+    }
+  }, [images, borderThickness, borderColor, editMode, accordionExpanded, activeStep, hasAddedImages]);
   
 
   const handleImageUpload = (event, index) => {
@@ -384,6 +392,7 @@ export default function CollagePage() {
         updatedImages.splice(index, 0, ...newImages);
         return updatedImages;
       });
+      setHasAddedImages(true);
     });
   };
 
