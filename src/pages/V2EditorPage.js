@@ -19,8 +19,6 @@ import { MagicPopupContext } from '../MagicPopupContext';
 import useSearchDetails from '../hooks/useSearchDetails';
 import getFrame from '../utils/frameHandler';
 import LoadingBackdrop from '../components/LoadingBackdrop';
-import { createEditorProject, updateEditorProject } from '../graphql/mutations';
-import { getEditorProject } from '../graphql/queries';
 import ImageEditorControls from '../components/ImageEditorControls';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
 import EditorPageBottomBannerAd from '../ads/EditorPageBottomBannerAd';
@@ -28,6 +26,8 @@ import EditorPageBottomBannerAd from '../ads/EditorPageBottomBannerAd';
 import { fetchFrameInfo, fetchFramesFineTuning, fetchFramesSurroundingPromises } from '../utils/frameHandlerV2';
 import getV2Metadata from '../utils/getV2Metadata';
 import HomePageBannerAd from '../ads/HomePageBannerAd';
+
+import { calculateEditorSize, getContrastColor, deleteLayer, moveLayerUp } from '../utils/editorFunctions';
 
 const Alert = forwardRef((props, ref) => <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />);
 
@@ -402,6 +402,11 @@ const EditorPage = ({ shows }) => {
 
   const fileInputRef = useRef(null); // Define the ref
 
+  const handleDeleteLayer = (index) => {
+    deleteLayer(editor.canvas, index, setLayerFonts, setCanvasObjects);
+    addToHistory();
+  };
+
   const loadEditorDefaults = useCallback(async () => {
     setLoading(true);
     // Check if the uploadedImage exists in the location state
@@ -562,15 +567,6 @@ const EditorPage = ({ shows }) => {
     }
   }, [defaultSubtitle]);
 
-  // Calculate the desired editor size
-  const calculateEditorSize = (aspectRatio) => {
-    const containerElement = document.getElementById('canvas-container');
-    const availableWidth = containerElement.offsetWidth;
-    const calculatedWidth = availableWidth;
-    const calculatedHeight = availableWidth / aspectRatio;
-    return [calculatedHeight, calculatedWidth]
-  }
-
   const saveImage = () => {
     setImageUploading(true);
     const resultImage = editor.canvas.toDataURL({
@@ -644,19 +640,6 @@ const EditorPage = ({ shows }) => {
     setColorPickerShowing(false);
     addToHistory();
   }
-  // Add this function to calculate the contrast color
-  function getContrastColor(hexColor) {
-    // Convert hex to RGB
-    const r = parseInt(hexColor.slice(1, 3), 16);
-    const g = parseInt(hexColor.slice(3, 5), 16);
-    const b = parseInt(hexColor.slice(5, 7), 16);
-    
-    // Calculate luminance
-    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-    
-    // Return black for bright colors, white for dark colors
-    return luminance > 0.5 ? '#000000' : '#FFFFFF';
-  }
 
   const handleEdit = (event, index) => {
     // console.log(event)
@@ -727,46 +710,6 @@ const EditorPage = ({ shows }) => {
     editor?.canvas.renderAll();
     addToHistory();
   }
-
-  const deleteLayer = (index) => {
-    editor.canvas.remove(editor.canvas.item(index));
-    setCanvasObjects([...editor.canvas._objects]);
-    editor?.canvas.renderAll();
-    addToHistory();
-  
-    // Update the layerFonts state by adjusting the index numbers
-    setLayerFonts((prevFonts) => {
-      const updatedFonts = {};
-      Object.entries(prevFonts).forEach(([layerIndex, font]) => {
-        if (parseInt(layerIndex, 10) < index) {
-          updatedFonts[layerIndex] = font;
-        } else if (parseInt(layerIndex, 10) > index) {
-          updatedFonts[parseInt(layerIndex, 10) - 1] = font;
-        }
-      });
-      return updatedFonts;
-    });
-  };
-
-  // Function to move a layer up in the stack
-  const moveLayerUp = (index) => {
-    if (index <= 0) return; // Already at the top or invalid index
-
-    const objectToMoveUp = editor.canvas.item(index);
-    if (!objectToMoveUp) return; // Object not found
-
-    // Move the object one step up in the canvas stack
-    editor.canvas.moveTo(objectToMoveUp, index - 1);
-    editor.canvas.renderAll();
-    addToHistory();
-
-    setCanvasObjects(prevCanvasObjects => {
-      const newCanvasObjects = [...prevCanvasObjects];
-      // Swap the positions of the index with the index above
-      [newCanvasObjects[index], newCanvasObjects[index - 1]] = [newCanvasObjects[index - 1], newCanvasObjects[index]];
-      return newCanvasObjects;
-    });
-  };
 
   // Function to move a layer down in the stack
   const moveLayerDown = (index) => {
@@ -1824,7 +1767,7 @@ const EditorPage = ({ shows }) => {
                                       backgroundColor: theme.palette.background.paper,
                                       boxShadow: 'none'
                                     }}
-                                    onClick={() => deleteLayer(index)}
+                                    onClick={() => handleDeleteLayer(index)}
                                   >
                                     <HighlightOffRounded color="error" />
                                   </Fab>
@@ -1840,7 +1783,7 @@ const EditorPage = ({ shows }) => {
                                     {/* Implement ImageEditorControls according to your app's functionality */}
                                     <ImageEditorControls
                                       index={index}
-                                      deleteLayer={deleteLayer} // Implement this function to handle layer deletion
+                                      deleteLayer={handleDeleteLayer} // Implement this function to handle layer deletion
                                       moveLayerUp={moveLayerUp} // Implement this function to handle moving the layer up
                                       moveLayerDown={moveLayerDown} // Implement this function to handle moving the layer down
                                       src={object.src}
@@ -1855,7 +1798,7 @@ const EditorPage = ({ shows }) => {
                                       backgroundColor: theme.palette.background.paper,
                                       boxShadow: 'none'
                                     }}
-                                    onClick={() => deleteLayer(index)}
+                                    onClick={() => handleDeleteLayer(index)}
                                   >
                                     <HighlightOffRounded color="error" />
                                   </Fab>
