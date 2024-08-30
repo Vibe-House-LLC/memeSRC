@@ -1434,7 +1434,7 @@ const EditorPage = ({ shows }) => {
 
   // Add these state variables near the top of your component, with the other useState declarations
   const [showWhiteSpaceSlider, setShowWhiteSpaceSlider] = useState(false);
-  const [whiteSpaceValue, setWhiteSpaceValue] = useState(10);
+  const [whiteSpaceValue, setWhiteSpaceValue] = useState(20);
   const [whiteSpaceHeight, setWhiteSpaceHeight] = useState(0);
   const [whiteSpacePreview, setWhiteSpacePreview] = useState(0);
   const [isSliding, setIsSliding] = useState(false);
@@ -1481,7 +1481,25 @@ const EditorPage = ({ shows }) => {
   const toggleWhiteSpaceSlider = () => {
     if (!showWhiteSpaceSlider) {
       setShowWhiteSpaceSlider(true);
-      setWhiteSpacePreview(whiteSpaceHeight);
+      const defaultWhiteSpaceValue = 20;
+      setWhiteSpaceValue(defaultWhiteSpaceValue);
+      const newWhiteSpaceHeight = (defaultWhiteSpaceValue / 100) * canvasSize.height;
+      setWhiteSpacePreview(newWhiteSpaceHeight);
+      
+      // Apply the default whitespace immediately
+      if (editor) {
+        const newHeight = canvasSize.height + newWhiteSpaceHeight;
+        editor.canvas.setHeight(newHeight);
+        editor.canvas.getObjects().forEach((obj) => {
+          obj.set('top', obj.top + newWhiteSpaceHeight);
+        });
+        if (editor.canvas.backgroundImage) {
+          editor.canvas.backgroundImage.set('top', editor.canvas.backgroundImage.top + newWhiteSpaceHeight);
+        }
+        editor.canvas.renderAll();
+      }
+      setWhiteSpaceHeight(newWhiteSpaceHeight);
+      addToHistory();
     } else {
       setShowWhiteSpaceSlider(false);
       if (editor) {
