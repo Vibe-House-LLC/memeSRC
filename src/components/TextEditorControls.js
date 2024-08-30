@@ -13,7 +13,7 @@ import { FontDownloadOutlined, FormatSizeRounded, MoreHoriz, Settings } from '@m
 import IconButton from '@mui/material/IconButton';
 import { Button, Chip, MenuItem, Select, Typography } from '@mui/material';
 
-// Prop types
+// Update PropTypes to include layerColor
 TextEditorControls.propTypes = {
     handleStyle: PropTypes.func,
     index: PropTypes.number,
@@ -22,6 +22,7 @@ TextEditorControls.propTypes = {
     colorPickerShowing: PropTypes.bool,
     showColorPicker: PropTypes.func,
     handleFontChange: PropTypes.func,
+    layerColor: PropTypes.string,
 };
 
 const fonts = ["Arial", "Courier New", "Georgia", "Verdana", "Akbar", "PULPY", "scrubs", "SPIDEY", "HORROR", "Star Jedi"];
@@ -52,7 +53,7 @@ const FontSelector = ({ selectedFont, onSelectFont, index }) => {
 
 export default function TextEditorControls(props) {
     const [formats, setFormats] = React.useState(() => []);
-    const [editorVisible, setEditorVisible] = React.useState(false);
+    const [editorVisible, setEditorVisible] = React.useState(true); 
 
     const handleFormat = (event, newFormats) => {
         console.log("HANDLE FORMAT EVENT:", event)
@@ -97,8 +98,13 @@ export default function TextEditorControls(props) {
                         <ToggleButton value="fontsize" aria-label="fontsize" selected={(props.fontSizePickerShowing === props.index)} onClick={props.showFontSizePicker}>
                             <FormatSizeRounded />
                         </ToggleButton>
-                        <ToggleButton value="color" aria-label="color" selected={(props.colorPickerShowing === props.index)} onClick={props.showColorPicker}>
-                            <FormatColorFillIcon />
+                        <ToggleButton 
+                            value="color" 
+                            aria-label="color" 
+                            selected={(props.colorPickerShowing === props.index)} 
+                            onClick={props.showColorPicker}
+                        >
+                            <FormatColorFillIcon style={{ color: props.layerColor || 'inherit' }} />
                             <ArrowDropDownIcon />
                         </ToggleButton>
                     </ToggleButtonGroup>

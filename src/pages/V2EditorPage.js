@@ -1759,6 +1759,7 @@ const EditorPage = ({ shows }) => {
                                     handleFontChange={handleFontChange}
                                     layerFonts={layerFonts}
                                     setLayerFonts={setLayerFonts}
+                                    layerColor={object.fill}
                                   />
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
