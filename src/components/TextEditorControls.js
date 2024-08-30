@@ -108,13 +108,13 @@ export default function TextEditorControls(props) {
                         <ToggleButton value="italic" aria-label="italic">
                             <FormatItalicIcon />
                         </ToggleButton>
+                        <ToggleButton value="fontsize" aria-label="fontsize" selected={(props.fontSizePickerShowing === props.index)} onClick={props.showFontSizePicker}>
+                            <FormatSizeRounded />
+                        </ToggleButton>
                         <ToggleButton value="alignment" aria-label="alignment" onClick={handleAlignmentClick}>
                             {alignment === 'left' && <FormatAlignLeftIcon />}
                             {alignment === 'center' && <FormatAlignCenterIcon />}
                             {alignment === 'right' && <FormatAlignRightIcon />}
-                        </ToggleButton>
-                        <ToggleButton value="fontsize" aria-label="fontsize" selected={(props.fontSizePickerShowing === props.index)} onClick={props.showFontSizePicker}>
-                            <FormatSizeRounded />
                         </ToggleButton>
                         <ToggleButton 
                             value="color" 
