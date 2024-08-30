@@ -1448,8 +1448,7 @@ const EditorPage = ({ shows }) => {
   const startWhiteSpaceChange = () => {
     setIsSliding(true);
     // Remove whitespace from canvas and reposition elements
-    if (editor && whiteSpaceHeight > 0) {
-      editor.canvas.setHeight(canvasSize.height);
+    if (editor) {
       editor.canvas.getObjects().forEach((obj) => {
         obj.set('top', obj.top - whiteSpaceHeight);
       });
@@ -1458,7 +1457,6 @@ const EditorPage = ({ shows }) => {
       }
       editor.canvas.renderAll();
     }
-    setWhiteSpacePreview(whiteSpaceHeight);
   };
 
   const applyWhiteSpace = () => {
@@ -1620,7 +1618,7 @@ const EditorPage = ({ shows }) => {
                     </Stack>
                   </Grid>
                 </Grid>
-                <div style={{ width: '100%', padding: 0, margin: 0, boxSizing: 'border-box', position: 'relative' }} id="canvas-container">
+                <div style={{ width: '100%', padding: 0, margin: 0, boxSizing: 'border-box', position: 'relative', overflow: 'hidden' }} id="canvas-container">
                   {showWhiteSpaceSlider && isSliding && (
                     <div 
                       style={{
