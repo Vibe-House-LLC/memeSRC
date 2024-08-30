@@ -1781,6 +1781,11 @@ const EditorPage = ({ shows }) => {
                                     onBlur={addToHistory}
                                     onChange={(event) => handleEdit(event, index)}
                                     placeholder='(type your caption)'
+                                    InputProps={{
+                                      style: {
+                                        fontFamily: layerFonts[index] || 'Arial',
+                                      },
+                                    }}
                                   />
                                   <Fab
                                     size="small"
