@@ -37,7 +37,7 @@ const listAliasesQuery = /* GraphQL */ `
 async function fetchShows() {
     const aliases = await API.graphql({
         query: listAliasesQuery,
-        variables: { filter: {}, limit: 50 },
+        variables: { filter: {}, limit: 250 },
         authMode: 'API_KEY',
     });
 

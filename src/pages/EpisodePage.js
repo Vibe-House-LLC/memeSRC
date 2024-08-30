@@ -79,7 +79,7 @@ export default function EpisodePage({ setSeriesTitle }) {
   useEffect(() => {
     loadFrames(((Number(frameNum) + 1) / 9) - 1);
     API.graphql({
-      ...graphqlOperation(contentMetadataByStatus, { filter: {}, limit: 50, status: 1 }),
+      ...graphqlOperation(contentMetadataByStatus, { filter: {}, limit: 250, status: 1 }),
       authMode: "API_KEY"
     }).then(result => {
       setShowName(result.data.contentMetadataByStatus.items.find(obj => obj.id === seriesId).title)
