@@ -4,14 +4,16 @@ import * as React from 'react';
 import PropTypes from 'prop-types';
 import FormatBoldIcon from '@mui/icons-material/FormatBold';
 import FormatItalicIcon from '@mui/icons-material/FormatItalic';
-import FormatUnderlinedIcon from '@mui/icons-material/FormatUnderlined';
 import FormatColorFillIcon from '@mui/icons-material/FormatColorFill';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
-import { FontDownloadOutlined, FormatSizeRounded, MoreHoriz, Settings } from '@mui/icons-material';
+import { FontDownloadOutlined, FormatSizeRounded, Settings } from '@mui/icons-material';
 import IconButton from '@mui/material/IconButton';
-import { Button, Chip, MenuItem, Select, Typography } from '@mui/material';
+import { MenuItem, Select, Typography, Menu } from '@mui/material';
+import FormatAlignLeftIcon from '@mui/icons-material/FormatAlignLeft';
+import FormatAlignCenterIcon from '@mui/icons-material/FormatAlignCenter';
+import FormatAlignRightIcon from '@mui/icons-material/FormatAlignRight';
 
 // Update PropTypes to include layerColor
 TextEditorControls.propTypes = {
@@ -23,6 +25,7 @@ TextEditorControls.propTypes = {
     showColorPicker: PropTypes.func,
     handleFontChange: PropTypes.func,
     layerColor: PropTypes.string,
+    handleAlignment: PropTypes.func,
 };
 
 const fonts = ["Arial", "Courier New", "Georgia", "Verdana", "Akbar", "PULPY", "scrubs", "SPIDEY", "HORROR", "Star Jedi"];
@@ -53,13 +56,27 @@ const FontSelector = ({ selectedFont, onSelectFont, index }) => {
 
 export default function TextEditorControls(props) {
     const [formats, setFormats] = React.useState(() => []);
-    const [editorVisible, setEditorVisible] = React.useState(true); 
+    const [editorVisible, setEditorVisible] = React.useState(true);
+    const [alignment, setAlignment] = React.useState('center');
+    const [anchorEl, setAnchorEl] = React.useState(null);
 
     const handleFormat = (event, newFormats) => {
-        console.log("HANDLE FORMAT EVENT:", event)
-        console.log("HANDLE FORMAT newFormats:", newFormats)
         setFormats(newFormats);
         props.handleStyle(props.index, newFormats);
+    };
+
+    const handleAlignmentClick = (event) => {
+        setAnchorEl(event.currentTarget);
+    };
+
+    const handleAlignmentClose = () => {
+        setAnchorEl(null);
+    };
+
+    const handleAlignmentChange = (newAlignment) => {
+        setAlignment(newAlignment);
+        props.handleAlignment(props.index, newAlignment);
+        handleAlignmentClose();
     };
 
     return (
@@ -71,10 +88,9 @@ export default function TextEditorControls(props) {
                     color={editorVisible ? "primary" : "default"}
                     onClick={() => setEditorVisible(prev => !prev)}
                     sx={{ marginLeft: 1 }}
-                    >
+                >
                     <Settings />
                 </IconButton>
-
             </div>
 
             {editorVisible && (
@@ -92,8 +108,10 @@ export default function TextEditorControls(props) {
                         <ToggleButton value="italic" aria-label="italic">
                             <FormatItalicIcon />
                         </ToggleButton>
-                        <ToggleButton value="underlined" aria-label="underlined">
-                            <FormatUnderlinedIcon />
+                        <ToggleButton value="alignment" aria-label="alignment" onClick={handleAlignmentClick}>
+                            {alignment === 'left' && <FormatAlignLeftIcon />}
+                            {alignment === 'center' && <FormatAlignCenterIcon />}
+                            {alignment === 'right' && <FormatAlignRightIcon />}
                         </ToggleButton>
                         <ToggleButton value="fontsize" aria-label="fontsize" selected={(props.fontSizePickerShowing === props.index)} onClick={props.showFontSizePicker}>
                             <FormatSizeRounded />
@@ -116,6 +134,15 @@ export default function TextEditorControls(props) {
                         }}
                         index={props.index}
                     />
+                    <Menu
+                        anchorEl={anchorEl}
+                        open={Boolean(anchorEl)}
+                        onClose={handleAlignmentClose}
+                    >
+                        <MenuItem onClick={() => handleAlignmentChange('left')}><FormatAlignLeftIcon /></MenuItem>
+                        <MenuItem onClick={() => handleAlignmentChange('center')}><FormatAlignCenterIcon /></MenuItem>
+                        <MenuItem onClick={() => handleAlignmentChange('right')}><FormatAlignRightIcon /></MenuItem>
+                    </Menu>
                 </>
             )}
         </div>

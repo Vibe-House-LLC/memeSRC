@@ -247,6 +247,13 @@ const EditorPage = ({ shows }) => {
     setOpenDialog(false);
   };
 
+  const handleAlignment = (index, alignment) => {
+    const textObject = editor.canvas.item(index);
+    textObject.set({ textAlign: alignment });
+    editor?.canvas.renderAll();
+    addToHistory();
+  };
+
   // Canvas resizing
   const resizeCanvas = useCallback((width, height) => {
     if (editor) {
@@ -1760,6 +1767,7 @@ const EditorPage = ({ shows }) => {
                                     layerFonts={layerFonts}
                                     setLayerFonts={setLayerFonts}
                                     layerColor={object.fill}
+                                    handleAlignment={handleAlignment}
                                   />
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
