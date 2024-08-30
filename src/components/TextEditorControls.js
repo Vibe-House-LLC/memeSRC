@@ -10,7 +10,7 @@ import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import { FontDownloadOutlined, FormatSizeRounded, Settings } from '@mui/icons-material';
 import IconButton from '@mui/material/IconButton';
-import { MenuItem, Select, Typography, Menu } from '@mui/material';
+import { MenuItem, Select, Typography, Menu, InputAdornment } from '@mui/material';
 import FormatAlignLeftIcon from '@mui/icons-material/FormatAlignLeft';
 import FormatAlignCenterIcon from '@mui/icons-material/FormatAlignCenter';
 import FormatAlignRightIcon from '@mui/icons-material/FormatAlignRight';
@@ -26,6 +26,8 @@ TextEditorControls.propTypes = {
     handleFontChange: PropTypes.func,
     layerColor: PropTypes.string,
     handleAlignment: PropTypes.func,
+    layerFonts: PropTypes.object.isRequired,
+    setLayerFonts: PropTypes.func.isRequired,
 };
 
 const fonts = ["Arial", "Courier New", "Georgia", "Verdana", "Akbar", "PULPY", "scrubs", "SPIDEY", "HORROR", "Star Jedi"];
@@ -38,12 +40,17 @@ const FontSelector = ({ selectedFont, onSelectFont, index }) => {
         displayEmpty
         inputProps={{ 'aria-label': 'Without label' }}
         size='small'
-        startAdornment={<FontDownloadOutlined sx={{ mr: 0.5 }} />}
+        startAdornment={
+          <InputAdornment position="start">
+            <FontDownloadOutlined sx={{ mr: 0.5 }} />
+          </InputAdornment>
+        }
         sx={{
           '& .MuiSelect-select': {
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
+            fontFamily: selectedFont || 'Arial',
           },
         }}
       >
@@ -80,7 +87,7 @@ export default function TextEditorControls(props) {
     };
 
     return (
-        <div>
+        <div style={{ marginBottom: '8px' }}> {/* Added margin to the bottom */}
             <div style={{ display: 'flex', alignItems: 'center' }}>
                 <Typography variant="h5" marginY={1}><b>Layer {props.index+1} (caption)</b></Typography>
                 <IconButton
@@ -94,13 +101,12 @@ export default function TextEditorControls(props) {
             </div>
 
             {editorVisible && (
-                <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <ToggleButtonGroup
                         value={formats}
                         onChange={handleFormat}
                         aria-label="text formatting"
                         size='small'
-                        sx={{ marginBottom: '12px' }}
                     >
                         <ToggleButton value="bold" aria-label="bold">
                             <FormatBoldIcon />
@@ -143,7 +149,7 @@ export default function TextEditorControls(props) {
                         <MenuItem onClick={() => handleAlignmentChange('center')}><FormatAlignCenterIcon /></MenuItem>
                         <MenuItem onClick={() => handleAlignmentChange('right')}><FormatAlignRightIcon /></MenuItem>
                     </Menu>
-                </>
+                </div>
             )}
         </div>
     );
