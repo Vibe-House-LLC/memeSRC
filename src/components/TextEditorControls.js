@@ -14,8 +14,10 @@ import { MenuItem, Select, Typography, Menu, InputAdornment } from '@mui/materia
 import FormatAlignLeftIcon from '@mui/icons-material/FormatAlignLeft';
 import FormatAlignCenterIcon from '@mui/icons-material/FormatAlignCenter';
 import FormatAlignRightIcon from '@mui/icons-material/FormatAlignRight';
+import FormatColorTextIcon from '@mui/icons-material/FormatColorText';
+import BorderColorIcon from '@mui/icons-material/BorderColor';
 
-// Update PropTypes to include layerColor
+// Update PropTypes to include layerColor and layerStrokeColor
 TextEditorControls.propTypes = {
     handleStyle: PropTypes.func,
     index: PropTypes.number,
@@ -25,6 +27,7 @@ TextEditorControls.propTypes = {
     showColorPicker: PropTypes.func,
     handleFontChange: PropTypes.func,
     layerColor: PropTypes.string,
+    layerStrokeColor: PropTypes.string,
     handleAlignment: PropTypes.func,
     layerFonts: PropTypes.object.isRequired,
     setLayerFonts: PropTypes.func.isRequired,
@@ -65,7 +68,8 @@ export default function TextEditorControls(props) {
     const [formats, setFormats] = React.useState(() => []);
     const [editorVisible, setEditorVisible] = React.useState(true);
     const [alignment, setAlignment] = React.useState('center');
-    const [anchorEl, setAnchorEl] = React.useState(null);
+    const [alignmentAnchorEl, setAlignmentAnchorEl] = React.useState(null);
+    const [colorAnchorEl, setColorAnchorEl] = React.useState(null);
 
     const handleFormat = (event, newFormats) => {
         setFormats(newFormats);
@@ -73,11 +77,11 @@ export default function TextEditorControls(props) {
     };
 
     const handleAlignmentClick = (event) => {
-        setAnchorEl(event.currentTarget);
+        setAlignmentAnchorEl(event.currentTarget);
     };
 
     const handleAlignmentClose = () => {
-        setAnchorEl(null);
+        setAlignmentAnchorEl(null);
     };
 
     const handleAlignmentChange = (newAlignment) => {
@@ -86,8 +90,21 @@ export default function TextEditorControls(props) {
         handleAlignmentClose();
     };
 
+    const handleColorClick = (event) => {
+        setColorAnchorEl(event.currentTarget);
+    };
+
+    const handleColorClose = () => {
+        setColorAnchorEl(null);
+    };
+
+    const handleColorChange = (colorType, event) => {
+        props.showColorPicker(colorType, props.index, event);
+        handleColorClose();
+    };
+
     return (
-        <div style={{ marginBottom: '8px' }}> {/* Added margin to the bottom */}
+        <div style={{ marginBottom: '8px' }}>
             <div style={{ display: 'flex', alignItems: 'center' }}>
                 <Typography variant="h5" marginY={1}><b>Layer {props.index+1} (caption)</b></Typography>
                 <IconButton
@@ -125,8 +142,7 @@ export default function TextEditorControls(props) {
                         <ToggleButton 
                             value="color" 
                             aria-label="color" 
-                            selected={(props.colorPickerShowing === props.index)} 
-                            onClick={props.showColorPicker}
+                            onClick={handleColorClick}
                         >
                             <FormatColorFillIcon style={{ color: props.layerColor || 'inherit' }} />
                             <ArrowDropDownIcon />
@@ -141,13 +157,29 @@ export default function TextEditorControls(props) {
                         index={props.index}
                     />
                     <Menu
-                        anchorEl={anchorEl}
-                        open={Boolean(anchorEl)}
+                        anchorEl={alignmentAnchorEl}
+                        open={Boolean(alignmentAnchorEl)}
                         onClose={handleAlignmentClose}
                     >
                         <MenuItem onClick={() => handleAlignmentChange('left')}><FormatAlignLeftIcon /></MenuItem>
                         <MenuItem onClick={() => handleAlignmentChange('center')}><FormatAlignCenterIcon /></MenuItem>
                         <MenuItem onClick={() => handleAlignmentChange('right')}><FormatAlignRightIcon /></MenuItem>
+                    </Menu>
+                    <Menu
+                        anchorEl={colorAnchorEl}
+                        open={Boolean(colorAnchorEl)}
+                        onClose={handleColorClose}
+                    >
+                        <MenuItem onClick={(event) => {
+                            handleColorChange('text', event)
+                        }}>
+                            <FormatColorTextIcon style={{ marginRight: '8px', color: props.layerColor || 'inherit' }} />
+                            Text Color
+                        </MenuItem>
+                        <MenuItem onClick={(event) => handleColorChange('stroke', event)}>
+                            <BorderColorIcon style={{ marginRight: '8px', color: props.layerStrokeColor || 'inherit' }} />
+                            Stroke Color
+                        </MenuItem>
                     </Menu>
                 </div>
             )}

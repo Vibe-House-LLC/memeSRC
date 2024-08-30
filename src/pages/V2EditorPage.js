@@ -98,7 +98,7 @@ const EditorPage = ({ shows }) => {
   const [selectedFid, setSelectedFid] = useState(fid);
   const [defaultSubtitle, setDefaultSubtitle] = useState(null);
   const [colorPickerShowing, setColorPickerShowing] = useState(false);
-  const [colorPickerAnchor, setColorPickerAnchor] = useState(null);
+  const [colorPickerAnchorEl, setColorPickerAnchorEl] = useState(null);
   const [colorPickerColor, setColorPickerColor] = useState({
     r: '0',
     g: '0',
@@ -108,6 +108,8 @@ const EditorPage = ({ shows }) => {
   const [fontSizePickerShowing, setFontSizePickerShowing] = useState(false);
   const [fontSizePickerAnchor, setFontSizePickerAnchor] = useState(null);
   const [selectedFontSize, setSelectedFontSize] = useState(100);
+
+  const [currentColorType, setCurrentColorType] = useState('text');
 
   const [editorAspectRatio, setEditorAspectRatio] = useState(1);
 
@@ -614,10 +616,11 @@ const EditorPage = ({ shows }) => {
       });
   }
 
-  const showColorPicker = (event, index) => {
+  const showColorPicker = (colorType, index, event) => {
     setPickingColor(index);
     setColorPickerShowing(index);
-    setColorPickerAnchor(event.target);
+    setCurrentColorType(colorType);
+    setColorPickerAnchorEl(event.currentTarget);
   }
 
   const showFontSizePicker = (event, index) => {
@@ -632,15 +635,17 @@ const EditorPage = ({ shows }) => {
     setColorPickerColor(color);
     const textObject = editor.canvas.item(index);
   
-    const fontColor = color.hex;
-    const strokeColor = getContrastColor(fontColor);
-  
-    textObject.set({
-      fill: fontColor,
-      stroke: strokeColor,
-      strokeWidth: editor?.canvas.getWidth() * 0.0025, // Reduced from 0.0040 to 0.0025
-      strokeUniform: false
-    });
+    if (currentColorType === 'text') {
+        textObject.set({
+            fill: color.hex,
+        });
+    } else if (currentColorType === 'stroke') {
+        textObject.set({
+            stroke: color.hex,
+            strokeWidth: editor?.canvas.getWidth() * 0.0025,
+            strokeUniform: false
+        });
+    }
   
     setCanvasObjects([...editor.canvas._objects]);
     editor?.canvas.renderAll();
@@ -1757,7 +1762,7 @@ const EditorPage = ({ shows }) => {
                               <Grid item xs={12} order={index} marginBottom={1} style={{ marginLeft: '10px' }}>
                                 <div style={{ display: 'inline', position: 'relative' }}>
                                   <TextEditorControls
-                                    showColorPicker={(event) => showColorPicker(event, index)}
+                                    showColorPicker={(colorType, index, event) => showColorPicker(colorType, index, event)}
                                     colorPickerShowing={colorPickerShowing}
                                     index={index}
                                     showFontSizePicker={(event) => showFontSizePicker(event, index)}
@@ -1767,6 +1772,7 @@ const EditorPage = ({ shows }) => {
                                     layerFonts={layerFonts}
                                     setLayerFonts={setLayerFonts}
                                     layerColor={object.fill}
+                                    layerStrokeColor={object.stroke}
                                     handleAlignment={handleAlignment}
                                   />
                                 </div>
@@ -2229,8 +2235,11 @@ const EditorPage = ({ shows }) => {
 
           <Popover
             open={colorPickerShowing !== false}
-            anchorEl={colorPickerAnchor}
-            onClose={() => setColorPickerShowing(false)}
+            anchorEl={colorPickerAnchorEl}
+            onClose={() => {
+              setColorPickerShowing(false);
+              setColorPickerAnchorEl(null);
+            }}
             id="colorPicker"
             anchorOrigin={{
               vertical: 'bottom',
