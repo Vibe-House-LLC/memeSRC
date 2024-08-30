@@ -51,7 +51,7 @@ const FontSelector = ({ selectedFont, onSelectFont, index }) => {
 };
 
 export default function TextEditorControls(props) {
-    const [formats, setFormats] = React.useState(() => ['bold']);
+    const [formats, setFormats] = React.useState(() => []);
     const [editorVisible, setEditorVisible] = React.useState(false);
 
     const handleFormat = (event, newFormats) => {

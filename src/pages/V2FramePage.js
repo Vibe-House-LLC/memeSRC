@@ -561,7 +561,7 @@ useEffect(() => {
 
   const [isBold, setIsBold] = useState(() => {
     const storedValue = localStorage.getItem(`formatting-${user?.username}-${cid}`);
-    return storedValue ? JSON.parse(storedValue).isBold : true;
+    return storedValue ? JSON.parse(storedValue).isBold : false;
   });
   
   const [isItalic, setIsItalic] = useState(() => {

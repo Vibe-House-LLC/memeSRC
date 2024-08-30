@@ -321,7 +321,7 @@ const EditorPage = ({ shows }) => {
       width: editor?.canvas.getWidth() * 0.9,
       fontSize: editor?.canvas.getWidth() * 0.04,
       fontFamily: 'sans-serif',
-      fontWeight: 900,
+      fontWeight: 400,
       fill: 'white',
       stroke: 'black',
       strokeLineJoin: 'round',
@@ -703,13 +703,14 @@ const EditorPage = ({ shows }) => {
     // Select the item
     const item = editor.canvas.item(index);
     // Update the style
-    item.fontWeight = customStyles.includes('bold') ? 900 : 400
-    item.fontStyle = customStyles.includes('italic') ? 'italic' : 'normal'
-    item.underline = customStyles.includes('underlined')
+    item.set({
+      fontWeight: customStyles.includes('bold') ? 'bold' : 'normal',
+      fontStyle: customStyles.includes('italic') ? 'italic' : 'normal',
+      underline: customStyles.includes('underlined')
+    });
     // Update the canvas
-    editor.canvas.item(index).dirty = true;
+    item.dirty = true;
     setCanvasObjects([...editor.canvas._objects]);
-    // console.log(editor.canvas.item(index));
     editor?.canvas.renderAll();
     addToHistory();
   }
@@ -720,7 +721,7 @@ const EditorPage = ({ shows }) => {
     // Update the style
     item.fontFamily = font || 'Arial'
     // Update the canvas
-    editor.canvas.item(index).dirty = true;
+    item.dirty = true;
     setCanvasObjects([...editor.canvas._objects]);
     // console.log(editor.canvas.item(index));
     editor?.canvas.renderAll();
