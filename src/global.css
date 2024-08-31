@@ -24,6 +24,11 @@
 }
 
 @font-face {
+    font-family: 'South Park';
+    src: url('./fonts/south-park.ttf') format('truetype');
+}
+
+@font-face {
     font-family: 'SPIDEY';
     src: url('./fonts/spidey.ttf') format('truetype');
 }
