@@ -32,3 +32,8 @@
     font-family: 'Star Jedi';
     src: url('./fonts/star-jedi.ttf') format('truetype');
 }
+
+@font-face {
+    font-family: 'twilight';
+    src: url('./fonts/twilight.ttf') format('truetype');
+}

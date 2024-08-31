@@ -33,7 +33,7 @@ TextEditorControls.propTypes = {
     setLayerFonts: PropTypes.func.isRequired,
 };
 
-const fonts = ["Arial", "Courier New", "Georgia", "Verdana", "Akbar", "PULPY", "scrubs", "SPIDEY", "HORROR", "Star Jedi"];
+const fonts = ["Arial", "Courier New", "Georgia", "Verdana", "Akbar", "PULPY", "scrubs", "SPIDEY", "HORROR", "Star Jedi", "twilight"];
 
 const FontSelector = ({ selectedFont, onSelectFont, index }) => {
     return (
