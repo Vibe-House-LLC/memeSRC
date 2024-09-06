@@ -1,27 +1,21 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { API } from 'aws-amplify';
-import { Badge, IconButton } from '@mui/material';
-import StarBorderIcon from '@mui/icons-material/StarBorder';
-import StarIcon from '@mui/icons-material/Star';
+import { IconButton } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { UserContext } from '../UserContext';
 
-const StyledBadge = styled(Badge)(() => ({
-  '& .MuiBadge-badge': {
-    padding: '0 3px',
-    backgroundColor: 'rgba(255, 255, 255, 0.8)', // Lighter background for dark mode
-    fontWeight: 'bold',
-    fontSize: '8pt', // Slightly larger font size
-  },
-}));
-
-const StyledIconButton = styled(IconButton)(() => ({
-  backgroundColor: 'rgba(255, 255, 255, 0.2)', // Darker button background for dark mode
-  padding: '10px', // Increased padding for a larger clickable area
-  borderRadius: '50%', // Make it circular
-  transition: 'background-color 0.3s', // Smooth transition for hover effect
+const StyledIconButton = styled(IconButton)(({ theme, isFavorite }) => ({
+  padding: '8px',
+  borderRadius: '50%',
+  transition: 'all 0.3s',
+  backgroundColor: isFavorite ? 'transparent' : 'rgba(128, 128, 128, 0.1)',
   '&:hover': {
-    backgroundColor: 'rgba(255, 255, 255, 0.4)', // Lighter on hover for better visibility
+    backgroundColor: isFavorite ? 'transparent' : 'rgba(128, 128, 128, 0.2)',
+  },
+  '& .favoriteIcon': {
+    fontSize: '24px',
+    lineHeight: 1,
+    color: isFavorite ? 'inherit' : '#808080',
   },
 }));
 
@@ -53,15 +47,16 @@ const FavoriteToggle = ({ indexId, initialIsFavorite }) => {
   };
 
   return (
-    <StyledBadge>
-      <StyledIconButton
-        aria-label={isFavorite ? "remove-favorite" : "add-favorite"}
-        onClick={toggleFavorite}
-        disabled={isSaving}
-      >
-        {isFavorite ? <StarIcon /> : <StarBorderIcon />}
-      </StyledIconButton>
-    </StyledBadge>
+    <StyledIconButton
+      aria-label={isFavorite ? "remove-favorite" : "add-favorite"}
+      onClick={toggleFavorite}
+      disabled={isSaving}
+      isFavorite={isFavorite}
+    >
+      <span className="favoriteIcon" role="img" aria-label={isFavorite ? "Favorite" : "Not favorite"}>
+        {isFavorite ? '⭐' : '★'}
+      </span>
+    </StyledIconButton>
   );
 };
 
