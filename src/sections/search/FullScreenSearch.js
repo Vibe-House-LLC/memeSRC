@@ -18,6 +18,7 @@ import HomePageSection from './HomePageSection';
 import HomePageBannerAd from '../../ads/HomePageBannerAd';
 import useSearchDetailsV2 from '../../hooks/useSearchDetailsV2';
 import AddCidPopup from '../../components/ipfs/add-cid-popup';
+import FavoriteToggle from '../../components/FavoriteToggle';
 import fetchShows from '../../utils/fetchShows';
 import useLoadRandomFrame from '../../utils/loadRandomFrame';
 import { useSubscribeDialog } from '../../contexts/useSubscribeDialog';
@@ -585,27 +586,39 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       <StyledGridContainer container paddingX={3} sx={currentThemeBackground}>
         <Grid container marginY="auto" justifyContent="center" pb={isMd ? 0 : 8}>
           <Grid container justifyContent="center">
-            <Grid item textAlign="center" marginBottom={5}>
+            <Grid item textAlign="center" marginBottom={2}>
+              <Box onClick={() => handleChangeSeries(window.localStorage.getItem(`defaultsearch${user?.sub}`) || '_universal')}>
+                <Box
+                  component="img"
+                  src={Logo({ color: currentThemeFontColor || 'white' })}
+                  sx={{ objectFit: 'contain', cursor: 'pointer', display: 'block', width: '130px', height: 'auto', margin: '0 auto', color: 'yellow' }}
+                />
+              </Box>
               <Typography
                 component="h1"
                 variant="h1"
                 fontSize={34}
                 fontFamily={currentThemeFontFamily}
-                sx={{ color: currentThemeFontColor, textShadow: '1px 1px 3px rgba(0, 0, 0, 0.30);' }}
+                sx={{ 
+                  color: currentThemeFontColor, 
+                  textShadow: '1px 1px 3px rgba(0, 0, 0, 0.30);', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center'
+                }}
               >
-                <Box onClick={() => handleChangeSeries(window.localStorage.getItem(`defaultsearch${user?.sub}`) || '_universal')}>
-                  {/* <Logo
-                    sx={{ display: 'inline', width: '130px', height: 'auto', margin: '-18px', color: 'yellow' }}
-                    color="white"
-                  /> */}
-
-                  <Box
-                    component="img"
-                    src={Logo({ color: currentThemeFontColor || 'white' })}
-                    sx={{ objectFit: 'contain', cursor: 'pointer', display: 'inline', width: '130px', height: 'auto', margin: '-18px', color: 'yellow' }}
-                  />
-                </Box>
+                {cid && cid !== '_universal' && cid !== '_favorites' && shows.length > 0 ? (
+                  <Box sx={{ marginRight: 1 }}>
+                    <FavoriteToggle
+                      indexId={cid}
+                      initialIsFavorite={shows.find(show => show.id === cid)?.isFavorite || false}
+                    />
+                  </Box>
+                ) : (
+                  <Box sx={{ marginX: 1, width: '36px' }} />
+                )}
                 {`${currentThemeTitleText} ${currentThemeTitleText === 'memeSRC' ? (user?.userDetails?.magicSubscription === 'true' ? 'Pro' : '') : ''}`}
+                <Box sx={{ marginX: 1, width: '36px' }} /> {/* Invisible spacer on the right */}
               </Typography>
               {!localStorage.getItem('alertDismissed-EARLY-ACCESS-COLLAGE-8fs667') && (
                 <center>
