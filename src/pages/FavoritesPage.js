@@ -4,6 +4,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { API, graphqlOperation, Auth } from 'aws-amplify';
 import { Typography, Grid, Card, CardContent, Button, Collapse, Stack } from '@mui/material';
 import { styled } from '@mui/material/styles';
+import Container from '@mui/material/Container';
 import { listFavorites } from '../graphql/queries';
 import fetchShows from '../utils/fetchShows';
 import { UserContext } from '../UserContext';
@@ -254,7 +255,7 @@ const FavoritesPage = () => {
   }
 
   return (
-    <div style={{ padding: '20px' }}>
+    <Container maxWidth="md" sx={{ padding: '20px' }}>
       <h1>Edit Favorites</h1>
       <Collapse in={showBanner}>
         <UpgradedIndexBanner show={showBanner}>
@@ -323,7 +324,7 @@ const FavoritesPage = () => {
       <div>
         <Typography variant="h4" gutterBottom>Favorites</Typography>
         {favorites.length > 0 ? (
-          <Grid container spacing={2}>
+          <Grid container spacing={2} justifyContent="center">
             {favorites.map((favorite) => (
               <Grid item xs={12} key={favorite.id}>
                 <Card
@@ -332,12 +333,12 @@ const FavoritesPage = () => {
                     color: favorite.alias?.colorSecondary,
                     cursor: 'pointer',
                     minHeight: 150,
-                    maxWidth: 750,
+                    width: '100%',
                     position: 'relative',
                     overflow: 'visible',
-                    display: 'flex', // Add this
-                    alignItems: 'center', // Add this
-                    justifyContent: 'center', // Add this
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                     paddingX: 2
                   }}
                 >
@@ -352,9 +353,9 @@ const FavoritesPage = () => {
                       justifyContent: 'center',
                       alignItems: 'center',
                       textAlign: 'center',
-                      height: '100%', // Add this
-                      width: '100%', // Add this
-                      padding: '16px', // Add this to ensure consistent padding
+                      height: '100%',
+                      width: '100%',
+                      padding: '16px',
                     }}
                   >
                     <Typography variant="h5" sx={{ mb: 1 }}>
@@ -375,7 +376,7 @@ const FavoritesPage = () => {
       <div style={{ marginTop: 20 }}>
         <Typography variant="h4" gutterBottom>Other</Typography>
         {sortedFilteredAvailableIndexes.length > 0 ? (
-          <Grid container spacing={2}>
+          <Grid container spacing={2} justifyContent="center">
             {sortedFilteredAvailableIndexes.map((index) => (
               <Grid item xs={12} key={index.id}>
                 <Card
@@ -384,12 +385,12 @@ const FavoritesPage = () => {
                     color: index.colorSecondary,
                     cursor: 'pointer',
                     minHeight: 150,
-                    maxWidth: 750,
+                    width: '100%',
                     position: 'relative',
                     overflow: 'visible',
-                    display: 'flex', // Add this
-                    alignItems: 'center', // Add this
-                    justifyContent: 'center', // Add this
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                     paddingX: 2
                   }}
                 >
@@ -404,9 +405,9 @@ const FavoritesPage = () => {
                       justifyContent: 'center',
                       alignItems: 'center',
                       textAlign: 'center',
-                      height: '100%', // Add this
-                      width: '100%', // Add this
-                      padding: '16px', // Add this to ensure consistent padding
+                      height: '100%',
+                      width: '100%',
+                      padding: '16px',
                     }}
                   >
                     <Typography variant="h5" sx={{ mb: 1 }}>
@@ -424,7 +425,7 @@ const FavoritesPage = () => {
           <Typography>All indexes are in your favorites.</Typography>
         )}
       </div>
-    </div>
+    </Container>
   );
 };
 
