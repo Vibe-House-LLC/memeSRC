@@ -47,3 +47,8 @@
     font-family: 'twilight';
     src: url('./fonts/twilight.ttf') format('truetype');
 }
+
+@font-face {
+    font-family: 'zuume';
+    src: url('./fonts/zuume.ttf') format('truetype');
+}
