@@ -591,7 +591,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                 <Box
                   component="img"
                   src={Logo({ color: currentThemeFontColor || 'white' })}
-                  sx={{ objectFit: 'contain', cursor: 'pointer', display: 'block', width: '130px', height: 'auto', margin: '0 auto', color: 'yellow' }}
+                  sx={{ objectFit: 'contain', cursor: 'pointer', display: 'block', width: '130px', height: 'auto', margin: '-10px auto 0px', color: 'yellow' }}
                 />
               </Box>
               <Typography
@@ -601,10 +601,10 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                 fontFamily={currentThemeFontFamily}
                 sx={{ 
                   color: currentThemeFontColor, 
-                  textShadow: '1px 1px 3px rgba(0, 0, 0, 0.30);', 
+                  textShadow: '1px 1px 1px rgba(0, 0, 0, 0.20);', 
                   display: 'flex', 
                   alignItems: 'center', 
-                  justifyContent: 'center'
+                  justifyContent: 'center',
                 }}
               >
                 {cid && cid !== '_universal' && cid !== '_favorites' && shows.length > 0 ? (
@@ -621,44 +621,41 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                 <Box sx={{ marginX: 1, width: '36px' }} /> {/* Invisible spacer on the right */}
               </Typography>
               {!localStorage.getItem('alertDismissed-EARLY-ACCESS-COLLAGE-8fs667') && (
-                <center>
-                  <Alert
-                    severity="info"
-                    action={
-                      <>
-                        <Button
-                          variant="outlined"
-                          color="inherit"
-                          size="small"
-                          style={{ marginRight: '5px' }}
-                          onClick={async () => {
-                            navigate('/collage');
-                          }}
-                        >
-                          Early Access
-                        </Button>
-                        <IconButton
-                          color="inherit"
-                          size="small"
-                          onClick={() => {
-                            localStorage.setItem('alertDismissed-EARLY-ACCESS-COLLAGE-8fs667', 'true');
-                            setAlertOpen(false);
-                          }}
-                        >
-                          <CloseIcon fontSize="inherit" />
-                        </IconButton>
-                      </>
-                    }
-                    sx={{
-                      marginTop: 2,
-                      marginBottom: -3,
-                      opacity: 0.9,
-                      maxWidth: 400,
-                    }}
-                  >
-                    <b>New:</b> Collages!
-                  </Alert>
-                </center>
+                <Alert
+                  severity="info"
+                  action={
+                    <>
+                      <Button
+                        variant="outlined"
+                        color="inherit"
+                        size="small"
+                        style={{ marginRight: '5px' }}
+                        onClick={async () => {
+                          navigate('/collage');
+                        }}
+                      >
+                        Early Access
+                      </Button>
+                      <IconButton
+                        color="inherit"
+                        size="small"
+                        onClick={() => {
+                          localStorage.setItem('alertDismissed-EARLY-ACCESS-COLLAGE-8fs667', 'true');
+                          setAlertOpen(false);
+                        }}
+                      >
+                        <CloseIcon fontSize="inherit" />
+                      </IconButton>
+                    </>
+                  }
+                  sx={{
+                    opacity: 0.9,
+                    maxWidth: 400,
+                    marginY: 1,
+                  }}
+                >
+                  <b>New:</b> Collages!
+                </Alert>
               )}
             </Grid>
           </Grid>
