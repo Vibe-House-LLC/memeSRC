@@ -331,19 +331,32 @@ const FavoritesPage = () => {
                     backgroundColor: favorite.alias?.colorMain,
                     color: favorite.alias?.colorSecondary,
                     cursor: 'pointer',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
                     minHeight: 150,
+                    maxWidth: 750,
                     position: 'relative',
+                    overflow: 'visible',
+                    display: 'flex', // Add this
+                    alignItems: 'center', // Add this
+                    justifyContent: 'center', // Add this
+                    paddingX: 2
                   }}
                 >
-                  <CardContent sx={{ textAlign: 'center' }}>
-                    <FavoriteToggle
-                      indexId={favorite.id}
-                      initialIsFavorite
-                    />
+                  <FavoriteToggle
+                    indexId={favorite.id}
+                    initialIsFavorite
+                  />
+                  <CardContent
+                    sx={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      textAlign: 'center',
+                      height: '100%', // Add this
+                      width: '100%', // Add this
+                      padding: '16px', // Add this to ensure consistent padding
+                    }}
+                  >
                     <Typography variant="h5" sx={{ mb: 1 }}>
                       {favorite.alias?.emoji} {favorite.alias?.title}
                     </Typography>
@@ -370,19 +383,32 @@ const FavoritesPage = () => {
                     backgroundColor: index.colorMain,
                     color: index.colorSecondary,
                     cursor: 'pointer',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
                     minHeight: 150,
+                    maxWidth: 750,
                     position: 'relative',
+                    overflow: 'visible',
+                    display: 'flex', // Add this
+                    alignItems: 'center', // Add this
+                    justifyContent: 'center', // Add this
+                    paddingX: 2
                   }}
                 >
-                  <CardContent sx={{ textAlign: 'center' }}>
-                    <FavoriteToggle
-                      indexId={index.id}
-                      initialIsFavorite={false}
-                    />
+                  <FavoriteToggle
+                    indexId={index.id}
+                    initialIsFavorite={false}
+                  />
+                  <CardContent
+                    sx={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      textAlign: 'center',
+                      height: '100%', // Add this
+                      width: '100%', // Add this
+                      padding: '16px', // Add this to ensure consistent padding
+                    }}
+                  >
                     <Typography variant="h5" sx={{ mb: 1 }}>
                       {index.emoji} {index.title}
                     </Typography>
