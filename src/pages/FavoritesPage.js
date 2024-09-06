@@ -2,34 +2,12 @@
 
 import React, { useState, useEffect, useContext } from 'react';
 import { API, graphqlOperation, Auth } from 'aws-amplify';
-import { Typography, IconButton, Badge, Fab, Grid, Card, CardContent, Button, Collapse } from '@mui/material';
-import StarBorderIcon from '@mui/icons-material/StarBorder';
-import StarIcon from '@mui/icons-material/Star';
+import { Typography, Grid, Card, CardContent, Button, Collapse } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import { createFavorite, deleteFavorite } from '../graphql/mutations';
 import { listFavorites } from '../graphql/queries';
 import fetchShows from '../utils/fetchShows';
 import { UserContext } from '../UserContext';
-
-const StyledBadge = styled(Badge)(() => ({
-  '& .MuiBadge-badge': {
-    padding: '0 3px',
-    backgroundColor: 'rgba(0, 0, 0, 1)',
-    fontWeight: 'bold',
-    fontSize: '7pt',
-  },
-  position: 'absolute',
-  top: '8px',
-  right: '8px',
-}));
-
-const StyledFab = styled(Fab)(() => ({
-  backgroundColor: 'rgba(255, 255, 255, 0.35)',
-  zIndex: 0,
-  position: 'relative',
-}));
-
-const APP_VERSION = process.env.REACT_APP_VERSION || 'defaultVersion';
+import FavoriteToggle from '../components/FavoriteToggle';
 
 const UpgradedIndexBanner = styled('div')(({ show }) => ({
   backgroundImage: 'url("https://api-prod-minimal-v510.vercel.app/assets/images/cover/cover_3.jpg")',
@@ -123,6 +101,8 @@ const MinimizedBannerText = styled(Typography)`
   z-index: 1;
 `;
 
+const APP_VERSION = process.env.REACT_APP_VERSION || 'defaultVersion';
+
 async function getCacheKey() {
   try {
     const currentUser = await Auth.currentAuthenticatedUser();
@@ -133,10 +113,9 @@ async function getCacheKey() {
 }
 
 const FavoritesPage = () => {
-  const { user, handleUpdateUserDetails } = useContext(UserContext)
+  const { user } = useContext(UserContext)
   const [favorites, setFavorites] = useState([]);
   const [availableIndexes, setAvailableIndexes] = useState([]);
-  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [isBannerMinimized, setIsBannerMinimized] = useState(true);
@@ -221,39 +200,6 @@ const FavoritesPage = () => {
   const clearSessionCache = async () => {
     const cacheKey = await getCacheKey();
     localStorage.removeItem(cacheKey);
-  };
-
-  const addFavorite = (indexId) => {
-    setIsSaving(true);
-    API.post('publicapi', '/user/update/updateFavorites', {
-      body: {
-        favoriteId: indexId
-      }
-    }).then(results => {
-      handleUpdateUserDetails(results?.updatedUserDetails)
-    }).catch(err => {
-      console.error('Error adding favorite:', err);
-      setError('Failed to add favorite.');
-    }).finally( () => {
-      setIsSaving(false);
-    })
-  };
-
-  const removeFavorite = async (favoriteId) => {
-    setIsSaving(true);
-    API.post('publicapi', '/user/update/updateFavorites', {
-      body: {
-        favoriteId,
-        removeFavorite: true
-      }
-    }).then(results => {
-      handleUpdateUserDetails(results?.updatedUserDetails)
-    }).catch(err => {
-      console.error('Error adding favorite:', err);
-      setError('Failed to add favorite.');
-    }).finally( () => {
-      setIsSaving(false);
-    });
   };
 
   const filteredAvailableIndexes = availableIndexes.filter(
@@ -358,21 +304,10 @@ const FavoritesPage = () => {
                   }}
                 >
                   <CardContent sx={{ textAlign: 'center' }}>
-                    <StyledBadge
-                      anchorOrigin={{
-                        vertical: 'top',
-                        horizontal: 'right',
-                      }}
-                    >
-                      <StyledFab
-                        aria-label="remove-favorite"
-                        onClick={() => removeFavorite(favorite.id)}
-                        disabled={isSaving}
-                        size="small"
-                      >
-                        <StarIcon />
-                      </StyledFab>
-                    </StyledBadge>
+                    <FavoriteToggle
+                      indexId={favorite.id}
+                      initialIsFavorite
+                    />
                     <Typography variant="h5" sx={{ mb: 1 }}>
                       {favorite.alias?.emoji} {favorite.alias?.title}
                     </Typography>
@@ -408,21 +343,10 @@ const FavoritesPage = () => {
                   }}
                 >
                   <CardContent sx={{ textAlign: 'center' }}>
-                    <StyledBadge
-                      anchorOrigin={{
-                        vertical: 'top',
-                        horizontal: 'right',
-                      }}
-                    >
-                      <StyledFab
-                        aria-label="add-favorite"
-                        onClick={() => addFavorite(index.id)}
-                        disabled={isSaving}
-                        size="small"
-                      >
-                        <StarBorderIcon />
-                      </StyledFab>
-                    </StyledBadge>
+                    <FavoriteToggle
+                      indexId={index.id}
+                      initialIsFavorite={false}
+                    />
                     <Typography variant="h5" sx={{ mb: 1 }}>
                       {index.emoji} {index.title}
                     </Typography>
