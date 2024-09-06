@@ -1,6 +1,6 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { API } from 'aws-amplify';
-import { IconButton } from '@mui/material';
+import { IconButton, CircularProgress } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { UserContext } from '../UserContext';
 
@@ -18,6 +18,14 @@ const StyledIconButton = styled(IconButton)(({ theme, isFavorite }) => ({
     color: isFavorite ? 'inherit' : '#808080',
   },
 }));
+
+const IconContainer = styled('div')({
+  width: '24px',
+  height: '24px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+});
 
 const FavoriteToggle = ({ indexId, initialIsFavorite }) => {
   const { user, handleUpdateUserDetails } = useContext(UserContext);
@@ -53,9 +61,15 @@ const FavoriteToggle = ({ indexId, initialIsFavorite }) => {
       disabled={isSaving}
       isFavorite={isFavorite}
     >
-      <span className="favoriteIcon" role="img" aria-label={isFavorite ? "Favorite" : "Not favorite"}>
-        {isFavorite ? '⭐' : '★'}
-      </span>
+      <IconContainer>
+        {isSaving ? (
+          <CircularProgress size={20} color="inherit" />
+        ) : (
+          <span className="favoriteIcon" role="img" aria-label={isFavorite ? "Favorite" : "Not favorite"}>
+            {isFavorite ? '⭐' : '★'}
+          </span>
+        )}
+      </IconContainer>
     </StyledIconButton>
   );
 };
