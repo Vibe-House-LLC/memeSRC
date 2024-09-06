@@ -1,5 +1,5 @@
 // component
-import { Article, Ballot, CardGiftcard, Create, DocumentScanner, Edit, Favorite, FolderShared, Grid3x3, Grid4x4, MapsUgc, PhotoAlbum, PhotoLibrary, QuestionAnswer, Search, Settings, Shield, SupportAgent, Upload } from '@mui/icons-material';
+import { Article, Ballot, CardGiftcard, Create, DocumentScanner, Edit, Favorite, FolderShared, Grid3x3, Grid4x4, MapsUgc, PhotoAlbum, PhotoLibrary, QuestionAnswer, Search, Settings, Shield, Star, SupportAgent, Upload } from '@mui/icons-material';
 import SvgColor from '../../../components/svg-color';
 
 // ----------------------------------------------------------------------
@@ -24,6 +24,14 @@ const navConfig = [
         chipColor: 'info',
       },
       {
+        title: 'Favorites',
+        path: '/favorites',
+        externalLink: false,
+        chipText: 'Pro',
+        chipColor: 'info',
+        icon: <Star />
+      },
+      {
         title: 'search',
         path: '/search',
         externalLink: false,
@@ -34,12 +42,6 @@ const navConfig = [
         path: '/edit',
         externalLink: false,
         icon: <Edit />,
-      },
-      {
-        title: 'Vote',
-        path: '/vote',
-        externalLink: false,
-        icon: <Ballot />
       },
       ...(isElectron() ? [{
         title: 'Server',
@@ -53,6 +55,12 @@ const navConfig = [
     sectionTitle: 'Contribute',
     adminOnly: false,
     items: [
+      {
+        title: 'Vote',
+        path: '/vote',
+        externalLink: false,
+        icon: <Ballot />
+      },
       {
         title: 'upload',
         path: '/contribute',
