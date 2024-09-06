@@ -2,6 +2,7 @@ import React, { useState, useContext, useEffect } from 'react';
 import { API } from 'aws-amplify';
 import { IconButton, CircularProgress } from '@mui/material';
 import { styled } from '@mui/material/styles';
+import { useNavigate } from 'react-router-dom';
 import { UserContext } from '../UserContext';
 
 const StyledIconButton = styled(IconButton)(({ theme, isFavorite }) => ({
@@ -31,12 +32,20 @@ const FavoriteToggle = ({ indexId, initialIsFavorite }) => {
   const { user, handleUpdateUserDetails } = useContext(UserContext);
   const [isFavorite, setIsFavorite] = useState(initialIsFavorite);
   const [isSaving, setIsSaving] = useState(false);
+  const navigate = useNavigate();
+
+  const isAuthorized = user?.userDetails?.magicSubscription === "true" || user?.['cognito:groups']?.includes('admins');
 
   useEffect(() => {
     console.log("FavoriteToggle rendered", { indexId, initialIsFavorite });
   }, [indexId, initialIsFavorite]);
 
   const toggleFavorite = async () => {
+    if (!isAuthorized) {
+      navigate('/favorites');
+      return;
+    }
+
     setIsSaving(true);
     try {
       const result = await API.post('publicapi', '/user/update/updateFavorites', {
@@ -66,7 +75,7 @@ const FavoriteToggle = ({ indexId, initialIsFavorite }) => {
           <CircularProgress size={20} color="inherit" />
         ) : (
           <span className="favoriteIcon" role="img" aria-label={isFavorite ? "Favorite" : "Not favorite"}>
-            {isFavorite ? '⭐' : '★'}
+            {isAuthorized ? (isFavorite ? '⭐' : '★') : '★'}
           </span>
         )}
       </IconContainer>
