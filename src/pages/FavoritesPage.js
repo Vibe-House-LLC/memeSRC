@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect, useContext } from 'react';
 import { API, graphqlOperation, Auth } from 'aws-amplify';
-import { Typography, Grid, Card, CardContent, Button, Collapse } from '@mui/material';
+import { Typography, Grid, Card, CardContent, Button, Collapse, Stack } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { listFavorites } from '../graphql/queries';
 import fetchShows from '../utils/fetchShows';
 import { UserContext } from '../UserContext';
+import { useSubscribeDialog } from '../contexts/useSubscribeDialog';
 import FavoriteToggle from '../components/FavoriteToggle';
 
 const UpgradedIndexBanner = styled('div')(({ show }) => ({
@@ -113,13 +114,16 @@ async function getCacheKey() {
 }
 
 const FavoritesPage = () => {
-  const { user } = useContext(UserContext)
+  const { user } = useContext(UserContext);
+  const { openSubscriptionDialog } = useSubscribeDialog();
   const [favorites, setFavorites] = useState([]);
   const [availableIndexes, setAvailableIndexes] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [isBannerMinimized, setIsBannerMinimized] = useState(true);
   const [showBanner, setShowBanner] = useState(false);
+
+  const authorized = user?.userDetails?.magicSubscription === "true" || user?.['cognito:groups']?.includes('admins');
 
   useEffect(() => {
     Promise.all([fetchAvailableIndexes()])
@@ -217,6 +221,38 @@ const FavoritesPage = () => {
     return <div style={{ padding: '20px' }}>Loading...</div>;
   }
 
+  if (!authorized) {
+    return (
+      <Grid container height="100%" justifyContent="center" alignItems="center" mt={6}>
+        <Grid item>
+          <Stack spacing={3} justifyContent="center">
+            <img
+              src="/assets/memeSRC-white.svg"
+              alt="memeSRC logo"
+              style={{ height: 48, marginBottom: -15 }}
+            />
+            <Typography variant="h3" textAlign="center">
+              Favorites
+            </Typography>
+            <Typography variant="body" textAlign="center" sx={{ paddingX: 2 }}>
+              The Favorites feature is currently in early access and only available for memeSRC&nbsp;Pro.
+            </Typography>
+          </Stack>
+          <center>
+            <Button
+              onClick={openSubscriptionDialog}
+              variant="contained"
+              size="large"
+              sx={{ mt: 5, fontSize: 17 }}
+            >
+              Upgrade to Pro
+            </Button>
+          </center>
+        </Grid>
+      </Grid>
+    );
+  }
+
   return (
     <div style={{ padding: '20px' }}>
       <h1>Edit Favorites</h1>
@@ -230,7 +266,7 @@ const FavoritesPage = () => {
               </UpgradedIndexSubtext>
               <UpgradedIndexSubtext sx={{ fontSize: 12 }}>
                 As a memeSRC Pro, you get early access.{' '}
-                <a href="https://forms.gle/8CETtVbwYoUmxqbi7" target="_blank" rel="noopener noreferrer">
+                <a href="/support" rel="noopener noreferrer">
                   Report&nbsp;a&nbsp;problem
                 </a>
                 .
