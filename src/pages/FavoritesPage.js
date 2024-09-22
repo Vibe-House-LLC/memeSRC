@@ -250,7 +250,7 @@ const FavoritesPage = () => {
             </Button>
             <Typography variant="body2" sx={{ mt: 2 }}>
               Already have an account?{' '}
-              <Link to="/login" style={{ color: 'primary.main', textDecoration: 'none' }}>
+              <Link to="/login" style={{ color: '#fff', fontWeight: 'bold', textDecoration: 'none' }}>
                 Log in
               </Link>
             </Typography>
