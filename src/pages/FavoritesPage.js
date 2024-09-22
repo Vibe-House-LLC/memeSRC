@@ -224,6 +224,8 @@ const FavoritesPage = () => {
   }
 
   if (!authorized) {
+    const redirectTo = encodeURIComponent(window.location.pathname + window.location.search);
+
     return (
       <Grid container height="100%" justifyContent="center" alignItems="center" mt={6}>
         <Grid item>
@@ -241,7 +243,7 @@ const FavoritesPage = () => {
             </Typography>
             <Button
               component={Link}
-              to="/signup"
+              to={`/signup?dest=${redirectTo}`}
               variant="contained"
               size="large"
               sx={{ fontSize: 17, minWidth: 200, mt: 2 }}
@@ -250,7 +252,7 @@ const FavoritesPage = () => {
             </Button>
             <Typography variant="body2" sx={{ mt: 2 }}>
               Already have an account?{' '}
-              <Link to="/login" style={{ color: '#fff', fontWeight: 'bold', textDecoration: 'none' }}>
+              <Link to={`/login?dest=${redirectTo}`} style={{ color: '#fff', fontWeight: 'bold', textDecoration: 'none' }}>
                 Log in
               </Link>
             </Typography>
@@ -272,7 +274,6 @@ const FavoritesPage = () => {
                 Use the ⭐️ to set favorites.
               </UpgradedIndexSubtext>
               <UpgradedIndexSubtext sx={{ fontSize: 12 }}>
-                As a memeSRC Pro, you get early access.{' '}
                 <a href="/support" rel="noopener noreferrer">
                   Report&nbsp;a&nbsp;problem
                 </a>
@@ -314,7 +315,7 @@ const FavoritesPage = () => {
             localStorage.removeItem(`dismissedBanner`);
           }}
         >
-          <MinimizedBannerText style={{ fontWeight: 'bold' }}>Favorites (early access)</MinimizedBannerText>
+          <MinimizedBannerText style={{ fontWeight: 'bold' }}>Favorites</MinimizedBannerText>
           <MinimizedBannerText
             style={{
               textDecoration: 'underline',
