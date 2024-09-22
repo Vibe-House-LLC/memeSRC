@@ -5,6 +5,7 @@ import { API, graphqlOperation, Auth } from 'aws-amplify';
 import { Typography, Grid, Card, CardContent, Button, Collapse, Stack } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import Container from '@mui/material/Container';
+import { Link } from 'react-router-dom';
 import { listFavorites } from '../graphql/queries';
 import fetchShows from '../utils/fetchShows';
 import { UserContext } from '../UserContext';
@@ -124,7 +125,7 @@ const FavoritesPage = () => {
   const [isBannerMinimized, setIsBannerMinimized] = useState(true);
   const [showBanner, setShowBanner] = useState(false);
 
-  const authorized = user?.userDetails?.magicSubscription === "true" || user?.['cognito:groups']?.includes('admins');
+  const authorized = !!user; // Check if user is logged in
 
   useEffect(() => {
     Promise.all([fetchAvailableIndexes()])
@@ -226,7 +227,7 @@ const FavoritesPage = () => {
     return (
       <Grid container height="100%" justifyContent="center" alignItems="center" mt={6}>
         <Grid item>
-          <Stack spacing={3} justifyContent="center">
+          <Stack spacing={3} justifyContent="center" alignItems="center">
             <img
               src="/assets/memeSRC-white.svg"
               alt="memeSRC logo"
@@ -235,20 +236,25 @@ const FavoritesPage = () => {
             <Typography variant="h3" textAlign="center">
               Favorites
             </Typography>
-            <Typography variant="body" textAlign="center" sx={{ paddingX: 2 }}>
-              The Favorites feature is currently in early access and only available for memeSRC&nbsp;Pro.
+            <Typography variant="body1" textAlign="center" sx={{ paddingX: 2, maxWidth: 400 }}>
+              Create an account or log in to access the Favorites feature and personalize your memeSRC experience.
             </Typography>
-          </Stack>
-          <center>
             <Button
-              onClick={openSubscriptionDialog}
+              component={Link}
+              to="/signup"
               variant="contained"
               size="large"
-              sx={{ mt: 5, fontSize: 17 }}
+              sx={{ fontSize: 17, minWidth: 200, mt: 2 }}
             >
-              Upgrade to Pro
+              Create Account
             </Button>
-          </center>
+            <Typography variant="body2" sx={{ mt: 2 }}>
+              Already have an account?{' '}
+              <Link to="/login" style={{ color: 'primary.main', textDecoration: 'none' }}>
+                Log in
+              </Link>
+            </Typography>
+          </Stack>
         </Grid>
       </Grid>
     );
