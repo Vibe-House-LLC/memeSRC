@@ -620,7 +620,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                 {`${currentThemeTitleText} ${currentThemeTitleText === 'memeSRC' ? (user?.userDetails?.magicSubscription === 'true' ? 'Pro' : '') : ''}`}
                 <Box sx={{ marginX: 1, width: '36px' }} /> {/* Invisible spacer on the right */}
               </Typography>
-              {!localStorage.getItem('alertDismissed-EARLY-ACCESS-COLLAGE-8fs667') && (
+              {/* {!localStorage.getItem('alertDismissed-EARLY-ACCESS-COLLAGE-8fs667') && (
                 <Alert
                   severity="info"
                   action={
@@ -656,7 +656,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                 >
                   <b>New:</b> Collages!
                 </Alert>
-              )}
+              )} */}
             </Grid>
           </Grid>
           <StyledSearchForm onSubmit={(e) => searchFunction(e)}>

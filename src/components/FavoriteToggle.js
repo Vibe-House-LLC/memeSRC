@@ -34,7 +34,7 @@ const FavoriteToggle = ({ indexId, initialIsFavorite }) => {
   const [isSaving, setIsSaving] = useState(false);
   const navigate = useNavigate();
 
-  const isAuthorized = user?.userDetails?.magicSubscription === "true" || user?.['cognito:groups']?.includes('admins');
+  const isAuthorized = !!user; // Check if user is truthy (logged in)
 
   useEffect(() => {
     console.log("FavoriteToggle rendered", { indexId, initialIsFavorite });
