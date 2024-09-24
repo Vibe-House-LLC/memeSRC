@@ -145,7 +145,9 @@ export default function DashboardLayout() {
   const location = useLocation();
   const isRootPath = location.pathname === '/' || seriesId || location.pathname === '/pro';
   const [adSpaceHeight, setAdSpaceHeight] = useState(0);
-  const [isAdDismissed, setIsAdDismissed] = useState(false);
+  const [isAdDismissed, setIsAdDismissed] = useState(() => {
+    return sessionStorage.getItem('isAdDismissed') === 'true';
+  });
   const [dismissDialogOpen, setDismissDialogOpen] = useState(false);
   const adSpaceRef = useRef(null);
   const { openSubscriptionDialog } = useSubscribeDialog();
@@ -211,6 +213,7 @@ export default function DashboardLayout() {
   const handleConfirmDismiss = () => {
     setDismissDialogOpen(false);
     setIsAdDismissed(true);
+    sessionStorage.setItem('isAdDismissed', 'true');
   };
 
   const handleCancelDismiss = () => {
@@ -219,7 +222,7 @@ export default function DashboardLayout() {
 
   return (
     <>
-      {/* {user?.userDetails?.magicSubscription !== 'true' && !isAdDismissed && (
+      {user?.userDetails?.magicSubscription !== 'true' && !isAdDismissed && (
         <AdSpace ref={adSpaceRef} onClick={openSubscriptionDialog}>
           <Box display="flex" alignItems="center" justifyContent="space-between" width="100%">
             <Box display="flex" alignItems="center">
@@ -276,7 +279,7 @@ export default function DashboardLayout() {
             </Box>
           </Box>
         </AdSpace>
-      )} */}
+      )}
       <StyledDialog open={dismissDialogOpen} onClose={handleCancelDismiss}>
         <StyledDialogTitle>Will you reconsider?</StyledDialogTitle>
         <StyledDialogContent>
