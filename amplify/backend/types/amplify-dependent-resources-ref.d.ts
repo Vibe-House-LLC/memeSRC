@@ -76,7 +76,6 @@ export type AmplifyDependentResourcesAttributes = {
     },
     "memesrcAnalyticsAddDailyPartition": {
       "Arn": "string",
-      "CloudWatchEventRule": "string",
       "LambdaExecutionRole": "string",
       "LambdaExecutionRoleArn": "string",
       "Name": "string",
