@@ -194,6 +194,21 @@ const MinimizedBannerText = styled(Typography)`
   z-index: 1;
 `;
 
+const StickyAdContainer = styled(Box)`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  transition: transform 0.3s ease-in-out;
+  transform: translateY(-100%);
+  padding-top: 50px; // Add this line to create space for the nav bar
+  
+  &.visible {
+    transform: translateY(0);
+  }
+`;
+
 export default function SearchPage() {
   const navigate = useNavigate();
   const theme = useTheme();
@@ -470,6 +485,23 @@ export default function SearchPage() {
     show.title.toLowerCase().includes(indexFilterQuery.toLowerCase())
   );
 
+  const [isAdSticky, setIsAdSticky] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollPosition = window.scrollY;
+      const triggerPosition = 200; // Adjust this value as needed
+
+      setIsAdSticky(scrollPosition > triggerPosition);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
+
   return (
     <>
       {/* <Collapse in={showBanner}>
@@ -555,18 +587,25 @@ export default function SearchPage() {
         </MinimizedBanner>
       )} */}
     {user?.userDetails?.subscriptionStatus !== 'active' &&
-      <Grid item xs={12} mt={2}>
-        <center>
-          <Box>
+      <>
+        <StickyAdContainer className={isAdSticky ? 'visible' : ''}>
+          <Box sx={{ backgroundColor: 'black' }}>
             <HomePageBannerAd />
-            <Link to="/pro" style={{ textDecoration: 'none' }}>
-              <Typography variant="body2" textAlign="center" color="white" sx={{ marginTop: 1 }}>
-                ☝️ Remove ads with <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>memeSRC Pro</span>
-              </Typography>
-            </Link>
           </Box>
-        </center>
-      </Grid>
+        </StickyAdContainer>
+        <Grid item xs={12} mt={2} sx={{ backgroundColor: 'black' }}>
+          <center>
+            <Box>
+              <HomePageBannerAd />
+              <Link to="/pro" style={{ textDecoration: 'none' }}>
+                <Typography variant="body2" textAlign="center" color="white" sx={{ marginTop: 1 }}>
+                  ☝️ Remove ads with <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>memeSRC Pro</span>
+                </Typography>
+              </Link>
+            </Box>
+          </center>
+        </Grid>
+      </>
     }
     <Grid item xs={12} mt={2}>
       <Typography variant="h3" textAlign="center" mb={2}>
