@@ -803,7 +803,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                   <HomePageBannerAd />
                 </Box>
                 <Link to="/pro" style={{ textDecoration: 'none' }}>
-                <Typography variant="body2" textAlign="center" color="white">
+                <Typography variant="body2" textAlign="center" color={currentThemeFontColor}>
                   ☝️ Remove ads with <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>memeSRC Pro</span>
                 </Typography>
               </Link>
