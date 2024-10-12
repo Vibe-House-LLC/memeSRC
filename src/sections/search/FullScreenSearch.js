@@ -797,7 +797,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
             </Button> */}
           </Grid>
           {user?.userDetails?.subscriptionStatus !== 'active' &&
-            <Grid item xs={12} mt={2} mb={-8}>
+            <Grid item xs={12} mt={1}>
               <center>
                 <Box>
                   <Link to="/pro" style={{ textDecoration: 'none', marginBottom: 1 }}>
