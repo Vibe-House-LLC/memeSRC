@@ -560,7 +560,7 @@ export default function SearchPage() {
           <Box>
             <HomePageBannerAd />
             <Link to="/pro" style={{ textDecoration: 'none' }}>
-              <Typography variant="body2" textAlign="center" color="white" sx={{ marginBottom: 1 }}>
+              <Typography variant="body2" textAlign="center" color="white" sx={{ marginTop: 1 }}>
                 ☝️ Remove ads with <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>memeSRC Pro</span>
               </Typography>
             </Link>
