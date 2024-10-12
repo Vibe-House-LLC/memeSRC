@@ -12,6 +12,7 @@ import InfiniteScroll from 'react-infinite-scroll-component';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@emotion/react';
 import sanitizeHtml from 'sanitize-html';
+import HomePageBannerAd from '../ads/HomePageBannerAd';
 import useSearchDetails from '../hooks/useSearchDetails';
 import IpfsSearchBar from '../sections/search/ipfs-search-bar';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
@@ -566,7 +567,7 @@ export default function SearchPage() {
       <Grid item xs={12} mt={2}>
         <center>
           <Box sx={{ maxWidth: '800px' }}>
-            <SearchPageBannerAd />
+            <HomePageBannerAd />
           </Box>
         </center>
       </Grid>
