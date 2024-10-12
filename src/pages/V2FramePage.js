@@ -536,7 +536,6 @@ useEffect(() => {
     return `${formattedHours}:${formattedMinutes}:${formattedSeconds}`;
   }
 
-
   // useEffect(() => {
   //   updateCanvas(true)
   // }, [fontSizeScaleFactor, fontLineHeightScaleFactor, fontBottomMarginScaleFactor]);
@@ -853,6 +852,10 @@ useEffect(() => {
     setImagesLoaded((prevState) => ({ ...prevState, [frameId]: true }));
   };
 
+  const handleProClick = () => {
+    navigate('/pro');
+  };
+
 
   return (
     <>
@@ -864,7 +867,7 @@ useEffect(() => {
         <Grid container spacing={2} direction="row" alignItems="center">
           {/* <img src={imgSrc} alt='alt' /> */}
 
-          {user?.userDetails?.subscriptionStatus !== 'active' && isMd && (
+          {/* {user?.userDetails?.subscriptionStatus !== 'active' && isMd && (
             <Grid item xs={12} mt={2}>
               <center>
                 <Box sx={{ maxWidth: '800px' }}>
@@ -872,13 +875,39 @@ useEffect(() => {
                 </Box>
               </center>
             </Grid>
-          )}
+          )} */}
+
+          {user?.userDetails?.subscriptionStatus !== 'active' &&
+            <Grid item xs={12} mt={2}>
+              <center>
+                <Box sx={{ maxWidth: '800px', backgroundColor: 'black', borderRadius: 2, padding: 2 }}>
+                  <HomePageBannerAd />
+                  <button
+                    onClick={handleProClick}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        handleProClick();
+                      }
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                      marginTop: 2,
+                    }}
+                  >
+                    <Typography variant="body2" color="white">
+                      ☝️ Remove adssss with <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>memeSRC Pro</span>
+                    </Typography>
+                  </button>
+                </Box>
+              </center>
+            </Grid>
+          }
 
           <Grid item xs={12} md={6}>
-
-            <Typography variant='h2' marginBottom={2}>
-              {showTitle}
-            </Typography>
 
             <Chip
               size='small'
@@ -916,7 +945,7 @@ useEffect(() => {
               }}
             />
 
-            {!isMd && user?.userDetails?.subscriptionStatus !== 'active' && (
+            {/* {!isMd && user?.userDetails?.subscriptionStatus !== 'active' && (
               <Grid item xs={12} mt={2}>
                 <center>
                   <Box sx={{ maxWidth: '800px' }}>
@@ -924,7 +953,7 @@ useEffect(() => {
                   </Box>
                 </center>
               </Grid>
-            )}
+            )} */}
 
             <Card>
               {renderFineTuningFrames(imgSrc)}
@@ -1342,7 +1371,7 @@ useEffect(() => {
                 Advanced Editor
               </Button>
           </Grid>
-          {user?.userDetails?.subscriptionStatus !== 'active' &&
+          {/* {user?.userDetails?.subscriptionStatus !== 'active' &&
             <Grid item xs={12} my={1}>
               <center>
                 <Box sx={{ maxWidth: '800px' }}>
@@ -1350,7 +1379,7 @@ useEffect(() => {
                 </Box>
               </center>
             </Grid>
-          }
+          } */}
           <Grid item xs={12} md={6}>
             <Card sx={{ mt: 0 }}>
               <Accordion expanded={subtitlesExpanded} disableGutters>
