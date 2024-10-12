@@ -802,6 +802,11 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                 <Box sx={{ maxWidth: '800px' }}>
                   <HomePageBannerAd />
                 </Box>
+                <Link to="/pro" style={{ textDecoration: 'none' }}>
+                <Typography variant="body2" textAlign="center" color="white">
+                  ☝️ Remove ads with <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>memeSRC Pro</span>
+                </Typography>
+              </Link>
               </center>
             </Grid>
           }
