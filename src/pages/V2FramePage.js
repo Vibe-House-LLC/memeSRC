@@ -880,7 +880,7 @@ useEffect(() => {
           {user?.userDetails?.subscriptionStatus !== 'active' &&
             <Grid item xs={12} mt={2}>
               <center>
-                <Box sx={{ maxWidth: '800px', backgroundColor: 'black', borderRadius: 2, padding: 2 }}>
+                <Box>
                   <HomePageBannerAd />
                   <button
                     onClick={handleProClick}
@@ -899,7 +899,7 @@ useEffect(() => {
                     }}
                   >
                     <Typography variant="body2" color="white">
-                      ☝️ Remove adssss with <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>memeSRC Pro</span>
+                      ☝️ Remove ads with <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>memeSRC Pro</span>
                     </Typography>
                   </button>
                 </Box>

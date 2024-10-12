@@ -554,12 +554,12 @@ export default function SearchPage() {
           </MinimizedBannerText>
         </MinimizedBanner>
       )} */}
-    {user?.userDetails?.subscriptionStatus !== 'active' && (
+    {user?.userDetails?.subscriptionStatus !== 'active' &&
       <Grid item xs={12} mt={2}>
         <center>
-          <Box sx={{ maxWidth: '800px', backgroundColor: 'black', borderRadius: 2, margin: 2, padding: 2 }}>
+          <Box>
             <HomePageBannerAd />
-            <Link to="/pro" sx={{ mt: 2 }} style={{ textDecoration: 'none' }}>
+            <Link to="/pro" style={{ textDecoration: 'none', marginBottom: 1 }}>
               <Typography variant="body2" textAlign="center" color="white">
                 ☝️ Remove ads with <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>memeSRC Pro</span>
               </Typography>
@@ -567,7 +567,7 @@ export default function SearchPage() {
           </Box>
         </center>
       </Grid>
-    )}
+    }
     <Grid item xs={12} mt={2}>
       <Typography variant="h3" textAlign="center" mb={2}>
         {newResults && 

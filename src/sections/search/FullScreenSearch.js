@@ -799,13 +799,13 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
           {user?.userDetails?.subscriptionStatus !== 'active' &&
             <Grid item xs={12} mt={2} mb={-8}>
               <center>
-                <Box sx={{ maxWidth: '800px', backgroundColor: 'black', borderRadius: 2, margin: 2, padding: 2 }}>
-                  <HomePageBannerAd />
-                  <Link to="/pro" style={{ textDecoration: 'none', marginTop: 2 }}>
+                <Box>
+                  <Link to="/pro" style={{ textDecoration: 'none', marginBottom: 1 }}>
                     <Typography variant="body2" textAlign="center" color="white">
-                      ☝️ Remove ads with <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>memeSRC Pro</span>
+                      😎 Remove ads with <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>memeSRC Pro</span>
                     </Typography>
                   </Link>
+                  <HomePageBannerAd />
                 </Box>
               </center>
             </Grid>
