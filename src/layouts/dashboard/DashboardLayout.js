@@ -144,12 +144,12 @@ export default function DashboardLayout() {
   const { seriesId } = useParams();
   const location = useLocation();
   const isRootPath = location.pathname === '/' || seriesId || location.pathname === '/pro';
-  const [adSpaceHeight, setAdSpaceHeight] = useState(0);
-  const [isAdDismissed, setIsAdDismissed] = useState(() => {
-    return sessionStorage.getItem('isAdDismissed') === 'true';
-  });
-  const [dismissDialogOpen, setDismissDialogOpen] = useState(false);
-  const adSpaceRef = useRef(null);
+  // const [adSpaceHeight, setAdSpaceHeight] = useState(0);
+  // const [isAdDismissed, setIsAdDismissed] = useState(() => {
+  //   return sessionStorage.getItem('isAdDismissed') === 'true';
+  // });
+  // const [dismissDialogOpen, setDismissDialogOpen] = useState(false);
+  // const adSpaceRef = useRef(null);
   const { openSubscriptionDialog } = useSubscribeDialog();
   const { user } = useContext(UserContext);
   const isMd = useMediaQuery(theme => theme.breakpoints.up('md'));
@@ -184,45 +184,45 @@ export default function DashboardLayout() {
     setOpen(false);
   }, [location]);
 
-  useEffect(() => {
-    const updateAdSpaceHeight = () => {
-      if (adSpaceRef.current) {
-        setAdSpaceHeight(adSpaceRef.current.offsetHeight);
-      } else {
-        setAdSpaceHeight(0);
-      }
-    };
+  // useEffect(() => {
+  //   const updateAdSpaceHeight = () => {
+  //     if (adSpaceRef.current) {
+  //       setAdSpaceHeight(adSpaceRef.current.offsetHeight);
+  //     } else {
+  //       setAdSpaceHeight(0);
+  //     }
+  //   };
 
-    updateAdSpaceHeight();
-    window.addEventListener('resize', updateAdSpaceHeight);
+  //   updateAdSpaceHeight();
+  //   window.addEventListener('resize', updateAdSpaceHeight);
 
-    return () => {
-      window.removeEventListener('resize', updateAdSpaceHeight);
-    };
-  }, [user?.userDetails?.magicSubscription, selectedTitleSubtitle, isAdDismissed]);
+  //   return () => {
+  //     window.removeEventListener('resize', updateAdSpaceHeight);
+  //   };
+  // }, [user?.userDetails?.magicSubscription, selectedTitleSubtitle, isAdDismissed]);
 
   useEffect(() => {
     const randomIndex = Math.floor(Math.random() * titleSubtitlePairs.length);
     setSelectedTitleSubtitle(titleSubtitlePairs[randomIndex]);
   }, []);
 
-  const handleDismissBanner = () => {
-    setDismissDialogOpen(true);
-  };
+  // const handleDismissBanner = () => {
+  //   setDismissDialogOpen(true);
+  // };
 
-  const handleConfirmDismiss = () => {
-    setDismissDialogOpen(false);
-    setIsAdDismissed(true);
-    sessionStorage.setItem('isAdDismissed', 'true');
-  };
+  // const handleConfirmDismiss = () => {
+  //   setDismissDialogOpen(false);
+  //   setIsAdDismissed(true);
+  //   sessionStorage.setItem('isAdDismissed', 'true');
+  // };
 
-  const handleCancelDismiss = () => {
-    setDismissDialogOpen(false);
-  };
+  // const handleCancelDismiss = () => {
+  //   setDismissDialogOpen(false);
+  // };
 
   return (
     <>
-      {user?.userDetails?.magicSubscription !== 'true' && !isAdDismissed && (
+      {/* {user?.userDetails?.magicSubscription !== 'true' && !isAdDismissed && (
         <AdSpace ref={adSpaceRef} onClick={openSubscriptionDialog}>
           <Box display="flex" alignItems="center" justifyContent="space-between" width="100%">
             <Box display="flex" alignItems="center">
@@ -279,8 +279,8 @@ export default function DashboardLayout() {
             </Box>
           </Box>
         </AdSpace>
-      )}
-      <StyledDialog open={dismissDialogOpen} onClose={handleCancelDismiss}>
+      )} */}
+      {/* <StyledDialog open={dismissDialogOpen} onClose={handleCancelDismiss}>
         <StyledDialogTitle>Will you reconsider?</StyledDialogTitle>
         <StyledDialogContent>
           <Typography variant="body1" align="center">
@@ -310,9 +310,9 @@ export default function DashboardLayout() {
             Learn more
           </Button>
         </StyledDialogActions>
-      </StyledDialog>
-      <StyledRoot adSpaceHeight={adSpaceHeight}>
-        <Header onOpenNav={() => setOpen(true)} adSpaceHeight={adSpaceHeight} />
+      </StyledDialog> */}
+      <StyledRoot>
+        <Header onOpenNav={() => setOpen(true)} />
         <Nav openNav={open} onCloseNav={() => setOpen(false)} />
         <Main isRootPath={isRootPath}>
           <Outlet />
