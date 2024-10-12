@@ -215,7 +215,7 @@ const StyledGridContainer = styled(Grid)`
 
 // Theme Defaults
 const defaultTitleText = 'memeSRC';
-const defaultBragText = 'Search 70 million+ templates';
+const defaultBragText = 'Search 80 million+ templates';
 const defaultFontColor = '#FFFFFF';
 const defaultBackground = `linear-gradient(45deg,
   #5461c8 12.5% /* 1*12.5% */,
@@ -775,8 +775,8 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
               </Grid>
             </Grid>
           </StyledSearchForm>
-          <Grid item xs={12} textAlign="center" color={currentThemeFontColor} marginTop={4}>
-            <Typography component="h4" variant="h4" sx={{ marginTop: -2 }}>
+          <Grid item xs={12} textAlign="center" color={currentThemeFontColor} marginBottom={2} marginTop={1}>
+            <Typography component="h4" variant="h4">
               {currentThemeBragText}
             </Typography>
             {/* <Stack justifyContent='center'>
@@ -797,10 +797,15 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
             </Button> */}
           </Grid>
           {user?.userDetails?.subscriptionStatus !== 'active' &&
-            <Grid item xs={12} mt={2} mb={-8}>
+            <Grid item xs={12} mt={1}>
               <center>
-                <Box sx={{ maxWidth: '800px' }}>
+                <Box>
                   <HomePageBannerAd />
+                  <Link to="/pro" style={{ textDecoration: 'none' }}>
+                    <Typography variant="body2" textAlign="center" color="white" sx={{ marginTop: 1 }}>
+                      ☝️ Remove ads with <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>memeSRC Pro</span>
+                    </Typography>
+                  </Link>
                 </Box>
               </center>
             </Grid>

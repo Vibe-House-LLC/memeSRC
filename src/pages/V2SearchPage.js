@@ -12,6 +12,7 @@ import InfiniteScroll from 'react-infinite-scroll-component';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@emotion/react';
 import sanitizeHtml from 'sanitize-html';
+import HomePageBannerAd from '../ads/HomePageBannerAd';
 import useSearchDetails from '../hooks/useSearchDetails';
 import IpfsSearchBar from '../sections/search/ipfs-search-bar';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
@@ -191,6 +192,21 @@ const MinimizedBannerText = styled(Typography)`
   color: #fff;
   position: relative;
   z-index: 1;
+`;
+
+const StickyAdContainer = styled(Box)`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  transition: transform 0.3s ease-in-out;
+  transform: translateY(-100%);
+  padding-top: 50px; // Add this line to create space for the nav bar
+  
+  &.visible {
+    transform: translateY(0);
+  }
 `;
 
 export default function SearchPage() {
@@ -469,6 +485,23 @@ export default function SearchPage() {
     show.title.toLowerCase().includes(indexFilterQuery.toLowerCase())
   );
 
+  const [isAdSticky, setIsAdSticky] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollPosition = window.scrollY;
+      const triggerPosition = 200; // Adjust this value as needed
+
+      setIsAdSticky(scrollPosition > triggerPosition);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
+
   return (
     <>
       {/* <Collapse in={showBanner}>
@@ -553,6 +586,25 @@ export default function SearchPage() {
           </MinimizedBannerText>
         </MinimizedBanner>
       )} */}
+    {user?.userDetails?.subscriptionStatus !== 'active' &&
+      <>
+        {/* <StickyAdContainer className={isAdSticky ? 'visible' : ''}>
+          <HomePageBannerAd />
+        </StickyAdContainer> */}
+        <Grid item xs={12} mt={2}>
+          <center>
+            <Box>
+              <HomePageBannerAd />
+              <Link to="/pro" style={{ textDecoration: 'none' }}>
+                <Typography variant="body2" textAlign="center" color="white" sx={{ marginTop: 1 }}>
+                  ☝️ Remove ads with <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>memeSRC Pro</span>
+                </Typography>
+              </Link>
+            </Box>
+          </center>
+        </Grid>
+      </>
+    }
     <Grid item xs={12} mt={2}>
       <Typography variant="h3" textAlign="center" mb={2}>
         {newResults && 
@@ -562,15 +614,6 @@ export default function SearchPage() {
         }
       </Typography>
     </Grid>
-    {user?.userDetails?.subscriptionStatus !== 'active' && (
-      <Grid item xs={12} mt={2}>
-        <center>
-          <Box sx={{ maxWidth: '800px' }}>
-            <SearchPageBannerAd />
-          </Box>
-        </center>
-      </Grid>
-    )}
       {loadingResults && (
         <Grid item xs={12} textAlign="center" mt={4}>
           <CircularProgress size={40} />
