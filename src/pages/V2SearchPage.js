@@ -589,11 +589,9 @@ export default function SearchPage() {
     {user?.userDetails?.subscriptionStatus !== 'active' &&
       <>
         <StickyAdContainer className={isAdSticky ? 'visible' : ''}>
-          <Box sx={{ backgroundColor: 'black' }}>
-            <HomePageBannerAd />
-          </Box>
+          <HomePageBannerAd />
         </StickyAdContainer>
-        <Grid item xs={12} mt={2} sx={{ backgroundColor: 'black' }}>
+        <Grid item xs={12} mt={2}>
           <center>
             <Box>
               <HomePageBannerAd />
