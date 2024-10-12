@@ -800,8 +800,8 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
             <Grid item xs={12} mt={1}>
               <center>
                 <Box>
-                  <Link to="/pro" style={{ textDecoration: 'none', marginBottom: 1 }}>
-                    <Typography variant="body2" textAlign="center" color="white">
+                  <Link to="/pro" style={{ textDecoration: 'none' }}>
+                    <Typography variant="body2" textAlign="center" color="white" sx={{ marginBottom: 1 }}>
                       😎 Remove ads with <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>memeSRC Pro</span>
                     </Typography>
                   </Link>

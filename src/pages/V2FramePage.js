@@ -895,7 +895,7 @@ useEffect(() => {
                       padding: 0,
                       cursor: 'pointer',
                       textAlign: 'center',
-                      marginTop: 1,
+                      marginTop: '10px',
                     }}
                   >
                     <Typography variant="body2" color="white">
