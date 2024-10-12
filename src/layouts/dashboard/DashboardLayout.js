@@ -2,7 +2,7 @@ import { useState, useEffect, useContext, useRef } from 'react';
 import { Outlet, useLocation, useParams } from 'react-router-dom';
 import { styled, keyframes } from '@mui/material/styles';
 import { Box, Typography, useMediaQuery, Dialog, DialogTitle, DialogContent, DialogActions, Button } from '@mui/material';
-import HomePageBannerAd from '../../ads/HomePageBannerAd';
+// import HomePageBannerAd from '../../ads/HomePageBannerAd';
 import Header from './header';
 import Nav from './nav';
 import { UserContext } from '../../UserContext';
