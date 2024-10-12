@@ -557,14 +557,14 @@ export default function SearchPage() {
     {user?.userDetails?.subscriptionStatus !== 'active' && (
       <Grid item xs={12} mt={2}>
         <center>
-          <Box sx={{ maxWidth: '800px', backgroundColor: 'black', borderRadius: 2, margin: 2 }}>
+          <Box sx={{ maxWidth: '800px', backgroundColor: 'black', borderRadius: 2, margin: 2, padding: 2 }}>
             <HomePageBannerAd />
+            <Link to="/pro" sx={{ mt: 2 }} style={{ textDecoration: 'none' }}>
+              <Typography variant="body2" textAlign="center" color="#696969">
+                ☝️ Remove ads with <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>memeSRC Pro</span>
+              </Typography>
+            </Link>
           </Box>
-          <Link to="/pro" style={{ textDecoration: 'none' }}>
-            <Typography variant="body2" textAlign="center" color="#696969">
-              ☝️ Remove ads with <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>memeSRC Pro</span>
-            </Typography>
-          </Link>
         </center>
       </Grid>
     )}
