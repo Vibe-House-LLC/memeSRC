@@ -588,9 +588,9 @@ export default function SearchPage() {
       )} */}
     {user?.userDetails?.subscriptionStatus !== 'active' &&
       <>
-        <StickyAdContainer className={isAdSticky ? 'visible' : ''}>
+        {/* <StickyAdContainer className={isAdSticky ? 'visible' : ''}>
           <HomePageBannerAd />
-        </StickyAdContainer>
+        </StickyAdContainer> */}
         <Grid item xs={12} mt={2}>
           <center>
             <Box>
