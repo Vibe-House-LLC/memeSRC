@@ -484,7 +484,7 @@ export default function VotingPage({ shows: searchableShows }) {
               ),
               endAdornment: (
                 <InputAdornment position="end">
-                  <IconButton edge="end" onClick={() => setSearchText('')} disabled={!searchText}>
+                  <IconButton edge="end" onClick={() => setSearchText('')} disabled={!!searchText}>
                     <Close />
                   </IconButton>
                 </InputAdornment>
@@ -648,7 +648,12 @@ export default function VotingPage({ shows: searchableShows }) {
                                             ? handleUpvote(show.id)
                                             : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
                                         }
-                                        disabled={user && ((ableToVote[show.id] !== undefined && ableToVote[show.id] !== true || votingStatus[show.id]))}
+                                        disabled={
+                                          user &&
+                                          ((ableToVote[show.id] !== undefined &&
+                                            ableToVote[show.id] !== true) ||
+                                            !!votingStatus[show.id])
+                                        }
                                         size="small"
                                       >
                                         {lastBoost[show.id] === -1 &&
@@ -729,7 +734,12 @@ export default function VotingPage({ shows: searchableShows }) {
                                             ? handleDownvote(show.id)
                                             : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
                                         }
-                                        disabled={user && ((ableToVote[show.id] !== undefined && ableToVote[show.id] !== true) || votingStatus[show.id])}
+                                        disabled={
+                                          user &&
+                                          ((ableToVote[show.id] !== undefined &&
+                                            ableToVote[show.id] !== true) ||
+                                            !!votingStatus[show.id])
+                                        }
                                         size="small"
                                       >
                                         <ArrowDownward
@@ -946,7 +956,7 @@ export default function VotingPage({ shows: searchableShows }) {
           }
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
-          <LoadingButton onClick={submitRequest} loading={submittingRequest} disabled={!selectedRequest || submittingRequest} variant='contained'>
+          <LoadingButton onClick={submitRequest} loading={submittingRequest} disabled={!!selectedRequest || submittingRequest} variant='contained'>
             Submit Request
           </LoadingButton>
         </DialogActions>
