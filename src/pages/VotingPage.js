@@ -681,8 +681,8 @@ export default function VotingPage({ shows: searchableShows }) {
                     return null;
                   }
                   return (
-                    <React.Fragment key={show.id}>
-                      <Grid item xs={12} key={show.id} style={{ marginBottom: 15 }}>
+                    <div key={show.id}>
+                      <Grid item xs={12} style={{ marginBottom: 15 }}>
                         <Card>
                         <CardContent style={{ paddingTop: 22, paddingBottom: 22 }}>
                         <Box display="flex" alignItems="center">
@@ -985,7 +985,7 @@ export default function VotingPage({ shows: searchableShows }) {
                       </CardContent>
                     </Card>
                   </Grid>
-                  </React.Fragment>
+                  </div>
                   );
                 })}
               </FlipMove>
