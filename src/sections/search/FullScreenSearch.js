@@ -252,6 +252,22 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
 
   const [favoritesInfoOpen, setFavoritesInfoOpen] = useState(true);
 
+  const [showAd, setShowAd] = useState(false);
+
+  useEffect(() => {
+    // Get the current number of homepage loads from localStorage
+    let homepageLoads = parseInt(localStorage.getItem('homepageLoads') || '0', 10);
+
+    // Increment the count
+    homepageLoads += 1;
+
+    // Save the updated count back to localStorage
+    localStorage.setItem('homepageLoads', homepageLoads.toString());
+
+    // Show the ad if the count is greater than 2
+    setShowAd(homepageLoads > 2);
+  }, []); // Empty dependency array ensures this runs only once on component mount
+
   // Scroll to top when arriving at this page
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -796,8 +812,8 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
               </Typography>
             </Button> */}
           </Grid>
-          {user?.userDetails?.subscriptionStatus !== 'active' &&
-            <Grid item xs={12} mt={1}>
+          {user?.userDetails?.subscriptionStatus !== 'active' && showAd &&
+            <Grid item xs={12} mt={1} sx={{ backgroundColor: 'red' }}>
               <center>
                 <Box>
                   <HomePageBannerAd />
