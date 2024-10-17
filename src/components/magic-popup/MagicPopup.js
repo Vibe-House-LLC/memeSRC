@@ -97,6 +97,7 @@ export default function MagicPopup({ children }) {
                     color="secondary"
                     aria-label="close"
                     onClick={() => setMagicToolsPopoverAnchorEl(null)}
+                    disabled={!!loadingSubscriptionUrl}
                     sx={{
                         position: 'absolute',
                         top: theme.spacing(1),

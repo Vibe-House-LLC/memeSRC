@@ -18,8 +18,6 @@ import {
   Stack,
   Tabs,
   Tab,
-  Alert,
-  AlertTitle,
   Chip,
   Tooltip,
   Dialog,
@@ -30,7 +28,6 @@ import {
   Checkbox,
   FormControlLabel,
 } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
 import AddIcon from '@mui/icons-material/Add';
 import { ArrowUpward, ArrowDownward, Search, Close, ThumbUp, Whatshot, Lock } from '@mui/icons-material';
 import FlipMove from 'react-flip-move';
@@ -41,8 +38,6 @@ import { listSeries } from '../graphql/queries';
 import { UserContext } from '../UserContext';
 import TvdbSearch from '../components/TvdbSearch/TvdbSearch';
 import { SnackbarContext } from '../SnackbarContext';
-import VotingPageAd from '../ads/VotingPageAd';
-import VotingPageFooterAd from '../ads/VotingPageFooterAd';
 
 const StyledBadge = styled(Badge)(() => ({
   '& .MuiBadge-badge': {
@@ -238,8 +233,6 @@ export default function VotingPage({ shows: searchableShows }) {
       setDownvotes(voteData.votesDown);
       setAbleToVote(user ? voteData.ableToVote : true);
       setLastBoost(user ? voteData.lastBoost : [{}]);
-      console.log('last boost');
-      console.log(voteData.lastBoost)
 
       const nextVoteTimes = {};
       Object.entries(voteData.nextVoteTime ?? {}).forEach(([seriesId, voteTime]) => {
@@ -451,56 +444,6 @@ export default function VotingPage({ shows: searchableShows }) {
           <Typography variant="subtitle2">Upvote shows and movies you want on memeSRC</Typography>
         </Box>
 
-        {/* {!localStorage.getItem('alertDismissedVotePage9667zz') && (
-          <Alert
-          severity="info"
-          action={
-              <IconButton
-                color="inherit"
-                size="small"
-                onClick={() => {
-                  localStorage.setItem('alertDismissedVotePage9667zz', 'true');
-                  setAlertOpen(false);
-                }}
-              >
-                <CloseIcon fontSize="inherit" />
-              </IconButton>
-          }
-          sx={{
-            marginTop: 2,
-            marginBottom: -1,
-            opacity: 0.9,
-          }}
-        >
-          <b>Vote&nbsp;again&nbsp;every&nbsp;24h!</b>
-        </Alert>
-        )} */}
-
-        {/* {!localStorage.getItem('alertDismissedVotePage1000zz') && (
-          <Alert
-          severity="success"
-          action={
-              <IconButton
-                color="inherit"
-                size="small"
-                onClick={() => {
-                  localStorage.setItem('alertDismissedVotePage1000zz', 'true');
-                  setAlertOpen(false);
-                }}
-              >
-                <CloseIcon fontSize="inherit" />
-              </IconButton>
-          }
-          sx={{
-            marginTop: 2,
-            marginBottom: -1,
-            opacity: 0.9,
-          }}
-        >
-          <b>Movies&nbsp;are&nbsp;now&nbsp;supported!</b>
-        </Alert>
-        )} */}
-
         <Box my={2}>
           <Tabs value={rankMethod} onChange={handleRankMethodChange} indicatorColor="secondary" textColor="inherit">
             <Tab
@@ -541,7 +484,7 @@ export default function VotingPage({ shows: searchableShows }) {
               ),
               endAdornment: (
                 <InputAdornment position="end">
-                  <IconButton edge="end" onClick={() => setSearchText('')} disabled={!searchText}>
+                  <IconButton edge="end" onClick={() => setSearchText('')} disabled={!!searchText}>
                     <Close />
                   </IconButton>
                 </InputAdornment>
@@ -589,21 +532,7 @@ export default function VotingPage({ shows: searchableShows }) {
                   return null;
                 }
                 return (
-                  <>
-                    {
-                      // Insert the VotingPageAd component every 6 shows
-                      (idx % 7) - 2 === 0 && idx !== 0 && user?.userDetails?.subscriptionStatus !== 'active'
-                      ? (
-                        <Grid item xs={12} key={`ad-${idx}`} style={{ marginBottom: 15 }}>
-                          <Card>
-                            <CardContent>
-                              <VotingPageAd />
-                            </CardContent>
-                          </Card>
-                        </Grid>
-                      )
-                      : null
-                    }
+                  <React.Fragment key={show.id}>
                     <Grid item xs={12} key={show.id} style={{ marginBottom: 15 }}>
                       <Card>
                       <CardContent style={{ paddingTop: 22, paddingBottom: 22 }}>
@@ -719,7 +648,12 @@ export default function VotingPage({ shows: searchableShows }) {
                                             ? handleUpvote(show.id)
                                             : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
                                         }
-                                        disabled={user && ((ableToVote[show.id] !== undefined && ableToVote[show.id] !== true || votingStatus[show.id]))}
+                                        disabled={
+                                          user &&
+                                          ((ableToVote[show.id] !== undefined &&
+                                            ableToVote[show.id] !== true) ||
+                                            !!votingStatus[show.id])
+                                        }
                                         size="small"
                                       >
                                         {lastBoost[show.id] === -1 &&
@@ -800,7 +734,12 @@ export default function VotingPage({ shows: searchableShows }) {
                                             ? handleDownvote(show.id)
                                             : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
                                         }
-                                        disabled={user && ((ableToVote[show.id] !== undefined && ableToVote[show.id] !== true) || votingStatus[show.id])}
+                                        disabled={
+                                          user &&
+                                          ((ableToVote[show.id] !== undefined &&
+                                            ableToVote[show.id] !== true) ||
+                                            !!votingStatus[show.id])
+                                        }
                                         size="small"
                                       >
                                         <ArrowDownward
@@ -897,7 +836,7 @@ export default function VotingPage({ shows: searchableShows }) {
                     </CardContent>
                   </Card>
                 </Grid>
-                </>
+                </React.Fragment>
                 );
               })}
 
@@ -963,20 +902,6 @@ export default function VotingPage({ shows: searchableShows }) {
               </Grid>
             </FlipMove>
           )}
-          {
-            // Insert the VotingPageAd component every 6 shows
-            user?.userDetails?.subscriptionStatus !== 'active'
-            ? (
-              <Grid item xs={12} key="footer-ad" style={{ marginBottom: 15 }}>
-                <Card>
-                  <CardContent>
-                    <VotingPageFooterAd />
-                  </CardContent>
-                </Card>
-              </Grid>
-            )
-            : null
-          }
         </Grid>
       </Container>
       <Dialog maxWidth='md' fullWidth onClose={toggleOpenAddRequest} open={openAddRequest}>
@@ -1031,7 +956,7 @@ export default function VotingPage({ shows: searchableShows }) {
           }
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
-          <LoadingButton onClick={submitRequest} loading={submittingRequest} disabled={!selectedRequest || submittingRequest} variant='contained'>
+          <LoadingButton onClick={submitRequest} loading={submittingRequest} disabled={!!selectedRequest || submittingRequest} variant='contained'>
             Submit Request
           </LoadingButton>
         </DialogActions>
