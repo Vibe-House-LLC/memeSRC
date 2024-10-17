@@ -233,8 +233,6 @@ export default function VotingPage({ shows: searchableShows }) {
       setDownvotes(voteData.votesDown);
       setAbleToVote(user ? voteData.ableToVote : true);
       setLastBoost(user ? voteData.lastBoost : [{}]);
-      console.log('last boost');
-      console.log(voteData.lastBoost)
 
       const nextVoteTimes = {};
       Object.entries(voteData.nextVoteTime ?? {}).forEach(([seriesId, voteTime]) => {
