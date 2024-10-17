@@ -87,11 +87,7 @@ const StyledHeader = styled('header')(() => ({
 IpfsSearchBar.propTypes = searchPropTypes;
 
 export default function IpfsSearchBar(props) {
-  const { setShow: setV1Show, setSeriesTitle: setV1SeriesTitle } = useSearchDetails();
   const params = useParams();
-  // const [shows, setShows] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const { children } = props
   const { pathname } = useLocation();
   const { user, shows, defaultShow, handleUpdateDefaultShow } = useContext(UserContext);
   const { show, setShow, searchQuery, setSearchQuery, cid = shows.some(show => show.isFavorite) ? params?.cid || defaultShow : params?.cid || '_universal', setCid, localCids, setLocalCids, showObj, setShowObj, selectedFrameIndex, setSelectedFrameIndex, savedCids, loadingSavedCids } = useSearchDetailsV2();
@@ -237,7 +233,7 @@ export default function IpfsSearchBar(props) {
                   </>
                 }
                 sx={{ width: '100%' }}
-                value={search}
+                value={search || ''} // Ensure value is never null
                 onChange={(e) => {
                   let value = e.target.value;
 
