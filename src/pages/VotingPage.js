@@ -252,8 +252,25 @@ export default function VotingPage({ shows: searchableShows }) {
       const endIdx = startIdx + itemsPerPage;
       const paginatedSeriesIds = sortedIds.slice(startIdx, endIdx);
 
+      // Create placeholder data for all series in this page
+      const placeholderSeriesData = paginatedSeriesIds.map(id => ({
+        id,
+        name: 'Loading...',
+        description: 'Loading description...',
+        image: '', // Empty string for placeholder image
+        rank: startIdx + paginatedSeriesIds.indexOf(id) + 1
+      }));
+
+      // Update seriesMetadata immediately with placeholder data
+      setSeriesMetadata((prevSeriesMetadata) => {
+        if (isLoadingMore) {
+          return [...prevSeriesMetadata, ...placeholderSeriesData];
+        }
+        return [...placeholderSeriesData];
+      });
+
       // Check cache for available series data
-      const seriesData = paginatedSeriesIds
+      const cachedSeriesData = paginatedSeriesIds
         .filter(id => seriesCache.current[id])
         .map(id => seriesCache.current[id]);
 
@@ -278,20 +295,24 @@ export default function VotingPage({ shows: searchableShows }) {
           seriesCache.current[data.id] = data;
         });
 
-        seriesData.push(...fetchedSeriesData);
+        cachedSeriesData.push(...fetchedSeriesData);
       }
 
       // Assign rank based on their position in the sorted list
-      seriesData.forEach((show, index) => {
+      cachedSeriesData.forEach((show, index) => {
         show.rank = startIdx + index + 1;
       });
 
-      // Update seriesMetadata
+      // Update seriesMetadata with actual data
       setSeriesMetadata((prevSeriesMetadata) => {
-        if (isLoadingMore) {
-          return [...prevSeriesMetadata, ...seriesData];
-        }
-        return [...seriesData];
+        const updatedMetadata = [...prevSeriesMetadata];
+        cachedSeriesData.forEach((show) => {
+          const index = updatedMetadata.findIndex(item => item.id === show.id);
+          if (index !== -1) {
+            updatedMetadata[index] = show;
+          }
+        });
+        return updatedMetadata;
       });
     } catch (error) {
       console.error('Error fetching series data:', error);
@@ -697,7 +718,11 @@ export default function VotingPage({ shows: searchableShows }) {
                                     horizontal: 'left',
                                   }}
                                 >
-                                  <img src={show.image} alt={show.name} style={showImageStyle} />
+                                  <img 
+                                    src={show.image || 'path/to/placeholder-image.jpg'} 
+                                    alt={show.name} 
+                                    style={showImageStyle} 
+                                  />
                                 </Badge>
                               </Box>
                               <Stack direction="column">
