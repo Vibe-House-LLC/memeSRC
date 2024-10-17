@@ -59,6 +59,7 @@ export default function VotingPage({ shows: searchableShows }) {
   const navigate = useNavigate();
   const [votes, setVotes] = useState({});
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [votingStatus, setVotingStatus] = useState({});
   const [userVotes, setUserVotes] = useState({});
   const [userVotesUp, setUserVotesUp] = useState({});
@@ -77,14 +78,18 @@ export default function VotingPage({ shows: searchableShows }) {
   const [hideSearchable, setHideSearchable] = useState(true);
   const { setMessage, setOpen, setSeverity } = useContext(SnackbarContext);
 
-  // New state variables
+  // State variables
   const [seriesMetadata, setSeriesMetadata] = useState([]);
   const [voteData, setVoteData] = useState({});
   const [isSearching, setIsSearching] = useState(false);
 
   // Local pagination
-  const itemsPerPage = 10; // Number of items to render per page
-  const [itemsDisplayed, setItemsDisplayed] = useState(itemsPerPage);
+  const itemsPerPage = 5; // Number of items to render per page
+  const [currentPage, setCurrentPage] = useState(0);
+
+  const [sortedSeriesIds, setSortedSeriesIds] = useState([]); // New state to store sorted IDs
+
+  const [refreshData, setRefreshData] = useState(false); // Trigger data refresh
 
   const location = useLocation();
 
@@ -104,15 +109,29 @@ export default function VotingPage({ shows: searchableShows }) {
   }, []);
 
   useEffect(() => {
+    if (searchText) {
+      setIsSearching(true);
+      setSeriesMetadata([]); // Clear previous data
+      fetchAllSeries();
+      return;
+    }
+    
+    setIsSearching(false);
+    setSeriesMetadata([]); // Clear previous search data
+    setCurrentPage(0);
+    setSortedSeriesIds([]);
     fetchVoteData();
-  }, [user, itemsDisplayed, rankMethod]); // Added itemsDisplayed and rankMethod to dependencies to update when these change
+  }, [searchText, rankMethod]);
 
   const fetchVoteData = async () => {
-    setLoading(true);
+    if (!loadingMore) {
+      setLoading(true);
+    }
     try {
-      // Fetch vote data first
+      // Fetch vote data
       const voteDataResponse = await API.get('publicapi', '/vote/list');
 
+      // Set vote-related state variables
       setVoteData(voteDataResponse);
       setVotes(voteDataResponse.votes);
       setUserVotes(user ? voteDataResponse.userVotes : {});
@@ -127,10 +146,53 @@ export default function VotingPage({ shows: searchableShows }) {
       // Get the series IDs from the votes
       const seriesIds = Object.keys(voteDataResponse.votes);
 
-      // Implement pagination by slicing the seriesIds array
-      const paginatedSeriesIds = seriesIds.slice(0, itemsDisplayed);
+      // Sort the series IDs based on the selected rank method
+      /* eslint-disable prefer-const */
+      let newSortedSeriesIds = [];
+      switch (rankMethod) {
+        case 'combined':
+          newSortedSeriesIds = seriesIds.sort((a, b) => {
+            const voteDiff =
+              (voteDataResponse.votes[b] || 0) - (voteDataResponse.votes[a] || 0);
+            return voteDiff !== 0 ? voteDiff : a.localeCompare(b);
+          });
+          break;
+        case 'downvotes':
+          newSortedSeriesIds = seriesIds.sort((a, b) => {
+            const voteDiff =
+              (voteDataResponse.votesDown[a] || 0) - (voteDataResponse.votesDown[b] || 0);
+            return voteDiff !== 0 ? voteDiff : a.localeCompare(b);
+          });
+          break;
+        default: // Upvotes
+          newSortedSeriesIds = seriesIds.sort((a, b) => {
+            const voteDiff =
+              (voteDataResponse.votesUp[b] || 0) - (voteDataResponse.votesUp[a] || 0);
+            return voteDiff !== 0 ? voteDiff : a.localeCompare(b);
+          });
+      }
 
-      // Fetch only the series metadata for the paginated series IDs
+      // Update the sortedSeriesIds state
+      setSortedSeriesIds(newSortedSeriesIds);
+
+      // Fetch the initial page
+      fetchSeriesData(newSortedSeriesIds, 0, false); // Pass false for initial load
+    } catch (error) {
+      console.error('Error fetching series data:', error);
+    } finally {
+      if (!loadingMore) {
+        setLoading(false);
+      }
+    }
+  };
+
+  const fetchSeriesData = async (sortedIds, page, isLoadingMore) => {
+    try {
+      const startIdx = page * itemsPerPage;
+      const endIdx = startIdx + itemsPerPage;
+      const paginatedSeriesIds = sortedIds.slice(startIdx, endIdx);
+
+      // Fetch series metadata for the paginated series IDs
       const seriesDataPromises = paginatedSeriesIds.map((id) =>
         API.graphql({
           ...graphqlOperation(getSeries, { id }),
@@ -141,56 +203,32 @@ export default function VotingPage({ shows: searchableShows }) {
       const seriesDataResponses = await Promise.all(seriesDataPromises);
       const seriesData = seriesDataResponses.map((response) => response.data.getSeries);
 
-      // Sort the seriesData based on the selected rank method
-      /* eslint-disable prefer-const */
-      let sortedSeriesData = [];
-      switch (rankMethod) {
-        case 'combined':
-          sortedSeriesData = seriesData.sort((a, b) => {
-            const voteDiff = (voteDataResponse.votes[b.id] || 0) - (voteDataResponse.votes[a.id] || 0);
-            return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
-          });
-          break;
-        case 'downvotes':
-          sortedSeriesData = seriesData.sort((a, b) => {
-            const voteDiff = (voteDataResponse.votesDown[a.id] || 0) - (voteDataResponse.votesDown[b.id] || 0);
-            return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
-          });
-          break;
-        default: // Upvotes
-          sortedSeriesData = seriesData.sort((a, b) => {
-            const voteDiff = (voteDataResponse.votesUp[b.id] || 0) - (voteDataResponse.votesUp[a.id] || 0);
-            return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
-          });
-      }
-
-      // Add rank to each show
-      sortedSeriesData.forEach((show, index) => {
-        show.rank = index + 1;
+      // Assign rank based on their position in the sorted list
+      seriesData.forEach((show, index) => {
+        show.rank = startIdx + index + 1;
       });
 
-      setSeriesMetadata(sortedSeriesData);
+      // Update seriesMetadata
+      setSeriesMetadata((prevSeriesMetadata) => {
+        if (isLoadingMore) {
+          return [...prevSeriesMetadata, ...seriesData];
+        }
+        return [...seriesData];
+      });
     } catch (error) {
       console.error('Error fetching series data:', error);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   };
 
-  // Fetch more series data when loading more items
   const handleLoadMore = () => {
-    setItemsDisplayed((prevItemsDisplayed) => prevItemsDisplayed + itemsPerPage);
+    setLoadingMore(true);
+    const nextPage = currentPage + 1;
+    setCurrentPage(nextPage);
+    fetchSeriesData(sortedSeriesIds, nextPage, true); // Pass true when loading more
   };
-
-  // Handle search functionality
-  useEffect(() => {
-    if (searchText) {
-      setIsSearching(true);
-      fetchAllSeries();
-    } else {
-      setIsSearching(false);
-    }
-  }, [searchText, rankMethod]); // Added rankMethod to dependencies
 
   const fetchAllSeries = async () => {
     setLoading(true);
@@ -244,7 +282,11 @@ export default function VotingPage({ shows: searchableShows }) {
         show.rank = index + 1;
       });
 
-      setSeriesMetadata(sortedShows);
+      // If you want to apply pagination, use slice to limit results
+      const paginatedShows = sortedShows.slice(0, itemsPerPage); // Adjust as needed
+
+      // Set seriesMetadata to paginatedShows
+      setSeriesMetadata(paginatedShows);
     } catch (error) {
       console.error('Error fetching all series data:', error);
     } finally {
@@ -256,7 +298,7 @@ export default function VotingPage({ shows: searchableShows }) {
     setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: boost }));
 
     try {
-      const result = await API.post('publicapi', '/vote', {
+      await API.post('publicapi', '/vote', {
         body: {
           seriesId,
           boost,
@@ -343,6 +385,9 @@ export default function VotingPage({ shows: searchableShows }) {
       setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: false }));
 
       setLastBoost((prevLastBoost) => ({ ...prevLastBoost, [seriesId]: boost }));
+
+      // After voting, refresh the data to update rankings
+      setRefreshData((prev) => !prev); // Trigger data refresh
     } catch (error) {
       setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: false }));
       console.error('Error on voting:', error);
@@ -378,6 +423,7 @@ export default function VotingPage({ shows: searchableShows }) {
   const handleRankMethodChange = (event, newValue) => {
     localStorage.setItem('rankMethod', newValue);
     setRankMethod(newValue);
+    setRefreshData((prev) => !prev); // Trigger data refresh
   };
 
   const votesCount = (show) => {
@@ -518,7 +564,7 @@ export default function VotingPage({ shows: searchableShows }) {
           />
         </Box>
         <Grid container style={{ minWidth: '100%' }}>
-          {loading ? (
+          {loading && !seriesMetadata.length ? (
             <Grid
               item
               xs={12}
@@ -537,346 +583,351 @@ export default function VotingPage({ shows: searchableShows }) {
               <CircularProgress />
             </Grid>
           ) : (
-            <FlipMove style={{ minWidth: '100%' }}>
-              {seriesMetadata.map((show, idx) => {
-                if (
-                  hideSearchable &&
-                  searchableShows.some((searchableShow) => searchableShow.id === show.slug)
-                ) {
-                  return null;
-                }
-                return (
-                  <React.Fragment key={show.id}>
-                    <Grid item xs={12} key={show.id} style={{ marginBottom: 15 }}>
-                      <Card>
-                      <CardContent style={{ paddingTop: 22, paddingBottom: 22 }}>
-                      <Box display="flex" alignItems="center">
-                        <Box flexGrow={1} marginRight={2}>
-                          <Box display="flex" alignItems="center">
-                            <Box mr={2}>
-                              <Badge
-                                badgeContent={`#${show.rank}`}
-                                color="secondary"
-                                anchorOrigin={{
-                                  vertical: 'top',
-                                  horizontal: 'left',
-                                }}
-                              >
-                                <img src={show.image} alt={show.name} style={showImageStyle} />
-                              </Badge>
-                            </Box>
-                            <Stack direction="column">
-                              <Typography variant="h5">{show.name}</Typography>
-                              <Box
-                                display="flex"
-                                alignItems="center"
-                                sx={{ marginTop: '0.1rem', marginBottom: '-0.5rem' }}
-                              >
-                                {
-                                  searchableShows.some(searchableShow => searchableShow.id === show.slug) && (
-                                    <a 
-                                      href={`/${show.slug}`} 
-                                      target="_blank" 
-                                      rel="noopener noreferrer" 
-                                      style={{ textDecoration: 'none', color: 'inherit' }}
-                                    >
-                                      <Chip sx={{ marginRight: 1 }} size='small' label="🔍" color="success" variant="filled" />
-                                    </a>
-                                  )
-                                }
-                                <Typography
-                                  variant="subtitle2"
-                                  color="success.main"
-                                  sx={{ fontSize: '0.7rem', opacity: 0.6 }}
+            <>
+              <FlipMove style={{ minWidth: '100%' }}>
+                {seriesMetadata.map((show) => {
+                  if (
+                    hideSearchable &&
+                    searchableShows.some((searchableShow) => searchableShow.id === show.slug)
+                  ) {
+                    return null;
+                  }
+                  return (
+                    <React.Fragment key={show.id}>
+                      <Grid item xs={12} key={show.id} style={{ marginBottom: 15 }}>
+                        <Card>
+                        <CardContent style={{ paddingTop: 22, paddingBottom: 22 }}>
+                        <Box display="flex" alignItems="center">
+                          <Box flexGrow={1} marginRight={2}>
+                            <Box display="flex" alignItems="center">
+                              <Box mr={2}>
+                                <Badge
+                                  badgeContent={`#${show.rank}`}
+                                  color="secondary"
+                                  anchorOrigin={{
+                                    vertical: 'top',
+                                    horizontal: 'left',
+                                  }}
                                 >
-                                  <ArrowUpward fontSize="small" sx={{ verticalAlign: 'middle' }} />
-                                  <b>{upvotes[show.id] || 0}</b>
-                                </Typography>
-                                {rankMethod === 'combined' && (
+                                  <img src={show.image} alt={show.name} style={showImageStyle} />
+                                </Badge>
+                              </Box>
+                              <Stack direction="column">
+                                <Typography variant="h5">{show.name}</Typography>
+                                <Box
+                                  display="flex"
+                                  alignItems="center"
+                                  sx={{ marginTop: '0.1rem', marginBottom: '-0.5rem' }}
+                                >
+                                  {
+                                    searchableShows.some(searchableShow => searchableShow.id === show.slug) && (
+                                      <a 
+                                        href={`/${show.slug}`} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer" 
+                                        style={{ textDecoration: 'none', color: 'inherit' }}
+                                      >
+                                        <Chip sx={{ marginRight: 1 }} size='small' label="🔍" color="success" variant="filled" />
+                                      </a>
+                                    )
+                                  }
                                   <Typography
                                     variant="subtitle2"
-                                    color="error.main"
-                                    ml={1}
+                                    color="success.main"
                                     sx={{ fontSize: '0.7rem', opacity: 0.6 }}
                                   >
-                                    <ArrowDownward fontSize="small" sx={{ verticalAlign: 'middle' }} />
-                                    <b>{downvotes[show.id] || 0}</b>
+                                    <ArrowUpward fontSize="small" sx={{ verticalAlign: 'middle' }} />
+                                    <b>{upvotes[show.id] || 0}</b>
                                   </Typography>
-                                )}
-                              </Box>
-                              <Typography variant="body2" color="text.secondary" mt={1} style={descriptionStyle}>
-                                {show.description}
-                              </Typography>
-                            </Stack>
+                                  {rankMethod === 'combined' && (
+                                    <Typography
+                                      variant="subtitle2"
+                                      color="error.main"
+                                      ml={1}
+                                      sx={{ fontSize: '0.7rem', opacity: 0.6 }}
+                                    >
+                                      <ArrowDownward fontSize="small" sx={{ verticalAlign: 'middle' }} />
+                                      <b>{downvotes[show.id] || 0}</b>
+                                    </Typography>
+                                  )}
+                                </Box>
+                                <Typography variant="body2" color="text.secondary" mt={1} style={descriptionStyle}>
+                                  {show.description}
+                                </Typography>
+                              </Stack>
+                            </Box>
+                          </Box>
+                          <Box mr={0}>
+                            {rankMethod === 'combined' ? (
+                              <>
+                                <Box display="flex" flexDirection="column" justifyContent="space-between" height="100%">
+                                  {votingStatus[show.id] === 1 ? (
+                                    <CircularProgress size={25} sx={{ ml: 1.2, mb: 1.5 }} />
+                                  ) : (
+                                    <Tooltip
+                                      disableFocusListener
+                                      enterTouchDelay={0}
+                                      onOpen={() => {
+                                        // TODO: Add the ISO 8601 string response here
+                                        // Here's info about that: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString
+                                        // It's always UTC, so it shouldn't matter what their timezone is, it should show right.
+                                        calculateTimeRemaining(nextVoteTimes[show.id]);
+                                      }}
+                                      title={
+                                        // This is where we show two different options depending on vote status
+                                        // TODO: Show how much time remains until the next vote
+                                        (ableToVote[show.id] !== undefined && ableToVote[show.id] !== true) || votingStatus[show.id]
+                                          ? user ? `🔒 ${timeRemaining}`
+                                          : 'Upvote'
+                                          : 'Upvote'
+                                      }
+                                      componentsProps={{
+                                        tooltip: {
+                                          sx: {
+                                            bgcolor: 'common.black',
+                                            '& .MuiTooltip-arrow': {
+                                              color: 'common.black',
+                                            },
+                                          },
+                                        },
+                                      }}
+                                    >
+                                      <StyledBadge
+                                        anchorOrigin={{
+                                          vertical: 'top',
+                                          horizontal: 'right',
+                                        }}
+                                        badgeContent={userVotesUp[show.id] ? `+${userVotesUp[show.id] || 0}` : null}
+                                        sx={{
+                                          color: 'success.main',
+                                        }}
+                                      >
+                                        <StyledFab
+                                          aria-label="upvote"
+                                          onClick={() =>
+                                            user
+                                              ? handleUpvote(show.id)
+                                              : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
+                                          }
+                                          disabled={
+                                            user &&
+                                            ((ableToVote[show.id] !== undefined &&
+                                              ableToVote[show.id] !== true) ||
+                                              !!votingStatus[show.id])
+                                          }
+                                          size="small"
+                                        >
+                                          {lastBoost[show.id] === -1 &&
+                                            ableToVote[show.id] !== true &&
+                                            rankMethod === 'upvotes' ? (
+                                            <Lock />
+                                          ) : (
+                                            <ArrowUpward
+                                              sx={{
+                                                color:
+                                                  lastBoost[show.id] === 1 && ableToVote[show.id] !== true
+                                                    ? 'success.main'
+                                                    : 'inherit',
+                                              }}
+                                            />
+                                          )}
+                                          {/* <ArrowUpward
+                                          sx={{
+                                            color: lastBoost[show.id] === 1 && ableToVote[show.id] !== true ? 'success.main' : 'inherit',
+                                          }}
+                                        /> */}
+                                        </StyledFab>
+                                      </StyledBadge>
+                                    </Tooltip>
+                                  )}
+                                </Box>
+
+                                <Box alignItems="center" height="100%">
+                                  <Typography
+                                    variant="h5"
+                                    textAlign="center"
+                                  // color={votesCount(show) < 0 && 'error.main'}
+                                  >
+                                    {votesCount(show) || 0}
+                                  </Typography>
+                                </Box>
+                                <Box>
+                                  {votingStatus[show.id] === -1 ? (
+                                    <CircularProgress size={25} sx={{ ml: 1.3, mt: 1.6 }} />
+                                  ) : (
+                                    <Tooltip
+                                      disableFocusListener
+                                      enterTouchDelay={0}
+                                      onOpen={() => {
+                                        calculateTimeRemaining(nextVoteTimes[show.id]);
+                                      }}
+                                      title={
+                                        (ableToVote[show.id] !== undefined && ableToVote[show.id] !== true) || votingStatus[show.id]
+                                          ? user ? `🔒 ${timeRemaining}`
+                                          : 'Downvote'
+                                          : 'Downvote'
+                                      }
+                                      componentsProps={{
+                                        tooltip: {
+                                          sx: {
+                                            bgcolor: 'common.black',
+                                            '& .MuiTooltip-arrow': {
+                                              color: 'common.black',
+                                            },
+                                          },
+                                        },
+                                      }}
+                                    >
+                                      <StyledBadge
+                                        anchorOrigin={{
+                                          vertical: 'bottom',
+                                          horizontal: 'right',
+                                        }}
+                                        badgeContent={userVotesDown[show.id] || 0}
+                                        sx={{
+                                          color: 'error.main',
+                                        }}
+                                      >
+                                        <StyledFab
+                                          aria-label="downvote"
+                                          onClick={() =>
+                                            user
+                                              ? handleDownvote(show.id)
+                                              : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
+                                          }
+                                          disabled={
+                                            user &&
+                                            ((ableToVote[show.id] !== undefined &&
+                                              ableToVote[show.id] !== true) ||
+                                              !!votingStatus[show.id])
+                                          }
+                                          size="small"
+                                        >
+                                          <ArrowDownward
+                                            sx={{
+                                              color:
+                                                lastBoost[show.id] === -1 && ableToVote[show.id] !== true
+                                                  ? 'error.main'
+                                                  : 'inherit',
+                                            }}
+                                          />
+                                        </StyledFab>
+                                      </StyledBadge>
+                                    </Tooltip>
+                                  )}
+                                </Box>
+                              </>
+                            ) : (
+                              <Stack alignItems="center" spacing={0.7} direction="column" height="100%">
+                                <Box display="flex" flexDirection="column" justifyContent="space-between" height="100%">
+                                  {votingStatus[show.id] === 1 ? (
+                                    <CircularProgress size={25} sx={{ ml: 1.2, mb: 1.5 }} />
+                                  ) : (
+                                    <Tooltip
+                                      disableFocusListener
+                                      enterTouchDelay={0}
+                                      onOpen={() => {
+                                        // TODO: Add the ISO 8601 string response here
+                                        // Here's info about that: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString
+                                        // It's always UTC, so it shouldn't matter what their timezone is, it should show right.
+                                        calculateTimeRemaining(nextVoteTimes[show.id]);
+                                      }}
+                                      title={
+                                        // This is where we show two different options depending on vote status
+                                        // TODO: Show how much time remains until the next vote
+                                        (ableToVote[show.id] !== undefined && ableToVote[show.id] !== true) || votingStatus[show.id]
+                                          ? user ? `🔒 ${timeRemaining}`
+                                          : 'Upvote'
+                                          : 'Upvote'
+                                      }
+                                      componentsProps={{
+                                        tooltip: {
+                                          sx: {
+                                            bgcolor: 'common.black',
+                                            '& .MuiTooltip-arrow': {
+                                              color: 'common.black',
+                                            },
+                                          },
+                                        },
+                                      }}
+                                    >
+                                      <StyledBadge
+                                        anchorOrigin={{
+                                          vertical: 'top',
+                                          horizontal: 'right',
+                                        }}
+                                        badgeContent={userVotesUp[show.id] ? `+${userVotesUp[show.id] || 0}` : null}
+                                      >
+                                        <StyledFab
+                                          aria-label="upvote"
+                                          onClick={() =>
+                                            user
+                                              ? handleUpvote(show.id)
+                                              : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
+                                          }
+                                          disabled={user && ((ableToVote[show.id] !== undefined && ableToVote[show.id] !== true) || votingStatus[show.id])}
+                                          size="small"
+                                        >
+                                          {lastBoost[show.id] === -1 &&
+                                            ableToVote[show.id] !== true &&
+                                            rankMethod === 'upvotes' ? (
+                                            <Lock />
+                                          ) : (
+                                            <ThumbUp
+                                              sx={{
+                                                color:
+                                                  lastBoost[show.id] === 1 && ableToVote[show.id] !== true
+                                                    ? 'success.main'
+                                                    : 'inherit',
+                                              }}
+                                            />
+                                          )}
+                                        </StyledFab>
+                                      </StyledBadge>
+                                    </Tooltip>
+                                  )}
+                                </Box>
+                                <Typography variant="h5" textAlign="center" color={votesCount(show) < 0 && 'error.main'}>
+                                  {upvotes[show.id] || 0}
+                                </Typography>
+                              </Stack>
+                            )}
                           </Box>
                         </Box>
-                        <Box mr={0}>
-                          {rankMethod === 'combined' ? (
-                            <>
-                              <Box display="flex" flexDirection="column" justifyContent="space-between" height="100%">
-                                {votingStatus[show.id] === 1 ? (
-                                  <CircularProgress size={25} sx={{ ml: 1.2, mb: 1.5 }} />
-                                ) : (
-                                  <Tooltip
-                                    disableFocusListener
-                                    enterTouchDelay={0}
-                                    onOpen={() => {
-                                      // TODO: Add the ISO 8601 string response here
-                                      // Here's info about that: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString
-                                      // It's always UTC, so it shouldn't matter what their timezone is, it should show right.
-                                      calculateTimeRemaining(nextVoteTimes[show.id]);
-                                    }}
-                                    title={
-                                      // This is where we show two different options depending on vote status
-                                      // TODO: Show how much time remains until the next vote
-                                      (ableToVote[show.id] !== undefined && ableToVote[show.id] !== true) || votingStatus[show.id]
-                                        ? user ? `🔒 ${timeRemaining}`
-                                        : 'Upvote'
-                                        : 'Upvote'
-                                    }
-                                    componentsProps={{
-                                      tooltip: {
-                                        sx: {
-                                          bgcolor: 'common.black',
-                                          '& .MuiTooltip-arrow': {
-                                            color: 'common.black',
-                                          },
-                                        },
-                                      },
-                                    }}
-                                  >
-                                    <StyledBadge
-                                      anchorOrigin={{
-                                        vertical: 'top',
-                                        horizontal: 'right',
-                                      }}
-                                      badgeContent={userVotesUp[show.id] ? `+${userVotesUp[show.id] || 0}` : null}
-                                      sx={{
-                                        color: 'success.main',
-                                      }}
-                                    >
-                                      <StyledFab
-                                        aria-label="upvote"
-                                        onClick={() =>
-                                          user
-                                            ? handleUpvote(show.id)
-                                            : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
-                                        }
-                                        disabled={
-                                          user &&
-                                          ((ableToVote[show.id] !== undefined &&
-                                            ableToVote[show.id] !== true) ||
-                                            !!votingStatus[show.id])
-                                        }
-                                        size="small"
-                                      >
-                                        {lastBoost[show.id] === -1 &&
-                                          ableToVote[show.id] !== true &&
-                                          rankMethod === 'upvotes' ? (
-                                          <Lock />
-                                        ) : (
-                                          <ArrowUpward
-                                            sx={{
-                                              color:
-                                                lastBoost[show.id] === 1 && ableToVote[show.id] !== true
-                                                  ? 'success.main'
-                                                  : 'inherit',
-                                            }}
-                                          />
-                                        )}
-                                        {/* <ArrowUpward
-                                        sx={{
-                                          color: lastBoost[show.id] === 1 && ableToVote[show.id] !== true ? 'success.main' : 'inherit',
-                                        }}
-                                      /> */}
-                                      </StyledFab>
-                                    </StyledBadge>
-                                  </Tooltip>
-                                )}
-                              </Box>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                  </React.Fragment>
+                  );
+                })}
+              </FlipMove>
 
-                              <Box alignItems="center" height="100%">
-                                <Typography
-                                  variant="h5"
-                                  textAlign="center"
-                                // color={votesCount(show) < 0 && 'error.main'}
-                                >
-                                  {votesCount(show) || 0}
-                                </Typography>
-                              </Box>
-                              <Box>
-                                {votingStatus[show.id] === -1 ? (
-                                  <CircularProgress size={25} sx={{ ml: 1.3, mt: 1.6 }} />
-                                ) : (
-                                  <Tooltip
-                                    disableFocusListener
-                                    enterTouchDelay={0}
-                                    onOpen={() => {
-                                      calculateTimeRemaining(nextVoteTimes[show.id]);
-                                    }}
-                                    title={
-                                      (ableToVote[show.id] !== undefined && ableToVote[show.id] !== true) || votingStatus[show.id]
-                                        ? user ? `🔒 ${timeRemaining}`
-                                        : 'Downvote'
-                                        : 'Downvote'
-                                    }
-                                    componentsProps={{
-                                      tooltip: {
-                                        sx: {
-                                          bgcolor: 'common.black',
-                                          '& .MuiTooltip-arrow': {
-                                            color: 'common.black',
-                                          },
-                                        },
-                                      },
-                                    }}
-                                  >
-                                    <StyledBadge
-                                      anchorOrigin={{
-                                        vertical: 'bottom',
-                                        horizontal: 'right',
-                                      }}
-                                      badgeContent={userVotesDown[show.id] || 0}
-                                      sx={{
-                                        color: 'error.main',
-                                      }}
-                                    >
-                                      <StyledFab
-                                        aria-label="downvote"
-                                        onClick={() =>
-                                          user
-                                            ? handleDownvote(show.id)
-                                            : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
-                                        }
-                                        disabled={
-                                          user &&
-                                          ((ableToVote[show.id] !== undefined &&
-                                            ableToVote[show.id] !== true) ||
-                                            !!votingStatus[show.id])
-                                        }
-                                        size="small"
-                                      >
-                                        <ArrowDownward
-                                          sx={{
-                                            color:
-                                              lastBoost[show.id] === -1 && ableToVote[show.id] !== true
-                                                ? 'error.main'
-                                                : 'inherit',
-                                          }}
-                                        />
-                                      </StyledFab>
-                                    </StyledBadge>
-                                  </Tooltip>
-                                )}
-                              </Box>
-                            </>
-                          ) : (
-                            <Stack alignItems="center" spacing={0.7} direction="column" height="100%">
-                              <Box display="flex" flexDirection="column" justifyContent="space-between" height="100%">
-                                {votingStatus[show.id] === 1 ? (
-                                  <CircularProgress size={25} sx={{ ml: 1.2, mb: 1.5 }} />
-                                ) : (
-                                  <Tooltip
-                                    disableFocusListener
-                                    enterTouchDelay={0}
-                                    onOpen={() => {
-                                      // TODO: Add the ISO 8601 string response here
-                                      // Here's info about that: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString
-                                      // It's always UTC, so it shouldn't matter what their timezone is, it should show right.
-                                      calculateTimeRemaining(nextVoteTimes[show.id]);
-                                    }}
-                                    title={
-                                      // This is where we show two different options depending on vote status
-                                      // TODO: Show how much time remains until the next vote
-                                      (ableToVote[show.id] !== undefined && ableToVote[show.id] !== true) || votingStatus[show.id]
-                                        ? user ? `🔒 ${timeRemaining}`
-                                        : 'Upvote'
-                                        : 'Upvote'
-                                    }
-                                    componentsProps={{
-                                      tooltip: {
-                                        sx: {
-                                          bgcolor: 'common.black',
-                                          '& .MuiTooltip-arrow': {
-                                            color: 'common.black',
-                                          },
-                                        },
-                                      },
-                                    }}
-                                  >
-                                    <StyledBadge
-                                      anchorOrigin={{
-                                        vertical: 'top',
-                                        horizontal: 'right',
-                                      }}
-                                      badgeContent={userVotesUp[show.id] ? `+${userVotesUp[show.id] || 0}` : null}
-                                    >
-                                      <StyledFab
-                                        aria-label="upvote"
-                                        onClick={() =>
-                                          user
-                                            ? handleUpvote(show.id)
-                                            : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
-                                        }
-                                        disabled={user && ((ableToVote[show.id] !== undefined && ableToVote[show.id] !== true) || votingStatus[show.id])}
-                                        size="small"
-                                      >
-                                        {lastBoost[show.id] === -1 &&
-                                          ableToVote[show.id] !== true &&
-                                          rankMethod === 'upvotes' ? (
-                                          <Lock />
-                                        ) : (
-                                          <ThumbUp
-                                            sx={{
-                                              color:
-                                                lastBoost[show.id] === 1 && ableToVote[show.id] !== true
-                                                  ? 'success.main'
-                                                  : 'inherit',
-                                            }}
-                                          />
-                                        )}
-                                      </StyledFab>
-                                    </StyledBadge>
-                                  </Tooltip>
-                                )}
-                              </Box>
-                              <Typography variant="h5" textAlign="center" color={votesCount(show) < 0 && 'error.main'}>
-                                {upvotes[show.id] || 0}
-                              </Typography>
-                            </Stack>
-                          )}
-                        </Box>
-                      </Box>
-                    </CardContent>
-                  </Card>
-                </Grid>
-                </React.Fragment>
-                );
-              })}
+              {loadingMore && (
+                <Box display="flex" justifyContent="center" my={2}>
+                  <CircularProgress />
+                </Box>
+              )}
 
               {!isSearching &&
-                itemsDisplayed < Object.keys(voteData.votes || {}).length && (
-                  <div style={{ display: 'flex', justifyContent: 'center' }}>
+                seriesMetadata.length < sortedSeriesIds.length && (
+                  <Grid item xs={12} style={{ marginTop: 20 }}>
                     <Button
                       variant="contained"
                       color="primary"
                       onClick={handleLoadMore}
                       fullWidth
                       style={{
-                        marginTop: 10,
-                        marginBottom: 50,
                         backgroundColor: 'rgb(45, 45, 45)',
                         height: 100,
                         color: 'white',
-                        fontSize: 'large'
-                    }}
-                    startIcon={<AddIcon />}
-                >
-                    {`Load ${itemsPerPage} More`}
-                </Button>
-            </div>
-            
-              )}
+                        fontSize: 'large',
+                      }}
+                      startIcon={<AddIcon />}
+                    >
+                      {`Load ${itemsPerPage} More`}
+                    </Button>
+                  </Grid>
+                )}
 
               <Grid
                 item
@@ -915,7 +966,7 @@ export default function VotingPage({ shows: searchableShows }) {
                     Make a request
                 </Button>
               </Grid>
-            </FlipMove>
+            </>
           )}
         </Grid>
       </Container>
