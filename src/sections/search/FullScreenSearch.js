@@ -813,7 +813,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
             </Button> */}
           </Grid>
           {user?.userDetails?.subscriptionStatus !== 'active' && showAd &&
-            <Grid item xs={12} mt={1} sx={{ backgroundColor: 'red' }}>
+            <Grid item xs={12} mt={1}>
               <center>
                 <Box>
                   <HomePageBannerAd />
