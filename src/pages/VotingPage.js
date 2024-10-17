@@ -105,6 +105,8 @@ export default function VotingPage({ shows: searchableShows }) {
   const seriesCache = useRef({});
   const votesCache = useRef(null);
 
+  const [allSeriesData, setAllSeriesData] = useState(null); // State to store all series data
+
   useEffect(() => {
     const savedRankMethod = localStorage.getItem('rankMethod');
     if (savedRankMethod) {
@@ -115,16 +117,18 @@ export default function VotingPage({ shows: searchableShows }) {
   useEffect(() => {
     if (searchText) {
       setIsSearching(true);
-      setSeriesMetadata([]); // Clear previous data
-      fetchAllSeries();
-      return;
+      if (allSeriesData === null) {
+        fetchAllSeriesData();
+      } else {
+        filterAndSortSeriesData();
+      }
+    } else {
+      setIsSearching(false);
+      setSeriesMetadata([]);
+      setCurrentPage(0);
+      setSortedSeriesIds([]);
+      fetchVoteData();
     }
-    
-    setIsSearching(false);
-    setSeriesMetadata([]); // Clear previous search data
-    setCurrentPage(0);
-    setSortedSeriesIds([]);
-    fetchVoteData();
   }, [searchText, rankMethod]);
 
   const fetchVoteData = async () => {
@@ -304,80 +308,76 @@ export default function VotingPage({ shows: searchableShows }) {
     fetchSeriesData(sortedSeriesIds, nextPage, true); // Pass true when loading more
   };
 
-  const fetchAllSeries = async () => {
+  const fetchAllSeriesData = async () => {
     setLoading(true);
     try {
-      if (Object.keys(seriesCache.current).length === 0) {
-        // Fetch all series data using listSeries and handle pagination
-        const fetchSeries = async (nextToken = null, accumulatedItems = []) => {
-          const result = await API.graphql({
-            ...graphqlOperation(listSeries, { nextToken }),
-            authMode: 'API_KEY',
-          });
-          const items = accumulatedItems.concat(result.data.listSeries.items);
-          if (result.data.listSeries.nextToken) {
-            return fetchSeries(result.data.listSeries.nextToken, items);
-          }
-          return items;
-        };
-
-        const allSeriesData = await fetchSeries();
-
-        // Add all series to cache
-        allSeriesData.forEach((show) => {
-          seriesCache.current[show.id] = show;
+      const fetchSeries = async (nextToken = null, accumulatedItems = []) => {
+        const result = await API.graphql({
+          ...graphqlOperation(listSeries, { nextToken, limit: 1000 }),
+          authMode: 'API_KEY',
         });
-      }
+        const items = accumulatedItems.concat(result.data.listSeries.items);
+        if (result.data.listSeries.nextToken) {
+          return fetchSeries(result.data.listSeries.nextToken, items);
+        }
+        return items;
+      };
 
-      // Get all series data from cache
-      const allSeriesData = Object.values(seriesCache.current);
+      const fetchedSeriesData = await fetchSeries();
 
-      // Apply search filter
-      const searchFilteredShows = allSeriesData.filter(
-        (show) =>
-          show.statusText === 'requested' &&
-          show.name.toLowerCase().includes(searchText.toLowerCase())
-      );
-
-      // Sort the filtered shows based on the selected rank method
-      let sortedShows;
-      switch (rankMethod) {
-        case 'combined':
-          sortedShows = searchFilteredShows.sort((a, b) => {
-            const voteDiff = (voteData.votes[b.id] || 0) - (voteData.votes[a.id] || 0);
-            return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
-          });
-          break;
-        case 'downvotes':
-          sortedShows = searchFilteredShows.sort((a, b) => {
-            const voteDiff =
-              (voteData.votesDown[a.id] || 0) - (voteData.votesDown[b.id] || 0);
-            return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
-          });
-          break;
-        default: // Upvotes
-          sortedShows = searchFilteredShows.sort((a, b) => {
-            const voteDiff =
-              (voteData.votesUp[b.id] || 0) - (voteData.votesUp[a.id] || 0);
-            return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
-          });
-      }
-
-      // Add rank to each show
-      sortedShows.forEach((show, index) => {
-        show.rank = index + 1;
+      // Add all series to cache
+      fetchedSeriesData.forEach((show) => {
+        seriesCache.current[show.id] = show;
       });
 
-      // If you want to apply pagination, use slice to limit results
-      const paginatedShows = sortedShows.slice(0, itemsPerPage);
-
-      // Set seriesMetadata to paginatedShows
-      setSeriesMetadata(paginatedShows);
+      setAllSeriesData(fetchedSeriesData);
+      filterAndSortSeriesData(fetchedSeriesData);
     } catch (error) {
       console.error('Error fetching all series data:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const filterAndSortSeriesData = (data = allSeriesData) => {
+    if (!data) return;
+
+    // Apply search filter
+    const searchFilteredShows = data.filter(
+      (show) =>
+        show.statusText === 'requested' &&
+        show.name.toLowerCase().includes(searchText.toLowerCase())
+    );
+
+    // Sort the filtered shows based on the selected rank method
+    let sortedShows;
+    switch (rankMethod) {
+      case 'combined':
+        sortedShows = searchFilteredShows.sort((a, b) => {
+          const voteDiff = (voteData.votes[b.id] || 0) - (voteData.votes[a.id] || 0);
+          return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
+        });
+        break;
+      case 'downvotes':
+        sortedShows = searchFilteredShows.sort((a, b) => {
+          const voteDiff = (voteData.votesDown[a.id] || 0) - (voteData.votesDown[b.id] || 0);
+          return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
+        });
+        break;
+      default: // Upvotes
+        sortedShows = searchFilteredShows.sort((a, b) => {
+          const voteDiff = (voteData.votesUp[b.id] || 0) - (voteData.votesUp[a.id] || 0);
+          return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
+        });
+    }
+
+    // Add rank to each show
+    sortedShows.forEach((show, index) => {
+      show.rank = index + 1;
+    });
+
+    // Set seriesMetadata to paginatedShows
+    setSeriesMetadata(sortedShows.slice(0, itemsPerPage));
   };
 
   const handleVote = async (seriesId, boost) => {
