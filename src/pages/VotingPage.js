@@ -34,7 +34,7 @@ import FlipMove from 'react-flip-move';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { LoadingButton } from '@mui/lab';
-import { listSeries } from '../graphql/queries';
+import { listSeries, getSeries } from '../graphql/queries';
 import { UserContext } from '../UserContext';
 import TvdbSearch from '../components/TvdbSearch/TvdbSearch';
 import { SnackbarContext } from '../SnackbarContext';
@@ -57,7 +57,6 @@ const StyledImg = styled('img')``;
 
 export default function VotingPage({ shows: searchableShows }) {
   const navigate = useNavigate();
-  const [shows, setShows] = useState([]);
   const [votes, setVotes] = useState({});
   const [loading, setLoading] = useState(true);
   const [votingStatus, setVotingStatus] = useState({});
@@ -69,7 +68,6 @@ export default function VotingPage({ shows: searchableShows }) {
   const [downvotes, setDownvotes] = useState({});
   const [ableToVote, setAbleToVote] = useState({});
   const [rankMethod, setRankMethod] = useState('upvotes');
-  const [alertOpen, setAlertOpen] = useState(true);
   const [lastBoost, setLastBoost] = useState({});
   const [nextVoteTimes, setNextVoteTimes] = useState({});
   const [timeRemaining, setTimeRemaining] = useState('');
@@ -77,22 +75,26 @@ export default function VotingPage({ shows: searchableShows }) {
   const [selectedRequest, setSelectedRequest] = useState();
   const [submittingRequest, setSubmittingRequest] = useState(false);
   const [hideSearchable, setHideSearchable] = useState(true);
-  const [filteredAndSortedShows, setFilteredAndSortedShows] = useState([]);
-  const { setMessage, setOpen, setSeverity } = useContext(SnackbarContext)
+  const { setMessage, setOpen, setSeverity } = useContext(SnackbarContext);
+
+  // New state variables
+  const [seriesMetadata, setSeriesMetadata] = useState([]);
+  const [voteData, setVoteData] = useState({});
+  const [isSearching, setIsSearching] = useState(false);
 
   // Local pagination
-  const itemsPerPage = 25; // number of items to render additionally
+  const itemsPerPage = 10; // Number of items to render per page
   const [itemsDisplayed, setItemsDisplayed] = useState(itemsPerPage);
 
   const location = useLocation();
 
   const theme = useTheme();
 
-  const { user, setUser } = useContext(UserContext);
+  const { user } = useContext(UserContext);
 
   const toggleOpenAddRequest = () => {
-    setOpenAddRequest(!openAddRequest)
-  }
+    setOpenAddRequest(!openAddRequest);
+  };
 
   useEffect(() => {
     const savedRankMethod = localStorage.getItem('rankMethod');
@@ -102,146 +104,149 @@ export default function VotingPage({ shows: searchableShows }) {
   }, []);
 
   useEffect(() => {
-    fetchShowsAndVotes();
-  }, [user]);
+    fetchVoteData();
+  }, [user, itemsDisplayed, rankMethod]); // Added itemsDisplayed and rankMethod to dependencies to update when these change
 
-  // useEffect(() => {
-  //   // Switch to the "Battleground" tab for users who signed up before 2023-07-07 and have voted (until they manually select a tab)
-  //   // TODO: remove this in the future after this 'migration' period for the vote sorting options
-  //   const savedRankMethod = localStorage.getItem('rankMethod');
-  //   console.log(user);
-  //   if (!savedRankMethod && Object.keys(userVotes).length > 0 && user.userDetails.createdAt < '2023-07-08') {
-  //     setRankMethod('combined');
-  //   }
-  // }, [userVotes]);
-
-  useEffect(() => {
-    let sortedShows;
-
-    switch (rankMethod) {
-      case 'combined':
-        sortedShows = [...shows].sort((a, b) => {
-          const voteDiff = (votes[b.id] || 0) - (votes[a.id] || 0);
-          return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
-        });
-        break;
-      case 'downvotes':
-        sortedShows = [...shows].sort((a, b) => {
-          const voteDiff = (downvotes[a.id] || 0) - (downvotes[b.id] || 0);
-          return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
-        });
-        break;
-      default: // Upvotes
-        sortedShows = [...shows].sort((a, b) => {
-          const voteDiff = (upvotes[b.id] || 0) - (upvotes[a.id] || 0);
-          return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
-        });
-    }
-
-    // If hideSearchable is true, filter out the searchable shows
-    const visibleShows = hideSearchable 
-      ? sortedShows.filter(show => !searchableShows.some(searchableShow => searchableShow.id === show.slug))
-      : sortedShows;
-
-    // Rank the sorted and filtered shows
-    visibleShows.forEach((show, index) => {
-      show.rank = index + 1;
-    });
-
-    // Apply the search filter
-    const searchFilteredShows = visibleShows.filter((show) => 
-      show.statusText === 'requested' && 
-      show.name.toLowerCase().includes(searchText.toLowerCase())
-    );
-
-    setFilteredAndSortedShows(searchFilteredShows);
-  }, [upvotes, downvotes, votes, rankMethod, hideSearchable, searchableShows, searchText]);
-
-  const fetchShowsAndVotes = async () => {
+  const fetchVoteData = async () => {
     setLoading(true);
     try {
-      // Recursive function to handle pagination
-      const fetchSeries = async (nextToken = null) => {
+      // Fetch vote data first
+      const voteDataResponse = await API.get('publicapi', '/vote/list');
+
+      setVoteData(voteDataResponse);
+      setVotes(voteDataResponse.votes);
+      setUserVotes(user ? voteDataResponse.userVotes : {});
+      setUserVotesUp(user ? voteDataResponse.userVotesUp : {});
+      setUserVotesDown(user ? voteDataResponse.userVotesDown : {});
+      setUpvotes(voteDataResponse.votesUp);
+      setDownvotes(voteDataResponse.votesDown);
+      setAbleToVote(user ? voteDataResponse.ableToVote : {});
+      setLastBoost(user ? voteDataResponse.lastBoost : {});
+      setNextVoteTimes(voteDataResponse.nextVoteTime || {});
+
+      // Get the series IDs from the votes
+      const seriesIds = Object.keys(voteDataResponse.votes);
+
+      // Implement pagination by slicing the seriesIds array
+      const paginatedSeriesIds = seriesIds.slice(0, itemsDisplayed);
+
+      // Fetch only the series metadata for the paginated series IDs
+      const seriesDataPromises = paginatedSeriesIds.map((id) =>
+        API.graphql({
+          ...graphqlOperation(getSeries, { id }),
+          authMode: 'API_KEY',
+        })
+      );
+
+      const seriesDataResponses = await Promise.all(seriesDataPromises);
+      const seriesData = seriesDataResponses.map((response) => response.data.getSeries);
+
+      // Sort the seriesData based on the selected rank method
+      /* eslint-disable prefer-const */
+      let sortedSeriesData = [];
+      switch (rankMethod) {
+        case 'combined':
+          sortedSeriesData = seriesData.sort((a, b) => {
+            const voteDiff = (voteDataResponse.votes[b.id] || 0) - (voteDataResponse.votes[a.id] || 0);
+            return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
+          });
+          break;
+        case 'downvotes':
+          sortedSeriesData = seriesData.sort((a, b) => {
+            const voteDiff = (voteDataResponse.votesDown[a.id] || 0) - (voteDataResponse.votesDown[b.id] || 0);
+            return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
+          });
+          break;
+        default: // Upvotes
+          sortedSeriesData = seriesData.sort((a, b) => {
+            const voteDiff = (voteDataResponse.votesUp[b.id] || 0) - (voteDataResponse.votesUp[a.id] || 0);
+            return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
+          });
+      }
+
+      // Add rank to each show
+      sortedSeriesData.forEach((show, index) => {
+        show.rank = index + 1;
+      });
+
+      setSeriesMetadata(sortedSeriesData);
+    } catch (error) {
+      console.error('Error fetching series data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch more series data when loading more items
+  const handleLoadMore = () => {
+    setItemsDisplayed((prevItemsDisplayed) => prevItemsDisplayed + itemsPerPage);
+  };
+
+  // Handle search functionality
+  useEffect(() => {
+    if (searchText) {
+      setIsSearching(true);
+      fetchAllSeries();
+    } else {
+      setIsSearching(false);
+    }
+  }, [searchText, rankMethod]); // Added rankMethod to dependencies
+
+  const fetchAllSeries = async () => {
+    setLoading(true);
+    try {
+      // Fetch all series data using listSeries and handle pagination
+      const fetchSeries = async (nextToken = null, accumulatedItems = []) => {
         const result = await API.graphql({
           ...graphqlOperation(listSeries, { nextToken }),
           authMode: 'API_KEY',
         });
-
-        let items = result.data.listSeries.items;
-
+        const items = accumulatedItems.concat(result.data.listSeries.items);
         if (result.data.listSeries.nextToken) {
-          items = items.concat(await fetchSeries(result.data.listSeries.nextToken)); // Call fetchSeries recursively if there's a nextToken
+          return fetchSeries(result.data.listSeries.nextToken, items);
         }
-
         return items;
       };
 
-      // Fetch all series data
-      const seriesData = await fetchSeries();
+      const allSeriesData = await fetchSeries();
 
-      const voteData = await API.get('publicapi', '/vote/list');
+      // Apply search filter
+      const searchFilteredShows = allSeriesData.filter(
+        (show) =>
+          show.statusText === 'requested' &&
+          show.name.toLowerCase().includes(searchText.toLowerCase())
+      );
 
-      // TODO: The example below pulls total votes for individual series to show the new endpoint.
-      // TODO: We can use the new `id` URL param to do more efficient pagination and/or individual series pages showing votes.
-      // if (voteData) {
-      //     const votesPromises = Object.keys(voteData.votes).map(seriesId => 
-      //         API.get('publicapi', `/vote/list?id=${seriesId}`).then(individualVoteData => {
-      //             console.log(`Votes for series ${seriesId}:`, individualVoteData);
-      //         })
-      //     );
-      //     await Promise.all(votesPromises);
-      // }      
-
+      // Sort the filtered shows based on the selected rank method
       let sortedShows;
-
       switch (rankMethod) {
         case 'combined':
-          sortedShows = seriesData
-            .filter((show) => show.statusText === 'requested')
-            .sort((a, b) => {
-              const voteDiff = (voteData.votes[b.id] || 0) - (voteData.votes[a.id] || 0);
-              return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
-            });
+          sortedShows = searchFilteredShows.sort((a, b) => {
+            const voteDiff = (voteData.votes[b.id] || 0) - (voteData.votes[a.id] || 0);
+            return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
+          });
           break;
         case 'downvotes':
-          sortedShows = seriesData
-            .filter((show) => show.statusText === 'requested')
-            .sort((a, b) => {
-              const voteDiff = (voteData.votesDown[a.id] || 0) - (voteData.votesDown[b.id] || 0);
-              return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
-            });
+          sortedShows = searchFilteredShows.sort((a, b) => {
+            const voteDiff = (voteData.votesDown[a.id] || 0) - (voteData.votesDown[b.id] || 0);
+            return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
+          });
           break;
         default: // Upvotes
-          sortedShows = seriesData
-            .filter((show) => show.statusText === 'requested')
-            .sort((a, b) => {
-              const voteDiff = (voteData.votesUp[b.id] || 0) - (voteData.votesUp[a.id] || 0);
-              return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
-            });
+          sortedShows = searchFilteredShows.sort((a, b) => {
+            const voteDiff = (voteData.votesUp[b.id] || 0) - (voteData.votesUp[a.id] || 0);
+            return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
+          });
       }
 
+      // Add rank to each show
       sortedShows.forEach((show, index) => {
-        show.rank = index + 1; // add a rank to each show
+        show.rank = index + 1;
       });
 
-      setShows(sortedShows);
-      setVotes(voteData.votes);
-      setUserVotes(user ? voteData.userVotes : 0);
-      setUserVotesUp(user ? voteData.userVotesUp : 0);
-      setUserVotesDown(user ? voteData.userVotesDown : 0);
-      setUpvotes(voteData.votesUp);
-      setDownvotes(voteData.votesDown);
-      setAbleToVote(user ? voteData.ableToVote : true);
-      setLastBoost(user ? voteData.lastBoost : [{}]);
-
-      const nextVoteTimes = {};
-      Object.entries(voteData.nextVoteTime ?? {}).forEach(([seriesId, voteTime]) => {
-        nextVoteTimes[seriesId] = voteTime;
-      });
-      setNextVoteTimes(nextVoteTimes);  // assuming you have a state variable called nextVoteTimes
-
+      setSeriesMetadata(sortedShows);
     } catch (error) {
-      console.error('Error fetching series data:', error);
+      console.error('Error fetching all series data:', error);
     } finally {
       setLoading(false);
     }
@@ -283,29 +288,39 @@ export default function VotingPage({ shows: searchableShows }) {
         });
       }
 
-      // update votes after updating upvotes and downvotes
+      // Update votes after updating upvotes and downvotes
       setVotes((prevVotes) => {
         const newVotes = { ...prevVotes };
         newVotes[seriesId] = (newVotes[seriesId] || 0) + boost;
 
-        let sortedShows;
-
+        // Re-sort the seriesMetadata based on updated votes
+        let sortedSeriesData = [...seriesMetadata];
         switch (rankMethod) {
           case 'combined':
-            sortedShows = [...shows].sort((a, b) => (newVotes[b.id] || 0) - (newVotes[a.id] || 0));
+            sortedSeriesData.sort((a, b) => {
+              const voteDiff = (newVotes[b.id] || 0) - (newVotes[a.id] || 0);
+              return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
+            });
             break;
           case 'downvotes':
-            sortedShows = [...shows].sort((a, b) => (newDownvotes[a.id] || 0) - (newDownvotes[b.id] || 0));
+            sortedSeriesData.sort((a, b) => {
+              const voteDiff = (newDownvotes[a.id] || 0) - (newDownvotes[b.id] || 0);
+              return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
+            });
             break;
           default: // Upvotes
-            sortedShows = [...shows].sort((a, b) => (newUpvotes[b.id] || 0) - (newUpvotes[a.id] || 0));
+            sortedSeriesData.sort((a, b) => {
+              const voteDiff = (newUpvotes[b.id] || 0) - (newUpvotes[a.id] || 0);
+              return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
+            });
         }
 
-        sortedShows.forEach((show, index) => {
-          show.rank = index + 1; // add a rank to each show
+        // Update ranks
+        sortedSeriesData.forEach((show, index) => {
+          show.rank = index + 1;
         });
 
-        setShows(sortedShows);
+        setSeriesMetadata(sortedSeriesData);
 
         return newVotes;
       });
@@ -331,7 +346,6 @@ export default function VotingPage({ shows: searchableShows }) {
     } catch (error) {
       setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: false }));
       console.error('Error on voting:', error);
-      console.log(error.response);
     }
   };
 
@@ -366,10 +380,6 @@ export default function VotingPage({ shows: searchableShows }) {
     setRankMethod(newValue);
   };
 
-  // const filteredShows = filteredAndSortedShows
-  //   .filter((show) => show.statusText === 'requested')
-  //   .filter((show) => show.name.toLowerCase().includes(searchText.toLowerCase()));
-
   const votesCount = (show) => {
     switch (rankMethod) {
       case 'upvotes':
@@ -400,36 +410,33 @@ export default function VotingPage({ shows: searchableShows }) {
 
   useEffect(() => {
     if (selectedRequest) {
-      console.log('THE SELECTED SHOW', selectedRequest.name)
+      console.log('THE SELECTED SHOW', selectedRequest.name);
     }
-  }, [selectedRequest])
+  }, [selectedRequest]);
 
   const submitRequest = () => {
-    setSubmittingRequest(true)
+    setSubmittingRequest(true);
     API.post('publicapi', '/requests/add', {
-      body: selectedRequest
-    }).then(response => {
-      console.log(response)
-      setOpenAddRequest(false)
-      setSelectedRequest(false)
-      setMessage(response.message)
-      setSeverity('success')
-      setOpen(true)
-      setSubmittingRequest(false)
-    }).catch(error => {
-      console.log(error)
-      console.log(error.response)
-      setMessage(error.response.data.message)
-      setSeverity('error')
-      setOpen(true)
-      setSubmittingRequest(false)
+      body: selectedRequest,
     })
-  }
-
-  const handleLoadMore = () => {
-    setItemsDisplayed(itemsDisplayed + itemsPerPage);  // load 10 more items when the button is clicked
-  }
-  
+      .then((response) => {
+        console.log(response);
+        setOpenAddRequest(false);
+        setSelectedRequest();
+        setMessage(response.message);
+        setSeverity('success');
+        setOpen(true);
+        setSubmittingRequest(false);
+      })
+      .catch((error) => {
+        console.log(error);
+        console.log(error.response);
+        setMessage(error.response.data.message);
+        setSeverity('error');
+        setOpen(true);
+        setSubmittingRequest(false);
+      });
+  };
 
   return (
     <>
@@ -437,7 +444,7 @@ export default function VotingPage({ shows: searchableShows }) {
         <title> Vote and Requests • TV Shows & Movies • memeSRC </title>
       </Helmet>
       <Container maxWidth="md">
-        <Box my={2} sx={{marginTop: -2, marginBottom: -1.5}}>
+        <Box my={2} sx={{ marginTop: -2, marginBottom: -1.5 }}>
           <Typography variant="h3" component="h1" gutterBottom>
             Requests
           </Typography>
@@ -445,7 +452,12 @@ export default function VotingPage({ shows: searchableShows }) {
         </Box>
 
         <Box my={2}>
-          <Tabs value={rankMethod} onChange={handleRankMethodChange} indicatorColor="secondary" textColor="inherit">
+          <Tabs
+            value={rankMethod}
+            onChange={handleRankMethodChange}
+            indicatorColor="secondary"
+            textColor="inherit"
+          >
             <Tab
               label={
                 <Box display="flex" alignItems="center">
@@ -484,7 +496,7 @@ export default function VotingPage({ shows: searchableShows }) {
               ),
               endAdornment: (
                 <InputAdornment position="end">
-                  <IconButton edge="end" onClick={() => setSearchText('')} disabled={!!searchText}>
+                  <IconButton edge="end" onClick={() => setSearchText('')} disabled={!searchText}>
                     <Close />
                   </IconButton>
                 </InputAdornment>
@@ -520,15 +532,17 @@ export default function VotingPage({ shows: searchableShows }) {
               }}
             >
               <Typography variant="h6" gutterBottom>
-                Hang tight while we tally votes
+                {isSearching ? 'Searching...' : 'Hang tight while we tally votes'}
               </Typography>
               <CircularProgress />
             </Grid>
-          ) : (         
+          ) : (
             <FlipMove style={{ minWidth: '100%' }}>
-              {filteredAndSortedShows.slice(0, itemsDisplayed).map((show, idx) => {
-                const isLastItem = idx === itemsDisplayed - 1; // Check if current item is the last one being displayed
-                if (hideSearchable && searchableShows.some(searchableShow => searchableShow.id === show.slug)) {
+              {seriesMetadata.map((show, idx) => {
+                if (
+                  hideSearchable &&
+                  searchableShows.some((searchableShow) => searchableShow.id === show.slug)
+                ) {
                   return null;
                 }
                 return (
@@ -840,14 +854,15 @@ export default function VotingPage({ shows: searchableShows }) {
                 );
               })}
 
-              {filteredAndSortedShows.length > itemsDisplayed && (
-                <div style={{ display: 'flex', justifyContent: 'center' }}>
-                <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={handleLoadMore}
-                    fullWidth
-                    style={{
+              {!isSearching &&
+                itemsDisplayed < Object.keys(voteData.votes || {}).length && (
+                  <div style={{ display: 'flex', justifyContent: 'center' }}>
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      onClick={handleLoadMore}
+                      fullWidth
+                      style={{
                         marginTop: 10,
                         marginBottom: 50,
                         backgroundColor: 'rgb(45, 45, 45)',
