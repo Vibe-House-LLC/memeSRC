@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState, useRef, useCallback } from 'react';
 import { API, graphqlOperation } from 'aws-amplify';
 import {
   Container,
@@ -101,6 +101,10 @@ export default function VotingPage({ shows: searchableShows }) {
     setOpenAddRequest(!openAddRequest);
   };
 
+  // Add cache variables
+  const seriesCache = useRef({});
+  const votesCache = useRef(null);
+
   useEffect(() => {
     const savedRankMethod = localStorage.getItem('rankMethod');
     if (savedRankMethod) {
@@ -124,14 +128,10 @@ export default function VotingPage({ shows: searchableShows }) {
   }, [searchText, rankMethod]);
 
   const fetchVoteData = async () => {
-    if (!loadingMore) {
-      setLoading(true);
-    }
-    try {
-      // Fetch vote data
-      const voteDataResponse = await API.get('publicapi', '/vote/list');
+    if (votesCache.current) {
+      const voteDataResponse = votesCache.current;
 
-      // Set vote-related state variables
+      // Use cached data
       setVoteData(voteDataResponse);
       setVotes(voteDataResponse.votes);
       setUserVotes(user ? voteDataResponse.userVotes : {});
@@ -143,11 +143,9 @@ export default function VotingPage({ shows: searchableShows }) {
       setLastBoost(user ? voteDataResponse.lastBoost : {});
       setNextVoteTimes(voteDataResponse.nextVoteTime || {});
 
-      // Get the series IDs from the votes
       const seriesIds = Object.keys(voteDataResponse.votes);
 
       // Sort the series IDs based on the selected rank method
-      /* eslint-disable prefer-const */
       let newSortedSeriesIds = [];
       switch (rankMethod) {
         case 'combined':
@@ -175,13 +173,71 @@ export default function VotingPage({ shows: searchableShows }) {
       // Update the sortedSeriesIds state
       setSortedSeriesIds(newSortedSeriesIds);
 
-      // Fetch the initial page
-      fetchSeriesData(newSortedSeriesIds, 0, false); // Pass false for initial load
-    } catch (error) {
-      console.error('Error fetching series data:', error);
-    } finally {
+      // Fetch only the initial page
+      fetchSeriesData(newSortedSeriesIds, 0, false);
+    } else {
       if (!loadingMore) {
-        setLoading(false);
+        setLoading(true);
+      }
+      try {
+        // Fetch vote data
+        const voteDataResponse = await API.get('publicapi', '/vote/list');
+
+        // Save to cache
+        votesCache.current = voteDataResponse;
+
+        // Rest of the existing code...
+        setVoteData(voteDataResponse);
+        setVotes(voteDataResponse.votes);
+        setUserVotes(user ? voteDataResponse.userVotes : {});
+        setUserVotesUp(user ? voteDataResponse.userVotesUp : {});
+        setUserVotesDown(user ? voteDataResponse.userVotesDown : {});
+        setUpvotes(voteDataResponse.votesUp);
+        setDownvotes(voteDataResponse.votesDown);
+        setAbleToVote(user ? voteDataResponse.ableToVote : {});
+        setLastBoost(user ? voteDataResponse.lastBoost : {});
+        setNextVoteTimes(voteDataResponse.nextVoteTime || {});
+
+        // Get the series IDs from the votes
+        const seriesIds = Object.keys(voteDataResponse.votes);
+
+        // Sort the series IDs based on the selected rank method
+        /* eslint-disable prefer-const */
+        let newSortedSeriesIds = [];
+        switch (rankMethod) {
+          case 'combined':
+            newSortedSeriesIds = seriesIds.sort((a, b) => {
+              const voteDiff =
+                (voteDataResponse.votes[b] || 0) - (voteDataResponse.votes[a] || 0);
+              return voteDiff !== 0 ? voteDiff : a.localeCompare(b);
+            });
+            break;
+          case 'downvotes':
+            newSortedSeriesIds = seriesIds.sort((a, b) => {
+              const voteDiff =
+                (voteDataResponse.votesDown[a] || 0) - (voteDataResponse.votesDown[b] || 0);
+              return voteDiff !== 0 ? voteDiff : a.localeCompare(b);
+            });
+            break;
+          default: // Upvotes
+            newSortedSeriesIds = seriesIds.sort((a, b) => {
+              const voteDiff =
+                (voteDataResponse.votesUp[b] || 0) - (voteDataResponse.votesUp[a] || 0);
+              return voteDiff !== 0 ? voteDiff : a.localeCompare(b);
+            });
+        }
+
+        // Update the sortedSeriesIds state
+        setSortedSeriesIds(newSortedSeriesIds);
+
+        // Fetch only the initial page
+        fetchSeriesData(newSortedSeriesIds, 0, false);
+      } catch (error) {
+        console.error('Error fetching series data:', error);
+      } finally {
+        if (!loadingMore) {
+          setLoading(false);
+        }
       }
     }
   };
@@ -192,16 +248,34 @@ export default function VotingPage({ shows: searchableShows }) {
       const endIdx = startIdx + itemsPerPage;
       const paginatedSeriesIds = sortedIds.slice(startIdx, endIdx);
 
-      // Fetch series metadata for the paginated series IDs
-      const seriesDataPromises = paginatedSeriesIds.map((id) =>
-        API.graphql({
-          ...graphqlOperation(getSeries, { id }),
-          authMode: 'API_KEY',
-        })
-      );
+      // Check cache for available series data
+      const seriesData = paginatedSeriesIds
+        .filter(id => seriesCache.current[id])
+        .map(id => seriesCache.current[id]);
 
-      const seriesDataResponses = await Promise.all(seriesDataPromises);
-      const seriesData = seriesDataResponses.map((response) => response.data.getSeries);
+      const idsToFetch = paginatedSeriesIds.filter(id => !seriesCache.current[id]);
+
+      // Fetch series metadata for the IDs not in cache
+      if (idsToFetch.length > 0) {
+        const seriesDataPromises = idsToFetch.map((id) =>
+          API.graphql({
+            ...graphqlOperation(getSeries, { id }),
+            authMode: 'API_KEY',
+          })
+        );
+
+        const seriesDataResponses = await Promise.all(seriesDataPromises);
+        const fetchedSeriesData = seriesDataResponses.map(
+          (response) => response.data.getSeries
+        );
+
+        // Add fetched data to cache
+        fetchedSeriesData.forEach((data) => {
+          seriesCache.current[data.id] = data;
+        });
+
+        seriesData.push(...fetchedSeriesData);
+      }
 
       // Assign rank based on their position in the sorted list
       seriesData.forEach((show, index) => {
@@ -233,20 +307,30 @@ export default function VotingPage({ shows: searchableShows }) {
   const fetchAllSeries = async () => {
     setLoading(true);
     try {
-      // Fetch all series data using listSeries and handle pagination
-      const fetchSeries = async (nextToken = null, accumulatedItems = []) => {
-        const result = await API.graphql({
-          ...graphqlOperation(listSeries, { nextToken }),
-          authMode: 'API_KEY',
-        });
-        const items = accumulatedItems.concat(result.data.listSeries.items);
-        if (result.data.listSeries.nextToken) {
-          return fetchSeries(result.data.listSeries.nextToken, items);
-        }
-        return items;
-      };
+      if (Object.keys(seriesCache.current).length === 0) {
+        // Fetch all series data using listSeries and handle pagination
+        const fetchSeries = async (nextToken = null, accumulatedItems = []) => {
+          const result = await API.graphql({
+            ...graphqlOperation(listSeries, { nextToken }),
+            authMode: 'API_KEY',
+          });
+          const items = accumulatedItems.concat(result.data.listSeries.items);
+          if (result.data.listSeries.nextToken) {
+            return fetchSeries(result.data.listSeries.nextToken, items);
+          }
+          return items;
+        };
 
-      const allSeriesData = await fetchSeries();
+        const allSeriesData = await fetchSeries();
+
+        // Add all series to cache
+        allSeriesData.forEach((show) => {
+          seriesCache.current[show.id] = show;
+        });
+      }
+
+      // Get all series data from cache
+      const allSeriesData = Object.values(seriesCache.current);
 
       // Apply search filter
       const searchFilteredShows = allSeriesData.filter(
@@ -266,13 +350,15 @@ export default function VotingPage({ shows: searchableShows }) {
           break;
         case 'downvotes':
           sortedShows = searchFilteredShows.sort((a, b) => {
-            const voteDiff = (voteData.votesDown[a.id] || 0) - (voteData.votesDown[b.id] || 0);
+            const voteDiff =
+              (voteData.votesDown[a.id] || 0) - (voteData.votesDown[b.id] || 0);
             return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
           });
           break;
         default: // Upvotes
           sortedShows = searchFilteredShows.sort((a, b) => {
-            const voteDiff = (voteData.votesUp[b.id] || 0) - (voteData.votesUp[a.id] || 0);
+            const voteDiff =
+              (voteData.votesUp[b.id] || 0) - (voteData.votesUp[a.id] || 0);
             return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
           });
       }
@@ -283,7 +369,7 @@ export default function VotingPage({ shows: searchableShows }) {
       });
 
       // If you want to apply pagination, use slice to limit results
-      const paginatedShows = sortedShows.slice(0, itemsPerPage); // Adjust as needed
+      const paginatedShows = sortedShows.slice(0, itemsPerPage);
 
       // Set seriesMetadata to paginatedShows
       setSeriesMetadata(paginatedShows);
@@ -420,11 +506,13 @@ export default function VotingPage({ shows: searchableShows }) {
     setSearchText(event.target.value);
   };
 
-  const handleRankMethodChange = (event, newValue) => {
+  const handleRankMethodChange = useCallback((event, newValue) => {
     localStorage.setItem('rankMethod', newValue);
     setRankMethod(newValue);
+    setCurrentPage(0); // Reset to the first page
+    setSeriesMetadata([]); // Clear the current series metadata
     setRefreshData((prev) => !prev); // Trigger data refresh
-  };
+  }, []);
 
   const votesCount = (show) => {
     switch (rankMethod) {
@@ -584,7 +672,7 @@ export default function VotingPage({ shows: searchableShows }) {
             </Grid>
           ) : (
             <>
-              <FlipMove style={{ minWidth: '100%' }}>
+              <FlipMove key={rankMethod} style={{ minWidth: '100%' }}>
                 {seriesMetadata.map((show) => {
                   if (
                     hideSearchable &&
@@ -903,9 +991,11 @@ export default function VotingPage({ shows: searchableShows }) {
               </FlipMove>
 
               {loadingMore && (
-                <Box display="flex" justifyContent="center" my={2}>
-                  <CircularProgress />
-                </Box>
+                <Grid item xs={12}>
+                  <Box display="flex" justifyContent="center" my={2}>
+                    <CircularProgress />
+                  </Box>
+                </Grid>
               )}
 
               {!isSearching &&
