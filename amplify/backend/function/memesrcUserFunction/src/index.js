@@ -702,7 +702,7 @@ export const handler = async (event) => {
   
         response = {
           statusCode: 200,
-          body: JSON.stringify(responseData),
+          body: responseData,
         };
       }
     } catch (error) {
