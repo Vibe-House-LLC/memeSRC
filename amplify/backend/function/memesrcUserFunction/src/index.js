@@ -597,9 +597,10 @@ export const handler = async (event) => {
     }
   }
 
-  if (path === `/${process.env.ENV}/public/vote/list`) {
+  if (path === `/${process.env.ENV}/public/vote/list` || path === `/${process.env.ENV}/public/vote/list/top`) {
     const userAuth = event.requestContext.identity.cognitoAuthenticationType
     const seriesId = event.queryStringParameters && event.queryStringParameters.id;
+    const isTopList = path === `/${process.env.ENV}/public/vote/list/top`;
   
     try {
       const totalVotes = await getAllVotes(seriesId);
@@ -626,22 +627,68 @@ export const handler = async (event) => {
           };
         }
   
-        const result = {
-          votes: votesData,
-          userVoteData: userVoteData ? {
-            votesUp: userVoteData.currentUserVotesUp,
-            votesDown: userVoteData.currentUserVotesDown,
-            ableToVote: userVoteData.isLastUserVoteOlderThan24Hours,
-            lastBoost: userVoteData.lastBoostValue,
-            nextVoteTime: userVoteData.nextVoteTime,
-            lastVoteTime: userVoteData.lastUserVoteTimestamps
-          } : null
-        };
+        if (isTopList) {
+          // Get top 100 by upvotes only
+          const topUpvotes = Object.entries(votesData)
+            .sort(([, a], [, b]) => b.upvotes - a.upvotes)
+            .slice(0, 100)
+            .map(([key]) => key);
   
-        response = {
-          statusCode: 200,
-          body: result,
-        };
+          // Get top 100 by upvotes minus downvotes
+          const topNet = Object.entries(votesData)
+            .sort(([, a], [, b]) => (b.upvotes - b.downvotes) - (a.upvotes - a.downvotes))
+            .slice(0, 100)
+            .map(([key]) => key);
+  
+          // Combine unique series IDs from both top 100 lists
+          const topSeriesIds = [...new Set([...topUpvotes, ...topNet])];
+  
+          // Filter votesData to include only top series
+          const filteredVotesData = Object.fromEntries(
+            Object.entries(votesData).filter(([key]) => topSeriesIds.includes(key))
+          );
+  
+          // Filter userVoteData if it exists
+          if (userVoteData) {
+            for (const key in userVoteData) {
+              if (typeof userVoteData[key] === 'object') {
+                userVoteData[key] = Object.fromEntries(
+                  Object.entries(userVoteData[key]).filter(([seriesId]) => topSeriesIds.includes(seriesId))
+                );
+              }
+            }
+          }
+  
+          response = {
+            statusCode: 200,
+            body: {
+              votes: filteredVotesData,
+              userVoteData: userVoteData ? {
+                votesUp: userVoteData.currentUserVotesUp,
+                votesDown: userVoteData.currentUserVotesDown,
+                ableToVote: userVoteData.isLastUserVoteOlderThan24Hours,
+                lastBoost: userVoteData.lastBoostValue,
+                nextVoteTime: userVoteData.nextVoteTime,
+                lastVoteTime: userVoteData.lastUserVoteTimestamps
+              } : null
+            },
+          };
+        } else {
+          response = {
+            statusCode: 200,
+            body: {
+              votes: votesData,
+              userVoteData: userVoteData ? {
+                votesUp: userVoteData.currentUserVotesUp,
+                votesDown: userVoteData.currentUserVotesDown,
+                ableToVote: userVoteData.isLastUserVoteOlderThan24Hours,
+                lastBoost: userVoteData.lastBoostValue,
+                nextVoteTime: userVoteData.nextVoteTime,
+                lastVoteTime: userVoteData.lastUserVoteTimestamps
+              } : null
+            },
+          };
+        }
       }
     } catch (error) {
       console.log(`Failed to get votes: ${error.message}`);

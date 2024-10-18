@@ -32,13 +32,14 @@ import {
   ToggleButtonGroup,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import { ArrowUpward, ArrowDownward, Search, Close, ThumbUp, Whatshot, Lock } from '@mui/icons-material';
+import { ArrowUpward, ArrowDownward, Search, Close, ThumbUp, Whatshot, Lock, NewReleasesOutlined } from '@mui/icons-material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import FlipMove from 'react-flip-move';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { LoadingButton } from '@mui/lab';
+import { GridFilterAltIcon, GridSearchIcon } from '@mui/x-data-grid';
 import { listSeries, getSeries } from '../graphql/queries';
 import { UserContext } from '../UserContext';
 import TvdbSearch from '../components/TvdbSearch/TvdbSearch';
@@ -81,9 +82,10 @@ export default function VotingPage({ shows: searchableShows }) {
   const [openAddRequest, setOpenAddRequest] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState();
   const [submittingRequest, setSubmittingRequest] = useState(false);
-  const [hideSearchable, setHideSearchable] = useState(() => {
-    const savedPreference = localStorage.getItem('hideSearchable');
-    return savedPreference ? JSON.parse(savedPreference) : false;
+  const [hideSearchable, setHideSearchable] = useState(false);
+  const [displayOption, setDisplayOption] = useState(() => {
+    const savedPreference = localStorage.getItem('displayOption');
+    return savedPreference || 'showAll';
   });
   const { setMessage, setOpen, setSeverity } = useContext(SnackbarContext);
 
@@ -93,7 +95,7 @@ export default function VotingPage({ shows: searchableShows }) {
   const [isSearching, setIsSearching] = useState(false);
 
   // Local pagination
-  const itemsPerPage = 15; // Number of items to render per page
+  const itemsPerPage = 50; // Number of items to render per page
   const [currentPage, setCurrentPage] = useState(0);
 
   const [sortedSeriesIds, setSortedSeriesIds] = useState([]); // New state to store sorted IDs
@@ -123,6 +125,14 @@ export default function VotingPage({ shows: searchableShows }) {
   const [upvotesRanks, setUpvotesRanks] = useState([]);
   const [battlegroundRanks, setBattlegroundRanks] = useState([]);
 
+  const [isTopList, setIsTopList] = useState(true);
+  const [topListExhausted, setTopListExhausted] = useState(false);
+
+  const [originalRanks, setOriginalRanks] = useState({});
+
+  // Add this new state variable
+  const [fullSortedSeriesIds, setFullSortedSeriesIds] = useState([]);
+
   const handleImageLoad = (showId) => {
     setLoadedImages(prev => ({ ...prev, [showId]: true }));
   };
@@ -150,7 +160,7 @@ export default function VotingPage({ shows: searchableShows }) {
       setCurrentPage(0);
       fetchVoteData();
     }
-  }, [searchText, rankMethod, voteData]);
+  }, [searchText, rankMethod, voteData, isTopList]);
 
   const fetchVoteData = async () => {
     try {
@@ -193,6 +203,7 @@ export default function VotingPage({ shows: searchableShows }) {
         }
 
         // Update the sortedSeriesIds state
+        setFullSortedSeriesIds(newSortedSeriesIds);
         setSortedSeriesIds(newSortedSeriesIds);
 
         // Fetch only the initial page
@@ -202,8 +213,9 @@ export default function VotingPage({ shows: searchableShows }) {
           setLoading(true);
         }
         try {
-          // Fetch vote data
-          const voteDataResponse = await API.get('publicapi', '/vote/list');
+          // Fetch vote data from the appropriate endpoint
+          const endpoint = isTopList ? '/vote/list/top' : '/vote/list';
+          const voteDataResponse = await API.get('publicapi', endpoint);
 
           // Save to cache
           votesCache.current = voteDataResponse;
@@ -218,11 +230,9 @@ export default function VotingPage({ shows: searchableShows }) {
           setLastBoost(user ? voteDataResponse.userVoteData?.lastBoost : {});
           setNextVoteTimes(voteDataResponse.userVoteData?.nextVoteTime || {});
 
-          // Get the series IDs from the votes
           const seriesIds = Object.keys(voteDataResponse.votes);
 
           // Sort the series IDs based on the selected rank method
-          /* eslint-disable prefer-const */
           let newSortedSeriesIds = [];
           switch (rankMethod) {
             case 'combined':
@@ -246,6 +256,7 @@ export default function VotingPage({ shows: searchableShows }) {
           }
 
           // Update the sortedSeriesIds state
+          setFullSortedSeriesIds(newSortedSeriesIds);
           setSortedSeriesIds(newSortedSeriesIds);
 
           // Fetch only the initial page
@@ -338,49 +349,61 @@ export default function VotingPage({ shows: searchableShows }) {
     }
   };
 
-  // Update the recalculateRanks function
+  // Memoize 'filterShows' using 'useCallback'
+  const filterShows = useCallback((show) => {
+    const isSearchable = searchableShows.some((searchableShow) => searchableShow.id === show.slug);
+    switch (displayOption) {
+      case 'hideAvailable':
+        return !isSearchable;
+      case 'requested':
+        return isSearchable;
+      default: // 'showAll'
+        return true;
+    }
+  }, [displayOption, searchableShows]);
+
   const recalculateRanks = useCallback(() => {
     let currentRank = 1;
     const newRanks = {};
-    const seriesToRank = sortedSeriesIds.map(id => seriesCache.current[id]);
+    const seriesToRank = fullSortedSeriesIds.map(id => seriesCache.current[id]).filter(Boolean);
 
     seriesToRank.forEach((show) => {
-      if (show && (!hideSearchable || !searchableShows.some((searchableShow) => searchableShow.id === show.slug))) {
+      if (filterShows(show)) {
         newRanks[show.id] = currentRank;
         currentRank += 1;
       }
     });
 
-    setRanks(newRanks);
+    setOriginalRanks(newRanks);
     
-    // Update seriesMetadata with new ranks
     setSeriesMetadata(prevMetadata => 
       prevMetadata.map(show => ({ ...show, rank: newRanks[show.id] || null }))
     );
-  }, [hideSearchable, searchableShows, sortedSeriesIds]);
+  }, [filterShows, fullSortedSeriesIds]);
 
-  // Call recalculateRanks after data loads
   useEffect(() => {
     if (!loading && seriesMetadata.length > 0) {
       recalculateRanks();
     }
-  }, [loading, recalculateRanks]);
+  }, [loading, seriesMetadata.length, recalculateRanks]);
 
-  // Update ranks when rankMethod changes
   useEffect(() => {
     recalculateRanks();
   }, [rankMethod, recalculateRanks]);
-
-  // Update ranks when hideSearchable changes
-  useEffect(() => {
-    recalculateRanks();
-  }, [hideSearchable, recalculateRanks]);
 
   const handleLoadMore = () => {
     setLoadingMore(true);
     const nextPage = currentPage + 1;
     setCurrentPage(nextPage);
-    fetchSeriesData(sortedSeriesIds, nextPage, true); // Pass true when loading more
+
+    if (isTopList && (nextPage + 1) * itemsPerPage > 100) {
+      setIsTopList(false);
+      setTopListExhausted(true);
+      votesCache.current = null; // Clear cache to force a new fetch
+      fetchVoteData(); // Fetch the full list
+    } else {
+      fetchSeriesData(sortedSeriesIds, nextPage, true);
+    }
   };
 
   const fetchAllSeriesData = async () => {
@@ -422,6 +445,7 @@ export default function VotingPage({ shows: searchableShows }) {
         (show) => show.name.toLowerCase().includes(searchText.toLowerCase())
       );
 
+      // eslint-disable-next-line prefer-const
       let sortedShows = [...searchFilteredShows];
 
       if (sortedShows.length > 0) {
@@ -448,15 +472,16 @@ export default function VotingPage({ shows: searchableShows }) {
       }
 
       setFilteredSeriesData(sortedShows);
-      setSortedSeriesIds(sortedShows.map(show => show.id));
+      // Remove lines that update sortedSeriesIds to prevent ranks being affected by search
+      // setSortedSeriesIds(sortedShows.map(show => show.id));
       setCurrentPage(0);
 
       // Update seriesMetadata with existing ranks
-      setSeriesMetadata(sortedShows.map(show => ({ ...show, rank: ranks[show.id] || null })));
+      setSeriesMetadata(sortedShows.map(show => ({ ...show, rank: originalRanks[show.id] || null })));
     } catch (error) {
       console.error('Error in filterAndSortSeriesData:', error);
       setFilteredSeriesData([]);
-      setSortedSeriesIds([]);
+      // setSortedSeriesIds([]);
       setSeriesMetadata([]);
     }
   };
@@ -635,7 +660,7 @@ export default function VotingPage({ shows: searchableShows }) {
     }
   }, [voteData.votes, hideSearchable, searchableShows]);
 
-  const updateRanks = () => {
+  const updateRanks = useCallback(() => {
     const seriesIds = Object.keys(voteData.votes);
     
     const upvotesOrder = [...seriesIds].sort((a, b) => {
@@ -650,14 +675,20 @@ export default function VotingPage({ shows: searchableShows }) {
     });
 
     const filteredUpvotesRanks = upvotesOrder
-      .filter(id => !hideSearchable || !searchableShows.some(show => show.id === seriesCache.current[id]?.slug))
+      .filter(id => {
+        const show = seriesCache.current[id];
+        return show && filterShows(show);
+      })
       .reduce((acc, id, index) => {
         acc[id] = index + 1;
         return acc;
       }, {});
 
     const filteredBattlegroundRanks = battlegroundOrder
-      .filter(id => !hideSearchable || !searchableShows.some(show => show.id === seriesCache.current[id]?.slug))
+      .filter(id => {
+        const show = seriesCache.current[id];
+        return show && filterShows(show);
+      })
       .reduce((acc, id, index) => {
         acc[id] = index + 1;
         return acc;
@@ -665,16 +696,12 @@ export default function VotingPage({ shows: searchableShows }) {
 
     setUpvotesRanks(filteredUpvotesRanks);
     setBattlegroundRanks(filteredBattlegroundRanks);
-  };
+  }, [filterShows, voteData.votes]);
 
-  // useEffect(() => {
-  //   localStorage.setItem('hideSearchable', JSON.stringify(hideSearchable));
-  // }, [hideSearchable]);
-
-  const handleHideSearchableChange = (event, newValue) => {
-    // Only update if a button is selected (newValue is not null)
+  const handleDisplayOptionChange = (event, newValue) => {
     if (newValue !== null) {
-      setHideSearchable(newValue);
+      setDisplayOption(newValue);
+      localStorage.setItem('displayOption', newValue);
     }
   };
 
@@ -691,14 +718,13 @@ export default function VotingPage({ shows: searchableShows }) {
           <Typography variant="subtitle2">Upvote the most memeable shows and movies</Typography>
         </Box>
 
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, my: 3 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, my: 2 }}>
           <ToggleButtonGroup
             value={rankMethod}
             exclusive
             onChange={handleRankMethodChange}
             aria-label="ranking method"
             fullWidth
-            size="large"
           >
             <ToggleButton 
               value="upvotes" 
@@ -723,20 +749,24 @@ export default function VotingPage({ shows: searchableShows }) {
           </ToggleButtonGroup>
 
           <ToggleButtonGroup
-            value={hideSearchable}
+            value={displayOption}
             exclusive
-            onChange={handleHideSearchableChange}
-            aria-label="hide searchable shows"
+            onChange={handleDisplayOptionChange}
+            aria-label="display options"
             fullWidth
             size="small"
           >
-            <ToggleButton value={false} aria-label="show all">
-              <VisibilityIcon sx={{ mr: 1 }} />
-              Show All
+            <ToggleButton value="showAll" aria-label="show all">
+              <GridFilterAltIcon sx={{ mr: 1 }} />
+              All
             </ToggleButton>
-            <ToggleButton value aria-label="hide searchable">
-              <VisibilityOffIcon sx={{ mr: 1 }} />
-              Hide Available
+            <ToggleButton value="hideAvailable" aria-label="hide available">
+              <NewReleasesOutlined sx={{ mr: 1 }} />
+              Requested
+            </ToggleButton>
+            <ToggleButton value="requested" aria-label="requested">
+              <GridSearchIcon sx={{ mr: 1 }} />
+              Searchable
             </ToggleButton>
           </ToggleButtonGroup>
 
@@ -762,6 +792,7 @@ export default function VotingPage({ shows: searchableShows }) {
               ),
             }}
           />
+
         </Box>
 
         <Grid container style={{ minWidth: '100%' }}>
@@ -787,10 +818,10 @@ export default function VotingPage({ shows: searchableShows }) {
             <>
               <FlipMove key={rankMethod} style={{ minWidth: '100%' }}>
                 {seriesMetadata.map((show) => {
-                  if (hideSearchable && searchableShows.some((searchableShow) => searchableShow.id === show.slug)) {
+                  if (!filterShows(show)) {
                     return null;
                   }
-                  const rank = rankMethod === 'upvotes' ? upvotesRanks[show.id] : battlegroundRanks[show.id];
+                  const rank = show.rank; // Use the rank from seriesMetadata
                   return (
                     <div key={show.id}>
                       <Grid item xs={12} style={{ marginBottom: 15 }}>
@@ -801,7 +832,7 @@ export default function VotingPage({ shows: searchableShows }) {
                                 <Box display="flex" alignItems="center">
                                   <Box mr={2} position="relative">
                                     <Badge
-                                      badgeContent={rank ? `#${rank}` : null}
+                                      badgeContent={originalRanks[show.id] ? `#${originalRanks[show.id]}` : null}
                                       color="secondary"
                                       anchorOrigin={{
                                         vertical: 'top',
@@ -842,7 +873,7 @@ export default function VotingPage({ shows: searchableShows }) {
                                             rel="noopener noreferrer" 
                                             style={{ textDecoration: 'none', color: 'inherit' }}
                                           >
-                                            <Chip sx={{ marginRight: 1, cursor: 'pointer' }} size='small' label="🔍 Tap to search!" color="success" variant="filled" />
+                                            <Chip sx={{ marginRight: 1, cursor: 'pointer' }} size='large' label="🔍 Search" color="success" variant="filled" />
                                           </a>
                                         )
                                       }
@@ -1137,7 +1168,7 @@ export default function VotingPage({ shows: searchableShows }) {
                       }}
                       startIcon={<AddIcon />}
                     >
-                      {`Load More`}
+                      {topListExhausted ? 'Load More' : 'Load Full List'}
                     </Button>
                   </Grid>
                 )}
