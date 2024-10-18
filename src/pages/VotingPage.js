@@ -191,9 +191,9 @@ export default function VotingPage({ shows: searchableShows }) {
         // Save to cache
         votesCache.current = voteDataResponse;
 
-        // Rest of the existing code...
         setVoteData(voteDataResponse);
         setVotes(voteDataResponse.votes);
+
         setUserVotes(user ? voteDataResponse.userVoteData?.votesUp : {});
         setUserVotesUp(user ? voteDataResponse.userVoteData?.votesUp : {});
         setUserVotesDown(user ? voteDataResponse.userVoteData?.votesDown : {});
@@ -232,7 +232,7 @@ export default function VotingPage({ shows: searchableShows }) {
         // Fetch only the initial page
         fetchSeriesData(newSortedSeriesIds, 0, false);
       } catch (error) {
-        console.error('Error fetching series data:', error);
+        console.error('Error fetching vote data:', error);
       } finally {
         if (!loadingMore) {
           setLoading(false);
@@ -531,14 +531,18 @@ export default function VotingPage({ shows: searchableShows }) {
   }, []);
 
   const votesCount = (show) => {
+    if (!voteData.votes || !voteData.votes[show.id]) {
+      return 0;
+    }
+    
     switch (rankMethod) {
       case 'upvotes':
-        return voteData.votes[show.id]?.upvotes || 0;
+        return voteData.votes[show.id].upvotes || 0;
       case 'downvotes':
-        return voteData.votes[show.id]?.downvotes || 0;
+        return voteData.votes[show.id].downvotes || 0;
       case 'combined':
       default:
-        return (voteData.votes[show.id]?.upvotes || 0) - (voteData.votes[show.id]?.downvotes || 0);
+        return (voteData.votes[show.id].upvotes || 0) - (voteData.votes[show.id].downvotes || 0);
     }
   };
 
@@ -558,19 +562,12 @@ export default function VotingPage({ shows: searchableShows }) {
     setTimeRemaining(formattedTime);
   };
 
-  useEffect(() => {
-    if (selectedRequest) {
-      console.log('THE SELECTED SHOW', selectedRequest.name);
-    }
-  }, [selectedRequest]);
-
   const submitRequest = () => {
     setSubmittingRequest(true);
     API.post('publicapi', '/requests/add', {
       body: selectedRequest,
     })
       .then((response) => {
-        console.log(response);
         setOpenAddRequest(false);
         setSelectedRequest();
         setMessage(response.message);
@@ -863,12 +860,8 @@ export default function VotingPage({ shows: searchableShows }) {
                                     </Box>
 
                                     <Box alignItems="center" height="100%">
-                                      <Typography
-                                        variant="h5"
-                                        textAlign="center"
-                                      // color={votesCount(show) < 0 && 'error.main'}
-                                      >
-                                        {votesCount(show) || 0}
+                                      <Typography variant="h5" textAlign="center" color={votesCount(show) < 0 && 'error.main'}>
+                                        {votesCount(show)}
                                       </Typography>
                                     </Box>
                                     <Box>
@@ -1008,7 +1001,7 @@ export default function VotingPage({ shows: searchableShows }) {
                                       )}
                                     </Box>
                                     <Typography variant="h5" textAlign="center" color={votesCount(show) < 0 && 'error.main'}>
-                                      {upvotes[show.id] || 0}
+                                      {voteData.votes[show.id]?.upvotes || 0}
                                     </Typography>
                                   </Stack>
                                 )}
@@ -1103,7 +1096,6 @@ export default function VotingPage({ shows: searchableShows }) {
           {selectedRequest &&
 
             <Grid container spacing={2} alignItems='center' mt={2}>
-              {console.log(selectedRequest)}
               <Grid item>
                 <StyledImg
                   src={selectedRequest.image_url}
