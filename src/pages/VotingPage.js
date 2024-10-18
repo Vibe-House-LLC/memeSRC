@@ -601,7 +601,7 @@ export default function VotingPage({ shows: searchableShows }) {
         },
       });
 
-      // Update user votes
+      // Update user votes in state
       if (boost === 1) {
         setUserVotesUp((prev) => ({ ...prev, [seriesId]: (prev[seriesId] || 0) + 1 }));
       } else if (boost === -1) {
@@ -611,13 +611,80 @@ export default function VotingPage({ shows: searchableShows }) {
       setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: false }));
       setLastBoost((prevLastBoost) => ({ ...prevLastBoost, [seriesId]: boost }));
 
-      // Update ableToVote and nextVoteTimes
+      // Update ableToVote and nextVoteTimes in state
       setAbleToVote((prev) => ({ ...prev, [seriesId]: (prev[seriesId] || 1) - 1 }));
       setNextVoteTimes((prev) => {
         const now = new Date();
         now.setHours(now.getHours() + 24);
         return { ...prev, [seriesId]: now.toISOString() };
       });
+
+      // --- Add the following code to update the cached data in localStorage ---
+
+      // Update public vote data in votesCache.current
+      if (votesCache.current && votesCache.current.votes) {
+        const currentVotes = votesCache.current.votes[seriesId] || { upvotes: 0, downvotes: 0 };
+        if (boost === 1) {
+          currentVotes.upvotes += 1;
+        } else if (boost === -1) {
+          currentVotes.downvotes += 1;
+        }
+        votesCache.current.votes[seriesId] = currentVotes;
+
+        // Save updated public vote data to localStorage
+        const now = new Date();
+        const publicCacheData = {
+          updatedAt: now.toISOString(),
+          data: votesCache.current,
+        };
+        localStorage.setItem('votesCache', JSON.stringify(publicCacheData));
+      }
+
+      // Update user-specific vote data in votesCache.current
+      if (user && votesCache.current && votesCache.current.userVoteData) {
+        const userVoteData = votesCache.current.userVoteData;
+
+        // Update user's upvotes/downvotes
+        if (boost === 1) {
+          userVoteData.votesUp = {
+            ...userVoteData.votesUp,
+            [seriesId]: (userVoteData.votesUp?.[seriesId] || 0) + 1,
+          };
+        } else if (boost === -1) {
+          userVoteData.votesDown = {
+            ...userVoteData.votesDown,
+            [seriesId]: (userVoteData.votesDown?.[seriesId] || 0) + 1,
+          };
+        }
+
+        // Update lastBoost
+        userVoteData.lastBoost = {
+          ...userVoteData.lastBoost,
+          [seriesId]: boost,
+        };
+
+        // Update ableToVote
+        userVoteData.ableToVote = {
+          ...userVoteData.ableToVote,
+          [seriesId]: (userVoteData.ableToVote?.[seriesId] || 1) - 1,
+        };
+
+        // Update nextVoteTime
+        const now = new Date();
+        now.setHours(now.getHours() + 24);
+        userVoteData.nextVoteTime = {
+          ...userVoteData.nextVoteTime,
+          [seriesId]: now.toISOString(),
+        };
+
+        // Save updated user-specific vote data to localStorage
+        const userKey = `votesCache_${user.username || user.id}`;
+        const userCacheData = {
+          updatedAt: new Date().toISOString(),
+          data: { userVoteData },
+        };
+        localStorage.setItem(userKey, JSON.stringify(userCacheData));
+      }
 
     } catch (error) {
       setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: false }));
