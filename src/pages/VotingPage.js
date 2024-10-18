@@ -87,7 +87,7 @@ export default function VotingPage({ shows: searchableShows }) {
   const itemsPerPage = 50; // Number of items to render per page
   const [currentPage, setCurrentPage] = useState(0);
 
-  const [sortedSeriesIds, setSortedSeriesIds] = useState([]); // New state to store sorted IDs
+  const [sortedSeriesIds, setSortedSeriesIds] = useState([]);
 
   const location = useLocation();
 
@@ -107,12 +107,11 @@ export default function VotingPage({ shows: searchableShows }) {
 
   const [loadedImages, setLoadedImages] = useState({});
 
+  // Initialize with true to load the top list first
   const [isTopList, setIsTopList] = useState(true);
-  const [topListExhausted, setTopListExhausted] = useState(false);
 
   const [originalRanks, setOriginalRanks] = useState({});
 
-  // Add this new state variable
   const [fullSortedSeriesIds, setFullSortedSeriesIds] = useState([]);
 
   const handleImageLoad = (showId) => {
@@ -134,11 +133,11 @@ export default function VotingPage({ shows: searchableShows }) {
       }
       const titleA = seriesCache.current[a]?.name;
       const titleB = seriesCache.current[b]?.name;
-      
+
       if (!titleA && !titleB) return 0;
       if (!titleA) return 1;
       if (!titleB) return -1;
-      
+
       return titleA.replace(/^The\s+/i, '').toLowerCase().localeCompare(
         titleB.replace(/^The\s+/i, '').toLowerCase()
       );
@@ -173,8 +172,8 @@ export default function VotingPage({ shows: searchableShows }) {
     });
 
     setOriginalRanks(newRanks);
-    
-    setSeriesMetadata(prevMetadata => 
+
+    setSeriesMetadata(prevMetadata =>
       prevMetadata.map(show => ({ ...show, rank: newRanks[show.id] || null }))
     );
   }, [filterShows, fullSortedSeriesIds]);
@@ -402,8 +401,10 @@ export default function VotingPage({ shows: searchableShows }) {
           setLoading(true);
         }
         try {
-          // Fetch vote data from the appropriate endpoint
+          // Determine the endpoint based on isTopList
           const endpoint = isTopList ? '/vote/list/top' : '/vote/list';
+
+          // Fetch vote data from the appropriate endpoint
           const voteDataResponse = await API.get('publicapi', endpoint);
 
           // Save to cache
@@ -600,16 +601,18 @@ export default function VotingPage({ shows: searchableShows }) {
   }, [rankMethod, recalculateRanks]);
 
   const handleLoadMore = () => {
-    setLoadingMore(true);
-    const nextPage = currentPage + 1;
-    setCurrentPage(nextPage);
-
-    if (isTopList && (nextPage + 1) * itemsPerPage > 100) {
+    if (isTopList) {
+      // Switch to full list when user tries to load more from the top list
       setIsTopList(false);
-      setTopListExhausted(true);
+      setSeriesMetadata([]);
+      setSortedSeriesIds([]);
+      setCurrentPage(0);
       votesCache.current = null; // Clear cache to force a new fetch
       fetchVoteData(); // Fetch the full list
     } else {
+      setLoadingMore(true);
+      const nextPage = currentPage + 1;
+      setCurrentPage(nextPage);
       fetchSeriesData(sortedSeriesIds, nextPage, true);
     }
   };
@@ -643,7 +646,7 @@ export default function VotingPage({ shows: searchableShows }) {
         return { ...prev, [seriesId]: now.toISOString() };
       });
 
-      // --- Add the following code to update the cached data in localStorage ---
+      // --- Update the cached data in localStorage ---
 
       // Update public vote data in votesCache.current
       if (votesCache.current && votesCache.current.votes) {
@@ -758,7 +761,7 @@ export default function VotingPage({ shows: searchableShows }) {
     if (!voteData.votes || !voteData.votes[show.id]) {
       return 0;
     }
-    
+
     switch (rankMethod) {
       case 'upvotes':
         return voteData.votes[show.id].upvotes || 0;
@@ -837,8 +840,8 @@ export default function VotingPage({ shows: searchableShows }) {
             aria-label="ranking method"
             fullWidth
           >
-            <ToggleButton 
-              value="upvotes" 
+            <ToggleButton
+              value="upvotes"
               aria-label="most upvoted"
               sx={{
                 '&.Mui-selected': {
@@ -903,7 +906,6 @@ export default function VotingPage({ shows: searchableShows }) {
               ),
             }}
           />
-
         </Box>
 
         <Grid container style={{ minWidth: '100%' }}>
@@ -941,7 +943,7 @@ export default function VotingPage({ shows: searchableShows }) {
                               <Box flexGrow={1} marginRight={2}>
                                 <Box display="flex" alignItems="center">
                                   <Box mr={2} position="relative">
-                                  <Badge
+                                    <Badge
                                       badgeContent={originalRanks[show.id] ? `#${originalRanks[show.id]}` : <CircularProgress size={12} sx={{ color: 'white' }} />}
                                       color="secondary"
                                       anchorOrigin={{
@@ -950,16 +952,16 @@ export default function VotingPage({ shows: searchableShows }) {
                                       }}
                                     >
                                       {!loadedImages[show.id] && (
-                                        <Skeleton 
-                                          variant="rectangular" 
-                                          width={65} 
-                                          height={97} 
+                                        <Skeleton
+                                          variant="rectangular"
+                                          width={65}
+                                          height={97}
                                           style={{ borderRadius: '4px' }}
                                         />
                                       )}
-                                      <img 
-                                        src={show.image || 'path/to/placeholder-image.jpg'} 
-                                        alt={show.name} 
+                                      <img
+                                        src={show.image || 'path/to/placeholder-image.jpg'}
+                                        alt={show.name}
                                         style={{
                                           ...showImageStyle,
                                           display: loadedImages[show.id] ? 'block' : 'none'
@@ -977,10 +979,10 @@ export default function VotingPage({ shows: searchableShows }) {
                                     >
                                       {
                                         searchableShows.some(searchableShow => searchableShow.id === show.slug) && (
-                                          <a 
-                                            href={`/${show.slug}`} 
-                                            target="_blank" 
-                                            rel="noopener noreferrer" 
+                                          <a
+                                            href={`/${show.slug}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
                                             style={{ textDecoration: 'none', color: 'inherit' }}
                                           >
                                             <Chip sx={{ marginRight: 1, cursor: 'pointer' }} size='large' label="🔍 Search" color="success" variant="filled" />
@@ -1024,14 +1026,9 @@ export default function VotingPage({ shows: searchableShows }) {
                                           disableFocusListener
                                           enterTouchDelay={0}
                                           onOpen={() => {
-                                            // TODO: Add the ISO 8601 string response here
-                                            // Here's info about that: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString
-                                            // It's always UTC, so it shouldn't matter what their timezone is, it should show right.
                                             calculateTimeRemaining(nextVoteTimes[show.id]);
                                           }}
                                           title={
-                                            // This is where we show two different options depending on vote status
-                                            // TODO: Show how much time remains until the next vote
                                             (ableToVote?.[show.id] !== undefined && ableToVote[show.id] !== true) || votingStatus?.[show.id]
                                               ? user ? `🔒 ${timeRemaining}`
                                               : 'Upvote'
@@ -1066,9 +1063,9 @@ export default function VotingPage({ shows: searchableShows }) {
                                                   : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
                                               }
                                               disabled={
-                                                user && 
-                                                ((ableToVote?.[show.id] !== undefined && ableToVote[show.id] !== true) || 
-                                                votingStatus?.[show.id])
+                                                user &&
+                                                ((ableToVote?.[show.id] !== undefined && ableToVote[show.id] !== true) ||
+                                                  votingStatus?.[show.id])
                                               }
                                               size="small"
                                             >
@@ -1086,11 +1083,6 @@ export default function VotingPage({ shows: searchableShows }) {
                                                   }}
                                                 />
                                               )}
-                                              {/* <ArrowUpward
-                                              sx={{
-                                                color: lastBoost[show.id] === 1 && ableToVote[show.id] !== true ? 'success.main' : 'inherit',
-                                              }}
-                                            /> */}
                                             </StyledFab>
                                           </StyledBadge>
                                         </Tooltip>
@@ -1178,14 +1170,9 @@ export default function VotingPage({ shows: searchableShows }) {
                                           disableFocusListener
                                           enterTouchDelay={0}
                                           onOpen={() => {
-                                            // TODO: Add the ISO 8601 string response here
-                                            // Here's info about that: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString
-                                            // It's always UTC, so it shouldn't matter what their timezone is, it should show right.
                                             calculateTimeRemaining(nextVoteTimes[show.id]);
                                           }}
                                           title={
-                                            // This is where we show two different options depending on vote status
-                                            // TODO: Show how much time remains until the next vote
                                             (ableToVote?.[show.id] !== undefined && ableToVote[show.id] !== true) || votingStatus?.[show.id]
                                               ? user ? `🔒 ${timeRemaining}`
                                               : 'Upvote'
@@ -1261,26 +1248,25 @@ export default function VotingPage({ shows: searchableShows }) {
                 </Grid>
               )}
 
-              {!isSearching &&
-                seriesMetadata.length < sortedSeriesIds.length && (
-                  <Grid item xs={12} style={{ marginTop: 20 }}>
-                    <Button
-                      variant="contained"
-                      color="primary"
-                      onClick={handleLoadMore}
-                      fullWidth
-                      style={{
-                        backgroundColor: 'rgb(45, 45, 45)',
-                        height: 100,
-                        color: 'white',
-                        fontSize: 'large',
-                      }}
-                      startIcon={<AddIcon />}
-                    >
-                      {topListExhausted ? 'Load More' : 'Load Full List'}
-                    </Button>
-                  </Grid>
-                )}
+              {!isSearching && (
+                <Grid item xs={12} style={{ marginTop: 20 }}>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={handleLoadMore}
+                    fullWidth
+                    style={{
+                      backgroundColor: 'rgb(45, 45, 45)',
+                      height: 100,
+                      color: 'white',
+                      fontSize: 'large',
+                    }}
+                    startIcon={<AddIcon />}
+                  >
+                    {isTopList ? 'Load Full List' : 'Load More'}
+                  </Button>
+                </Grid>
+              )}
 
               <Grid
                 item
@@ -1298,25 +1284,24 @@ export default function VotingPage({ shows: searchableShows }) {
                   What are we missing?
                 </Typography>
                 <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={() => {
-                        // window.open('https://forms.gle/8CETtVbwYoUmxqbi7', '_blank')
-                        if (user) {
-                            toggleOpenAddRequest();
-                        } else {
-                            navigate('/signup')
-                        }
-                    }}
-                    style={{
-                        marginTop: 10,
-                        marginBottom: 50,
-                        backgroundColor: 'rgb(84, 214, 44)',
-                        color: 'black'  // Set the text color to black
-                    }}
-                    startIcon={<AddIcon />}  // Add the plus icon at the beginning of the button
+                  variant="contained"
+                  color="primary"
+                  onClick={() => {
+                    if (user) {
+                      toggleOpenAddRequest();
+                    } else {
+                      navigate('/signup');
+                    }
+                  }}
+                  style={{
+                    marginTop: 10,
+                    marginBottom: 50,
+                    backgroundColor: 'rgb(84, 214, 44)',
+                    color: 'black',
+                  }}
+                  startIcon={<AddIcon />}
                 >
-                    Make a request
+                  Make a request
                 </Button>
               </Grid>
             </>
@@ -1330,7 +1315,7 @@ export default function VotingPage({ shows: searchableShows }) {
           </Typography>
         </DialogTitle>
         <DialogContent sx={{ paddingTop: 2 }}>
-          <TvdbSearch typeFilter={['series', 'movie']} onClear={() => { setSelectedRequest() }} onSelect={(value) => { setSelectedRequest(value) }} />
+          <TvdbSearch typeFilter={['series', 'movie']} onClear={() => { setSelectedRequest(); }} onSelect={(value) => { setSelectedRequest(value); }} />
           {selectedRequest &&
 
             <Grid container spacing={2} alignItems='center' mt={2}>
@@ -1374,7 +1359,7 @@ export default function VotingPage({ shows: searchableShows }) {
           }
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
-          <LoadingButton onClick={submitRequest} loading={submittingRequest} disabled={!!selectedRequest || submittingRequest} variant='contained'>
+          <LoadingButton onClick={submitRequest} loading={submittingRequest} disabled={!selectedRequest || submittingRequest} variant='contained'>
             Submit Request
           </LoadingButton>
         </DialogActions>

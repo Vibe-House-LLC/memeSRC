@@ -598,12 +598,42 @@ export const handler = async (event) => {
   }
 
   if (path === `/${process.env.ENV}/public/vote/list` || path === `/${process.env.ENV}/public/vote/list/top`) {
-    const userAuth = event.requestContext.identity.cognitoAuthenticationType
+    // Determine if the user is authenticated
+    const userAuth = event.requestContext.identity.cognitoAuthenticationType;
+  
+    // Extract the seriesId from the query string parameters if present
     const seriesId = event.queryStringParameters && event.queryStringParameters.id;
-    const isTopList = path === `/${process.env.ENV}/public/vote/list/top`;
   
     try {
-      const totalVotes = await getAllVotes(seriesId);
+      // Fetch all votes, optionally filtered by seriesId
+      let totalVotes = await getAllVotes(seriesId);
+  
+      // Initialize topSeriesIds if the `/top` path is used
+      let topSeriesIds = null;
+      if (path === `/${process.env.ENV}/public/vote/list/top`) {
+        // Get top 100 seriesIds by total upvotes
+        const seriesIdsByUpvotes = Object.keys(totalVotes)
+          .sort((a, b) => totalVotes[b].upvotes - totalVotes[a].upvotes)
+          .slice(0, 100);
+  
+        // Get top 100 seriesIds by net votes (upvotes - downvotes)
+        const seriesIdsByNetVotes = Object.keys(totalVotes)
+          .sort((a, b) => {
+            const netVotesB = totalVotes[b].upvotes - totalVotes[b].downvotes;
+            const netVotesA = totalVotes[a].upvotes - totalVotes[a].downvotes;
+            return netVotesB - netVotesA;
+          })
+          .slice(0, 100);
+  
+        // Combine both lists to get the unique union
+        const topSeriesIdSet = new Set([...seriesIdsByUpvotes, ...seriesIdsByNetVotes]);
+        topSeriesIds = Array.from(topSeriesIdSet);
+  
+        // Filter totalVotes to include only top seriesIds
+        totalVotes = Object.fromEntries(
+          Object.entries(totalVotes).filter(([id]) => topSeriesIds.includes(id))
+        );
+      }
   
       if (seriesId) {
         response = {
@@ -611,84 +641,99 @@ export const handler = async (event) => {
           body: JSON.stringify(totalVotes),
         };
       } else {
-        let userVoteData = null;
+        // Initialize variables for user-specific data
+        let currentUserVotesUp = null;
+        let currentUserVotesDown = null;
+        let isLastUserVoteOlderThan24Hours = null;
+        let lastBoostValue = null;
+        let nextVoteTime = null;
+        let lastUserVoteTimestamps = null;
+        let combinedUserVotes = {};
   
         if (userAuth !== "unauthenticated") {
+          // Fetch and process the user's personal votes
           const userVotes = await getAllUserVotes({ subId: userSub });
-          userVoteData = await processVotes({ allItems: userVotes, userSub });
-        }
+          const userProcessedVotes = await processVotes({ allItems: userVotes, userSub });
   
-        const votesData = {};
+          currentUserVotesUp = userProcessedVotes.currentUserVotesUp;
+          currentUserVotesDown = userProcessedVotes.currentUserVotesDown;
+          isLastUserVoteOlderThan24Hours = userProcessedVotes.isLastUserVoteOlderThan24Hours;
+          lastBoostValue = userProcessedVotes.lastBoostValue;
+          nextVoteTime = userProcessedVotes.nextVoteTime;
+          lastUserVoteTimestamps = userProcessedVotes.lastUserVoteTimestamps;
   
-        for (let id in totalVotes) {
-          votesData[id] = {
-            upvotes: totalVotes[id].upvotes,
-            downvotes: totalVotes[id].downvotes,
-          };
-        }
-  
-        if (isTopList) {
-          // Get top 100 by upvotes only
-          const topUpvotes = Object.entries(votesData)
-            .sort(([, a], [, b]) => b.upvotes - a.upvotes)
-            .slice(0, 100)
-            .map(([key]) => key);
-  
-          // Get top 100 by upvotes minus downvotes
-          const topNet = Object.entries(votesData)
-            .sort(([, a], [, b]) => (b.upvotes - b.downvotes) - (a.upvotes - a.downvotes))
-            .slice(0, 100)
-            .map(([key]) => key);
-  
-          // Combine unique series IDs from both top 100 lists
-          const topSeriesIds = [...new Set([...topUpvotes, ...topNet])];
-  
-          // Filter votesData to include only top series
-          const filteredVotesData = Object.fromEntries(
-            Object.entries(votesData).filter(([key]) => topSeriesIds.includes(key))
-          );
-  
-          // Filter userVoteData if it exists
-          if (userVoteData) {
-            for (const key in userVoteData) {
-              if (typeof userVoteData[key] === 'object') {
-                userVoteData[key] = Object.fromEntries(
-                  Object.entries(userVoteData[key]).filter(([seriesId]) => topSeriesIds.includes(seriesId))
-                );
-              }
-            }
+          // Combine user upvotes and downvotes
+          for (let id in currentUserVotesUp) {
+            combinedUserVotes[id] = (currentUserVotesUp[id] || 0) - (currentUserVotesDown[id] || 0);
           }
   
-          response = {
-            statusCode: 200,
-            body: {
-              votes: filteredVotesData,
-              userVoteData: userVoteData ? {
-                votesUp: userVoteData.currentUserVotesUp,
-                votesDown: userVoteData.currentUserVotesDown,
-                ableToVote: userVoteData.isLastUserVoteOlderThan24Hours,
-                lastBoost: userVoteData.lastBoostValue,
-                nextVoteTime: userVoteData.nextVoteTime,
-                lastVoteTime: userVoteData.lastUserVoteTimestamps
-              } : null
-            },
-          };
-        } else {
-          response = {
-            statusCode: 200,
-            body: {
-              votes: votesData,
-              userVoteData: userVoteData ? {
-                votesUp: userVoteData.currentUserVotesUp,
-                votesDown: userVoteData.currentUserVotesDown,
-                ableToVote: userVoteData.isLastUserVoteOlderThan24Hours,
-                lastBoost: userVoteData.lastBoostValue,
-                nextVoteTime: userVoteData.nextVoteTime,
-                lastVoteTime: userVoteData.lastUserVoteTimestamps
-              } : null
-            },
-          };
+          // Filter user-specific data if topSeriesIds is defined
+          if (topSeriesIds) {
+            if (currentUserVotesUp) {
+              currentUserVotesUp = Object.fromEntries(
+                Object.entries(currentUserVotesUp).filter(([id]) => topSeriesIds.includes(id))
+              );
+            }
+            if (currentUserVotesDown) {
+              currentUserVotesDown = Object.fromEntries(
+                Object.entries(currentUserVotesDown).filter(([id]) => topSeriesIds.includes(id))
+              );
+            }
+            if (combinedUserVotes) {
+              combinedUserVotes = Object.fromEntries(
+                Object.entries(combinedUserVotes).filter(([id]) => topSeriesIds.includes(id))
+              );
+            }
+            if (lastUserVoteTimestamps) {
+              lastUserVoteTimestamps = Object.fromEntries(
+                Object.entries(lastUserVoteTimestamps).filter(([id]) => topSeriesIds.includes(id))
+              );
+            }
+          }
         }
+  
+        // Prepare the combined vote data
+        let combinedVotes = {};
+        let votesUp = {};
+        let votesDown = {};
+  
+        for (let id in totalVotes) {
+          combinedVotes[id] = totalVotes[id].upvotes - totalVotes[id].downvotes;
+          votesUp[id] = totalVotes[id].upvotes;
+          votesDown[id] = -totalVotes[id].downvotes; // Downvotes as negative numbers
+        }
+  
+        // Filter combined vote data if topSeriesIds is defined
+        if (topSeriesIds) {
+          combinedVotes = Object.fromEntries(
+            Object.entries(combinedVotes).filter(([id]) => topSeriesIds.includes(id))
+          );
+          votesUp = Object.fromEntries(
+            Object.entries(votesUp).filter(([id]) => topSeriesIds.includes(id))
+          );
+          votesDown = Object.fromEntries(
+            Object.entries(votesDown).filter(([id]) => topSeriesIds.includes(id))
+          );
+        }
+  
+        // Construct the response object
+        const result = {
+          votes: combinedVotes,
+          userVotes: combinedUserVotes,
+          votesUp: votesUp,
+          votesDown: votesDown,
+          userVotesUp: currentUserVotesUp,
+          userVotesDown: currentUserVotesDown,
+          ableToVote: isLastUserVoteOlderThan24Hours,
+          lastBoost: lastBoostValue,
+          nextVoteTime: nextVoteTime,
+          lastVoteTime: lastUserVoteTimestamps,
+        };
+  
+        response = {
+          statusCode: 200,
+          body: JSON.stringify(result),
+        };
       }
     } catch (error) {
       console.log(`Failed to get votes: ${error.message}`);
@@ -697,7 +742,7 @@ export const handler = async (event) => {
         body: `Failed to get votes: ${error.message}`,
       };
     }
-  }
+  }  
 
   if (path === `/${process.env.ENV}/public/requests/add`) {
     const listTvdbResultsQuery = `
