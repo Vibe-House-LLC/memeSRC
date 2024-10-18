@@ -61,13 +61,8 @@ export default function VotingPage({ shows: searchableShows }) {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [votingStatus, setVotingStatus] = useState({});
-  const [userVotesUp, setUserVotesUp] = useState({});
-  const [userVotesDown, setUserVotesDown] = useState({});
   const [searchText, setSearchText] = useState('');
-  const [ableToVote, setAbleToVote] = useState({});
   const [rankMethod, setRankMethod] = useState('upvotes');
-  const [lastBoost, setLastBoost] = useState({});
-  const [nextVoteTimes, setNextVoteTimes] = useState({});
   const [timeRemaining, setTimeRemaining] = useState('');
   const [openAddRequest, setOpenAddRequest] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState();
@@ -359,33 +354,28 @@ export default function VotingPage({ shows: searchableShows }) {
 
         // Use cached data
         setVoteData(voteDataResponse);
-        setUserVotesUp(user ? (voteDataResponse.userVoteData?.votesUp || {}) : {});
-        setUserVotesDown(user ? (voteDataResponse.userVoteData?.votesDown || {}) : {});
-        setAbleToVote(user ? (voteDataResponse.userVoteData?.ableToVote || {}) : {});
-        setLastBoost(user ? (voteDataResponse.userVoteData?.lastBoost || {}) : {});
-        setNextVoteTimes(voteDataResponse.userVoteData?.nextVoteTime || {});
 
-        const seriesIds = Object.keys(voteDataResponse.votes);
+        const seriesIds = Object.keys(voteDataResponse);
 
         // Sort the series IDs based on the selected rank method
         let newSortedSeriesIds = [];
         switch (rankMethod) {
           case 'combined':
             newSortedSeriesIds = seriesIds.sort((a, b) => {
-              const voteDiffA = voteDataResponse.votes[a].upvotes - voteDataResponse.votes[a].downvotes;
-              const voteDiffB = voteDataResponse.votes[b].upvotes - voteDataResponse.votes[b].downvotes;
+              const voteDiffA = voteDataResponse[a].totalVotesUp - voteDataResponse[a].totalVotesDown;
+              const voteDiffB = voteDataResponse[b].totalVotesUp - voteDataResponse[b].totalVotesDown;
               return voteDiffB - voteDiffA || safeCompareSeriesTitles(a, b);
             });
             break;
           case 'downvotes':
             newSortedSeriesIds = seriesIds.sort((a, b) => {
-              const downvoteDiff = voteDataResponse.votes[b].downvotes - voteDataResponse.votes[a].downvotes;
+              const downvoteDiff = voteDataResponse[b].totalVotesDown - voteDataResponse[a].totalVotesDown;
               return downvoteDiff || safeCompareSeriesTitles(a, b);
             });
             break;
           default: // Upvotes
             newSortedSeriesIds = seriesIds.sort((a, b) => {
-              const upvoteDiff = voteDataResponse.votes[b].upvotes - voteDataResponse.votes[a].upvotes;
+              const upvoteDiff = voteDataResponse[b].totalVotesUp - voteDataResponse[a].totalVotesUp;
               return upvoteDiff || safeCompareSeriesTitles(a, b);
             });
         }
@@ -436,33 +426,27 @@ export default function VotingPage({ shows: searchableShows }) {
 
           setVoteData(voteDataResponse);
 
-          setUserVotesUp(user ? (voteDataResponse.userVoteData?.votesUp || {}) : {});
-          setUserVotesDown(user ? (voteDataResponse.userVoteData?.votesDown || {}) : {});
-          setAbleToVote(user ? (voteDataResponse.userVoteData?.ableToVote || {}) : {});
-          setLastBoost(user ? (voteDataResponse.userVoteData?.lastBoost || {}) : {});
-          setNextVoteTimes(voteDataResponse.userVoteData?.nextVoteTime || {});
-
-          const seriesIds = Object.keys(voteDataResponse.votes);
+          const seriesIds = Object.keys(voteDataResponse);
 
           // Sort the series IDs based on the selected rank method
           let newSortedSeriesIds = [];
           switch (rankMethod) {
             case 'combined':
               newSortedSeriesIds = seriesIds.sort((a, b) => {
-                const voteDiffA = voteDataResponse.votes[a].upvotes - voteDataResponse.votes[a].downvotes;
-                const voteDiffB = voteDataResponse.votes[b].upvotes - voteDataResponse.votes[b].downvotes;
+                const voteDiffA = voteDataResponse[a].totalVotesUp - voteDataResponse[a].totalVotesDown;
+                const voteDiffB = voteDataResponse[b].totalVotesUp - voteDataResponse[b].totalVotesDown;
                 return voteDiffB - voteDiffA || safeCompareSeriesTitles(a, b);
               });
               break;
             case 'downvotes':
               newSortedSeriesIds = seriesIds.sort((a, b) => {
-                const downvoteDiff = voteDataResponse.votes[b].downvotes - voteDataResponse.votes[a].downvotes;
+                const downvoteDiff = voteDataResponse[b].totalVotesDown - voteDataResponse[a].totalVotesDown;
                 return downvoteDiff || safeCompareSeriesTitles(a, b);
               });
               break;
             default: // Upvotes
               newSortedSeriesIds = seriesIds.sort((a, b) => {
-                const upvoteDiff = voteDataResponse.votes[b].upvotes - voteDataResponse.votes[a].upvotes;
+                const upvoteDiff = voteDataResponse[b].totalVotesUp - voteDataResponse[a].totalVotesUp;
                 return upvoteDiff || safeCompareSeriesTitles(a, b);
               });
           }
@@ -501,20 +485,20 @@ export default function VotingPage({ shows: searchableShows }) {
         switch (rankMethod) {
           case 'combined':
             sortedShows.sort((a, b) => {
-              const voteDiffA = (voteData.votes[a.id]?.upvotes || 0) - (voteData.votes[a.id]?.downvotes || 0);
-              const voteDiffB = (voteData.votes[b.id]?.upvotes || 0) - (voteData.votes[b.id]?.downvotes || 0);
+              const voteDiffA = (voteData[a.id]?.totalVotesUp || 0) - (voteData[a.id]?.totalVotesDown || 0);
+              const voteDiffB = (voteData[b.id]?.totalVotesUp || 0) - (voteData[b.id]?.totalVotesDown || 0);
               return voteDiffB - voteDiffA || a.name.localeCompare(b.name);
             });
             break;
           case 'downvotes':
             sortedShows.sort((a, b) => {
-              const downvoteDiff = (voteData.votes[b.id]?.downvotes || 0) - (voteData.votes[a.id]?.downvotes || 0);
+              const downvoteDiff = (voteData[b.id]?.totalVotesDown || 0) - (voteData[a.id]?.totalVotesDown || 0);
               return downvoteDiff || a.name.localeCompare(b.name);
             });
             break;
           default: // Upvotes
             sortedShows.sort((a, b) => {
-              const upvoteDiff = (voteData.votes[b.id]?.upvotes || 0) - (voteData.votes[a.id]?.upvotes || 0);
+              const upvoteDiff = (voteData[b.id]?.totalVotesUp || 0) - (voteData[a.id]?.totalVotesUp || 0);
               return upvoteDiff || a.name.localeCompare(b.name);
             });
         }
@@ -528,7 +512,7 @@ export default function VotingPage({ shows: searchableShows }) {
       console.error('Error in filterAndSortSeriesData:', error);
       setSeriesMetadata([]);
     }
-  }, [allSeriesData, searchText, rankMethod, voteData.votes, originalRanks]);
+  }, [allSeriesData, searchText, rankMethod, voteData, originalRanks]);
 
   const fetchAllSeriesData = useCallback(async () => {
     setLoading(true);
@@ -628,33 +612,39 @@ export default function VotingPage({ shows: searchableShows }) {
         },
       });
 
-      // Update user votes in state
-      if (boost === 1) {
-        setUserVotesUp((prev) => ({ ...prev, [seriesId]: (prev[seriesId] || 0) + 1 }));
-      } else if (boost === -1) {
-        setUserVotesDown((prev) => ({ ...prev, [seriesId]: (prev[seriesId] || 0) + 1 }));
-      }
-
-      setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: false }));
-      setLastBoost((prevLastBoost) => ({ ...prevLastBoost, [seriesId]: boost }));
-
-      // Update ableToVote and nextVoteTimes in state
-      setAbleToVote((prev) => ({ ...prev, [seriesId]: (prev[seriesId] || 1) - 1 }));
-      setNextVoteTimes((prev) => {
+      // Update voteData in state
+      setVoteData((prevVoteData) => {
+        const updatedSeriesData = { ...prevVoteData[seriesId] };
+        if (boost === 1) {
+          updatedSeriesData.totalVotesUp += 1;
+          updatedSeriesData.userVotesUp += 1;
+        } else if (boost === -1) {
+          updatedSeriesData.totalVotesDown += 1;
+          updatedSeriesData.userVotesDown -= 1;
+        }
+        updatedSeriesData.ableToVote = false;
         const now = new Date();
         now.setHours(now.getHours() + 24);
-        return { ...prev, [seriesId]: now.toISOString() };
+        updatedSeriesData.nextVoteTime = now.toISOString();
+        updatedSeriesData.lastBoost = boost; // Update lastBoost
+
+        return {
+          ...prevVoteData,
+          [seriesId]: updatedSeriesData,
+        };
       });
+
+      setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: false }));
 
       // --- Update the cached data in localStorage ---
 
       // Update public vote data in votesCache.current
       if (votesCache.current && votesCache.current.votes) {
-        const currentVotes = votesCache.current.votes[seriesId] || { upvotes: 0, downvotes: 0 };
+        const currentVotes = votesCache.current.votes[seriesId] || { totalVotesUp: 0, totalVotesDown: 0 };
         if (boost === 1) {
-          currentVotes.upvotes += 1;
+          currentVotes.totalVotesUp += 1;
         } else if (boost === -1) {
-          currentVotes.downvotes += 1;
+          currentVotes.totalVotesDown += 1;
         }
         votesCache.current.votes[seriesId] = currentVotes;
 
@@ -758,18 +748,18 @@ export default function VotingPage({ shows: searchableShows }) {
   }, []);
 
   const votesCount = (show) => {
-    if (!voteData.votes || !voteData.votes[show.id]) {
+    if (!voteData[show.id]) {
       return 0;
     }
 
     switch (rankMethod) {
       case 'upvotes':
-        return voteData.votes[show.id].upvotes || 0;
+        return voteData[show.id].totalVotesUp || 0;
       case 'downvotes':
-        return voteData.votes[show.id].downvotes || 0;
+        return voteData[show.id].totalVotesDown || 0;
       case 'combined':
       default:
-        return (voteData.votes[show.id].upvotes || 0) - (voteData.votes[show.id].downvotes || 0);
+        return (voteData[show.id].totalVotesUp || 0) - (voteData[show.id].totalVotesDown || 0);
     }
   };
 
@@ -934,6 +924,7 @@ export default function VotingPage({ shows: searchableShows }) {
                   if (!filterShows(show)) {
                     return null;
                   }
+                  const showVoteData = voteData[show.id] || {};
                   return (
                     <div key={show.id}>
                       <Grid item xs={12} style={{ marginBottom: 15 }}>
@@ -995,7 +986,7 @@ export default function VotingPage({ shows: searchableShows }) {
                                         sx={{ fontSize: '0.7rem', opacity: 0.6 }}
                                       >
                                         <ArrowUpward fontSize="small" sx={{ verticalAlign: 'middle' }} />
-                                        <b>{voteData.votes[show.id]?.upvotes || 0}</b>
+                                        <b>{showVoteData.totalVotesUp || 0}</b>
                                       </Typography>
                                       {rankMethod === 'combined' && (
                                         <Typography
@@ -1005,7 +996,7 @@ export default function VotingPage({ shows: searchableShows }) {
                                           sx={{ fontSize: '0.7rem', opacity: 0.6 }}
                                         >
                                           <ArrowDownward fontSize="small" sx={{ verticalAlign: 'middle' }} />
-                                          <b>{voteData.votes[show.id]?.downvotes || 0}</b>
+                                          <b>{showVoteData.totalVotesDown || 0}</b>
                                         </Typography>
                                       )}
                                     </Box>
@@ -1026,10 +1017,10 @@ export default function VotingPage({ shows: searchableShows }) {
                                           disableFocusListener
                                           enterTouchDelay={0}
                                           onOpen={() => {
-                                            calculateTimeRemaining(nextVoteTimes[show.id]);
+                                            calculateTimeRemaining(showVoteData.nextVoteTime);
                                           }}
                                           title={
-                                            (ableToVote?.[show.id] !== undefined && ableToVote[show.id] !== true) || votingStatus?.[show.id]
+                                            (!showVoteData.ableToVote || votingStatus?.[show.id])
                                               ? user ? `🔒 ${timeRemaining}`
                                               : 'Upvote'
                                               : 'Upvote'
@@ -1050,7 +1041,7 @@ export default function VotingPage({ shows: searchableShows }) {
                                               vertical: 'top',
                                               horizontal: 'right',
                                             }}
-                                            badgeContent={userVotesUp[show.id] ? `+${userVotesUp[show.id] || 0}` : null}
+                                            badgeContent={showVoteData.userVotesUp > 0 ? `+${showVoteData.userVotesUp}` : null}
                                             sx={{
                                               color: 'success.main',
                                             }}
@@ -1064,20 +1055,22 @@ export default function VotingPage({ shows: searchableShows }) {
                                               }
                                               disabled={
                                                 user &&
-                                                ((ableToVote?.[show.id] !== undefined && ableToVote[show.id] !== true) ||
-                                                  votingStatus?.[show.id])
+                                                (!showVoteData.ableToVote || votingStatus?.[show.id])
                                               }
                                               size="small"
+                                              sx={{
+                                                backgroundColor: showVoteData.lastBoost === 1 ? 'success.light' : 'default',
+                                              }}
                                             >
-                                              {lastBoost[show.id] === -1 &&
-                                                ableToVote[show.id] !== true &&
+                                              {showVoteData.lastBoost === -1 &&
+                                                !showVoteData.ableToVote &&
                                                 rankMethod === 'upvotes' ? (
                                                 <Lock />
                                               ) : (
                                                 <ArrowUpward
                                                   sx={{
                                                     color:
-                                                      lastBoost[show.id] === 1 && ableToVote[show.id] !== true
+                                                      showVoteData.lastBoost === 1 && !showVoteData.ableToVote
                                                         ? 'success.main'
                                                         : 'inherit',
                                                   }}
@@ -1102,10 +1095,10 @@ export default function VotingPage({ shows: searchableShows }) {
                                           disableFocusListener
                                           enterTouchDelay={0}
                                           onOpen={() => {
-                                            calculateTimeRemaining(nextVoteTimes[show.id]);
+                                            calculateTimeRemaining(showVoteData.nextVoteTime);
                                           }}
                                           title={
-                                            (ableToVote?.[show.id] !== undefined && ableToVote[show.id] !== true) || votingStatus?.[show.id]
+                                            (!showVoteData.ableToVote || votingStatus?.[show.id])
                                               ? user ? `🔒 ${timeRemaining}`
                                               : 'Downvote'
                                               : 'Downvote'
@@ -1126,7 +1119,7 @@ export default function VotingPage({ shows: searchableShows }) {
                                               vertical: 'bottom',
                                               horizontal: 'right',
                                             }}
-                                            badgeContent={userVotesDown[show.id] || 0}
+                                            badgeContent={showVoteData.userVotesDown < 0 ? Math.abs(showVoteData.userVotesDown) : null}
                                             sx={{
                                               color: 'error.main',
                                             }}
@@ -1140,16 +1133,17 @@ export default function VotingPage({ shows: searchableShows }) {
                                               }
                                               disabled={
                                                 user &&
-                                                ((ableToVote?.[show.id] !== undefined &&
-                                                  ableToVote[show.id] !== true) ||
-                                                  votingStatus?.[show.id])
+                                                (!showVoteData.ableToVote || votingStatus?.[show.id])
                                               }
                                               size="small"
+                                              sx={{
+                                                backgroundColor: showVoteData.lastBoost === -1 ? 'error.light' : 'default',
+                                              }}
                                             >
                                               <ArrowDownward
                                                 sx={{
                                                   color:
-                                                    lastBoost[show.id] === -1 && ableToVote[show.id] !== true
+                                                    showVoteData.lastBoost === -1 && !showVoteData.ableToVote
                                                       ? 'error.main'
                                                       : 'inherit',
                                                 }}
@@ -1170,10 +1164,10 @@ export default function VotingPage({ shows: searchableShows }) {
                                           disableFocusListener
                                           enterTouchDelay={0}
                                           onOpen={() => {
-                                            calculateTimeRemaining(nextVoteTimes[show.id]);
+                                            calculateTimeRemaining(showVoteData.nextVoteTime);
                                           }}
                                           title={
-                                            (ableToVote?.[show.id] !== undefined && ableToVote[show.id] !== true) || votingStatus?.[show.id]
+                                            (!showVoteData.ableToVote || votingStatus?.[show.id])
                                               ? user ? `🔒 ${timeRemaining}`
                                               : 'Upvote'
                                               : 'Upvote'
@@ -1194,7 +1188,7 @@ export default function VotingPage({ shows: searchableShows }) {
                                               vertical: 'top',
                                               horizontal: 'right',
                                             }}
-                                            badgeContent={userVotesUp[show.id] ? `+${userVotesUp[show.id] || 0}` : null}
+                                            badgeContent={showVoteData.userVotesUp > 0 ? `+${showVoteData.userVotesUp}` : null}
                                           >
                                             <StyledFab
                                               aria-label="upvote"
@@ -1203,18 +1197,18 @@ export default function VotingPage({ shows: searchableShows }) {
                                                   ? handleUpvote(show.id)
                                                   : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
                                               }
-                                              disabled={user && ((ableToVote?.[show.id] !== undefined && ableToVote[show.id] !== true) || votingStatus?.[show.id])}
+                                              disabled={user && (!showVoteData.ableToVote || votingStatus?.[show.id])}
                                               size="small"
                                             >
-                                              {lastBoost[show.id] === -1 &&
-                                                ableToVote[show.id] !== true &&
+                                              {showVoteData.lastBoost === -1 &&
+                                                !showVoteData.ableToVote &&
                                                 rankMethod === 'upvotes' ? (
                                                 <Lock />
                                               ) : (
                                                 <ThumbUp
                                                   sx={{
                                                     color:
-                                                      lastBoost[show.id] === 1 && ableToVote[show.id] !== true
+                                                      showVoteData.lastBoost === 1 && !showVoteData.ableToVote
                                                         ? 'success.main'
                                                         : 'inherit',
                                                   }}
@@ -1226,7 +1220,7 @@ export default function VotingPage({ shows: searchableShows }) {
                                       )}
                                     </Box>
                                     <Typography variant="h5" textAlign="center" color={votesCount(show) < 0 && 'error.main'}>
-                                      {voteData.votes[show.id]?.upvotes || 0}
+                                      {showVoteData.totalVotesUp || 0}
                                     </Typography>
                                   </Stack>
                                 )}
