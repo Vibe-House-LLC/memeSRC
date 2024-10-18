@@ -145,14 +145,12 @@ export default function VotingPage({ shows: searchableShows }) {
       // Use cached data
       setVoteData(voteDataResponse);
       setVotes(voteDataResponse.votes);
-      setUserVotes(user ? voteDataResponse.userVotes : {});
-      setUserVotesUp(user ? voteDataResponse.userVotesUp : {});
-      setUserVotesDown(user ? voteDataResponse.userVotesDown : {});
-      setUpvotes(voteDataResponse.votesUp);
-      setDownvotes(voteDataResponse.votesDown);
-      setAbleToVote(user ? voteDataResponse.ableToVote : {});
-      setLastBoost(user ? voteDataResponse.lastBoost : {});
-      setNextVoteTimes(voteDataResponse.nextVoteTime || {});
+      setUserVotes(user ? voteDataResponse.userVoteData?.votesUp : {});
+      setUserVotesUp(user ? voteDataResponse.userVoteData?.votesUp : {});
+      setUserVotesDown(user ? voteDataResponse.userVoteData?.votesDown : {});
+      setAbleToVote(user ? voteDataResponse.userVoteData?.ableToVote : {});
+      setLastBoost(user ? voteDataResponse.userVoteData?.lastBoost : {});
+      setNextVoteTimes(voteDataResponse.userVoteData?.nextVoteTime || {});
 
       const seriesIds = Object.keys(voteDataResponse.votes);
 
@@ -161,23 +159,19 @@ export default function VotingPage({ shows: searchableShows }) {
       switch (rankMethod) {
         case 'combined':
           newSortedSeriesIds = seriesIds.sort((a, b) => {
-            const voteDiff =
-              (voteDataResponse.votes[b] || 0) - (voteDataResponse.votes[a] || 0);
-            return voteDiff !== 0 ? voteDiff : a.localeCompare(b);
+            const voteDiffA = voteDataResponse.votes[a].upvotes - voteDataResponse.votes[a].downvotes;
+            const voteDiffB = voteDataResponse.votes[b].upvotes - voteDataResponse.votes[b].downvotes;
+            return voteDiffB - voteDiffA || a.localeCompare(b);
           });
           break;
         case 'downvotes':
           newSortedSeriesIds = seriesIds.sort((a, b) => {
-            const voteDiff =
-              (voteDataResponse.votesDown[a] || 0) - (voteDataResponse.votesDown[b] || 0);
-            return voteDiff !== 0 ? voteDiff : a.localeCompare(b);
+            return voteDataResponse.votes[b].downvotes - voteDataResponse.votes[a].downvotes || a.localeCompare(b);
           });
           break;
         default: // Upvotes
           newSortedSeriesIds = seriesIds.sort((a, b) => {
-            const voteDiff =
-              (voteDataResponse.votesUp[b] || 0) - (voteDataResponse.votesUp[a] || 0);
-            return voteDiff !== 0 ? voteDiff : a.localeCompare(b);
+            return voteDataResponse.votes[b].upvotes - voteDataResponse.votes[a].upvotes || a.localeCompare(b);
           });
       }
 
@@ -200,14 +194,12 @@ export default function VotingPage({ shows: searchableShows }) {
         // Rest of the existing code...
         setVoteData(voteDataResponse);
         setVotes(voteDataResponse.votes);
-        setUserVotes(user ? voteDataResponse.userVotes : {});
-        setUserVotesUp(user ? voteDataResponse.userVotesUp : {});
-        setUserVotesDown(user ? voteDataResponse.userVotesDown : {});
-        setUpvotes(voteDataResponse.votesUp);
-        setDownvotes(voteDataResponse.votesDown);
-        setAbleToVote(user ? voteDataResponse.ableToVote : {});
-        setLastBoost(user ? voteDataResponse.lastBoost : {});
-        setNextVoteTimes(voteDataResponse.nextVoteTime || {});
+        setUserVotes(user ? voteDataResponse.userVoteData?.votesUp : {});
+        setUserVotesUp(user ? voteDataResponse.userVoteData?.votesUp : {});
+        setUserVotesDown(user ? voteDataResponse.userVoteData?.votesDown : {});
+        setAbleToVote(user ? voteDataResponse.userVoteData?.ableToVote : {});
+        setLastBoost(user ? voteDataResponse.userVoteData?.lastBoost : {});
+        setNextVoteTimes(voteDataResponse.userVoteData?.nextVoteTime || {});
 
         // Get the series IDs from the votes
         const seriesIds = Object.keys(voteDataResponse.votes);
@@ -218,23 +210,19 @@ export default function VotingPage({ shows: searchableShows }) {
         switch (rankMethod) {
           case 'combined':
             newSortedSeriesIds = seriesIds.sort((a, b) => {
-              const voteDiff =
-                (voteDataResponse.votes[b] || 0) - (voteDataResponse.votes[a] || 0);
-              return voteDiff !== 0 ? voteDiff : a.localeCompare(b);
+              const voteDiffA = voteDataResponse.votes[a].upvotes - voteDataResponse.votes[a].downvotes;
+              const voteDiffB = voteDataResponse.votes[b].upvotes - voteDataResponse.votes[b].downvotes;
+              return voteDiffB - voteDiffA || a.localeCompare(b);
             });
             break;
           case 'downvotes':
             newSortedSeriesIds = seriesIds.sort((a, b) => {
-              const voteDiff =
-                (voteDataResponse.votesDown[a] || 0) - (voteDataResponse.votesDown[b] || 0);
-              return voteDiff !== 0 ? voteDiff : a.localeCompare(b);
+              return voteDataResponse.votes[b].downvotes - voteDataResponse.votes[a].downvotes || a.localeCompare(b);
             });
             break;
           default: // Upvotes
             newSortedSeriesIds = seriesIds.sort((a, b) => {
-              const voteDiff =
-                (voteDataResponse.votesUp[b] || 0) - (voteDataResponse.votesUp[a] || 0);
-              return voteDiff !== 0 ? voteDiff : a.localeCompare(b);
+              return voteDataResponse.votes[b].upvotes - voteDataResponse.votes[a].upvotes || a.localeCompare(b);
             });
         }
 
@@ -382,19 +370,19 @@ export default function VotingPage({ shows: searchableShows }) {
     switch (rankMethod) {
       case 'combined':
         sortedShows = searchFilteredShows.sort((a, b) => {
-          const voteDiff = (voteData.votes[b.id] || 0) - (voteData.votes[a.id] || 0);
+          const voteDiff = (voteData.votes[b.id]?.upvotes || 0) - (voteData.votes[a.id]?.upvotes || 0);
           return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
         });
         break;
       case 'downvotes':
         sortedShows = searchFilteredShows.sort((a, b) => {
-          const voteDiff = (voteData.votesDown[a.id] || 0) - (voteData.votesDown[b.id] || 0);
+          const voteDiff = (voteData.votes[a.id]?.downvotes || 0) - (voteData.votes[b.id]?.downvotes || 0);
           return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
         });
         break;
       default: // Upvotes
         sortedShows = searchFilteredShows.sort((a, b) => {
-          const voteDiff = (voteData.votesUp[b.id] || 0) - (voteData.votesUp[a.id] || 0);
+          const voteDiff = (voteData.votes[b.id]?.upvotes || 0) - (voteData.votes[a.id]?.upvotes || 0);
           return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
         });
     }
@@ -545,12 +533,12 @@ export default function VotingPage({ shows: searchableShows }) {
   const votesCount = (show) => {
     switch (rankMethod) {
       case 'upvotes':
-        return upvotes[show.id] || 0;
+        return voteData.votes[show.id]?.upvotes || 0;
       case 'downvotes':
-        return downvotes[show.id] || 0;
+        return voteData.votes[show.id]?.downvotes || 0;
       case 'combined':
       default:
-        return votes[show.id] || 0;
+        return (voteData.votes[show.id]?.upvotes || 0) - (voteData.votes[show.id]?.downvotes || 0);
     }
   };
 
@@ -769,7 +757,7 @@ export default function VotingPage({ shows: searchableShows }) {
                                         sx={{ fontSize: '0.7rem', opacity: 0.6 }}
                                       >
                                         <ArrowUpward fontSize="small" sx={{ verticalAlign: 'middle' }} />
-                                        <b>{upvotes[show.id] || 0}</b>
+                                        <b>{voteData.votes[show.id]?.upvotes || 0}</b>
                                       </Typography>
                                       {rankMethod === 'combined' && (
                                         <Typography
@@ -779,7 +767,7 @@ export default function VotingPage({ shows: searchableShows }) {
                                           sx={{ fontSize: '0.7rem', opacity: 0.6 }}
                                         >
                                           <ArrowDownward fontSize="small" sx={{ verticalAlign: 'middle' }} />
-                                          <b>{downvotes[show.id] || 0}</b>
+                                          <b>{voteData.votes[show.id]?.downvotes || 0}</b>
                                         </Typography>
                                       )}
                                     </Box>
