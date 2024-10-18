@@ -718,14 +718,13 @@ export default function VotingPage({ shows: searchableShows }) {
           <Typography variant="subtitle2">Upvote the most memeable shows and movies</Typography>
         </Box>
 
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, my: 3 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, my: 2 }}>
           <ToggleButtonGroup
             value={rankMethod}
             exclusive
             onChange={handleRankMethodChange}
             aria-label="ranking method"
             fullWidth
-            size="large"
           >
             <ToggleButton 
               value="upvotes" 
@@ -757,17 +756,17 @@ export default function VotingPage({ shows: searchableShows }) {
             fullWidth
             size="small"
           >
+            <ToggleButton value="showAll" aria-label="show all">
+              <GridFilterAltIcon sx={{ mr: 1 }} />
+              All
+            </ToggleButton>
             <ToggleButton value="hideAvailable" aria-label="hide available">
               <NewReleasesOutlined sx={{ mr: 1 }} />
               Requested
             </ToggleButton>
             <ToggleButton value="requested" aria-label="requested">
               <GridSearchIcon sx={{ mr: 1 }} />
-              Available
-            </ToggleButton>
-            <ToggleButton value="showAll" aria-label="show all">
-              <GridFilterAltIcon sx={{ mr: 1 }} />
-              Both
+              Searchable
             </ToggleButton>
           </ToggleButtonGroup>
 
@@ -793,6 +792,7 @@ export default function VotingPage({ shows: searchableShows }) {
               ),
             }}
           />
+
         </Box>
 
         <Grid container style={{ minWidth: '100%' }}>
