@@ -452,7 +452,7 @@ export default function VotingPage({ shows: searchableShows }) {
       setCurrentPage(0);
       fetchVoteData();
     }
-  }, [searchText, rankMethod, isTopList, allSeriesData, fetchAllSeriesData, filterAndSortSeriesData, fetchVoteData]);
+  }, [searchText, rankMethod, isTopList, allSeriesData]);
 
   useEffect(() => {
     if (!loading && seriesMetadata.length > 0) {
