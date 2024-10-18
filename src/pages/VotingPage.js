@@ -101,7 +101,7 @@ export default function VotingPage({ shows: searchableShows }) {
 
   // Add cache variables
   const seriesCache = useRef({});
-  const votesCache = useRef(null);
+  const votesCache = useRef({});
 
   const [allSeriesData, setAllSeriesData] = useState(null); // State to store all series data
 
@@ -181,6 +181,26 @@ export default function VotingPage({ shows: searchableShows }) {
 
   const fetchSeriesData = useCallback(async (sortedIds, page, isLoadingMore) => {
     try {
+      // Load seriesCache.current from localStorage if available and not expired
+      try {
+        const cachedSeriesDataString = localStorage.getItem('seriesCache');
+        if (cachedSeriesDataString) {
+          const cachedSeriesData = JSON.parse(cachedSeriesDataString);
+          const updatedAt = new Date(cachedSeriesData.updatedAt);
+          const now = new Date();
+          const diffInMinutes = (now - updatedAt) / (1000 * 60);
+          if (diffInMinutes < 10) {
+            // Use cached data
+            seriesCache.current = cachedSeriesData.data;
+          } else {
+            // Remove expired cache
+            localStorage.removeItem('seriesCache');
+          }
+        }
+      } catch (error) {
+        console.error('Error loading series data from localStorage:', error);
+      }
+
       const startIdx = page * itemsPerPage;
       const endIdx = startIdx + itemsPerPage;
       const paginatedSeriesIds = sortedIds.slice(startIdx, endIdx);
@@ -228,6 +248,18 @@ export default function VotingPage({ shows: searchableShows }) {
           seriesCache.current[data.id] = data;
         });
 
+        // Save seriesCache.current to localStorage
+        try {
+          const now = new Date();
+          const cacheData = {
+            updatedAt: now.toISOString(),
+            data: seriesCache.current,
+          };
+          localStorage.setItem('seriesCache', JSON.stringify(cacheData));
+        } catch (error) {
+          console.error('Error saving series data to localStorage:', error);
+        }
+
         cachedSeriesData.push(...fetchedSeriesData);
       }
 
@@ -256,7 +288,50 @@ export default function VotingPage({ shows: searchableShows }) {
 
   const fetchVoteData = useCallback(async () => {
     try {
-      if (votesCache.current) {
+      // Load from localStorage if available and not expired
+      try {
+        // Load public vote data
+        const cachedVoteDataString = localStorage.getItem('votesCache');
+        if (cachedVoteDataString) {
+          const cachedVoteData = JSON.parse(cachedVoteDataString);
+          const updatedAt = new Date(cachedVoteData.updatedAt);
+          const now = new Date();
+          const diffInMinutes = (now - updatedAt) / (1000 * 60);
+          if (diffInMinutes < 15) {
+            // Use cached data
+            votesCache.current = cachedVoteData.data;
+          } else {
+            // Remove expired cache
+            localStorage.removeItem('votesCache');
+          }
+        }
+
+        // Load user-specific vote data
+        if (user) {
+          const userKey = `votesCache_${user.username || user.id}`;
+          const cachedUserVoteDataString = localStorage.getItem(userKey);
+          if (cachedUserVoteDataString) {
+            const cachedUserVoteData = JSON.parse(cachedUserVoteDataString);
+            const updatedAt = new Date(cachedUserVoteData.updatedAt);
+            const now = new Date();
+            const diffInMinutes = (now - updatedAt) / (1000 * 60);
+            if (diffInMinutes < 10) {
+              // Use cached user data
+              if (!votesCache.current) {
+                votesCache.current = {};
+              }
+              votesCache.current.userVoteData = cachedUserVoteData.data.userVoteData;
+            } else {
+              // Remove expired cache
+              localStorage.removeItem(userKey);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error loading vote data from localStorage:', error);
+      }
+
+      if (votesCache.current && votesCache.current.votes) {
         const voteDataResponse = votesCache.current;
 
         // Use cached data
@@ -309,6 +384,30 @@ export default function VotingPage({ shows: searchableShows }) {
 
           // Save to cache
           votesCache.current = voteDataResponse;
+
+          // Save to localStorage
+          try {
+            const now = new Date();
+            const cacheData = {
+              updatedAt: now.toISOString(),
+              data: voteDataResponse,
+            };
+            localStorage.setItem('votesCache', JSON.stringify(cacheData));
+
+            // Save user-specific data separately
+            if (user) {
+              const userKey = `votesCache_${user.username || user.id}`;
+              const userVoteData = {
+                updatedAt: now.toISOString(),
+                data: {
+                  userVoteData: voteDataResponse.userVoteData,
+                },
+              };
+              localStorage.setItem(userKey, JSON.stringify(userVoteData));
+            }
+          } catch (error) {
+            console.error('Error saving vote data to localStorage:', error);
+          }
 
           setVoteData(voteDataResponse);
 
