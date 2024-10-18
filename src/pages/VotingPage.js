@@ -665,7 +665,7 @@ export default function VotingPage({ shows: searchableShows }) {
       <Container maxWidth="md">
         <Box my={2} sx={{ marginTop: -2, marginBottom: -1.5 }}>
           <Typography variant="h3" component="h1" gutterBottom>
-            Requests
+            Voting and Requests
           </Typography>
           <Typography variant="subtitle2">Upvote the most memeable shows and movies</Typography>
         </Box>
@@ -814,7 +814,7 @@ export default function VotingPage({ shows: searchableShows }) {
                                             rel="noopener noreferrer" 
                                             style={{ textDecoration: 'none', color: 'inherit' }}
                                           >
-                                            <Chip sx={{ marginRight: 1, cursor: 'pointer' }} size='small' label="🔍 Now Searchable" color="success" variant="filled" />
+                                            <Chip sx={{ marginRight: 1, cursor: 'pointer' }} size='small' label="🔍 Tap to search!" color="success" variant="filled" />
                                           </a>
                                         )
                                       }
