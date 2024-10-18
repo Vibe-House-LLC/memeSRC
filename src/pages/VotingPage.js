@@ -16,8 +16,6 @@ import {
   styled,
   Fab,
   Stack,
-  Tabs,
-  Tab,
   Chip,
   Tooltip,
   Dialog,
@@ -25,16 +23,12 @@ import {
   DialogContent,
   DialogActions,
   useTheme,
-  Checkbox,
-  FormControlLabel,
   Skeleton,
   ToggleButton,
   ToggleButtonGroup,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { ArrowUpward, ArrowDownward, Search, Close, ThumbUp, Whatshot, Lock, NewReleasesOutlined } from '@mui/icons-material';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import FlipMove from 'react-flip-move';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -63,17 +57,12 @@ const StyledImg = styled('img')``;
 
 export default function VotingPage({ shows: searchableShows }) {
   const navigate = useNavigate();
-  const [votes, setVotes] = useState({});
-  const [filteredSeriesData, setFilteredSeriesData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [votingStatus, setVotingStatus] = useState({});
-  const [userVotes, setUserVotes] = useState({});
   const [userVotesUp, setUserVotesUp] = useState({});
   const [userVotesDown, setUserVotesDown] = useState({});
   const [searchText, setSearchText] = useState('');
-  const [upvotes, setUpvotes] = useState({});
-  const [downvotes, setDownvotes] = useState({});
   const [ableToVote, setAbleToVote] = useState({});
   const [rankMethod, setRankMethod] = useState('upvotes');
   const [lastBoost, setLastBoost] = useState({});
@@ -82,7 +71,6 @@ export default function VotingPage({ shows: searchableShows }) {
   const [openAddRequest, setOpenAddRequest] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState();
   const [submittingRequest, setSubmittingRequest] = useState(false);
-  const [hideSearchable, setHideSearchable] = useState(false);
   const [displayOption, setDisplayOption] = useState(() => {
     const savedPreference = localStorage.getItem('displayOption');
     return savedPreference || 'showAll';
@@ -154,7 +142,6 @@ export default function VotingPage({ shows: searchableShows }) {
       }
     } else {
       setIsSearching(false);
-      setFilteredSeriesData([]);
       setSeriesMetadata([]);
       setSortedSeriesIds([]);
       setCurrentPage(0);
@@ -169,8 +156,6 @@ export default function VotingPage({ shows: searchableShows }) {
 
         // Use cached data
         setVoteData(voteDataResponse);
-        setVotes(voteDataResponse.votes);
-        setUserVotes(user ? voteDataResponse.userVoteData?.votesUp : {});
         setUserVotesUp(user ? voteDataResponse.userVoteData?.votesUp : {});
         setUserVotesDown(user ? voteDataResponse.userVoteData?.votesDown : {});
         setAbleToVote(user ? voteDataResponse.userVoteData?.ableToVote : {});
@@ -221,9 +206,7 @@ export default function VotingPage({ shows: searchableShows }) {
           votesCache.current = voteDataResponse;
 
           setVoteData(voteDataResponse);
-          setVotes(voteDataResponse.votes);
 
-          setUserVotes(user ? voteDataResponse.userVoteData?.votesUp : {});
           setUserVotesUp(user ? voteDataResponse.userVoteData?.votesUp : {});
           setUserVotesDown(user ? voteDataResponse.userVoteData?.votesDown : {});
           setAbleToVote(user ? voteDataResponse.userVoteData?.ableToVote : {});
@@ -471,7 +454,6 @@ export default function VotingPage({ shows: searchableShows }) {
         }
       }
 
-      setFilteredSeriesData(sortedShows);
       // Remove lines that update sortedSeriesIds to prevent ranks being affected by search
       // setSortedSeriesIds(sortedShows.map(show => show.id));
       setCurrentPage(0);
@@ -480,7 +462,6 @@ export default function VotingPage({ shows: searchableShows }) {
       setSeriesMetadata(sortedShows.map(show => ({ ...show, rank: originalRanks[show.id] || null })));
     } catch (error) {
       console.error('Error in filterAndSortSeriesData:', error);
-      setFilteredSeriesData([]);
       // setSortedSeriesIds([]);
       setSeriesMetadata([]);
     }
@@ -495,20 +476,6 @@ export default function VotingPage({ shows: searchableShows }) {
           seriesId,
           boost,
         },
-      });
-
-      // Update votes locally
-      setVotes((prevVotes) => {
-        const newVotes = { ...prevVotes };
-        if (!newVotes[seriesId]) {
-          newVotes[seriesId] = { upvotes: 0, downvotes: 0 };
-        }
-        if (boost === 1) {
-          newVotes[seriesId].upvotes += 1;
-        } else if (boost === -1) {
-          newVotes[seriesId].downvotes += 1;
-        }
-        return newVotes;
       });
 
       // Update user votes
@@ -658,7 +625,7 @@ export default function VotingPage({ shows: searchableShows }) {
     if (voteData.votes) {
       updateRanks();
     }
-  }, [voteData.votes, hideSearchable, searchableShows]);
+  }, [voteData.votes, searchableShows]);
 
   const updateRanks = useCallback(() => {
     const seriesIds = Object.keys(voteData.votes);
