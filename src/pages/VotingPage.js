@@ -95,7 +95,7 @@ export default function VotingPage({ shows: searchableShows }) {
   const [isSearching, setIsSearching] = useState(false);
 
   // Local pagination
-  const itemsPerPage = 15; // Number of items to render per page
+  const itemsPerPage = 50; // Number of items to render per page
   const [currentPage, setCurrentPage] = useState(0);
 
   const [sortedSeriesIds, setSortedSeriesIds] = useState([]); // New state to store sorted IDs
