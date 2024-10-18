@@ -123,6 +123,9 @@ export default function VotingPage({ shows: searchableShows }) {
   const [upvotesRanks, setUpvotesRanks] = useState([]);
   const [battlegroundRanks, setBattlegroundRanks] = useState([]);
 
+  const [isTopList, setIsTopList] = useState(true);
+  const [topListExhausted, setTopListExhausted] = useState(false);
+
   const handleImageLoad = (showId) => {
     setLoadedImages(prev => ({ ...prev, [showId]: true }));
   };
@@ -150,7 +153,7 @@ export default function VotingPage({ shows: searchableShows }) {
       setCurrentPage(0);
       fetchVoteData();
     }
-  }, [searchText, rankMethod, voteData]);
+  }, [searchText, rankMethod, voteData, isTopList]);
 
   const fetchVoteData = async () => {
     try {
@@ -202,8 +205,9 @@ export default function VotingPage({ shows: searchableShows }) {
           setLoading(true);
         }
         try {
-          // Fetch vote data
-          const voteDataResponse = await API.get('publicapi', '/vote/list');
+          // Fetch vote data from the appropriate endpoint
+          const endpoint = isTopList ? '/vote/list/top' : '/vote/list';
+          const voteDataResponse = await API.get('publicapi', endpoint);
 
           // Save to cache
           votesCache.current = voteDataResponse;
@@ -218,11 +222,9 @@ export default function VotingPage({ shows: searchableShows }) {
           setLastBoost(user ? voteDataResponse.userVoteData?.lastBoost : {});
           setNextVoteTimes(voteDataResponse.userVoteData?.nextVoteTime || {});
 
-          // Get the series IDs from the votes
           const seriesIds = Object.keys(voteDataResponse.votes);
 
           // Sort the series IDs based on the selected rank method
-          /* eslint-disable prefer-const */
           let newSortedSeriesIds = [];
           switch (rankMethod) {
             case 'combined':
@@ -380,7 +382,15 @@ export default function VotingPage({ shows: searchableShows }) {
     setLoadingMore(true);
     const nextPage = currentPage + 1;
     setCurrentPage(nextPage);
-    fetchSeriesData(sortedSeriesIds, nextPage, true); // Pass true when loading more
+
+    if (isTopList && (nextPage + 1) * itemsPerPage > 100) {
+      setIsTopList(false);
+      setTopListExhausted(true);
+      votesCache.current = null; // Clear cache to force a new fetch
+      fetchVoteData(); // Fetch the full list
+    } else {
+      fetchSeriesData(sortedSeriesIds, nextPage, true);
+    }
   };
 
   const fetchAllSeriesData = async () => {
@@ -422,6 +432,7 @@ export default function VotingPage({ shows: searchableShows }) {
         (show) => show.name.toLowerCase().includes(searchText.toLowerCase())
       );
 
+      // eslint-disable-next-line prefer-const
       let sortedShows = [...searchFilteredShows];
 
       if (sortedShows.length > 0) {
@@ -1137,7 +1148,7 @@ export default function VotingPage({ shows: searchableShows }) {
                       }}
                       startIcon={<AddIcon />}
                     >
-                      {`Load More`}
+                      {topListExhausted ? 'Load More' : 'Load Full List'}
                     </Button>
                   </Grid>
                 )}
