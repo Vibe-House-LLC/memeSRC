@@ -189,7 +189,7 @@ export default function VotingPage({ shows: searchableShows }) {
           const updatedAt = new Date(cachedSeriesData.updatedAt);
           const now = new Date();
           const diffInMinutes = (now - updatedAt) / (1000 * 60);
-          if (diffInMinutes < 10) {
+          if (diffInMinutes < 15) {
             // Use cached data
             seriesCache.current = cachedSeriesData.data;
           } else {
@@ -307,6 +307,7 @@ export default function VotingPage({ shows: searchableShows }) {
         }
 
         // Load user-specific vote data
+        let userCacheNeedsUpdate = false;
         if (user) {
           const userKey = `votesCache_${user.username || user.id}`;
           const cachedUserVoteDataString = localStorage.getItem(userKey);
@@ -315,7 +316,7 @@ export default function VotingPage({ shows: searchableShows }) {
             const updatedAt = new Date(cachedUserVoteData.updatedAt);
             const now = new Date();
             const diffInMinutes = (now - updatedAt) / (1000 * 60);
-            if (diffInMinutes < 10) {
+            if (diffInMinutes < 15) {
               // Use cached user data
               if (!votesCache.current) {
                 votesCache.current = {};
@@ -324,8 +325,16 @@ export default function VotingPage({ shows: searchableShows }) {
             } else {
               // Remove expired cache
               localStorage.removeItem(userKey);
+              userCacheNeedsUpdate = true;
             }
+          } else {
+            userCacheNeedsUpdate = true;
           }
+        }
+
+        // If user is logged in but no valid user cache exists, force a new fetch
+        if (user && userCacheNeedsUpdate) {
+          votesCache.current = null;
         }
       } catch (error) {
         console.error('Error loading vote data from localStorage:', error);
