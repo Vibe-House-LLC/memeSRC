@@ -407,89 +407,60 @@ export default function VotingPage({ shows: searchableShows }) {
         },
       });
 
-      setUserVotes((prevUserVotes) => ({ ...prevUserVotes, [seriesId]: boost }));
-
-      const newUpvotes = { ...upvotes };
-      const newDownvotes = { ...downvotes };
-
-      if (boost === 1) {
-        newUpvotes[seriesId] = (upvotes[seriesId] || 0) + boost;
-        setUpvotes(newUpvotes);
-
-        setUserVotesUp((prevUserVotesUp) => {
-          const newUserVotesUp = { ...prevUserVotesUp };
-          newUserVotesUp[seriesId] = (newUserVotesUp[seriesId] || 0) + boost;
-          return newUserVotesUp;
-        });
-      } else if (boost === -1) {
-        newDownvotes[seriesId] = (downvotes[seriesId] || 0) + boost;
-        setDownvotes(newDownvotes);
-
-        setUserVotesDown((prevUserVotesDown) => {
-          const newUserVotesDown = { ...prevUserVotesDown };
-          newUserVotesDown[seriesId] = (newUserVotesDown[seriesId] || 0) + boost;
-          return newUserVotesDown;
-        });
-      }
-
-      // Update votes after updating upvotes and downvotes
+      // Update votes locally
       setVotes((prevVotes) => {
         const newVotes = { ...prevVotes };
-        newVotes[seriesId] = (newVotes[seriesId] || 0) + boost;
-
-        // Re-sort the seriesMetadata based on updated votes
-        let sortedSeriesData = [...seriesMetadata];
-        switch (rankMethod) {
-          case 'combined':
-            sortedSeriesData.sort((a, b) => {
-              const voteDiff = (newVotes[b.id] || 0) - (newVotes[a.id] || 0);
-              return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
-            });
-            break;
-          case 'downvotes':
-            sortedSeriesData.sort((a, b) => {
-              const voteDiff = (newDownvotes[a.id] || 0) - (newDownvotes[b.id] || 0);
-              return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
-            });
-            break;
-          default: // Upvotes
-            sortedSeriesData.sort((a, b) => {
-              const voteDiff = (newUpvotes[b.id] || 0) - (newUpvotes[a.id] || 0);
-              return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
-            });
+        if (!newVotes[seriesId]) {
+          newVotes[seriesId] = { upvotes: 0, downvotes: 0 };
         }
-
-        // Update ranks
-        sortedSeriesData.forEach((show, index) => {
-          show.rank = index + 1;
-        });
-
-        setSeriesMetadata(sortedSeriesData);
-
+        if (boost === 1) {
+          newVotes[seriesId].upvotes += 1;
+        } else if (boost === -1) {
+          newVotes[seriesId].downvotes += 1;
+        }
         return newVotes;
       });
 
-      // Deduct a vote from ableToVote for that series
-      setAbleToVote((prevAbleToVote) => {
-        const newAbleToVote = { ...prevAbleToVote };
-        newAbleToVote[seriesId] = newAbleToVote[seriesId] ? newAbleToVote[seriesId] - 1 : 0;
-        return newAbleToVote;
-      });
+      // Update user votes
+      if (boost === 1) {
+        setUserVotesUp((prev) => ({ ...prev, [seriesId]: (prev[seriesId] || 0) + 1 }));
+      } else if (boost === -1) {
+        setUserVotesDown((prev) => ({ ...prev, [seriesId]: (prev[seriesId] || 0) + 1 }));
+      }
 
-      setNextVoteTimes((prevNextVoteTimes) => {
-        const newNextVoteTimes = { ...prevNextVoteTimes };
-        const now = new Date();
-        now.setHours(now.getHours() + 24);
-        newNextVoteTimes[seriesId] = now;
-        return newNextVoteTimes;
+      // Re-sort and update ranks
+      setSeriesMetadata((prevMetadata) => {
+        const updatedMetadata = [...prevMetadata];
+        updatedMetadata.sort((a, b) => {
+          const aVotes = votes[a.id] || { upvotes: 0, downvotes: 0 };
+          const bVotes = votes[b.id] || { upvotes: 0, downvotes: 0 };
+          let comparison;
+          switch (rankMethod) {
+            case 'combined':
+              comparison = (bVotes.upvotes - bVotes.downvotes) - (aVotes.upvotes - aVotes.downvotes);
+              break;
+            case 'downvotes':
+              comparison = bVotes.downvotes - aVotes.downvotes;
+              break;
+            default: // upvotes
+              comparison = bVotes.upvotes - aVotes.upvotes;
+          }
+          return comparison !== 0 ? comparison : a.name.localeCompare(b.name);
+        });
+        return updatedMetadata.map((show, index) => ({ ...show, rank: index + 1 }));
       });
 
       setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: false }));
-
       setLastBoost((prevLastBoost) => ({ ...prevLastBoost, [seriesId]: boost }));
 
-      // After voting, refresh the data to update rankings
-      setRefreshData((prev) => !prev); // Trigger data refresh
+      // Update ableToVote and nextVoteTimes
+      setAbleToVote((prev) => ({ ...prev, [seriesId]: (prev[seriesId] || 1) - 1 }));
+      setNextVoteTimes((prev) => {
+        const now = new Date();
+        now.setHours(now.getHours() + 24);
+        return { ...prev, [seriesId]: now.toISOString() };
+      });
+
     } catch (error) {
       setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: false }));
       console.error('Error on voting:', error);
