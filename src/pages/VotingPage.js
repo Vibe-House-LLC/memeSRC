@@ -77,7 +77,7 @@ export default function VotingPage({ shows: searchableShows }) {
   const [openAddRequest, setOpenAddRequest] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState();
   const [submittingRequest, setSubmittingRequest] = useState(false);
-  const [hideSearchable, setHideSearchable] = useState(true);
+  const [hideSearchable, setHideSearchable] = useState(false);
   const { setMessage, setOpen, setSeverity } = useContext(SnackbarContext);
 
   // State variables
@@ -814,7 +814,7 @@ export default function VotingPage({ shows: searchableShows }) {
                                             rel="noopener noreferrer" 
                                             style={{ textDecoration: 'none', color: 'inherit' }}
                                           >
-                                            <Chip sx={{ marginRight: 1 }} size='small' label="🔍" color="success" variant="filled" />
+                                            <Chip sx={{ marginRight: 1, cursor: 'pointer' }} size='small' label="🔍 Now Searchable" color="success" variant="filled" />
                                           </a>
                                         )
                                       }
