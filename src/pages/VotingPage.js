@@ -28,9 +28,13 @@ import {
   Checkbox,
   FormControlLabel,
   Skeleton,
+  ToggleButton,
+  ToggleButtonGroup,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { ArrowUpward, ArrowDownward, Search, Close, ThumbUp, Whatshot, Lock } from '@mui/icons-material';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import FlipMove from 'react-flip-move';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -59,6 +63,7 @@ const StyledImg = styled('img')``;
 export default function VotingPage({ shows: searchableShows }) {
   const navigate = useNavigate();
   const [votes, setVotes] = useState({});
+  const [filteredSeriesData, setFilteredSeriesData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [votingStatus, setVotingStatus] = useState({});
@@ -76,7 +81,10 @@ export default function VotingPage({ shows: searchableShows }) {
   const [openAddRequest, setOpenAddRequest] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState();
   const [submittingRequest, setSubmittingRequest] = useState(false);
-  const [hideSearchable, setHideSearchable] = useState(true);
+  const [hideSearchable, setHideSearchable] = useState(() => {
+    const savedPreference = localStorage.getItem('hideSearchable');
+    return savedPreference ? JSON.parse(savedPreference) : false;
+  });
   const { setMessage, setOpen, setSeverity } = useContext(SnackbarContext);
 
   // State variables
@@ -85,7 +93,7 @@ export default function VotingPage({ shows: searchableShows }) {
   const [isSearching, setIsSearching] = useState(false);
 
   // Local pagination
-  const itemsPerPage = 35; // Number of items to render per page
+  const itemsPerPage = 15; // Number of items to render per page
   const [currentPage, setCurrentPage] = useState(0);
 
   const [sortedSeriesIds, setSortedSeriesIds] = useState([]); // New state to store sorted IDs
@@ -110,6 +118,11 @@ export default function VotingPage({ shows: searchableShows }) {
 
   const [loadedImages, setLoadedImages] = useState({});
 
+  const [ranks, setRanks] = useState({});
+
+  const [upvotesRanks, setUpvotesRanks] = useState([]);
+  const [battlegroundRanks, setBattlegroundRanks] = useState([]);
+
   const handleImageLoad = (showId) => {
     setLoadedImages(prev => ({ ...prev, [showId]: true }));
   };
@@ -127,114 +140,55 @@ export default function VotingPage({ shows: searchableShows }) {
       if (allSeriesData === null) {
         fetchAllSeriesData();
       } else {
-        filterAndSortSeriesData();
+        filterAndSortSeriesData(allSeriesData);
       }
     } else {
       setIsSearching(false);
+      setFilteredSeriesData([]);
       setSeriesMetadata([]);
-      setCurrentPage(0);
       setSortedSeriesIds([]);
+      setCurrentPage(0);
       fetchVoteData();
     }
-  }, [searchText, rankMethod]);
+  }, [searchText, rankMethod, voteData]);
 
   const fetchVoteData = async () => {
-    if (votesCache.current) {
-      const voteDataResponse = votesCache.current;
+    try {
+      if (votesCache.current) {
+        const voteDataResponse = votesCache.current;
 
-      // Use cached data
-      setVoteData(voteDataResponse);
-      setVotes(voteDataResponse.votes);
-      setUserVotes(user ? voteDataResponse.userVotes : {});
-      setUserVotesUp(user ? voteDataResponse.userVotesUp : {});
-      setUserVotesDown(user ? voteDataResponse.userVotesDown : {});
-      setUpvotes(voteDataResponse.votesUp);
-      setDownvotes(voteDataResponse.votesDown);
-      setAbleToVote(user ? voteDataResponse.ableToVote : {});
-      setLastBoost(user ? voteDataResponse.lastBoost : {});
-      setNextVoteTimes(voteDataResponse.nextVoteTime || {});
-
-      const seriesIds = Object.keys(voteDataResponse.votes);
-
-      // Sort the series IDs based on the selected rank method
-      let newSortedSeriesIds = [];
-      switch (rankMethod) {
-        case 'combined':
-          newSortedSeriesIds = seriesIds.sort((a, b) => {
-            const voteDiff =
-              (voteDataResponse.votes[b] || 0) - (voteDataResponse.votes[a] || 0);
-            return voteDiff !== 0 ? voteDiff : a.localeCompare(b);
-          });
-          break;
-        case 'downvotes':
-          newSortedSeriesIds = seriesIds.sort((a, b) => {
-            const voteDiff =
-              (voteDataResponse.votesDown[a] || 0) - (voteDataResponse.votesDown[b] || 0);
-            return voteDiff !== 0 ? voteDiff : a.localeCompare(b);
-          });
-          break;
-        default: // Upvotes
-          newSortedSeriesIds = seriesIds.sort((a, b) => {
-            const voteDiff =
-              (voteDataResponse.votesUp[b] || 0) - (voteDataResponse.votesUp[a] || 0);
-            return voteDiff !== 0 ? voteDiff : a.localeCompare(b);
-          });
-      }
-
-      // Update the sortedSeriesIds state
-      setSortedSeriesIds(newSortedSeriesIds);
-
-      // Fetch only the initial page
-      fetchSeriesData(newSortedSeriesIds, 0, false);
-    } else {
-      if (!loadingMore) {
-        setLoading(true);
-      }
-      try {
-        // Fetch vote data
-        const voteDataResponse = await API.get('publicapi', '/vote/list');
-
-        // Save to cache
-        votesCache.current = voteDataResponse;
-
-        // Rest of the existing code...
+        // Use cached data
         setVoteData(voteDataResponse);
         setVotes(voteDataResponse.votes);
-        setUserVotes(user ? voteDataResponse.userVotes : {});
-        setUserVotesUp(user ? voteDataResponse.userVotesUp : {});
-        setUserVotesDown(user ? voteDataResponse.userVotesDown : {});
-        setUpvotes(voteDataResponse.votesUp);
-        setDownvotes(voteDataResponse.votesDown);
-        setAbleToVote(user ? voteDataResponse.ableToVote : {});
-        setLastBoost(user ? voteDataResponse.lastBoost : {});
-        setNextVoteTimes(voteDataResponse.nextVoteTime || {});
+        setUserVotes(user ? voteDataResponse.userVoteData?.votesUp : {});
+        setUserVotesUp(user ? voteDataResponse.userVoteData?.votesUp : {});
+        setUserVotesDown(user ? voteDataResponse.userVoteData?.votesDown : {});
+        setAbleToVote(user ? voteDataResponse.userVoteData?.ableToVote : {});
+        setLastBoost(user ? voteDataResponse.userVoteData?.lastBoost : {});
+        setNextVoteTimes(voteDataResponse.userVoteData?.nextVoteTime || {});
 
-        // Get the series IDs from the votes
         const seriesIds = Object.keys(voteDataResponse.votes);
 
         // Sort the series IDs based on the selected rank method
-        /* eslint-disable prefer-const */
         let newSortedSeriesIds = [];
         switch (rankMethod) {
           case 'combined':
             newSortedSeriesIds = seriesIds.sort((a, b) => {
-              const voteDiff =
-                (voteDataResponse.votes[b] || 0) - (voteDataResponse.votes[a] || 0);
-              return voteDiff !== 0 ? voteDiff : a.localeCompare(b);
+              const voteDiffA = voteDataResponse.votes[a].upvotes - voteDataResponse.votes[a].downvotes;
+              const voteDiffB = voteDataResponse.votes[b].upvotes - voteDataResponse.votes[b].downvotes;
+              return voteDiffB - voteDiffA || safeCompareSeriesTitles(a, b);
             });
             break;
           case 'downvotes':
             newSortedSeriesIds = seriesIds.sort((a, b) => {
-              const voteDiff =
-                (voteDataResponse.votesDown[a] || 0) - (voteDataResponse.votesDown[b] || 0);
-              return voteDiff !== 0 ? voteDiff : a.localeCompare(b);
+              const downvoteDiff = voteDataResponse.votes[b].downvotes - voteDataResponse.votes[a].downvotes;
+              return downvoteDiff || safeCompareSeriesTitles(a, b);
             });
             break;
           default: // Upvotes
             newSortedSeriesIds = seriesIds.sort((a, b) => {
-              const voteDiff =
-                (voteDataResponse.votesUp[b] || 0) - (voteDataResponse.votesUp[a] || 0);
-              return voteDiff !== 0 ? voteDiff : a.localeCompare(b);
+              const upvoteDiff = voteDataResponse.votes[b].upvotes - voteDataResponse.votes[a].upvotes;
+              return upvoteDiff || safeCompareSeriesTitles(a, b);
             });
         }
 
@@ -243,13 +197,69 @@ export default function VotingPage({ shows: searchableShows }) {
 
         // Fetch only the initial page
         fetchSeriesData(newSortedSeriesIds, 0, false);
-      } catch (error) {
-        console.error('Error fetching series data:', error);
-      } finally {
+      } else {
         if (!loadingMore) {
-          setLoading(false);
+          setLoading(true);
+        }
+        try {
+          // Fetch vote data
+          const voteDataResponse = await API.get('publicapi', '/vote/list');
+
+          // Save to cache
+          votesCache.current = voteDataResponse;
+
+          setVoteData(voteDataResponse);
+          setVotes(voteDataResponse.votes);
+
+          setUserVotes(user ? voteDataResponse.userVoteData?.votesUp : {});
+          setUserVotesUp(user ? voteDataResponse.userVoteData?.votesUp : {});
+          setUserVotesDown(user ? voteDataResponse.userVoteData?.votesDown : {});
+          setAbleToVote(user ? voteDataResponse.userVoteData?.ableToVote : {});
+          setLastBoost(user ? voteDataResponse.userVoteData?.lastBoost : {});
+          setNextVoteTimes(voteDataResponse.userVoteData?.nextVoteTime || {});
+
+          // Get the series IDs from the votes
+          const seriesIds = Object.keys(voteDataResponse.votes);
+
+          // Sort the series IDs based on the selected rank method
+          /* eslint-disable prefer-const */
+          let newSortedSeriesIds = [];
+          switch (rankMethod) {
+            case 'combined':
+              newSortedSeriesIds = seriesIds.sort((a, b) => {
+                const voteDiffA = voteDataResponse.votes[a].upvotes - voteDataResponse.votes[a].downvotes;
+                const voteDiffB = voteDataResponse.votes[b].upvotes - voteDataResponse.votes[b].downvotes;
+                return voteDiffB - voteDiffA || safeCompareSeriesTitles(a, b);
+              });
+              break;
+            case 'downvotes':
+              newSortedSeriesIds = seriesIds.sort((a, b) => {
+                const downvoteDiff = voteDataResponse.votes[b].downvotes - voteDataResponse.votes[a].downvotes;
+                return downvoteDiff || safeCompareSeriesTitles(a, b);
+              });
+              break;
+            default: // Upvotes
+              newSortedSeriesIds = seriesIds.sort((a, b) => {
+                const upvoteDiff = voteDataResponse.votes[b].upvotes - voteDataResponse.votes[a].upvotes;
+                return upvoteDiff || safeCompareSeriesTitles(a, b);
+              });
+          }
+
+          // Update the sortedSeriesIds state
+          setSortedSeriesIds(newSortedSeriesIds);
+
+          // Fetch only the initial page
+          fetchSeriesData(newSortedSeriesIds, 0, false);
+        } catch (error) {
+          console.error('Error fetching vote data:', error);
+        } finally {
+          if (!loadingMore) {
+            setLoading(false);
+          }
         }
       }
+    } catch (error) {
+      console.error('Error in fetchVoteData:', error);
     }
   };
 
@@ -265,7 +275,7 @@ export default function VotingPage({ shows: searchableShows }) {
         name: 'Loading...',
         description: 'Loading description...',
         image: '', // Empty string for placeholder image
-        rank: startIdx + paginatedSeriesIds.indexOf(id) + 1
+        rank: null // Initialize rank as null
       }));
 
       // Update seriesMetadata immediately with placeholder data
@@ -305,22 +315,21 @@ export default function VotingPage({ shows: searchableShows }) {
         cachedSeriesData.push(...fetchedSeriesData);
       }
 
-      // Assign rank based on their position in the sorted list
-      cachedSeriesData.forEach((show, index) => {
-        show.rank = startIdx + index + 1;
-      });
-
       // Update seriesMetadata with actual data
       setSeriesMetadata((prevSeriesMetadata) => {
         const updatedMetadata = [...prevSeriesMetadata];
         cachedSeriesData.forEach((show) => {
           const index = updatedMetadata.findIndex(item => item.id === show.id);
           if (index !== -1) {
-            updatedMetadata[index] = show;
+            updatedMetadata[index] = { ...show, rank: null }; // Set rank to null initially
           }
         });
         return updatedMetadata;
       });
+
+      // Recalculate ranks after fetching data
+      recalculateRanks();
+
     } catch (error) {
       console.error('Error fetching series data:', error);
     } finally {
@@ -328,6 +337,44 @@ export default function VotingPage({ shows: searchableShows }) {
       setLoadingMore(false);
     }
   };
+
+  // Update the recalculateRanks function
+  const recalculateRanks = useCallback(() => {
+    let currentRank = 1;
+    const newRanks = {};
+    const seriesToRank = sortedSeriesIds.map(id => seriesCache.current[id]);
+
+    seriesToRank.forEach((show) => {
+      if (show && (!hideSearchable || !searchableShows.some((searchableShow) => searchableShow.id === show.slug))) {
+        newRanks[show.id] = currentRank;
+        currentRank += 1;
+      }
+    });
+
+    setRanks(newRanks);
+    
+    // Update seriesMetadata with new ranks
+    setSeriesMetadata(prevMetadata => 
+      prevMetadata.map(show => ({ ...show, rank: newRanks[show.id] || null }))
+    );
+  }, [hideSearchable, searchableShows, sortedSeriesIds]);
+
+  // Call recalculateRanks after data loads
+  useEffect(() => {
+    if (!loading && seriesMetadata.length > 0) {
+      recalculateRanks();
+    }
+  }, [loading, recalculateRanks]);
+
+  // Update ranks when rankMethod changes
+  useEffect(() => {
+    recalculateRanks();
+  }, [rankMethod, recalculateRanks]);
+
+  // Update ranks when hideSearchable changes
+  useEffect(() => {
+    recalculateRanks();
+  }, [hideSearchable, recalculateRanks]);
 
   const handleLoadMore = () => {
     setLoadingMore(true);
@@ -368,44 +415,50 @@ export default function VotingPage({ shows: searchableShows }) {
   };
 
   const filterAndSortSeriesData = (data = allSeriesData) => {
-    if (!data) return;
+    try {
+      if (!data) return;
 
-    // Apply search filter
-    const searchFilteredShows = data.filter(
-      (show) =>
-        show.statusText === 'requested' &&
-        show.name.toLowerCase().includes(searchText.toLowerCase())
-    );
+      const searchFilteredShows = data.filter(
+        (show) => show.name.toLowerCase().includes(searchText.toLowerCase())
+      );
 
-    // Sort the filtered shows based on the selected rank method
-    let sortedShows;
-    switch (rankMethod) {
-      case 'combined':
-        sortedShows = searchFilteredShows.sort((a, b) => {
-          const voteDiff = (voteData.votes[b.id] || 0) - (voteData.votes[a.id] || 0);
-          return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
-        });
-        break;
-      case 'downvotes':
-        sortedShows = searchFilteredShows.sort((a, b) => {
-          const voteDiff = (voteData.votesDown[a.id] || 0) - (voteData.votesDown[b.id] || 0);
-          return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
-        });
-        break;
-      default: // Upvotes
-        sortedShows = searchFilteredShows.sort((a, b) => {
-          const voteDiff = (voteData.votesUp[b.id] || 0) - (voteData.votesUp[a.id] || 0);
-          return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
-        });
+      let sortedShows = [...searchFilteredShows];
+
+      if (sortedShows.length > 0) {
+        switch (rankMethod) {
+          case 'combined':
+            sortedShows.sort((a, b) => {
+              const voteDiffA = (voteData.votes[a.id]?.upvotes || 0) - (voteData.votes[a.id]?.downvotes || 0);
+              const voteDiffB = (voteData.votes[b.id]?.upvotes || 0) - (voteData.votes[b.id]?.downvotes || 0);
+              return voteDiffB - voteDiffA || a.name.localeCompare(b.name);
+            });
+            break;
+          case 'downvotes':
+            sortedShows.sort((a, b) => {
+              const downvoteDiff = (voteData.votes[b.id]?.downvotes || 0) - (voteData.votes[a.id]?.downvotes || 0);
+              return downvoteDiff || a.name.localeCompare(b.name);
+            });
+            break;
+          default: // Upvotes
+            sortedShows.sort((a, b) => {
+              const upvoteDiff = (voteData.votes[b.id]?.upvotes || 0) - (voteData.votes[a.id]?.upvotes || 0);
+              return upvoteDiff || a.name.localeCompare(b.name);
+            });
+        }
+      }
+
+      setFilteredSeriesData(sortedShows);
+      setSortedSeriesIds(sortedShows.map(show => show.id));
+      setCurrentPage(0);
+
+      // Update seriesMetadata with existing ranks
+      setSeriesMetadata(sortedShows.map(show => ({ ...show, rank: ranks[show.id] || null })));
+    } catch (error) {
+      console.error('Error in filterAndSortSeriesData:', error);
+      setFilteredSeriesData([]);
+      setSortedSeriesIds([]);
+      setSeriesMetadata([]);
     }
-
-    // Add rank to each show
-    sortedShows.forEach((show, index) => {
-      show.rank = index + 1;
-    });
-
-    // Set seriesMetadata to paginatedShows
-    setSeriesMetadata(sortedShows.slice(0, itemsPerPage));
   };
 
   const handleVote = async (seriesId, boost) => {
@@ -419,89 +472,41 @@ export default function VotingPage({ shows: searchableShows }) {
         },
       });
 
-      setUserVotes((prevUserVotes) => ({ ...prevUserVotes, [seriesId]: boost }));
-
-      const newUpvotes = { ...upvotes };
-      const newDownvotes = { ...downvotes };
-
-      if (boost === 1) {
-        newUpvotes[seriesId] = (upvotes[seriesId] || 0) + boost;
-        setUpvotes(newUpvotes);
-
-        setUserVotesUp((prevUserVotesUp) => {
-          const newUserVotesUp = { ...prevUserVotesUp };
-          newUserVotesUp[seriesId] = (newUserVotesUp[seriesId] || 0) + boost;
-          return newUserVotesUp;
-        });
-      } else if (boost === -1) {
-        newDownvotes[seriesId] = (downvotes[seriesId] || 0) + boost;
-        setDownvotes(newDownvotes);
-
-        setUserVotesDown((prevUserVotesDown) => {
-          const newUserVotesDown = { ...prevUserVotesDown };
-          newUserVotesDown[seriesId] = (newUserVotesDown[seriesId] || 0) + boost;
-          return newUserVotesDown;
-        });
-      }
-
-      // Update votes after updating upvotes and downvotes
+      // Update votes locally
       setVotes((prevVotes) => {
         const newVotes = { ...prevVotes };
-        newVotes[seriesId] = (newVotes[seriesId] || 0) + boost;
-
-        // Re-sort the seriesMetadata based on updated votes
-        let sortedSeriesData = [...seriesMetadata];
-        switch (rankMethod) {
-          case 'combined':
-            sortedSeriesData.sort((a, b) => {
-              const voteDiff = (newVotes[b.id] || 0) - (newVotes[a.id] || 0);
-              return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
-            });
-            break;
-          case 'downvotes':
-            sortedSeriesData.sort((a, b) => {
-              const voteDiff = (newDownvotes[a.id] || 0) - (newDownvotes[b.id] || 0);
-              return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
-            });
-            break;
-          default: // Upvotes
-            sortedSeriesData.sort((a, b) => {
-              const voteDiff = (newUpvotes[b.id] || 0) - (newUpvotes[a.id] || 0);
-              return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
-            });
+        if (!newVotes[seriesId]) {
+          newVotes[seriesId] = { upvotes: 0, downvotes: 0 };
         }
-
-        // Update ranks
-        sortedSeriesData.forEach((show, index) => {
-          show.rank = index + 1;
-        });
-
-        setSeriesMetadata(sortedSeriesData);
-
+        if (boost === 1) {
+          newVotes[seriesId].upvotes += 1;
+        } else if (boost === -1) {
+          newVotes[seriesId].downvotes += 1;
+        }
         return newVotes;
       });
 
-      // Deduct a vote from ableToVote for that series
-      setAbleToVote((prevAbleToVote) => {
-        const newAbleToVote = { ...prevAbleToVote };
-        newAbleToVote[seriesId] = newAbleToVote[seriesId] ? newAbleToVote[seriesId] - 1 : 0;
-        return newAbleToVote;
-      });
+      // Update user votes
+      if (boost === 1) {
+        setUserVotesUp((prev) => ({ ...prev, [seriesId]: (prev[seriesId] || 0) + 1 }));
+      } else if (boost === -1) {
+        setUserVotesDown((prev) => ({ ...prev, [seriesId]: (prev[seriesId] || 0) + 1 }));
+      }
 
-      setNextVoteTimes((prevNextVoteTimes) => {
-        const newNextVoteTimes = { ...prevNextVoteTimes };
-        const now = new Date();
-        now.setHours(now.getHours() + 24);
-        newNextVoteTimes[seriesId] = now;
-        return newNextVoteTimes;
-      });
+      // Update ranks
+      updateRanks();
 
       setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: false }));
-
       setLastBoost((prevLastBoost) => ({ ...prevLastBoost, [seriesId]: boost }));
 
-      // After voting, refresh the data to update rankings
-      setRefreshData((prev) => !prev); // Trigger data refresh
+      // Update ableToVote and nextVoteTimes
+      setAbleToVote((prev) => ({ ...prev, [seriesId]: (prev[seriesId] || 1) - 1 }));
+      setNextVoteTimes((prev) => {
+        const now = new Date();
+        now.setHours(now.getHours() + 24);
+        return { ...prev, [seriesId]: now.toISOString() };
+      });
+
     } catch (error) {
       setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: false }));
       console.error('Error on voting:', error);
@@ -531,26 +536,35 @@ export default function VotingPage({ shows: searchableShows }) {
   };
 
   const handleSearchChange = (event) => {
-    setSearchText(event.target.value);
+    const newSearchText = event.target.value;
+    setSearchText(newSearchText);
+    setIsSearching(!!newSearchText);
   };
 
   const handleRankMethodChange = useCallback((event, newValue) => {
-    localStorage.setItem('rankMethod', newValue);
-    setRankMethod(newValue);
-    setCurrentPage(0); // Reset to the first page
-    setSeriesMetadata([]); // Clear the current series metadata
-    setRefreshData((prev) => !prev); // Trigger data refresh
+    // Only update if a button is selected (newValue is not null)
+    if (newValue !== null) {
+      localStorage.setItem('rankMethod', newValue);
+      setRankMethod(newValue);
+      setCurrentPage(0);
+      setSeriesMetadata([]);
+      setRefreshData((prev) => !prev);
+    }
   }, []);
 
   const votesCount = (show) => {
+    if (!voteData.votes || !voteData.votes[show.id]) {
+      return 0;
+    }
+    
     switch (rankMethod) {
       case 'upvotes':
-        return upvotes[show.id] || 0;
+        return voteData.votes[show.id].upvotes || 0;
       case 'downvotes':
-        return downvotes[show.id] || 0;
+        return voteData.votes[show.id].downvotes || 0;
       case 'combined':
       default:
-        return votes[show.id] || 0;
+        return (voteData.votes[show.id].upvotes || 0) - (voteData.votes[show.id].downvotes || 0);
     }
   };
 
@@ -570,19 +584,12 @@ export default function VotingPage({ shows: searchableShows }) {
     setTimeRemaining(formattedTime);
   };
 
-  useEffect(() => {
-    if (selectedRequest) {
-      console.log('THE SELECTED SHOW', selectedRequest.name);
-    }
-  }, [selectedRequest]);
-
   const submitRequest = () => {
     setSubmittingRequest(true);
     API.post('publicapi', '/requests/add', {
       body: selectedRequest,
     })
       .then((response) => {
-        console.log(response);
         setOpenAddRequest(false);
         setSelectedRequest();
         setMessage(response.message);
@@ -600,85 +607,163 @@ export default function VotingPage({ shows: searchableShows }) {
       });
   };
 
+  const safeCompareSeriesTitles = (a, b) => {
+    try {
+      if (!seriesCache.current) {
+        console.warn('seriesCache.current is not initialized');
+        return 0;
+      }
+      const titleA = seriesCache.current[a]?.name;
+      const titleB = seriesCache.current[b]?.name;
+      
+      if (!titleA && !titleB) return 0;
+      if (!titleA) return 1;
+      if (!titleB) return -1;
+      
+      return titleA.replace(/^The\s+/i, '').toLowerCase().localeCompare(
+        titleB.replace(/^The\s+/i, '').toLowerCase()
+      );
+    } catch (error) {
+      console.error('Error in safeCompareSeriesTitles:', error);
+      return 0;
+    }
+  };
+
+  useEffect(() => {
+    if (voteData.votes) {
+      updateRanks();
+    }
+  }, [voteData.votes, hideSearchable, searchableShows]);
+
+  const updateRanks = () => {
+    const seriesIds = Object.keys(voteData.votes);
+    
+    const upvotesOrder = [...seriesIds].sort((a, b) => {
+      const upvoteDiff = (voteData.votes[b].upvotes || 0) - (voteData.votes[a].upvotes || 0);
+      return upvoteDiff || safeCompareSeriesTitles(a, b);
+    });
+
+    const battlegroundOrder = [...seriesIds].sort((a, b) => {
+      const voteDiffA = (voteData.votes[a].upvotes || 0) - (voteData.votes[a].downvotes || 0);
+      const voteDiffB = (voteData.votes[b].upvotes || 0) - (voteData.votes[b].downvotes || 0);
+      return voteDiffB - voteDiffA || safeCompareSeriesTitles(a, b);
+    });
+
+    const filteredUpvotesRanks = upvotesOrder
+      .filter(id => !hideSearchable || !searchableShows.some(show => show.id === seriesCache.current[id]?.slug))
+      .reduce((acc, id, index) => {
+        acc[id] = index + 1;
+        return acc;
+      }, {});
+
+    const filteredBattlegroundRanks = battlegroundOrder
+      .filter(id => !hideSearchable || !searchableShows.some(show => show.id === seriesCache.current[id]?.slug))
+      .reduce((acc, id, index) => {
+        acc[id] = index + 1;
+        return acc;
+      }, {});
+
+    setUpvotesRanks(filteredUpvotesRanks);
+    setBattlegroundRanks(filteredBattlegroundRanks);
+  };
+
+  // useEffect(() => {
+  //   localStorage.setItem('hideSearchable', JSON.stringify(hideSearchable));
+  // }, [hideSearchable]);
+
+  const handleHideSearchableChange = (event, newValue) => {
+    // Only update if a button is selected (newValue is not null)
+    if (newValue !== null) {
+      setHideSearchable(newValue);
+    }
+  };
+
   return (
     <>
       <Helmet>
         <title> Vote and Requests • TV Shows & Movies • memeSRC </title>
       </Helmet>
       <Container maxWidth="md">
-        <Box my={2} sx={{ marginTop: -2, marginBottom: -1.5 }}>
+        <Box my={2} sx={{ marginTop: -2 }}>
           <Typography variant="h3" component="h1" gutterBottom>
-            Requests
+            Voting & Requests
           </Typography>
-          <Typography variant="subtitle2">Upvote shows and movies you want on memeSRC</Typography>
+          <Typography variant="subtitle2">Upvote the most memeable shows and movies</Typography>
         </Box>
 
-        <Box my={2}>
-          <Tabs
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, my: 3 }}>
+          <ToggleButtonGroup
             value={rankMethod}
+            exclusive
             onChange={handleRankMethodChange}
-            indicatorColor="secondary"
-            textColor="inherit"
+            aria-label="ranking method"
+            fullWidth
+            size="large"
           >
-            <Tab
-              label={
-                <Box display="flex" alignItems="center">
-                  <ThumbUp color="success" sx={{ mr: 1 }} />
-                  Most Upvoted
-                </Box>
-              }
-              value="upvotes"
-            />
-            <Tab
-              label={
-                <Box display="flex" alignItems="center">
-                  <Whatshot color="error" sx={{ mr: 1 }} />
-                  Battleground
-                </Box>
-              }
-              value="combined"
-            />
-          </Tabs>
-        </Box>
-        <Box my={2}>
-          <TextField
+            <ToggleButton 
+              value="upvotes" 
+              aria-label="most upvoted"
+              sx={{
+                '&.Mui-selected': {
+                  backgroundColor: 'rgba(84, 214, 44, 0.16)',
+                  color: 'success.main',
+                  '&:hover': {
+                    backgroundColor: 'rgba(84, 214, 44, 0.24)',
+                  },
+                },
+              }}
+            >
+              <ThumbUp color="success" sx={{ mr: 1 }} />
+              Most Upvoted
+            </ToggleButton>
+            <ToggleButton value="combined" aria-label="battleground">
+              <Whatshot color="error" sx={{ mr: 1 }} />
+              Battleground
+            </ToggleButton>
+          </ToggleButtonGroup>
+
+          <ToggleButtonGroup
+            value={hideSearchable}
+            exclusive
+            onChange={handleHideSearchableChange}
+            aria-label="hide searchable shows"
             fullWidth
             size="small"
+          >
+            <ToggleButton value={false} aria-label="show all">
+              <VisibilityIcon sx={{ mr: 1 }} />
+              Show All
+            </ToggleButton>
+            <ToggleButton value aria-label="hide searchable">
+              <VisibilityOffIcon sx={{ mr: 1 }} />
+              Hide Available
+            </ToggleButton>
+          </ToggleButtonGroup>
+
+          <TextField
+            fullWidth
+            size="large"
             variant="outlined"
             value={searchText}
             onChange={handleSearchChange}
-            placeholder="Search requests..."
+            placeholder="Filter by name..."
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
-                  <IconButton>
-                    <Search />
-                  </IconButton>
+                  <Search />
                 </InputAdornment>
               ),
-              endAdornment: (
+              endAdornment: searchText && (
                 <InputAdornment position="end">
-                  <IconButton edge="end" onClick={() => setSearchText('')} disabled={!searchText}>
+                  <IconButton edge="end" onClick={() => setSearchText('')}>
                     <Close />
                   </IconButton>
                 </InputAdornment>
               ),
             }}
           />
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={hideSearchable}
-                onChange={() => setHideSearchable(!hideSearchable)}
-                name="hideSearchable"
-                color="primary"
-              />
-            }
-            label="Hide Searchable"
-            style={{ opacity: hideSearchable ? 1 : 0.5, fontSize: '0.1rem' }}
-            sx={{ margin: 0, marginBottom: -2 }}
-          />
         </Box>
+
         <Grid container style={{ minWidth: '100%' }}>
           {loading && !seriesMetadata.length ? (
             <Grid
@@ -702,12 +787,10 @@ export default function VotingPage({ shows: searchableShows }) {
             <>
               <FlipMove key={rankMethod} style={{ minWidth: '100%' }}>
                 {seriesMetadata.map((show) => {
-                  if (
-                    hideSearchable &&
-                    searchableShows.some((searchableShow) => searchableShow.id === show.slug)
-                  ) {
+                  if (hideSearchable && searchableShows.some((searchableShow) => searchableShow.id === show.slug)) {
                     return null;
                   }
+                  const rank = rankMethod === 'upvotes' ? upvotesRanks[show.id] : battlegroundRanks[show.id];
                   return (
                     <div key={show.id}>
                       <Grid item xs={12} style={{ marginBottom: 15 }}>
@@ -718,7 +801,7 @@ export default function VotingPage({ shows: searchableShows }) {
                                 <Box display="flex" alignItems="center">
                                   <Box mr={2} position="relative">
                                     <Badge
-                                      badgeContent={`#${show.rank}`}
+                                      badgeContent={rank ? `#${rank}` : null}
                                       color="secondary"
                                       anchorOrigin={{
                                         vertical: 'top',
@@ -759,7 +842,7 @@ export default function VotingPage({ shows: searchableShows }) {
                                             rel="noopener noreferrer" 
                                             style={{ textDecoration: 'none', color: 'inherit' }}
                                           >
-                                            <Chip sx={{ marginRight: 1 }} size='small' label="🔍" color="success" variant="filled" />
+                                            <Chip sx={{ marginRight: 1, cursor: 'pointer' }} size='small' label="🔍 Tap to search!" color="success" variant="filled" />
                                           </a>
                                         )
                                       }
@@ -769,7 +852,7 @@ export default function VotingPage({ shows: searchableShows }) {
                                         sx={{ fontSize: '0.7rem', opacity: 0.6 }}
                                       >
                                         <ArrowUpward fontSize="small" sx={{ verticalAlign: 'middle' }} />
-                                        <b>{upvotes[show.id] || 0}</b>
+                                        <b>{voteData.votes[show.id]?.upvotes || 0}</b>
                                       </Typography>
                                       {rankMethod === 'combined' && (
                                         <Typography
@@ -779,7 +862,7 @@ export default function VotingPage({ shows: searchableShows }) {
                                           sx={{ fontSize: '0.7rem', opacity: 0.6 }}
                                         >
                                           <ArrowDownward fontSize="small" sx={{ verticalAlign: 'middle' }} />
-                                          <b>{downvotes[show.id] || 0}</b>
+                                          <b>{voteData.votes[show.id]?.downvotes || 0}</b>
                                         </Typography>
                                       )}
                                     </Box>
@@ -875,12 +958,8 @@ export default function VotingPage({ shows: searchableShows }) {
                                     </Box>
 
                                     <Box alignItems="center" height="100%">
-                                      <Typography
-                                        variant="h5"
-                                        textAlign="center"
-                                      // color={votesCount(show) < 0 && 'error.main'}
-                                      >
-                                        {votesCount(show) || 0}
+                                      <Typography variant="h5" textAlign="center" color={votesCount(show) < 0 && 'error.main'}>
+                                        {votesCount(show)}
                                       </Typography>
                                     </Box>
                                     <Box>
@@ -1020,7 +1099,7 @@ export default function VotingPage({ shows: searchableShows }) {
                                       )}
                                     </Box>
                                     <Typography variant="h5" textAlign="center" color={votesCount(show) < 0 && 'error.main'}>
-                                      {upvotes[show.id] || 0}
+                                      {voteData.votes[show.id]?.upvotes || 0}
                                     </Typography>
                                   </Stack>
                                 )}
@@ -1115,7 +1194,6 @@ export default function VotingPage({ shows: searchableShows }) {
           {selectedRequest &&
 
             <Grid container spacing={2} alignItems='center' mt={2}>
-              {console.log(selectedRequest)}
               <Grid item>
                 <StyledImg
                   src={selectedRequest.image_url}

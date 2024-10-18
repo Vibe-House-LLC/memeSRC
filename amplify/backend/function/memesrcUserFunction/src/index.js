@@ -598,93 +598,46 @@ export const handler = async (event) => {
   }
 
   if (path === `/${process.env.ENV}/public/vote/list`) {
-    // To fix the issue, we need to first check if the user is auth'd. This is going to get their auth type.
-    // If they're not signed in, it will return "unauthenticated". We'll use that below to dictate what to send back.
     const userAuth = event.requestContext.identity.cognitoAuthenticationType
-
-    // Extract the seriesId from the query string parameters if present
     const seriesId = event.queryStringParameters && event.queryStringParameters.id;
-
+  
     try {
-      // Pass the seriesId to the getAllVotes function
       const totalVotes = await getAllVotes(seriesId);
-
+  
       if (seriesId) {
         response = {
           statusCode: 200,
           body: JSON.stringify(totalVotes),
         };
       } else {
-        // Now we want to change it so that it only tries to get user votes if a users logged in.
-        // First lets set these as lets
-        let currentUserVotesUp = null
-        let currentUserVotesDown = null
-        let isLastUserVoteOlderThan24Hours = null
-        let lastBoostValue = null
-        let nextVoteTime = null
-        let lastUserVoteTimestamps = null
-        let combinedUserVotes = {};
-
+        let userVoteData = null;
+  
         if (userAuth !== "unauthenticated") {
-          // Summarize the user's personal votes
           const userVotes = await getAllUserVotes({ subId: userSub });
-          // console.log(`userVotes: ${JSON.stringify(userVotes)}`)
-          // const userVotes = allVotes.body.data.getUserDetails.votes.items;
-
-          // console.log(totalVotes)
-          // The next change is going to be setting these values to the lets. That way they'll be null unless we hit this step.
-          // I'm going to comment out the original code in case we need to come back to it.
-          /* 
-          const {
-            currentUserVotesUp,
-            currentUserVotesDown,
-            isLastUserVoteOlderThan24Hours,
-            lastBoostValue,
-            nextVoteTime,
-            lastUserVoteTimestamps
-          } = await processVotes({ allItems: userVotes, userSub }); 
-          */
-
-          const userProcessedVotes = await processVotes({ allItems: userVotes, userSub });
-          currentUserVotesUp = userProcessedVotes.currentUserVotesUp
-          currentUserVotesDown = userProcessedVotes.currentUserVotesDown
-          isLastUserVoteOlderThan24Hours = userProcessedVotes.isLastUserVoteOlderThan24Hours
-          lastBoostValue = userProcessedVotes.lastBoostValue
-          nextVoteTime = userProcessedVotes.nextVoteTime
-          lastUserVoteTimestamps = userProcessedVotes.lastUserVoteTimestamps
-          for (let id in currentUserVotesUp) {
-            combinedUserVotes[id] = (currentUserVotesUp[id] || 0) - (currentUserVotesDown[id] || 0);
-          }
+          userVoteData = await processVotes({ allItems: userVotes, userSub });
         }
-
-        const combinedVotes = {};
-        const votesUp = {};
-        const votesDown = {};
-
+  
+        const votesData = {};
+  
         for (let id in totalVotes) {
-          combinedVotes[id] = totalVotes[id].upvotes - totalVotes[id].downvotes;
-          votesUp[id] = totalVotes[id].upvotes;
-          votesDown[id] = -totalVotes[id].downvotes; // To keep the downvotes as negative
+          votesData[id] = {
+            upvotes: totalVotes[id].upvotes,
+            downvotes: totalVotes[id].downvotes,
+          };
         }
-
-        // const combinedUserVotes = {};
-        // for (let id in currentUserVotesUp) {
-        //   combinedUserVotes[id] = (currentUserVotesUp[id] || 0) - (currentUserVotesDown[id] || 0);
-        // }
-
+  
         const result = {
-          votes: combinedVotes,
-          userVotes: combinedUserVotes,
-          votesUp: votesUp,
-          votesDown: votesDown,
-          userVotesUp: currentUserVotesUp,
-          userVotesDown: currentUserVotesDown,
-          ableToVote: isLastUserVoteOlderThan24Hours,
-          lastBoost: lastBoostValue,
-          nextVoteTime: nextVoteTime,
-          lastVoteTime: lastUserVoteTimestamps
+          votes: votesData,
+          userVoteData: userVoteData ? {
+            votesUp: userVoteData.currentUserVotesUp,
+            votesDown: userVoteData.currentUserVotesDown,
+            ableToVote: userVoteData.isLastUserVoteOlderThan24Hours,
+            lastBoost: userVoteData.lastBoostValue,
+            nextVoteTime: userVoteData.nextVoteTime,
+            lastVoteTime: userVoteData.lastUserVoteTimestamps
+          } : null
         };
-
+  
         response = {
           statusCode: 200,
           body: result,
