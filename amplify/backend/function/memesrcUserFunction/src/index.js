@@ -89,40 +89,41 @@ async function processVotes({ allItems, userSub }) {
   const currentUserVotesUp = {};
   const currentUserVotesDown = {};
   const lastUserVoteTimestamps = {};
-  const lastBoostValue = {};
+  const lastBoostValues = {}; // Changed to plural
   const nextVoteTime = {};
-
-  // console.log(`allItems: ${JSON.stringify(allItems)}`)
 
   const seriesIds = new Set(allItems.map(item => item.seriesUserVoteSeriesId));
   const isLastUserVoteOlderThan24Hours = {};
   seriesIds.forEach(id => isLastUserVoteOlderThan24Hours[id] = true);
 
   allItems.forEach((vote) => {
-    // console.log(vote)
+    const seriesId = vote.seriesUserVoteSeriesId;
+
     if (vote.boost > 0) {
-      currentUserVotesUp[vote.seriesUserVoteSeriesId] = (currentUserVotesUp[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
+      currentUserVotesUp[seriesId] = (currentUserVotesUp[seriesId] || 0) + vote.boost;
+      votesCountUp[seriesId] = (votesCountUp[seriesId] || 0) + vote.boost;
     } else if (vote.boost < 0) {
-      currentUserVotesDown[vote.seriesUserVoteSeriesId] = (currentUserVotesDown[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
+      currentUserVotesDown[seriesId] = (currentUserVotesDown[seriesId] || 0) + vote.boost;
+      votesCountDown[seriesId] = (votesCountDown[seriesId] || 0) + vote.boost;
     }
 
-    votesCount[vote.seriesUserVoteSeriesId] = (votesCount[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
-
-    currentUserVotes[vote.seriesUserVoteSeriesId] = (currentUserVotes[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
+    votesCount[seriesId] = (votesCount[seriesId] || 0) + vote.boost;
+    currentUserVotes[seriesId] = (currentUserVotes[seriesId] || 0) + vote.boost;
 
     const voteTime = new Date(vote.createdAt);
-    if (!lastUserVoteTimestamps[vote.seriesUserVoteSeriesId] || voteTime > lastUserVoteTimestamps[vote.seriesUserVoteSeriesId]) {
-      lastUserVoteTimestamps[vote.seriesUserVoteSeriesId] = voteTime;
-      lastBoostValue[vote.seriesUserVoteSeriesId] = vote.boost;
+    if (!lastUserVoteTimestamps[seriesId] || voteTime > lastUserVoteTimestamps[seriesId]) {
+      lastUserVoteTimestamps[seriesId] = voteTime;
+      lastBoostValues[seriesId] = vote.boost; // Store the last boost value
+
       const currentTime = new Date().getTime();
       const diffInHours = (currentTime - voteTime.getTime()) / (1000 * 60 * 60);
-      isLastUserVoteOlderThan24Hours[vote.seriesUserVoteSeriesId] = diffInHours > 24;
+      isLastUserVoteOlderThan24Hours[seriesId] = diffInHours > 24;
 
-      // calculate next vote time
+      // Calculate next vote time
       if (diffInHours < 24) {
-        nextVoteTime[vote.seriesUserVoteSeriesId] = new Date(voteTime.getTime() + 24 * 60 * 60 * 1000).toISOString();
+        nextVoteTime[seriesId] = new Date(voteTime.getTime() + 24 * 60 * 60 * 1000).toISOString();
       } else {
-        nextVoteTime[vote.seriesUserVoteSeriesId] = null;
+        nextVoteTime[seriesId] = null;
       }
     }
   });
@@ -137,7 +138,7 @@ async function processVotes({ allItems, userSub }) {
     currentUserVotesDown,
     lastUserVoteTimestamps,
     isLastUserVoteOlderThan24Hours,
-    lastBoostValue,
+    lastBoostValues, // Changed to plural
     nextVoteTime
   };
 }
