@@ -595,7 +595,7 @@ export default function VotingPage({ shows: searchableShows }) {
           <Typography variant="h3" component="h1" gutterBottom>
             Requests
           </Typography>
-          <Typography variant="subtitle2">Upvote shows and movies you want on memeSRC</Typography>
+          <Typography variant="subtitle2">Upvote the most memeable shows and movies</Typography>
         </Box>
 
         <Box my={2}>
