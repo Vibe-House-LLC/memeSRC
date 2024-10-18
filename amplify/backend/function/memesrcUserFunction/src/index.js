@@ -645,6 +645,7 @@ export const handler = async (event) => {
         let currentUserVotesUp = {};
         let currentUserVotesDown = {};
         let lastUserVoteTimestamps = {};
+        let lastBoostValues = {};
   
         if (userAuth !== "unauthenticated") {
           // Fetch and process the user's personal votes
@@ -654,6 +655,7 @@ export const handler = async (event) => {
           currentUserVotesUp = userProcessedVotes.currentUserVotesUp || {};
           currentUserVotesDown = userProcessedVotes.currentUserVotesDown || {};
           lastUserVoteTimestamps = userProcessedVotes.lastUserVoteTimestamps || {};
+          lastBoostValues = userProcessedVotes.lastBoostValues || {};
   
           // Filter user-specific data if topSeriesIds is defined
           if (topSeriesIds) {
@@ -666,6 +668,9 @@ export const handler = async (event) => {
             lastUserVoteTimestamps = Object.fromEntries(
               Object.entries(lastUserVoteTimestamps).filter(([id]) => topSeriesIds.includes(id))
             );
+            lastBoostValues = Object.fromEntries(
+              Object.entries(lastBoostValues).filter(([id]) => topSeriesIds.includes(id))
+            );
           }
         }
   
@@ -677,17 +682,22 @@ export const handler = async (event) => {
           // Initialize default values
           let ableToVote = true;
           let nextVoteTime = null;
+          let lastBoost = null;
   
-          // Calculate ableToVote and nextVoteTime per seriesId if the user is authenticated
-          if (userAuth !== "unauthenticated" && lastUserVoteTimestamps[id]) {
-            const lastVoteTime = new Date(lastUserVoteTimestamps[id]);
-            const timeSinceLastVote = now - lastVoteTime;
-            const twentyFourHours = 24 * 60 * 60 * 1000; // milliseconds
+          // Calculate ableToVote, nextVoteTime, and lastBoost per seriesId if the user is authenticated
+          if (userAuth !== "unauthenticated") {
+            if (lastUserVoteTimestamps[id]) {
+              const lastVoteTime = new Date(lastUserVoteTimestamps[id]);
+              const timeSinceLastVote = now - lastVoteTime;
+              const twentyFourHours = 24 * 60 * 60 * 1000; // milliseconds
   
-            if (timeSinceLastVote < twentyFourHours) {
-              ableToVote = false;
-              nextVoteTime = new Date(lastVoteTime.getTime() + twentyFourHours).toISOString();
+              if (timeSinceLastVote < twentyFourHours) {
+                ableToVote = false;
+                nextVoteTime = new Date(lastVoteTime.getTime() + twentyFourHours).toISOString();
+              }
             }
+  
+            lastBoost = lastBoostValues[id] || null;
           }
   
           responseData[id] = {
@@ -697,6 +707,7 @@ export const handler = async (event) => {
             userVotesDown: currentUserVotesDown[id] || 0,
             ableToVote: ableToVote,
             nextVoteTime: nextVoteTime,
+            lastBoost: lastBoost,
           };
         }
   
@@ -713,6 +724,7 @@ export const handler = async (event) => {
       };
     }
   }
+  
   
 
   if (path === `/${process.env.ENV}/public/requests/add`) {
