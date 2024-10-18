@@ -597,12 +597,16 @@ export const handler = async (event) => {
     }
   }
 
-  if (path === `/${process.env.ENV}/public/vote/list` || path === `/${process.env.ENV}/public/vote/list/top`) {
+  if (
+    path === `/${process.env.ENV}/public/vote/list` ||
+    path === `/${process.env.ENV}/public/vote/list/top`
+  ) {
     // Determine if the user is authenticated
     const userAuth = event.requestContext.identity.cognitoAuthenticationType;
   
     // Extract the seriesId from the query string parameters if present
-    const seriesId = event.queryStringParameters && event.queryStringParameters.id;
+    const seriesId =
+      event.queryStringParameters && event.queryStringParameters.id;
   
     try {
       // Fetch all votes, optionally filtered by seriesId
@@ -626,7 +630,10 @@ export const handler = async (event) => {
           .slice(0, 100);
   
         // Combine both lists to get the unique union
-        const topSeriesIdSet = new Set([...seriesIdsByUpvotes, ...seriesIdsByNetVotes]);
+        const topSeriesIdSet = new Set([
+          ...seriesIdsByUpvotes,
+          ...seriesIdsByNetVotes,
+        ]);
         topSeriesIds = Array.from(topSeriesIdSet);
   
         // Filter totalVotes to include only top seriesIds
@@ -650,26 +657,38 @@ export const handler = async (event) => {
         if (userAuth !== "unauthenticated") {
           // Fetch and process the user's personal votes
           const userVotes = await getAllUserVotes({ subId: userSub });
-          const userProcessedVotes = await processVotes({ allItems: userVotes, userSub });
+          const userProcessedVotes = await processVotes({
+            allItems: userVotes,
+            userSub,
+          });
   
           currentUserVotesUp = userProcessedVotes.currentUserVotesUp || {};
           currentUserVotesDown = userProcessedVotes.currentUserVotesDown || {};
-          lastUserVoteTimestamps = userProcessedVotes.lastUserVoteTimestamps || {};
+          lastUserVoteTimestamps =
+            userProcessedVotes.lastUserVoteTimestamps || {};
           lastBoostValues = userProcessedVotes.lastBoostValues || {};
   
           // Filter user-specific data if topSeriesIds is defined
           if (topSeriesIds) {
             currentUserVotesUp = Object.fromEntries(
-              Object.entries(currentUserVotesUp).filter(([id]) => topSeriesIds.includes(id))
+              Object.entries(currentUserVotesUp).filter(([id]) =>
+                topSeriesIds.includes(id)
+              )
             );
             currentUserVotesDown = Object.fromEntries(
-              Object.entries(currentUserVotesDown).filter(([id]) => topSeriesIds.includes(id))
+              Object.entries(currentUserVotesDown).filter(([id]) =>
+                topSeriesIds.includes(id)
+              )
             );
             lastUserVoteTimestamps = Object.fromEntries(
-              Object.entries(lastUserVoteTimestamps).filter(([id]) => topSeriesIds.includes(id))
+              Object.entries(lastUserVoteTimestamps).filter(([id]) =>
+                topSeriesIds.includes(id)
+              )
             );
             lastBoostValues = Object.fromEntries(
-              Object.entries(lastBoostValues).filter(([id]) => topSeriesIds.includes(id))
+              Object.entries(lastBoostValues).filter(([id]) =>
+                topSeriesIds.includes(id)
+              )
             );
           }
         }
@@ -693,7 +712,9 @@ export const handler = async (event) => {
   
               if (timeSinceLastVote < twentyFourHours) {
                 ableToVote = false;
-                nextVoteTime = new Date(lastVoteTime.getTime() + twentyFourHours).toISOString();
+                nextVoteTime = new Date(
+                  lastVoteTime.getTime() + twentyFourHours
+                ).toISOString();
               }
             }
   
@@ -713,7 +734,7 @@ export const handler = async (event) => {
   
         response = {
           statusCode: 200,
-          body: responseData,
+          body: JSON.stringify(responseData),
         };
       }
     } catch (error) {
@@ -723,9 +744,7 @@ export const handler = async (event) => {
         body: `Failed to get votes: ${error.message}`,
       };
     }
-  }
-  
-  
+  }  
 
   if (path === `/${process.env.ENV}/public/requests/add`) {
     const listTvdbResultsQuery = `
