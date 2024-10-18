@@ -86,7 +86,7 @@ export default function VotingPage({ shows: searchableShows }) {
   const [isSearching, setIsSearching] = useState(false);
 
   // Local pagination
-  const itemsPerPage = 35; // Number of items to render per page
+  const itemsPerPage = 5; // Number of items to render per page
   const [currentPage, setCurrentPage] = useState(0);
 
   const [sortedSeriesIds, setSortedSeriesIds] = useState([]); // New state to store sorted IDs
@@ -262,7 +262,7 @@ export default function VotingPage({ shows: searchableShows }) {
         name: 'Loading...',
         description: 'Loading description...',
         image: '', // Empty string for placeholder image
-        rank: startIdx + paginatedSeriesIds.indexOf(id) + 1
+        rank: null // Initialize rank as null
       }));
 
       // Update seriesMetadata immediately with placeholder data
@@ -302,28 +302,42 @@ export default function VotingPage({ shows: searchableShows }) {
         cachedSeriesData.push(...fetchedSeriesData);
       }
 
-      // Assign rank based on their position in the sorted list
-      cachedSeriesData.forEach((show, index) => {
-        show.rank = startIdx + index + 1;
-      });
-
       // Update seriesMetadata with actual data
       setSeriesMetadata((prevSeriesMetadata) => {
         const updatedMetadata = [...prevSeriesMetadata];
         cachedSeriesData.forEach((show) => {
           const index = updatedMetadata.findIndex(item => item.id === show.id);
           if (index !== -1) {
-            updatedMetadata[index] = show;
+            updatedMetadata[index] = { ...show, rank: null };
           }
         });
         return updatedMetadata;
       });
+
+      // Recalculate ranks
+      recalculateRanks();
+
     } catch (error) {
       console.error('Error fetching series data:', error);
     } finally {
       setLoading(false);
       setLoadingMore(false);
     }
+  };
+
+  // New function to recalculate ranks
+  const recalculateRanks = () => {
+    setSeriesMetadata((prevMetadata) => {
+      let currentRank = 1;
+      return prevMetadata.map((show) => {
+        if (!hideSearchable || !searchableShows.some((searchableShow) => searchableShow.id === show.slug)) {
+          const rank = currentRank;
+          currentRank += 1;
+          return { ...show, rank };
+        }
+        return { ...show, rank: null };
+      });
+    });
   };
 
   const handleLoadMore = () => {
@@ -588,6 +602,11 @@ export default function VotingPage({ shows: searchableShows }) {
     return titleA.localeCompare(titleB);
   };
 
+  // Update the useEffect that handles hideSearchable changes
+  useEffect(() => {
+    recalculateRanks();
+  }, [hideSearchable, searchableShows]);
+
   return (
     <>
       <Helmet>
@@ -706,7 +725,7 @@ export default function VotingPage({ shows: searchableShows }) {
                                 <Box display="flex" alignItems="center">
                                   <Box mr={2} position="relative">
                                     <Badge
-                                      badgeContent={`#${show.rank}`}
+                                      badgeContent={show.rank ? `#${show.rank}` : null}
                                       color="secondary"
                                       anchorOrigin={{
                                         vertical: 'top',
