@@ -642,97 +642,49 @@ export const handler = async (event) => {
         };
       } else {
         // Initialize variables for user-specific data
-        let currentUserVotesUp = null;
-        let currentUserVotesDown = null;
+        let currentUserVotesUp = {};
+        let currentUserVotesDown = {};
         let isLastUserVoteOlderThan24Hours = null;
-        let lastBoostValue = null;
         let nextVoteTime = null;
-        let lastUserVoteTimestamps = null;
-        let combinedUserVotes = {};
   
         if (userAuth !== "unauthenticated") {
           // Fetch and process the user's personal votes
           const userVotes = await getAllUserVotes({ subId: userSub });
           const userProcessedVotes = await processVotes({ allItems: userVotes, userSub });
   
-          currentUserVotesUp = userProcessedVotes.currentUserVotesUp;
-          currentUserVotesDown = userProcessedVotes.currentUserVotesDown;
+          currentUserVotesUp = userProcessedVotes.currentUserVotesUp || {};
+          currentUserVotesDown = userProcessedVotes.currentUserVotesDown || {};
           isLastUserVoteOlderThan24Hours = userProcessedVotes.isLastUserVoteOlderThan24Hours;
-          lastBoostValue = userProcessedVotes.lastBoostValue;
           nextVoteTime = userProcessedVotes.nextVoteTime;
-          lastUserVoteTimestamps = userProcessedVotes.lastUserVoteTimestamps;
-  
-          // Combine user upvotes and downvotes
-          for (let id in currentUserVotesUp) {
-            combinedUserVotes[id] = (currentUserVotesUp[id] || 0) - (currentUserVotesDown[id] || 0);
-          }
   
           // Filter user-specific data if topSeriesIds is defined
           if (topSeriesIds) {
-            if (currentUserVotesUp) {
-              currentUserVotesUp = Object.fromEntries(
-                Object.entries(currentUserVotesUp).filter(([id]) => topSeriesIds.includes(id))
-              );
-            }
-            if (currentUserVotesDown) {
-              currentUserVotesDown = Object.fromEntries(
-                Object.entries(currentUserVotesDown).filter(([id]) => topSeriesIds.includes(id))
-              );
-            }
-            if (combinedUserVotes) {
-              combinedUserVotes = Object.fromEntries(
-                Object.entries(combinedUserVotes).filter(([id]) => topSeriesIds.includes(id))
-              );
-            }
-            if (lastUserVoteTimestamps) {
-              lastUserVoteTimestamps = Object.fromEntries(
-                Object.entries(lastUserVoteTimestamps).filter(([id]) => topSeriesIds.includes(id))
-              );
-            }
+            currentUserVotesUp = Object.fromEntries(
+              Object.entries(currentUserVotesUp).filter(([id]) => topSeriesIds.includes(id))
+            );
+            currentUserVotesDown = Object.fromEntries(
+              Object.entries(currentUserVotesDown).filter(([id]) => topSeriesIds.includes(id))
+            );
           }
         }
   
-        // Prepare the combined vote data
-        let combinedVotes = {};
-        let votesUp = {};
-        let votesDown = {};
+        // Prepare the final response mapping seriesIds to their data
+        const responseData = {};
   
         for (let id in totalVotes) {
-          combinedVotes[id] = totalVotes[id].upvotes - totalVotes[id].downvotes;
-          votesUp[id] = totalVotes[id].upvotes;
-          votesDown[id] = -totalVotes[id].downvotes; // Downvotes as negative numbers
+          responseData[id] = {
+            totalVotesUp: totalVotes[id].upvotes,
+            totalVotesDown: totalVotes[id].downvotes,
+            userVotesUp: currentUserVotesUp[id] || 0,
+            userVotesDown: currentUserVotesDown[id] || 0,
+            ableToVote: isLastUserVoteOlderThan24Hours,
+            nextVoteTime: nextVoteTime,
+          };
         }
-  
-        // Filter combined vote data if topSeriesIds is defined
-        if (topSeriesIds) {
-          combinedVotes = Object.fromEntries(
-            Object.entries(combinedVotes).filter(([id]) => topSeriesIds.includes(id))
-          );
-          votesUp = Object.fromEntries(
-            Object.entries(votesUp).filter(([id]) => topSeriesIds.includes(id))
-          );
-          votesDown = Object.fromEntries(
-            Object.entries(votesDown).filter(([id]) => topSeriesIds.includes(id))
-          );
-        }
-  
-        // Construct the response object
-        const result = {
-          votes: combinedVotes,
-          userVotes: combinedUserVotes,
-          votesUp: votesUp,
-          votesDown: votesDown,
-          userVotesUp: currentUserVotesUp,
-          userVotesDown: currentUserVotesDown,
-          ableToVote: isLastUserVoteOlderThan24Hours,
-          lastBoost: lastBoostValue,
-          nextVoteTime: nextVoteTime,
-          lastVoteTime: lastUserVoteTimestamps,
-        };
   
         response = {
           statusCode: 200,
-          body: JSON.stringify(result),
+          body: responseData,
         };
       }
     } catch (error) {

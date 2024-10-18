@@ -405,7 +405,7 @@ export default function VotingPage({ shows: searchableShows }) {
           const endpoint = isTopList ? '/vote/list/top' : '/vote/list';
 
           // Fetch vote data from the appropriate endpoint
-          const voteDataResponse = JSON.parse(await API.get('publicapi', endpoint));
+          const voteDataResponse = await API.get('publicapi', endpoint);
 
           // Save to cache
           votesCache.current = voteDataResponse;
