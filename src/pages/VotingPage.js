@@ -461,6 +461,18 @@ export default function VotingPage({ shows: searchableShows }) {
   }, [loading, seriesMetadata.length, recalculateRanks]);
 
   useEffect(() => {
+    let timer;
+    if (fullSortedSeriesIds.length > 0) {
+      timer = setTimeout(() => {
+        recalculateRanks();
+      }, 500); // 100ms delay
+    }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [fullSortedSeriesIds, recalculateRanks]);
+
+  useEffect(() => {
     recalculateRanks();
   }, [rankMethod, recalculateRanks]);
 
@@ -739,8 +751,8 @@ export default function VotingPage({ shows: searchableShows }) {
                               <Box flexGrow={1} marginRight={2}>
                                 <Box display="flex" alignItems="center">
                                   <Box mr={2} position="relative">
-                                    <Badge
-                                      badgeContent={originalRanks[show.id] ? `#${originalRanks[show.id]}` : null}
+                                  <Badge
+                                      badgeContent={originalRanks[show.id] ? `#${originalRanks[show.id]}` : <CircularProgress size={12} sx={{ color: 'white' }} />}
                                       color="secondary"
                                       anchorOrigin={{
                                         vertical: 'top',
