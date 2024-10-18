@@ -542,11 +542,14 @@ export default function VotingPage({ shows: searchableShows }) {
   };
 
   const handleRankMethodChange = useCallback((event, newValue) => {
-    localStorage.setItem('rankMethod', newValue);
-    setRankMethod(newValue);
-    setCurrentPage(0);
-    setSeriesMetadata([]);
-    setRefreshData((prev) => !prev);
+    // Only update if a button is selected (newValue is not null)
+    if (newValue !== null) {
+      localStorage.setItem('rankMethod', newValue);
+      setRankMethod(newValue);
+      setCurrentPage(0);
+      setSeriesMetadata([]);
+      setRefreshData((prev) => !prev);
+    }
   }, []);
 
   const votesCount = (show) => {
@@ -681,44 +684,16 @@ export default function VotingPage({ shows: searchableShows }) {
         <title> Vote and Requests • TV Shows & Movies • memeSRC </title>
       </Helmet>
       <Container maxWidth="md">
-        <Box my={2} sx={{ marginTop: -2, marginBottom: -1.5 }}>
+        <Box my={2} sx={{ marginTop: -2 }}>
           <Typography variant="h3" component="h1" gutterBottom>
             Voting & Requests
           </Typography>
           <Typography variant="subtitle2">Upvote the most memeable shows and movies</Typography>
         </Box>
 
-        <Box my={2}>
-          <Tabs
-            value={rankMethod}
-            onChange={handleRankMethodChange}
-            indicatorColor="secondary"
-            textColor="inherit"
-          >
-            <Tab
-              label={
-                <Box display="flex" alignItems="center">
-                  <ThumbUp color="success" sx={{ mr: 1 }} />
-                  Most Upvoted
-                </Box>
-              }
-              value="upvotes"
-            />
-            <Tab
-              label={
-                <Box display="flex" alignItems="center">
-                  <Whatshot color="error" sx={{ mr: 1 }} />
-                  Battleground
-                </Box>
-              }
-              value="combined"
-            />
-          </Tabs>
-        </Box>
-        <Box my={2}>
-          <TextField
+        <TextField
             fullWidth
-            size="small"
+            size="large"
             variant="outlined"
             value={searchText}
             onChange={handleSearchChange}
@@ -726,32 +701,31 @@ export default function VotingPage({ shows: searchableShows }) {
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
-                  <IconButton>
-                    <Search />
-                  </IconButton>
+                  <Search />
                 </InputAdornment>
               ),
-              endAdornment: (
+              endAdornment: searchText && (
                 <InputAdornment position="end">
-                  <IconButton edge="end" onClick={() => setSearchText('')} disabled={!searchText}>
+                  <IconButton edge="end" onClick={() => setSearchText('')}>
                     <Close />
                   </IconButton>
                 </InputAdornment>
               ),
             }}
           />
+
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, my: 3 }}>
           <ToggleButtonGroup
-            value={hideSearchable}
+            value={rankMethod}
             exclusive
-            onChange={handleHideSearchableChange}
-            aria-label="hide searchable shows"
+            onChange={handleRankMethodChange}
+            aria-label="ranking method"
             fullWidth
-            size="small"
-            sx={{ mt: 1 }}
+            size="large"
           >
             <ToggleButton 
-              value={false} 
-              aria-label="show all"
+              value="upvotes" 
+              aria-label="most upvoted"
               sx={{
                 '&.Mui-selected': {
                   backgroundColor: 'rgba(84, 214, 44, 0.16)',
@@ -762,6 +736,24 @@ export default function VotingPage({ shows: searchableShows }) {
                 },
               }}
             >
+              <ThumbUp color="success" sx={{ mr: 1 }} />
+              Most Upvoted
+            </ToggleButton>
+            <ToggleButton value="combined" aria-label="battleground">
+              <Whatshot color="error" sx={{ mr: 1 }} />
+              Battleground
+            </ToggleButton>
+          </ToggleButtonGroup>
+
+          <ToggleButtonGroup
+            value={hideSearchable}
+            exclusive
+            onChange={handleHideSearchableChange}
+            aria-label="hide searchable shows"
+            fullWidth
+            size="small"
+          >
+            <ToggleButton value={false} aria-label="show all">
               <VisibilityIcon sx={{ mr: 1 }} />
               Show All
             </ToggleButton>
@@ -771,6 +763,7 @@ export default function VotingPage({ shows: searchableShows }) {
             </ToggleButton>
           </ToggleButtonGroup>
         </Box>
+
         <Grid container style={{ minWidth: '100%' }}>
           {loading && !seriesMetadata.length ? (
             <Grid
