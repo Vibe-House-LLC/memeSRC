@@ -86,7 +86,7 @@ export default function VotingPage({ shows: searchableShows }) {
   const [isSearching, setIsSearching] = useState(false);
 
   // Local pagination
-  const itemsPerPage = 35; // Number of items to render per page
+  const itemsPerPage = 15; // Number of items to render per page
   const [currentPage, setCurrentPage] = useState(0);
 
   const [sortedSeriesIds, setSortedSeriesIds] = useState([]); // New state to store sorted IDs
@@ -112,6 +112,9 @@ export default function VotingPage({ shows: searchableShows }) {
   const [loadedImages, setLoadedImages] = useState({});
 
   const [ranks, setRanks] = useState({});
+
+  const [upvotesRanks, setUpvotesRanks] = useState([]);
+  const [battlegroundRanks, setBattlegroundRanks] = useState([]);
 
   const handleImageLoad = (showId) => {
     setLoadedImages(prev => ({ ...prev, [showId]: true }));
@@ -330,8 +333,6 @@ export default function VotingPage({ shows: searchableShows }) {
 
   // Update the recalculateRanks function
   const recalculateRanks = useCallback(() => {
-    if (isSearching) return; // Don't recalculate ranks during search
-
     let currentRank = 1;
     const newRanks = {};
     const seriesToRank = sortedSeriesIds.map(id => seriesCache.current[id]);
@@ -349,28 +350,24 @@ export default function VotingPage({ shows: searchableShows }) {
     setSeriesMetadata(prevMetadata => 
       prevMetadata.map(show => ({ ...show, rank: newRanks[show.id] || null }))
     );
-  }, [hideSearchable, searchableShows, sortedSeriesIds, isSearching]);
+  }, [hideSearchable, searchableShows, sortedSeriesIds]);
 
   // Call recalculateRanks after data loads
   useEffect(() => {
-    if (!loading && seriesMetadata.length > 0 && !isSearching) {
+    if (!loading && seriesMetadata.length > 0) {
       recalculateRanks();
     }
-  }, [loading, seriesMetadata, recalculateRanks, isSearching]);
+  }, [loading, seriesMetadata, recalculateRanks]);
 
   // Update ranks when rankMethod changes
   useEffect(() => {
-    if (!isSearching) {
-      recalculateRanks();
-    }
-  }, [rankMethod, recalculateRanks, isSearching]);
+    recalculateRanks();
+  }, [rankMethod, recalculateRanks]);
 
   // Update ranks when hideSearchable changes
   useEffect(() => {
-    if (!isSearching) {
-      recalculateRanks();
-    }
-  }, [hideSearchable, recalculateRanks, isSearching]);
+    recalculateRanks();
+  }, [hideSearchable, recalculateRanks]);
 
   const handleLoadMore = () => {
     setLoadingMore(true);
@@ -489,27 +486,8 @@ export default function VotingPage({ shows: searchableShows }) {
         setUserVotesDown((prev) => ({ ...prev, [seriesId]: (prev[seriesId] || 0) + 1 }));
       }
 
-      // Re-sort and update ranks
-      setSeriesMetadata((prevMetadata) => {
-        const updatedMetadata = [...prevMetadata];
-        updatedMetadata.sort((a, b) => {
-          const aVotes = votes[a.id] || { upvotes: 0, downvotes: 0 };
-          const bVotes = votes[b.id] || { upvotes: 0, downvotes: 0 };
-          let comparison;
-          switch (rankMethod) {
-            case 'combined':
-              comparison = (bVotes.upvotes - bVotes.downvotes) - (aVotes.upvotes - aVotes.downvotes);
-              break;
-            case 'downvotes':
-              comparison = bVotes.downvotes - aVotes.downvotes;
-              break;
-            default: // upvotes
-              comparison = bVotes.upvotes - aVotes.upvotes;
-          }
-          return comparison !== 0 ? comparison : a.name.localeCompare(b.name);
-        });
-        return updatedMetadata.map((show, index) => ({ ...show, rank: index + 1 }));
-      });
+      // Update ranks
+      updateRanks();
 
       setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: false }));
       setLastBoost((prevLastBoost) => ({ ...prevLastBoost, [seriesId]: boost }));
@@ -559,9 +537,9 @@ export default function VotingPage({ shows: searchableShows }) {
   const handleRankMethodChange = useCallback((event, newValue) => {
     localStorage.setItem('rankMethod', newValue);
     setRankMethod(newValue);
-    setCurrentPage(0); // Reset to the first page
-    setSeriesMetadata([]); // Clear the current series metadata
-    setRefreshData((prev) => !prev); // Trigger data refresh
+    setCurrentPage(0);
+    setSeriesMetadata([]);
+    setRefreshData((prev) => !prev);
   }, []);
 
   const votesCount = (show) => {
@@ -639,6 +617,44 @@ export default function VotingPage({ shows: searchableShows }) {
       console.error('Error in safeCompareSeriesTitles:', error);
       return 0;
     }
+  };
+
+  useEffect(() => {
+    if (voteData.votes) {
+      updateRanks();
+    }
+  }, [voteData.votes, hideSearchable, searchableShows]);
+
+  const updateRanks = () => {
+    const seriesIds = Object.keys(voteData.votes);
+    
+    const upvotesOrder = [...seriesIds].sort((a, b) => {
+      const upvoteDiff = (voteData.votes[b].upvotes || 0) - (voteData.votes[a].upvotes || 0);
+      return upvoteDiff || safeCompareSeriesTitles(a, b);
+    });
+
+    const battlegroundOrder = [...seriesIds].sort((a, b) => {
+      const voteDiffA = (voteData.votes[a].upvotes || 0) - (voteData.votes[a].downvotes || 0);
+      const voteDiffB = (voteData.votes[b].upvotes || 0) - (voteData.votes[b].downvotes || 0);
+      return voteDiffB - voteDiffA || safeCompareSeriesTitles(a, b);
+    });
+
+    const filteredUpvotesRanks = upvotesOrder
+      .filter(id => !hideSearchable || !searchableShows.some(show => show.id === seriesCache.current[id]?.slug))
+      .reduce((acc, id, index) => {
+        acc[id] = index + 1;
+        return acc;
+      }, {});
+
+    const filteredBattlegroundRanks = battlegroundOrder
+      .filter(id => !hideSearchable || !searchableShows.some(show => show.id === seriesCache.current[id]?.slug))
+      .reduce((acc, id, index) => {
+        acc[id] = index + 1;
+        return acc;
+      }, {});
+
+    setUpvotesRanks(filteredUpvotesRanks);
+    setBattlegroundRanks(filteredBattlegroundRanks);
   };
 
   return (
@@ -746,6 +762,7 @@ export default function VotingPage({ shows: searchableShows }) {
                   if (hideSearchable && searchableShows.some((searchableShow) => searchableShow.id === show.slug)) {
                     return null;
                   }
+                  const rank = rankMethod === 'upvotes' ? upvotesRanks[show.id] : battlegroundRanks[show.id];
                   return (
                     <div key={show.id}>
                       <Grid item xs={12} style={{ marginBottom: 15 }}>
@@ -756,7 +773,7 @@ export default function VotingPage({ shows: searchableShows }) {
                                 <Box display="flex" alignItems="center">
                                   <Box mr={2} position="relative">
                                     <Badge
-                                      badgeContent={show.rank ? `#${show.rank}` : null}
+                                      badgeContent={rank ? `#${rank}` : null}
                                       color="secondary"
                                       anchorOrigin={{
                                         vertical: 'top',
