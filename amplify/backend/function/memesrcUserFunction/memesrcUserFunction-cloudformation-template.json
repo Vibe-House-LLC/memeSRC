@@ -125,7 +125,7 @@
           ]
         },
         "Runtime": "nodejs16.x",
-        "MemorySize": 1024,
+        "MemorySize": 2048,
         "Layers": [],
         "Timeout": 30
       }
