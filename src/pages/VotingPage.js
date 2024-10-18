@@ -357,7 +357,7 @@ export default function VotingPage({ shows: searchableShows }) {
     if (!loading && seriesMetadata.length > 0) {
       recalculateRanks();
     }
-  }, [loading, seriesMetadata, recalculateRanks]);
+  }, [loading, recalculateRanks]);
 
   // Update ranks when rankMethod changes
   useEffect(() => {
