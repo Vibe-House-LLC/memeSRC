@@ -691,29 +691,6 @@ export default function VotingPage({ shows: searchableShows }) {
           <Typography variant="subtitle2">Upvote the most memeable shows and movies</Typography>
         </Box>
 
-        <TextField
-            fullWidth
-            size="large"
-            variant="outlined"
-            value={searchText}
-            onChange={handleSearchChange}
-            placeholder="Search requests..."
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Search />
-                </InputAdornment>
-              ),
-              endAdornment: searchText && (
-                <InputAdornment position="end">
-                  <IconButton edge="end" onClick={() => setSearchText('')}>
-                    <Close />
-                  </IconButton>
-                </InputAdornment>
-              ),
-            }}
-          />
-
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, my: 3 }}>
           <ToggleButtonGroup
             value={rankMethod}
@@ -762,6 +739,29 @@ export default function VotingPage({ shows: searchableShows }) {
               Hide Available
             </ToggleButton>
           </ToggleButtonGroup>
+
+          <TextField
+            fullWidth
+            size="large"
+            variant="outlined"
+            value={searchText}
+            onChange={handleSearchChange}
+            placeholder="Filter by name..."
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Search />
+                </InputAdornment>
+              ),
+              endAdornment: searchText && (
+                <InputAdornment position="end">
+                  <IconButton edge="end" onClick={() => setSearchText('')}>
+                    <Close />
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
+          />
         </Box>
 
         <Grid container style={{ minWidth: '100%' }}>
