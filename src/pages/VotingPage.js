@@ -59,6 +59,7 @@ const StyledImg = styled('img')``;
 export default function VotingPage({ shows: searchableShows }) {
   const navigate = useNavigate();
   const [votes, setVotes] = useState({});
+  const [filteredSeriesData, setFilteredSeriesData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [votingStatus, setVotingStatus] = useState({});
@@ -139,61 +140,13 @@ export default function VotingPage({ shows: searchableShows }) {
   }, [searchText, rankMethod]);
 
   const fetchVoteData = async () => {
-    if (votesCache.current) {
-      const voteDataResponse = votesCache.current;
+    try {
+      if (votesCache.current) {
+        const voteDataResponse = votesCache.current;
 
-      // Use cached data
-      setVoteData(voteDataResponse);
-      setVotes(voteDataResponse.votes);
-      setUserVotes(user ? voteDataResponse.userVoteData?.votesUp : {});
-      setUserVotesUp(user ? voteDataResponse.userVoteData?.votesUp : {});
-      setUserVotesDown(user ? voteDataResponse.userVoteData?.votesDown : {});
-      setAbleToVote(user ? voteDataResponse.userVoteData?.ableToVote : {});
-      setLastBoost(user ? voteDataResponse.userVoteData?.lastBoost : {});
-      setNextVoteTimes(voteDataResponse.userVoteData?.nextVoteTime || {});
-
-      const seriesIds = Object.keys(voteDataResponse.votes);
-
-      // Sort the series IDs based on the selected rank method
-      let newSortedSeriesIds = [];
-      switch (rankMethod) {
-        case 'combined':
-          newSortedSeriesIds = seriesIds.sort((a, b) => {
-            const voteDiffA = voteDataResponse.votes[a].upvotes - voteDataResponse.votes[a].downvotes;
-            const voteDiffB = voteDataResponse.votes[b].upvotes - voteDataResponse.votes[b].downvotes;
-            return voteDiffB - voteDiffA || a.localeCompare(b);
-          });
-          break;
-        case 'downvotes':
-          newSortedSeriesIds = seriesIds.sort((a, b) => {
-            return voteDataResponse.votes[b].downvotes - voteDataResponse.votes[a].downvotes || a.localeCompare(b);
-          });
-          break;
-        default: // Upvotes
-          newSortedSeriesIds = seriesIds.sort((a, b) => {
-            return voteDataResponse.votes[b].upvotes - voteDataResponse.votes[a].upvotes || a.localeCompare(b);
-          });
-      }
-
-      // Update the sortedSeriesIds state
-      setSortedSeriesIds(newSortedSeriesIds);
-
-      // Fetch only the initial page
-      fetchSeriesData(newSortedSeriesIds, 0, false);
-    } else {
-      if (!loadingMore) {
-        setLoading(true);
-      }
-      try {
-        // Fetch vote data
-        const voteDataResponse = await API.get('publicapi', '/vote/list');
-
-        // Save to cache
-        votesCache.current = voteDataResponse;
-
+        // Use cached data
         setVoteData(voteDataResponse);
         setVotes(voteDataResponse.votes);
-
         setUserVotes(user ? voteDataResponse.userVoteData?.votesUp : {});
         setUserVotesUp(user ? voteDataResponse.userVoteData?.votesUp : {});
         setUserVotesDown(user ? voteDataResponse.userVoteData?.votesDown : {});
@@ -201,28 +154,28 @@ export default function VotingPage({ shows: searchableShows }) {
         setLastBoost(user ? voteDataResponse.userVoteData?.lastBoost : {});
         setNextVoteTimes(voteDataResponse.userVoteData?.nextVoteTime || {});
 
-        // Get the series IDs from the votes
         const seriesIds = Object.keys(voteDataResponse.votes);
 
         // Sort the series IDs based on the selected rank method
-        /* eslint-disable prefer-const */
         let newSortedSeriesIds = [];
         switch (rankMethod) {
           case 'combined':
             newSortedSeriesIds = seriesIds.sort((a, b) => {
               const voteDiffA = voteDataResponse.votes[a].upvotes - voteDataResponse.votes[a].downvotes;
               const voteDiffB = voteDataResponse.votes[b].upvotes - voteDataResponse.votes[b].downvotes;
-              return voteDiffB - voteDiffA || a.localeCompare(b);
+              return voteDiffB - voteDiffA || safeCompareSeriesTitles(a, b);
             });
             break;
           case 'downvotes':
             newSortedSeriesIds = seriesIds.sort((a, b) => {
-              return voteDataResponse.votes[b].downvotes - voteDataResponse.votes[a].downvotes || a.localeCompare(b);
+              const downvoteDiff = voteDataResponse.votes[b].downvotes - voteDataResponse.votes[a].downvotes;
+              return downvoteDiff || safeCompareSeriesTitles(a, b);
             });
             break;
           default: // Upvotes
             newSortedSeriesIds = seriesIds.sort((a, b) => {
-              return voteDataResponse.votes[b].upvotes - voteDataResponse.votes[a].upvotes || a.localeCompare(b);
+              const upvoteDiff = voteDataResponse.votes[b].upvotes - voteDataResponse.votes[a].upvotes;
+              return upvoteDiff || safeCompareSeriesTitles(a, b);
             });
         }
 
@@ -231,13 +184,69 @@ export default function VotingPage({ shows: searchableShows }) {
 
         // Fetch only the initial page
         fetchSeriesData(newSortedSeriesIds, 0, false);
-      } catch (error) {
-        console.error('Error fetching vote data:', error);
-      } finally {
+      } else {
         if (!loadingMore) {
-          setLoading(false);
+          setLoading(true);
+        }
+        try {
+          // Fetch vote data
+          const voteDataResponse = await API.get('publicapi', '/vote/list');
+
+          // Save to cache
+          votesCache.current = voteDataResponse;
+
+          setVoteData(voteDataResponse);
+          setVotes(voteDataResponse.votes);
+
+          setUserVotes(user ? voteDataResponse.userVoteData?.votesUp : {});
+          setUserVotesUp(user ? voteDataResponse.userVoteData?.votesUp : {});
+          setUserVotesDown(user ? voteDataResponse.userVoteData?.votesDown : {});
+          setAbleToVote(user ? voteDataResponse.userVoteData?.ableToVote : {});
+          setLastBoost(user ? voteDataResponse.userVoteData?.lastBoost : {});
+          setNextVoteTimes(voteDataResponse.userVoteData?.nextVoteTime || {});
+
+          // Get the series IDs from the votes
+          const seriesIds = Object.keys(voteDataResponse.votes);
+
+          // Sort the series IDs based on the selected rank method
+          /* eslint-disable prefer-const */
+          let newSortedSeriesIds = [];
+          switch (rankMethod) {
+            case 'combined':
+              newSortedSeriesIds = seriesIds.sort((a, b) => {
+                const voteDiffA = voteDataResponse.votes[a].upvotes - voteDataResponse.votes[a].downvotes;
+                const voteDiffB = voteDataResponse.votes[b].upvotes - voteDataResponse.votes[b].downvotes;
+                return voteDiffB - voteDiffA || safeCompareSeriesTitles(a, b);
+              });
+              break;
+            case 'downvotes':
+              newSortedSeriesIds = seriesIds.sort((a, b) => {
+                const downvoteDiff = voteDataResponse.votes[b].downvotes - voteDataResponse.votes[a].downvotes;
+                return downvoteDiff || safeCompareSeriesTitles(a, b);
+              });
+              break;
+            default: // Upvotes
+              newSortedSeriesIds = seriesIds.sort((a, b) => {
+                const upvoteDiff = voteDataResponse.votes[b].upvotes - voteDataResponse.votes[a].upvotes;
+                return upvoteDiff || safeCompareSeriesTitles(a, b);
+              });
+          }
+
+          // Update the sortedSeriesIds state
+          setSortedSeriesIds(newSortedSeriesIds);
+
+          // Fetch only the initial page
+          fetchSeriesData(newSortedSeriesIds, 0, false);
+        } catch (error) {
+          console.error('Error fetching vote data:', error);
+        } finally {
+          if (!loadingMore) {
+            setLoading(false);
+          }
         }
       }
+    } catch (error) {
+      console.error('Error in fetchVoteData:', error);
     }
   };
 
@@ -356,44 +365,46 @@ export default function VotingPage({ shows: searchableShows }) {
   };
 
   const filterAndSortSeriesData = (data = allSeriesData) => {
-    if (!data) return;
+    try {
+      if (!data) return;
 
-    // Apply search filter
-    const searchFilteredShows = data.filter(
-      (show) =>
-        show.statusText === 'requested' &&
-        show.name.toLowerCase().includes(searchText.toLowerCase())
-    );
+      // Apply search filter
+      const searchFilteredShows = data.filter(
+        (show) =>
+          show.statusText === 'requested' &&
+          show.name.toLowerCase().includes(searchText.toLowerCase())
+      );
 
-    // Sort the filtered shows based on the selected rank method
-    let sortedShows;
-    switch (rankMethod) {
-      case 'combined':
-        sortedShows = searchFilteredShows.sort((a, b) => {
-          const voteDiff = (voteData.votes[b.id]?.upvotes || 0) - (voteData.votes[a.id]?.upvotes || 0);
-          return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
-        });
-        break;
-      case 'downvotes':
-        sortedShows = searchFilteredShows.sort((a, b) => {
-          const voteDiff = (voteData.votes[a.id]?.downvotes || 0) - (voteData.votes[b.id]?.downvotes || 0);
-          return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
-        });
-        break;
-      default: // Upvotes
-        sortedShows = searchFilteredShows.sort((a, b) => {
-          const voteDiff = (voteData.votes[b.id]?.upvotes || 0) - (voteData.votes[a.id]?.upvotes || 0);
-          return voteDiff !== 0 ? voteDiff : a.name.localeCompare(b.name);
-        });
+      let sortedShows = [...searchFilteredShows]; // Create a copy of the filtered shows
+
+      if (sortedShows.length > 0) {
+        switch (rankMethod) {
+          case 'combined':
+            sortedShows.sort((a, b) => {
+              const voteDiffA = (voteData.votes[a.id]?.upvotes || 0) - (voteData.votes[a.id]?.downvotes || 0);
+              const voteDiffB = (voteData.votes[b.id]?.upvotes || 0) - (voteData.votes[b.id]?.downvotes || 0);
+              return voteDiffB - voteDiffA || safeCompareSeriesTitles(a.id, b.id);
+            });
+            break;
+          case 'downvotes':
+            sortedShows.sort((a, b) => {
+              const downvoteDiff = (voteData.votes[b.id]?.downvotes || 0) - (voteData.votes[a.id]?.downvotes || 0);
+              return downvoteDiff || safeCompareSeriesTitles(a.id, b.id);
+            });
+            break;
+          default: // Upvotes
+            sortedShows.sort((a, b) => {
+              const upvoteDiff = (voteData.votes[b.id]?.upvotes || 0) - (voteData.votes[a.id]?.upvotes || 0);
+              return upvoteDiff || safeCompareSeriesTitles(a.id, b.id);
+            });
+        }
+      }
+
+      setFilteredSeriesData(sortedShows); // Update the state with sorted shows
+    } catch (error) {
+      console.error('Error in filterAndSortSeriesData:', error);
+      setFilteredSeriesData([]); // Set an empty array in case of error
     }
-
-    // Add rank to each show
-    sortedShows.forEach((show, index) => {
-      show.rank = index + 1;
-    });
-
-    // Set seriesMetadata to paginatedShows
-    setSeriesMetadata(sortedShows.slice(0, itemsPerPage));
   };
 
   const handleVote = async (seriesId, boost) => {
@@ -554,6 +565,27 @@ export default function VotingPage({ shows: searchableShows }) {
         setOpen(true);
         setSubmittingRequest(false);
       });
+  };
+
+  const safeCompareSeriesTitles = (a, b) => {
+    try {
+      if (!seriesCache.current) {
+        console.warn('seriesCache.current is not initialized');
+        return 0;
+      }
+      const titleA = seriesCache.current[a]?.name;
+      const titleB = seriesCache.current[b]?.name;
+      return compareSeriesTitles(a, b);
+    } catch (error) {
+      console.error('Error in safeCompareSeriesTitles:', error);
+      return 0;
+    }
+  };
+
+  const compareSeriesTitles = (a, b) => {
+    const titleA = seriesCache.current[a].name.replace(/^The\s+/i, '').toLowerCase();
+    const titleB = seriesCache.current[b].name.replace(/^The\s+/i, '').toLowerCase();
+    return titleA.localeCompare(titleB);
   };
 
   return (
