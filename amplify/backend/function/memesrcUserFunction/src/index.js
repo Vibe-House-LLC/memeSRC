@@ -605,8 +605,7 @@ export const handler = async (event) => {
     const userAuth = event.requestContext.identity.cognitoAuthenticationType;
   
     // Extract the seriesId from the query string parameters if present
-    const seriesId =
-      event.queryStringParameters && event.queryStringParameters.id;
+    const seriesId = event.queryStringParameters && event.queryStringParameters.id;
   
     try {
       // Fetch all votes, optionally filtered by seriesId
@@ -630,10 +629,7 @@ export const handler = async (event) => {
           .slice(0, 100);
   
         // Combine both lists to get the unique union
-        const topSeriesIdSet = new Set([
-          ...seriesIdsByUpvotes,
-          ...seriesIdsByNetVotes,
-        ]);
+        const topSeriesIdSet = new Set([...seriesIdsByUpvotes, ...seriesIdsByNetVotes]);
         topSeriesIds = Array.from(topSeriesIdSet);
   
         // Filter totalVotes to include only top seriesIds
@@ -664,31 +660,24 @@ export const handler = async (event) => {
   
           currentUserVotesUp = userProcessedVotes.currentUserVotesUp || {};
           currentUserVotesDown = userProcessedVotes.currentUserVotesDown || {};
-          lastUserVoteTimestamps =
-            userProcessedVotes.lastUserVoteTimestamps || {};
+          lastUserVoteTimestamps = userProcessedVotes.lastUserVoteTimestamps || {};
           lastBoostValues = userProcessedVotes.lastBoostValues || {};
+  
+          console.log('Last Boost Values:', JSON.stringify(lastBoostValues, null, 2));
   
           // Filter user-specific data if topSeriesIds is defined
           if (topSeriesIds) {
             currentUserVotesUp = Object.fromEntries(
-              Object.entries(currentUserVotesUp).filter(([id]) =>
-                topSeriesIds.includes(id)
-              )
+              Object.entries(currentUserVotesUp).filter(([id]) => topSeriesIds.includes(id))
             );
             currentUserVotesDown = Object.fromEntries(
-              Object.entries(currentUserVotesDown).filter(([id]) =>
-                topSeriesIds.includes(id)
-              )
+              Object.entries(currentUserVotesDown).filter(([id]) => topSeriesIds.includes(id))
             );
             lastUserVoteTimestamps = Object.fromEntries(
-              Object.entries(lastUserVoteTimestamps).filter(([id]) =>
-                topSeriesIds.includes(id)
-              )
+              Object.entries(lastUserVoteTimestamps).filter(([id]) => topSeriesIds.includes(id))
             );
             lastBoostValues = Object.fromEntries(
-              Object.entries(lastBoostValues).filter(([id]) =>
-                topSeriesIds.includes(id)
-              )
+              Object.entries(lastBoostValues).filter(([id]) => topSeriesIds.includes(id))
             );
           }
         }
@@ -712,13 +701,11 @@ export const handler = async (event) => {
   
               if (timeSinceLastVote < twentyFourHours) {
                 ableToVote = false;
-                nextVoteTime = new Date(
-                  lastVoteTime.getTime() + twentyFourHours
-                ).toISOString();
+                nextVoteTime = new Date(lastVoteTime.getTime() + twentyFourHours).toISOString();
               }
             }
   
-            lastBoost = lastBoostValues[id] || null;
+            lastBoost = lastBoostValues[id] !== undefined ? lastBoostValues[id] : null;
           }
   
           responseData[id] = {
@@ -734,17 +721,17 @@ export const handler = async (event) => {
   
         response = {
           statusCode: 200,
-          body: responseData,
+          body: JSON.stringify(responseData),
         };
       }
     } catch (error) {
       console.log(`Failed to get votes: ${error.message}`);
       response = {
         statusCode: 500,
-        body: `Failed to get votes: ${error.message}`,
+        body: JSON.stringify({ error: `Failed to get votes: ${error.message}` }),
       };
     }
-  }  
+  }
 
   if (path === `/${process.env.ENV}/public/requests/add`) {
     const listTvdbResultsQuery = `
