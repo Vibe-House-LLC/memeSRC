@@ -28,9 +28,13 @@ import {
   Checkbox,
   FormControlLabel,
   Skeleton,
+  ToggleButton,
+  ToggleButtonGroup,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { ArrowUpward, ArrowDownward, Search, Close, ThumbUp, Whatshot, Lock } from '@mui/icons-material';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import FlipMove from 'react-flip-move';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -77,7 +81,10 @@ export default function VotingPage({ shows: searchableShows }) {
   const [openAddRequest, setOpenAddRequest] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState();
   const [submittingRequest, setSubmittingRequest] = useState(false);
-  const [hideSearchable, setHideSearchable] = useState(false);
+  const [hideSearchable, setHideSearchable] = useState(() => {
+    const savedPreference = localStorage.getItem('hideSearchable');
+    return savedPreference ? JSON.parse(savedPreference) : false;
+  });
   const { setMessage, setOpen, setSeverity } = useContext(SnackbarContext);
 
   // State variables
@@ -657,6 +664,17 @@ export default function VotingPage({ shows: searchableShows }) {
     setBattlegroundRanks(filteredBattlegroundRanks);
   };
 
+  useEffect(() => {
+    localStorage.setItem('hideSearchable', JSON.stringify(hideSearchable));
+  }, [hideSearchable]);
+
+  const handleHideSearchableChange = (event, newValue) => {
+    // Only update if a button is selected (newValue is not null)
+    if (newValue !== null) {
+      setHideSearchable(newValue);
+    }
+  };
+
   return (
     <>
       <Helmet>
@@ -722,19 +740,24 @@ export default function VotingPage({ shows: searchableShows }) {
               ),
             }}
           />
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={hideSearchable}
-                onChange={() => setHideSearchable(!hideSearchable)}
-                name="hideSearchable"
-                color="primary"
-              />
-            }
-            label="Hide Searchable"
-            style={{ opacity: hideSearchable ? 1 : 0.5, fontSize: '0.1rem' }}
-            sx={{ margin: 0, marginBottom: -2 }}
-          />
+          <ToggleButtonGroup
+            value={hideSearchable}
+            exclusive
+            onChange={handleHideSearchableChange}
+            aria-label="hide searchable shows"
+            fullWidth
+            size="small"
+            sx={{ mt: 1 }}
+          >
+            <ToggleButton value={false} aria-label="show all">
+              <VisibilityIcon sx={{ mr: 1 }} />
+              Show All
+            </ToggleButton>
+            <ToggleButton value aria-label="hide searchable">
+              <VisibilityOffIcon sx={{ mr: 1 }} />
+              Hide Available
+            </ToggleButton>
+          </ToggleButtonGroup>
         </Box>
         <Grid container style={{ minWidth: '100%' }}>
           {loading && !seriesMetadata.length ? (
