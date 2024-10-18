@@ -594,17 +594,18 @@ export default function VotingPage({ shows: searchableShows }) {
       }
       const titleA = seriesCache.current[a]?.name;
       const titleB = seriesCache.current[b]?.name;
-      return compareSeriesTitles(a, b);
+      
+      if (!titleA && !titleB) return 0;
+      if (!titleA) return 1;
+      if (!titleB) return -1;
+      
+      return titleA.replace(/^The\s+/i, '').toLowerCase().localeCompare(
+        titleB.replace(/^The\s+/i, '').toLowerCase()
+      );
     } catch (error) {
       console.error('Error in safeCompareSeriesTitles:', error);
       return 0;
     }
-  };
-
-  const compareSeriesTitles = (a, b) => {
-    const titleA = seriesCache.current[a].name.replace(/^The\s+/i, '').toLowerCase();
-    const titleB = seriesCache.current[b].name.replace(/^The\s+/i, '').toLowerCase();
-    return titleA.localeCompare(titleB);
   };
 
   // Update the useEffect that handles hideSearchable changes
