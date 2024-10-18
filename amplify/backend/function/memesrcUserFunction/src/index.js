@@ -644,8 +644,7 @@ export const handler = async (event) => {
         // Initialize variables for user-specific data
         let currentUserVotesUp = {};
         let currentUserVotesDown = {};
-        let isLastUserVoteOlderThan24Hours = null;
-        let nextVoteTime = null;
+        let lastUserVoteTimestamps = {};
   
         if (userAuth !== "unauthenticated") {
           // Fetch and process the user's personal votes
@@ -654,8 +653,7 @@ export const handler = async (event) => {
   
           currentUserVotesUp = userProcessedVotes.currentUserVotesUp || {};
           currentUserVotesDown = userProcessedVotes.currentUserVotesDown || {};
-          isLastUserVoteOlderThan24Hours = userProcessedVotes.isLastUserVoteOlderThan24Hours;
-          nextVoteTime = userProcessedVotes.nextVoteTime;
+          lastUserVoteTimestamps = userProcessedVotes.lastUserVoteTimestamps || {};
   
           // Filter user-specific data if topSeriesIds is defined
           if (topSeriesIds) {
@@ -665,26 +663,46 @@ export const handler = async (event) => {
             currentUserVotesDown = Object.fromEntries(
               Object.entries(currentUserVotesDown).filter(([id]) => topSeriesIds.includes(id))
             );
+            lastUserVoteTimestamps = Object.fromEntries(
+              Object.entries(lastUserVoteTimestamps).filter(([id]) => topSeriesIds.includes(id))
+            );
           }
         }
   
         // Prepare the final response mapping seriesIds to their data
         const responseData = {};
+        const now = new Date();
   
         for (let id in totalVotes) {
+          // Initialize default values
+          let ableToVote = true;
+          let nextVoteTime = null;
+  
+          // Calculate ableToVote and nextVoteTime per seriesId if the user is authenticated
+          if (userAuth !== "unauthenticated" && lastUserVoteTimestamps[id]) {
+            const lastVoteTime = new Date(lastUserVoteTimestamps[id]);
+            const timeSinceLastVote = now - lastVoteTime;
+            const twentyFourHours = 24 * 60 * 60 * 1000; // milliseconds
+  
+            if (timeSinceLastVote < twentyFourHours) {
+              ableToVote = false;
+              nextVoteTime = new Date(lastVoteTime.getTime() + twentyFourHours).toISOString();
+            }
+          }
+  
           responseData[id] = {
             totalVotesUp: totalVotes[id].upvotes,
             totalVotesDown: totalVotes[id].downvotes,
             userVotesUp: currentUserVotesUp[id] || 0,
             userVotesDown: currentUserVotesDown[id] || 0,
-            ableToVote: isLastUserVoteOlderThan24Hours,
+            ableToVote: ableToVote,
             nextVoteTime: nextVoteTime,
           };
         }
   
         response = {
           statusCode: 200,
-          body: responseData,
+          body: JSON.stringify(responseData),
         };
       }
     } catch (error) {
@@ -694,7 +712,8 @@ export const handler = async (event) => {
         body: `Failed to get votes: ${error.message}`,
       };
     }
-  }  
+  }
+  
 
   if (path === `/${process.env.ENV}/public/requests/add`) {
     const listTvdbResultsQuery = `
