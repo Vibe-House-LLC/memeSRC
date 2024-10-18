@@ -261,10 +261,10 @@ export default function VotingPage({ shows: searchableShows }) {
 
         // Use cached data
         setVoteData(voteDataResponse);
-        setUserVotesUp(user ? voteDataResponse.userVoteData?.votesUp : {});
-        setUserVotesDown(user ? voteDataResponse.userVoteData?.votesDown : {});
-        setAbleToVote(user ? voteDataResponse.userVoteData?.ableToVote : {});
-        setLastBoost(user ? voteDataResponse.userVoteData?.lastBoost : {});
+        setUserVotesUp(user ? (voteDataResponse.userVoteData?.votesUp || {}) : {});
+        setUserVotesDown(user ? (voteDataResponse.userVoteData?.votesDown || {}) : {});
+        setAbleToVote(user ? (voteDataResponse.userVoteData?.ableToVote || {}) : {});
+        setLastBoost(user ? (voteDataResponse.userVoteData?.lastBoost || {}) : {});
         setNextVoteTimes(voteDataResponse.userVoteData?.nextVoteTime || {});
 
         const seriesIds = Object.keys(voteDataResponse.votes);
@@ -312,10 +312,10 @@ export default function VotingPage({ shows: searchableShows }) {
 
           setVoteData(voteDataResponse);
 
-          setUserVotesUp(user ? voteDataResponse.userVoteData?.votesUp : {});
-          setUserVotesDown(user ? voteDataResponse.userVoteData?.votesDown : {});
-          setAbleToVote(user ? voteDataResponse.userVoteData?.ableToVote : {});
-          setLastBoost(user ? voteDataResponse.userVoteData?.lastBoost : {});
+          setUserVotesUp(user ? (voteDataResponse.userVoteData?.votesUp || {}) : {});
+          setUserVotesDown(user ? (voteDataResponse.userVoteData?.votesDown || {}) : {});
+          setAbleToVote(user ? (voteDataResponse.userVoteData?.ableToVote || {}) : {});
+          setLastBoost(user ? (voteDataResponse.userVoteData?.lastBoost || {}) : {});
           setNextVoteTimes(voteDataResponse.userVoteData?.nextVoteTime || {});
 
           const seriesIds = Object.keys(voteDataResponse.votes);
@@ -842,7 +842,7 @@ export default function VotingPage({ shows: searchableShows }) {
                                           title={
                                             // This is where we show two different options depending on vote status
                                             // TODO: Show how much time remains until the next vote
-                                            (ableToVote[show.id] !== undefined && ableToVote[show.id] !== true) || votingStatus[show.id]
+                                            (ableToVote?.[show.id] !== undefined && ableToVote[show.id] !== true) || votingStatus?.[show.id]
                                               ? user ? `🔒 ${timeRemaining}`
                                               : 'Upvote'
                                               : 'Upvote'
@@ -876,10 +876,9 @@ export default function VotingPage({ shows: searchableShows }) {
                                                   : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
                                               }
                                               disabled={
-                                                user &&
-                                                ((ableToVote[show.id] !== undefined &&
-                                                  ableToVote[show.id] !== true) ||
-                                                  !!votingStatus[show.id])
+                                                user && 
+                                                ((ableToVote?.[show.id] !== undefined && ableToVote[show.id] !== true) || 
+                                                votingStatus?.[show.id])
                                               }
                                               size="small"
                                             >
@@ -924,7 +923,7 @@ export default function VotingPage({ shows: searchableShows }) {
                                             calculateTimeRemaining(nextVoteTimes[show.id]);
                                           }}
                                           title={
-                                            (ableToVote[show.id] !== undefined && ableToVote[show.id] !== true) || votingStatus[show.id]
+                                            (ableToVote?.[show.id] !== undefined && ableToVote[show.id] !== true) || votingStatus?.[show.id]
                                               ? user ? `🔒 ${timeRemaining}`
                                               : 'Downvote'
                                               : 'Downvote'
@@ -959,9 +958,9 @@ export default function VotingPage({ shows: searchableShows }) {
                                               }
                                               disabled={
                                                 user &&
-                                                ((ableToVote[show.id] !== undefined &&
+                                                ((ableToVote?.[show.id] !== undefined &&
                                                   ableToVote[show.id] !== true) ||
-                                                  !!votingStatus[show.id])
+                                                  votingStatus?.[show.id])
                                               }
                                               size="small"
                                             >
@@ -997,7 +996,7 @@ export default function VotingPage({ shows: searchableShows }) {
                                           title={
                                             // This is where we show two different options depending on vote status
                                             // TODO: Show how much time remains until the next vote
-                                            (ableToVote[show.id] !== undefined && ableToVote[show.id] !== true) || votingStatus[show.id]
+                                            (ableToVote?.[show.id] !== undefined && ableToVote[show.id] !== true) || votingStatus?.[show.id]
                                               ? user ? `🔒 ${timeRemaining}`
                                               : 'Upvote'
                                               : 'Upvote'
@@ -1027,7 +1026,7 @@ export default function VotingPage({ shows: searchableShows }) {
                                                   ? handleUpvote(show.id)
                                                   : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
                                               }
-                                              disabled={user && ((ableToVote[show.id] !== undefined && ableToVote[show.id] !== true) || votingStatus[show.id])}
+                                              disabled={user && ((ableToVote?.[show.id] !== undefined && ableToVote[show.id] !== true) || votingStatus?.[show.id])}
                                               size="small"
                                             >
                                               {lastBoost[show.id] === -1 &&
