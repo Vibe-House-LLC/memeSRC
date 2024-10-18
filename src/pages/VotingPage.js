@@ -128,16 +128,17 @@ export default function VotingPage({ shows: searchableShows }) {
       if (allSeriesData === null) {
         fetchAllSeriesData();
       } else {
-        filterAndSortSeriesData();
+        filterAndSortSeriesData(allSeriesData);
       }
     } else {
       setIsSearching(false);
+      setFilteredSeriesData([]);
       setSeriesMetadata([]);
-      setCurrentPage(0);
       setSortedSeriesIds([]);
+      setCurrentPage(0);
       fetchVoteData();
     }
-  }, [searchText, rankMethod]);
+  }, [searchText, rankMethod, voteData]);
 
   const fetchVoteData = async () => {
     try {
@@ -385,7 +386,6 @@ export default function VotingPage({ shows: searchableShows }) {
       // Apply search filter
       const searchFilteredShows = data.filter(
         (show) =>
-          show.statusText === 'requested' &&
           show.name.toLowerCase().includes(searchText.toLowerCase())
       );
 
@@ -397,27 +397,32 @@ export default function VotingPage({ shows: searchableShows }) {
             sortedShows.sort((a, b) => {
               const voteDiffA = (voteData.votes[a.id]?.upvotes || 0) - (voteData.votes[a.id]?.downvotes || 0);
               const voteDiffB = (voteData.votes[b.id]?.upvotes || 0) - (voteData.votes[b.id]?.downvotes || 0);
-              return voteDiffB - voteDiffA || safeCompareSeriesTitles(a.id, b.id);
+              return voteDiffB - voteDiffA || a.name.localeCompare(b.name);
             });
             break;
           case 'downvotes':
             sortedShows.sort((a, b) => {
               const downvoteDiff = (voteData.votes[b.id]?.downvotes || 0) - (voteData.votes[a.id]?.downvotes || 0);
-              return downvoteDiff || safeCompareSeriesTitles(a.id, b.id);
+              return downvoteDiff || a.name.localeCompare(b.name);
             });
             break;
           default: // Upvotes
             sortedShows.sort((a, b) => {
               const upvoteDiff = (voteData.votes[b.id]?.upvotes || 0) - (voteData.votes[a.id]?.upvotes || 0);
-              return upvoteDiff || safeCompareSeriesTitles(a.id, b.id);
+              return upvoteDiff || a.name.localeCompare(b.name);
             });
         }
       }
 
       setFilteredSeriesData(sortedShows); // Update the state with sorted shows
+      setSeriesMetadata(sortedShows); // Update seriesMetadata with the filtered and sorted data
+      setSortedSeriesIds(sortedShows.map(show => show.id)); // Update sortedSeriesIds
+      setCurrentPage(0); // Reset to the first page when search changes
     } catch (error) {
       console.error('Error in filterAndSortSeriesData:', error);
       setFilteredSeriesData([]); // Set an empty array in case of error
+      setSeriesMetadata([]);
+      setSortedSeriesIds([]);
     }
   };
 
