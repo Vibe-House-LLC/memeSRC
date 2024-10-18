@@ -32,13 +32,14 @@ import {
   ToggleButtonGroup,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import { ArrowUpward, ArrowDownward, Search, Close, ThumbUp, Whatshot, Lock } from '@mui/icons-material';
+import { ArrowUpward, ArrowDownward, Search, Close, ThumbUp, Whatshot, Lock, NewReleasesOutlined } from '@mui/icons-material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import FlipMove from 'react-flip-move';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { LoadingButton } from '@mui/lab';
+import { GridFilterAltIcon, GridSearchIcon } from '@mui/x-data-grid';
 import { listSeries, getSeries } from '../graphql/queries';
 import { UserContext } from '../UserContext';
 import TvdbSearch from '../components/TvdbSearch/TvdbSearch';
@@ -81,9 +82,10 @@ export default function VotingPage({ shows: searchableShows }) {
   const [openAddRequest, setOpenAddRequest] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState();
   const [submittingRequest, setSubmittingRequest] = useState(false);
-  const [hideSearchable, setHideSearchable] = useState(() => {
-    const savedPreference = localStorage.getItem('hideSearchable');
-    return savedPreference ? JSON.parse(savedPreference) : false;
+  const [hideSearchable, setHideSearchable] = useState(false);
+  const [displayOption, setDisplayOption] = useState(() => {
+    const savedPreference = localStorage.getItem('displayOption');
+    return savedPreference || 'showAll';
   });
   const { setMessage, setOpen, setSeverity } = useContext(SnackbarContext);
 
@@ -682,10 +684,24 @@ export default function VotingPage({ shows: searchableShows }) {
   //   localStorage.setItem('hideSearchable', JSON.stringify(hideSearchable));
   // }, [hideSearchable]);
 
-  const handleHideSearchableChange = (event, newValue) => {
+  const handleDisplayOptionChange = (event, newValue) => {
     // Only update if a button is selected (newValue is not null)
     if (newValue !== null) {
-      setHideSearchable(newValue);
+      setDisplayOption(newValue);
+      localStorage.setItem('displayOption', newValue);
+    }
+  };
+
+  // Update the filtering logic in your component
+  const filterShows = (show) => {
+    const isSearchable = searchableShows.some((searchableShow) => searchableShow.id === show.slug);
+    switch (displayOption) {
+      case 'hideAvailable':
+        return !isSearchable;
+      case 'requested':
+        return isSearchable;
+      default: // 'showAll'
+        return true;
     }
   };
 
@@ -734,20 +750,27 @@ export default function VotingPage({ shows: searchableShows }) {
           </ToggleButtonGroup>
 
           <ToggleButtonGroup
-            value={hideSearchable}
+            value={displayOption}
             exclusive
-            onChange={handleHideSearchableChange}
-            aria-label="hide searchable shows"
+            onChange={handleDisplayOptionChange}
+            aria-label="display options"
             fullWidth
             size="small"
           >
-            <ToggleButton value={false} aria-label="show all">
-              <VisibilityIcon sx={{ mr: 1 }} />
-              Show All
+            <ToggleButton value="hideAvailable" aria-label="hide available">
+              {/* Changed to AssignmentIcon for "Requested" option */}
+              <NewReleasesOutlined sx={{ mr: 1 }} />
+              Requested
             </ToggleButton>
-            <ToggleButton value aria-label="hide searchable">
-              <VisibilityOffIcon sx={{ mr: 1 }} />
-              Hide Available
+            <ToggleButton value="requested" aria-label="requested">
+              {/* Changed to SearchIcon for "Available" option */}
+              <GridSearchIcon sx={{ mr: 1 }} />
+              Available
+            </ToggleButton>
+            <ToggleButton value="showAll" aria-label="show all">
+              {/* Changed to FilterAltIcon for "Both" option */}
+              <GridFilterAltIcon sx={{ mr: 1 }} />
+              Both
             </ToggleButton>
           </ToggleButtonGroup>
 
@@ -798,7 +821,7 @@ export default function VotingPage({ shows: searchableShows }) {
             <>
               <FlipMove key={rankMethod} style={{ minWidth: '100%' }}>
                 {seriesMetadata.map((show) => {
-                  if (hideSearchable && searchableShows.some((searchableShow) => searchableShow.id === show.slug)) {
+                  if (!filterShows(show)) {
                     return null;
                   }
                   const rank = rankMethod === 'upvotes' ? upvotesRanks[show.id] : battlegroundRanks[show.id];
@@ -853,7 +876,7 @@ export default function VotingPage({ shows: searchableShows }) {
                                             rel="noopener noreferrer" 
                                             style={{ textDecoration: 'none', color: 'inherit' }}
                                           >
-                                            <Chip sx={{ marginRight: 1, cursor: 'pointer' }} size='small' label="🔍 Tap to search!" color="success" variant="filled" />
+                                            <Chip sx={{ marginRight: 1, cursor: 'pointer' }} size='large' label="🔍 Search" color="success" variant="filled" />
                                           </a>
                                         )
                                       }
