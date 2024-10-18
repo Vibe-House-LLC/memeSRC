@@ -128,6 +128,11 @@ export default function VotingPage({ shows: searchableShows }) {
   const [isTopList, setIsTopList] = useState(true);
   const [topListExhausted, setTopListExhausted] = useState(false);
 
+  const [originalRanks, setOriginalRanks] = useState({});
+
+  // Add this new state variable
+  const [fullSortedSeriesIds, setFullSortedSeriesIds] = useState([]);
+
   const handleImageLoad = (showId) => {
     setLoadedImages(prev => ({ ...prev, [showId]: true }));
   };
@@ -198,6 +203,7 @@ export default function VotingPage({ shows: searchableShows }) {
         }
 
         // Update the sortedSeriesIds state
+        setFullSortedSeriesIds(newSortedSeriesIds);
         setSortedSeriesIds(newSortedSeriesIds);
 
         // Fetch only the initial page
@@ -250,6 +256,7 @@ export default function VotingPage({ shows: searchableShows }) {
           }
 
           // Update the sortedSeriesIds state
+          setFullSortedSeriesIds(newSortedSeriesIds);
           setSortedSeriesIds(newSortedSeriesIds);
 
           // Fetch only the initial page
@@ -342,43 +349,47 @@ export default function VotingPage({ shows: searchableShows }) {
     }
   };
 
-  // Update the recalculateRanks function
+  // Memoize 'filterShows' using 'useCallback'
+  const filterShows = useCallback((show) => {
+    const isSearchable = searchableShows.some((searchableShow) => searchableShow.id === show.slug);
+    switch (displayOption) {
+      case 'hideAvailable':
+        return !isSearchable;
+      case 'requested':
+        return isSearchable;
+      default: // 'showAll'
+        return true;
+    }
+  }, [displayOption, searchableShows]);
+
   const recalculateRanks = useCallback(() => {
     let currentRank = 1;
     const newRanks = {};
-    const seriesToRank = sortedSeriesIds.map(id => seriesCache.current[id]);
+    const seriesToRank = fullSortedSeriesIds.map(id => seriesCache.current[id]).filter(Boolean);
 
     seriesToRank.forEach((show) => {
-      if (show && (!hideSearchable || !searchableShows.some((searchableShow) => searchableShow.id === show.slug))) {
+      if (filterShows(show)) {
         newRanks[show.id] = currentRank;
         currentRank += 1;
       }
     });
 
-    setRanks(newRanks);
+    setOriginalRanks(newRanks);
     
-    // Update seriesMetadata with new ranks
     setSeriesMetadata(prevMetadata => 
       prevMetadata.map(show => ({ ...show, rank: newRanks[show.id] || null }))
     );
-  }, [hideSearchable, searchableShows, sortedSeriesIds]);
+  }, [filterShows, fullSortedSeriesIds]);
 
-  // Call recalculateRanks after data loads
   useEffect(() => {
     if (!loading && seriesMetadata.length > 0) {
       recalculateRanks();
     }
-  }, [loading, recalculateRanks]);
+  }, [loading, seriesMetadata.length, recalculateRanks]);
 
-  // Update ranks when rankMethod changes
   useEffect(() => {
     recalculateRanks();
   }, [rankMethod, recalculateRanks]);
-
-  // Update ranks when hideSearchable changes
-  useEffect(() => {
-    recalculateRanks();
-  }, [hideSearchable, recalculateRanks]);
 
   const handleLoadMore = () => {
     setLoadingMore(true);
@@ -461,15 +472,16 @@ export default function VotingPage({ shows: searchableShows }) {
       }
 
       setFilteredSeriesData(sortedShows);
-      setSortedSeriesIds(sortedShows.map(show => show.id));
+      // Remove lines that update sortedSeriesIds to prevent ranks being affected by search
+      // setSortedSeriesIds(sortedShows.map(show => show.id));
       setCurrentPage(0);
 
       // Update seriesMetadata with existing ranks
-      setSeriesMetadata(sortedShows.map(show => ({ ...show, rank: ranks[show.id] || null })));
+      setSeriesMetadata(sortedShows.map(show => ({ ...show, rank: originalRanks[show.id] || null })));
     } catch (error) {
       console.error('Error in filterAndSortSeriesData:', error);
       setFilteredSeriesData([]);
-      setSortedSeriesIds([]);
+      // setSortedSeriesIds([]);
       setSeriesMetadata([]);
     }
   };
@@ -648,7 +660,7 @@ export default function VotingPage({ shows: searchableShows }) {
     }
   }, [voteData.votes, hideSearchable, searchableShows]);
 
-  const updateRanks = () => {
+  const updateRanks = useCallback(() => {
     const seriesIds = Object.keys(voteData.votes);
     
     const upvotesOrder = [...seriesIds].sort((a, b) => {
@@ -663,14 +675,20 @@ export default function VotingPage({ shows: searchableShows }) {
     });
 
     const filteredUpvotesRanks = upvotesOrder
-      .filter(id => !hideSearchable || !searchableShows.some(show => show.id === seriesCache.current[id]?.slug))
+      .filter(id => {
+        const show = seriesCache.current[id];
+        return show && filterShows(show);
+      })
       .reduce((acc, id, index) => {
         acc[id] = index + 1;
         return acc;
       }, {});
 
     const filteredBattlegroundRanks = battlegroundOrder
-      .filter(id => !hideSearchable || !searchableShows.some(show => show.id === seriesCache.current[id]?.slug))
+      .filter(id => {
+        const show = seriesCache.current[id];
+        return show && filterShows(show);
+      })
       .reduce((acc, id, index) => {
         acc[id] = index + 1;
         return acc;
@@ -678,30 +696,12 @@ export default function VotingPage({ shows: searchableShows }) {
 
     setUpvotesRanks(filteredUpvotesRanks);
     setBattlegroundRanks(filteredBattlegroundRanks);
-  };
-
-  // useEffect(() => {
-  //   localStorage.setItem('hideSearchable', JSON.stringify(hideSearchable));
-  // }, [hideSearchable]);
+  }, [filterShows, voteData.votes]);
 
   const handleDisplayOptionChange = (event, newValue) => {
-    // Only update if a button is selected (newValue is not null)
     if (newValue !== null) {
       setDisplayOption(newValue);
       localStorage.setItem('displayOption', newValue);
-    }
-  };
-
-  // Update the filtering logic in your component
-  const filterShows = (show) => {
-    const isSearchable = searchableShows.some((searchableShow) => searchableShow.id === show.slug);
-    switch (displayOption) {
-      case 'hideAvailable':
-        return !isSearchable;
-      case 'requested':
-        return isSearchable;
-      default: // 'showAll'
-        return true;
     }
   };
 
@@ -758,17 +758,14 @@ export default function VotingPage({ shows: searchableShows }) {
             size="small"
           >
             <ToggleButton value="hideAvailable" aria-label="hide available">
-              {/* Changed to AssignmentIcon for "Requested" option */}
               <NewReleasesOutlined sx={{ mr: 1 }} />
               Requested
             </ToggleButton>
             <ToggleButton value="requested" aria-label="requested">
-              {/* Changed to SearchIcon for "Available" option */}
               <GridSearchIcon sx={{ mr: 1 }} />
               Available
             </ToggleButton>
             <ToggleButton value="showAll" aria-label="show all">
-              {/* Changed to FilterAltIcon for "Both" option */}
               <GridFilterAltIcon sx={{ mr: 1 }} />
               Both
             </ToggleButton>
@@ -824,7 +821,7 @@ export default function VotingPage({ shows: searchableShows }) {
                   if (!filterShows(show)) {
                     return null;
                   }
-                  const rank = rankMethod === 'upvotes' ? upvotesRanks[show.id] : battlegroundRanks[show.id];
+                  const rank = show.rank; // Use the rank from seriesMetadata
                   return (
                     <div key={show.id}>
                       <Grid item xs={12} style={{ marginBottom: 15 }}>
@@ -835,7 +832,7 @@ export default function VotingPage({ shows: searchableShows }) {
                                 <Box display="flex" alignItems="center">
                                   <Box mr={2} position="relative">
                                     <Badge
-                                      badgeContent={rank ? `#${rank}` : null}
+                                      badgeContent={originalRanks[show.id] ? `#${originalRanks[show.id]}` : null}
                                       color="secondary"
                                       anchorOrigin={{
                                         vertical: 'top',
