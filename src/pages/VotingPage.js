@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useState, useRef, useCallback } from 'react';
+import PropTypes from 'prop-types';
 import { API, graphqlOperation } from 'aws-amplify';
 import {
   Container,
@@ -88,8 +89,6 @@ export default function VotingPage({ shows: searchableShows }) {
 
   const [sortedSeriesIds, setSortedSeriesIds] = useState([]); // New state to store sorted IDs
 
-  const [refreshData, setRefreshData] = useState(false); // Trigger data refresh
-
   const location = useLocation();
 
   const theme = useTheme();
@@ -107,11 +106,6 @@ export default function VotingPage({ shows: searchableShows }) {
   const [allSeriesData, setAllSeriesData] = useState(null); // State to store all series data
 
   const [loadedImages, setLoadedImages] = useState({});
-
-  const [ranks, setRanks] = useState({});
-
-  const [upvotesRanks, setUpvotesRanks] = useState([]);
-  const [battlegroundRanks, setBattlegroundRanks] = useState([]);
 
   const [isTopList, setIsTopList] = useState(true);
   const [topListExhausted, setTopListExhausted] = useState(false);
@@ -132,24 +126,135 @@ export default function VotingPage({ shows: searchableShows }) {
     }
   }, []);
 
-  useEffect(() => {
-    if (searchText) {
-      setIsSearching(true);
-      if (allSeriesData === null) {
-        fetchAllSeriesData();
-      } else {
-        filterAndSortSeriesData(allSeriesData);
+  const safeCompareSeriesTitles = useCallback((a, b) => {
+    try {
+      if (!seriesCache.current) {
+        console.warn('seriesCache.current is not initialized');
+        return 0;
       }
-    } else {
-      setIsSearching(false);
-      setSeriesMetadata([]);
-      setSortedSeriesIds([]);
-      setCurrentPage(0);
-      fetchVoteData();
+      const titleA = seriesCache.current[a]?.name;
+      const titleB = seriesCache.current[b]?.name;
+      
+      if (!titleA && !titleB) return 0;
+      if (!titleA) return 1;
+      if (!titleB) return -1;
+      
+      return titleA.replace(/^The\s+/i, '').toLowerCase().localeCompare(
+        titleB.replace(/^The\s+/i, '').toLowerCase()
+      );
+    } catch (error) {
+      console.error('Error in safeCompareSeriesTitles:', error);
+      return 0;
     }
-  }, [searchText, rankMethod, voteData, isTopList]);
+  }, []);
 
-  const fetchVoteData = async () => {
+  const filterShows = useCallback((show) => {
+    const isSearchable = searchableShows.some((searchableShow) => searchableShow.id === show.slug);
+    switch (displayOption) {
+      case 'hideAvailable':
+        return !isSearchable;
+      case 'requested':
+        return isSearchable;
+      default: // 'showAll'
+        return true;
+    }
+  }, [displayOption, searchableShows]);
+
+  const recalculateRanks = useCallback(() => {
+    let currentRank = 1;
+    const newRanks = {};
+    const seriesToRank = fullSortedSeriesIds.map(id => seriesCache.current[id]).filter(Boolean);
+
+    seriesToRank.forEach((show) => {
+      if (filterShows(show)) {
+        newRanks[show.id] = currentRank;
+        currentRank += 1;
+      }
+    });
+
+    setOriginalRanks(newRanks);
+    
+    setSeriesMetadata(prevMetadata => 
+      prevMetadata.map(show => ({ ...show, rank: newRanks[show.id] || null }))
+    );
+  }, [filterShows, fullSortedSeriesIds]);
+
+  const fetchSeriesData = useCallback(async (sortedIds, page, isLoadingMore) => {
+    try {
+      const startIdx = page * itemsPerPage;
+      const endIdx = startIdx + itemsPerPage;
+      const paginatedSeriesIds = sortedIds.slice(startIdx, endIdx);
+
+      // Create placeholder data for all series in this page
+      const placeholderSeriesData = paginatedSeriesIds.map(id => ({
+        id,
+        name: 'Loading...',
+        description: 'Loading description...',
+        image: '',
+        rank: null
+      }));
+
+      // Update seriesMetadata immediately with placeholder data
+      setSeriesMetadata((prevSeriesMetadata) => {
+        if (isLoadingMore) {
+          return [...prevSeriesMetadata, ...placeholderSeriesData];
+        }
+        return [...placeholderSeriesData];
+      });
+
+      // Check cache for available series data
+      const cachedSeriesData = paginatedSeriesIds
+        .filter(id => seriesCache.current[id])
+        .map(id => seriesCache.current[id]);
+
+      const idsToFetch = paginatedSeriesIds.filter(id => !seriesCache.current[id]);
+
+      // Fetch series metadata for the IDs not in cache
+      if (idsToFetch.length > 0) {
+        const seriesDataPromises = idsToFetch.map((id) =>
+          API.graphql({
+            ...graphqlOperation(getSeries, { id }),
+            authMode: 'API_KEY',
+          })
+        );
+
+        const seriesDataResponses = await Promise.all(seriesDataPromises);
+        const fetchedSeriesData = seriesDataResponses.map(
+          (response) => response.data.getSeries
+        );
+
+        // Add fetched data to cache
+        fetchedSeriesData.forEach((data) => {
+          seriesCache.current[data.id] = data;
+        });
+
+        cachedSeriesData.push(...fetchedSeriesData);
+      }
+
+      // Update seriesMetadata with actual data
+      setSeriesMetadata((prevSeriesMetadata) => {
+        const updatedMetadata = [...prevSeriesMetadata];
+        cachedSeriesData.forEach((show) => {
+          const index = updatedMetadata.findIndex(item => item.id === show.id);
+          if (index !== -1) {
+            updatedMetadata[index] = { ...show, rank: null };
+          }
+        });
+        return updatedMetadata;
+      });
+
+      // Recalculate ranks after fetching data
+      recalculateRanks();
+
+    } catch (error) {
+      console.error('Error fetching series data:', error);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  }, [itemsPerPage, recalculateRanks]);
+
+  const fetchVoteData = useCallback(async () => {
     try {
       if (votesCache.current) {
         const voteDataResponse = votesCache.current;
@@ -255,172 +360,9 @@ export default function VotingPage({ shows: searchableShows }) {
     } catch (error) {
       console.error('Error in fetchVoteData:', error);
     }
-  };
+  }, [user, rankMethod, isTopList, loadingMore, safeCompareSeriesTitles, fetchSeriesData]);
 
-  const fetchSeriesData = async (sortedIds, page, isLoadingMore) => {
-    try {
-      const startIdx = page * itemsPerPage;
-      const endIdx = startIdx + itemsPerPage;
-      const paginatedSeriesIds = sortedIds.slice(startIdx, endIdx);
-
-      // Create placeholder data for all series in this page
-      const placeholderSeriesData = paginatedSeriesIds.map(id => ({
-        id,
-        name: 'Loading...',
-        description: 'Loading description...',
-        image: '', // Empty string for placeholder image
-        rank: null // Initialize rank as null
-      }));
-
-      // Update seriesMetadata immediately with placeholder data
-      setSeriesMetadata((prevSeriesMetadata) => {
-        if (isLoadingMore) {
-          return [...prevSeriesMetadata, ...placeholderSeriesData];
-        }
-        return [...placeholderSeriesData];
-      });
-
-      // Check cache for available series data
-      const cachedSeriesData = paginatedSeriesIds
-        .filter(id => seriesCache.current[id])
-        .map(id => seriesCache.current[id]);
-
-      const idsToFetch = paginatedSeriesIds.filter(id => !seriesCache.current[id]);
-
-      // Fetch series metadata for the IDs not in cache
-      if (idsToFetch.length > 0) {
-        const seriesDataPromises = idsToFetch.map((id) =>
-          API.graphql({
-            ...graphqlOperation(getSeries, { id }),
-            authMode: 'API_KEY',
-          })
-        );
-
-        const seriesDataResponses = await Promise.all(seriesDataPromises);
-        const fetchedSeriesData = seriesDataResponses.map(
-          (response) => response.data.getSeries
-        );
-
-        // Add fetched data to cache
-        fetchedSeriesData.forEach((data) => {
-          seriesCache.current[data.id] = data;
-        });
-
-        cachedSeriesData.push(...fetchedSeriesData);
-      }
-
-      // Update seriesMetadata with actual data
-      setSeriesMetadata((prevSeriesMetadata) => {
-        const updatedMetadata = [...prevSeriesMetadata];
-        cachedSeriesData.forEach((show) => {
-          const index = updatedMetadata.findIndex(item => item.id === show.id);
-          if (index !== -1) {
-            updatedMetadata[index] = { ...show, rank: null }; // Set rank to null initially
-          }
-        });
-        return updatedMetadata;
-      });
-
-      // Recalculate ranks after fetching data
-      recalculateRanks();
-
-    } catch (error) {
-      console.error('Error fetching series data:', error);
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-    }
-  };
-
-  // Memoize 'filterShows' using 'useCallback'
-  const filterShows = useCallback((show) => {
-    const isSearchable = searchableShows.some((searchableShow) => searchableShow.id === show.slug);
-    switch (displayOption) {
-      case 'hideAvailable':
-        return !isSearchable;
-      case 'requested':
-        return isSearchable;
-      default: // 'showAll'
-        return true;
-    }
-  }, [displayOption, searchableShows]);
-
-  const recalculateRanks = useCallback(() => {
-    let currentRank = 1;
-    const newRanks = {};
-    const seriesToRank = fullSortedSeriesIds.map(id => seriesCache.current[id]).filter(Boolean);
-
-    seriesToRank.forEach((show) => {
-      if (filterShows(show)) {
-        newRanks[show.id] = currentRank;
-        currentRank += 1;
-      }
-    });
-
-    setOriginalRanks(newRanks);
-    
-    setSeriesMetadata(prevMetadata => 
-      prevMetadata.map(show => ({ ...show, rank: newRanks[show.id] || null }))
-    );
-  }, [filterShows, fullSortedSeriesIds]);
-
-  useEffect(() => {
-    if (!loading && seriesMetadata.length > 0) {
-      recalculateRanks();
-    }
-  }, [loading, seriesMetadata.length, recalculateRanks]);
-
-  useEffect(() => {
-    recalculateRanks();
-  }, [rankMethod, recalculateRanks]);
-
-  const handleLoadMore = () => {
-    setLoadingMore(true);
-    const nextPage = currentPage + 1;
-    setCurrentPage(nextPage);
-
-    if (isTopList && (nextPage + 1) * itemsPerPage > 100) {
-      setIsTopList(false);
-      setTopListExhausted(true);
-      votesCache.current = null; // Clear cache to force a new fetch
-      fetchVoteData(); // Fetch the full list
-    } else {
-      fetchSeriesData(sortedSeriesIds, nextPage, true);
-    }
-  };
-
-  const fetchAllSeriesData = async () => {
-    setLoading(true);
-    try {
-      const fetchSeries = async (nextToken = null, accumulatedItems = []) => {
-        const result = await API.graphql({
-          ...graphqlOperation(listSeries, { nextToken, limit: 1000 }),
-          authMode: 'API_KEY',
-        });
-        const items = accumulatedItems.concat(result.data.listSeries.items);
-        if (result.data.listSeries.nextToken) {
-          return fetchSeries(result.data.listSeries.nextToken, items);
-        }
-        return items;
-      };
-
-      const fetchedSeriesData = await fetchSeries();
-
-      // Add all series to cache
-      fetchedSeriesData.forEach((show) => {
-        seriesCache.current[show.id] = show;
-      });
-
-      setAllSeriesData(fetchedSeriesData);
-      filterAndSortSeriesData(fetchedSeriesData);
-    } catch (error) {
-      console.error('Error fetching all series data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const filterAndSortSeriesData = (data = allSeriesData) => {
+  const filterAndSortSeriesData = useCallback((data = allSeriesData) => {
     try {
       if (!data) return;
 
@@ -454,16 +396,86 @@ export default function VotingPage({ shows: searchableShows }) {
         }
       }
 
-      // Remove lines that update sortedSeriesIds to prevent ranks being affected by search
-      // setSortedSeriesIds(sortedShows.map(show => show.id));
       setCurrentPage(0);
 
       // Update seriesMetadata with existing ranks
       setSeriesMetadata(sortedShows.map(show => ({ ...show, rank: originalRanks[show.id] || null })));
     } catch (error) {
       console.error('Error in filterAndSortSeriesData:', error);
-      // setSortedSeriesIds([]);
       setSeriesMetadata([]);
+    }
+  }, [allSeriesData, searchText, rankMethod, voteData.votes, originalRanks]);
+
+  const fetchAllSeriesData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const fetchSeries = async (nextToken = null, accumulatedItems = []) => {
+        const result = await API.graphql({
+          ...graphqlOperation(listSeries, { nextToken, limit: 1000 }),
+          authMode: 'API_KEY',
+        });
+        const items = accumulatedItems.concat(result.data.listSeries.items);
+        if (result.data.listSeries.nextToken) {
+          return fetchSeries(result.data.listSeries.nextToken, items);
+        }
+        return items;
+      };
+
+      const fetchedSeriesData = await fetchSeries();
+
+      // Add all series to cache
+      fetchedSeriesData.forEach((show) => {
+        seriesCache.current[show.id] = show;
+      });
+
+      setAllSeriesData(fetchedSeriesData);
+      filterAndSortSeriesData(fetchedSeriesData);
+    } catch (error) {
+      console.error('Error fetching all series data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [filterAndSortSeriesData]);
+
+  useEffect(() => {
+    if (searchText) {
+      setIsSearching(true);
+      if (allSeriesData === null) {
+        fetchAllSeriesData();
+      } else {
+        filterAndSortSeriesData(allSeriesData);
+      }
+    } else {
+      setIsSearching(false);
+      setSeriesMetadata([]);
+      setSortedSeriesIds([]);
+      setCurrentPage(0);
+      fetchVoteData();
+    }
+  }, [searchText, rankMethod, isTopList, allSeriesData, fetchAllSeriesData, filterAndSortSeriesData, fetchVoteData]);
+
+  useEffect(() => {
+    if (!loading && seriesMetadata.length > 0) {
+      recalculateRanks();
+    }
+  }, [loading, seriesMetadata.length, recalculateRanks]);
+
+  useEffect(() => {
+    recalculateRanks();
+  }, [rankMethod, recalculateRanks]);
+
+  const handleLoadMore = () => {
+    setLoadingMore(true);
+    const nextPage = currentPage + 1;
+    setCurrentPage(nextPage);
+
+    if (isTopList && (nextPage + 1) * itemsPerPage > 100) {
+      setIsTopList(false);
+      setTopListExhausted(true);
+      votesCache.current = null; // Clear cache to force a new fetch
+      fetchVoteData(); // Fetch the full list
+    } else {
+      fetchSeriesData(sortedSeriesIds, nextPage, true);
     }
   };
 
@@ -484,9 +496,6 @@ export default function VotingPage({ shows: searchableShows }) {
       } else if (boost === -1) {
         setUserVotesDown((prev) => ({ ...prev, [seriesId]: (prev[seriesId] || 0) + 1 }));
       }
-
-      // Update ranks
-      updateRanks();
 
       setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: false }));
       setLastBoost((prevLastBoost) => ({ ...prevLastBoost, [seriesId]: boost }));
@@ -540,7 +549,6 @@ export default function VotingPage({ shows: searchableShows }) {
       setRankMethod(newValue);
       setCurrentPage(0);
       setSeriesMetadata([]);
-      setRefreshData((prev) => !prev);
     }
   }, []);
 
@@ -598,72 +606,6 @@ export default function VotingPage({ shows: searchableShows }) {
         setSubmittingRequest(false);
       });
   };
-
-  const safeCompareSeriesTitles = (a, b) => {
-    try {
-      if (!seriesCache.current) {
-        console.warn('seriesCache.current is not initialized');
-        return 0;
-      }
-      const titleA = seriesCache.current[a]?.name;
-      const titleB = seriesCache.current[b]?.name;
-      
-      if (!titleA && !titleB) return 0;
-      if (!titleA) return 1;
-      if (!titleB) return -1;
-      
-      return titleA.replace(/^The\s+/i, '').toLowerCase().localeCompare(
-        titleB.replace(/^The\s+/i, '').toLowerCase()
-      );
-    } catch (error) {
-      console.error('Error in safeCompareSeriesTitles:', error);
-      return 0;
-    }
-  };
-
-  useEffect(() => {
-    if (voteData.votes) {
-      updateRanks();
-    }
-  }, [voteData.votes, searchableShows]);
-
-  const updateRanks = useCallback(() => {
-    const seriesIds = Object.keys(voteData.votes);
-    
-    const upvotesOrder = [...seriesIds].sort((a, b) => {
-      const upvoteDiff = (voteData.votes[b].upvotes || 0) - (voteData.votes[a].upvotes || 0);
-      return upvoteDiff || safeCompareSeriesTitles(a, b);
-    });
-
-    const battlegroundOrder = [...seriesIds].sort((a, b) => {
-      const voteDiffA = (voteData.votes[a].upvotes || 0) - (voteData.votes[a].downvotes || 0);
-      const voteDiffB = (voteData.votes[b].upvotes || 0) - (voteData.votes[b].downvotes || 0);
-      return voteDiffB - voteDiffA || safeCompareSeriesTitles(a, b);
-    });
-
-    const filteredUpvotesRanks = upvotesOrder
-      .filter(id => {
-        const show = seriesCache.current[id];
-        return show && filterShows(show);
-      })
-      .reduce((acc, id, index) => {
-        acc[id] = index + 1;
-        return acc;
-      }, {});
-
-    const filteredBattlegroundRanks = battlegroundOrder
-      .filter(id => {
-        const show = seriesCache.current[id];
-        return show && filterShows(show);
-      })
-      .reduce((acc, id, index) => {
-        acc[id] = index + 1;
-        return acc;
-      }, {});
-
-    setUpvotesRanks(filteredUpvotesRanks);
-    setBattlegroundRanks(filteredBattlegroundRanks);
-  }, [filterShows, voteData.votes]);
 
   const handleDisplayOptionChange = (event, newValue) => {
     if (newValue !== null) {
@@ -788,7 +730,6 @@ export default function VotingPage({ shows: searchableShows }) {
                   if (!filterShows(show)) {
                     return null;
                   }
-                  const rank = show.rank; // Use the rank from seriesMetadata
                   return (
                     <div key={show.id}>
                       <Grid item xs={12} style={{ marginBottom: 15 }}>
@@ -1188,7 +1129,7 @@ export default function VotingPage({ shows: searchableShows }) {
           </Typography>
         </DialogTitle>
         <DialogContent sx={{ paddingTop: 2 }}>
-          <TvdbSearch typeFilter={['series', 'movie']} onClear={(value) => { setSelectedRequest() }} onSelect={(value) => { setSelectedRequest(value) }} />
+          <TvdbSearch typeFilter={['series', 'movie']} onClear={() => { setSelectedRequest() }} onSelect={(value) => { setSelectedRequest(value) }} />
           {selectedRequest &&
 
             <Grid container spacing={2} alignItems='center' mt={2}>
@@ -1240,3 +1181,12 @@ export default function VotingPage({ shows: searchableShows }) {
     </>
   );
 }
+
+VotingPage.propTypes = {
+  shows: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.string.isRequired,
+      // Add other properties of the show object if needed
+    })
+  ).isRequired,
+};
