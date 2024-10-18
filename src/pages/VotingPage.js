@@ -664,9 +664,9 @@ export default function VotingPage({ shows: searchableShows }) {
     setBattlegroundRanks(filteredBattlegroundRanks);
   };
 
-  useEffect(() => {
-    localStorage.setItem('hideSearchable', JSON.stringify(hideSearchable));
-  }, [hideSearchable]);
+  // useEffect(() => {
+  //   localStorage.setItem('hideSearchable', JSON.stringify(hideSearchable));
+  // }, [hideSearchable]);
 
   const handleHideSearchableChange = (event, newValue) => {
     // Only update if a button is selected (newValue is not null)
@@ -683,7 +683,7 @@ export default function VotingPage({ shows: searchableShows }) {
       <Container maxWidth="md">
         <Box my={2} sx={{ marginTop: -2, marginBottom: -1.5 }}>
           <Typography variant="h3" component="h1" gutterBottom>
-            Voting and Requests
+            Voting & Requests
           </Typography>
           <Typography variant="subtitle2">Upvote the most memeable shows and movies</Typography>
         </Box>
@@ -749,7 +749,19 @@ export default function VotingPage({ shows: searchableShows }) {
             size="small"
             sx={{ mt: 1 }}
           >
-            <ToggleButton value={false} aria-label="show all">
+            <ToggleButton 
+              value={false} 
+              aria-label="show all"
+              sx={{
+                '&.Mui-selected': {
+                  backgroundColor: 'rgba(84, 214, 44, 0.16)',
+                  color: 'success.main',
+                  '&:hover': {
+                    backgroundColor: 'rgba(84, 214, 44, 0.24)',
+                  },
+                },
+              }}
+            >
               <VisibilityIcon sx={{ mr: 1 }} />
               Show All
             </ToggleButton>
