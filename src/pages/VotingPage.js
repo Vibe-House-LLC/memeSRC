@@ -465,7 +465,7 @@ export default function VotingPage({ shows: searchableShows }) {
     if (fullSortedSeriesIds.length > 0) {
       timer = setTimeout(() => {
         recalculateRanks();
-      }, 500); // 100ms delay
+      }, 1500);
     }
     return () => {
       if (timer) clearTimeout(timer);
