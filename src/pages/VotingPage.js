@@ -286,8 +286,20 @@ export default function VotingPage({ shows: searchableShows }) {
     }
   }, [itemsPerPage, recalculateRanks]);
 
+  const clearOtherUserCaches = useCallback(() => {
+    const currentUserKey = user ? `votesCache_${user.username || user.id}` : null;
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('votesCache_') && key !== currentUserKey) {
+        localStorage.removeItem(key);
+      }
+    });
+  }, [user]);
+
   const fetchVoteData = useCallback(async () => {
     try {
+      // Clear other user caches if logged out or different user
+      clearOtherUserCaches();
+
       // Load from localStorage if available and not expired
       try {
         // Load public vote data
@@ -330,6 +342,9 @@ export default function VotingPage({ shows: searchableShows }) {
           } else {
             userCacheNeedsUpdate = true;
           }
+        } else {
+          // If not logged in, clear all user-specific caches
+          clearOtherUserCaches();
         }
 
         // If user is logged in but no valid user cache exists, force a new fetch
@@ -468,7 +483,7 @@ export default function VotingPage({ shows: searchableShows }) {
     } catch (error) {
       console.error('Error in fetchVoteData:', error);
     }
-  }, [user, rankMethod, isTopList, loadingMore, safeCompareSeriesTitles, fetchSeriesData]);
+  }, [user, rankMethod, isTopList, loadingMore, safeCompareSeriesTitles, fetchSeriesData, clearOtherUserCaches]);
 
   const filterAndSortSeriesData = useCallback((data = allSeriesData) => {
     try {
