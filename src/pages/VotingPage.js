@@ -111,6 +111,8 @@ export default function VotingPage({ shows: searchableShows }) {
 
   const [loadedImages, setLoadedImages] = useState({});
 
+  const [ranks, setRanks] = useState({});
+
   const handleImageLoad = (showId) => {
     setLoadedImages(prev => ({ ...prev, [showId]: true }));
   };
@@ -309,13 +311,13 @@ export default function VotingPage({ shows: searchableShows }) {
         cachedSeriesData.forEach((show) => {
           const index = updatedMetadata.findIndex(item => item.id === show.id);
           if (index !== -1) {
-            updatedMetadata[index] = { ...show, rank: null };
+            updatedMetadata[index] = { ...show, rank: null }; // Set rank to null initially
           }
         });
         return updatedMetadata;
       });
 
-      // Recalculate ranks
+      // Recalculate ranks after fetching data
       recalculateRanks();
 
     } catch (error) {
@@ -326,20 +328,49 @@ export default function VotingPage({ shows: searchableShows }) {
     }
   };
 
-  // New function to recalculate ranks
-  const recalculateRanks = () => {
-    setSeriesMetadata((prevMetadata) => {
-      let currentRank = 1;
-      return prevMetadata.map((show) => {
-        if (!hideSearchable || !searchableShows.some((searchableShow) => searchableShow.id === show.slug)) {
-          const rank = currentRank;
-          currentRank += 1;
-          return { ...show, rank };
-        }
-        return { ...show, rank: null };
-      });
+  // Update the recalculateRanks function
+  const recalculateRanks = useCallback(() => {
+    if (isSearching) return; // Don't recalculate ranks during search
+
+    let currentRank = 1;
+    const newRanks = {};
+    const seriesToRank = sortedSeriesIds.map(id => seriesCache.current[id]);
+
+    seriesToRank.forEach((show) => {
+      if (show && (!hideSearchable || !searchableShows.some((searchableShow) => searchableShow.id === show.slug))) {
+        newRanks[show.id] = currentRank;
+        currentRank += 1;
+      }
     });
-  };
+
+    setRanks(newRanks);
+    
+    // Update seriesMetadata with new ranks
+    setSeriesMetadata(prevMetadata => 
+      prevMetadata.map(show => ({ ...show, rank: newRanks[show.id] || null }))
+    );
+  }, [hideSearchable, searchableShows, sortedSeriesIds, isSearching]);
+
+  // Call recalculateRanks after data loads
+  useEffect(() => {
+    if (!loading && seriesMetadata.length > 0 && !isSearching) {
+      recalculateRanks();
+    }
+  }, [loading, seriesMetadata, recalculateRanks, isSearching]);
+
+  // Update ranks when rankMethod changes
+  useEffect(() => {
+    if (!isSearching) {
+      recalculateRanks();
+    }
+  }, [rankMethod, recalculateRanks, isSearching]);
+
+  // Update ranks when hideSearchable changes
+  useEffect(() => {
+    if (!isSearching) {
+      recalculateRanks();
+    }
+  }, [hideSearchable, recalculateRanks, isSearching]);
 
   const handleLoadMore = () => {
     setLoadingMore(true);
@@ -383,13 +414,11 @@ export default function VotingPage({ shows: searchableShows }) {
     try {
       if (!data) return;
 
-      // Apply search filter
       const searchFilteredShows = data.filter(
-        (show) =>
-          show.name.toLowerCase().includes(searchText.toLowerCase())
+        (show) => show.name.toLowerCase().includes(searchText.toLowerCase())
       );
 
-      let sortedShows = [...searchFilteredShows]; // Create a copy of the filtered shows
+      let sortedShows = [...searchFilteredShows];
 
       if (sortedShows.length > 0) {
         switch (rankMethod) {
@@ -414,15 +443,17 @@ export default function VotingPage({ shows: searchableShows }) {
         }
       }
 
-      setFilteredSeriesData(sortedShows); // Update the state with sorted shows
-      setSeriesMetadata(sortedShows); // Update seriesMetadata with the filtered and sorted data
-      setSortedSeriesIds(sortedShows.map(show => show.id)); // Update sortedSeriesIds
-      setCurrentPage(0); // Reset to the first page when search changes
+      setFilteredSeriesData(sortedShows);
+      setSortedSeriesIds(sortedShows.map(show => show.id));
+      setCurrentPage(0);
+
+      // Update seriesMetadata with existing ranks
+      setSeriesMetadata(sortedShows.map(show => ({ ...show, rank: ranks[show.id] || null })));
     } catch (error) {
       console.error('Error in filterAndSortSeriesData:', error);
-      setFilteredSeriesData([]); // Set an empty array in case of error
-      setSeriesMetadata([]);
+      setFilteredSeriesData([]);
       setSortedSeriesIds([]);
+      setSeriesMetadata([]);
     }
   };
 
@@ -520,7 +551,9 @@ export default function VotingPage({ shows: searchableShows }) {
   };
 
   const handleSearchChange = (event) => {
-    setSearchText(event.target.value);
+    const newSearchText = event.target.value;
+    setSearchText(newSearchText);
+    setIsSearching(!!newSearchText);
   };
 
   const handleRankMethodChange = useCallback((event, newValue) => {
@@ -607,11 +640,6 @@ export default function VotingPage({ shows: searchableShows }) {
       return 0;
     }
   };
-
-  // Update the useEffect that handles hideSearchable changes
-  useEffect(() => {
-    recalculateRanks();
-  }, [hideSearchable, searchableShows]);
 
   return (
     <>
@@ -715,10 +743,7 @@ export default function VotingPage({ shows: searchableShows }) {
             <>
               <FlipMove key={rankMethod} style={{ minWidth: '100%' }}>
                 {seriesMetadata.map((show) => {
-                  if (
-                    hideSearchable &&
-                    searchableShows.some((searchableShow) => searchableShow.id === show.slug)
-                  ) {
+                  if (hideSearchable && searchableShows.some((searchableShow) => searchableShow.id === show.slug)) {
                     return null;
                   }
                   return (
