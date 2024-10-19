@@ -89,40 +89,41 @@ async function processVotes({ allItems, userSub }) {
   const currentUserVotesUp = {};
   const currentUserVotesDown = {};
   const lastUserVoteTimestamps = {};
-  const lastBoostValue = {};
+  const lastBoostValues = {}; // Changed to plural
   const nextVoteTime = {};
-
-  // console.log(`allItems: ${JSON.stringify(allItems)}`)
 
   const seriesIds = new Set(allItems.map(item => item.seriesUserVoteSeriesId));
   const isLastUserVoteOlderThan24Hours = {};
   seriesIds.forEach(id => isLastUserVoteOlderThan24Hours[id] = true);
 
   allItems.forEach((vote) => {
-    // console.log(vote)
+    const seriesId = vote.seriesUserVoteSeriesId;
+
     if (vote.boost > 0) {
-      currentUserVotesUp[vote.seriesUserVoteSeriesId] = (currentUserVotesUp[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
+      currentUserVotesUp[seriesId] = (currentUserVotesUp[seriesId] || 0) + vote.boost;
+      votesCountUp[seriesId] = (votesCountUp[seriesId] || 0) + vote.boost;
     } else if (vote.boost < 0) {
-      currentUserVotesDown[vote.seriesUserVoteSeriesId] = (currentUserVotesDown[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
+      currentUserVotesDown[seriesId] = (currentUserVotesDown[seriesId] || 0) + vote.boost;
+      votesCountDown[seriesId] = (votesCountDown[seriesId] || 0) + vote.boost;
     }
 
-    votesCount[vote.seriesUserVoteSeriesId] = (votesCount[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
-
-    currentUserVotes[vote.seriesUserVoteSeriesId] = (currentUserVotes[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
+    votesCount[seriesId] = (votesCount[seriesId] || 0) + vote.boost;
+    currentUserVotes[seriesId] = (currentUserVotes[seriesId] || 0) + vote.boost;
 
     const voteTime = new Date(vote.createdAt);
-    if (!lastUserVoteTimestamps[vote.seriesUserVoteSeriesId] || voteTime > lastUserVoteTimestamps[vote.seriesUserVoteSeriesId]) {
-      lastUserVoteTimestamps[vote.seriesUserVoteSeriesId] = voteTime;
-      lastBoostValue[vote.seriesUserVoteSeriesId] = vote.boost;
+    if (!lastUserVoteTimestamps[seriesId] || voteTime > lastUserVoteTimestamps[seriesId]) {
+      lastUserVoteTimestamps[seriesId] = voteTime;
+      lastBoostValues[seriesId] = vote.boost; // Store the last boost value
+
       const currentTime = new Date().getTime();
       const diffInHours = (currentTime - voteTime.getTime()) / (1000 * 60 * 60);
-      isLastUserVoteOlderThan24Hours[vote.seriesUserVoteSeriesId] = diffInHours > 24;
+      isLastUserVoteOlderThan24Hours[seriesId] = diffInHours > 24;
 
-      // calculate next vote time
+      // Calculate next vote time
       if (diffInHours < 24) {
-        nextVoteTime[vote.seriesUserVoteSeriesId] = new Date(voteTime.getTime() + 24 * 60 * 60 * 1000).toISOString();
+        nextVoteTime[seriesId] = new Date(voteTime.getTime() + 24 * 60 * 60 * 1000).toISOString();
       } else {
-        nextVoteTime[vote.seriesUserVoteSeriesId] = null;
+        nextVoteTime[seriesId] = null;
       }
     }
   });
@@ -137,7 +138,7 @@ async function processVotes({ allItems, userSub }) {
     currentUserVotesDown,
     lastUserVoteTimestamps,
     isLastUserVoteOlderThan24Hours,
-    lastBoostValue,
+    lastBoostValues, // Changed to plural
     nextVoteTime
   };
 }
@@ -597,13 +598,46 @@ export const handler = async (event) => {
     }
   }
 
-  if (path === `/${process.env.ENV}/public/vote/list` || path === `/${process.env.ENV}/public/vote/list/top`) {
-    const userAuth = event.requestContext.identity.cognitoAuthenticationType
+  if (
+    path === `/${process.env.ENV}/public/vote/list` ||
+    path === `/${process.env.ENV}/public/vote/list/top`
+  ) {
+    // Determine if the user is authenticated
+    const userAuth = event.requestContext.identity.cognitoAuthenticationType;
+  
+    // Extract the seriesId from the query string parameters if present
     const seriesId = event.queryStringParameters && event.queryStringParameters.id;
-    const isTopList = path === `/${process.env.ENV}/public/vote/list/top`;
   
     try {
-      const totalVotes = await getAllVotes(seriesId);
+      // Fetch all votes, optionally filtered by seriesId
+      let totalVotes = await getAllVotes(seriesId);
+  
+      // Initialize topSeriesIds if the `/top` path is used
+      let topSeriesIds = null;
+      if (path === `/${process.env.ENV}/public/vote/list/top`) {
+        // Get top 100 seriesIds by total upvotes
+        const seriesIdsByUpvotes = Object.keys(totalVotes)
+          .sort((a, b) => totalVotes[b].upvotes - totalVotes[a].upvotes)
+          .slice(0, 100);
+  
+        // Get top 100 seriesIds by net votes (upvotes - downvotes)
+        const seriesIdsByNetVotes = Object.keys(totalVotes)
+          .sort((a, b) => {
+            const netVotesB = totalVotes[b].upvotes - totalVotes[b].downvotes;
+            const netVotesA = totalVotes[a].upvotes - totalVotes[a].downvotes;
+            return netVotesB - netVotesA;
+          })
+          .slice(0, 100);
+  
+        // Combine both lists to get the unique union
+        const topSeriesIdSet = new Set([...seriesIdsByUpvotes, ...seriesIdsByNetVotes]);
+        topSeriesIds = Array.from(topSeriesIdSet);
+  
+        // Filter totalVotes to include only top seriesIds
+        totalVotes = Object.fromEntries(
+          Object.entries(totalVotes).filter(([id]) => topSeriesIds.includes(id))
+        );
+      }
   
       if (seriesId) {
         response = {
@@ -611,90 +645,91 @@ export const handler = async (event) => {
           body: JSON.stringify(totalVotes),
         };
       } else {
-        let userVoteData = null;
+        // Initialize variables for user-specific data
+        let currentUserVotesUp = {};
+        let currentUserVotesDown = {};
+        let lastUserVoteTimestamps = {};
+        let lastBoostValues = {};
   
         if (userAuth !== "unauthenticated") {
+          // Fetch and process the user's personal votes
           const userVotes = await getAllUserVotes({ subId: userSub });
-          userVoteData = await processVotes({ allItems: userVotes, userSub });
+          const userProcessedVotes = await processVotes({
+            allItems: userVotes,
+            userSub,
+          });
+  
+          currentUserVotesUp = userProcessedVotes.currentUserVotesUp || {};
+          currentUserVotesDown = userProcessedVotes.currentUserVotesDown || {};
+          lastUserVoteTimestamps = userProcessedVotes.lastUserVoteTimestamps || {};
+          lastBoostValues = userProcessedVotes.lastBoostValues || {};
+  
+          console.log('Last Boost Values:', JSON.stringify(lastBoostValues, null, 2));
+  
+          // Filter user-specific data if topSeriesIds is defined
+          if (topSeriesIds) {
+            currentUserVotesUp = Object.fromEntries(
+              Object.entries(currentUserVotesUp).filter(([id]) => topSeriesIds.includes(id))
+            );
+            currentUserVotesDown = Object.fromEntries(
+              Object.entries(currentUserVotesDown).filter(([id]) => topSeriesIds.includes(id))
+            );
+            lastUserVoteTimestamps = Object.fromEntries(
+              Object.entries(lastUserVoteTimestamps).filter(([id]) => topSeriesIds.includes(id))
+            );
+            lastBoostValues = Object.fromEntries(
+              Object.entries(lastBoostValues).filter(([id]) => topSeriesIds.includes(id))
+            );
+          }
         }
   
-        const votesData = {};
+        // Prepare the final response mapping seriesIds to their data
+        const responseData = {};
+        const now = new Date();
   
         for (let id in totalVotes) {
-          votesData[id] = {
-            upvotes: totalVotes[id].upvotes,
-            downvotes: totalVotes[id].downvotes,
-          };
-        }
+          // Initialize default values
+          let ableToVote = true;
+          let nextVoteTime = null;
+          let lastBoost = null;
   
-        if (isTopList) {
-          // Get top 100 by upvotes only
-          const topUpvotes = Object.entries(votesData)
-            .sort(([, a], [, b]) => b.upvotes - a.upvotes)
-            .slice(0, 100)
-            .map(([key]) => key);
+          // Calculate ableToVote, nextVoteTime, and lastBoost per seriesId if the user is authenticated
+          if (userAuth !== "unauthenticated") {
+            if (lastUserVoteTimestamps[id]) {
+              const lastVoteTime = new Date(lastUserVoteTimestamps[id]);
+              const timeSinceLastVote = now - lastVoteTime;
+              const twentyFourHours = 24 * 60 * 60 * 1000; // milliseconds
   
-          // Get top 100 by upvotes minus downvotes
-          const topNet = Object.entries(votesData)
-            .sort(([, a], [, b]) => (b.upvotes - b.downvotes) - (a.upvotes - a.downvotes))
-            .slice(0, 100)
-            .map(([key]) => key);
-  
-          // Combine unique series IDs from both top 100 lists
-          const topSeriesIds = [...new Set([...topUpvotes, ...topNet])];
-  
-          // Filter votesData to include only top series
-          const filteredVotesData = Object.fromEntries(
-            Object.entries(votesData).filter(([key]) => topSeriesIds.includes(key))
-          );
-  
-          // Filter userVoteData if it exists
-          if (userVoteData) {
-            for (const key in userVoteData) {
-              if (typeof userVoteData[key] === 'object') {
-                userVoteData[key] = Object.fromEntries(
-                  Object.entries(userVoteData[key]).filter(([seriesId]) => topSeriesIds.includes(seriesId))
-                );
+              if (timeSinceLastVote < twentyFourHours) {
+                ableToVote = false;
+                nextVoteTime = new Date(lastVoteTime.getTime() + twentyFourHours).toISOString();
               }
             }
+  
+            lastBoost = lastBoostValues[id] !== undefined ? lastBoostValues[id] : null;
           }
   
-          response = {
-            statusCode: 200,
-            body: {
-              votes: filteredVotesData,
-              userVoteData: userVoteData ? {
-                votesUp: userVoteData.currentUserVotesUp,
-                votesDown: userVoteData.currentUserVotesDown,
-                ableToVote: userVoteData.isLastUserVoteOlderThan24Hours,
-                lastBoost: userVoteData.lastBoostValue,
-                nextVoteTime: userVoteData.nextVoteTime,
-                lastVoteTime: userVoteData.lastUserVoteTimestamps
-              } : null
-            },
-          };
-        } else {
-          response = {
-            statusCode: 200,
-            body: {
-              votes: votesData,
-              userVoteData: userVoteData ? {
-                votesUp: userVoteData.currentUserVotesUp,
-                votesDown: userVoteData.currentUserVotesDown,
-                ableToVote: userVoteData.isLastUserVoteOlderThan24Hours,
-                lastBoost: userVoteData.lastBoostValue,
-                nextVoteTime: userVoteData.nextVoteTime,
-                lastVoteTime: userVoteData.lastUserVoteTimestamps
-              } : null
-            },
+          responseData[id] = {
+            totalVotesUp: totalVotes[id].upvotes,
+            totalVotesDown: totalVotes[id].downvotes,
+            userVotesUp: currentUserVotesUp[id] || 0,
+            userVotesDown: currentUserVotesDown[id] || 0,
+            ableToVote: ableToVote,
+            nextVoteTime: nextVoteTime,
+            lastBoost: lastBoost,
           };
         }
+  
+        response = {
+          statusCode: 200,
+          body: JSON.stringify(responseData),
+        };
       }
     } catch (error) {
       console.log(`Failed to get votes: ${error.message}`);
       response = {
         statusCode: 500,
-        body: `Failed to get votes: ${error.message}`,
+        body: JSON.stringify({ error: `Failed to get votes: ${error.message}` }),
       };
     }
   }
