@@ -375,7 +375,8 @@ export default function VotingPage({ shows: searchableShows }) {
     }
     try {
       // Determine the endpoint based on isTopList
-      const endpoint = isTopList ? '/vote/list/top' : '/vote/list';
+      // TODO: Change this to load only the top voted items
+      const endpoint = isTopList ? '/vote/list' : '/vote/list';
 
       // Fetch vote data from the appropriate endpoint
       const voteDataResponse = JSON.parse(await API.get('publicapi', endpoint));
