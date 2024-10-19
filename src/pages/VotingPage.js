@@ -109,6 +109,9 @@ export default function VotingPage({ shows: searchableShows }) {
 
   const [fullSortedSeriesIds, setFullSortedSeriesIds] = useState([]);
 
+  // Add this new state to track if there are more items to load
+  const [hasMore, setHasMore] = useState(true);
+
   const handleImageLoad = (showId) => {
     setLoadedImages(prev => ({ ...prev, [showId]: true }));
   };
@@ -271,6 +274,9 @@ export default function VotingPage({ shows: searchableShows }) {
 
       // Recalculate ranks after fetching data
       recalculateRanks();
+
+      // Update hasMore based on whether there are more items
+      setHasMore(endIdx < sortedIds.length);
 
     } catch (error) {
       console.error('Error fetching series data:', error);
@@ -546,21 +552,12 @@ export default function VotingPage({ shows: searchableShows }) {
     recalculateRanks();
   }, [rankMethod, recalculateRanks]);
 
+  // Modify the handleLoadMore function
   const handleLoadMore = () => {
-    if (isTopList) {
-      // Switch to full list when user tries to load more from the top list
-      setIsTopList(false);
-      setSeriesMetadata([]);
-      setSortedSeriesIds([]);
-      setCurrentPage(0);
-      votesCache.current = null; // Clear cache to force a new fetch
-      fetchVoteData(); // Fetch the full list
-    } else {
-      setLoadingMore(true);
-      const nextPage = currentPage + 1;
-      setCurrentPage(nextPage);
-      fetchSeriesData(sortedSeriesIds, nextPage, true);
-    }
+    setLoadingMore(true);
+    const nextPage = currentPage + 1;
+    setCurrentPage(nextPage);
+    fetchSeriesData(sortedSeriesIds, nextPage, true);
   };
 
   const handleVote = async (seriesId, boost) => {
@@ -1150,7 +1147,7 @@ export default function VotingPage({ shows: searchableShows }) {
                 </Grid>
               )}
 
-              {!isSearching && (
+              {!isSearching && hasMore && (
                 <Grid item xs={12} style={{ marginTop: 20 }}>
                   <Button
                     variant="contained"
@@ -1165,7 +1162,7 @@ export default function VotingPage({ shows: searchableShows }) {
                     }}
                     startIcon={<AddIcon />}
                   >
-                    {isTopList ? 'Load Full List' : 'Load More'}
+                    Load More
                   </Button>
                 </Grid>
               )}
