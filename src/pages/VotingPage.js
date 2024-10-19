@@ -574,17 +574,19 @@ export default function VotingPage({ shows: searchableShows }) {
         },
       });
 
-      // Update voteData in state
+      // Update voteData in state and cache
       setVoteData((prevVoteData) => {
         const updatedVoteData = { ...prevVoteData };
         const updatedSeriesData = { ...updatedVoteData[seriesId] };
+        
         if (boost === 1) {
-          updatedSeriesData.totalVotesUp += 1;
-          updatedSeriesData.userVotesUp += 1;
+          updatedSeriesData.totalVotesUp = (updatedSeriesData.totalVotesUp || 0) + 1;
+          updatedSeriesData.userVotesUp = (updatedSeriesData.userVotesUp || 0) + 1;
         } else if (boost === -1) {
-          updatedSeriesData.totalVotesDown += 1;
-          updatedSeriesData.userVotesDown -= 1;
+          updatedSeriesData.totalVotesDown = (updatedSeriesData.totalVotesDown || 0) + 1;
+          updatedSeriesData.userVotesDown = (updatedSeriesData.userVotesDown || 0) + 1;
         }
+        
         updatedSeriesData.ableToVote = false;
         const now = new Date();
         now.setHours(now.getHours() + 24);
@@ -592,21 +594,22 @@ export default function VotingPage({ shows: searchableShows }) {
         updatedSeriesData.lastBoost = boost;
 
         updatedVoteData[seriesId] = updatedSeriesData;
+
+        // Update the cached data in localStorage
+        if (votesCache.current) {
+          votesCache.current[seriesId] = updatedSeriesData;
+          const cacheKey = user ? `votesCache_${user.username || user.id}` : 'votesCache';
+          const cacheData = {
+            updatedAt: new Date().toISOString(),
+            data: votesCache.current,
+          };
+          localStorage.setItem(cacheKey, JSON.stringify(cacheData));
+        }
+
         return updatedVoteData;
       });
 
       setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: false }));
-
-      // Update the cached data in localStorage
-      if (votesCache.current) {
-        votesCache.current = { ...votesCache.current, ...voteData };
-        const cacheKey = user ? `votesCache_${user.username || user.id}` : 'votesCache';
-        const cacheData = {
-          updatedAt: new Date().toISOString(),
-          data: votesCache.current,
-        };
-        localStorage.setItem(cacheKey, JSON.stringify(cacheData));
-      }
 
     } catch (error) {
       setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: false }));
