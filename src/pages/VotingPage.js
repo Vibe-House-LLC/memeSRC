@@ -295,17 +295,19 @@ export default function VotingPage({ shows: searchableShows }) {
       clearOtherUserCaches();
 
       // Load from localStorage if available and not expired
+      let cachedVoteData = null;
       try {
         // Load public vote data
         const cachedVoteDataString = localStorage.getItem('votesCache');
         if (cachedVoteDataString) {
-          const cachedVoteData = JSON.parse(cachedVoteDataString);
-          const updatedAt = new Date(cachedVoteData.updatedAt);
+          const parsedCacheData = JSON.parse(cachedVoteDataString);
+          const updatedAt = new Date(parsedCacheData.updatedAt);
           const now = new Date();
           const diffInMinutes = (now - updatedAt) / (1000 * 60);
           if (diffInMinutes < 15) {
             // Use cached data
-            votesCache.current = cachedVoteData.data;
+            cachedVoteData = parsedCacheData.data;
+            console.log('Using cached vote data:', cachedVoteData);
           } else {
             // Remove expired cache
             localStorage.removeItem('votesCache');
@@ -313,143 +315,73 @@ export default function VotingPage({ shows: searchableShows }) {
         }
 
         // Load user-specific vote data
-        let userCacheNeedsUpdate = false;
         if (user) {
           const userKey = `votesCache_${user.username || user.id}`;
           const cachedUserVoteDataString = localStorage.getItem(userKey);
           if (cachedUserVoteDataString) {
-            const cachedUserVoteData = JSON.parse(cachedUserVoteDataString);
-            const updatedAt = new Date(cachedUserVoteData.updatedAt);
+            const parsedUserCacheData = JSON.parse(cachedUserVoteDataString);
+            const updatedAt = new Date(parsedUserCacheData.updatedAt);
             const now = new Date();
             const diffInMinutes = (now - updatedAt) / (1000 * 60);
             if (diffInMinutes < 15) {
-              // Use cached user data
-              if (!votesCache.current) {
-                votesCache.current = {};
-              }
-              votesCache.current.userVoteData = cachedUserVoteData.data.userVoteData;
+              // Merge user-specific data with public data
+              cachedVoteData = {
+                ...cachedVoteData,
+                userVoteData: parsedUserCacheData.data.userVoteData
+              };
+              console.log('Merged with user-specific vote data:', cachedVoteData);
             } else {
-              // Remove expired cache
+              // Remove expired user cache
               localStorage.removeItem(userKey);
-              userCacheNeedsUpdate = true;
             }
-          } else {
-            userCacheNeedsUpdate = true;
           }
-        } else {
-          // If not logged in, clear all user-specific caches
-          clearOtherUserCaches();
-        }
-
-        // If user is logged in but no valid user cache exists, force a new fetch
-        if (user && userCacheNeedsUpdate) {
-          votesCache.current = null;
         }
       } catch (error) {
         console.error('Error loading vote data from localStorage:', error);
       }
 
-      if (votesCache.current && votesCache.current.votes) {
-        const voteDataResponse = votesCache.current;
-
+      if (cachedVoteData) {
         // Use cached data
-        setVoteData(voteDataResponse);
+        console.log('Using cached vote data:', cachedVoteData);
+        
+        // Check if cachedVoteData has the expected structure
+        if (typeof cachedVoteData === 'object' && cachedVoteData !== null) {
+          setVoteData(cachedVoteData);
+          votesCache.current = cachedVoteData;
 
-        const seriesIds = Object.keys(voteDataResponse);
+          const seriesIds = Object.keys(cachedVoteData).filter(key => 
+            typeof cachedVoteData[key] === 'object' && 
+            cachedVoteData[key] !== null &&
+            'totalVotesUp' in cachedVoteData[key] &&
+            'totalVotesDown' in cachedVoteData[key]
+          );
 
-        // Sort the series IDs based on the selected rank method
-        let newSortedSeriesIds = [];
-        switch (rankMethod) {
-          case 'combined':
-            newSortedSeriesIds = seriesIds.sort((a, b) => {
-              const voteDiffA = voteDataResponse[a].totalVotesUp - voteDataResponse[a].totalVotesDown;
-              const voteDiffB = voteDataResponse[b].totalVotesUp - voteDataResponse[b].totalVotesDown;
-              return voteDiffB - voteDiffA || safeCompareSeriesTitles(a, b);
-            });
-            break;
-          case 'downvotes':
-            newSortedSeriesIds = seriesIds.sort((a, b) => {
-              const downvoteDiff = voteDataResponse[b].totalVotesDown - voteDataResponse[a].totalVotesDown;
-              return downvoteDiff || safeCompareSeriesTitles(a, b);
-            });
-            break;
-          default: // Upvotes
-            newSortedSeriesIds = seriesIds.sort((a, b) => {
-              const upvoteDiff = voteDataResponse[b].totalVotesUp - voteDataResponse[a].totalVotesUp;
-              return upvoteDiff || safeCompareSeriesTitles(a, b);
-            });
-        }
-
-        // Update the sortedSeriesIds state
-        setFullSortedSeriesIds(newSortedSeriesIds);
-        setSortedSeriesIds(newSortedSeriesIds);
-
-        // Fetch only the initial page
-        fetchSeriesData(newSortedSeriesIds, 0, false);
-      } else {
-        if (!loadingMore) {
-          setLoading(true);
-        }
-        try {
-          // Determine the endpoint based on isTopList
-          const endpoint = isTopList ? '/vote/list/top' : '/vote/list';
-
-          // Fetch vote data from the appropriate endpoint
-          const voteDataResponse = JSON.parse(await API.get('publicapi', endpoint));
-
-          // Save to cache
-          votesCache.current = voteDataResponse;
-
-          // Save to localStorage
-          try {
-            const now = new Date();
-            const cacheData = {
-              updatedAt: now.toISOString(),
-              data: voteDataResponse,
-            };
-            localStorage.setItem('votesCache', JSON.stringify(cacheData));
-
-            // Save user-specific data separately
-            if (user) {
-              const userKey = `votesCache_${user.username || user.id}`;
-              const userVoteData = {
-                updatedAt: now.toISOString(),
-                data: {
-                  userVoteData: voteDataResponse.userVoteData,
-                },
-              };
-              localStorage.setItem(userKey, JSON.stringify(userVoteData));
-            }
-          } catch (error) {
-            console.error('Error saving vote data to localStorage:', error);
-          }
-
-          setVoteData(voteDataResponse);
-
-          const seriesIds = Object.keys(voteDataResponse);
+          console.log('Filtered seriesIds:', seriesIds);
 
           // Sort the series IDs based on the selected rank method
           let newSortedSeriesIds = [];
           switch (rankMethod) {
             case 'combined':
               newSortedSeriesIds = seriesIds.sort((a, b) => {
-                const voteDiffA = voteDataResponse[a].totalVotesUp - voteDataResponse[a].totalVotesDown;
-                const voteDiffB = voteDataResponse[b].totalVotesUp - voteDataResponse[b].totalVotesDown;
+                const voteDiffA = (cachedVoteData[a].totalVotesUp || 0) - (cachedVoteData[a].totalVotesDown || 0);
+                const voteDiffB = (cachedVoteData[b].totalVotesUp || 0) - (cachedVoteData[b].totalVotesDown || 0);
                 return voteDiffB - voteDiffA || safeCompareSeriesTitles(a, b);
               });
               break;
             case 'downvotes':
               newSortedSeriesIds = seriesIds.sort((a, b) => {
-                const downvoteDiff = voteDataResponse[b].totalVotesDown - voteDataResponse[a].totalVotesDown;
+                const downvoteDiff = (cachedVoteData[b].totalVotesDown || 0) - (cachedVoteData[a].totalVotesDown || 0);
                 return downvoteDiff || safeCompareSeriesTitles(a, b);
               });
               break;
             default: // Upvotes
               newSortedSeriesIds = seriesIds.sort((a, b) => {
-                const upvoteDiff = voteDataResponse[b].totalVotesUp - voteDataResponse[a].totalVotesUp;
+                const upvoteDiff = (cachedVoteData[b].totalVotesUp || 0) - (cachedVoteData[a].totalVotesUp || 0);
                 return upvoteDiff || safeCompareSeriesTitles(a, b);
               });
           }
+
+          console.log('Sorted seriesIds:', newSortedSeriesIds);
 
           // Update the sortedSeriesIds state
           setFullSortedSeriesIds(newSortedSeriesIds);
@@ -457,18 +389,100 @@ export default function VotingPage({ shows: searchableShows }) {
 
           // Fetch only the initial page
           fetchSeriesData(newSortedSeriesIds, 0, false);
-        } catch (error) {
-          console.error('Error fetching vote data:', error);
-        } finally {
-          if (!loadingMore) {
-            setLoading(false);
-          }
+        } else {
+          console.error('Cached vote data has unexpected structure:', cachedVoteData);
+          // Proceed to fetch new data from API
+          fetchNewDataFromAPI();
         }
+      } else {
+        // Fetch new data from API
+        fetchNewDataFromAPI();
       }
     } catch (error) {
       console.error('Error in fetchVoteData:', error);
     }
   }, [user, rankMethod, isTopList, loadingMore, safeCompareSeriesTitles, fetchSeriesData, clearOtherUserCaches]);
+
+  // Define fetchNewDataFromAPI function
+  const fetchNewDataFromAPI = async () => {
+    if (!loadingMore) {
+      setLoading(true);
+    }
+    try {
+      // Determine the endpoint based on isTopList
+      const endpoint = isTopList ? '/vote/list/top' : '/vote/list';
+
+      // Fetch vote data from the appropriate endpoint
+      const voteDataResponse = JSON.parse(await API.get('publicapi', endpoint));
+
+      // Save to cache
+      votesCache.current = voteDataResponse;
+
+      // Save to localStorage
+      try {
+        const now = new Date();
+        const cacheData = {
+          updatedAt: now.toISOString(),
+          data: voteDataResponse,
+        };
+        localStorage.setItem('votesCache', JSON.stringify(cacheData));
+
+        // Save user-specific data separately
+        if (user) {
+          const userKey = `votesCache_${user.username || user.id}`;
+          const userVoteData = {
+            updatedAt: now.toISOString(),
+            data: {
+              userVoteData: voteDataResponse.userVoteData,
+            },
+          };
+          localStorage.setItem(userKey, JSON.stringify(userVoteData));
+        }
+      } catch (error) {
+        console.error('Error saving vote data to localStorage:', error);
+      }
+
+      setVoteData(voteDataResponse);
+
+      const seriesIds = Object.keys(voteDataResponse);
+
+      // Sort the series IDs based on the selected rank method
+      let newSortedSeriesIds = [];
+      switch (rankMethod) {
+        case 'combined':
+          newSortedSeriesIds = seriesIds.sort((a, b) => {
+            const voteDiffA = voteDataResponse[a].totalVotesUp - voteDataResponse[a].totalVotesDown;
+            const voteDiffB = voteDataResponse[b].totalVotesUp - voteDataResponse[b].totalVotesDown;
+            return voteDiffB - voteDiffA || safeCompareSeriesTitles(a, b);
+          });
+          break;
+        case 'downvotes':
+          newSortedSeriesIds = seriesIds.sort((a, b) => {
+            const downvoteDiff = voteDataResponse[b].totalVotesDown - voteDataResponse[a].totalVotesDown;
+            return downvoteDiff || safeCompareSeriesTitles(a, b);
+          });
+          break;
+        default: // Upvotes
+          newSortedSeriesIds = seriesIds.sort((a, b) => {
+            const upvoteDiff = voteDataResponse[b].totalVotesUp - voteDataResponse[a].totalVotesUp;
+            return upvoteDiff || safeCompareSeriesTitles(a, b);
+          });
+      }
+
+      // Update the sortedSeriesIds state
+      setFullSortedSeriesIds(newSortedSeriesIds);
+      setSortedSeriesIds(newSortedSeriesIds);
+
+      // Fetch only the initial page
+      fetchSeriesData(newSortedSeriesIds, 0, false);
+    } catch (error) {
+      console.error('Error fetching vote data:', error);
+    } finally {
+      if (!loadingMore) {
+        setLoading(false);
+      }
+    }
+  };
 
   const filterAndSortSeriesData = useCallback((data = allSeriesData) => {
     try {
