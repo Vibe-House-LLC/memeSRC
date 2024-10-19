@@ -602,19 +602,25 @@ export const handler = async (event) => {
     path === `/${process.env.ENV}/public/vote/list` ||
     path === `/${process.env.ENV}/public/vote/list/top`
   ) {
+    console.log(`Starting vote list processing`);
     // Determine if the user is authenticated
     const userAuth = event.requestContext.identity.cognitoAuthenticationType;
+    console.log('User authentication type:', userAuth);
   
     // Extract the seriesId from the query string parameters if present
     const seriesId = event.queryStringParameters && event.queryStringParameters.id;
+    console.log('Series ID:', seriesId);
   
     try {
+      console.log('Fetching all votes');
       // Fetch all votes, optionally filtered by seriesId
       let totalVotes = await getAllVotes(seriesId);
+      console.log('Total votes fetched:', Object.keys(totalVotes).length);
   
       // Initialize topSeriesIds if the `/top` path is used
       let topSeriesIds = null;
       if (path === `/${process.env.ENV}/public/vote/list/top`) {
+        console.log('Processing top votes');
         // Get top 100 seriesIds by total upvotes
         const seriesIdsByUpvotes = Object.keys(totalVotes)
           .sort((a, b) => totalVotes[b].upvotes - totalVotes[a].upvotes)
@@ -632,19 +638,23 @@ export const handler = async (event) => {
         // Combine both lists to get the unique union
         const topSeriesIdSet = new Set([...seriesIdsByUpvotes, ...seriesIdsByNetVotes]);
         topSeriesIds = Array.from(topSeriesIdSet);
+        console.log('Number of top series IDs:', topSeriesIds.length);
   
         // Filter totalVotes to include only top seriesIds
         totalVotes = Object.fromEntries(
           Object.entries(totalVotes).filter(([id]) => topSeriesIds.includes(id))
         );
+        console.log('Filtered total votes:', Object.keys(totalVotes).length);
       }
   
       if (seriesId) {
+        console.log('Returning votes for specific series ID');
         response = {
           statusCode: 200,
           body: JSON.stringify(totalVotes),
         };
       } else {
+        console.log('Processing votes for all series');
         // Initialize variables for user-specific data
         let currentUserVotesUp = {};
         let currentUserVotesDown = {};
@@ -652,8 +662,10 @@ export const handler = async (event) => {
         let lastBoostValues = {};
   
         if (userAuth !== "unauthenticated") {
+          console.log('Fetching user-specific vote data');
           // Fetch and process the user's personal votes
           const userVotes = await getAllUserVotes({ subId: userSub });
+          console.log('User votes fetched:', userVotes.length);
           const userProcessedVotes = await processVotes({
             allItems: userVotes,
             userSub,
@@ -668,6 +680,7 @@ export const handler = async (event) => {
   
           // Filter user-specific data if topSeriesIds is defined
           if (topSeriesIds) {
+            console.log('Filtering user-specific data for top series');
             currentUserVotesUp = Object.fromEntries(
               Object.entries(currentUserVotesUp).filter(([id]) => topSeriesIds.includes(id))
             );
@@ -683,6 +696,7 @@ export const handler = async (event) => {
           }
         }
   
+        console.log('Preparing final response data');
         // Prepare the final response mapping seriesIds to their data
         const responseData = {};
         const now = new Date();
@@ -720,6 +734,7 @@ export const handler = async (event) => {
           };
         }
   
+        console.log('Sending response');
         response = {
           statusCode: 200,
           body: JSON.stringify(responseData),
@@ -732,6 +747,7 @@ export const handler = async (event) => {
         body: JSON.stringify({ error: `Failed to get votes: ${error.message}` }),
       };
     }
+    console.log('Vote list processing completed');
   }
 
   if (path === `/${process.env.ENV}/public/requests/add`) {
