@@ -35,6 +35,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { LoadingButton } from '@mui/lab';
 import { GridFilterAltIcon, GridSearchIcon } from '@mui/x-data-grid';
+import { debounce } from 'lodash';
 import { listSeries, getSeries } from '../graphql/queries';
 import { UserContext } from '../UserContext';
 import TvdbSearch from '../components/TvdbSearch/TvdbSearch';
@@ -111,6 +112,17 @@ export default function VotingPage({ shows: searchableShows }) {
 
   // Add this new state to track if there are more items to load
   const [hasMore, setHasMore] = useState(true);
+
+  // Add this new state
+  const [debouncedSearchText, setDebouncedSearchText] = useState('');
+
+  // Create a debounced function
+  const debouncedSetSearchText = useCallback(
+    debounce((text) => {
+      setDebouncedSearchText(text);
+    }, 300),
+    []
+  );
 
   const handleImageLoad = (showId) => {
     setLoadedImages(prev => ({ ...prev, [showId]: true }));
@@ -514,8 +526,16 @@ export default function VotingPage({ shows: searchableShows }) {
     }
   }, [filterAndSortSeriesData]);
 
+  // Modify the handleSearchChange function
+  const handleSearchChange = (event) => {
+    const newSearchText = event.target.value;
+    setSearchText(newSearchText);
+    debouncedSetSearchText(newSearchText);
+  };
+
+  // Modify the useEffect that triggers the search
   useEffect(() => {
-    if (searchText) {
+    if (debouncedSearchText) {
       setIsSearching(true);
       if (allSeriesData === null) {
         fetchAllSeriesData();
@@ -529,7 +549,7 @@ export default function VotingPage({ shows: searchableShows }) {
       setCurrentPage(0);
       fetchVoteData();
     }
-  }, [searchText, rankMethod, isTopList, allSeriesData]);
+  }, [debouncedSearchText, rankMethod, isTopList, allSeriesData]);
 
   useEffect(() => {
     if (!loading && seriesMetadata.length > 0) {
@@ -635,12 +655,6 @@ export default function VotingPage({ shows: searchableShows }) {
     WebkitBoxOrient: 'vertical',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
-  };
-
-  const handleSearchChange = (event) => {
-    const newSearchText = event.target.value;
-    setSearchText(newSearchText);
-    setIsSearching(!!newSearchText);
   };
 
   const handleRankMethodChange = useCallback((event, newValue) => {
