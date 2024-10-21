@@ -312,11 +312,8 @@ export default function VotingPage({ shows: searchableShows }) {
     try {
       clearOtherUserCaches();
 
-      // Determine which endpoint to use based on the rankMethod
-      const endpoint = rankMethod === 'combined' ? '/vote/new/top/battleground' : '/vote/new/top/upvotes';
-
-      // Fetch top votes from the appropriate endpoint
-      const topVotesResponse = await API.get('publicapi', endpoint);
+      // Fetch top votes from the new endpoint
+      const topVotesResponse = await API.get('publicapi', '/vote/new/top/upvotes');
       const topVotesData = JSON.parse(topVotesResponse);
       setTopVotes(topVotesData);
 
@@ -358,7 +355,7 @@ export default function VotingPage({ shows: searchableShows }) {
     } catch (error) {
       console.error('Error in fetchVoteData:', error);
     }
-  }, [user, clearOtherUserCaches, fetchSeriesData, rankMethod]);
+  }, [user, clearOtherUserCaches, fetchSeriesData]);
 
   const filterAndSortSeriesData = useCallback((data = allSeriesData) => {
     try {
@@ -457,7 +454,7 @@ export default function VotingPage({ shows: searchableShows }) {
       setCurrentPage(0);
       fetchVoteData();
     }
-  }, [debouncedSearchText, rankMethod, isTopList, allSeriesData, fetchVoteData]);
+  }, [debouncedSearchText, rankMethod, isTopList, allSeriesData]);
 
   useEffect(() => {
     if (!loading && seriesMetadata.length > 0) {
