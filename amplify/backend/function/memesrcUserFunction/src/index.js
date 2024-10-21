@@ -598,6 +598,50 @@ export const handler = async (event) => {
     }
   }
 
+  if (path.startsWith(`/${process.env.ENV}/public/vote/new/`)) {
+    console.log(`Starting new vote processing for path: ${path}`);
+
+    const getTopUpvotesQuery = `
+      query GetAnalyticsMetrics {
+        getAnalyticsMetrics(id: "topVotes-upvotes") {
+          value
+        }
+      }
+    `;
+  
+    if (path === `/${process.env.ENV}/public/vote/new/top/upvotes`) {
+      try {
+        const topUpvotesResponse = await makeRequest(getTopUpvotesQuery);
+  
+        if (topUpvotesResponse.statusCode === 200 && topUpvotesResponse.body.data.getAnalyticsMetrics) {
+          const topUpvotes = JSON.parse(topUpvotesResponse.body.data.getAnalyticsMetrics.value);
+          response = {
+            statusCode: 200,
+            body: JSON.stringify(topUpvotes)
+          };
+        } else {
+          response = {
+            statusCode: 404,
+            body: JSON.stringify({ error: "Top upvotes data not found" })
+          };
+        }
+      } catch (error) {
+        console.error(`Error fetching top upvotes: ${error.message}`);
+        response = {
+          statusCode: 500,
+          body: JSON.stringify({ error: `Failed to fetch top upvotes: ${error.message}` })
+        };
+      }
+    } else {
+      response = {
+        statusCode: 400,
+        body: JSON.stringify({ error: "Invalid path for /vote/new" })
+      };
+    }
+  
+    console.log('New vote processing completed');
+  }
+
   if (
     path === `/${process.env.ENV}/public/vote/list` ||
     path === `/${process.env.ENV}/public/vote/list/top`
