@@ -78,6 +78,12 @@ exports.handler = async (event) => {
         .slice(0, 100)
         .map(([seriesId, votes]) => ({ seriesId, upvotes: votes.upvotes, downvotes: votes.downvotes }));
 
+    // Get top 100 seriesId by upvotes minus downvotes (battleground)
+    const topBattleground = Object.entries(voteAggregation)
+        .sort(([, a], [, b]) => (b.upvotes - b.downvotes) - (a.upvotes - a.downvotes))
+        .slice(0, 100)
+        .map(([seriesId, votes]) => ({ seriesId, upvotes: votes.upvotes, downvotes: votes.downvotes }));
+
     // Write aggregated results for each series to AnalyticsMetrics DynamoDB table
     const currentTime = new Date().toISOString();
     for (const [seriesId, votes] of Object.entries(voteAggregation)) {
@@ -144,6 +150,28 @@ exports.handler = async (event) => {
         return {
             statusCode: 500,
             body: JSON.stringify('Failed to put top upvotes to DynamoDB table')
+        };
+    }
+
+    // Write top 100 battleground votes to AnalyticsMetrics DynamoDB table
+    const topBattlegroundPutParams = {
+        TableName: process.env.API_MEMESRC_ANALYTICSMETRICSTABLE_NAME,
+        Item: marshall({
+            id: "topVotes-battleground",
+            value: JSON.stringify(topBattleground),
+            createdAt: currentTime,
+            updatedAt: currentTime,
+            __typename: "AnalyticsMetrics"
+        })
+    };
+
+    try {
+        await ddb.send(new PutItemCommand(topBattlegroundPutParams));
+    } catch (putError) {
+        console.error(`Error putting top battleground votes to DynamoDB table: ${JSON.stringify(putError)}`);
+        return {
+            statusCode: 500,
+            body: JSON.stringify('Failed to put top battleground votes to DynamoDB table')
         };
     }
 
