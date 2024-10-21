@@ -60,6 +60,7 @@ const StyledImg = styled('img')``;
 export default function VotingPage({ shows: searchableShows }) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [topVotes, setTopVotes] = useState({});
   const [loadingMore, setLoadingMore] = useState(false);
   const [votingStatus, setVotingStatus] = useState({});
   const [searchText, setSearchText] = useState('');
@@ -309,99 +310,35 @@ export default function VotingPage({ shows: searchableShows }) {
 
   const fetchVoteData = useCallback(async () => {
     try {
-      // Clear other user caches if logged out or different user
       clearOtherUserCaches();
 
-      // Load from localStorage if available and not expired
-      let cachedVoteData = null;
-      const cacheKey = user ? `votesCache_${user.username || user.id}` : 'votesCache';
-      try {
-        const cachedVoteDataString = localStorage.getItem(cacheKey);
-        if (cachedVoteDataString) {
-          const parsedCacheData = JSON.parse(cachedVoteDataString);
-          const updatedAt = new Date(parsedCacheData.updatedAt);
-          const now = new Date();
-          const diffInMinutes = (now - updatedAt) / (1000 * 60);
-          if (diffInMinutes < 15) {
-            // Use cached data
-            cachedVoteData = parsedCacheData.data;
-            console.log('Using cached vote data:', cachedVoteData);
-          } else {
-            // Remove expired cache
-            localStorage.removeItem(cacheKey);
-          }
-        }
-      } catch (error) {
-        console.error('Error loading vote data from localStorage:', error);
-      }
+      // Determine which endpoint to use based on the rankMethod
+      const endpoint = rankMethod === 'combined' ? '/vote/new/top/battleground' : '/vote/new/top/upvotes';
 
-      if (cachedVoteData) {
-        // Use cached data
-        setVoteData(cachedVoteData);
-        votesCache.current = cachedVoteData;
+      // Fetch top votes from the appropriate endpoint
+      const topVotesResponse = await API.get('publicapi', endpoint);
+      const topVotesData = JSON.parse(topVotesResponse);
+      setTopVotes(topVotesData);
 
-        const seriesIds = Object.keys(cachedVoteData);
+      // Create voteData object from topVotes
+      const newVoteData = {};
+      topVotesData.forEach(item => {
+        newVoteData[item.seriesId] = {
+          totalVotesUp: item.upvotes,
+          totalVotesDown: item.downvotes,
+          ableToVote: true, // You may need to adjust this based on your requirements
+        };
+      });
 
-        // Sort the series IDs based on the selected rank method
-        let newSortedSeriesIds = [];
-        switch (rankMethod) {
-          case 'combined':
-            newSortedSeriesIds = seriesIds.sort((a, b) => {
-              const voteDiffA = (cachedVoteData[a].totalVotesUp || 0) - (cachedVoteData[a].totalVotesDown || 0);
-              const voteDiffB = (cachedVoteData[b].totalVotesUp || 0) - (cachedVoteData[b].totalVotesDown || 0);
-              return voteDiffB - voteDiffA || safeCompareSeriesTitles(a, b);
-            });
-            break;
-          case 'downvotes':
-            newSortedSeriesIds = seriesIds.sort((a, b) => {
-              const downvoteDiff = (cachedVoteData[b].totalVotesDown || 0) - (cachedVoteData[a].totalVotesDown || 0);
-              return downvoteDiff || safeCompareSeriesTitles(a, b);
-            });
-            break;
-          default: // Upvotes
-            newSortedSeriesIds = seriesIds.sort((a, b) => {
-              const upvoteDiff = (cachedVoteData[b].totalVotesUp || 0) - (cachedVoteData[a].totalVotesUp || 0);
-              return upvoteDiff || safeCompareSeriesTitles(a, b);
-            });
-        }
-
-        // Update the sortedSeriesIds state
-        setFullSortedSeriesIds(newSortedSeriesIds);
-        setSortedSeriesIds(newSortedSeriesIds);
-
-        // Fetch only the initial page
-        fetchSeriesData(newSortedSeriesIds, 0, false);
-      } else {
-        // Fetch new data from API
-        fetchNewDataFromAPI();
-      }
-    } catch (error) {
-      console.error('Error in fetchVoteData:', error);
-    }
-  }, [user, rankMethod, isTopList, loadingMore, safeCompareSeriesTitles, fetchSeriesData, clearOtherUserCaches]);
-
-  // Update fetchNewDataFromAPI function
-  const fetchNewDataFromAPI = async () => {
-    if (!loadingMore) {
-      setLoading(true);
-    }
-    try {
-      // Determine the endpoint based on isTopList
-      // TODO: Change this to load only the top voted items
-      const endpoint = isTopList ? '/vote/list' : '/vote/list';
-
-      // Fetch vote data from the appropriate endpoint
-      const voteDataResponse = JSON.parse(await API.get('publicapi', endpoint));
-
-      // Save to cache
-      votesCache.current = voteDataResponse;
+      setVoteData(newVoteData);
+      votesCache.current = newVoteData;
 
       // Save to localStorage
       try {
         const now = new Date();
         const cacheData = {
           updatedAt: now.toISOString(),
-          data: voteDataResponse,
+          data: newVoteData,
         };
         const cacheKey = user ? `votesCache_${user.username || user.id}` : 'votesCache';
         localStorage.setItem(cacheKey, JSON.stringify(cacheData));
@@ -409,32 +346,8 @@ export default function VotingPage({ shows: searchableShows }) {
         console.error('Error saving vote data to localStorage:', error);
       }
 
-      setVoteData(voteDataResponse);
-
-      const seriesIds = Object.keys(voteDataResponse);
-
-      // Sort the series IDs based on the selected rank method
-      let newSortedSeriesIds = [];
-      switch (rankMethod) {
-        case 'combined':
-          newSortedSeriesIds = seriesIds.sort((a, b) => {
-            const voteDiffA = voteDataResponse[a].totalVotesUp - voteDataResponse[a].totalVotesDown;
-            const voteDiffB = voteDataResponse[b].totalVotesUp - voteDataResponse[b].totalVotesDown;
-            return voteDiffB - voteDiffA || safeCompareSeriesTitles(a, b);
-          });
-          break;
-        case 'downvotes':
-          newSortedSeriesIds = seriesIds.sort((a, b) => {
-            const downvoteDiff = voteDataResponse[b].totalVotesDown - voteDataResponse[a].totalVotesDown;
-            return downvoteDiff || safeCompareSeriesTitles(a, b);
-          });
-          break;
-        default: // Upvotes
-          newSortedSeriesIds = seriesIds.sort((a, b) => {
-            const upvoteDiff = voteDataResponse[b].totalVotesUp - voteDataResponse[a].totalVotesUp;
-            return upvoteDiff || safeCompareSeriesTitles(a, b);
-          });
-      }
+      // Sort the series IDs based on the top votes
+      const newSortedSeriesIds = topVotesData.map(item => item.seriesId);
 
       // Update the sortedSeriesIds state
       setFullSortedSeriesIds(newSortedSeriesIds);
@@ -443,13 +356,9 @@ export default function VotingPage({ shows: searchableShows }) {
       // Fetch only the initial page
       fetchSeriesData(newSortedSeriesIds, 0, false);
     } catch (error) {
-      console.error('Error fetching vote data:', error);
-    } finally {
-      if (!loadingMore) {
-        setLoading(false);
-      }
+      console.error('Error in fetchVoteData:', error);
     }
-  };
+  }, [user, clearOtherUserCaches, fetchSeriesData, rankMethod]);
 
   const filterAndSortSeriesData = useCallback((data = allSeriesData) => {
     try {
@@ -459,8 +368,7 @@ export default function VotingPage({ shows: searchableShows }) {
         (show) => show.name.toLowerCase().includes(searchText.toLowerCase())
       );
 
-      // eslint-disable-next-line prefer-const
-      let sortedShows = [...searchFilteredShows];
+      const sortedShows = [...searchFilteredShows];
 
       if (sortedShows.length > 0) {
         switch (rankMethod) {
@@ -468,19 +376,19 @@ export default function VotingPage({ shows: searchableShows }) {
             sortedShows.sort((a, b) => {
               const voteDiffA = (voteData[a.id]?.totalVotesUp || 0) - (voteData[a.id]?.totalVotesDown || 0);
               const voteDiffB = (voteData[b.id]?.totalVotesUp || 0) - (voteData[b.id]?.totalVotesDown || 0);
-              return voteDiffB - voteDiffA || a.name.localeCompare(b.name);
+              return voteDiffB - voteDiffA || safeCompareSeriesTitles(a.id, b.id);
             });
             break;
           case 'downvotes':
             sortedShows.sort((a, b) => {
               const downvoteDiff = (voteData[b.id]?.totalVotesDown || 0) - (voteData[a.id]?.totalVotesDown || 0);
-              return downvoteDiff || a.name.localeCompare(b.name);
+              return downvoteDiff || safeCompareSeriesTitles(a.id, b.id);
             });
             break;
           default: // Upvotes
             sortedShows.sort((a, b) => {
               const upvoteDiff = (voteData[b.id]?.totalVotesUp || 0) - (voteData[a.id]?.totalVotesUp || 0);
-              return upvoteDiff || a.name.localeCompare(b.name);
+              return upvoteDiff || safeCompareSeriesTitles(a.id, b.id);
             });
         }
       }
@@ -493,7 +401,7 @@ export default function VotingPage({ shows: searchableShows }) {
       console.error('Error in filterAndSortSeriesData:', error);
       setSeriesMetadata([]);
     }
-  }, [allSeriesData, searchText, rankMethod, voteData, originalRanks]);
+  }, [allSeriesData, searchText, rankMethod, voteData, originalRanks, safeCompareSeriesTitles]);
 
   const fetchAllSeriesData = useCallback(async () => {
     setLoading(true);
@@ -549,7 +457,7 @@ export default function VotingPage({ shows: searchableShows }) {
       setCurrentPage(0);
       fetchVoteData();
     }
-  }, [debouncedSearchText, rankMethod, isTopList, allSeriesData]);
+  }, [debouncedSearchText, rankMethod, isTopList, allSeriesData, fetchVoteData]);
 
   useEffect(() => {
     if (!loading && seriesMetadata.length > 0) {

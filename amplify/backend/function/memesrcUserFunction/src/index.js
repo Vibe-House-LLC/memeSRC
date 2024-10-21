@@ -600,42 +600,44 @@ export const handler = async (event) => {
 
   if (path.startsWith(`/${process.env.ENV}/public/vote/new/`)) {
     console.log(`Starting new vote processing for path: ${path}`);
-
-    const getTopUpvotesQuery = `
-      query GetAnalyticsMetrics {
-        getAnalyticsMetrics(id: "topVotes-upvotes") {
+  
+    const getAnalyticsMetricsQuery = `
+      query GetAnalyticsMetrics($id: ID!) {
+        getAnalyticsMetrics(id: $id) {
           value
         }
       }
     `;
   
-    if (path === `/${process.env.ENV}/public/vote/new/top/upvotes`) {
+    if (path === `/${process.env.ENV}/public/vote/new/top/upvotes` || path === `/${process.env.ENV}/public/vote/new/top/battleground`) {
+      const metricId = path.endsWith('upvotes') ? 'topVotes-upvotes' : 'topVotes-battleground';
+      
       try {
-        const topUpvotesResponse = await makeRequest(getTopUpvotesQuery);
+        const analyticsResponse = await makeRequestWithVariables(getAnalyticsMetricsQuery, { id: metricId });
   
-        if (topUpvotesResponse.statusCode === 200 && topUpvotesResponse.body.data.getAnalyticsMetrics) {
-          const topUpvotes = JSON.parse(topUpvotesResponse.body.data.getAnalyticsMetrics.value);
+        if (analyticsResponse.statusCode === 200 && analyticsResponse.body.data.getAnalyticsMetrics) {
+          const topVotes = JSON.parse(analyticsResponse.body.data.getAnalyticsMetrics.value);
           response = {
             statusCode: 200,
-            body: JSON.stringify(topUpvotes)
+            body: JSON.stringify(topVotes)
           };
         } else {
           response = {
             statusCode: 404,
-            body: JSON.stringify({ error: "Top upvotes data not found" })
+            body: JSON.stringify({ error: `${metricId} data not found` })
           };
         }
       } catch (error) {
-        console.error(`Error fetching top upvotes: ${error.message}`);
+        console.error(`Error fetching ${metricId}: ${error.message}`);
         response = {
           statusCode: 500,
-          body: JSON.stringify({ error: `Failed to fetch top upvotes: ${error.message}` })
+          body: JSON.stringify({ error: `Failed to fetch ${metricId}: ${error.message}` })
         };
       }
     } else {
       response = {
         statusCode: 400,
-        body: JSON.stringify({ error: "Invalid path for /vote/new" })
+        body: JSON.stringify({ error: "Invalid path for /vote/new/top. Use either /top/upvotes or /top/battleground" })
       };
     }
   
