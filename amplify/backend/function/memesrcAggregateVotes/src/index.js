@@ -45,20 +45,38 @@ exports.handler = async (event) => {
 
     // Aggregate the votes
     const voteAggregation = {};
+    const userVoteAggregation = {};
+
     for (let item of scanResults) {
         const seriesId = item.seriesUserVoteSeriesId;
+        const userId = item.userDetailsVotesId;
         const boost = parseInt(item.boost);
 
+        // Global aggregation
         if (!voteAggregation[seriesId]) {
             voteAggregation[seriesId] = { upvotes: 0, downvotes: 0 };
         }
 
+        // User-specific aggregation
+        const userSeriesKey = `${userId}#${seriesId}`;
+        if (!userVoteAggregation[userSeriesKey]) {
+            userVoteAggregation[userSeriesKey] = { upvotes: 0, downvotes: 0 };
+        }
+
         if (boost > 0) {
             voteAggregation[seriesId].upvotes += boost;
+            userVoteAggregation[userSeriesKey].upvotes += boost;
         } else if (boost < 0) {
             voteAggregation[seriesId].downvotes += Math.abs(boost);
+            userVoteAggregation[userSeriesKey].downvotes += Math.abs(boost);
         }
     }
+
+    // Get top 100 seriesId by upvotes
+    const topUpvotes = Object.entries(voteAggregation)
+        .sort(([, a], [, b]) => b.upvotes - a.upvotes)
+        .slice(0, 100)
+        .map(([seriesId, votes]) => ({ seriesId, upvotes: votes.upvotes, downvotes: votes.downvotes }));
 
     // Write aggregated results for each series to AnalyticsMetrics DynamoDB table
     const currentTime = new Date().toISOString();
@@ -105,6 +123,50 @@ exports.handler = async (event) => {
             statusCode: 500,
             body: JSON.stringify('Failed to put item to DynamoDB table')
         };
+    }
+
+    // Write top 100 upvotes to AnalyticsMetrics DynamoDB table
+    const topUpvotesPutParams = {
+        TableName: process.env.API_MEMESRC_ANALYTICSMETRICSTABLE_NAME,
+        Item: marshall({
+            id: "topVotes-upvotes",
+            value: JSON.stringify(topUpvotes),
+            createdAt: currentTime,
+            updatedAt: currentTime,
+            __typename: "AnalyticsMetrics"
+        })
+    };
+
+    try {
+        await ddb.send(new PutItemCommand(topUpvotesPutParams));
+    } catch (putError) {
+        console.error(`Error putting top upvotes to DynamoDB table: ${JSON.stringify(putError)}`);
+        return {
+            statusCode: 500,
+            body: JSON.stringify('Failed to put top upvotes to DynamoDB table')
+        };
+    }
+
+    // Write user-specific aggregated results to AnalyticsMetrics DynamoDB table
+    for (const [userSeriesKey, votes] of Object.entries(userVoteAggregation)) {
+        const [userId, seriesId] = userSeriesKey.split('#');
+        const userVotePutParams = {
+            TableName: process.env.API_MEMESRC_ANALYTICSMETRICSTABLE_NAME,
+            Item: marshall({
+                id: `userVotes#${userId}#${seriesId}`,
+                value: JSON.stringify(votes),
+                createdAt: currentTime,
+                updatedAt: currentTime,
+                __typename: "AnalyticsMetrics"
+            })
+        };
+
+        try {
+            await ddb.send(new PutItemCommand(userVotePutParams));
+        } catch (putError) {
+            console.error(`Error putting user vote aggregation to DynamoDB table: ${JSON.stringify(putError)}`);
+            // Note: We're not returning here to allow the function to continue processing other votes
+        }
     }
 
     return {
