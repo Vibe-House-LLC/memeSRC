@@ -695,7 +695,7 @@ export default function VotingPage({ shows: searchableShows }) {
             </ToggleButton>
             <ToggleButton value="requested" aria-label="requested">
               <GridSearchIcon sx={{ mr: 1 }} />
-              Searchable
+              Added
             </ToggleButton>
           </ToggleButtonGroup>
 
