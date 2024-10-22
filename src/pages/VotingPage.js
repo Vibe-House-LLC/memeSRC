@@ -339,7 +339,8 @@ export default function VotingPage({ shows: searchableShows }) {
               newVoteData[seriesId].userVotesUp = item.upvotes || 0;
               newVoteData[seriesId].userVotesDown = item.downvotes || 0;
               newVoteData[seriesId].lastVoteTime = item.lastVoteTime;
-              
+              newVoteData[seriesId].lastBoost = item.lastBoost; // Set lastBoost
+
               // Calculate if the user is able to vote based on lastVoteTime
               const lastVoteDate = new Date(item.lastVoteTime);
               const now = new Date();
@@ -895,20 +896,11 @@ export default function VotingPage({ shows: searchableShows }) {
                                                 backgroundColor: showVoteData.lastBoost > 0 ? 'success.light' : 'default',
                                               }}
                                             >
-                                              {showVoteData.lastBoost < 0 &&
-                                                !showVoteData.ableToVote &&
-                                                rankMethod === 'upvotes' ? (
-                                                <Lock />
-                                              ) : (
-                                                <ArrowUpward
-                                                  sx={{
-                                                    color:
-                                                      showVoteData.lastBoost > 0 && !showVoteData.ableToVote
-                                                        ? 'success.main'
-                                                        : 'inherit',
-                                                  }}
-                                                />
-                                              )}
+                                              <ArrowUpward
+                                                sx={{
+                                                  color: showVoteData.lastBoost > 0 ? 'success.main' : 'inherit',
+                                                }}
+                                              />
                                             </StyledFab>
                                           </StyledBadge>
                                         </Tooltip>
@@ -977,10 +969,7 @@ export default function VotingPage({ shows: searchableShows }) {
                                             >
                                               <ArrowDownward
                                                 sx={{
-                                                  color:
-                                                    showVoteData.lastBoost < 0 && !showVoteData.ableToVote
-                                                      ? 'error.main'
-                                                      : 'inherit',
+                                                  color: showVoteData.lastBoost < 0 ? 'error.main' : 'inherit',
                                                 }}
                                               />
                                             </StyledFab>
@@ -1040,20 +1029,11 @@ export default function VotingPage({ shows: searchableShows }) {
                                                 backgroundColor: showVoteData.lastBoost > 0 ? 'success.light' : 'default',
                                               }}
                                             >
-                                              {showVoteData.lastBoost < 0 &&
-                                                !showVoteData.ableToVote &&
-                                                rankMethod === 'upvotes' ? (
-                                                <Lock />
-                                              ) : (
-                                                <ThumbUp
-                                                  sx={{
-                                                    color:
-                                                      showVoteData.lastBoost > 0 && !showVoteData.ableToVote
-                                                        ? 'success.main'
-                                                        : 'inherit',
-                                                  }}
-                                                />
-                                              )}
+                                              <ArrowUpward
+                                                sx={{
+                                                  color: showVoteData.lastBoost > 0 ? 'success.main' : 'inherit',
+                                                }}
+                                              />
                                             </StyledFab>
                                           </StyledBadge>
                                         </Tooltip>
