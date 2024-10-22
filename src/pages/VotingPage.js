@@ -308,54 +308,65 @@ export default function VotingPage({ shows: searchableShows }) {
     });
   }, [user]);
 
-  const fetchVoteData = useCallback(async () => {
-    try {
-      clearOtherUserCaches();
-
-      // Fetch top votes from the new endpoint
-      const topVotesResponse = await API.get('publicapi', '/vote/new/top/upvotes');
-      const topVotesData = JSON.parse(topVotesResponse);
-      setTopVotes(topVotesData);
-
-      // Create voteData object from topVotes
-      const newVoteData = {};
-      topVotesData.forEach(item => {
-        newVoteData[item.seriesId] = {
-          totalVotesUp: item.upvotes,
-          totalVotesDown: item.downvotes,
-          ableToVote: true, // You may need to adjust this based on your requirements
-        };
-      });
-
-      setVoteData(newVoteData);
-      votesCache.current = newVoteData;
-
-      // Save to localStorage
+  const fetchVoteData = useCallback(
+    async (currentRankMethod) => {
       try {
-        const now = new Date();
-        const cacheData = {
-          updatedAt: now.toISOString(),
-          data: newVoteData,
-        };
-        const cacheKey = user ? `votesCache_${user.username || user.id}` : 'votesCache';
-        localStorage.setItem(cacheKey, JSON.stringify(cacheData));
+        clearOtherUserCaches();
+
+        // Determine the API endpoint based on the rankMethod
+        const apiEndpoint =
+          currentRankMethod === 'upvotes'
+            ? '/vote/new/top/upvotes'
+            : '/vote/new/top/battleground';
+
+        // Fetch top votes from the new endpoint
+        const topVotesResponse = await API.get('publicapi', apiEndpoint);
+        const topVotesData = JSON.parse(topVotesResponse);
+        setTopVotes(topVotesData);
+
+        // Create voteData object from topVotes
+        const newVoteData = {};
+        topVotesData.forEach((item) => {
+          newVoteData[item.seriesId] = {
+            totalVotesUp: item.upvotes,
+            totalVotesDown: item.downvotes,
+            ableToVote: true,
+          };
+        });
+
+        setVoteData(newVoteData);
+        votesCache.current = newVoteData;
+
+        // Save to localStorage
+        try {
+          const now = new Date();
+          const cacheData = {
+            updatedAt: now.toISOString(),
+            data: newVoteData,
+          };
+          const cacheKey = user
+            ? `votesCache_${user.username || user.id}`
+            : 'votesCache';
+          localStorage.setItem(cacheKey, JSON.stringify(cacheData));
+        } catch (error) {
+          console.error('Error saving vote data to localStorage:', error);
+        }
+
+        // Sort the series IDs based on the top votes
+        const newSortedSeriesIds = topVotesData.map((item) => item.seriesId);
+
+        // Update the sortedSeriesIds state
+        setFullSortedSeriesIds(newSortedSeriesIds);
+        setSortedSeriesIds(newSortedSeriesIds);
+
+        // Fetch only the initial page
+        fetchSeriesData(newSortedSeriesIds, 0, false);
       } catch (error) {
-        console.error('Error saving vote data to localStorage:', error);
+        console.error('Error in fetchVoteData:', error);
       }
-
-      // Sort the series IDs based on the top votes
-      const newSortedSeriesIds = topVotesData.map(item => item.seriesId);
-
-      // Update the sortedSeriesIds state
-      setFullSortedSeriesIds(newSortedSeriesIds);
-      setSortedSeriesIds(newSortedSeriesIds);
-
-      // Fetch only the initial page
-      fetchSeriesData(newSortedSeriesIds, 0, false);
-    } catch (error) {
-      console.error('Error in fetchVoteData:', error);
-    }
-  }, [user, clearOtherUserCaches, fetchSeriesData]);
+    },
+    [user, clearOtherUserCaches, fetchSeriesData]
+  );
 
   const filterAndSortSeriesData = useCallback((data = allSeriesData) => {
     try {
@@ -452,7 +463,7 @@ export default function VotingPage({ shows: searchableShows }) {
       setSeriesMetadata([]);
       setSortedSeriesIds([]);
       setCurrentPage(0);
-      fetchVoteData();
+      fetchVoteData(rankMethod);
     }
   }, [debouncedSearchText, rankMethod, isTopList, allSeriesData]);
 
