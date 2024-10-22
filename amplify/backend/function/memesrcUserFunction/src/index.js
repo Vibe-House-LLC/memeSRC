@@ -804,14 +804,38 @@ export const handler = async (event) => {
       } else {
         try {
           const userVotesPromises = seriesIds.map(async (seriesId) => {
-            const metricId = `userVotes#${userSub}#${seriesId}`;
-            const analyticsResponse = await makeRequestWithVariables(getAnalyticsMetricsQuery, { id: metricId });
+            const userMetricId = `userVotes#${userSub}#${seriesId}`;
+            const totalMetricId = `totalVotes-${seriesId}`;
             
-            if (analyticsResponse.statusCode === 200 && analyticsResponse.body.data.getAnalyticsMetrics) {
-              const userVotes = JSON.parse(analyticsResponse.body.data.getAnalyticsMetrics.value);
-              return { seriesId, ...userVotes };
+            const [userAnalyticsResponse, totalAnalyticsResponse] = await Promise.all([
+              makeRequestWithVariables(getAnalyticsMetricsQuery, { id: userMetricId }),
+              makeRequestWithVariables(getAnalyticsMetricsQuery, { id: totalMetricId })
+            ]);
+            
+            let userVotes = { upvotes: 0, downvotes: 0 };
+            let totalVotes = { upvotes: 0, downvotes: 0 };
+            
+            if (userAnalyticsResponse.statusCode === 200 && userAnalyticsResponse.body.data.getAnalyticsMetrics) {
+              userVotes = JSON.parse(userAnalyticsResponse.body.data.getAnalyticsMetrics.value);
             }
-            return { seriesId, upvotes: 0, downvotes: 0 };
+            
+            if (totalAnalyticsResponse.statusCode === 200 && totalAnalyticsResponse.body.data.getAnalyticsMetrics) {
+              totalVotes = JSON.parse(totalAnalyticsResponse.body.data.getAnalyticsMetrics.value);
+            }
+            
+            return { 
+              seriesId, 
+              userVotes: {
+                upvotes: userVotes.upvotes || 0,
+                downvotes: userVotes.downvotes || 0,
+                lastVoteTime: userVotes.lastVoteTime,
+                lastBoost: userVotes.lastBoost
+              },
+              totalVotes: {
+                upvotes: totalVotes.upvotes || 0,
+                downvotes: totalVotes.downvotes || 0
+              }
+            };
           });
 
           const userVotesResults = await Promise.all(userVotesPromises);
