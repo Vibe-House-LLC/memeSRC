@@ -589,7 +589,10 @@ export default function VotingPage({ shows: searchableShows }) {
   };
 
   const calculateTimeRemaining = (lastVoteTime) => {
-    if (!lastVoteTime) return '0:00';
+    if (!lastVoteTime) {
+      setTimeRemaining('0:00');
+      return;
+    }
 
     const lastVote = new Date(lastVoteTime);
     const now = new Date();
@@ -597,12 +600,14 @@ export default function VotingPage({ shows: searchableShows }) {
     const remainingTime = nextVoteTime - now;
 
     if (remainingTime <= 0) {
-      return '0:00';
+      setTimeRemaining('0:00');
+      return;
     }
 
     const hours = Math.floor(remainingTime / (1000 * 60 * 60));
     const minutes = Math.floor((remainingTime % (1000 * 60 * 60)) / (1000 * 60));
-    return `${hours}h ${minutes.toString().padStart(2, '0')}m`;
+    const formattedTime = `${hours}h ${minutes.toString().padStart(2, '0')}m`;
+    setTimeRemaining(formattedTime);
   };
 
   const submitRequest = () => {
@@ -651,7 +656,9 @@ export default function VotingPage({ shows: searchableShows }) {
           <Typography variant="h3" component="h1" gutterBottom>
             Voting & Requests
           </Typography>
-          <Typography variant="subtitle2">Upvote the most memeable shows and movies</Typography>
+          <Typography variant="subtitle2">
+            Upvote the most memeable shows and movies
+          </Typography>
         </Box>
 
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, my: 2 }}>
@@ -702,7 +709,7 @@ export default function VotingPage({ shows: searchableShows }) {
             </ToggleButton>
             <ToggleButton value="requested" aria-label="requested">
               <GridSearchIcon sx={{ mr: 1 }} />
-              Added
+              Searchable
             </ToggleButton>
           </ToggleButtonGroup>
 
@@ -757,6 +764,10 @@ export default function VotingPage({ shows: searchableShows }) {
                     return null;
                   }
                   const showVoteData = voteData[show.id] || {};
+                  const userCanVote = showVoteData.ableToVote;
+                  const isUpvoted = showVoteData.lastBoost === 1 && !userCanVote;
+                  const isDownvoted = showVoteData.lastBoost === -1 && !userCanVote;
+
                   return (
                     <div key={show.id}>
                       <Grid item xs={12} style={{ marginBottom: 15 }}>
@@ -767,7 +778,16 @@ export default function VotingPage({ shows: searchableShows }) {
                                 <Box display="flex" alignItems="center">
                                   <Box mr={2} position="relative">
                                     <Badge
-                                      badgeContent={originalRanks[show.id] ? `#${originalRanks[show.id]}` : <CircularProgress size={12} sx={{ color: 'white' }} />}
+                                      badgeContent={
+                                        originalRanks[show.id] ? (
+                                          `#${originalRanks[show.id]}`
+                                        ) : (
+                                          <CircularProgress
+                                            size={12}
+                                            sx={{ color: 'white' }}
+                                          />
+                                        )
+                                      }
                                       color="secondary"
                                       anchorOrigin={{
                                         vertical: 'top',
@@ -787,7 +807,7 @@ export default function VotingPage({ shows: searchableShows }) {
                                         alt={show.name}
                                         style={{
                                           ...showImageStyle,
-                                          display: loadedImages[show.id] ? 'block' : 'none'
+                                          display: loadedImages[show.id] ? 'block' : 'none',
                                         }}
                                         onLoad={() => handleImageLoad(show.id)}
                                       />
@@ -800,24 +820,33 @@ export default function VotingPage({ shows: searchableShows }) {
                                       alignItems="center"
                                       sx={{ marginTop: '0.1rem', marginBottom: '-0.5rem' }}
                                     >
-                                      {
-                                        searchableShows.some(searchableShow => searchableShow.id === show.slug) && (
-                                          <a
-                                            href={`/${show.slug}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            style={{ textDecoration: 'none', color: 'inherit' }}
-                                          >
-                                            <Chip sx={{ marginRight: 1, cursor: 'pointer' }} size='large' label="🔍 Search" color="success" variant="filled" />
-                                          </a>
-                                        )
-                                      }
+                                      {searchableShows.some(
+                                        (searchableShow) => searchableShow.id === show.slug
+                                      ) && (
+                                        <a
+                                          href={`/${show.slug}`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          style={{ textDecoration: 'none', color: 'inherit' }}
+                                        >
+                                          <Chip
+                                            sx={{ marginRight: 1, cursor: 'pointer' }}
+                                            size="large"
+                                            label="🔍 Search"
+                                            color="success"
+                                            variant="filled"
+                                          />
+                                        </a>
+                                      )}
                                       <Typography
                                         variant="subtitle2"
                                         color="success.main"
                                         sx={{ fontSize: '0.7rem', opacity: 0.6 }}
                                       >
-                                        <ArrowUpward fontSize="small" sx={{ verticalAlign: 'middle' }} />
+                                        <ArrowUpward
+                                          fontSize="small"
+                                          sx={{ verticalAlign: 'middle' }}
+                                        />
                                         <b>{showVoteData.totalVotesUp || 0}</b>
                                       </Typography>
                                       {rankMethod === 'combined' && (
@@ -827,12 +856,20 @@ export default function VotingPage({ shows: searchableShows }) {
                                           ml={1}
                                           sx={{ fontSize: '0.7rem', opacity: 0.6 }}
                                         >
-                                          <ArrowDownward fontSize="small" sx={{ verticalAlign: 'middle' }} />
+                                          <ArrowDownward
+                                            fontSize="small"
+                                            sx={{ verticalAlign: 'middle' }}
+                                          />
                                           <b>{showVoteData.totalVotesDown || 0}</b>
                                         </Typography>
                                       )}
                                     </Box>
-                                    <Typography variant="body2" color="text.secondary" mt={1} style={descriptionStyle}>
+                                    <Typography
+                                      variant="body2"
+                                      color="text.secondary"
+                                      mt={1}
+                                      style={descriptionStyle}
+                                    >
                                       {show.description}
                                     </Typography>
                                   </Stack>
@@ -841,7 +878,12 @@ export default function VotingPage({ shows: searchableShows }) {
                               <Box mr={0}>
                                 {rankMethod === 'combined' ? (
                                   <>
-                                    <Box display="flex" flexDirection="column" justifyContent="space-between" height="100%">
+                                    <Box
+                                      display="flex"
+                                      flexDirection="column"
+                                      justifyContent="space-between"
+                                      height="100%"
+                                    >
                                       {votingStatus[show.id] === 1 ? (
                                         <CircularProgress size={25} sx={{ ml: 1.2, mb: 1.5 }} />
                                       ) : (
@@ -852,9 +894,10 @@ export default function VotingPage({ shows: searchableShows }) {
                                             calculateTimeRemaining(showVoteData.lastVoteTime);
                                           }}
                                           title={
-                                            (!showVoteData.ableToVote || votingStatus?.[show.id])
-                                              ? user ? `🔒 ${calculateTimeRemaining(showVoteData.lastVoteTime)}`
-                                              : 'Upvote'
+                                            !userCanVote || votingStatus?.[show.id]
+                                              ? user
+                                                ? `🔒 ${timeRemaining}`
+                                                : 'Upvote'
                                               : 'Upvote'
                                           }
                                           componentsProps={{
@@ -874,7 +917,9 @@ export default function VotingPage({ shows: searchableShows }) {
                                               horizontal: 'right',
                                             }}
                                             badgeContent={
-                                              showVoteData.lastBoost > 0 ? `+${showVoteData.lastBoost}` : null
+                                              showVoteData.lastBoost === 1
+                                                ? `+${showVoteData.lastBoost}`
+                                                : null
                                             }
                                             sx={{
                                               color: 'success.main',
@@ -885,22 +930,29 @@ export default function VotingPage({ shows: searchableShows }) {
                                               onClick={() =>
                                                 user
                                                   ? handleUpvote(show.id)
-                                                  : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
+                                                  : navigate(
+                                                      `/login?dest=${encodeURIComponent(
+                                                        location.pathname
+                                                      )}`
+                                                    )
                                               }
                                               disabled={
-                                                user &&
-                                                (!showVoteData.ableToVote || votingStatus?.[show.id])
+                                                user && (!userCanVote || votingStatus?.[show.id])
                                               }
                                               size="small"
                                               sx={{
-                                                backgroundColor: showVoteData.lastBoost > 0 ? 'success.light' : 'default',
+                                                backgroundColor: isUpvoted
+                                                  ? 'success.light'
+                                                  : 'default',
                                               }}
                                             >
-                                              <ArrowUpward
-                                                sx={{
-                                                  color: showVoteData.lastBoost > 0 ? 'success.main' : 'inherit',
-                                                }}
-                                              />
+                                              {userCanVote ? (
+                                                <ArrowUpward />
+                                              ) : isUpvoted ? (
+                                                <ArrowUpward sx={{ color: 'success.main' }} />
+                                              ) : (
+                                                <Lock />
+                                              )}
                                             </StyledFab>
                                           </StyledBadge>
                                         </Tooltip>
@@ -908,7 +960,11 @@ export default function VotingPage({ shows: searchableShows }) {
                                     </Box>
 
                                     <Box alignItems="center" height="100%">
-                                      <Typography variant="h5" textAlign="center" color={votesCount(show) < 0 && 'error.main'}>
+                                      <Typography
+                                        variant="h5"
+                                        textAlign="center"
+                                        color={votesCount(show) < 0 && 'error.main'}
+                                      >
                                         {votesCount(show)}
                                       </Typography>
                                     </Box>
@@ -923,9 +979,10 @@ export default function VotingPage({ shows: searchableShows }) {
                                             calculateTimeRemaining(showVoteData.lastVoteTime);
                                           }}
                                           title={
-                                            (!showVoteData.ableToVote || votingStatus?.[show.id])
-                                              ? user ? `🔒 ${calculateTimeRemaining(showVoteData.lastVoteTime)}`
-                                              : 'Downvote'
+                                            !userCanVote || votingStatus?.[show.id]
+                                              ? user
+                                                ? `🔒 ${timeRemaining}`
+                                                : 'Downvote'
                                               : 'Downvote'
                                           }
                                           componentsProps={{
@@ -945,7 +1002,9 @@ export default function VotingPage({ shows: searchableShows }) {
                                               horizontal: 'right',
                                             }}
                                             badgeContent={
-                                              showVoteData.lastBoost < 0 ? `${showVoteData.lastBoost}` : null
+                                              showVoteData.lastBoost === -1
+                                                ? `${showVoteData.lastBoost}`
+                                                : null
                                             }
                                             sx={{
                                               color: 'error.main',
@@ -956,22 +1015,29 @@ export default function VotingPage({ shows: searchableShows }) {
                                               onClick={() =>
                                                 user
                                                   ? handleDownvote(show.id)
-                                                  : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
+                                                  : navigate(
+                                                      `/login?dest=${encodeURIComponent(
+                                                        location.pathname
+                                                      )}`
+                                                    )
                                               }
                                               disabled={
-                                                user &&
-                                                (!showVoteData.ableToVote || votingStatus?.[show.id])
+                                                user && (!userCanVote || votingStatus?.[show.id])
                                               }
                                               size="small"
                                               sx={{
-                                                backgroundColor: showVoteData.lastBoost < 0 ? 'error.light' : 'default',
+                                                backgroundColor: isDownvoted
+                                                  ? 'error.light'
+                                                  : 'default',
                                               }}
                                             >
-                                              <ArrowDownward
-                                                sx={{
-                                                  color: showVoteData.lastBoost < 0 ? 'error.main' : 'inherit',
-                                                }}
-                                              />
+                                              {userCanVote ? (
+                                                <ArrowDownward />
+                                              ) : isDownvoted ? (
+                                                <ArrowDownward sx={{ color: 'error.main' }} />
+                                              ) : (
+                                                <Lock />
+                                              )}
                                             </StyledFab>
                                           </StyledBadge>
                                         </Tooltip>
@@ -979,8 +1045,18 @@ export default function VotingPage({ shows: searchableShows }) {
                                     </Box>
                                   </>
                                 ) : (
-                                  <Stack alignItems="center" spacing={0.7} direction="column" height="100%">
-                                    <Box display="flex" flexDirection="column" justifyContent="space-between" height="100%">
+                                  <Stack
+                                    alignItems="center"
+                                    spacing={0.7}
+                                    direction="column"
+                                    height="100%"
+                                  >
+                                    <Box
+                                      display="flex"
+                                      flexDirection="column"
+                                      justifyContent="space-between"
+                                      height="100%"
+                                    >
                                       {votingStatus[show.id] === 1 ? (
                                         <CircularProgress size={25} sx={{ ml: 1.2, mb: 1.5 }} />
                                       ) : (
@@ -991,9 +1067,10 @@ export default function VotingPage({ shows: searchableShows }) {
                                             calculateTimeRemaining(showVoteData.lastVoteTime);
                                           }}
                                           title={
-                                            (!showVoteData.ableToVote || votingStatus?.[show.id])
-                                              ? user ? `🔒 ${calculateTimeRemaining(showVoteData.lastVoteTime)}`
-                                              : 'Upvote'
+                                            !userCanVote || votingStatus?.[show.id]
+                                              ? user
+                                                ? `🔒 ${timeRemaining}`
+                                                : 'Upvote'
                                               : 'Upvote'
                                           }
                                           componentsProps={{
@@ -1013,7 +1090,9 @@ export default function VotingPage({ shows: searchableShows }) {
                                               horizontal: 'right',
                                             }}
                                             badgeContent={
-                                              showVoteData.lastBoost > 0 ? `+${showVoteData.lastBoost}` : null
+                                              showVoteData.lastBoost === 1
+                                                ? `+${showVoteData.lastBoost}`
+                                                : null
                                             }
                                           >
                                             <StyledFab
@@ -1021,25 +1100,39 @@ export default function VotingPage({ shows: searchableShows }) {
                                               onClick={() =>
                                                 user
                                                   ? handleUpvote(show.id)
-                                                  : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
+                                                  : navigate(
+                                                      `/login?dest=${encodeURIComponent(
+                                                        location.pathname
+                                                      )}`
+                                                    )
                                               }
-                                              disabled={user && (!showVoteData.ableToVote || votingStatus?.[show.id])}
+                                              disabled={
+                                                user && (!userCanVote || votingStatus?.[show.id])
+                                              }
                                               size="small"
                                               sx={{
-                                                backgroundColor: showVoteData.lastBoost > 0 ? 'success.light' : 'default',
+                                                backgroundColor: isUpvoted
+                                                  ? 'success.light'
+                                                  : 'default',
                                               }}
                                             >
-                                              <ArrowUpward
-                                                sx={{
-                                                  color: showVoteData.lastBoost > 0 ? 'success.main' : 'inherit',
-                                                }}
-                                              />
+                                              {userCanVote ? (
+                                                <ThumbUp />
+                                              ) : isUpvoted ? (
+                                                <ThumbUp sx={{ color: 'success.main' }} />
+                                              ) : (
+                                                <Lock />
+                                              )}
                                             </StyledFab>
                                           </StyledBadge>
                                         </Tooltip>
                                       )}
                                     </Box>
-                                    <Typography variant="h5" textAlign="center" color={votesCount(show) < 0 && 'error.main'}>
+                                    <Typography
+                                      variant="h5"
+                                      textAlign="center"
+                                      color={votesCount(show) < 0 && 'error.main'}
+                                    >
                                       {showVoteData.totalVotesUp || 0}
                                     </Typography>
                                   </Stack>
@@ -1122,17 +1215,24 @@ export default function VotingPage({ shows: searchableShows }) {
           )}
         </Grid>
       </Container>
-      <Dialog maxWidth='md' fullWidth onClose={toggleOpenAddRequest} open={openAddRequest}>
+      <Dialog maxWidth="md" fullWidth onClose={toggleOpenAddRequest} open={openAddRequest}>
         <DialogTitle>
-          <Typography variant='h4' textAlign='center'>
+          <Typography variant="h4" textAlign="center">
             Request Series
           </Typography>
         </DialogTitle>
         <DialogContent sx={{ paddingTop: 2 }}>
-          <TvdbSearch typeFilter={['series', 'movie']} onClear={() => { setSelectedRequest(); }} onSelect={(value) => { setSelectedRequest(value); }} />
-          {selectedRequest &&
-
-            <Grid container spacing={2} alignItems='center' mt={2}>
+          <TvdbSearch
+            typeFilter={['series', 'movie']}
+            onClear={() => {
+              setSelectedRequest();
+            }}
+            onSelect={(value) => {
+              setSelectedRequest(value);
+            }}
+          />
+          {selectedRequest && (
+            <Grid container spacing={2} alignItems="center" mt={2}>
               <Grid item>
                 <StyledImg
                   src={selectedRequest.image_url}
@@ -1149,31 +1249,39 @@ export default function VotingPage({ shows: searchableShows }) {
                       maxWidth: '200px',
                       maxHeight: '200px',
                     },
-                  }} />
+                  }}
+                />
               </Grid>
               <Grid item xs>
-                <Typography variant='h4'>
+                <Typography variant="h4">
                   {selectedRequest.name}
-                  <Chip size='small' sx={{ ml: 1 }} label={selectedRequest.type} />
+                  <Chip size="small" sx={{ ml: 1 }} label={selectedRequest.type} />
                 </Typography>
-                <Typography variant='body2'>
-                  {selectedRequest.year}
-                </Typography>
-                <Typography variant='body1' mt={2} sx={{
-                  display: '-webkit-box',
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: 'vertical',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}>
+                <Typography variant="body2">{selectedRequest.year}</Typography>
+                <Typography
+                  variant="body1"
+                  mt={2}
+                  sx={{
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
                   {selectedRequest.overview}
                 </Typography>
               </Grid>
             </Grid>
-          }
+          )}
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
-          <LoadingButton onClick={submitRequest} loading={submittingRequest} disabled={!selectedRequest || submittingRequest} variant='contained'>
+          <LoadingButton
+            onClick={submitRequest}
+            loading={submittingRequest}
+            disabled={!selectedRequest || submittingRequest}
+            variant="contained"
+          >
             Submit Request
           </LoadingButton>
         </DialogActions>
