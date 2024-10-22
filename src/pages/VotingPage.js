@@ -938,11 +938,7 @@ export default function VotingPage({ shows: searchableShows }) {
                                               vertical: 'top',
                                               horizontal: 'right',
                                             }}
-                                            badgeContent={
-                                              showVoteData.lastBoost === 1
-                                                ? `+${showVoteData.lastBoost}`
-                                                : null
-                                            }
+                                            badgeContent={showVoteData.userVotesUp > 0 ? `+${showVoteData.userVotesUp}` : null}
                                             sx={{
                                               color: 'success.main',
                                             }}
@@ -1023,11 +1019,7 @@ export default function VotingPage({ shows: searchableShows }) {
                                               vertical: 'bottom',
                                               horizontal: 'right',
                                             }}
-                                            badgeContent={
-                                              showVoteData.lastBoost === -1
-                                                ? `${showVoteData.lastBoost}`
-                                                : null
-                                            }
+                                            badgeContent={showVoteData.userVotesDown > 0 ? `-${showVoteData.userVotesDown}` : null}
                                             sx={{
                                               color: 'error.main',
                                             }}
@@ -1111,11 +1103,7 @@ export default function VotingPage({ shows: searchableShows }) {
                                               vertical: 'top',
                                               horizontal: 'right',
                                             }}
-                                            badgeContent={
-                                              showVoteData.lastBoost === 1
-                                                ? `+${showVoteData.lastBoost}`
-                                                : null
-                                            }
+                                            badgeContent={showVoteData.userVotesUp > 0 ? `+${showVoteData.userVotesUp}` : null}
                                           >
                                             <StyledFab
                                               aria-label="upvote"
