@@ -1045,12 +1045,10 @@ export default function VotingPage({ shows: searchableShows }) {
                                                   : 'default',
                                               }}
                                             >
-                                              {userCanVote ? (
-                                                <ArrowDownward />
-                                              ) : isDownvoted ? (
+                                              {isDownvoted ? (
                                                 <ArrowDownward sx={{ color: 'error.main' }} />
                                               ) : (
-                                                <Lock />
+                                                <ArrowDownward />
                                               )}
                                             </StyledFab>
                                           </StyledBadge>
