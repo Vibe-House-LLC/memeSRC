@@ -576,12 +576,20 @@ export default function VotingPage({ shows: searchableShows }) {
   const handleRankMethodChange = useCallback((event, newValue) => {
     // Only update if a button is selected (newValue is not null)
     if (newValue !== null) {
+      setIsChangingRankMethod(true); // Set to true when changing rank method
       localStorage.setItem('rankMethod', newValue);
       setRankMethod(newValue);
       setCurrentPage(0);
       setSeriesMetadata([]);
+      
+      // Fetch new data with a slight delay to allow for state updates
+      setTimeout(() => {
+        fetchVoteData(newValue).then(() => {
+          setIsChangingRankMethod(false); // Set back to false when done
+        });
+      }, 100);
     }
-  }, []);
+  }, [fetchVoteData]);
 
   const votesCount = (show) => {
     if (!voteData[show.id]) {
@@ -656,6 +664,9 @@ export default function VotingPage({ shows: searchableShows }) {
     setSearchText('');
     debouncedSetSearchText('');
   };
+
+  // Add this new state variable
+  const [isChangingRankMethod, setIsChangingRankMethod] = useState(false);
 
   return (
     <>
@@ -749,7 +760,7 @@ export default function VotingPage({ shows: searchableShows }) {
         </Box>
 
         <Grid container style={{ minWidth: '100%' }}>
-          {loading && !seriesMetadata.length ? (
+          {(loading && !seriesMetadata.length) || isChangingRankMethod ? (
             <Grid
               item
               xs={12}
