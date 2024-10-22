@@ -671,6 +671,51 @@ export const handler = async (event) => {
     }
   }
 
+  if (path.startsWith(`/${process.env.ENV}/public/votes/topList`)) {
+    console.log(`Starting top list processing for path: ${path}`);
+  
+    const getAnalyticsMetricsQuery = `
+      query GetAnalyticsMetrics($id: ID!) {
+        getAnalyticsMetrics(id: $id) {
+          value
+        }
+      }
+    `;
+  
+    const metricId = 'topVotes-uniqueSeriesIds';
+  
+    try {
+      const analyticsResponse = await makeRequestWithVariables(getAnalyticsMetricsQuery, { id: metricId });
+      if (analyticsResponse.statusCode === 200 && analyticsResponse.body.data.getAnalyticsMetrics) {
+        const uniqueSeriesIds = JSON.parse(analyticsResponse.body.data.getAnalyticsMetrics.value);
+        if (Array.isArray(uniqueSeriesIds)) {
+          response = {
+            statusCode: 200,
+            body: JSON.stringify(uniqueSeriesIds)
+          };
+        } else {
+          response = {
+            statusCode: 500,
+            body: JSON.stringify({ error: `Invalid data format for ${metricId}` })
+          };
+        }
+      } else {
+        response = {
+          statusCode: 404,
+          body: JSON.stringify({ error: `${metricId} data not found` })
+        };
+      }
+    } catch (error) {
+      console.error(`Error fetching top votes list: ${error.message}`);
+      response = {
+        statusCode: 500,
+        body: JSON.stringify({ error: `Failed to fetch top votes list: ${error.message}` })
+      };
+    }
+  
+    console.log('Top list processing completed');
+  }
+
   if (path.startsWith(`/${process.env.ENV}/public/votes/`)) {
     console.log(`Starting vote processing for path: ${path}`);
   
