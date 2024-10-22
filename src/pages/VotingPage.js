@@ -645,6 +645,12 @@ export default function VotingPage({ shows: searchableShows }) {
     }
   };
 
+  // Add this function to handle clearing the search
+  const clearSearch = () => {
+    setSearchText('');
+    debouncedSetSearchText('');
+  };
+
   return (
     <>
       <Helmet>
@@ -725,7 +731,7 @@ export default function VotingPage({ shows: searchableShows }) {
               ),
               endAdornment: searchText && (
                 <InputAdornment position="end">
-                  <IconButton edge="end" onClick={() => setSearchText('')}>
+                  <IconButton edge="end" onClick={clearSearch}>
                     <Close />
                   </IconButton>
                 </InputAdornment>
