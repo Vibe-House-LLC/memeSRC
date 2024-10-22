@@ -556,6 +556,8 @@ export const handler = async (event) => {
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
     // console.log('Last Vote:', lastVote);
 
+    const currentTime = new Date().toISOString();
+
     // Check if the last vote was more than 24 hours ago
     let canVote = false;
     if (lastVote) {
@@ -594,7 +596,7 @@ export const handler = async (event) => {
       `;
 
       const userVoteAggregation = await makeRequest(getUserVoteAggregationQuery);
-      let currentUserVotes = { upvotes: 0, downvotes: 0 };
+      let currentUserVotes = { upvotes: 0, downvotes: 0, lastVoteTime: currentTime };
 
       if (userVoteAggregation.body.data.getAnalyticsMetrics) {
         currentUserVotes = JSON.parse(userVoteAggregation.body.data.getAnalyticsMetrics.value);
@@ -605,6 +607,7 @@ export const handler = async (event) => {
       } else if (boost < 0) {
         currentUserVotes.downvotes += Math.abs(boost);
       }
+      currentUserVotes.lastVoteTime = currentTime;
 
       const updateUserVoteAggregationMutation = `
         mutation UpdateAnalyticsMetrics {

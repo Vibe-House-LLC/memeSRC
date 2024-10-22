@@ -51,6 +51,7 @@ exports.handler = async (event) => {
         const seriesId = item.seriesUserVoteSeriesId;
         const userId = item.userDetailsVotesId;
         const boost = parseInt(item.boost);
+        const voteTime = item.createdAt || item.updatedAt; // Use createdAt or updatedAt as the vote time
 
         // Global aggregation
         if (!voteAggregation[seriesId]) {
@@ -60,7 +61,12 @@ exports.handler = async (event) => {
         // User-specific aggregation
         const userSeriesKey = `${userId}#${seriesId}`;
         if (!userVoteAggregation[userSeriesKey]) {
-            userVoteAggregation[userSeriesKey] = { upvotes: 0, downvotes: 0 };
+            userVoteAggregation[userSeriesKey] = { upvotes: 0, downvotes: 0, lastVoteTime: voteTime };
+        } else {
+            // Update lastVoteTime if this vote is more recent
+            if (voteTime > userVoteAggregation[userSeriesKey].lastVoteTime) {
+                userVoteAggregation[userSeriesKey].lastVoteTime = voteTime;
+            }
         }
 
         if (boost > 0) {
@@ -182,7 +188,11 @@ exports.handler = async (event) => {
             TableName: process.env.API_MEMESRC_ANALYTICSMETRICSTABLE_NAME,
             Item: marshall({
                 id: `userVotes#${userId}#${seriesId}`,
-                value: JSON.stringify(votes),
+                value: JSON.stringify({
+                    upvotes: votes.upvotes,
+                    downvotes: votes.downvotes,
+                    lastVoteTime: votes.lastVoteTime
+                }),
                 createdAt: currentTime,
                 updatedAt: currentTime,
                 __typename: "AnalyticsMetrics"
