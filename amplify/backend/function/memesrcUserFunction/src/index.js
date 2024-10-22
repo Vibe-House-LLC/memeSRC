@@ -542,49 +542,44 @@ export const handler = async (event) => {
     const seriesId = body.seriesId;
     const boost = body.boost;
 
-    // console.log('LOAD USER');
+    // Fetch user details
     const userDetails = await makeRequest(getUserDetails({ subId: userSub }));
-    // console.log('User Details:', userDetails);
 
-    // console.log('SEPARATE USER VOTES');
+    // Extract user votes
     const usersVotes = userDetails.body.data.getUserDetails.votes.items;
-    // console.log('User Votes:', usersVotes);
 
-    // console.log('CHECK IF VOTE EXISTS FOR SERIES ID');
+    // Determine if the user can vote based on the last vote time
     const lastVote = usersVotes
       ?.filter((item) => item.series?.id === seriesId)
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
-    // console.log('Last Vote:', lastVote);
 
     const currentTime = new Date().toISOString();
 
-    // Check if the last vote was more than 24 hours ago
     let canVote = false;
     if (lastVote) {
       const voteTime = new Date(lastVote.createdAt);
-      // console.log(`Last Vote Time: ${voteTime}`)
-      const diffInHours = (new Date() - voteTime) / 1000 / 60 / 60;
-      // console.log(`diffInHours: ${diffInHours}`)
+      const diffInHours = (new Date() - voteTime) / (1000 * 60 * 60);
       canVote = diffInHours >= 24;
     } else {
       canVote = true;
     }
 
-    // console.log('Can Vote:', canVote);
-
     if (canVote) {
-      // console.log('CREATE VOTE QUERY');
+      // Create SeriesUserVote Mutation
       const createVote = `
         mutation createSeriesUserVote {
-            createSeriesUserVote(input: {userDetailsVotesId: "${userSub}", seriesUserVoteSeriesId: "${seriesId}", boost: ${boost}}) {
-          id
+          createSeriesUserVote(input: {
+            userDetailsVotesId: ${JSON.stringify(userSub)},
+            seriesUserVoteSeriesId: ${JSON.stringify(seriesId)},
+            boost: ${boost}
+          }) {
+            id
+          }
         }
       `;
-      // console.log('Create Vote Query:', createVote);
 
-      // Hit GraphQL to place vote
+      // Execute the mutation
       response = await makeRequest(createVote);
-      // console.log('Vote Response:', response);
 
       // Update user-specific vote aggregation
       const getUserVoteAggregationQuery = `
@@ -610,11 +605,12 @@ export const handler = async (event) => {
       currentUserVotes.lastVoteTime = currentTime;
       currentUserVotes.lastBoost = boost;
 
+      // Update AnalyticsMetrics Mutation for User Votes
       const updateUserVoteAggregationMutation = `
         mutation UpdateAnalyticsMetrics {
           updateAnalyticsMetrics(input: {
             id: "userVotes#${userSub}#${seriesId}",
-            value: ${JSON.stringify(JSON.stringify(currentUserVotes))},
+            value: ${JSON.stringify(currentUserVotes)},
             __typename: "AnalyticsMetrics"
           }) {
             id
@@ -647,11 +643,12 @@ export const handler = async (event) => {
         currentSeriesVotes.downvotes += Math.abs(boost);
       }
 
+      // Update AnalyticsMetrics Mutation for Series Votes
       const updateSeriesVoteAggregationMutation = `
         mutation UpdateAnalyticsMetrics {
           updateAnalyticsMetrics(input: {
             id: "totalVotes-${seriesId}",
-            value: ${JSON.stringify(JSON.stringify(currentSeriesVotes))},
+            value: ${JSON.stringify(currentSeriesVotes)},
             __typename: "AnalyticsMetrics"
           }) {
             id
@@ -671,7 +668,6 @@ export const handler = async (event) => {
           message: 'You can only vote once every 24 hours.',
         },
       };
-      // console.log('Forbidden Error:', response);
     }
   }
 
