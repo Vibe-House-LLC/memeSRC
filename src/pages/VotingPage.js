@@ -318,37 +318,48 @@ export default function VotingPage({ shows: searchableShows }) {
           newVoteData[item.seriesId] = {
             totalVotesUp: item.upvotes,
             totalVotesDown: item.downvotes,
-            ableToVote: true,
+            ableToVote: true,  // Default to true
             userVotesUp: 0,
             userVotesDown: 0,
             lastVoteTime: null,
+            lastBoost: null,
           };
         });
 
         // Fetch user-specific votes if user is logged in
         if (user) {
           const seriesIds = topVotesData.map(item => item.seriesId);
-          const userVotesResponse = await API.post('publicapi', '/vote/new/user', {
-            body: { seriesIds }
-          });
-          const userVotesData = JSON.parse(userVotesResponse);
+          try {
+            const userVotesResponse = await API.post('publicapi', '/vote/new/user', {
+              body: { seriesIds }
+            });
+            const userVotesData = JSON.parse(userVotesResponse);
 
-          userVotesData.forEach((item) => {
-            const userVotesItem = item.userVotes;
-            const seriesId = item.seriesId;
-            if (newVoteData[seriesId]) {
-              newVoteData[seriesId].userVotesUp = userVotesItem.upvotes || 0;
-              newVoteData[seriesId].userVotesDown = userVotesItem.downvotes || 0;
-              newVoteData[seriesId].lastVoteTime = userVotesItem.lastVoteTime;
-              newVoteData[seriesId].lastBoost = userVotesItem.lastBoost; // Set lastBoost
+            // Update only the series that have user votes
+            userVotesData.forEach((item) => {
+              const userVotesItem = item.userVotes;
+              const seriesId = item.seriesId;
+              if (newVoteData[seriesId] && userVotesItem) {
+                newVoteData[seriesId].userVotesUp = userVotesItem.upvotes || 0;
+                newVoteData[seriesId].userVotesDown = userVotesItem.downvotes || 0;
+                newVoteData[seriesId].lastVoteTime = userVotesItem.lastVoteTime;
+                newVoteData[seriesId].lastBoost = userVotesItem.lastBoost;
 
-              // Calculate if the user is able to vote based on lastVoteTime
-              const lastVoteDate = new Date(userVotesItem.lastVoteTime);
-              const now = new Date();
-              const hoursSinceLastVote = (now - lastVoteDate) / (1000 * 60 * 60);
-              newVoteData[seriesId].ableToVote = hoursSinceLastVote >= 24;
-            }
-          });
+                // Calculate if the user is able to vote based on lastVoteTime
+                if (userVotesItem.lastVoteTime) {
+                  const lastVoteDate = new Date(userVotesItem.lastVoteTime);
+                  const now = new Date();
+                  const hoursSinceLastVote = (now - lastVoteDate) / (1000 * 60 * 60);
+                  newVoteData[seriesId].ableToVote = hoursSinceLastVote >= 24;
+                }
+              }
+              // If no user votes exist for this series, the default values remain
+              // (ableToVote: true, userVotesUp: 0, userVotesDown: 0, etc.)
+            });
+          } catch (error) {
+            console.error('Error fetching user votes:', error);
+            // If user votes fetch fails, keep the default values
+          }
         }
 
         setVoteData(newVoteData);
