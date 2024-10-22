@@ -636,14 +636,22 @@ export const handler = async (event) => {
       }
     } else if (path === `/${process.env.ENV}/public/vote/new/user`) {
       console.log('Processing user-specific vote data');
+
+      const userAuth = event.requestContext.identity.cognitoAuthenticationType;
       
-      // Extract the seriesId from the query string parameters
-      const seriesId = event.queryStringParameters && event.queryStringParameters.seriesId;
+      // Extract the seriesIds from the request body
+      let seriesIds;
+      try {
+        const body = JSON.parse(event.body);
+        seriesIds = body.seriesIds;
+      } catch (error) {
+        console.error('Error parsing request body:', error);
+      }
       
-      if (!seriesId) {
+      if (!seriesIds || !Array.isArray(seriesIds)) {
         response = {
           statusCode: 400,
-          body: JSON.stringify({ error: "Missing seriesId parameter" })
+          body: JSON.stringify({ error: "Missing or invalid seriesIds parameter" })
         };
       } else if (userAuth === "unauthenticated") {
         response = {
@@ -651,23 +659,24 @@ export const handler = async (event) => {
           body: JSON.stringify({ error: "User must be authenticated to access user-specific vote data" })
         };
       } else {
-        const metricId = `userVotes#${userSub}#${seriesId}`;
-        
         try {
-          const analyticsResponse = await makeRequestWithVariables(getAnalyticsMetricsQuery, { id: metricId });
-  
-          if (analyticsResponse.statusCode === 200 && analyticsResponse.body.data.getAnalyticsMetrics) {
-            const userVotes = JSON.parse(analyticsResponse.body.data.getAnalyticsMetrics.value);
-            response = {
-              statusCode: 200,
-              body: JSON.stringify(userVotes)
-            };
-          } else {
-            response = {
-              statusCode: 404,
-              body: JSON.stringify({ error: `User vote data not found for series ${seriesId}` })
-            };
-          }
+          const userVotesPromises = seriesIds.map(async (seriesId) => {
+            const metricId = `userVotes#${userSub}#${seriesId}`;
+            const analyticsResponse = await makeRequestWithVariables(getAnalyticsMetricsQuery, { id: metricId });
+            
+            if (analyticsResponse.statusCode === 200 && analyticsResponse.body.data.getAnalyticsMetrics) {
+              const userVotes = JSON.parse(analyticsResponse.body.data.getAnalyticsMetrics.value);
+              return { seriesId, ...userVotes };
+            }
+            return { seriesId, upvotes: 0, downvotes: 0 };
+          });
+
+          const userVotesResults = await Promise.all(userVotesPromises);
+
+          response = {
+            statusCode: 200,
+            body: JSON.stringify(userVotesResults)
+          };
         } catch (error) {
           console.error(`Error fetching user vote data: ${error.message}`);
           response = {

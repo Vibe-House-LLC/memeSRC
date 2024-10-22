@@ -331,8 +331,27 @@ export default function VotingPage({ shows: searchableShows }) {
             totalVotesUp: item.upvotes,
             totalVotesDown: item.downvotes,
             ableToVote: true,
+            userVotesUp: 0,
+            userVotesDown: 0,
           };
         });
+
+        // Fetch user-specific votes if user is logged in
+        if (user) {
+          const seriesIds = topVotesData.map(item => item.seriesId);
+          const userVotesResponse = await API.post('publicapi', '/vote/new/user', {
+            body: { seriesIds }
+          });
+          const userVotesData = JSON.parse(userVotesResponse);
+
+          userVotesData.forEach((item) => {
+            const seriesId = item.seriesId;
+            if (newVoteData[seriesId]) {
+              newVoteData[seriesId].userVotesUp = item.upvotes || 0;
+              newVoteData[seriesId].userVotesDown = item.downvotes || 0;
+            }
+          });
+        }
 
         setVoteData(newVoteData);
         votesCache.current = newVoteData;
@@ -512,7 +531,7 @@ export default function VotingPage({ shows: searchableShows }) {
       setVoteData((prevVoteData) => {
         const updatedVoteData = { ...prevVoteData };
         const updatedSeriesData = { ...updatedVoteData[seriesId] };
-        
+
         if (boost === 1) {
           updatedSeriesData.totalVotesUp = (updatedSeriesData.totalVotesUp || 0) + 1;
           updatedSeriesData.userVotesUp = (updatedSeriesData.userVotesUp || 0) + 1;
@@ -520,7 +539,7 @@ export default function VotingPage({ shows: searchableShows }) {
           updatedSeriesData.totalVotesDown = (updatedSeriesData.totalVotesDown || 0) + 1;
           updatedSeriesData.userVotesDown = (updatedSeriesData.userVotesDown || 0) + 1;
         }
-        
+
         updatedSeriesData.ableToVote = false;
         const now = new Date();
         now.setHours(now.getHours() + 24);
@@ -883,7 +902,11 @@ export default function VotingPage({ shows: searchableShows }) {
                                               vertical: 'top',
                                               horizontal: 'right',
                                             }}
-                                            badgeContent={showVoteData.userVotesUp > 0 ? `+${showVoteData.userVotesUp}` : null}
+                                            badgeContent={
+                                              showVoteData.userVotesUp && showVoteData.userVotesUp > 0
+                                                ? `+${showVoteData.userVotesUp}`
+                                                : null
+                                            }
                                             sx={{
                                               color: 'success.main',
                                             }}
@@ -961,7 +984,11 @@ export default function VotingPage({ shows: searchableShows }) {
                                               vertical: 'bottom',
                                               horizontal: 'right',
                                             }}
-                                            badgeContent={showVoteData.userVotesDown < 0 ? Math.abs(showVoteData.userVotesDown) : null}
+                                            badgeContent={
+                                              showVoteData.userVotesDown && showVoteData.userVotesDown > 0
+                                                ? `-${showVoteData.userVotesDown}`
+                                                : null
+                                            }
                                             sx={{
                                               color: 'error.main',
                                             }}
@@ -1030,7 +1057,11 @@ export default function VotingPage({ shows: searchableShows }) {
                                               vertical: 'top',
                                               horizontal: 'right',
                                             }}
-                                            badgeContent={showVoteData.userVotesUp > 0 ? `+${showVoteData.userVotesUp}` : null}
+                                            badgeContent={
+                                              showVoteData.userVotesUp && showVoteData.userVotesUp > 0
+                                                ? `+${showVoteData.userVotesUp}`
+                                                : null
+                                            }
                                           >
                                             <StyledFab
                                               aria-label="upvote"
