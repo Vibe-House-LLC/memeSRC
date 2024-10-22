@@ -334,15 +334,16 @@ export default function VotingPage({ shows: searchableShows }) {
           const userVotesData = JSON.parse(userVotesResponse);
 
           userVotesData.forEach((item) => {
+            const userVotesItem = item.userVotes;
             const seriesId = item.seriesId;
             if (newVoteData[seriesId]) {
-              newVoteData[seriesId].userVotesUp = item.upvotes || 0;
-              newVoteData[seriesId].userVotesDown = item.downvotes || 0;
-              newVoteData[seriesId].lastVoteTime = item.lastVoteTime;
-              newVoteData[seriesId].lastBoost = item.lastBoost; // Set lastBoost
+              newVoteData[seriesId].userVotesUp = userVotesItem.upvotes || 0;
+              newVoteData[seriesId].userVotesDown = userVotesItem.downvotes || 0;
+              newVoteData[seriesId].lastVoteTime = userVotesItem.lastVoteTime;
+              newVoteData[seriesId].lastBoost = userVotesItem.lastBoost; // Set lastBoost
 
               // Calculate if the user is able to vote based on lastVoteTime
-              const lastVoteDate = new Date(item.lastVoteTime);
+              const lastVoteDate = new Date(userVotesItem.lastVoteTime);
               const now = new Date();
               const hoursSinceLastVote = (now - lastVoteDate) / (1000 * 60 * 60);
               newVoteData[seriesId].ableToVote = hoursSinceLastVote >= 24;
