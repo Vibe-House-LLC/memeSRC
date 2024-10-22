@@ -671,7 +671,56 @@ export const handler = async (event) => {
     }
   }
 
-  if (path.startsWith(`/${process.env.ENV}/public/vote/new/`)) {
+  if (path.startsWith(`/${process.env.ENV}/public/votes/`)) {
+    console.log(`Starting vote processing for path: ${path}`);
+  
+    const getAnalyticsMetricsQuery = `
+      query GetAnalyticsMetrics($id: ID!) {
+        getAnalyticsMetrics(id: $id) {
+          value
+        }
+      }
+    `;
+  
+    // Extract seriesId from the path
+    const seriesId = path.split('/').pop();
+  
+    if (seriesId) {
+      const metricId = `totalVotes-${seriesId}`;
+      
+      try {
+        const analyticsResponse = await makeRequestWithVariables(getAnalyticsMetricsQuery, { id: metricId });
+  
+        if (analyticsResponse.statusCode === 200 && analyticsResponse.body.data.getAnalyticsMetrics) {
+          const totalVotes = JSON.parse(analyticsResponse.body.data.getAnalyticsMetrics.value);
+          response = {
+            statusCode: 200,
+            body: JSON.stringify(totalVotes)
+          };
+        } else {
+          response = {
+            statusCode: 404,
+            body: JSON.stringify({ error: `Votes data not found for series ${seriesId}` })
+          };
+        }
+      } catch (error) {
+        console.error(`Error fetching votes for series ${seriesId}: ${error.message}`);
+        response = {
+          statusCode: 500,
+          body: JSON.stringify({ error: `Failed to fetch votes for series ${seriesId}: ${error.message}` })
+        };
+      }
+    } else {
+      response = {
+        statusCode: 400,
+        body: JSON.stringify({ error: "Invalid path. Use /votes/{seriesId}" })
+      };
+    }
+  
+    console.log('Vote processing completed');
+  }
+
+  if (path.startsWith(`/${process.env.ENV}/public/vote/new`)) {
     console.log(`Starting new vote processing for path: ${path}`);
   
     const getAnalyticsMetricsQuery = `
