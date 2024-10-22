@@ -634,10 +634,52 @@ export const handler = async (event) => {
           body: JSON.stringify({ error: `Failed to fetch ${metricId}: ${error.message}` })
         };
       }
+    } else if (path === `/${process.env.ENV}/public/vote/new/user`) {
+      console.log('Processing user-specific vote data');
+      
+      // Extract the seriesId from the query string parameters
+      const seriesId = event.queryStringParameters && event.queryStringParameters.seriesId;
+      
+      if (!seriesId) {
+        response = {
+          statusCode: 400,
+          body: JSON.stringify({ error: "Missing seriesId parameter" })
+        };
+      } else if (userAuth === "unauthenticated") {
+        response = {
+          statusCode: 401,
+          body: JSON.stringify({ error: "User must be authenticated to access user-specific vote data" })
+        };
+      } else {
+        const metricId = `userVotes#${userSub}#${seriesId}`;
+        
+        try {
+          const analyticsResponse = await makeRequestWithVariables(getAnalyticsMetricsQuery, { id: metricId });
+  
+          if (analyticsResponse.statusCode === 200 && analyticsResponse.body.data.getAnalyticsMetrics) {
+            const userVotes = JSON.parse(analyticsResponse.body.data.getAnalyticsMetrics.value);
+            response = {
+              statusCode: 200,
+              body: JSON.stringify(userVotes)
+            };
+          } else {
+            response = {
+              statusCode: 404,
+              body: JSON.stringify({ error: `User vote data not found for series ${seriesId}` })
+            };
+          }
+        } catch (error) {
+          console.error(`Error fetching user vote data: ${error.message}`);
+          response = {
+            statusCode: 500,
+            body: JSON.stringify({ error: `Failed to fetch user vote data: ${error.message}` })
+          };
+        }
+      }
     } else {
       response = {
         statusCode: 400,
-        body: JSON.stringify({ error: "Invalid path for /vote/new/top. Use either /top/upvotes or /top/battleground" })
+        body: JSON.stringify({ error: "Invalid path for /vote/new. Use /top/upvotes, /top/battleground, or /user" })
       };
     }
   
