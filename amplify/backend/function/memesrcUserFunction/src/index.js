@@ -687,15 +687,36 @@ export const handler = async (event) => {
   
     if (seriesId) {
       const metricId = `totalVotes-${seriesId}`;
+      const userMetricId = `userVotes#${userSub}#${seriesId}`;
       
       try {
-        const analyticsResponse = await makeRequestWithVariables(getAnalyticsMetricsQuery, { id: metricId });
+        const [totalVotesResponse, userVotesResponse] = await Promise.all([
+          makeRequestWithVariables(getAnalyticsMetricsQuery, { id: metricId }),
+          makeRequestWithVariables(getAnalyticsMetricsQuery, { id: userMetricId })
+        ]);
   
-        if (analyticsResponse.statusCode === 200 && analyticsResponse.body.data.getAnalyticsMetrics) {
-          const totalVotes = JSON.parse(analyticsResponse.body.data.getAnalyticsMetrics.value);
+        if (totalVotesResponse.statusCode === 200 && totalVotesResponse.body.data.getAnalyticsMetrics) {
+          const totalVotes = JSON.parse(totalVotesResponse.body.data.getAnalyticsMetrics.value);
+          let responseData = {
+            total_upvotes: totalVotes.upvotes,
+            total_downvotes: totalVotes.downvotes,
+            userUpvotes: 0,
+            userDownvotes: 0,
+            userLastVoteTime: null,
+            userLastBoost: null
+          };
+  
+          if (userVotesResponse.statusCode === 200 && userVotesResponse.body.data.getAnalyticsMetrics) {
+            const userVotes = JSON.parse(userVotesResponse.body.data.getAnalyticsMetrics.value);
+            responseData.userUpvotes = userVotes.upvotes;
+            responseData.userDownvotes = userVotes.downvotes;
+            responseData.userLastVoteTime = userVotes.lastVoteTime;
+            responseData.userLastBoost = userVotes.lastBoost;
+          }
+  
           response = {
             statusCode: 200,
-            body: JSON.stringify(totalVotes)
+            body: JSON.stringify(responseData)
           };
         } else {
           response = {
