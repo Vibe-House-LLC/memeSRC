@@ -91,12 +91,6 @@ exports.handler = async (event) => {
         .slice(0, 100)
         .map(([seriesId, votes]) => ({ seriesId, upvotes: votes.upvotes, downvotes: votes.downvotes }));
 
-    // Create a unique list of seriesIds from topUpvotes and topBattleground
-    const uniqueTopSeriesIds = [...new Set([
-        ...topUpvotes.map(item => item.seriesId),
-        ...topBattleground.map(item => item.seriesId)
-    ])];
-
     // Write aggregated results for each series to AnalyticsMetrics DynamoDB table
     const currentTime = new Date().toISOString();
     for (const [seriesId, votes] of Object.entries(voteAggregation)) {
@@ -185,28 +179,6 @@ exports.handler = async (event) => {
         return {
             statusCode: 500,
             body: JSON.stringify('Failed to put top battleground votes to DynamoDB table')
-        };
-    }
-
-    // Write unique list of top seriesIds to AnalyticsMetrics DynamoDB table
-    const uniqueTopSeriesIdsPutParams = {
-        TableName: process.env.API_MEMESRC_ANALYTICSMETRICSTABLE_NAME,
-        Item: marshall({
-            id: "topVotes-uniqueSeriesIds",
-            value: JSON.stringify(uniqueTopSeriesIds),
-            createdAt: currentTime,
-            updatedAt: currentTime,
-            __typename: "AnalyticsMetrics"
-        })
-    };
-
-    try {
-        await ddb.send(new PutItemCommand(uniqueTopSeriesIdsPutParams));
-    } catch (putError) {
-        console.error(`Error putting unique top seriesIds to DynamoDB table: ${JSON.stringify(putError)}`);
-        return {
-            statusCode: 500,
-            body: JSON.stringify('Failed to put unique top seriesIds to DynamoDB table')
         };
     }
 
