@@ -310,15 +310,14 @@ export default function VotingPage({ shows: searchableShows }) {
         // Fetch top votes from the new endpoint
         const topVotesResponse = await API.get('publicapi', apiEndpoint);
         const topVotesData = JSON.parse(topVotesResponse);
-        setTopVotes(topVotesData);
 
-        // Create voteData object from topVotes
+        // Create initial voteData object with default values
         const newVoteData = {};
         topVotesData.forEach((item) => {
           newVoteData[item.seriesId] = {
-            totalVotesUp: item.upvotes,
-            totalVotesDown: item.downvotes,
-            ableToVote: true,  // Default to true
+            totalVotesUp: 0,
+            totalVotesDown: 0,
+            ableToVote: true,
             userVotesUp: 0,
             userVotesDown: 0,
             lastVoteTime: null,
@@ -326,45 +325,45 @@ export default function VotingPage({ shows: searchableShows }) {
           };
         });
 
-        // Fetch user-specific votes if user is logged in
-        if (user) {
-          const seriesIds = topVotesData.map(item => item.seriesId);
-          try {
-            const userVotesResponse = await API.post('publicapi', '/vote/new/user', {
-              body: { seriesIds }
-            });
-            const userVotesData = JSON.parse(userVotesResponse);
+        // Fetch votes for all series, regardless of user login status
+        const seriesIds = topVotesData.map(item => item.seriesId);
+        try {
+          const votesResponse = await API.post('publicapi', '/vote/new/count', {
+            body: { seriesIds }
+          });
+          const votesData = JSON.parse(votesResponse);
 
-            // Update only the series that have user votes
-            userVotesData.forEach((item) => {
-              const userVotesItem = item.userVotes;
-              const seriesId = item.seriesId;
-              if (newVoteData[seriesId] && userVotesItem) {
-                newVoteData[seriesId].userVotesUp = userVotesItem.upvotes || 0;
-                newVoteData[seriesId].userVotesDown = userVotesItem.downvotes || 0;
-                newVoteData[seriesId].lastVoteTime = userVotesItem.lastVoteTime;
-                newVoteData[seriesId].lastBoost = userVotesItem.lastBoost;
+          // Update voteData with total votes and user-specific votes if available
+          votesData.forEach((item) => {
+            const seriesId = item.seriesId;
+            if (newVoteData[seriesId]) {
+              newVoteData[seriesId].totalVotesUp = item.totalVotes.upvotes || 0;
+              newVoteData[seriesId].totalVotesDown = item.totalVotes.downvotes || 0;
+
+              // Only update user-specific data if the user is logged in
+              if (user) {
+                newVoteData[seriesId].userVotesUp = item.userVotes?.upvotes || 0;
+                newVoteData[seriesId].userVotesDown = item.userVotes?.downvotes || 0;
+                newVoteData[seriesId].lastVoteTime = item.userVotes?.lastVoteTime;
+                newVoteData[seriesId].lastBoost = item.userVotes?.lastBoost;
 
                 // Calculate if the user is able to vote based on lastVoteTime
-                if (userVotesItem.lastVoteTime) {
-                  const lastVoteDate = new Date(userVotesItem.lastVoteTime);
+                if (item.userVotes?.lastVoteTime) {
+                  const lastVoteDate = new Date(item.userVotes.lastVoteTime);
                   const now = new Date();
                   const hoursSinceLastVote = (now - lastVoteDate) / (1000 * 60 * 60);
                   newVoteData[seriesId].ableToVote = hoursSinceLastVote >= 24;
                 }
               }
-              // If no user votes exist for this series, the default values remain
-              // (ableToVote: true, userVotesUp: 0, userVotesDown: 0, etc.)
-            });
-          } catch (error) {
-            console.error('Error fetching user votes:', error);
-            // If user votes fetch fails, keep the default values
-          }
+            }
+          });
+        } catch (error) {
+          console.error('Error fetching votes:', error);
         }
 
         setVoteData(newVoteData);
 
-        // Sort the series IDs based on the top votes
+        // Sort the series IDs based on the total votes
         const newSortedSeriesIds = topVotesData.map((item) => item.seriesId);
 
         // Update the sortedSeriesIds state

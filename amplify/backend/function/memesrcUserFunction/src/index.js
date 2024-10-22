@@ -813,10 +813,8 @@ export const handler = async (event) => {
           body: JSON.stringify({ error: `Failed to fetch ${metricId}: ${error.message}` })
         };
       }
-    } else if (path === `/${process.env.ENV}/public/vote/new/user`) {
-      console.log('Processing user-specific vote data');
-
-      const userAuth = event.requestContext.identity.cognitoAuthenticationType;
+    } else if (path === `/${process.env.ENV}/public/vote/new/count`) {
+      console.log('Getting vote count data');
       
       // Extract the seriesIds from the request body
       let seriesIds;
@@ -831,11 +829,6 @@ export const handler = async (event) => {
         response = {
           statusCode: 400,
           body: JSON.stringify({ error: "Missing or invalid seriesIds parameter" })
-        };
-      } else if (userAuth === "unauthenticated") {
-        response = {
-          statusCode: 401,
-          body: JSON.stringify({ error: "User must be authenticated to access user-specific vote data" })
         };
       } else {
         try {
