@@ -596,7 +596,7 @@ export const handler = async (event) => {
       `;
 
       const userVoteAggregation = await makeRequest(getUserVoteAggregationQuery);
-      let currentUserVotes = { upvotes: 0, downvotes: 0, lastVoteTime: currentTime };
+      let currentUserVotes = { upvotes: 0, downvotes: 0, lastVoteTime: currentTime, lastBoost: boost };
 
       if (userVoteAggregation.body.data.getAnalyticsMetrics) {
         currentUserVotes = JSON.parse(userVoteAggregation.body.data.getAnalyticsMetrics.value);
@@ -608,6 +608,7 @@ export const handler = async (event) => {
         currentUserVotes.downvotes += Math.abs(boost);
       }
       currentUserVotes.lastVoteTime = currentTime;
+      currentUserVotes.lastBoost = boost;
 
       const updateUserVoteAggregationMutation = `
         mutation UpdateAnalyticsMetrics {

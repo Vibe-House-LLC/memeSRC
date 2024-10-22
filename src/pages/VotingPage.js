@@ -873,9 +873,7 @@ export default function VotingPage({ shows: searchableShows }) {
                                               horizontal: 'right',
                                             }}
                                             badgeContent={
-                                              showVoteData.userVotesUp && showVoteData.userVotesUp > 0
-                                                ? `+${showVoteData.userVotesUp}`
-                                                : null
+                                              showVoteData.lastBoost > 0 ? `+${showVoteData.lastBoost}` : null
                                             }
                                             sx={{
                                               color: 'success.main',
@@ -894,10 +892,10 @@ export default function VotingPage({ shows: searchableShows }) {
                                               }
                                               size="small"
                                               sx={{
-                                                backgroundColor: showVoteData.lastBoost === 1 ? 'success.light' : 'default',
+                                                backgroundColor: showVoteData.lastBoost > 0 ? 'success.light' : 'default',
                                               }}
                                             >
-                                              {showVoteData.lastBoost === -1 &&
+                                              {showVoteData.lastBoost < 0 &&
                                                 !showVoteData.ableToVote &&
                                                 rankMethod === 'upvotes' ? (
                                                 <Lock />
@@ -905,7 +903,7 @@ export default function VotingPage({ shows: searchableShows }) {
                                                 <ArrowUpward
                                                   sx={{
                                                     color:
-                                                      showVoteData.lastBoost === 1 && !showVoteData.ableToVote
+                                                      showVoteData.lastBoost > 0 && !showVoteData.ableToVote
                                                         ? 'success.main'
                                                         : 'inherit',
                                                   }}
@@ -955,9 +953,7 @@ export default function VotingPage({ shows: searchableShows }) {
                                               horizontal: 'right',
                                             }}
                                             badgeContent={
-                                              showVoteData.userVotesDown && showVoteData.userVotesDown > 0
-                                                ? `-${showVoteData.userVotesDown}`
-                                                : null
+                                              showVoteData.lastBoost < 0 ? `${showVoteData.lastBoost}` : null
                                             }
                                             sx={{
                                               color: 'error.main',
@@ -976,13 +972,13 @@ export default function VotingPage({ shows: searchableShows }) {
                                               }
                                               size="small"
                                               sx={{
-                                                backgroundColor: showVoteData.lastBoost === -1 ? 'error.light' : 'default',
+                                                backgroundColor: showVoteData.lastBoost < 0 ? 'error.light' : 'default',
                                               }}
                                             >
                                               <ArrowDownward
                                                 sx={{
                                                   color:
-                                                    showVoteData.lastBoost === -1 && !showVoteData.ableToVote
+                                                    showVoteData.lastBoost < 0 && !showVoteData.ableToVote
                                                       ? 'error.main'
                                                       : 'inherit',
                                                 }}
@@ -1028,9 +1024,7 @@ export default function VotingPage({ shows: searchableShows }) {
                                               horizontal: 'right',
                                             }}
                                             badgeContent={
-                                              showVoteData.userVotesUp && showVoteData.userVotesUp > 0
-                                                ? `+${showVoteData.userVotesUp}`
-                                                : null
+                                              showVoteData.lastBoost > 0 ? `+${showVoteData.lastBoost}` : null
                                             }
                                           >
                                             <StyledFab
@@ -1042,8 +1036,11 @@ export default function VotingPage({ shows: searchableShows }) {
                                               }
                                               disabled={user && (!showVoteData.ableToVote || votingStatus?.[show.id])}
                                               size="small"
+                                              sx={{
+                                                backgroundColor: showVoteData.lastBoost > 0 ? 'success.light' : 'default',
+                                              }}
                                             >
-                                              {showVoteData.lastBoost === -1 &&
+                                              {showVoteData.lastBoost < 0 &&
                                                 !showVoteData.ableToVote &&
                                                 rankMethod === 'upvotes' ? (
                                                 <Lock />
@@ -1051,7 +1048,7 @@ export default function VotingPage({ shows: searchableShows }) {
                                                 <ThumbUp
                                                   sx={{
                                                     color:
-                                                      showVoteData.lastBoost === 1 && !showVoteData.ableToVote
+                                                      showVoteData.lastBoost > 0 && !showVoteData.ableToVote
                                                         ? 'success.main'
                                                         : 'inherit',
                                                   }}

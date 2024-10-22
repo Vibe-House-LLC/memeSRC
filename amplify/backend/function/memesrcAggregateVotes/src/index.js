@@ -51,7 +51,7 @@ exports.handler = async (event) => {
         const seriesId = item.seriesUserVoteSeriesId;
         const userId = item.userDetailsVotesId;
         const boost = parseInt(item.boost);
-        const voteTime = item.createdAt || item.updatedAt; // Use createdAt or updatedAt as the vote time
+        const voteTime = item.createdAt || item.updatedAt;
 
         // Global aggregation
         if (!voteAggregation[seriesId]) {
@@ -61,11 +61,12 @@ exports.handler = async (event) => {
         // User-specific aggregation
         const userSeriesKey = `${userId}#${seriesId}`;
         if (!userVoteAggregation[userSeriesKey]) {
-            userVoteAggregation[userSeriesKey] = { upvotes: 0, downvotes: 0, lastVoteTime: voteTime };
+            userVoteAggregation[userSeriesKey] = { upvotes: 0, downvotes: 0, lastVoteTime: voteTime, lastBoost: boost };
         } else {
-            // Update lastVoteTime if this vote is more recent
+            // Update lastVoteTime and lastBoost if this vote is more recent
             if (voteTime > userVoteAggregation[userSeriesKey].lastVoteTime) {
                 userVoteAggregation[userSeriesKey].lastVoteTime = voteTime;
+                userVoteAggregation[userSeriesKey].lastBoost = boost;
             }
         }
 
@@ -191,7 +192,8 @@ exports.handler = async (event) => {
                 value: JSON.stringify({
                     upvotes: votes.upvotes,
                     downvotes: votes.downvotes,
-                    lastVoteTime: votes.lastVoteTime
+                    lastVoteTime: votes.lastVoteTime,
+                    lastBoost: votes.lastBoost  // Add the lastBoost value
                 }),
                 createdAt: currentTime,
                 updatedAt: currentTime,
