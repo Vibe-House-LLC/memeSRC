@@ -98,7 +98,6 @@ export default function VotingPage({ shows: searchableShows }) {
 
   // Add cache variables
   const seriesCache = useRef({});
-  const votesCache = useRef({});
 
   const [allSeriesData, setAllSeriesData] = useState(null); // State to store all series data
 
@@ -299,20 +298,9 @@ export default function VotingPage({ shows: searchableShows }) {
     }
   }, [itemsPerPage, recalculateRanks]);
 
-  const clearOtherUserCaches = useCallback(() => {
-    const currentUserKey = user ? `votesCache_${user.username || user.id}` : null;
-    Object.keys(localStorage).forEach(key => {
-      if (key.startsWith('votesCache_') && key !== currentUserKey) {
-        localStorage.removeItem(key);
-      }
-    });
-  }, [user]);
-
   const fetchVoteData = useCallback(
     async (currentRankMethod) => {
       try {
-        clearOtherUserCaches();
-
         // Determine the API endpoint based on the rankMethod
         const apiEndpoint =
           currentRankMethod === 'upvotes'
@@ -354,22 +342,6 @@ export default function VotingPage({ shows: searchableShows }) {
         }
 
         setVoteData(newVoteData);
-        votesCache.current = newVoteData;
-
-        // Save to localStorage
-        try {
-          const now = new Date();
-          const cacheData = {
-            updatedAt: now.toISOString(),
-            data: newVoteData,
-          };
-          const cacheKey = user
-            ? `votesCache_${user.username || user.id}`
-            : 'votesCache';
-          localStorage.setItem(cacheKey, JSON.stringify(cacheData));
-        } catch (error) {
-          console.error('Error saving vote data to localStorage:', error);
-        }
 
         // Sort the series IDs based on the top votes
         const newSortedSeriesIds = topVotesData.map((item) => item.seriesId);
@@ -384,7 +356,7 @@ export default function VotingPage({ shows: searchableShows }) {
         console.error('Error in fetchVoteData:', error);
       }
     },
-    [user, clearOtherUserCaches, fetchSeriesData]
+    [user, fetchSeriesData]
   );
 
   const filterAndSortSeriesData = useCallback((data = allSeriesData) => {
@@ -527,7 +499,7 @@ export default function VotingPage({ shows: searchableShows }) {
         },
       });
 
-      // Update voteData in state and cache
+      // Update voteData in state
       setVoteData((prevVoteData) => {
         const updatedVoteData = { ...prevVoteData };
         const updatedSeriesData = { ...updatedVoteData[seriesId] };
@@ -547,17 +519,6 @@ export default function VotingPage({ shows: searchableShows }) {
         updatedSeriesData.lastBoost = boost;
 
         updatedVoteData[seriesId] = updatedSeriesData;
-
-        // Update the cached data in localStorage
-        if (votesCache.current) {
-          votesCache.current[seriesId] = updatedSeriesData;
-          const cacheKey = user ? `votesCache_${user.username || user.id}` : 'votesCache';
-          const cacheData = {
-            updatedAt: new Date().toISOString(),
-            data: votesCache.current,
-          };
-          localStorage.setItem(cacheKey, JSON.stringify(cacheData));
-        }
 
         return updatedVoteData;
       });
