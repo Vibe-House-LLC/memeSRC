@@ -543,10 +543,12 @@ export const handler = async (event) => {
     const boost = body.boost;
 
     // Fetch user details
+    console.log(`Fetching user details for userSub: ${userSub}`);
     const userDetails = await makeRequest(getUserDetails({ subId: userSub }));
 
     // Extract user votes
     const usersVotes = userDetails.body.data.getUserDetails.votes.items;
+    console.log(`User votes fetched: ${JSON.stringify(usersVotes)}`);
 
     // Determine if the user can vote based on the last vote time
     const lastVote = usersVotes
@@ -554,23 +556,27 @@ export const handler = async (event) => {
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
 
     const currentTime = new Date().toISOString();
+    console.log(`Current time: ${currentTime}`);
 
     let canVote = false;
     if (lastVote) {
       const voteTime = new Date(lastVote.createdAt);
       const diffInHours = (new Date() - voteTime) / (1000 * 60 * 60);
+      console.log(`Last vote time: ${voteTime}, Diff in hours: ${diffInHours}`);
       canVote = diffInHours >= 24;
     } else {
       canVote = true;
     }
+
+    console.log(`User can vote: ${canVote}`);
 
     if (canVote) {
       // Create SeriesUserVote Mutation
       const createVote = `
         mutation createSeriesUserVote {
           createSeriesUserVote(input: {
-            userDetailsVotesId: ${JSON.stringify(userSub)},
-            seriesUserVoteSeriesId: ${JSON.stringify(seriesId)},
+            userDetailsVotesId: "${userSub}",
+            seriesUserVoteSeriesId: "${seriesId}",
             boost: ${boost}
           }) {
             id
@@ -578,6 +584,7 @@ export const handler = async (event) => {
         }
       `;
 
+      console.log(`Creating vote with boost: ${boost}`);
       // Execute the mutation
       response = await makeRequest(createVote);
 
@@ -590,11 +597,13 @@ export const handler = async (event) => {
         }
       `;
 
+      console.log(`Fetching user vote aggregation for seriesId: ${seriesId}`);
       const userVoteAggregation = await makeRequest(getUserVoteAggregationQuery);
       let currentUserVotes = { upvotes: 0, downvotes: 0, lastVoteTime: currentTime, lastBoost: boost };
 
       if (userVoteAggregation.body.data.getAnalyticsMetrics) {
         currentUserVotes = JSON.parse(userVoteAggregation.body.data.getAnalyticsMetrics.value);
+        console.log(`Current user votes before update: ${JSON.stringify(currentUserVotes)}`);
       }
 
       if (boost > 0) {
@@ -605,13 +614,14 @@ export const handler = async (event) => {
       currentUserVotes.lastVoteTime = currentTime;
       currentUserVotes.lastBoost = boost;
 
+      console.log(`Updated user votes: ${JSON.stringify(currentUserVotes)}`);
+
       // Update AnalyticsMetrics Mutation for User Votes
       const updateUserVoteAggregationMutation = `
-        mutation UpdateAnalyticsMetrics {
+        mutation UpdateAnalyticsMetrics($id: ID!, $value: String!) {
           updateAnalyticsMetrics(input: {
-            id: "userVotes#${userSub}#${seriesId}",
-            value: ${JSON.stringify(currentUserVotes)},
-            __typename: "AnalyticsMetrics"
+            id: $id,
+            value: $value
           }) {
             id
             value
@@ -619,7 +629,14 @@ export const handler = async (event) => {
         }
       `;
 
-      await makeRequest(updateUserVoteAggregationMutation);
+      const userVoteVariables = {
+        id: `userVotes#${userSub}#${seriesId}`,
+        value: JSON.stringify(currentUserVotes)
+      };
+
+      console.log(`Updating user vote aggregation with variables: ${JSON.stringify(userVoteVariables)}`);
+      const updateUserVoteResponse = await makeRequestWithVariables(updateUserVoteAggregationMutation, userVoteVariables);
+      console.log(`User vote aggregation update response: ${JSON.stringify(updateUserVoteResponse)}`);
 
       // Update overall series vote aggregation
       const getSeriesVoteAggregationQuery = `
@@ -630,11 +647,13 @@ export const handler = async (event) => {
         }
       `;
 
+      console.log(`Fetching series vote aggregation for seriesId: ${seriesId}`);
       const seriesVoteAggregation = await makeRequest(getSeriesVoteAggregationQuery);
       let currentSeriesVotes = { upvotes: 0, downvotes: 0 };
 
       if (seriesVoteAggregation.body.data.getAnalyticsMetrics) {
         currentSeriesVotes = JSON.parse(seriesVoteAggregation.body.data.getAnalyticsMetrics.value);
+        console.log(`Current series votes before update: ${JSON.stringify(currentSeriesVotes)}`);
       }
 
       if (boost > 0) {
@@ -643,13 +662,14 @@ export const handler = async (event) => {
         currentSeriesVotes.downvotes += Math.abs(boost);
       }
 
+      console.log(`Updated series votes: ${JSON.stringify(currentSeriesVotes)}`);
+
       // Update AnalyticsMetrics Mutation for Series Votes
       const updateSeriesVoteAggregationMutation = `
-        mutation UpdateAnalyticsMetrics {
+        mutation UpdateAnalyticsMetrics($id: ID!, $value: String!) {
           updateAnalyticsMetrics(input: {
-            id: "totalVotes-${seriesId}",
-            value: ${JSON.stringify(currentSeriesVotes)},
-            __typename: "AnalyticsMetrics"
+            id: $id,
+            value: $value
           }) {
             id
             value
@@ -657,10 +677,26 @@ export const handler = async (event) => {
         }
       `;
 
-      await makeRequest(updateSeriesVoteAggregationMutation);
+      const seriesVoteVariables = {
+        id: `totalVotes-${seriesId}`,
+        value: JSON.stringify(currentSeriesVotes)
+      };
 
+      console.log(`Updating series vote aggregation with variables: ${JSON.stringify(seriesVoteVariables)}`);
+      const updateSeriesVoteResponse = await makeRequestWithVariables(updateSeriesVoteAggregationMutation, seriesVoteVariables);
+      console.log(`Series vote aggregation update response: ${JSON.stringify(updateSeriesVoteResponse)}`);
+
+      response = {
+        statusCode: 200,
+        body: JSON.stringify({
+          message: 'Vote submitted successfully',
+          userVotes: currentUserVotes,
+          seriesVotes: currentSeriesVotes
+        })
+      };
     } else {
       // The user has already voted recently. Return a Forbidden error with details
+      console.log('User has already voted recently.');
       response = {
         statusCode: 403,
         body: {
