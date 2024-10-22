@@ -321,6 +321,7 @@ export default function VotingPage({ shows: searchableShows }) {
             ableToVote: true,
             userVotesUp: 0,
             userVotesDown: 0,
+            lastVoteTime: null,
           };
         });
 
@@ -337,6 +338,13 @@ export default function VotingPage({ shows: searchableShows }) {
             if (newVoteData[seriesId]) {
               newVoteData[seriesId].userVotesUp = item.upvotes || 0;
               newVoteData[seriesId].userVotesDown = item.downvotes || 0;
+              newVoteData[seriesId].lastVoteTime = item.lastVoteTime;
+              
+              // Calculate if the user is able to vote based on lastVoteTime
+              const lastVoteDate = new Date(item.lastVoteTime);
+              const now = new Date();
+              const hoursSinceLastVote = (now - lastVoteDate) / (1000 * 60 * 60);
+              newVoteData[seriesId].ableToVote = hoursSinceLastVote >= 24;
             }
           });
         }
@@ -579,20 +587,21 @@ export default function VotingPage({ shows: searchableShows }) {
     }
   };
 
-  const calculateTimeRemaining = (targetDateTime) => {
-    const targetTime = new Date(targetDateTime);
+  const calculateTimeRemaining = (lastVoteTime) => {
+    if (!lastVoteTime) return '0:00';
+
+    const lastVote = new Date(lastVoteTime);
     const now = new Date();
-    const remainingTime = targetTime - now;
+    const nextVoteTime = new Date(lastVote.getTime() + 24 * 60 * 60 * 1000); // 24 hours after last vote
+    const remainingTime = nextVoteTime - now;
 
     if (remainingTime <= 0) {
-      setTimeRemaining('0:00');
-      return;
+      return '0:00';
     }
 
     const hours = Math.floor(remainingTime / (1000 * 60 * 60));
     const minutes = Math.floor((remainingTime % (1000 * 60 * 60)) / (1000 * 60));
-    const formattedTime = `${hours}h ${minutes.toString().padStart(2, '0')}m`;
-    setTimeRemaining(formattedTime);
+    return `${hours}h ${minutes.toString().padStart(2, '0')}m`;
   };
 
   const submitRequest = () => {
@@ -839,11 +848,11 @@ export default function VotingPage({ shows: searchableShows }) {
                                           disableFocusListener
                                           enterTouchDelay={0}
                                           onOpen={() => {
-                                            calculateTimeRemaining(showVoteData.nextVoteTime);
+                                            calculateTimeRemaining(showVoteData.lastVoteTime);
                                           }}
                                           title={
                                             (!showVoteData.ableToVote || votingStatus?.[show.id])
-                                              ? user ? `🔒 ${timeRemaining}`
+                                              ? user ? `🔒 ${calculateTimeRemaining(showVoteData.lastVoteTime)}`
                                               : 'Upvote'
                                               : 'Upvote'
                                           }
@@ -921,11 +930,11 @@ export default function VotingPage({ shows: searchableShows }) {
                                           disableFocusListener
                                           enterTouchDelay={0}
                                           onOpen={() => {
-                                            calculateTimeRemaining(showVoteData.nextVoteTime);
+                                            calculateTimeRemaining(showVoteData.lastVoteTime);
                                           }}
                                           title={
                                             (!showVoteData.ableToVote || votingStatus?.[show.id])
-                                              ? user ? `🔒 ${timeRemaining}`
+                                              ? user ? `🔒 ${calculateTimeRemaining(showVoteData.lastVoteTime)}`
                                               : 'Downvote'
                                               : 'Downvote'
                                           }
@@ -994,11 +1003,11 @@ export default function VotingPage({ shows: searchableShows }) {
                                           disableFocusListener
                                           enterTouchDelay={0}
                                           onOpen={() => {
-                                            calculateTimeRemaining(showVoteData.nextVoteTime);
+                                            calculateTimeRemaining(showVoteData.lastVoteTime);
                                           }}
                                           title={
                                             (!showVoteData.ableToVote || votingStatus?.[show.id])
-                                              ? user ? `🔒 ${timeRemaining}`
+                                              ? user ? `🔒 ${calculateTimeRemaining(showVoteData.lastVoteTime)}`
                                               : 'Upvote'
                                               : 'Upvote'
                                           }
