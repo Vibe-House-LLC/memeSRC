@@ -574,10 +574,8 @@ export const handler = async (event) => {
       // console.log('CREATE VOTE QUERY');
       const createVote = `
         mutation createSeriesUserVote {
-            createSeriesUserVote(input: {userDetailsVotesId: "${userSub}", seriesUserVoteSeriesId: "${seriesId}", boost: ${boost > 0 ? 1 : -1
-        }}) {
-              id
-            }
+            createSeriesUserVote(input: {userDetailsVotesId: "${userSub}", seriesUserVoteSeriesId: "${seriesId}", boost: ${boost}}) {
+          id
         }
       `;
       // console.log('Create Vote Query:', createVote);
@@ -585,6 +583,81 @@ export const handler = async (event) => {
       // Hit GraphQL to place vote
       response = await makeRequest(createVote);
       // console.log('Vote Response:', response);
+
+      // Update user-specific vote aggregation
+      const getUserVoteAggregationQuery = `
+        query GetAnalyticsMetrics {
+          getAnalyticsMetrics(id: "userVotes#${userSub}#${seriesId}") {
+            value
+          }
+        }
+      `;
+
+      const userVoteAggregation = await makeRequest(getUserVoteAggregationQuery);
+      let currentUserVotes = { upvotes: 0, downvotes: 0 };
+
+      if (userVoteAggregation.body.data.getAnalyticsMetrics) {
+        currentUserVotes = JSON.parse(userVoteAggregation.body.data.getAnalyticsMetrics.value);
+      }
+
+      if (boost > 0) {
+        currentUserVotes.upvotes += boost;
+      } else if (boost < 0) {
+        currentUserVotes.downvotes += Math.abs(boost);
+      }
+
+      const updateUserVoteAggregationMutation = `
+        mutation UpdateAnalyticsMetrics {
+          updateAnalyticsMetrics(input: {
+            id: "userVotes#${userSub}#${seriesId}",
+            value: ${JSON.stringify(JSON.stringify(currentUserVotes))},
+            __typename: "AnalyticsMetrics"
+          }) {
+            id
+            value
+          }
+        }
+      `;
+
+      await makeRequest(updateUserVoteAggregationMutation);
+
+      // Update overall series vote aggregation
+      const getSeriesVoteAggregationQuery = `
+        query GetAnalyticsMetrics {
+          getAnalyticsMetrics(id: "totalVotes-${seriesId}") {
+            value
+          }
+        }
+      `;
+
+      const seriesVoteAggregation = await makeRequest(getSeriesVoteAggregationQuery);
+      let currentSeriesVotes = { upvotes: 0, downvotes: 0 };
+
+      if (seriesVoteAggregation.body.data.getAnalyticsMetrics) {
+        currentSeriesVotes = JSON.parse(seriesVoteAggregation.body.data.getAnalyticsMetrics.value);
+      }
+
+      if (boost > 0) {
+        currentSeriesVotes.upvotes += boost;
+      } else if (boost < 0) {
+        currentSeriesVotes.downvotes += Math.abs(boost);
+      }
+
+      const updateSeriesVoteAggregationMutation = `
+        mutation UpdateAnalyticsMetrics {
+          updateAnalyticsMetrics(input: {
+            id: "totalVotes-${seriesId}",
+            value: ${JSON.stringify(JSON.stringify(currentSeriesVotes))},
+            __typename: "AnalyticsMetrics"
+          }) {
+            id
+            value
+          }
+        }
+      `;
+
+      await makeRequest(updateSeriesVoteAggregationMutation);
+
     } else {
       // The user has already voted recently. Return a Forbidden error with details
       response = {
