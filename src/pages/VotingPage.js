@@ -1025,7 +1025,7 @@ export default function VotingPage({ shows: searchableShows }) {
                                               ) : isUpvoted ? (
                                                 <ArrowUpward sx={{ color: 'success.main' }} />
                                               ) : (
-                                                <Lock />
+                                                <ArrowUpward />
                                               )}
                                             </StyledFab>
                                           </StyledBadge>
