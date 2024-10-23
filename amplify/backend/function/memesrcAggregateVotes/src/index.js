@@ -1,3 +1,15 @@
+/* Amplify Params - DO NOT EDIT
+	API_MEMESRC_ANALYTICSMETRICSTABLE_ARN
+	API_MEMESRC_ANALYTICSMETRICSTABLE_NAME
+	API_MEMESRC_GRAPHQLAPIIDOUTPUT
+	API_MEMESRC_SERIESTABLE_ARN
+	API_MEMESRC_SERIESTABLE_NAME
+	API_MEMESRC_SERIESUSERVOTETABLE_ARN
+	API_MEMESRC_SERIESUSERVOTETABLE_NAME
+	ENV
+	REGION
+Amplify Params - DO NOT EDIT */
+
 const { DynamoDBClient, PutItemCommand, ScanCommand } = require("@aws-sdk/client-dynamodb");
 const { marshall, unmarshall } = require("@aws-sdk/util-dynamodb");
 
@@ -26,37 +38,67 @@ async function scanDynamoDBTable(params) {
 exports.handler = async (event) => {
     console.log(`EVENT: ${JSON.stringify(event)}`);
 
-    // Scan the SeriesUserVote DynamoDB table with pagination
-    const scanParams = {
-        TableName: process.env.API_MEMESRC_SERIESUSERVOTETABLE_NAME
-    };
+    // Check if the required environment variables are set
+    const requiredEnvVars = [
+        'API_MEMESRC_SERIESUSERVOTETABLE_NAME',
+        'API_MEMESRC_SERIESTABLE_NAME',
+        'API_MEMESRC_ANALYTICSMETRICSTABLE_NAME'
+    ];
 
-    let scanResults;
-    try {
-        const items = await scanDynamoDBTable(scanParams);
-        scanResults = items.map(item => unmarshall(item));
-    } catch (scanError) {
-        console.error(`Error scanning DynamoDB table: ${JSON.stringify(scanError)}`);
+    const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
+
+    if (missingEnvVars.length > 0) {
+        console.error(`Missing required environment variables: ${missingEnvVars.join(', ')}`);
         return {
             statusCode: 500,
-            body: JSON.stringify('Failed to scan DynamoDB table')
+            body: JSON.stringify(`Missing required environment variables: ${missingEnvVars.join(', ')}`)
         };
     }
 
-    // Aggregate the votes
+    // Scan the SeriesUserVote DynamoDB table with pagination
+    const votesScanParams = {
+        TableName: process.env.API_MEMESRC_SERIESUSERVOTETABLE_NAME
+    };
+
+    // Scan the Series table to get all series IDs
+    const seriesScanParams = {
+        TableName: process.env.API_MEMESRC_SERIESTABLE_NAME,
+        ProjectionExpression: "id"
+    };
+
+    let scanResults, allSeriesIds;
+    try {
+        const voteItems = await scanDynamoDBTable(votesScanParams);
+        scanResults = voteItems.map(item => unmarshall(item));
+
+        const seriesItems = await scanDynamoDBTable(seriesScanParams);
+        allSeriesIds = seriesItems.map(item => unmarshall(item).id);
+    } catch (scanError) {
+        console.error(`Error scanning DynamoDB tables: ${JSON.stringify(scanError)}`);
+        return {
+            statusCode: 500,
+            body: JSON.stringify({
+                message: 'Failed to scan DynamoDB tables',
+                error: scanError.message,
+                tableName: scanError.__type.includes('SeriesUserVote') ? votesScanParams.TableName : seriesScanParams.TableName
+            })
+        };
+    }
+
+    // Initialize voteAggregation with all series, setting votes to 0
     const voteAggregation = {};
+    for (let seriesId of allSeriesIds) {
+        voteAggregation[seriesId] = { upvotes: 0, downvotes: 0 };
+    }
+
     const userVoteAggregation = {};
 
+    // Aggregate the votes
     for (let item of scanResults) {
         const seriesId = item.seriesUserVoteSeriesId;
         const userId = item.userDetailsVotesId;
         const boost = parseInt(item.boost);
         const voteTime = item.createdAt || item.updatedAt;
-
-        // Global aggregation
-        if (!voteAggregation[seriesId]) {
-            voteAggregation[seriesId] = { upvotes: 0, downvotes: 0 };
-        }
 
         // User-specific aggregation
         const userSeriesKey = `${userId}#${seriesId}`;

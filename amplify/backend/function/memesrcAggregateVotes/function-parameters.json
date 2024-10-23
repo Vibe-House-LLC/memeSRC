@@ -1,6 +1,9 @@
 {
   "permissions": {
     "storage": {
+      "Series:@model(appsync)": [
+        "read"
+      ],
       "AnalyticsMetrics:@model(appsync)": [
         "create",
         "read",

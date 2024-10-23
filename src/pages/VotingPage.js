@@ -868,7 +868,7 @@ export default function VotingPage({ shows: searchableShows }) {
                     return null;
                   }
                   const showVoteData = voteData[show.id] || {};
-                  const userCanVote = showVoteData.ableToVote;
+                  const userCanVote = showVoteData.ableToVote !== false;
                   const isUpvoted = showVoteData.lastBoost === 1 && !userCanVote;
                   const isDownvoted = showVoteData.lastBoost === -1 && !userCanVote;
 
