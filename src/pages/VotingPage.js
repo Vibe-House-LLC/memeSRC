@@ -160,36 +160,74 @@ export default function VotingPage({ shows: searchableShows }) {
     }
   }, []);
 
-  const filterShows = useCallback((show) => {
-    const isSearchable = searchableShows.some((searchableShow) => searchableShow.id === show.slug);
-    switch (displayOption) {
-      case 'hideAvailable':
-        return !isSearchable;
-      case 'requested':
-        return isSearchable;
-      default: // 'showAll'
-        return true;
-    }
-  }, [displayOption, searchableShows]);
+  const filterShows = useCallback(
+    (show) => {
+      const isSearchable = searchableShows.some((searchableShow) => searchableShow.id === show.slug);
+      switch (displayOption) {
+        case 'hideAvailable':
+          return !isSearchable;
+        case 'requested':
+          return isSearchable;
+        default: // 'showAll'
+          return true;
+      }
+    },
+    [displayOption, searchableShows]
+  );
 
+  // **Updated recalculateRanks function**
   const recalculateRanks = useCallback(() => {
     let currentRank = 1;
     const newRanks = {};
-    const seriesToRank = fullSortedSeriesIds.map(id => seriesCache.current[id]).filter(Boolean);
 
-    seriesToRank.forEach((show) => {
-      if (filterShows(show)) {
-        newRanks[show.id] = currentRank;
-        currentRank += 1;
+    const seriesToRank = fullSortedSeriesIds.map((id) => seriesCache.current[id]).filter(Boolean);
+
+    // Apply filterShows to exclude shows based on displayOption
+    const filteredSeries = seriesToRank.filter((show) => filterShows(show));
+
+    // Sort filteredSeries based on voteData and rankMethod
+    const sortedShows = [...filteredSeries];
+
+    if (sortedShows.length > 0) {
+      switch (rankMethod) {
+        case 'combined':
+          sortedShows.sort((a, b) => {
+            const voteDiffA =
+              (voteData[a.id]?.totalVotesUp || 0) - (voteData[a.id]?.totalVotesDown || 0);
+            const voteDiffB =
+              (voteData[b.id]?.totalVotesUp || 0) - (voteData[b.id]?.totalVotesDown || 0);
+            return voteDiffB - voteDiffA || safeCompareSeriesTitles(a.id, b.id);
+          });
+          break;
+        case 'downvotes':
+          sortedShows.sort((a, b) => {
+            const downvoteDiff =
+              (voteData[b.id]?.totalVotesDown || 0) - (voteData[a.id]?.totalVotesDown || 0);
+            return downvoteDiff || safeCompareSeriesTitles(a.id, b.id);
+          });
+          break;
+        default: // 'upvotes'
+          sortedShows.sort((a, b) => {
+            const upvoteDiff =
+              (voteData[b.id]?.totalVotesUp || 0) - (voteData[a.id]?.totalVotesUp || 0);
+            return upvoteDiff || safeCompareSeriesTitles(a.id, b.id);
+          });
       }
+    }
+
+    // Assign ranks
+    sortedShows.forEach((show) => {
+      newRanks[show.id] = currentRank;
+      currentRank += 1;
     });
 
     setOriginalRanks(newRanks);
-  }, [filterShows, fullSortedSeriesIds]);
+  }, [filterShows, fullSortedSeriesIds, voteData, rankMethod, safeCompareSeriesTitles]);
 
+  // **Call recalculateRanks whenever voteData, displayOption, or rankMethod changes**
   useEffect(() => {
     recalculateRanks();
-  }, [displayOption, rankMethod, recalculateRanks]);
+  }, [displayOption, rankMethod, voteData, recalculateRanks]);
 
   const fetchSeriesData = useCallback(async (sortedIds, page, isLoadingMore) => {
     try {
@@ -670,7 +708,7 @@ export default function VotingPage({ shows: searchableShows }) {
     debouncedSetSearchText('');
   };
 
-  // Adjusted sortedSeriesMetadata
+  // **Update sortedSeriesMetadata without assigning ranks**
   const sortedSeriesMetadata = useMemo(() => {
     if (seriesMetadata.length === 0) return [];
 
@@ -680,15 +718,37 @@ export default function VotingPage({ shows: searchableShows }) {
 
     const sortedShows = [...searchFilteredShows];
 
-    // Sort the shows based on originalRanks
-    sortedShows.sort((a, b) => {
-      const rankA = originalRanks[a.id] || Number.MAX_VALUE;
-      const rankB = originalRanks[b.id] || Number.MAX_VALUE;
-      return rankA - rankB;
-    });
+    // Sort the shows based on voteData and rankMethod
+    if (sortedShows.length > 0) {
+      switch (rankMethod) {
+        case 'combined':
+          sortedShows.sort((a, b) => {
+            const voteDiffA =
+              (voteData[a.id]?.totalVotesUp || 0) - (voteData[a.id]?.totalVotesDown || 0);
+            const voteDiffB =
+              (voteData[b.id]?.totalVotesUp || 0) - (voteData[b.id]?.totalVotesDown || 0);
+            return voteDiffB - voteDiffA || safeCompareSeriesTitles(a.id, b.id);
+          });
+          break;
+        case 'downvotes':
+          sortedShows.sort((a, b) => {
+            const downvoteDiff =
+              (voteData[b.id]?.totalVotesDown || 0) - (voteData[a.id]?.totalVotesDown || 0);
+            return downvoteDiff || safeCompareSeriesTitles(a.id, b.id);
+          });
+          break;
+        default: // 'upvotes'
+          sortedShows.sort((a, b) => {
+            const upvoteDiff =
+              (voteData[b.id]?.totalVotesUp || 0) - (voteData[a.id]?.totalVotesUp || 0);
+            return upvoteDiff || safeCompareSeriesTitles(a.id, b.id);
+          });
+      }
+    }
 
+    // Do not assign rank here
     return sortedShows;
-  }, [seriesMetadata, searchText, originalRanks]);
+  }, [seriesMetadata, searchText, voteData, rankMethod, safeCompareSeriesTitles]);
 
   return (
     <>
