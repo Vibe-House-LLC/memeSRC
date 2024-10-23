@@ -128,11 +128,14 @@ export default function VotingPage({ shows: searchableShows }) {
     setLoadedImages(prev => ({ ...prev, [showId]: true }));
   };
 
+  // Modify this useEffect to handle the initial load
   useEffect(() => {
     const savedRankMethod = localStorage.getItem('rankMethod');
     if (savedRankMethod) {
       setRankMethod(savedRankMethod);
     }
+    // Fetch vote data with the correct rank method
+    fetchVoteData(savedRankMethod || 'upvotes');
   }, []);
 
   const safeCompareSeriesTitles = useCallback((a, b) => {
@@ -298,14 +301,15 @@ export default function VotingPage({ shows: searchableShows }) {
     }
   }, [itemsPerPage, recalculateRanks]);
 
+  // Modify fetchVoteData to use the correct endpoint based on the rank method
   const fetchVoteData = useCallback(
     async (currentRankMethod) => {
       try {
         // Determine the API endpoint based on the rankMethod
         const apiEndpoint =
-          currentRankMethod === 'upvotes'
-            ? '/vote/new/top/upvotes'
-            : '/vote/new/top/battleground';
+          currentRankMethod === 'combined'
+            ? '/vote/new/top/battleground'
+            : '/vote/new/top/upvotes';
 
         // Fetch top votes from the new endpoint
         const topVotesResponse = await API.get('publicapi', apiEndpoint);
@@ -573,21 +577,19 @@ export default function VotingPage({ shows: searchableShows }) {
     textOverflow: 'ellipsis',
   };
 
+  // Modify handleRankMethodChange to fetch new data immediately
   const handleRankMethodChange = useCallback((event, newValue) => {
-    // Only update if a button is selected (newValue is not null)
     if (newValue !== null) {
-      setIsChangingRankMethod(true); // Set to true when changing rank method
+      setIsChangingRankMethod(true);
       localStorage.setItem('rankMethod', newValue);
       setRankMethod(newValue);
       setCurrentPage(0);
       setSeriesMetadata([]);
       
-      // Fetch new data with a slight delay to allow for state updates
-      setTimeout(() => {
-        fetchVoteData(newValue).then(() => {
-          setIsChangingRankMethod(false); // Set back to false when done
-        });
-      }, 100);
+      // Fetch new data immediately
+      fetchVoteData(newValue).then(() => {
+        setIsChangingRankMethod(false);
+      });
     }
   }, [fetchVoteData]);
 
