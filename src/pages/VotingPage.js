@@ -60,7 +60,7 @@ const StyledImg = styled('img')``;
 export default function VotingPage({ shows: searchableShows }) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [topVotes, setTopVotes] = useState({});
+  const [isChangingRankMethod, setIsChangingRankMethod] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [votingStatus, setVotingStatus] = useState({});
   const [searchText, setSearchText] = useState('');
@@ -133,9 +133,10 @@ export default function VotingPage({ shows: searchableShows }) {
     const savedRankMethod = localStorage.getItem('rankMethod');
     if (savedRankMethod) {
       setRankMethod(savedRankMethod);
+    } else {
+      setRankMethod('upvotes');
     }
-    // Fetch vote data with the correct rank method
-    fetchVoteData(savedRankMethod || 'upvotes');
+    // No need to call fetchVoteData here
   }, []);
 
   const safeCompareSeriesTitles = useCallback((a, b) => {
@@ -478,9 +479,13 @@ export default function VotingPage({ shows: searchableShows }) {
       setSeriesMetadata([]);
       setSortedSeriesIds([]);
       setCurrentPage(0);
-      fetchVoteData(rankMethod);
+
+      setIsChangingRankMethod(true);
+      fetchVoteData(rankMethod).then(() => {
+        setIsChangingRankMethod(false);
+      });
     }
-  }, [debouncedSearchText, rankMethod, isTopList, allSeriesData]);
+  }, [debouncedSearchText, rankMethod]); // Kept necessary dependencies
 
   useEffect(() => {
     if (!loading && seriesMetadata.length > 0) {
@@ -577,21 +582,15 @@ export default function VotingPage({ shows: searchableShows }) {
     textOverflow: 'ellipsis',
   };
 
-  // Modify handleRankMethodChange to fetch new data immediately
+  // Remove fetchVoteData call from handleRankMethodChange
   const handleRankMethodChange = useCallback((event, newValue) => {
     if (newValue !== null) {
-      setIsChangingRankMethod(true);
       localStorage.setItem('rankMethod', newValue);
       setRankMethod(newValue);
       setCurrentPage(0);
       setSeriesMetadata([]);
-      
-      // Fetch new data immediately
-      fetchVoteData(newValue).then(() => {
-        setIsChangingRankMethod(false);
-      });
     }
-  }, [fetchVoteData]);
+  }, []);
 
   const votesCount = (show) => {
     if (!voteData[show.id]) {
@@ -666,9 +665,6 @@ export default function VotingPage({ shows: searchableShows }) {
     setSearchText('');
     debouncedSetSearchText('');
   };
-
-  // Add this new state variable
-  const [isChangingRankMethod, setIsChangingRankMethod] = useState(false);
 
   return (
     <>
