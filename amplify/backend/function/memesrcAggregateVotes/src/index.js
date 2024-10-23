@@ -35,6 +35,11 @@ async function scanDynamoDBTable(params) {
     return allResults;
 }
 
+// Add this function at the top of the file, after the imports
+function compareTitles(a, b) {
+    return a.toLowerCase().localeCompare(b.toLowerCase());
+}
+
 exports.handler = async (event) => {
     console.log(`EVENT: ${JSON.stringify(event)}`);
 
@@ -60,19 +65,22 @@ exports.handler = async (event) => {
         TableName: process.env.API_MEMESRC_SERIESUSERVOTETABLE_NAME
     };
 
-    // Scan the Series table to get all series IDs
+    // Modify the scan parameters for the Series table
     const seriesScanParams = {
         TableName: process.env.API_MEMESRC_SERIESTABLE_NAME,
-        ProjectionExpression: "id"
+        ProjectionExpression: "id, #n",
+        ExpressionAttributeNames: {
+            "#n": "name"
+        }
     };
 
-    let scanResults, allSeriesIds;
+    let scanResults, allSeries;
     try {
         const voteItems = await scanDynamoDBTable(votesScanParams);
         scanResults = voteItems.map(item => unmarshall(item));
 
         const seriesItems = await scanDynamoDBTable(seriesScanParams);
-        allSeriesIds = seriesItems.map(item => unmarshall(item).id);
+        allSeries = seriesItems.map(item => unmarshall(item));
     } catch (scanError) {
         console.error(`Error scanning DynamoDB tables: ${JSON.stringify(scanError)}`);
         return {
@@ -85,9 +93,12 @@ exports.handler = async (event) => {
         };
     }
 
+    // Create a map of series IDs to names for easy lookup
+    const seriesNameMap = Object.fromEntries(allSeries.map(series => [series.id, series.name]));
+
     // Initialize voteAggregation with all series, setting votes to 0
     const voteAggregation = {};
-    for (let seriesId of allSeriesIds) {
+    for (let seriesId of allSeries.map(series => series.id)) {
         voteAggregation[seriesId] = { upvotes: 0, downvotes: 0 };
     }
 
@@ -123,13 +134,25 @@ exports.handler = async (event) => {
 
     // Get top 100 seriesId by upvotes
     const topUpvotes = Object.entries(voteAggregation)
-        .sort(([, a], [, b]) => b.upvotes - a.upvotes)
+        .sort(([aId, a], [bId, b]) => {
+            const upvoteDiff = b.upvotes - a.upvotes;
+            if (upvoteDiff !== 0) return upvoteDiff;
+            // If upvotes are equal, sort by title
+            return compareTitles(seriesNameMap[aId] || '', seriesNameMap[bId] || '');
+        })
         .slice(0, 100)
         .map(([seriesId, votes]) => ({ seriesId, upvotes: votes.upvotes, downvotes: votes.downvotes }));
 
     // Get top 100 seriesId by upvotes minus downvotes (battleground)
     const topBattleground = Object.entries(voteAggregation)
-        .sort(([, a], [, b]) => (b.upvotes - b.downvotes) - (a.upvotes - a.downvotes))
+        .sort(([aId, a], [bId, b]) => {
+            const voteDiffA = a.upvotes - a.downvotes;
+            const voteDiffB = b.upvotes - b.downvotes;
+            const battlegroundDiff = voteDiffB - voteDiffA;
+            if (battlegroundDiff !== 0) return battlegroundDiff;
+            // If vote differences are equal, sort by title
+            return compareTitles(seriesNameMap[aId] || '', seriesNameMap[bId] || '');
+        })
         .slice(0, 100)
         .map(([seriesId, votes]) => ({ seriesId, upvotes: votes.upvotes, downvotes: votes.downvotes }));
 
