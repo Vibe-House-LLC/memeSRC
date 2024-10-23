@@ -229,8 +229,12 @@ export default function VotingPage({ shows: searchableShows }) {
     recalculateRanks();
   }, [displayOption, rankMethod, voteData, recalculateRanks]);
 
-  // Add this new function to fetch votes for visible series IDs
+  // Add this new state to track if the vote counts are loading
+  const [isLoadingVoteCounts, setIsLoadingVoteCounts] = useState(true);
+
+  // Modify fetchVotesForSeriesIds to set isLoadingVoteCounts
   const fetchVotesForSeriesIds = useCallback(async (seriesIds) => {
+    setIsLoadingVoteCounts(true);
     try {
       const votesResponse = await API.post('publicapi', '/vote/new/count', {
         body: { seriesIds },
@@ -274,6 +278,8 @@ export default function VotingPage({ shows: searchableShows }) {
       });
     } catch (error) {
       console.error('Error fetching votes:', error);
+    } finally {
+      setIsLoadingVoteCounts(false);
     }
   }, [user]);
 
@@ -895,13 +901,10 @@ export default function VotingPage({ shows: searchableShows }) {
                                   <Box mr={2} position="relative">
                                     <Badge
                                       badgeContent={
-                                        originalRanks[show.id] ? (
-                                          `#${originalRanks[show.id]}`
+                                        isLoadingVoteCounts ? (
+                                          <CircularProgress size={12} sx={{ color: 'white' }} />
                                         ) : (
-                                          <CircularProgress
-                                            size={12}
-                                            sx={{ color: 'white' }}
-                                          />
+                                          `#${originalRanks[show.id] || ''}`
                                         )
                                       }
                                       color="secondary"
@@ -954,30 +957,41 @@ export default function VotingPage({ shows: searchableShows }) {
                                           />
                                         </a>
                                       )}
-                                      <Typography
-                                        variant="subtitle2"
-                                        color="success.main"
-                                        sx={{ fontSize: '0.7rem', opacity: 0.6 }}
-                                      >
-                                        <ArrowUpward
-                                          fontSize="small"
-                                          sx={{ verticalAlign: 'middle' }}
-                                        />
-                                        <b>{showVoteData.totalVotesUp || 0}</b>
-                                      </Typography>
-                                      {rankMethod === 'combined' && (
-                                        <Typography
-                                          variant="subtitle2"
-                                          color="error.main"
-                                          ml={1}
-                                          sx={{ fontSize: '0.7rem', opacity: 0.6 }}
-                                        >
-                                          <ArrowDownward
-                                            fontSize="small"
-                                            sx={{ verticalAlign: 'middle' }}
-                                          />
-                                          <b>{showVoteData.totalVotesDown || 0}</b>
-                                        </Typography>
+                                      {isLoadingVoteCounts ? (
+                                        <>
+                                          <Skeleton variant="text" width={30} height={20} sx={{ mr: 1 }} />
+                                          {rankMethod === 'combined' && (
+                                            <Skeleton variant="text" width={30} height={20} />
+                                          )}
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Typography
+                                            variant="subtitle2"
+                                            color="success.main"
+                                            sx={{ fontSize: '0.7rem', opacity: 0.6 }}
+                                          >
+                                            <ArrowUpward
+                                              fontSize="small"
+                                              sx={{ verticalAlign: 'middle' }}
+                                            />
+                                            <b>{showVoteData.totalVotesUp || 0}</b>
+                                          </Typography>
+                                          {rankMethod === 'combined' && (
+                                            <Typography
+                                              variant="subtitle2"
+                                              color="error.main"
+                                              ml={1}
+                                              sx={{ fontSize: '0.7rem', opacity: 0.6 }}
+                                            >
+                                              <ArrowDownward
+                                                fontSize="small"
+                                                sx={{ verticalAlign: 'middle' }}
+                                              />
+                                              <b>{showVoteData.totalVotesDown || 0}</b>
+                                            </Typography>
+                                          )}
+                                        </>
                                       )}
                                     </Box>
                                     <Typography
@@ -1000,8 +1014,8 @@ export default function VotingPage({ shows: searchableShows }) {
                                       justifyContent="space-between"
                                       height="100%"
                                     >
-                                      {votingStatus[show.id] === 1 ? (
-                                        <CircularProgress size={25} sx={{ ml: 1.2, mb: 1.5 }} />
+                                      {isLoadingVoteCounts ? (
+                                        <Skeleton variant="circular" width={40} height={40} />
                                       ) : (
                                         <Tooltip
                                           disableFocusListener
@@ -1072,17 +1086,21 @@ export default function VotingPage({ shows: searchableShows }) {
                                     </Box>
 
                                     <Box alignItems="center" height="100%">
-                                      <Typography
-                                        variant="h5"
-                                        textAlign="center"
-                                        color={votesCount(show) < 0 && 'error.main'}
-                                      >
-                                        {votesCount(show)}
-                                      </Typography>
+                                      {isLoadingVoteCounts ? (
+                                        <Skeleton variant="text" width={30} height={40} />
+                                      ) : (
+                                        <Typography
+                                          variant="h5"
+                                          textAlign="center"
+                                          color={votesCount(show) < 0 && 'error.main'}
+                                        >
+                                          {votesCount(show)}
+                                        </Typography>
+                                      )}
                                     </Box>
                                     <Box>
-                                      {votingStatus[show.id] === -1 ? (
-                                        <CircularProgress size={25} sx={{ ml: 1.3, mt: 1.6 }} />
+                                      {isLoadingVoteCounts ? (
+                                        <Skeleton variant="circular" width={40} height={40} />
                                       ) : (
                                         <Tooltip
                                           disableFocusListener
@@ -1163,8 +1181,8 @@ export default function VotingPage({ shows: searchableShows }) {
                                       justifyContent="space-between"
                                       height="100%"
                                     >
-                                      {votingStatus[show.id] === 1 ? (
-                                        <CircularProgress size={25} sx={{ ml: 1.2, mb: 1.5 }} />
+                                      {isLoadingVoteCounts ? (
+                                        <Skeleton variant="circular" width={40} height={40} />
                                       ) : (
                                         <Tooltip
                                           disableFocusListener
@@ -1230,13 +1248,17 @@ export default function VotingPage({ shows: searchableShows }) {
                                         </Tooltip>
                                       )}
                                     </Box>
-                                    <Typography
-                                      variant="h5"
-                                      textAlign="center"
-                                      color={votesCount(show) < 0 && 'error.main'}
-                                    >
-                                      {showVoteData.totalVotesUp || 0}
-                                    </Typography>
+                                    {isLoadingVoteCounts ? (
+                                      <Skeleton variant="text" width={30} height={40} />
+                                    ) : (
+                                      <Typography
+                                        variant="h5"
+                                        textAlign="center"
+                                        color={votesCount(show) < 0 && 'error.main'}
+                                      >
+                                        {showVoteData.totalVotesUp || 0}
+                                      </Typography>
+                                    )}
                                   </Stack>
                                 )}
                               </Box>
