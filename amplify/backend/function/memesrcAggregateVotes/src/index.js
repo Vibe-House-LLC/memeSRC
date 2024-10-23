@@ -132,7 +132,7 @@ exports.handler = async (event) => {
         }
     }
 
-    // Get top 100 seriesId by upvotes
+    // Get top 250 seriesId by upvotes
     const topUpvotes = Object.entries(voteAggregation)
         .sort(([aId, a], [bId, b]) => {
             const upvoteDiff = b.upvotes - a.upvotes;
@@ -140,10 +140,10 @@ exports.handler = async (event) => {
             // If upvotes are equal, sort by title
             return compareTitles(seriesNameMap[aId] || '', seriesNameMap[bId] || '');
         })
-        .slice(0, 100)
+        .slice(0, 250)
         .map(([seriesId, votes]) => ({ seriesId, upvotes: votes.upvotes, downvotes: votes.downvotes }));
 
-    // Get top 100 seriesId by upvotes minus downvotes (battleground)
+    // Get top 250 seriesId by upvotes minus downvotes (battleground)
     const topBattleground = Object.entries(voteAggregation)
         .sort(([aId, a], [bId, b]) => {
             const voteDiffA = a.upvotes - a.downvotes;
@@ -153,7 +153,7 @@ exports.handler = async (event) => {
             // If vote differences are equal, sort by title
             return compareTitles(seriesNameMap[aId] || '', seriesNameMap[bId] || '');
         })
-        .slice(0, 100)
+        .slice(0, 250)
         .map(([seriesId, votes]) => ({ seriesId, upvotes: votes.upvotes, downvotes: votes.downvotes }));
 
     // Write aggregated results for each series to AnalyticsMetrics DynamoDB table
@@ -203,7 +203,7 @@ exports.handler = async (event) => {
         };
     }
 
-    // Write top 100 upvotes to AnalyticsMetrics DynamoDB table
+    // Write top 250 upvotes to AnalyticsMetrics DynamoDB table
     const topUpvotesPutParams = {
         TableName: process.env.API_MEMESRC_ANALYTICSMETRICSTABLE_NAME,
         Item: marshall({
@@ -225,7 +225,7 @@ exports.handler = async (event) => {
         };
     }
 
-    // Write top 100 battleground votes to AnalyticsMetrics DynamoDB table
+    // Write top 250 battleground votes to AnalyticsMetrics DynamoDB table
     const topBattlegroundPutParams = {
         TableName: process.env.API_MEMESRC_ANALYTICSMETRICSTABLE_NAME,
         Item: marshall({
