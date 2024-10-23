@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState, useRef, useCallback } from 'react';
+import React, { useContext, useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import { API, graphqlOperation } from 'aws-amplify';
 import {
@@ -670,6 +670,60 @@ export default function VotingPage({ shows: searchableShows }) {
     debouncedSetSearchText('');
   };
 
+  // UseMemo to create sortedSeriesMetadata
+  const sortedSeriesMetadata = useMemo(() => {
+    if (seriesMetadata.length === 0) return [];
+
+    const searchFilteredShows = seriesMetadata.filter((show) =>
+      show.name.toLowerCase().includes(searchText.toLowerCase())
+    );
+
+    const sortedShows = [...searchFilteredShows];
+
+    if (sortedShows.length > 0) {
+      switch (rankMethod) {
+        case 'combined':
+          sortedShows.sort((a, b) => {
+            const voteDiffA =
+              (voteData[a.id]?.totalVotesUp || 0) -
+              (voteData[a.id]?.totalVotesDown || 0);
+            const voteDiffB =
+              (voteData[b.id]?.totalVotesUp || 0) -
+              (voteData[b.id]?.totalVotesDown || 0);
+            return voteDiffB - voteDiffA || safeCompareSeriesTitles(a.id, b.id);
+          });
+          break;
+        case 'downvotes':
+          sortedShows.sort((a, b) => {
+            const downvoteDiff =
+              (voteData[b.id]?.totalVotesDown || 0) -
+              (voteData[a.id]?.totalVotesDown || 0);
+            return downvoteDiff || safeCompareSeriesTitles(a.id, b.id);
+          });
+          break;
+        default: // Upvotes
+          sortedShows.sort((a, b) => {
+            const upvoteDiff =
+              (voteData[b.id]?.totalVotesUp || 0) -
+              (voteData[a.id]?.totalVotesUp || 0);
+            return upvoteDiff || safeCompareSeriesTitles(a.id, b.id);
+          });
+      }
+    }
+
+    // Map over sorted shows to include rank
+    return sortedShows.map((show, index) => ({
+      ...show,
+      rank: index + 1,
+    }));
+  }, [
+    seriesMetadata,
+    voteData,
+    rankMethod,
+    searchText,
+    safeCompareSeriesTitles,
+  ]);
+
   return (
     <>
       <Helmet>
@@ -783,7 +837,7 @@ export default function VotingPage({ shows: searchableShows }) {
           ) : (
             <>
               <FlipMove key={rankMethod} style={{ minWidth: '100%' }}>
-                {seriesMetadata.map((show) => {
+                {sortedSeriesMetadata.map((show) => {
                   if (!filterShows(show)) {
                     return null;
                   }
