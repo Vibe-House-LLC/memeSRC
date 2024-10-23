@@ -394,31 +394,31 @@ export default function VotingPage({ shows: searchableShows }) {
     [itemsPerPage, recalculateRanks, fetchVotesForSeriesIds]
   );
 
-  // Modify fetchVoteData to only get series IDs and not fetch votes
+  // Add this new state to store the initial order
+  const [initialOrder, setInitialOrder] = useState([]);
+
+  // Modify fetchVoteData to set the initial order
   const fetchVoteData = useCallback(
     async (currentRankMethod) => {
       try {
-        // Determine the API endpoint based on the rankMethod
         const apiEndpoint =
           currentRankMethod === 'combined'
             ? '/vote/new/top/battleground'
             : '/vote/new/top/upvotes';
 
-        // Fetch top votes from the new endpoint, only getting the series IDs
         const topVotesResponse = await API.get('publicapi', apiEndpoint);
         const topVotesData = JSON.parse(topVotesResponse);
 
-        // Extract series IDs
         const newSortedSeriesIds = topVotesData.map((item) => item.seriesId);
 
-        // Update the sortedSeriesIds state
+        // Set the initial order
+        setInitialOrder(newSortedSeriesIds);
+
         setFullSortedSeriesIds(newSortedSeriesIds);
         setSortedSeriesIds(newSortedSeriesIds);
 
-        // Clear existing vote data
         setVoteData({});
 
-        // Fetch only the initial page
         fetchSeriesData(newSortedSeriesIds, 0, false);
       } catch (error) {
         console.error('Error in fetchVoteData:', error);
@@ -714,13 +714,20 @@ export default function VotingPage({ shows: searchableShows }) {
     debouncedSetSearchText('');
   };
 
-  // **Update sortedSeriesMetadata without assigning ranks**
+  // Modify sortedSeriesMetadata to use initialOrder when vote data is not available
   const sortedSeriesMetadata = useMemo(() => {
     if (seriesMetadata.length === 0) return [];
 
     const searchFilteredShows = seriesMetadata.filter((show) =>
       show.name.toLowerCase().includes(searchText.toLowerCase())
     );
+
+    // If we don't have vote data yet, use the initial order
+    if (Object.keys(voteData).length === 0) {
+      return initialOrder
+        .map(id => searchFilteredShows.find(show => show.id === id))
+        .filter(Boolean);
+    }
 
     const sortedShows = [...searchFilteredShows];
 
@@ -752,9 +759,8 @@ export default function VotingPage({ shows: searchableShows }) {
       }
     }
 
-    // Do not assign rank here
     return sortedShows;
-  }, [seriesMetadata, searchText, voteData, rankMethod, safeCompareSeriesTitles]);
+  }, [seriesMetadata, searchText, voteData, rankMethod, safeCompareSeriesTitles, initialOrder]);
 
   return (
     <>
