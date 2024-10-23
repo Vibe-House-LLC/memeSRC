@@ -81,7 +81,7 @@ export default function VotingPage({ shows: searchableShows }) {
   const [isSearching, setIsSearching] = useState(false);
 
   // Local pagination
-  const itemsPerPage = 5; // Number of items to render per page
+  const itemsPerPage = 50; // Number of items to render per page
   const [currentPage, setCurrentPage] = useState(0);
 
   const [sortedSeriesIds, setSortedSeriesIds] = useState([]);
@@ -229,208 +229,196 @@ export default function VotingPage({ shows: searchableShows }) {
     recalculateRanks();
   }, [displayOption, rankMethod, voteData, recalculateRanks]);
 
-  // Add this new state to track if the vote counts are loading
-  const [isLoadingVoteCounts, setIsLoadingVoteCounts] = useState(true);
-
-  // Modify fetchVotesForSeriesIds to set isLoadingVoteCounts
-  const fetchVotesForSeriesIds = useCallback(async (seriesIds) => {
-    setIsLoadingVoteCounts(true);
+  const fetchSeriesData = useCallback(async (sortedIds, page, isLoadingMore) => {
     try {
-      const votesResponse = await API.post('publicapi', '/vote/new/count', {
-        body: { seriesIds },
-      });
-      const votesData = JSON.parse(votesResponse);
+      // Load seriesCache.current from localStorage if available and not expired
+      try {
+        const cachedSeriesDataString = localStorage.getItem('seriesCache');
+        if (cachedSeriesDataString) {
+          const cachedSeriesData = JSON.parse(cachedSeriesDataString);
+          const updatedAt = new Date(cachedSeriesData.updatedAt);
+          const now = new Date();
+          const diffInMinutes = (now - updatedAt) / (1000 * 60);
+          if (diffInMinutes < 15) {
+            // Use cached data
+            seriesCache.current = cachedSeriesData.data;
+          } else {
+            // Remove expired cache
+            localStorage.removeItem('seriesCache');
+          }
+        }
+      } catch (error) {
+        console.error('Error loading series data from localStorage:', error);
+      }
 
-      setVoteData((prevVoteData) => {
-        const updatedVoteData = { ...prevVoteData };
-        votesData.forEach((item) => {
-          const seriesId = item.seriesId;
-          const seriesVoteData = {
-            totalVotesUp: item.totalVotes.upvotes || 0,
-            totalVotesDown: item.totalVotes.downvotes || 0,
+      const startIdx = page * itemsPerPage;
+      const endIdx = startIdx + itemsPerPage;
+      const paginatedSeriesIds = sortedIds.slice(startIdx, endIdx);
+
+      // Create placeholder data for all series in this page
+      const placeholderSeriesData = paginatedSeriesIds.map(id => ({
+        id,
+        name: 'Loading...',
+        description: 'Loading description...',
+        image: '',
+        rank: null
+      }));
+
+      // Update seriesMetadata immediately with placeholder data
+      setSeriesMetadata((prevSeriesMetadata) => {
+        if (isLoadingMore) {
+          return [...prevSeriesMetadata, ...placeholderSeriesData];
+        }
+        return [...placeholderSeriesData];
+      });
+
+      // Check cache for available series data
+      const cachedSeriesData = paginatedSeriesIds
+        .filter(id => seriesCache.current[id])
+        .map(id => seriesCache.current[id]);
+
+      const idsToFetch = paginatedSeriesIds.filter(id => !seriesCache.current[id]);
+
+      // Fetch series metadata for the IDs not in cache
+      if (idsToFetch.length > 0) {
+        const seriesDataPromises = idsToFetch.map((id) =>
+          API.graphql({
+            ...graphqlOperation(getSeries, { id }),
+            authMode: 'API_KEY',
+          })
+        );
+
+        const seriesDataResponses = await Promise.all(seriesDataPromises);
+        const fetchedSeriesData = seriesDataResponses.map(
+          (response) => response.data.getSeries
+        );
+
+        // Add fetched data to cache
+        fetchedSeriesData.forEach((data) => {
+          seriesCache.current[data.id] = data;
+        });
+
+        // Save seriesCache.current to localStorage
+        try {
+          const now = new Date();
+          const cacheData = {
+            updatedAt: now.toISOString(),
+            data: seriesCache.current,
+          };
+          localStorage.setItem('seriesCache', JSON.stringify(cacheData));
+        } catch (error) {
+          console.error('Error saving series data to localStorage:', error);
+        }
+
+        cachedSeriesData.push(...fetchedSeriesData);
+      }
+
+      // Update seriesMetadata with actual data
+      setSeriesMetadata((prevSeriesMetadata) => {
+        const updatedMetadata = [...prevSeriesMetadata];
+        cachedSeriesData.forEach((show) => {
+          const index = updatedMetadata.findIndex(item => item.id === show.id);
+          if (index !== -1) {
+            updatedMetadata[index] = { ...show, rank: null };
+          }
+        });
+        return updatedMetadata;
+      });
+
+      // Recalculate ranks after fetching data
+      recalculateRanks();
+
+      // Update hasMore based on whether there are more items
+      setHasMore(endIdx < sortedIds.length);
+
+    } catch (error) {
+      console.error('Error fetching series data:', error);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  }, [itemsPerPage, recalculateRanks]);
+
+  // Modify fetchVoteData to use the correct endpoint based on the rank method
+  const fetchVoteData = useCallback(
+    async (currentRankMethod) => {
+      try {
+        // Determine the API endpoint based on the rankMethod
+        const apiEndpoint =
+          currentRankMethod === 'combined'
+            ? '/vote/new/top/battleground'
+            : '/vote/new/top/upvotes';
+
+        // Fetch top votes from the new endpoint
+        const topVotesResponse = await API.get('publicapi', apiEndpoint);
+        const topVotesData = JSON.parse(topVotesResponse);
+
+        // Create initial voteData object with default values
+        const newVoteData = {};
+        topVotesData.forEach((item) => {
+          newVoteData[item.seriesId] = {
+            totalVotesUp: 0,
+            totalVotesDown: 0,
             ableToVote: true,
             userVotesUp: 0,
             userVotesDown: 0,
             lastVoteTime: null,
             lastBoost: null,
           };
-
-          // Only update user-specific data if the user is logged in
-          if (user) {
-            seriesVoteData.userVotesUp = item.userVotes?.upvotes || 0;
-            seriesVoteData.userVotesDown = item.userVotes?.downvotes || 0;
-            seriesVoteData.lastVoteTime = item.userVotes?.lastVoteTime;
-            seriesVoteData.lastBoost = item.userVotes?.lastBoost;
-
-            // Calculate if the user is able to vote based on lastVoteTime
-            if (item.userVotes?.lastVoteTime) {
-              const lastVoteDate = new Date(item.userVotes.lastVoteTime);
-              const now = new Date();
-              const hoursSinceLastVote = (now - lastVoteDate) / (1000 * 60 * 60);
-              seriesVoteData.ableToVote = hoursSinceLastVote >= 24;
-            }
-          }
-
-          updatedVoteData[seriesId] = seriesVoteData;
         });
 
-        return updatedVoteData;
-      });
-    } catch (error) {
-      console.error('Error fetching votes:', error);
-    } finally {
-      setIsLoadingVoteCounts(false);
-    }
-  }, [user]);
-
-  // Modify fetchSeriesData to call fetchVotesForSeriesIds
-  const fetchSeriesData = useCallback(
-    async (sortedIds, page, isLoadingMore) => {
-      try {
-        // Load seriesCache.current from localStorage if available and not expired
+        // Fetch votes for all series, regardless of user login status
+        const seriesIds = topVotesData.map(item => item.seriesId);
         try {
-          const cachedSeriesDataString = localStorage.getItem('seriesCache');
-          if (cachedSeriesDataString) {
-            const cachedSeriesData = JSON.parse(cachedSeriesDataString);
-            const updatedAt = new Date(cachedSeriesData.updatedAt);
-            const now = new Date();
-            const diffInMinutes = (now - updatedAt) / (1000 * 60);
-            if (diffInMinutes < 15) {
-              // Use cached data
-              seriesCache.current = cachedSeriesData.data;
-            } else {
-              // Remove expired cache
-              localStorage.removeItem('seriesCache');
+          const votesResponse = await API.post('publicapi', '/vote/new/count', {
+            body: { seriesIds }
+          });
+          const votesData = JSON.parse(votesResponse);
+
+          // Update voteData with total votes and user-specific votes if available
+          votesData.forEach((item) => {
+            const seriesId = item.seriesId;
+            if (newVoteData[seriesId]) {
+              newVoteData[seriesId].totalVotesUp = item.totalVotes.upvotes || 0;
+              newVoteData[seriesId].totalVotesDown = item.totalVotes.downvotes || 0;
+
+              // Only update user-specific data if the user is logged in
+              if (user) {
+                newVoteData[seriesId].userVotesUp = item.userVotes?.upvotes || 0;
+                newVoteData[seriesId].userVotesDown = item.userVotes?.downvotes || 0;
+                newVoteData[seriesId].lastVoteTime = item.userVotes?.lastVoteTime;
+                newVoteData[seriesId].lastBoost = item.userVotes?.lastBoost;
+
+                // Calculate if the user is able to vote based on lastVoteTime
+                if (item.userVotes?.lastVoteTime) {
+                  const lastVoteDate = new Date(item.userVotes.lastVoteTime);
+                  const now = new Date();
+                  const hoursSinceLastVote = (now - lastVoteDate) / (1000 * 60 * 60);
+                  newVoteData[seriesId].ableToVote = hoursSinceLastVote >= 24;
+                }
+              }
             }
-          }
+          });
         } catch (error) {
-          console.error('Error loading series data from localStorage:', error);
+          console.error('Error fetching votes:', error);
         }
 
-        const startIdx = page * itemsPerPage;
-        const endIdx = startIdx + itemsPerPage;
-        const paginatedSeriesIds = sortedIds.slice(startIdx, endIdx);
+        setVoteData(newVoteData);
 
-        // Create placeholder data for all series in this page
-        const placeholderSeriesData = paginatedSeriesIds.map(id => ({
-          id,
-          name: 'Loading...',
-          description: 'Loading description...',
-          image: '',
-          rank: null
-        }));
-
-        // Update seriesMetadata immediately with placeholder data
-        setSeriesMetadata((prevSeriesMetadata) => {
-          if (isLoadingMore) {
-            return [...prevSeriesMetadata, ...placeholderSeriesData];
-          }
-          return [...placeholderSeriesData];
-        });
-
-        // Check cache for available series data
-        const cachedSeriesData = paginatedSeriesIds
-          .filter(id => seriesCache.current[id])
-          .map(id => seriesCache.current[id]);
-
-        const idsToFetch = paginatedSeriesIds.filter(id => !seriesCache.current[id]);
-
-        // Fetch series metadata for the IDs not in cache
-        if (idsToFetch.length > 0) {
-          const seriesDataPromises = idsToFetch.map((id) =>
-            API.graphql({
-              ...graphqlOperation(getSeries, { id }),
-              authMode: 'API_KEY',
-            })
-          );
-
-          const seriesDataResponses = await Promise.all(seriesDataPromises);
-          const fetchedSeriesData = seriesDataResponses.map(
-            (response) => response.data.getSeries
-          );
-
-          // Add fetched data to cache
-          fetchedSeriesData.forEach((data) => {
-            seriesCache.current[data.id] = data;
-          });
-
-          // Save seriesCache.current to localStorage
-          try {
-            const now = new Date();
-            const cacheData = {
-              updatedAt: now.toISOString(),
-              data: seriesCache.current,
-            };
-            localStorage.setItem('seriesCache', JSON.stringify(cacheData));
-          } catch (error) {
-            console.error('Error saving series data to localStorage:', error);
-          }
-
-          cachedSeriesData.push(...fetchedSeriesData);
-        }
-
-        // Update seriesMetadata with actual data
-        setSeriesMetadata((prevSeriesMetadata) => {
-          const updatedMetadata = [...prevSeriesMetadata];
-          cachedSeriesData.forEach((show) => {
-            const index = updatedMetadata.findIndex((item) => item.id === show.id);
-            if (index !== -1) {
-              updatedMetadata[index] = { ...show, rank: null };
-            }
-          });
-          return updatedMetadata;
-        });
-
-        // Fetch votes for the current paginated series IDs
-        await fetchVotesForSeriesIds(paginatedSeriesIds);
-
-        // Recalculate ranks after fetching data
-        recalculateRanks();
-
-        // Update hasMore based on whether there are more items
-        setHasMore(endIdx < sortedIds.length);
-
-      } catch (error) {
-        console.error('Error fetching series data:', error);
-      } finally {
-        setLoading(false);
-        setLoadingMore(false);
-      }
-    },
-    [itemsPerPage, recalculateRanks, fetchVotesForSeriesIds]
-  );
-
-  // Add this new state to store the initial order
-  const [initialOrder, setInitialOrder] = useState([]);
-
-  // Modify fetchVoteData to set the initial order
-  const fetchVoteData = useCallback(
-    async (currentRankMethod) => {
-      try {
-        const apiEndpoint =
-          currentRankMethod === 'combined'
-            ? '/vote/new/top/battleground'
-            : '/vote/new/top/upvotes';
-
-        const topVotesResponse = await API.get('publicapi', apiEndpoint);
-        const topVotesData = JSON.parse(topVotesResponse);
-
+        // Sort the series IDs based on the total votes
         const newSortedSeriesIds = topVotesData.map((item) => item.seriesId);
 
-        // Set the initial order
-        setInitialOrder(newSortedSeriesIds);
-
+        // Update the sortedSeriesIds state
         setFullSortedSeriesIds(newSortedSeriesIds);
         setSortedSeriesIds(newSortedSeriesIds);
 
-        setVoteData({});
-
+        // Fetch only the initial page
         fetchSeriesData(newSortedSeriesIds, 0, false);
       } catch (error) {
         console.error('Error in fetchVoteData:', error);
       }
     },
-    [fetchSeriesData]
+    [user, fetchSeriesData]
   );
 
   const filterAndSortSeriesData = useCallback((data = allSeriesData) => {
@@ -563,7 +551,7 @@ export default function VotingPage({ shows: searchableShows }) {
     recalculateRanks();
   }, [rankMethod, recalculateRanks]);
 
-  // Modify handleLoadMore to fetch votes for new series
+  // Modify the handleLoadMore function
   const handleLoadMore = () => {
     setLoadingMore(true);
     const nextPage = currentPage + 1;
@@ -720,20 +708,13 @@ export default function VotingPage({ shows: searchableShows }) {
     debouncedSetSearchText('');
   };
 
-  // Modify sortedSeriesMetadata to use initialOrder when vote data is not available
+  // **Update sortedSeriesMetadata without assigning ranks**
   const sortedSeriesMetadata = useMemo(() => {
     if (seriesMetadata.length === 0) return [];
 
     const searchFilteredShows = seriesMetadata.filter((show) =>
       show.name.toLowerCase().includes(searchText.toLowerCase())
     );
-
-    // If we don't have vote data yet, use the initial order
-    if (Object.keys(voteData).length === 0) {
-      return initialOrder
-        .map(id => searchFilteredShows.find(show => show.id === id))
-        .filter(Boolean);
-    }
 
     const sortedShows = [...searchFilteredShows];
 
@@ -765,8 +746,9 @@ export default function VotingPage({ shows: searchableShows }) {
       }
     }
 
+    // Do not assign rank here
     return sortedShows;
-  }, [seriesMetadata, searchText, voteData, rankMethod, safeCompareSeriesTitles, initialOrder]);
+  }, [seriesMetadata, searchText, voteData, rankMethod, safeCompareSeriesTitles]);
 
   return (
     <>
@@ -901,10 +883,13 @@ export default function VotingPage({ shows: searchableShows }) {
                                   <Box mr={2} position="relative">
                                     <Badge
                                       badgeContent={
-                                        isLoadingVoteCounts ? (
-                                          <CircularProgress size={12} sx={{ color: 'white' }} />
+                                        originalRanks[show.id] ? (
+                                          `#${originalRanks[show.id]}`
                                         ) : (
-                                          `#${originalRanks[show.id] || ''}`
+                                          <CircularProgress
+                                            size={12}
+                                            sx={{ color: 'white' }}
+                                          />
                                         )
                                       }
                                       color="secondary"
@@ -957,41 +942,30 @@ export default function VotingPage({ shows: searchableShows }) {
                                           />
                                         </a>
                                       )}
-                                      {isLoadingVoteCounts ? (
-                                        <>
-                                          <Skeleton variant="text" width={30} height={20} sx={{ mr: 1 }} />
-                                          {rankMethod === 'combined' && (
-                                            <Skeleton variant="text" width={30} height={20} />
-                                          )}
-                                        </>
-                                      ) : (
-                                        <>
-                                          <Typography
-                                            variant="subtitle2"
-                                            color="success.main"
-                                            sx={{ fontSize: '0.7rem', opacity: 0.6 }}
-                                          >
-                                            <ArrowUpward
-                                              fontSize="small"
-                                              sx={{ verticalAlign: 'middle' }}
-                                            />
-                                            <b>{showVoteData.totalVotesUp || 0}</b>
-                                          </Typography>
-                                          {rankMethod === 'combined' && (
-                                            <Typography
-                                              variant="subtitle2"
-                                              color="error.main"
-                                              ml={1}
-                                              sx={{ fontSize: '0.7rem', opacity: 0.6 }}
-                                            >
-                                              <ArrowDownward
-                                                fontSize="small"
-                                                sx={{ verticalAlign: 'middle' }}
-                                              />
-                                              <b>{showVoteData.totalVotesDown || 0}</b>
-                                            </Typography>
-                                          )}
-                                        </>
+                                      <Typography
+                                        variant="subtitle2"
+                                        color="success.main"
+                                        sx={{ fontSize: '0.7rem', opacity: 0.6 }}
+                                      >
+                                        <ArrowUpward
+                                          fontSize="small"
+                                          sx={{ verticalAlign: 'middle' }}
+                                        />
+                                        <b>{showVoteData.totalVotesUp || 0}</b>
+                                      </Typography>
+                                      {rankMethod === 'combined' && (
+                                        <Typography
+                                          variant="subtitle2"
+                                          color="error.main"
+                                          ml={1}
+                                          sx={{ fontSize: '0.7rem', opacity: 0.6 }}
+                                        >
+                                          <ArrowDownward
+                                            fontSize="small"
+                                            sx={{ verticalAlign: 'middle' }}
+                                          />
+                                          <b>{showVoteData.totalVotesDown || 0}</b>
+                                        </Typography>
                                       )}
                                     </Box>
                                     <Typography
@@ -1014,8 +988,8 @@ export default function VotingPage({ shows: searchableShows }) {
                                       justifyContent="space-between"
                                       height="100%"
                                     >
-                                      {isLoadingVoteCounts ? (
-                                        <Skeleton variant="circular" width={40} height={40} />
+                                      {votingStatus[show.id] === 1 ? (
+                                        <CircularProgress size={25} sx={{ ml: 1.2, mb: 1.5 }} />
                                       ) : (
                                         <Tooltip
                                           disableFocusListener
@@ -1086,21 +1060,17 @@ export default function VotingPage({ shows: searchableShows }) {
                                     </Box>
 
                                     <Box alignItems="center" height="100%">
-                                      {isLoadingVoteCounts ? (
-                                        <Skeleton variant="text" width={30} height={40} />
-                                      ) : (
-                                        <Typography
-                                          variant="h5"
-                                          textAlign="center"
-                                          color={votesCount(show) < 0 && 'error.main'}
-                                        >
-                                          {votesCount(show)}
-                                        </Typography>
-                                      )}
+                                      <Typography
+                                        variant="h5"
+                                        textAlign="center"
+                                        color={votesCount(show) < 0 && 'error.main'}
+                                      >
+                                        {votesCount(show)}
+                                      </Typography>
                                     </Box>
                                     <Box>
-                                      {isLoadingVoteCounts ? (
-                                        <Skeleton variant="circular" width={40} height={40} />
+                                      {votingStatus[show.id] === -1 ? (
+                                        <CircularProgress size={25} sx={{ ml: 1.3, mt: 1.6 }} />
                                       ) : (
                                         <Tooltip
                                           disableFocusListener
@@ -1181,8 +1151,8 @@ export default function VotingPage({ shows: searchableShows }) {
                                       justifyContent="space-between"
                                       height="100%"
                                     >
-                                      {isLoadingVoteCounts ? (
-                                        <Skeleton variant="circular" width={40} height={40} />
+                                      {votingStatus[show.id] === 1 ? (
+                                        <CircularProgress size={25} sx={{ ml: 1.2, mb: 1.5 }} />
                                       ) : (
                                         <Tooltip
                                           disableFocusListener
@@ -1248,17 +1218,13 @@ export default function VotingPage({ shows: searchableShows }) {
                                         </Tooltip>
                                       )}
                                     </Box>
-                                    {isLoadingVoteCounts ? (
-                                      <Skeleton variant="text" width={30} height={40} />
-                                    ) : (
-                                      <Typography
-                                        variant="h5"
-                                        textAlign="center"
-                                        color={votesCount(show) < 0 && 'error.main'}
-                                      >
-                                        {showVoteData.totalVotesUp || 0}
-                                      </Typography>
-                                    )}
+                                    <Typography
+                                      variant="h5"
+                                      textAlign="center"
+                                      color={votesCount(show) < 0 && 'error.main'}
+                                    >
+                                      {showVoteData.totalVotesUp || 0}
+                                    </Typography>
                                   </Stack>
                                 )}
                               </Box>
