@@ -1,3 +1,17 @@
+/*
+Use the following code to retrieve configured secrets from SSM:
+
+const aws = require('aws-sdk');
+
+const { Parameters } = await (new aws.SSM())
+  .getParameters({
+    Names: ["opensearch_pass"].map(secretName => process.env[secretName]),
+    WithDecryption: true,
+  })
+  .promise();
+
+Parameters will be of the form { Name: 'secretName', Value: 'secretValue', ... }[]
+*/
 /* Amplify Params - DO NOT EDIT
 	API_MEMESRC_ANALYTICSMETRICSTABLE_ARN
 	API_MEMESRC_ANALYTICSMETRICSTABLE_NAME
@@ -12,13 +26,51 @@ Amplify Params - DO NOT EDIT */
 
 const { DynamoDBClient, PutItemCommand, ScanCommand } = require("@aws-sdk/client-dynamodb");
 const { marshall, unmarshall } = require("@aws-sdk/util-dynamodb");
+const { SSMClient, GetParametersCommand } = require("@aws-sdk/client-ssm");
+const { Client } = require('@opensearch-project/opensearch');
 
 const REGION = process.env.REGION;
 const ddb = new DynamoDBClient({ region: REGION });
+const ssm = new SSMClient({ region: REGION });
 
 /**
  * @type {import('@types/aws-lambda').APIGatewayProxyHandler}
  */
+
+// New function to retrieve OpenSearch credentials
+async function getOpenSearchCredentials() {
+    const getParametersCommand = new GetParametersCommand({
+        Names: ["opensearch_pass"].map(secretName => process.env[secretName]),
+        WithDecryption: true,
+    });
+
+    try {
+        const response = await ssm.send(getParametersCommand);
+        const opensearchPass = response.Parameters.find(p => p.Name === process.env.opensearch_pass).Value;
+        return {
+            password: opensearchPass,
+            username: process.env.opensearch_user
+        };
+    } catch (error) {
+        console.error('Error retrieving parameters from SSM:', error);
+        throw error;
+    }
+}
+
+// Move these variables into the handler
+let opensearchPass;
+let opensearchUser;
+
+// Add this helper function for OpenSearch client creation
+function createOpenSearchClient(credentials) {
+    return new Client({
+        node: 'https://search-memesrc-3lcaiflaubqkqafuim5oyxupwa.us-east-1.es.amazonaws.com',
+        auth: {
+            username: credentials.username,
+            password: credentials.password
+        }
+    });
+}
 
 // Utility function to perform full table scan with pagination
 async function scanDynamoDBTable(params) {
@@ -35,13 +87,52 @@ async function scanDynamoDBTable(params) {
     return allResults;
 }
 
-// Add this function at the top of the file, after the imports
 function compareTitles(a, b) {
     return a.toLowerCase().localeCompare(b.toLowerCase());
 }
 
 exports.handler = async (event) => {
     console.log(`EVENT: ${JSON.stringify(event)}`);
+    // Get OpenSearch credentials at the start of handler
+    try {
+        const credentials = await getOpenSearchCredentials();
+        opensearchPass = credentials.password;
+        opensearchUser = credentials.username;
+    } catch (error) {
+        return {
+            statusCode: 500,
+            body: JSON.stringify('Failed to retrieve parameters from SSM')
+        };
+    }
+
+    // Try to create the 'votes-series' index
+    try {
+        const client = createOpenSearchClient({ username: opensearchUser, password: opensearchPass });
+        const indexName = 'votes-series';
+        
+        const { body: indexExists } = await client.indices.exists({ index: indexName });
+        if (!indexExists) {
+            await client.indices.create({
+                index: indexName,
+                body: {
+                    mappings: {
+                        properties: {
+                            id: { type: 'keyword' },
+                            name: { type: 'text' },
+                            createdAt: { type: 'date' },
+                            updatedAt: { type: 'date' }
+                        }
+                    }
+                }
+            });
+            console.log(`Index '${indexName}' created successfully.`);
+        } else {
+            console.log(`Index '${indexName}' already exists.`);
+        }
+    } catch (error) {
+        console.error('Error managing OpenSearch index:', error);
+        // Continue with the rest of the function
+    }
 
     // Check if the required environment variables are set
     const requiredEnvVars = [
@@ -88,7 +179,8 @@ exports.handler = async (event) => {
             body: JSON.stringify({
                 message: 'Failed to scan DynamoDB tables',
                 error: scanError.message,
-                tableName: scanError.__type.includes('SeriesUserVote') ? votesScanParams.TableName : seriesScanParams.TableName
+                // Remove the table name determination that was using __type
+                tableName: process.env.API_MEMESRC_SERIESUSERVOTETABLE_NAME
             })
         };
     }
@@ -272,6 +364,36 @@ exports.handler = async (event) => {
             console.error(`Error putting user vote aggregation to DynamoDB table: ${JSON.stringify(putError)}`);
             // Note: We're not returning here to allow the function to continue processing other votes
         }
+    }
+
+    // After retrieving allSeries
+    try {
+        const client = createOpenSearchClient({ username: opensearchUser, password: opensearchPass });
+        
+        console.log(`Attempting to bulk index ${allSeries.length} series documents`);
+        console.log('Sample of first 2 series:', JSON.stringify(allSeries.slice(0, 2), null, 2));
+        
+        const body = allSeries.flatMap(doc => [
+            { index: { _index: 'votes-series', _id: doc.id } },
+            doc
+        ]);
+
+        console.log('Sample of bulk operation body:', JSON.stringify(body.slice(0, 4), null, 2));
+
+        const bulkResponse = await client.bulk({ body });
+        
+        console.log('Bulk response:', JSON.stringify(bulkResponse, null, 2));
+        
+        if (bulkResponse.body?.errors) {
+            console.error('Bulk indexing had errors:', JSON.stringify(bulkResponse.body.items, null, 2));
+        }
+
+    } catch (error) {
+        console.error('Error bulk indexing series:', error);
+        return {
+            statusCode: 500,
+            body: JSON.stringify('Failed to bulk index series data')
+        };
     }
 
     return {

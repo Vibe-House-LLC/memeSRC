@@ -16,5 +16,14 @@
       ]
     }
   },
-  "lambdaLayers": []
+  "lambdaLayers": [],
+  "environmentVariableList": [
+    {
+      "cloudFormationParameterName": "opensearchUser",
+      "environmentVariableName": "opensearch_user"
+    }
+  ],
+  "secretNames": [
+    "opensearch_pass"
+  ]
 }
