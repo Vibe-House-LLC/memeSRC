@@ -81,7 +81,7 @@ export default function VotingPage({ shows: searchableShows }) {
   const [isSearching, setIsSearching] = useState(false);
 
   // Local pagination
-  const itemsPerPage = 50; // Number of items to render per page
+  const itemsPerPage = 5; // Number of items to render per page
   const [currentPage, setCurrentPage] = useState(0);
 
   const [sortedSeriesIds, setSortedSeriesIds] = useState([]);
@@ -229,117 +229,172 @@ export default function VotingPage({ shows: searchableShows }) {
     recalculateRanks();
   }, [displayOption, rankMethod, voteData, recalculateRanks]);
 
-  const fetchSeriesData = useCallback(async (sortedIds, page, isLoadingMore) => {
+  // Add this new function to fetch votes for visible series IDs
+  const fetchVotesForSeriesIds = useCallback(async (seriesIds) => {
     try {
-      // Load seriesCache.current from localStorage if available and not expired
-      try {
-        const cachedSeriesDataString = localStorage.getItem('seriesCache');
-        if (cachedSeriesDataString) {
-          const cachedSeriesData = JSON.parse(cachedSeriesDataString);
-          const updatedAt = new Date(cachedSeriesData.updatedAt);
-          const now = new Date();
-          const diffInMinutes = (now - updatedAt) / (1000 * 60);
-          if (diffInMinutes < 15) {
-            // Use cached data
-            seriesCache.current = cachedSeriesData.data;
-          } else {
-            // Remove expired cache
-            localStorage.removeItem('seriesCache');
-          }
-        }
-      } catch (error) {
-        console.error('Error loading series data from localStorage:', error);
-      }
-
-      const startIdx = page * itemsPerPage;
-      const endIdx = startIdx + itemsPerPage;
-      const paginatedSeriesIds = sortedIds.slice(startIdx, endIdx);
-
-      // Create placeholder data for all series in this page
-      const placeholderSeriesData = paginatedSeriesIds.map(id => ({
-        id,
-        name: 'Loading...',
-        description: 'Loading description...',
-        image: '',
-        rank: null
-      }));
-
-      // Update seriesMetadata immediately with placeholder data
-      setSeriesMetadata((prevSeriesMetadata) => {
-        if (isLoadingMore) {
-          return [...prevSeriesMetadata, ...placeholderSeriesData];
-        }
-        return [...placeholderSeriesData];
+      const votesResponse = await API.post('publicapi', '/vote/new/count', {
+        body: { seriesIds },
       });
+      const votesData = JSON.parse(votesResponse);
 
-      // Check cache for available series data
-      const cachedSeriesData = paginatedSeriesIds
-        .filter(id => seriesCache.current[id])
-        .map(id => seriesCache.current[id]);
-
-      const idsToFetch = paginatedSeriesIds.filter(id => !seriesCache.current[id]);
-
-      // Fetch series metadata for the IDs not in cache
-      if (idsToFetch.length > 0) {
-        const seriesDataPromises = idsToFetch.map((id) =>
-          API.graphql({
-            ...graphqlOperation(getSeries, { id }),
-            authMode: 'API_KEY',
-          })
-        );
-
-        const seriesDataResponses = await Promise.all(seriesDataPromises);
-        const fetchedSeriesData = seriesDataResponses.map(
-          (response) => response.data.getSeries
-        );
-
-        // Add fetched data to cache
-        fetchedSeriesData.forEach((data) => {
-          seriesCache.current[data.id] = data;
-        });
-
-        // Save seriesCache.current to localStorage
-        try {
-          const now = new Date();
-          const cacheData = {
-            updatedAt: now.toISOString(),
-            data: seriesCache.current,
+      setVoteData((prevVoteData) => {
+        const updatedVoteData = { ...prevVoteData };
+        votesData.forEach((item) => {
+          const seriesId = item.seriesId;
+          const seriesVoteData = {
+            totalVotesUp: item.totalVotes.upvotes || 0,
+            totalVotesDown: item.totalVotes.downvotes || 0,
+            ableToVote: true,
+            userVotesUp: 0,
+            userVotesDown: 0,
+            lastVoteTime: null,
+            lastBoost: null,
           };
-          localStorage.setItem('seriesCache', JSON.stringify(cacheData));
+
+          // Only update user-specific data if the user is logged in
+          if (user) {
+            seriesVoteData.userVotesUp = item.userVotes?.upvotes || 0;
+            seriesVoteData.userVotesDown = item.userVotes?.downvotes || 0;
+            seriesVoteData.lastVoteTime = item.userVotes?.lastVoteTime;
+            seriesVoteData.lastBoost = item.userVotes?.lastBoost;
+
+            // Calculate if the user is able to vote based on lastVoteTime
+            if (item.userVotes?.lastVoteTime) {
+              const lastVoteDate = new Date(item.userVotes.lastVoteTime);
+              const now = new Date();
+              const hoursSinceLastVote = (now - lastVoteDate) / (1000 * 60 * 60);
+              seriesVoteData.ableToVote = hoursSinceLastVote >= 24;
+            }
+          }
+
+          updatedVoteData[seriesId] = seriesVoteData;
+        });
+
+        return updatedVoteData;
+      });
+    } catch (error) {
+      console.error('Error fetching votes:', error);
+    }
+  }, [user]);
+
+  // Modify fetchSeriesData to call fetchVotesForSeriesIds
+  const fetchSeriesData = useCallback(
+    async (sortedIds, page, isLoadingMore) => {
+      try {
+        // Load seriesCache.current from localStorage if available and not expired
+        try {
+          const cachedSeriesDataString = localStorage.getItem('seriesCache');
+          if (cachedSeriesDataString) {
+            const cachedSeriesData = JSON.parse(cachedSeriesDataString);
+            const updatedAt = new Date(cachedSeriesData.updatedAt);
+            const now = new Date();
+            const diffInMinutes = (now - updatedAt) / (1000 * 60);
+            if (diffInMinutes < 15) {
+              // Use cached data
+              seriesCache.current = cachedSeriesData.data;
+            } else {
+              // Remove expired cache
+              localStorage.removeItem('seriesCache');
+            }
+          }
         } catch (error) {
-          console.error('Error saving series data to localStorage:', error);
+          console.error('Error loading series data from localStorage:', error);
         }
 
-        cachedSeriesData.push(...fetchedSeriesData);
-      }
+        const startIdx = page * itemsPerPage;
+        const endIdx = startIdx + itemsPerPage;
+        const paginatedSeriesIds = sortedIds.slice(startIdx, endIdx);
 
-      // Update seriesMetadata with actual data
-      setSeriesMetadata((prevSeriesMetadata) => {
-        const updatedMetadata = [...prevSeriesMetadata];
-        cachedSeriesData.forEach((show) => {
-          const index = updatedMetadata.findIndex(item => item.id === show.id);
-          if (index !== -1) {
-            updatedMetadata[index] = { ...show, rank: null };
+        // Create placeholder data for all series in this page
+        const placeholderSeriesData = paginatedSeriesIds.map(id => ({
+          id,
+          name: 'Loading...',
+          description: 'Loading description...',
+          image: '',
+          rank: null
+        }));
+
+        // Update seriesMetadata immediately with placeholder data
+        setSeriesMetadata((prevSeriesMetadata) => {
+          if (isLoadingMore) {
+            return [...prevSeriesMetadata, ...placeholderSeriesData];
           }
+          return [...placeholderSeriesData];
         });
-        return updatedMetadata;
-      });
 
-      // Recalculate ranks after fetching data
-      recalculateRanks();
+        // Check cache for available series data
+        const cachedSeriesData = paginatedSeriesIds
+          .filter(id => seriesCache.current[id])
+          .map(id => seriesCache.current[id]);
 
-      // Update hasMore based on whether there are more items
-      setHasMore(endIdx < sortedIds.length);
+        const idsToFetch = paginatedSeriesIds.filter(id => !seriesCache.current[id]);
 
-    } catch (error) {
-      console.error('Error fetching series data:', error);
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-    }
-  }, [itemsPerPage, recalculateRanks]);
+        // Fetch series metadata for the IDs not in cache
+        if (idsToFetch.length > 0) {
+          const seriesDataPromises = idsToFetch.map((id) =>
+            API.graphql({
+              ...graphqlOperation(getSeries, { id }),
+              authMode: 'API_KEY',
+            })
+          );
 
-  // Modify fetchVoteData to use the correct endpoint based on the rank method
+          const seriesDataResponses = await Promise.all(seriesDataPromises);
+          const fetchedSeriesData = seriesDataResponses.map(
+            (response) => response.data.getSeries
+          );
+
+          // Add fetched data to cache
+          fetchedSeriesData.forEach((data) => {
+            seriesCache.current[data.id] = data;
+          });
+
+          // Save seriesCache.current to localStorage
+          try {
+            const now = new Date();
+            const cacheData = {
+              updatedAt: now.toISOString(),
+              data: seriesCache.current,
+            };
+            localStorage.setItem('seriesCache', JSON.stringify(cacheData));
+          } catch (error) {
+            console.error('Error saving series data to localStorage:', error);
+          }
+
+          cachedSeriesData.push(...fetchedSeriesData);
+        }
+
+        // Update seriesMetadata with actual data
+        setSeriesMetadata((prevSeriesMetadata) => {
+          const updatedMetadata = [...prevSeriesMetadata];
+          cachedSeriesData.forEach((show) => {
+            const index = updatedMetadata.findIndex((item) => item.id === show.id);
+            if (index !== -1) {
+              updatedMetadata[index] = { ...show, rank: null };
+            }
+          });
+          return updatedMetadata;
+        });
+
+        // Fetch votes for the current paginated series IDs
+        await fetchVotesForSeriesIds(paginatedSeriesIds);
+
+        // Recalculate ranks after fetching data
+        recalculateRanks();
+
+        // Update hasMore based on whether there are more items
+        setHasMore(endIdx < sortedIds.length);
+
+      } catch (error) {
+        console.error('Error fetching series data:', error);
+      } finally {
+        setLoading(false);
+        setLoadingMore(false);
+      }
+    },
+    [itemsPerPage, recalculateRanks, fetchVotesForSeriesIds]
+  );
+
+  // Modify fetchVoteData to only get series IDs and not fetch votes
   const fetchVoteData = useCallback(
     async (currentRankMethod) => {
       try {
@@ -349,68 +404,19 @@ export default function VotingPage({ shows: searchableShows }) {
             ? '/vote/new/top/battleground'
             : '/vote/new/top/upvotes';
 
-        // Fetch top votes from the new endpoint
+        // Fetch top votes from the new endpoint, only getting the series IDs
         const topVotesResponse = await API.get('publicapi', apiEndpoint);
         const topVotesData = JSON.parse(topVotesResponse);
 
-        // Create initial voteData object with default values
-        const newVoteData = {};
-        topVotesData.forEach((item) => {
-          newVoteData[item.seriesId] = {
-            totalVotesUp: 0,
-            totalVotesDown: 0,
-            ableToVote: true,
-            userVotesUp: 0,
-            userVotesDown: 0,
-            lastVoteTime: null,
-            lastBoost: null,
-          };
-        });
-
-        // Fetch votes for all series, regardless of user login status
-        const seriesIds = topVotesData.map(item => item.seriesId);
-        try {
-          const votesResponse = await API.post('publicapi', '/vote/new/count', {
-            body: { seriesIds }
-          });
-          const votesData = JSON.parse(votesResponse);
-
-          // Update voteData with total votes and user-specific votes if available
-          votesData.forEach((item) => {
-            const seriesId = item.seriesId;
-            if (newVoteData[seriesId]) {
-              newVoteData[seriesId].totalVotesUp = item.totalVotes.upvotes || 0;
-              newVoteData[seriesId].totalVotesDown = item.totalVotes.downvotes || 0;
-
-              // Only update user-specific data if the user is logged in
-              if (user) {
-                newVoteData[seriesId].userVotesUp = item.userVotes?.upvotes || 0;
-                newVoteData[seriesId].userVotesDown = item.userVotes?.downvotes || 0;
-                newVoteData[seriesId].lastVoteTime = item.userVotes?.lastVoteTime;
-                newVoteData[seriesId].lastBoost = item.userVotes?.lastBoost;
-
-                // Calculate if the user is able to vote based on lastVoteTime
-                if (item.userVotes?.lastVoteTime) {
-                  const lastVoteDate = new Date(item.userVotes.lastVoteTime);
-                  const now = new Date();
-                  const hoursSinceLastVote = (now - lastVoteDate) / (1000 * 60 * 60);
-                  newVoteData[seriesId].ableToVote = hoursSinceLastVote >= 24;
-                }
-              }
-            }
-          });
-        } catch (error) {
-          console.error('Error fetching votes:', error);
-        }
-
-        setVoteData(newVoteData);
-
-        // Sort the series IDs based on the total votes
+        // Extract series IDs
         const newSortedSeriesIds = topVotesData.map((item) => item.seriesId);
 
         // Update the sortedSeriesIds state
         setFullSortedSeriesIds(newSortedSeriesIds);
         setSortedSeriesIds(newSortedSeriesIds);
+
+        // Clear existing vote data
+        setVoteData({});
 
         // Fetch only the initial page
         fetchSeriesData(newSortedSeriesIds, 0, false);
@@ -418,7 +424,7 @@ export default function VotingPage({ shows: searchableShows }) {
         console.error('Error in fetchVoteData:', error);
       }
     },
-    [user, fetchSeriesData]
+    [fetchSeriesData]
   );
 
   const filterAndSortSeriesData = useCallback((data = allSeriesData) => {
@@ -551,7 +557,7 @@ export default function VotingPage({ shows: searchableShows }) {
     recalculateRanks();
   }, [rankMethod, recalculateRanks]);
 
-  // Modify the handleLoadMore function
+  // Modify handleLoadMore to fetch votes for new series
   const handleLoadMore = () => {
     setLoadingMore(true);
     const nextPage = currentPage + 1;
