@@ -64,7 +64,7 @@ export default function VotingPage({ shows: searchableShows }) {
   const [loadingMore, setLoadingMore] = useState(false);
   const [votingStatus, setVotingStatus] = useState({});
   const [searchText, setSearchText] = useState('');
-  const [rankMethod, setRankMethod] = useState('upvotes');
+  const [rankMethod, setRankMethod] = useState(null); // Set initial state to null
   const [timeRemaining, setTimeRemaining] = useState('');
   const [openAddRequest, setOpenAddRequest] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState();
@@ -128,7 +128,7 @@ export default function VotingPage({ shows: searchableShows }) {
     setLoadedImages(prev => ({ ...prev, [showId]: true }));
   };
 
-  // Modify this useEffect to handle the initial load
+  // Initialize rankMethod from localStorage
   useEffect(() => {
     const savedRankMethod = localStorage.getItem('rankMethod');
     if (savedRankMethod) {
@@ -136,7 +136,6 @@ export default function VotingPage({ shows: searchableShows }) {
     } else {
       setRankMethod('upvotes');
     }
-    // No need to call fetchVoteData here
   }, []);
 
   const safeCompareSeriesTitles = useCallback((a, b) => {
@@ -465,8 +464,13 @@ export default function VotingPage({ shows: searchableShows }) {
     debouncedSetSearchText(newSearchText);
   };
 
-  // Modify the useEffect that triggers the search
+  // Adjust the useEffect that depends on rankMethod
   useEffect(() => {
+    if (rankMethod === null) {
+      // Do nothing until rankMethod is set
+      return;
+    }
+
     if (debouncedSearchText) {
       setIsSearching(true);
       if (allSeriesData === null) {
@@ -485,7 +489,7 @@ export default function VotingPage({ shows: searchableShows }) {
         setIsChangingRankMethod(false);
       });
     }
-  }, [debouncedSearchText, rankMethod]); // Kept necessary dependencies
+  }, [debouncedSearchText, rankMethod]);
 
   useEffect(() => {
     if (!loading && seriesMetadata.length > 0) {
