@@ -103,7 +103,7 @@
         },
         "memesrcAggregateVotes": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcAggregateVotes-35657842727231686f71-build.zip",
+          "s3Key": "amplify-builds/memesrcAggregateVotes-396e47737579534b366a-build.zip",
           "secretsPathAmplifyAppId": "d32pnvtwxwtte5",
           "opensearchUser": "davis"
         },
@@ -154,6 +154,12 @@
         "memesrcRecoverUsername": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
           "s3Key": "amplify-builds/memesrcRecoverUsername-6a75792f526651377767-build.zip"
+        },
+        "memesrcVoteSearchSeries": {
+          "opensearchUser": "davis",
+          "secretsPathAmplifyAppId": "d32pnvtwxwtte5",
+          "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
+          "s3Key": "amplify-builds/memesrcVoteSearchSeries-4d4741422b4b45316b7a-build.zip"
         }
       },
       "storage": {

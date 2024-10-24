@@ -288,6 +288,13 @@
       "permissions": {
         "setting": "open"
       }
+    },
+    "/votes/search": {
+      "name": "/votes/search",
+      "lambdaFunction": "memesrcVoteSearchSeries",
+      "permissions": {
+        "setting": "open"
+      }
     }
   }
 }

@@ -245,6 +245,14 @@
           ],
           "category": "function",
           "resourceName": "memesrcRecoverUsername"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcVoteSearchSeries"
         }
       ],
       "providerPlugin": "awscloudformation",
@@ -643,6 +651,11 @@
           "resourceName": "memesrc"
         }
       ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "memesrcVoteSearchSeries": {
+      "build": true,
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
@@ -1176,6 +1189,38 @@
         {
           "category": "function",
           "resourceName": "memesrcUserFunction"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcVoteSearchSeries_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcVoteSearchSeries"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcVoteSearchSeries_opensearchUser": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcVoteSearchSeries"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcVoteSearchSeries_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcVoteSearchSeries"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcVoteSearchSeries_secretsPathAmplifyAppId": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcVoteSearchSeries"
         }
       ]
     },

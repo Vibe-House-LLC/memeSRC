@@ -224,29 +224,41 @@ exports.handler = async (event) => {
         }
     }
 
-    // Get top 250 seriesId by upvotes
+    // Get top 10 seriesId by upvotes
     const topUpvotes = Object.entries(voteAggregation)
         .sort(([aId, a], [bId, b]) => {
             const upvoteDiff = b.upvotes - a.upvotes;
             if (upvoteDiff !== 0) return upvoteDiff;
-            // If upvotes are equal, sort by title
             return compareTitles(seriesNameMap[aId] || '', seriesNameMap[bId] || '');
         })
-        .slice(0, 250)
-        .map(([seriesId, votes]) => ({ seriesId, upvotes: votes.upvotes, downvotes: votes.downvotes }));
+        // Remove .slice(0, 10) to get all series ranked
+        .map(([seriesId, votes], index) => ({ 
+            seriesId, 
+            upvotes: votes.upvotes, 
+            downvotes: votes.downvotes,
+            rank: index + 1 
+        }));
 
-    // Get top 250 seriesId by upvotes minus downvotes (battleground)
+    // Get all seriesId by upvotes minus downvotes (battleground)
     const topBattleground = Object.entries(voteAggregation)
         .sort(([aId, a], [bId, b]) => {
             const voteDiffA = a.upvotes - a.downvotes;
             const voteDiffB = b.upvotes - b.downvotes;
             const battlegroundDiff = voteDiffB - voteDiffA;
             if (battlegroundDiff !== 0) return battlegroundDiff;
-            // If vote differences are equal, sort by title
             return compareTitles(seriesNameMap[aId] || '', seriesNameMap[bId] || '');
         })
-        .slice(0, 250)
-        .map(([seriesId, votes]) => ({ seriesId, upvotes: votes.upvotes, downvotes: votes.downvotes }));
+        // Remove .slice(0, 10) to get all series ranked
+        .map(([seriesId, votes], index) => ({ 
+            seriesId, 
+            upvotes: votes.upvotes, 
+            downvotes: votes.downvotes,
+            rank: index + 1 
+        }));
+
+    // Create ranking maps for easy lookup
+    const upvoteRankMap = Object.fromEntries(topUpvotes.map(item => [item.seriesId, item.rank]));
+    const battlegroundRankMap = Object.fromEntries(topBattleground.map(item => [item.seriesId, item.rank]));
 
     // Write aggregated results for each series to AnalyticsMetrics DynamoDB table
     const currentTime = new Date().toISOString();
@@ -295,7 +307,7 @@ exports.handler = async (event) => {
         };
     }
 
-    // Write top 250 upvotes to AnalyticsMetrics DynamoDB table
+    // Write top 10 upvotes to AnalyticsMetrics DynamoDB table
     const topUpvotesPutParams = {
         TableName: process.env.API_MEMESRC_ANALYTICSMETRICSTABLE_NAME,
         Item: marshall({
@@ -317,7 +329,7 @@ exports.handler = async (event) => {
         };
     }
 
-    // Write top 250 battleground votes to AnalyticsMetrics DynamoDB table
+    // Write top 10 battleground votes to AnalyticsMetrics DynamoDB table
     const topBattlegroundPutParams = {
         TableName: process.env.API_MEMESRC_ANALYTICSMETRICSTABLE_NAME,
         Item: marshall({
@@ -366,19 +378,22 @@ exports.handler = async (event) => {
         }
     }
 
-    // After retrieving allSeries
+    // Modify the OpenSearch indexing section
     try {
         const client = createOpenSearchClient({ username: opensearchUser, password: opensearchPass });
         
-        console.log(`Attempting to bulk index ${allSeries.length} series documents`);
-        console.log('Sample of first 2 series:', JSON.stringify(allSeries.slice(0, 2), null, 2));
+        // Enhance series documents with ranking information
+        const enhancedSeries = allSeries.map(doc => ({
+            ...doc,
+            rankUpvotes: upvoteRankMap[doc.id] || 0,
+            rankBattleground: battlegroundRankMap[doc.id] || 0,
+            votes: voteAggregation[doc.id] || { upvotes: 0, downvotes: 0 }
+        }));
         
-        const body = allSeries.flatMap(doc => [
+        const body = enhancedSeries.flatMap(doc => [
             { index: { _index: 'votes-series', _id: doc.id } },
             doc
         ]);
-
-        console.log('Sample of bulk operation body:', JSON.stringify(body.slice(0, 4), null, 2));
 
         const bulkResponse = await client.bulk({ body });
         

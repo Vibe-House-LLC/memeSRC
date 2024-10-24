@@ -502,20 +502,80 @@ export default function VotingPage({ shows: searchableShows }) {
     debouncedSetSearchText(newSearchText);
   };
 
-  // Adjust the useEffect that depends on rankMethod
+  // Replace the useEffect that depends on debouncedSearchText with the following:
+
   useEffect(() => {
     if (rankMethod === null) {
-      // Do nothing until rankMethod is set
       return;
     }
 
     if (debouncedSearchText) {
       setIsSearching(true);
-      if (allSeriesData === null) {
-        fetchAllSeriesData();
-      } else {
-        filterAndSortSeriesData(allSeriesData);
-      }
+
+      const fetchSearchResults = async () => {
+        try {
+          const response = await API.get('publicapi', '/votes/search', {
+            queryStringParameters: {
+              prefix: debouncedSearchText
+            },
+          });
+
+          const hits = response.hits;
+
+          // Map over the hits to get series IDs and ranks
+          const seriesIds = hits.map(hit => hit.id);
+          
+          // Create a map of ranks from search results
+          const searchRanks = {};
+          hits.forEach(hit => {
+            searchRanks[hit.id] = rankMethod === 'combined' ? 
+              hit.rankBattleground : 
+              hit.rankUpvotes;
+          });
+
+          // Update originalRanks with search result ranks
+          setOriginalRanks(prevRanks => ({
+            ...prevRanks,
+            ...searchRanks
+          }));
+
+          // Rest of the existing search logic...
+          const seriesDataFromCache = seriesIds.map(id => seriesCache.current[id]).filter(Boolean);
+          const idsToFetch = seriesIds.filter(id => !seriesCache.current[id]);
+
+          if (idsToFetch.length > 0) {
+            const seriesDataPromises = idsToFetch.map((id) =>
+              API.graphql({
+                ...graphqlOperation(getSeries, { id }),
+                authMode: 'API_KEY',
+              })
+            );
+
+            const seriesDataResponses = await Promise.all(seriesDataPromises);
+            const fetchedSeriesData = seriesDataResponses.map(
+              (response) => response.data.getSeries
+            );
+
+            // Add fetched data to cache
+            fetchedSeriesData.forEach((data) => {
+              seriesCache.current[data.id] = data;
+            });
+
+            seriesDataFromCache.push(...fetchedSeriesData);
+          }
+
+          setSeriesMetadata(seriesDataFromCache);
+          await fetchVoteDataForSeries(seriesIds);
+          setIsSearching(false);
+
+        } catch (error) {
+          console.error('Error fetching search results:', error);
+          setIsSearching(false);
+        }
+      };
+
+      fetchSearchResults();
+
     } else {
       setIsSearching(false);
       setSeriesMetadata([]);
@@ -749,6 +809,45 @@ export default function VotingPage({ shows: searchableShows }) {
     // Do not assign rank here
     return sortedShows;
   }, [seriesMetadata, searchText, voteData, rankMethod, safeCompareSeriesTitles]);
+
+  // Add a new function to fetch vote data for specific series IDs:
+
+  const fetchVoteDataForSeries = useCallback(
+    async (seriesIds) => {
+      try {
+        const votesResponse = await API.post('publicapi', '/vote/new/count', {
+          body: { seriesIds },
+        });
+
+        // Check if votesResponse is a string and parse it
+        const votesData = typeof votesResponse === 'string' ? JSON.parse(votesResponse) : votesResponse;
+
+        // Ensure votesData is an array
+        const votesArray = Array.isArray(votesData) ? votesData : votesData.data;
+
+        // Update voteData in state
+        setVoteData((prevVoteData) => {
+          const updatedVoteData = { ...prevVoteData };
+          votesArray.forEach((item) => {
+            const seriesId = item.seriesId;
+            updatedVoteData[seriesId] = {
+              totalVotesUp: item.totalVotes.upvotes || 0,
+              totalVotesDown: item.totalVotes.downvotes || 0,
+              ableToVote: true,
+              userVotesUp: item.userVotes?.upvotes || 0,
+              userVotesDown: item.userVotes?.downvotes || 0,
+              lastVoteTime: item.userVotes?.lastVoteTime,
+              lastBoost: item.userVotes?.lastBoost,
+            };
+          });
+          return updatedVoteData;
+        });
+      } catch (error) {
+        console.error('Error fetching votes:', error);
+      }
+    },
+    [setVoteData]
+  );
 
   return (
     <>
