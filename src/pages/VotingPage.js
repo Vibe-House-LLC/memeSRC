@@ -629,6 +629,12 @@ export default function VotingPage({ shows: searchableShows }) {
     const nextPage = currentPage + 1;
     setCurrentPage(nextPage);
     fetchSeriesData(sortedSeriesIds, nextPage, true);
+
+    // **Fetch vote data for the next page of series IDs**
+    const startIdx = INITIAL_ITEMS + nextPage * ITEMS_PER_LOAD;
+    const endIdx = startIdx + ITEMS_PER_LOAD;
+    const nextPageSeriesIds = sortedSeriesIds.slice(startIdx, endIdx);
+    fetchVoteDataForSeries(nextPageSeriesIds);
   };
 
   const handleVote = async (seriesId, boost) => {
