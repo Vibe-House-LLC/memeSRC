@@ -103,7 +103,7 @@
         },
         "memesrcAggregateVotes": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcAggregateVotes-75413732794a34557563-build.zip",
+          "s3Key": "amplify-builds/memesrcAggregateVotes-634c4e624b30385a4374-build.zip",
           "secretsPathAmplifyAppId": "d32pnvtwxwtte5",
           "opensearchUser": "davis"
         },

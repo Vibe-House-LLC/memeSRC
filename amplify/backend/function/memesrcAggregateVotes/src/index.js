@@ -37,6 +37,8 @@ const ssm = new SSMClient({ region: REGION });
  * @type {import('@types/aws-lambda').APIGatewayProxyHandler}
  */
 
+const TOP_ITEM_COUNT = 250;
+
 // New function to retrieve OpenSearch credentials
 async function getOpenSearchCredentials() {
     const getParametersCommand = new GetParametersCommand({
@@ -90,9 +92,6 @@ async function scanDynamoDBTable(params) {
 function compareTitles(a, b) {
     return a.toLowerCase().localeCompare(b.toLowerCase());
 }
-
-// Add this constant at the top with the other constants
-const TOP_ITEM_COUNT = 10;
 
 exports.handler = async (event) => {
     console.log(`EVENT: ${JSON.stringify(event)}`);
@@ -414,6 +413,11 @@ exports.handler = async (event) => {
 
     return {
         statusCode: 200,
+        headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Headers': '*',
+            'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+        },
         body: JSON.stringify(voteAggregation)
     };
 };

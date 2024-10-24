@@ -253,6 +253,14 @@
           ],
           "category": "function",
           "resourceName": "memesrcVoteSearchSeries"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcAggregateVotes"
         }
       ],
       "providerPlugin": "awscloudformation",
