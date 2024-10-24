@@ -177,6 +177,10 @@ export default function VotingPage({ shows: searchableShows }) {
 
   // **Updated recalculateRanks function**
   const recalculateRanks = useCallback(() => {
+    if (isSearching) {
+      // Do not recalculate ranks when searching
+      return;
+    }
     let currentRank = 1;
     const newRanks = {};
 
@@ -222,7 +226,7 @@ export default function VotingPage({ shows: searchableShows }) {
     });
 
     setOriginalRanks(newRanks);
-  }, [filterShows, fullSortedSeriesIds, voteData, rankMethod, safeCompareSeriesTitles]);
+  }, [filterShows, fullSortedSeriesIds, voteData, rankMethod, safeCompareSeriesTitles, isSearching]);
 
   // **Call recalculateRanks whenever voteData, displayOption, or rankMethod changes**
   useEffect(() => {
@@ -565,7 +569,10 @@ export default function VotingPage({ shows: searchableShows }) {
             seriesDataFromCache.push(...fetchedSeriesData);
           }
 
-          setSeriesMetadata(seriesDataFromCache);
+          setSeriesMetadata(seriesDataFromCache.map(show => ({
+            ...show,
+            rank: searchRanks[show.id] || null,
+          })));
           await fetchVoteDataForSeries(seriesIds);
           
           // Only set hasMore if we have more items than itemsPerPage
@@ -612,8 +619,10 @@ export default function VotingPage({ shows: searchableShows }) {
   }, [fullSortedSeriesIds, recalculateRanks]);
 
   useEffect(() => {
-    recalculateRanks();
-  }, [rankMethod, recalculateRanks]);
+    if (!isSearching) {
+      recalculateRanks();
+    }
+  }, [rankMethod, recalculateRanks, isSearching]);
 
   // Modify the handleLoadMore function
   const handleLoadMore = () => {
@@ -986,8 +995,8 @@ export default function VotingPage({ shows: searchableShows }) {
                                   <Box mr={2} position="relative">
                                     <Badge
                                       badgeContent={
-                                        originalRanks[show.id] ? (
-                                          `#${originalRanks[show.id]}`
+                                        originalRanks[show.id] !== undefined || show.rank !== null ? (
+                                          `#${originalRanks[show.id] || show.rank}`
                                         ) : (
                                           <CircularProgress
                                             size={12}
