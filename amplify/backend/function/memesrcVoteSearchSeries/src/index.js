@@ -23,6 +23,8 @@ const { Client } = require('@opensearch-project/opensearch');
 const REGION = process.env.REGION;
 const ssm = new SSMClient({ region: REGION });
 
+const indexName = `votes-series-${process.env.ENV}`;
+
 // Function to retrieve OpenSearch credentials
 async function getOpenSearchCredentials() {
     const getParametersCommand = new GetParametersCommand({
@@ -78,7 +80,7 @@ exports.handler = async (event) => {
 
         // Perform the search
         const searchResponse = await client.search({
-            index: 'votes-series',
+            index: indexName,
             body: {
                 query: {
                     match_phrase_prefix: {
