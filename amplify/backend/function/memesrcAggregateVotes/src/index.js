@@ -91,6 +91,9 @@ function compareTitles(a, b) {
     return a.toLowerCase().localeCompare(b.toLowerCase());
 }
 
+// Add this constant at the top with the other constants
+const TOP_ITEM_COUNT = 10;
+
 exports.handler = async (event) => {
     console.log(`EVENT: ${JSON.stringify(event)}`);
     // Get OpenSearch credentials at the start of handler
@@ -231,7 +234,6 @@ exports.handler = async (event) => {
             if (upvoteDiff !== 0) return upvoteDiff;
             return compareTitles(seriesNameMap[aId] || '', seriesNameMap[bId] || '');
         })
-        // Remove .slice(0, 10) to get all series ranked
         .map(([seriesId, votes], index) => ({ 
             seriesId, 
             upvotes: votes.upvotes, 
@@ -248,7 +250,6 @@ exports.handler = async (event) => {
             if (battlegroundDiff !== 0) return battlegroundDiff;
             return compareTitles(seriesNameMap[aId] || '', seriesNameMap[bId] || '');
         })
-        // Remove .slice(0, 10) to get all series ranked
         .map(([seriesId, votes], index) => ({ 
             seriesId, 
             upvotes: votes.upvotes, 
@@ -312,7 +313,7 @@ exports.handler = async (event) => {
         TableName: process.env.API_MEMESRC_ANALYTICSMETRICSTABLE_NAME,
         Item: marshall({
             id: "topVotes-upvotes",
-            value: JSON.stringify(topUpvotes),
+            value: JSON.stringify(topUpvotes.slice(0, TOP_ITEM_COUNT)),  // Only store top N
             createdAt: currentTime,
             updatedAt: currentTime,
             __typename: "AnalyticsMetrics"
@@ -334,7 +335,7 @@ exports.handler = async (event) => {
         TableName: process.env.API_MEMESRC_ANALYTICSMETRICSTABLE_NAME,
         Item: marshall({
             id: "topVotes-battleground",
-            value: JSON.stringify(topBattleground),
+            value: JSON.stringify(topBattleground.slice(0, TOP_ITEM_COUNT)),  // Only store top N
             createdAt: currentTime,
             updatedAt: currentTime,
             __typename: "AnalyticsMetrics"
