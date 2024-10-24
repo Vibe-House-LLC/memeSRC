@@ -88,7 +88,7 @@ async function fetchMetadata(items = [], nextToken = null) {
   const result = await API.graphql(
     graphqlOperation(listSeriesAndSeasons, {
       filter: {},
-      limit: 5, // Changed from 10 to 5
+      limit: 100, // Changed from 10 to 5
       nextToken
     })
   );
@@ -137,6 +137,9 @@ export default function DashboardSeriesPage() {
   const [sortMethod, setSortMethod] = useState('all');
   const [selectedIndex, setSelectedIndex] = useState(null)
   const [migrationLoading, setMigrationLoading] = useState(false);
+  const [bulkStatusDialogOpen, setBulkStatusDialogOpen] = useState(false);
+  const [newBulkStatus, setNewBulkStatus] = useState('');
+
   const { setMessage, setSeverity, setOpen } = useContext(SnackbarContext);
 
   // Options Menu
@@ -485,9 +488,11 @@ export default function DashboardSeriesPage() {
   }
 
   const handleChangeAllStatus = async () => {
-    const newStatus = prompt('Please enter the new status for all items:');
+    setBulkStatusDialogOpen(true);
+  };
 
-    if (newStatus) {
+  const handleBulkStatusUpdate = async () => {
+    if (newBulkStatus) {
       const chunks = chunkArray(filteredMetadata, 3);
 
       const updateSeriesStatus = async (seriesData) => {
@@ -496,7 +501,7 @@ export default function DashboardSeriesPage() {
             graphqlOperation(updateSeries, {
               input: {
                 id: seriesData.id,
-                statusText: newStatus
+                statusText: newBulkStatus
               }
             })
           );
@@ -507,23 +512,20 @@ export default function DashboardSeriesPage() {
         }
       };
 
+      /* eslint-disable no-await-in-loop */
       for (let i = 0; i < chunks.length; i += 1) {
         const chunk = chunks[i];
-        // eslint-disable-next-line no-await-in-loop
         await Promise.all(chunk.map(updateSeriesStatus));
-
-        // If this is not the last chunk, add a delay
         if (i < chunks.length - 1) {
-          // eslint-disable-next-line no-await-in-loop
           await new Promise((resolve) => setTimeout(resolve, 100));
         }
       }
+      /* eslint-enable no-await-in-loop */
 
-      // Update local state
       setMetadata(prevMetadata => 
         prevMetadata.map(item => ({
           ...item,
-          statusText: newStatus
+          statusText: newBulkStatus
         }))
       );
       filterMetadataByMethod(sortMethod, metadata);
@@ -531,6 +533,8 @@ export default function DashboardSeriesPage() {
       setMessage('Status updated for all series');
       setSeverity('success');
       setOpen(true);
+      setBulkStatusDialogOpen(false);
+      setNewBulkStatus('');
     }
   };
 
@@ -826,6 +830,46 @@ export default function DashboardSeriesPage() {
           </Typography>
         </Box>
       </Backdrop>
+      <Dialog open={bulkStatusDialogOpen} onClose={() => setBulkStatusDialogOpen(false)}>
+        <DialogTitle>Update Status for Multiple Items</DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="body1" gutterBottom>
+              The following {filteredMetadata.length} items will be updated:
+            </Typography>
+            <List dense>
+              {filteredMetadata.map((item, index) => (
+                <ListItem key={index}>
+                  <ListItemText primary={`• ${item.name}`} />
+                </ListItem>
+              ))}
+            </List>
+            <FormControl fullWidth sx={{ mt: 2 }}>
+              <InputLabel id="bulk-status-select-label">New Status</InputLabel>
+              <Select
+                labelId="bulk-status-select-label"
+                value={newBulkStatus}
+                label="New Status"
+                onChange={(event) => setNewBulkStatus(event.target.value)}
+              >
+                <MenuItem value="active">Active</MenuItem>
+                <MenuItem value="inactive">Inactive</MenuItem>
+                <MenuItem value="requested">Requested</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setBulkStatusDialogOpen(false)}>Cancel</Button>
+          <Button 
+            variant="contained" 
+            onClick={handleBulkStatusUpdate}
+            disabled={!newBulkStatus}
+          >
+            Update All
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 }
