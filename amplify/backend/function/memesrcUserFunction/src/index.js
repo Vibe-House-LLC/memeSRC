@@ -616,21 +616,9 @@ export const handler = async (event) => {
 
       console.log(`Updated user votes: ${JSON.stringify(currentUserVotes)}`);
 
-      // Update AnalyticsMetrics Mutation for User Votes
-      const updateUserVoteAggregationMutation = `
-        mutation UpdateAnalyticsMetrics($id: ID!, $value: String!) {
-          updateAnalyticsMetrics(input: {
-            id: $id,
-            value: $value
-          }) {
-            id
-            value
-          }
-        }
-      `;
-
-      const createUserVoteAggregationMutation = `
-        mutation CreateAnalyticsMetrics($id: ID!, $value: String!) {
+      // Update AnalyticsMetrics Mutation for User/Series Votes
+      const upsertAnalyticsMetricsMutation = `
+        mutation UpsertAnalyticsMetrics($id: ID!, $value: String!) {
           createAnalyticsMetrics(input: {
             id: $id,
             value: $value
@@ -646,18 +634,8 @@ export const handler = async (event) => {
         value: JSON.stringify(currentUserVotes)
       };
 
-      console.log(`Updating user vote aggregation with variables: ${JSON.stringify(userVoteVariables)}`);
-      let updateUserVoteResponse;
-      try {
-        updateUserVoteResponse = await makeRequestWithVariables(updateUserVoteAggregationMutation, userVoteVariables);
-      } catch (error) {
-        if (error.body.errors[0].errorType === 'DynamoDB:ConditionalCheckFailedException') {
-          console.log('User vote aggregation does not exist. Creating a new one.');
-          updateUserVoteResponse = await makeRequestWithVariables(createUserVoteAggregationMutation, userVoteVariables);
-        } else {
-          throw error;
-        }
-      }
+      console.log(`Upserting user vote aggregation with variables: ${JSON.stringify(userVoteVariables)}`);
+      const updateUserVoteResponse = await makeRequestWithVariables(upsertAnalyticsMetricsMutation, userVoteVariables);
       console.log(`User vote aggregation update response: ${JSON.stringify(updateUserVoteResponse)}`);
 
       // Update overall series vote aggregation
@@ -686,48 +664,13 @@ export const handler = async (event) => {
 
       console.log(`Updated series votes: ${JSON.stringify(currentSeriesVotes)}`);
 
-      // Update AnalyticsMetrics Mutation for Series Votes
-      const updateSeriesVoteAggregationMutation = `
-        mutation UpdateAnalyticsMetrics($id: ID!, $value: String!) {
-          updateAnalyticsMetrics(input: {
-            id: $id,
-            value: $value
-          }) {
-            id
-            value
-          }
-        }
-      `;
-
-      const createSeriesVoteAggregationMutation = `
-        mutation CreateAnalyticsMetrics($id: ID!, $value: String!) {
-          createAnalyticsMetrics(input: {
-            id: $id,
-            value: $value
-          }) {
-            id
-            value
-          }
-        }
-      `;
-
       const seriesVoteVariables = {
         id: `totalVotes-${seriesId}`,
         value: JSON.stringify(currentSeriesVotes)
       };
 
-      console.log(`Updating series vote aggregation with variables: ${JSON.stringify(seriesVoteVariables)}`);
-      let updateSeriesVoteResponse;
-      try {
-        updateSeriesVoteResponse = await makeRequestWithVariables(updateSeriesVoteAggregationMutation, seriesVoteVariables);
-      } catch (error) {
-        if (error.body.errors[0].errorType === 'DynamoDB:ConditionalCheckFailedException') {
-          console.log('Series vote aggregation does not exist. Creating a new one.');
-          updateSeriesVoteResponse = await makeRequestWithVariables(createSeriesVoteAggregationMutation, seriesVoteVariables);
-        } else {
-          throw error;
-        }
-      }
+      console.log(`Upserting series vote aggregation with variables: ${JSON.stringify(seriesVoteVariables)}`);
+      const updateSeriesVoteResponse = await makeRequestWithVariables(upsertAnalyticsMetricsMutation, seriesVoteVariables);
       console.log(`Series vote aggregation update response: ${JSON.stringify(updateSeriesVoteResponse)}`);
 
       response = {
