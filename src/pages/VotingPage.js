@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import PropTypes from 'prop-types';
-import { API, graphqlOperation } from 'aws-amplify';
+import { API, graphqlOperation, Auth } from 'aws-amplify';
 import {
   Container,
   Grid,
@@ -29,7 +29,7 @@ import {
   ToggleButtonGroup,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import { ArrowUpward, ArrowDownward, Search, Close, ThumbUp, Whatshot, Lock, NewReleasesOutlined } from '@mui/icons-material';
+import { ArrowUpward, ArrowDownward, Search, Close, ThumbUp, Whatshot, Lock, NewReleasesOutlined, Refresh } from '@mui/icons-material';
 import FlipMove from 'react-flip-move';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -870,6 +870,32 @@ export default function VotingPage({ shows: searchableShows }) {
     [setVoteData]
   );
 
+  // Add these new state variables after other state declarations
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Add this new useEffect to check admin status
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      try {
+        const session = await Auth.currentSession();
+        const groups = session.getAccessToken().payload['cognito:groups'] || [];
+        setIsAdmin(groups.includes('admins'));
+      } catch (error) {
+        console.error('Error checking admin status:', error);
+        setIsAdmin(false);
+      }
+    };
+
+    if (user) {
+      checkAdminStatus();
+    }
+  }, [user]);
+
+  // Add this new function to handle refresh
+  const handleRefresh = () => {
+    fetchVoteData(rankMethod);
+  };
+
   return (
     <>
       <Helmet>
@@ -886,35 +912,37 @@ export default function VotingPage({ shows: searchableShows }) {
         </Box>
 
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, my: 2 }}>
-          <ToggleButtonGroup
-            value={rankMethod}
-            exclusive
-            onChange={handleRankMethodChange}
-            aria-label="ranking method"
-            fullWidth
-          >
-            <ToggleButton
-              value="upvotes"
-              aria-label="most upvoted"
-              sx={{
-                '&.Mui-selected': {
-                  backgroundColor: 'rgba(84, 214, 44, 0.16)',
-                  color: 'success.main',
-                  '&:hover': {
-                    backgroundColor: 'rgba(84, 214, 44, 0.24)',
-                  },
-                },
-              }}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <ToggleButtonGroup
+              value={rankMethod}
+              exclusive
+              onChange={handleRankMethodChange}
+              aria-label="ranking method"
+              fullWidth
             >
-              <ThumbUp color="success" sx={{ mr: 1 }} />
-              Most Upvoted
-            </ToggleButton>
-            <ToggleButton value="combined" aria-label="battleground">
-              <Whatshot color="error" sx={{ mr: 1 }} />
-              Battleground
-            </ToggleButton>
-          </ToggleButtonGroup>
-
+              <ToggleButton
+                value="upvotes"
+                aria-label="most upvoted"
+                sx={{
+                  '&.Mui-selected': {
+                    backgroundColor: 'rgba(84, 214, 44, 0.16)',
+                    color: 'success.main',
+                    '&:hover': {
+                      backgroundColor: 'rgba(84, 214, 44, 0.24)',
+                    },
+                  },
+                }}
+              >
+                <ThumbUp color="success" sx={{ mr: 1 }} />
+                Most Upvoted
+              </ToggleButton>
+              <ToggleButton value="combined" aria-label="battleground">
+                <Whatshot color="error" sx={{ mr: 1 }} />
+                Battleground
+              </ToggleButton>
+            </ToggleButtonGroup>
+          </Box>
+          
           <ToggleButtonGroup
             value={displayOption}
             exclusive
@@ -937,33 +965,49 @@ export default function VotingPage({ shows: searchableShows }) {
             </ToggleButton>
           </ToggleButtonGroup>
 
-          <TextField
-            fullWidth
-            size="large"
-            variant="outlined"
-            value={searchText}
-            onChange={handleSearchChange}
-            placeholder="Filter by name..."
-            inputRef={searchInputRef}  // Add this line
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Search />
-                </InputAdornment>
-              ),
-              endAdornment: (searchText || isSearching) && (
-                <InputAdornment position="end">
-                  <IconButton edge="end" onClick={clearSearch} disabled={isSearching && !searchText}>
-                    {isSearching ? (
-                      <CircularProgress size={20} sx={{ color: 'white' }} />
-                    ) : (
-                      <Close />
-                    )}
-                  </IconButton>
-                </InputAdornment>
-              ),
-            }}
-          />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <TextField
+              fullWidth
+              size="large"
+              variant="outlined"
+              value={searchText}
+              onChange={handleSearchChange}
+              placeholder="Filter by name..."
+              inputRef={searchInputRef}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Search />
+                  </InputAdornment>
+                ),
+                endAdornment: (searchText || isSearching) && (
+                  <InputAdornment position="end">
+                    <IconButton edge="end" onClick={clearSearch} disabled={isSearching && !searchText}>
+                      {isSearching ? (
+                        <CircularProgress size={20} sx={{ color: 'white' }} />
+                      ) : (
+                        <Close />
+                      )}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
+            
+            {isAdmin && (
+              <IconButton
+                onClick={handleRefresh}
+                sx={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  '&:hover': {
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  }
+                }}
+              >
+                <Refresh />
+              </IconButton>
+            )}
+          </Box>
         </Box>
 
         <Grid container style={{ minWidth: '100%' }}>
