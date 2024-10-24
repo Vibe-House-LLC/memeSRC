@@ -347,16 +347,50 @@ export default function DashboardSeriesPage() {
     getData();
   }, []);
 
-  // Add loadMore function
+  // Update the loadMore function
   const loadMore = async () => {
     if (!nextToken) return;
     
     setLoading(true);
     const data = await fetchMetadata([], nextToken);
-    setMetadata(prev => [...prev, ...data.items]);
-    setFilteredMetadata(prev => [...prev, ...data.items]);
+    const newMetadata = [...metadata, ...data.items];
+    setMetadata(newMetadata);
+    
+    // Apply current filter to entire dataset
+    filterMetadataByMethod(sortMethod, newMetadata);
+    
     setNextToken(data.nextToken);
     setLoading(false);
+  };
+
+  // Extract filter logic to reusable function
+  const filterMetadataByMethod = (method, dataToFilter) => {
+    switch (method) {
+      case 'live':
+        setFilteredMetadata(dataToFilter.filter(obj => !obj.statusText));
+        break;
+      case 'vote':
+        setFilteredMetadata(dataToFilter.filter(obj => obj.statusText === "requested"));
+        break;
+      case 'requested':
+        setFilteredMetadata(dataToFilter.filter(obj => obj.statusText === "submittedRequest"));
+        break;
+      case 'other':
+        setFilteredMetadata(dataToFilter.filter(obj => 
+          obj.statusText !== "requested" &&
+          obj.statusText !== "submittedRequest" &&
+          !!obj.statusText
+        ));
+        break;
+      default:
+        setFilteredMetadata(dataToFilter);
+    }
+  };
+
+  // Update the filterResults function to use the new helper
+  const filterResults = (event, value) => {
+    setSortMethod(value);
+    filterMetadataByMethod(value, metadata);
   };
 
   const searchTvdb = async () => {
@@ -423,30 +457,6 @@ export default function DashboardSeriesPage() {
       getTvdbSeasons();
     }
   }, [tvdbid]);
-
-  const filterResults = (event, value) => {
-    setSortMethod(value)
-    switch (value) {
-      case 'live':
-        setFilteredMetadata(metadata.filter(obj => !obj.statusText));
-        break;
-      case 'vote':
-        setFilteredMetadata(metadata.filter(obj => obj.statusText === "requested"));
-        break;
-      case 'requested':
-        setFilteredMetadata(metadata.filter(obj => obj.statusText === "submittedRequest"));
-        break;
-      case 'other':
-        setFilteredMetadata(metadata.filter(obj => 
-          obj.statusText !== "requested" &&
-          obj.statusText !== "submittedRequest" &&
-          !!obj.statusText // this ensures we exclude empty or null statusText
-        ));
-        break;
-      default:
-        setFilteredMetadata(metadata);
-    }
-  }
 
   const tvdbIdMigration = () => {
     setMigrationLoading(true)
