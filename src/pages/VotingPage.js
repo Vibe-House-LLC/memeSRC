@@ -930,6 +930,12 @@ export default function VotingPage({ shows: searchableShows }) {
     setShowRefreshDialog(true);
   };
 
+  const handleSearchKeyDown = (event) => {
+    if (event.key === 'Enter') {
+      searchInputRef.current?.blur(); // Remove focus from the input
+    }
+  };
+
   return (
     <>
       <Helmet>
@@ -1006,6 +1012,7 @@ export default function VotingPage({ shows: searchableShows }) {
               variant="outlined"
               value={searchText}
               onChange={handleSearchChange}
+              onKeyDown={handleSearchKeyDown} // Add this line
               placeholder="Filter by name..."
               inputRef={searchInputRef}
               InputProps={{
