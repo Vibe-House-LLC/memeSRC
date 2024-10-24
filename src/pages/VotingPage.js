@@ -511,7 +511,7 @@ export default function VotingPage({ shows: searchableShows }) {
     debouncedSetSearchText(newSearchText);
   };
 
-  // Update the useEffect that handles search to properly remove loading state
+  // Update the useEffect that handles search to properly load the initial list
   useEffect(() => {
     if (rankMethod === null) {
       return;
@@ -585,18 +585,11 @@ export default function VotingPage({ shows: searchableShows }) {
           setIsSearching(false); // Remove loading state after search completes
         }
       };
-
       fetchSearchResults();
     } else {
       setIsSearching(false);
-      setSeriesMetadata([]);
-      setSortedSeriesIds([]);
-      setCurrentPage(0);
-
-      setIsChangingRankMethod(true);
-      fetchVoteData(rankMethod).then(() => {
-        setIsChangingRankMethod(false);
-      });
+      // Fetch the initial data when search is cleared or rank method changes
+      fetchVoteData(rankMethod);
     }
   }, [debouncedSearchText, rankMethod]);
 
