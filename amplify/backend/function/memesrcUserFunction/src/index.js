@@ -542,51 +542,205 @@ export const handler = async (event) => {
     const seriesId = body.seriesId;
     const boost = body.boost;
 
-    // console.log('LOAD USER');
+    // Fetch user details
+    console.log(`Fetching user details for userSub: ${userSub}`);
     const userDetails = await makeRequest(getUserDetails({ subId: userSub }));
-    // console.log('User Details:', userDetails);
 
-    // console.log('SEPARATE USER VOTES');
+    // Extract user votes
     const usersVotes = userDetails.body.data.getUserDetails.votes.items;
-    // console.log('User Votes:', usersVotes);
+    console.log(`User votes fetched: ${JSON.stringify(usersVotes)}`);
 
-    // console.log('CHECK IF VOTE EXISTS FOR SERIES ID');
+    // Determine if the user can vote based on the last vote time
     const lastVote = usersVotes
       ?.filter((item) => item.series?.id === seriesId)
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
-    // console.log('Last Vote:', lastVote);
 
-    // Check if the last vote was more than 24 hours ago
+    const currentTime = new Date().toISOString();
+    console.log(`Current time: ${currentTime}`);
+
     let canVote = false;
     if (lastVote) {
       const voteTime = new Date(lastVote.createdAt);
-      // console.log(`Last Vote Time: ${voteTime}`)
-      const diffInHours = (new Date() - voteTime) / 1000 / 60 / 60;
-      // console.log(`diffInHours: ${diffInHours}`)
+      const diffInHours = (new Date() - voteTime) / (1000 * 60 * 60);
+      console.log(`Last vote time: ${voteTime}, Diff in hours: ${diffInHours}`);
       canVote = diffInHours >= 24;
     } else {
       canVote = true;
     }
 
-    // console.log('Can Vote:', canVote);
+    console.log(`User can vote: ${canVote}`);
 
     if (canVote) {
-      // console.log('CREATE VOTE QUERY');
+      // Create SeriesUserVote Mutation
       const createVote = `
         mutation createSeriesUserVote {
-            createSeriesUserVote(input: {userDetailsVotesId: "${userSub}", seriesUserVoteSeriesId: "${seriesId}", boost: ${boost > 0 ? 1 : -1
-        }}) {
-              id
-            }
+          createSeriesUserVote(input: {
+            userDetailsVotesId: "${userSub}",
+            seriesUserVoteSeriesId: "${seriesId}",
+            boost: ${boost}
+          }) {
+            id
+          }
         }
       `;
-      // console.log('Create Vote Query:', createVote);
 
-      // Hit GraphQL to place vote
+      console.log(`Creating vote with boost: ${boost}`);
+      // Execute the mutation
       response = await makeRequest(createVote);
-      // console.log('Vote Response:', response);
+
+      // Update user-specific vote aggregation
+      const getUserVoteAggregationQuery = `
+        query GetAnalyticsMetrics {
+          getAnalyticsMetrics(id: "userVotes#${userSub}#${seriesId}") {
+            value
+          }
+        }
+      `;
+
+      console.log(`Fetching user vote aggregation for seriesId: ${seriesId}`);
+      const userVoteAggregation = await makeRequest(getUserVoteAggregationQuery);
+      let currentUserVotes = { upvotes: 0, downvotes: 0, lastVoteTime: currentTime, lastBoost: boost };
+
+      if (userVoteAggregation.body.data.getAnalyticsMetrics) {
+        currentUserVotes = JSON.parse(userVoteAggregation.body.data.getAnalyticsMetrics.value);
+        console.log(`Current user votes before update: ${JSON.stringify(currentUserVotes)}`);
+      }
+
+      if (boost > 0) {
+        currentUserVotes.upvotes += boost;
+      } else if (boost < 0) {
+        currentUserVotes.downvotes += Math.abs(boost);
+      }
+      currentUserVotes.lastVoteTime = currentTime;
+      currentUserVotes.lastBoost = boost;
+
+      console.log(`Updated user votes: ${JSON.stringify(currentUserVotes)}`);
+
+      // Update AnalyticsMetrics Mutation for User Votes
+      const updateUserVoteAggregationMutation = `
+        mutation UpdateAnalyticsMetrics($id: ID!, $value: String!) {
+          updateAnalyticsMetrics(input: {
+            id: $id,
+            value: $value
+          }) {
+            id
+            value
+          }
+        }
+      `;
+
+      const createUserVoteAggregationMutation = `
+        mutation CreateAnalyticsMetrics($id: ID!, $value: String!) {
+          createAnalyticsMetrics(input: {
+            id: $id,
+            value: $value
+          }) {
+            id
+            value
+          }
+        }
+      `;
+
+      const userVoteVariables = {
+        id: `userVotes#${userSub}#${seriesId}`,
+        value: JSON.stringify(currentUserVotes)
+      };
+
+      console.log(`Updating user vote aggregation with variables: ${JSON.stringify(userVoteVariables)}`);
+      let updateUserVoteResponse;
+      try {
+        updateUserVoteResponse = await makeRequestWithVariables(updateUserVoteAggregationMutation, userVoteVariables);
+      } catch (error) {
+        if (error.body.errors[0].errorType === 'DynamoDB:ConditionalCheckFailedException') {
+          console.log('User vote aggregation does not exist. Creating a new one.');
+          updateUserVoteResponse = await makeRequestWithVariables(createUserVoteAggregationMutation, userVoteVariables);
+        } else {
+          throw error;
+        }
+      }
+      console.log(`User vote aggregation update response: ${JSON.stringify(updateUserVoteResponse)}`);
+
+      // Update overall series vote aggregation
+      const getSeriesVoteAggregationQuery = `
+        query GetAnalyticsMetrics {
+          getAnalyticsMetrics(id: "totalVotes-${seriesId}") {
+            value
+          }
+        }
+      `;
+
+      console.log(`Fetching series vote aggregation for seriesId: ${seriesId}`);
+      const seriesVoteAggregation = await makeRequest(getSeriesVoteAggregationQuery);
+      let currentSeriesVotes = { upvotes: 0, downvotes: 0 };
+
+      if (seriesVoteAggregation.body.data.getAnalyticsMetrics) {
+        currentSeriesVotes = JSON.parse(seriesVoteAggregation.body.data.getAnalyticsMetrics.value);
+        console.log(`Current series votes before update: ${JSON.stringify(currentSeriesVotes)}`);
+      }
+
+      if (boost > 0) {
+        currentSeriesVotes.upvotes += boost;
+      } else if (boost < 0) {
+        currentSeriesVotes.downvotes += Math.abs(boost);
+      }
+
+      console.log(`Updated series votes: ${JSON.stringify(currentSeriesVotes)}`);
+
+      // Update AnalyticsMetrics Mutation for Series Votes
+      const updateSeriesVoteAggregationMutation = `
+        mutation UpdateAnalyticsMetrics($id: ID!, $value: String!) {
+          updateAnalyticsMetrics(input: {
+            id: $id,
+            value: $value
+          }) {
+            id
+            value
+          }
+        }
+      `;
+
+      const createSeriesVoteAggregationMutation = `
+        mutation CreateAnalyticsMetrics($id: ID!, $value: String!) {
+          createAnalyticsMetrics(input: {
+            id: $id,
+            value: $value
+          }) {
+            id
+            value
+          }
+        }
+      `;
+
+      const seriesVoteVariables = {
+        id: `totalVotes-${seriesId}`,
+        value: JSON.stringify(currentSeriesVotes)
+      };
+
+      console.log(`Updating series vote aggregation with variables: ${JSON.stringify(seriesVoteVariables)}`);
+      let updateSeriesVoteResponse;
+      try {
+        updateSeriesVoteResponse = await makeRequestWithVariables(updateSeriesVoteAggregationMutation, seriesVoteVariables);
+      } catch (error) {
+        if (error.body.errors[0].errorType === 'DynamoDB:ConditionalCheckFailedException') {
+          console.log('Series vote aggregation does not exist. Creating a new one.');
+          updateSeriesVoteResponse = await makeRequestWithVariables(createSeriesVoteAggregationMutation, seriesVoteVariables);
+        } else {
+          throw error;
+        }
+      }
+      console.log(`Series vote aggregation update response: ${JSON.stringify(updateSeriesVoteResponse)}`);
+
+      response = {
+        statusCode: 200,
+        body: JSON.stringify({
+          message: 'Vote submitted successfully',
+          userVotes: currentUserVotes,
+          seriesVotes: currentSeriesVotes
+        })
+      };
     } else {
       // The user has already voted recently. Return a Forbidden error with details
+      console.log('User has already voted recently.');
       response = {
         statusCode: 403,
         body: {
@@ -594,8 +748,191 @@ export const handler = async (event) => {
           message: 'You can only vote once every 24 hours.',
         },
       };
-      // console.log('Forbidden Error:', response);
     }
+  }
+
+  if (path.startsWith(`/${process.env.ENV}/public/votes/`)) {
+    console.log(`Starting vote processing for path: ${path}`);
+  
+    const getAnalyticsMetricsQuery = `
+      query GetAnalyticsMetrics($id: ID!) {
+        getAnalyticsMetrics(id: $id) {
+          value
+        }
+      }
+    `;
+  
+    // Extract seriesId from the path
+    const seriesId = path.split('/').pop();
+  
+    if (seriesId) {
+      const metricId = `totalVotes-${seriesId}`;
+      const userMetricId = `userVotes#${userSub}#${seriesId}`;
+      
+      try {
+        const [totalVotesResponse, userVotesResponse] = await Promise.all([
+          makeRequestWithVariables(getAnalyticsMetricsQuery, { id: metricId }),
+          makeRequestWithVariables(getAnalyticsMetricsQuery, { id: userMetricId })
+        ]);
+  
+        if (totalVotesResponse.statusCode === 200 && totalVotesResponse.body.data.getAnalyticsMetrics) {
+          const totalVotes = JSON.parse(totalVotesResponse.body.data.getAnalyticsMetrics.value);
+          let responseData = {
+            total_upvotes: totalVotes.upvotes,
+            total_downvotes: totalVotes.downvotes,
+            userUpvotes: 0,
+            userDownvotes: 0,
+            userLastVoteTime: null,
+            userLastBoost: null
+          };
+  
+          if (userVotesResponse.statusCode === 200 && userVotesResponse.body.data.getAnalyticsMetrics) {
+            const userVotes = JSON.parse(userVotesResponse.body.data.getAnalyticsMetrics.value);
+            responseData.userUpvotes = userVotes.upvotes;
+            responseData.userDownvotes = userVotes.downvotes;
+            responseData.userLastVoteTime = userVotes.lastVoteTime;
+            responseData.userLastBoost = userVotes.lastBoost;
+          }
+  
+          response = {
+            statusCode: 200,
+            body: JSON.stringify(responseData)
+          };
+        } else {
+          response = {
+            statusCode: 404,
+            body: JSON.stringify({ error: `Votes data not found for series ${seriesId}` })
+          };
+        }
+      } catch (error) {
+        console.error(`Error fetching votes for series ${seriesId}: ${error.message}`);
+        response = {
+          statusCode: 500,
+          body: JSON.stringify({ error: `Failed to fetch votes for series ${seriesId}: ${error.message}` })
+        };
+      }
+    } else {
+      response = {
+        statusCode: 400,
+        body: JSON.stringify({ error: "Invalid path. Use /votes/{seriesId}" })
+      };
+    }
+  
+    console.log('Vote processing completed');
+  }
+
+  if (path.startsWith(`/${process.env.ENV}/public/vote/new`)) {
+    console.log(`Starting new vote processing for path: ${path}`);
+  
+    const getAnalyticsMetricsQuery = `
+      query GetAnalyticsMetrics($id: ID!) {
+        getAnalyticsMetrics(id: $id) {
+          value
+        }
+      }
+    `;
+  
+    if (path === `/${process.env.ENV}/public/vote/new/top/upvotes` || path === `/${process.env.ENV}/public/vote/new/top/battleground`) {
+      const metricId = path.endsWith('upvotes') ? 'topVotes-upvotes' : 'topVotes-battleground';
+      
+      try {
+        const analyticsResponse = await makeRequestWithVariables(getAnalyticsMetricsQuery, { id: metricId });
+  
+        if (analyticsResponse.statusCode === 200 && analyticsResponse.body.data.getAnalyticsMetrics) {
+          const topVotes = JSON.parse(analyticsResponse.body.data.getAnalyticsMetrics.value);
+          response = {
+            statusCode: 200,
+            body: JSON.stringify(topVotes)
+          };
+        } else {
+          response = {
+            statusCode: 404,
+            body: JSON.stringify({ error: `${metricId} data not found` })
+          };
+        }
+      } catch (error) {
+        console.error(`Error fetching ${metricId}: ${error.message}`);
+        response = {
+          statusCode: 500,
+          body: JSON.stringify({ error: `Failed to fetch ${metricId}: ${error.message}` })
+        };
+      }
+    } else if (path === `/${process.env.ENV}/public/vote/new/count`) {
+      console.log('Getting vote count data');
+      
+      // Extract the seriesIds from the request body
+      let seriesIds;
+      try {
+        const body = JSON.parse(event.body);
+        seriesIds = body.seriesIds;
+      } catch (error) {
+        console.error('Error parsing request body:', error);
+      }
+      
+      if (!seriesIds || !Array.isArray(seriesIds)) {
+        response = {
+          statusCode: 400,
+          body: JSON.stringify({ error: "Missing or invalid seriesIds parameter" })
+        };
+      } else {
+        try {
+          const userVotesPromises = seriesIds.map(async (seriesId) => {
+            const userMetricId = `userVotes#${userSub}#${seriesId}`;
+            const totalMetricId = `totalVotes-${seriesId}`;
+            
+            const [userAnalyticsResponse, totalAnalyticsResponse] = await Promise.all([
+              makeRequestWithVariables(getAnalyticsMetricsQuery, { id: userMetricId }),
+              makeRequestWithVariables(getAnalyticsMetricsQuery, { id: totalMetricId })
+            ]);
+            
+            let userVotes = { upvotes: 0, downvotes: 0 };
+            let totalVotes = { upvotes: 0, downvotes: 0 };
+            
+            if (userAnalyticsResponse.statusCode === 200 && userAnalyticsResponse.body.data.getAnalyticsMetrics) {
+              userVotes = JSON.parse(userAnalyticsResponse.body.data.getAnalyticsMetrics.value);
+            }
+            
+            if (totalAnalyticsResponse.statusCode === 200 && totalAnalyticsResponse.body.data.getAnalyticsMetrics) {
+              totalVotes = JSON.parse(totalAnalyticsResponse.body.data.getAnalyticsMetrics.value);
+            }
+            
+            return { 
+              seriesId, 
+              userVotes: {
+                upvotes: userVotes.upvotes || 0,
+                downvotes: userVotes.downvotes || 0,
+                lastVoteTime: userVotes.lastVoteTime,
+                lastBoost: userVotes.lastBoost
+              },
+              totalVotes: {
+                upvotes: totalVotes.upvotes || 0,
+                downvotes: totalVotes.downvotes || 0
+              }
+            };
+          });
+
+          const userVotesResults = await Promise.all(userVotesPromises);
+
+          response = {
+            statusCode: 200,
+            body: JSON.stringify(userVotesResults)
+          };
+        } catch (error) {
+          console.error(`Error fetching user vote data: ${error.message}`);
+          response = {
+            statusCode: 500,
+            body: JSON.stringify({ error: `Failed to fetch user vote data: ${error.message}` })
+          };
+        }
+      }
+    } else {
+      response = {
+        statusCode: 400,
+        body: JSON.stringify({ error: "Invalid path for /vote/new. Use /top/upvotes, /top/battleground, or /user" })
+      };
+    }
+  
+    console.log('New vote processing completed');
   }
 
   if (

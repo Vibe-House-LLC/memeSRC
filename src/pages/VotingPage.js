@@ -1,6 +1,6 @@
-import React, { useContext, useEffect, useState, useRef, useCallback } from 'react';
+import React, { useContext, useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import PropTypes from 'prop-types';
-import { API, graphqlOperation } from 'aws-amplify';
+import { API, graphqlOperation, Auth } from 'aws-amplify';
 import {
   Container,
   Grid,
@@ -27,9 +27,10 @@ import {
   Skeleton,
   ToggleButton,
   ToggleButtonGroup,
+  DialogContentText,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import { ArrowUpward, ArrowDownward, Search, Close, ThumbUp, Whatshot, Lock, NewReleasesOutlined } from '@mui/icons-material';
+import { ArrowUpward, ArrowDownward, Search, Close, ThumbUp, Whatshot, Lock, NewReleasesOutlined, Refresh } from '@mui/icons-material';
 import FlipMove from 'react-flip-move';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -60,10 +61,11 @@ const StyledImg = styled('img')``;
 export default function VotingPage({ shows: searchableShows }) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [isChangingRankMethod, setIsChangingRankMethod] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [votingStatus, setVotingStatus] = useState({});
   const [searchText, setSearchText] = useState('');
-  const [rankMethod, setRankMethod] = useState('upvotes');
+  const [rankMethod, setRankMethod] = useState(null); // Set initial state to null
   const [timeRemaining, setTimeRemaining] = useState('');
   const [openAddRequest, setOpenAddRequest] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState();
@@ -79,8 +81,11 @@ export default function VotingPage({ shows: searchableShows }) {
   const [voteData, setVoteData] = useState({});
   const [isSearching, setIsSearching] = useState(false);
 
+  // Replace the single itemsPerPage constant with these two
+  const INITIAL_ITEMS = 50; // Number of items to show on first load
+  const ITEMS_PER_LOAD = 15; // Number of additional items to load with "Load More"
+
   // Local pagination
-  const itemsPerPage = 50; // Number of items to render per page
   const [currentPage, setCurrentPage] = useState(0);
 
   const [sortedSeriesIds, setSortedSeriesIds] = useState([]);
@@ -97,7 +102,6 @@ export default function VotingPage({ shows: searchableShows }) {
 
   // Add cache variables
   const seriesCache = useRef({});
-  const votesCache = useRef({});
 
   const [allSeriesData, setAllSeriesData] = useState(null); // State to store all series data
 
@@ -116,6 +120,13 @@ export default function VotingPage({ shows: searchableShows }) {
   // Add this new state
   const [debouncedSearchText, setDebouncedSearchText] = useState('');
 
+  // Add this line with the other refs
+  const searchInputRef = useRef(null);
+
+  // Add these new state variables near the top with other state declarations
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showRefreshDialog, setShowRefreshDialog] = useState(false);
+
   // Create a debounced function
   const debouncedSetSearchText = useCallback(
     debounce((text) => {
@@ -128,10 +139,13 @@ export default function VotingPage({ shows: searchableShows }) {
     setLoadedImages(prev => ({ ...prev, [showId]: true }));
   };
 
+  // Initialize rankMethod from localStorage
   useEffect(() => {
     const savedRankMethod = localStorage.getItem('rankMethod');
     if (savedRankMethod) {
       setRankMethod(savedRankMethod);
+    } else {
+      setRankMethod('upvotes');
     }
   }, []);
 
@@ -157,37 +171,80 @@ export default function VotingPage({ shows: searchableShows }) {
     }
   }, []);
 
-  const filterShows = useCallback((show) => {
-    const isSearchable = searchableShows.some((searchableShow) => searchableShow.id === show.slug);
-    switch (displayOption) {
-      case 'hideAvailable':
-        return !isSearchable;
-      case 'requested':
-        return isSearchable;
-      default: // 'showAll'
-        return true;
-    }
-  }, [displayOption, searchableShows]);
+  const filterShows = useCallback(
+    (show) => {
+      const isSearchable = searchableShows.some((searchableShow) => searchableShow.id === show.slug);
+      switch (displayOption) {
+        case 'hideAvailable':
+          return !isSearchable;
+        case 'requested':
+          return isSearchable;
+        default: // 'showAll'
+          return true;
+      }
+    },
+    [displayOption, searchableShows]
+  );
 
+  // **Updated recalculateRanks function**
   const recalculateRanks = useCallback(() => {
+    if (isSearching) {
+      // Do not recalculate ranks when searching
+      return;
+    }
     let currentRank = 1;
     const newRanks = {};
-    const seriesToRank = fullSortedSeriesIds.map(id => seriesCache.current[id]).filter(Boolean);
 
-    seriesToRank.forEach((show) => {
-      if (filterShows(show)) {
-        newRanks[show.id] = currentRank;
-        currentRank += 1;
+    const seriesToRank = fullSortedSeriesIds.map((id) => seriesCache.current[id]).filter(Boolean);
+
+    // Apply filterShows to exclude shows based on displayOption
+    const filteredSeries = seriesToRank.filter((show) => filterShows(show));
+
+    // Sort filteredSeries based on voteData and rankMethod
+    const sortedShows = [...filteredSeries];
+
+    if (sortedShows.length > 0) {
+      switch (rankMethod) {
+        case 'combined':
+          sortedShows.sort((a, b) => {
+            const voteDiffA =
+              (voteData[a.id]?.totalVotesUp || 0) - (voteData[a.id]?.totalVotesDown || 0);
+            const voteDiffB =
+              (voteData[b.id]?.totalVotesUp || 0) - (voteData[b.id]?.totalVotesDown || 0);
+            return voteDiffB - voteDiffA || safeCompareSeriesTitles(a.id, b.id);
+          });
+          break;
+        case 'downvotes':
+          sortedShows.sort((a, b) => {
+            const downvoteDiff =
+              (voteData[b.id]?.totalVotesDown || 0) - (voteData[a.id]?.totalVotesDown || 0);
+            return downvoteDiff || safeCompareSeriesTitles(a.id, b.id);
+          });
+          break;
+        default: // 'upvotes'
+          sortedShows.sort((a, b) => {
+            const upvoteDiff =
+              (voteData[b.id]?.totalVotesUp || 0) - (voteData[a.id]?.totalVotesUp || 0);
+            return upvoteDiff || safeCompareSeriesTitles(a.id, b.id);
+          });
       }
+    }
+
+    // Assign ranks
+    sortedShows.forEach((show) => {
+      newRanks[show.id] = currentRank;
+      currentRank += 1;
     });
 
     setOriginalRanks(newRanks);
+  }, [filterShows, fullSortedSeriesIds, voteData, rankMethod, safeCompareSeriesTitles, isSearching]);
 
-    setSeriesMetadata(prevMetadata =>
-      prevMetadata.map(show => ({ ...show, rank: newRanks[show.id] || null }))
-    );
-  }, [filterShows, fullSortedSeriesIds]);
+  // **Call recalculateRanks whenever voteData, displayOption, or rankMethod changes**
+  useEffect(() => {
+    recalculateRanks();
+  }, [displayOption, rankMethod, voteData, recalculateRanks]);
 
+  // Update fetchSeriesData function
   const fetchSeriesData = useCallback(async (sortedIds, page, isLoadingMore) => {
     try {
       // Load seriesCache.current from localStorage if available and not expired
@@ -210,8 +267,8 @@ export default function VotingPage({ shows: searchableShows }) {
         console.error('Error loading series data from localStorage:', error);
       }
 
-      const startIdx = page * itemsPerPage;
-      const endIdx = startIdx + itemsPerPage;
+      const startIdx = page === 0 ? 0 : INITIAL_ITEMS + (page - 1) * ITEMS_PER_LOAD;
+      const endIdx = page === 0 ? INITIAL_ITEMS : INITIAL_ITEMS + page * ITEMS_PER_LOAD;
       const paginatedSeriesIds = sortedIds.slice(startIdx, endIdx);
 
       // Create placeholder data for all series in this page
@@ -287,7 +344,7 @@ export default function VotingPage({ shows: searchableShows }) {
       // Recalculate ranks after fetching data
       recalculateRanks();
 
-      // Update hasMore based on whether there are more items
+      // Update hasMore check
       setHasMore(endIdx < sortedIds.length);
 
     } catch (error) {
@@ -296,74 +353,76 @@ export default function VotingPage({ shows: searchableShows }) {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [itemsPerPage, recalculateRanks]);
+  }, [recalculateRanks]);
 
-  const clearOtherUserCaches = useCallback(() => {
-    const currentUserKey = user ? `votesCache_${user.username || user.id}` : null;
-    Object.keys(localStorage).forEach(key => {
-      if (key.startsWith('votesCache_') && key !== currentUserKey) {
-        localStorage.removeItem(key);
-      }
-    });
-  }, [user]);
-
-  const fetchVoteData = useCallback(async () => {
-    try {
-      // Clear other user caches if logged out or different user
-      clearOtherUserCaches();
-
-      // Load from localStorage if available and not expired
-      let cachedVoteData = null;
-      const cacheKey = user ? `votesCache_${user.username || user.id}` : 'votesCache';
+  // Modify fetchVoteData to use the correct endpoint based on the rank method
+  const fetchVoteData = useCallback(
+    async (currentRankMethod) => {
       try {
-        const cachedVoteDataString = localStorage.getItem(cacheKey);
-        if (cachedVoteDataString) {
-          const parsedCacheData = JSON.parse(cachedVoteDataString);
-          const updatedAt = new Date(parsedCacheData.updatedAt);
-          const now = new Date();
-          const diffInMinutes = (now - updatedAt) / (1000 * 60);
-          if (diffInMinutes < 15) {
-            // Use cached data
-            cachedVoteData = parsedCacheData.data;
-            console.log('Using cached vote data:', cachedVoteData);
-          } else {
-            // Remove expired cache
-            localStorage.removeItem(cacheKey);
-          }
+        // Determine the API endpoint based on the rankMethod
+        const apiEndpoint =
+          currentRankMethod === 'combined'
+            ? '/vote/new/top/battleground'
+            : '/vote/new/top/upvotes';
+
+        // Fetch top votes from the new endpoint
+        const topVotesResponse = await API.get('publicapi', apiEndpoint);
+        const topVotesData = JSON.parse(topVotesResponse);
+
+        // Create initial voteData object with default values
+        const newVoteData = {};
+        topVotesData.forEach((item) => {
+          newVoteData[item.seriesId] = {
+            totalVotesUp: 0,
+            totalVotesDown: 0,
+            ableToVote: true,
+            userVotesUp: 0,
+            userVotesDown: 0,
+            lastVoteTime: null,
+            lastBoost: null,
+          };
+        });
+
+        // Fetch votes for all series, regardless of user login status
+        const seriesIds = topVotesData.map(item => item.seriesId);
+        try {
+          const votesResponse = await API.post('publicapi', '/vote/new/count', {
+            body: { seriesIds }
+          });
+          const votesData = JSON.parse(votesResponse);
+
+          // Update voteData with total votes and user-specific votes if available
+          votesData.forEach((item) => {
+            const seriesId = item.seriesId;
+            if (newVoteData[seriesId]) {
+              newVoteData[seriesId].totalVotesUp = item.totalVotes.upvotes || 0;
+              newVoteData[seriesId].totalVotesDown = item.totalVotes.downvotes || 0;
+
+              // Only update user-specific data if the user is logged in
+              if (user) {
+                newVoteData[seriesId].userVotesUp = item.userVotes?.upvotes || 0;
+                newVoteData[seriesId].userVotesDown = item.userVotes?.downvotes || 0;
+                newVoteData[seriesId].lastVoteTime = item.userVotes?.lastVoteTime;
+                newVoteData[seriesId].lastBoost = item.userVotes?.lastBoost;
+
+                // Calculate if the user is able to vote based on lastVoteTime
+                if (item.userVotes?.lastVoteTime) {
+                  const lastVoteDate = new Date(item.userVotes.lastVoteTime);
+                  const now = new Date();
+                  const hoursSinceLastVote = (now - lastVoteDate) / (1000 * 60 * 60);
+                  newVoteData[seriesId].ableToVote = hoursSinceLastVote >= 24;
+                }
+              }
+            }
+          });
+        } catch (error) {
+          console.error('Error fetching votes:', error);
         }
-      } catch (error) {
-        console.error('Error loading vote data from localStorage:', error);
-      }
 
-      if (cachedVoteData) {
-        // Use cached data
-        setVoteData(cachedVoteData);
-        votesCache.current = cachedVoteData;
+        setVoteData(newVoteData);
 
-        const seriesIds = Object.keys(cachedVoteData);
-
-        // Sort the series IDs based on the selected rank method
-        let newSortedSeriesIds = [];
-        switch (rankMethod) {
-          case 'combined':
-            newSortedSeriesIds = seriesIds.sort((a, b) => {
-              const voteDiffA = (cachedVoteData[a].totalVotesUp || 0) - (cachedVoteData[a].totalVotesDown || 0);
-              const voteDiffB = (cachedVoteData[b].totalVotesUp || 0) - (cachedVoteData[b].totalVotesDown || 0);
-              return voteDiffB - voteDiffA || safeCompareSeriesTitles(a, b);
-            });
-            break;
-          case 'downvotes':
-            newSortedSeriesIds = seriesIds.sort((a, b) => {
-              const downvoteDiff = (cachedVoteData[b].totalVotesDown || 0) - (cachedVoteData[a].totalVotesDown || 0);
-              return downvoteDiff || safeCompareSeriesTitles(a, b);
-            });
-            break;
-          default: // Upvotes
-            newSortedSeriesIds = seriesIds.sort((a, b) => {
-              const upvoteDiff = (cachedVoteData[b].totalVotesUp || 0) - (cachedVoteData[a].totalVotesUp || 0);
-              return upvoteDiff || safeCompareSeriesTitles(a, b);
-            });
-        }
+        // Sort the series IDs based on the total votes
+        const newSortedSeriesIds = topVotesData.map((item) => item.seriesId);
 
         // Update the sortedSeriesIds state
         setFullSortedSeriesIds(newSortedSeriesIds);
@@ -371,85 +430,12 @@ export default function VotingPage({ shows: searchableShows }) {
 
         // Fetch only the initial page
         fetchSeriesData(newSortedSeriesIds, 0, false);
-      } else {
-        // Fetch new data from API
-        fetchNewDataFromAPI();
-      }
-    } catch (error) {
-      console.error('Error in fetchVoteData:', error);
-    }
-  }, [user, rankMethod, isTopList, loadingMore, safeCompareSeriesTitles, fetchSeriesData, clearOtherUserCaches]);
-
-  // Update fetchNewDataFromAPI function
-  const fetchNewDataFromAPI = async () => {
-    if (!loadingMore) {
-      setLoading(true);
-    }
-    try {
-      // Determine the endpoint based on isTopList
-      // TODO: Change this to load only the top voted items
-      const endpoint = isTopList ? '/vote/list' : '/vote/list';
-
-      // Fetch vote data from the appropriate endpoint
-      const voteDataResponse = JSON.parse(await API.get('publicapi', endpoint));
-
-      // Save to cache
-      votesCache.current = voteDataResponse;
-
-      // Save to localStorage
-      try {
-        const now = new Date();
-        const cacheData = {
-          updatedAt: now.toISOString(),
-          data: voteDataResponse,
-        };
-        const cacheKey = user ? `votesCache_${user.username || user.id}` : 'votesCache';
-        localStorage.setItem(cacheKey, JSON.stringify(cacheData));
       } catch (error) {
-        console.error('Error saving vote data to localStorage:', error);
+        console.error('Error in fetchVoteData:', error);
       }
-
-      setVoteData(voteDataResponse);
-
-      const seriesIds = Object.keys(voteDataResponse);
-
-      // Sort the series IDs based on the selected rank method
-      let newSortedSeriesIds = [];
-      switch (rankMethod) {
-        case 'combined':
-          newSortedSeriesIds = seriesIds.sort((a, b) => {
-            const voteDiffA = voteDataResponse[a].totalVotesUp - voteDataResponse[a].totalVotesDown;
-            const voteDiffB = voteDataResponse[b].totalVotesUp - voteDataResponse[b].totalVotesDown;
-            return voteDiffB - voteDiffA || safeCompareSeriesTitles(a, b);
-          });
-          break;
-        case 'downvotes':
-          newSortedSeriesIds = seriesIds.sort((a, b) => {
-            const downvoteDiff = voteDataResponse[b].totalVotesDown - voteDataResponse[a].totalVotesDown;
-            return downvoteDiff || safeCompareSeriesTitles(a, b);
-          });
-          break;
-        default: // Upvotes
-          newSortedSeriesIds = seriesIds.sort((a, b) => {
-            const upvoteDiff = voteDataResponse[b].totalVotesUp - voteDataResponse[a].totalVotesUp;
-            return upvoteDiff || safeCompareSeriesTitles(a, b);
-          });
-      }
-
-      // Update the sortedSeriesIds state
-      setFullSortedSeriesIds(newSortedSeriesIds);
-      setSortedSeriesIds(newSortedSeriesIds);
-
-      // Fetch only the initial page
-      fetchSeriesData(newSortedSeriesIds, 0, false);
-    } catch (error) {
-      console.error('Error fetching vote data:', error);
-    } finally {
-      if (!loadingMore) {
-        setLoading(false);
-      }
-    }
-  };
+    },
+    [user, fetchSeriesData]
+  );
 
   const filterAndSortSeriesData = useCallback((data = allSeriesData) => {
     try {
@@ -459,8 +445,7 @@ export default function VotingPage({ shows: searchableShows }) {
         (show) => show.name.toLowerCase().includes(searchText.toLowerCase())
       );
 
-      // eslint-disable-next-line prefer-const
-      let sortedShows = [...searchFilteredShows];
+      const sortedShows = [...searchFilteredShows];
 
       if (sortedShows.length > 0) {
         switch (rankMethod) {
@@ -468,19 +453,19 @@ export default function VotingPage({ shows: searchableShows }) {
             sortedShows.sort((a, b) => {
               const voteDiffA = (voteData[a.id]?.totalVotesUp || 0) - (voteData[a.id]?.totalVotesDown || 0);
               const voteDiffB = (voteData[b.id]?.totalVotesUp || 0) - (voteData[b.id]?.totalVotesDown || 0);
-              return voteDiffB - voteDiffA || a.name.localeCompare(b.name);
+              return voteDiffB - voteDiffA || safeCompareSeriesTitles(a.id, b.id);
             });
             break;
           case 'downvotes':
             sortedShows.sort((a, b) => {
               const downvoteDiff = (voteData[b.id]?.totalVotesDown || 0) - (voteData[a.id]?.totalVotesDown || 0);
-              return downvoteDiff || a.name.localeCompare(b.name);
+              return downvoteDiff || safeCompareSeriesTitles(a.id, b.id);
             });
             break;
           default: // Upvotes
             sortedShows.sort((a, b) => {
               const upvoteDiff = (voteData[b.id]?.totalVotesUp || 0) - (voteData[a.id]?.totalVotesUp || 0);
-              return upvoteDiff || a.name.localeCompare(b.name);
+              return upvoteDiff || safeCompareSeriesTitles(a.id, b.id);
             });
         }
       }
@@ -493,7 +478,7 @@ export default function VotingPage({ shows: searchableShows }) {
       console.error('Error in filterAndSortSeriesData:', error);
       setSeriesMetadata([]);
     }
-  }, [allSeriesData, searchText, rankMethod, voteData, originalRanks]);
+  }, [allSeriesData, searchText, rankMethod, voteData, originalRanks, safeCompareSeriesTitles]);
 
   const fetchAllSeriesData = useCallback(async () => {
     setLoading(true);
@@ -526,30 +511,100 @@ export default function VotingPage({ shows: searchableShows }) {
     }
   }, [filterAndSortSeriesData]);
 
-  // Modify the handleSearchChange function
+  // Modify handleSearchChange to show loading immediately
   const handleSearchChange = (event) => {
     const newSearchText = event.target.value;
     setSearchText(newSearchText);
+    if (newSearchText) {
+      setIsSearching(true); // Show loading immediately when typing
+    } else {
+      setIsSearching(false);
+    }
     debouncedSetSearchText(newSearchText);
   };
 
-  // Modify the useEffect that triggers the search
+  // Update the useEffect that handles search to properly load the initial list
   useEffect(() => {
-    if (debouncedSearchText) {
-      setIsSearching(true);
-      if (allSeriesData === null) {
-        fetchAllSeriesData();
-      } else {
-        filterAndSortSeriesData(allSeriesData);
-      }
-    } else {
-      setIsSearching(false);
-      setSeriesMetadata([]);
-      setSortedSeriesIds([]);
-      setCurrentPage(0);
-      fetchVoteData();
+    if (rankMethod === null) {
+      return;
     }
-  }, [debouncedSearchText, rankMethod, isTopList, allSeriesData]);
+
+    if (debouncedSearchText) {
+      const fetchSearchResults = async () => {
+        try {
+          const response = await API.get('publicapi', '/votes/search', {
+            queryStringParameters: {
+              prefix: debouncedSearchText
+            },
+          });
+
+          const hits = response.hits;
+          
+          // Map over the hits to get series IDs and ranks
+          const seriesIds = hits.map(hit => hit.id);
+          
+          // Create a map of ranks from search results based on rankMethod
+          const searchRanks = {};
+          hits.forEach(hit => {
+            searchRanks[hit.id] = rankMethod === 'combined' ? 
+              hit.rankBattleground : 
+              hit.rankUpvotes;
+          });
+
+          // Update originalRanks with search result ranks
+          setOriginalRanks(prevRanks => ({
+            ...prevRanks,
+            ...searchRanks
+          }));
+
+          // Rest of the existing search logic...
+          const seriesDataFromCache = seriesIds.map(id => seriesCache.current[id]).filter(Boolean);
+          const idsToFetch = seriesIds.filter(id => !seriesCache.current[id]);
+
+          if (idsToFetch.length > 0) {
+            const seriesDataPromises = idsToFetch.map((id) =>
+              API.graphql({
+                ...graphqlOperation(getSeries, { id }),
+                authMode: 'API_KEY',
+              })
+            );
+
+            const seriesDataResponses = await Promise.all(seriesDataPromises);
+            const fetchedSeriesData = seriesDataResponses.map(
+              (response) => response.data.getSeries
+            );
+
+            // Add fetched data to cache
+            fetchedSeriesData.forEach((data) => {
+              seriesCache.current[data.id] = data;
+            });
+
+            seriesDataFromCache.push(...fetchedSeriesData);
+          }
+
+          setSeriesMetadata(seriesDataFromCache.map(show => ({
+            ...show,
+            rank: searchRanks[show.id] || null,
+          })));
+          await fetchVoteDataForSeries(seriesIds);
+          
+          // Only set hasMore if we have more items than itemsPerPage
+          setHasMore(seriesDataFromCache.length > INITIAL_ITEMS);
+          
+        } catch (error) {
+          console.error('Error fetching search results:', error);
+        } finally {
+          setIsSearching(false); // Remove loading state after search completes
+        }
+      };
+      fetchSearchResults();
+    } else if (debouncedSearchText === '') { // Explicitly check for empty string
+      // Fetch initial data when search is cleared
+      fetchVoteData(rankMethod).finally(() => {
+        setIsSearching(false);
+      });
+    }
+  }, [debouncedSearchText, rankMethod]);
 
   useEffect(() => {
     if (!loading && seriesMetadata.length > 0) {
@@ -570,8 +625,10 @@ export default function VotingPage({ shows: searchableShows }) {
   }, [fullSortedSeriesIds, recalculateRanks]);
 
   useEffect(() => {
-    recalculateRanks();
-  }, [rankMethod, recalculateRanks]);
+    if (!isSearching) {
+      recalculateRanks();
+    }
+  }, [rankMethod, recalculateRanks, isSearching]);
 
   // Modify the handleLoadMore function
   const handleLoadMore = () => {
@@ -592,11 +649,11 @@ export default function VotingPage({ shows: searchableShows }) {
         },
       });
 
-      // Update voteData in state and cache
+      // Update voteData in state
       setVoteData((prevVoteData) => {
         const updatedVoteData = { ...prevVoteData };
         const updatedSeriesData = { ...updatedVoteData[seriesId] };
-        
+
         if (boost === 1) {
           updatedSeriesData.totalVotesUp = (updatedSeriesData.totalVotesUp || 0) + 1;
           updatedSeriesData.userVotesUp = (updatedSeriesData.userVotesUp || 0) + 1;
@@ -604,7 +661,7 @@ export default function VotingPage({ shows: searchableShows }) {
           updatedSeriesData.totalVotesDown = (updatedSeriesData.totalVotesDown || 0) + 1;
           updatedSeriesData.userVotesDown = (updatedSeriesData.userVotesDown || 0) + 1;
         }
-        
+
         updatedSeriesData.ableToVote = false;
         const now = new Date();
         now.setHours(now.getHours() + 24);
@@ -612,17 +669,6 @@ export default function VotingPage({ shows: searchableShows }) {
         updatedSeriesData.lastBoost = boost;
 
         updatedVoteData[seriesId] = updatedSeriesData;
-
-        // Update the cached data in localStorage
-        if (votesCache.current) {
-          votesCache.current[seriesId] = updatedSeriesData;
-          const cacheKey = user ? `votesCache_${user.username || user.id}` : 'votesCache';
-          const cacheData = {
-            updatedAt: new Date().toISOString(),
-            data: votesCache.current,
-          };
-          localStorage.setItem(cacheKey, JSON.stringify(cacheData));
-        }
 
         return updatedVoteData;
       });
@@ -657,8 +703,8 @@ export default function VotingPage({ shows: searchableShows }) {
     textOverflow: 'ellipsis',
   };
 
+  // Remove fetchVoteData call from handleRankMethodChange
   const handleRankMethodChange = useCallback((event, newValue) => {
-    // Only update if a button is selected (newValue is not null)
     if (newValue !== null) {
       localStorage.setItem('rankMethod', newValue);
       setRankMethod(newValue);
@@ -683,10 +729,16 @@ export default function VotingPage({ shows: searchableShows }) {
     }
   };
 
-  const calculateTimeRemaining = (targetDateTime) => {
-    const targetTime = new Date(targetDateTime);
+  const calculateTimeRemaining = (lastVoteTime) => {
+    if (!lastVoteTime) {
+      setTimeRemaining('0:00');
+      return;
+    }
+
+    const lastVote = new Date(lastVoteTime);
     const now = new Date();
-    const remainingTime = targetTime - now;
+    const nextVoteTime = new Date(lastVote.getTime() + 24 * 60 * 60 * 1000); // 24 hours after last vote
+    const remainingTime = nextVoteTime - now;
 
     if (remainingTime <= 0) {
       setTimeRemaining('0:00');
@@ -729,6 +781,155 @@ export default function VotingPage({ shows: searchableShows }) {
     }
   };
 
+  // Modify the clearSearch function
+  const clearSearch = () => {
+    setSearchText('');
+    setIsSearching(true);
+    debouncedSetSearchText('');
+    // Focus the input field
+    searchInputRef.current?.focus();
+  };
+
+  // **Update sortedSeriesMetadata without assigning ranks**
+  const sortedSeriesMetadata = useMemo(() => {
+    if (seriesMetadata.length === 0) return [];
+
+    const searchFilteredShows = seriesMetadata.filter((show) =>
+      show.name.toLowerCase().includes(searchText.toLowerCase())
+    );
+
+    const sortedShows = [...searchFilteredShows];
+
+    // Sort the shows based on voteData and rankMethod
+    if (sortedShows.length > 0) {
+      switch (rankMethod) {
+        case 'combined':
+          sortedShows.sort((a, b) => {
+            const voteDiffA =
+              (voteData[a.id]?.totalVotesUp || 0) - (voteData[a.id]?.totalVotesDown || 0);
+            const voteDiffB =
+              (voteData[b.id]?.totalVotesUp || 0) - (voteData[b.id]?.totalVotesDown || 0);
+            return voteDiffB - voteDiffA || safeCompareSeriesTitles(a.id, b.id);
+          });
+          break;
+        case 'downvotes':
+          sortedShows.sort((a, b) => {
+            const downvoteDiff =
+              (voteData[b.id]?.totalVotesDown || 0) - (voteData[a.id]?.totalVotesDown || 0);
+            return downvoteDiff || safeCompareSeriesTitles(a.id, b.id);
+          });
+          break;
+        default: // 'upvotes'
+          sortedShows.sort((a, b) => {
+            const upvoteDiff =
+              (voteData[b.id]?.totalVotesUp || 0) - (voteData[a.id]?.totalVotesUp || 0);
+            return upvoteDiff || safeCompareSeriesTitles(a.id, b.id);
+          });
+      }
+    }
+
+    // Do not assign rank here
+    return sortedShows;
+  }, [seriesMetadata, searchText, voteData, rankMethod, safeCompareSeriesTitles]);
+
+  // Add a new function to fetch vote data for specific series IDs:
+
+  const fetchVoteDataForSeries = useCallback(
+    async (seriesIds) => {
+      try {
+        const votesResponse = await API.post('publicapi', '/vote/new/count', {
+          body: { seriesIds },
+        });
+
+        // Check if votesResponse is a string and parse it
+        const votesData = typeof votesResponse === 'string' ? JSON.parse(votesResponse) : votesResponse;
+
+        // Ensure votesData is an array
+        const votesArray = Array.isArray(votesData) ? votesData : votesData.data;
+
+        // Update voteData in state, preserving existing user vote data
+        setVoteData((prevVoteData) => {
+          const updatedVoteData = { ...prevVoteData };
+          votesArray.forEach((item) => {
+            const seriesId = item.seriesId;
+            const existingData = updatedVoteData[seriesId] || {};
+            
+            updatedVoteData[seriesId] = {
+              ...existingData, // Preserve existing data
+              totalVotesUp: item.totalVotes.upvotes || 0,
+              totalVotesDown: item.totalVotes.downvotes || 0,
+              // Only update user-specific data if it exists in the response
+              ...(item.userVotes && {
+                ableToVote: item.userVotes.lastVoteTime ? 
+                  new Date(item.userVotes.lastVoteTime).getTime() + (24 * 60 * 60 * 1000) < Date.now() : 
+                  true,
+                userVotesUp: item.userVotes.upvotes || 0,
+                userVotesDown: item.userVotes.downvotes || 0,
+                lastVoteTime: item.userVotes.lastVoteTime,
+                lastBoost: item.userVotes.lastBoost,
+              })
+            };
+          });
+          return updatedVoteData;
+        });
+      } catch (error) {
+        console.error('Error fetching votes:', error);
+      }
+    },
+    [setVoteData]
+  );
+
+  // Add these new state variables after other state declarations
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Add this new useEffect to check admin status
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      try {
+        const session = await Auth.currentSession();
+        const groups = session.getAccessToken().payload['cognito:groups'] || [];
+        setIsAdmin(groups.includes('admins'));
+      } catch (error) {
+        console.error('Error checking admin status:', error);
+        setIsAdmin(false);
+      }
+    };
+
+    if (user) {
+      checkAdminStatus();
+    }
+  }, [user]);
+
+  // Add this new function before the return statement
+  const refreshVoteAggregations = async () => {
+    setIsRefreshing(true);
+    setShowRefreshDialog(false);
+    
+    try {
+      // Make the actual API call to refresh votes
+      await API.post('publicapi', '/votes/refresh');
+      
+      // After successful refresh, fetch the updated data
+      await fetchVoteData(rankMethod);
+      
+      setMessage('Vote aggregations refreshed successfully');
+      setSeverity('success');
+      setOpen(true);
+    } catch (error) {
+      console.error('Error refreshing vote aggregations:', error);
+      setMessage(error.response?.data?.message || 'Failed to refresh vote aggregations');
+      setSeverity('error');
+      setOpen(true);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  // Update the handleRefresh function
+  const handleRefresh = () => {
+    setShowRefreshDialog(true);
+  };
+
   return (
     <>
       <Helmet>
@@ -739,39 +940,43 @@ export default function VotingPage({ shows: searchableShows }) {
           <Typography variant="h3" component="h1" gutterBottom>
             Voting & Requests
           </Typography>
-          <Typography variant="subtitle2">Upvote the most memeable shows and movies</Typography>
+          <Typography variant="subtitle2">
+            Upvote the most memeable shows and movies
+          </Typography>
         </Box>
 
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, my: 2 }}>
-          <ToggleButtonGroup
-            value={rankMethod}
-            exclusive
-            onChange={handleRankMethodChange}
-            aria-label="ranking method"
-            fullWidth
-          >
-            <ToggleButton
-              value="upvotes"
-              aria-label="most upvoted"
-              sx={{
-                '&.Mui-selected': {
-                  backgroundColor: 'rgba(84, 214, 44, 0.16)',
-                  color: 'success.main',
-                  '&:hover': {
-                    backgroundColor: 'rgba(84, 214, 44, 0.24)',
-                  },
-                },
-              }}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <ToggleButtonGroup
+              value={rankMethod}
+              exclusive
+              onChange={handleRankMethodChange}
+              aria-label="ranking method"
+              fullWidth
             >
-              <ThumbUp color="success" sx={{ mr: 1 }} />
-              Most Upvoted
-            </ToggleButton>
-            <ToggleButton value="combined" aria-label="battleground">
-              <Whatshot color="error" sx={{ mr: 1 }} />
-              Battleground
-            </ToggleButton>
-          </ToggleButtonGroup>
-
+              <ToggleButton
+                value="upvotes"
+                aria-label="most upvoted"
+                sx={{
+                  '&.Mui-selected': {
+                    backgroundColor: 'rgba(84, 214, 44, 0.16)',
+                    color: 'success.main',
+                    '&:hover': {
+                      backgroundColor: 'rgba(84, 214, 44, 0.24)',
+                    },
+                  },
+                }}
+              >
+                <ThumbUp color="success" sx={{ mr: 1 }} />
+                Most Upvoted
+              </ToggleButton>
+              <ToggleButton value="combined" aria-label="battleground">
+                <Whatshot color="error" sx={{ mr: 1 }} />
+                Battleground
+              </ToggleButton>
+            </ToggleButtonGroup>
+          </Box>
+          
           <ToggleButtonGroup
             value={displayOption}
             exclusive
@@ -794,32 +999,58 @@ export default function VotingPage({ shows: searchableShows }) {
             </ToggleButton>
           </ToggleButtonGroup>
 
-          <TextField
-            fullWidth
-            size="large"
-            variant="outlined"
-            value={searchText}
-            onChange={handleSearchChange}
-            placeholder="Filter by name..."
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Search />
-                </InputAdornment>
-              ),
-              endAdornment: searchText && (
-                <InputAdornment position="end">
-                  <IconButton edge="end" onClick={() => setSearchText('')}>
-                    <Close />
-                  </IconButton>
-                </InputAdornment>
-              ),
-            }}
-          />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <TextField
+              fullWidth
+              size="large"
+              variant="outlined"
+              value={searchText}
+              onChange={handleSearchChange}
+              placeholder="Filter by name..."
+              inputRef={searchInputRef}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Search />
+                  </InputAdornment>
+                ),
+                endAdornment: (searchText || isSearching) && (
+                  <InputAdornment position="end">
+                    <IconButton edge="end" onClick={clearSearch} disabled={isSearching && !searchText}>
+                      {isSearching ? (
+                        <CircularProgress size={20} sx={{ color: 'white' }} />
+                      ) : (
+                        <Close />
+                      )}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
+            
+            {isAdmin && (
+              <IconButton
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                sx={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  '&:hover': {
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  }
+                }}
+              >
+                {isRefreshing ? (
+                  <CircularProgress size={24} />
+                ) : (
+                  <Refresh />
+                )}
+              </IconButton>
+            )}
+          </Box>
         </Box>
 
         <Grid container style={{ minWidth: '100%' }}>
-          {loading && !seriesMetadata.length ? (
+          {(loading && !seriesMetadata.length) || isChangingRankMethod ? (
             <Grid
               item
               xs={12}
@@ -840,11 +1071,15 @@ export default function VotingPage({ shows: searchableShows }) {
           ) : (
             <>
               <FlipMove key={rankMethod} style={{ minWidth: '100%' }}>
-                {seriesMetadata.map((show) => {
+                {sortedSeriesMetadata.map((show) => {
                   if (!filterShows(show)) {
                     return null;
                   }
                   const showVoteData = voteData[show.id] || {};
+                  const userCanVote = showVoteData.ableToVote !== false;
+                  const isUpvoted = showVoteData.lastBoost === 1 && !userCanVote;
+                  const isDownvoted = showVoteData.lastBoost === -1 && !userCanVote;
+
                   return (
                     <div key={show.id}>
                       <Grid item xs={12} style={{ marginBottom: 15 }}>
@@ -855,7 +1090,16 @@ export default function VotingPage({ shows: searchableShows }) {
                                 <Box display="flex" alignItems="center">
                                   <Box mr={2} position="relative">
                                     <Badge
-                                      badgeContent={originalRanks[show.id] ? `#${originalRanks[show.id]}` : <CircularProgress size={12} sx={{ color: 'white' }} />}
+                                      badgeContent={
+                                        originalRanks[show.id] !== undefined || show.rank !== null ? (
+                                          `#${originalRanks[show.id] || show.rank}`
+                                        ) : (
+                                          <CircularProgress
+                                            size={12}
+                                            sx={{ color: 'white' }}
+                                          />
+                                        )
+                                      }
                                       color="secondary"
                                       anchorOrigin={{
                                         vertical: 'top',
@@ -875,7 +1119,7 @@ export default function VotingPage({ shows: searchableShows }) {
                                         alt={show.name}
                                         style={{
                                           ...showImageStyle,
-                                          display: loadedImages[show.id] ? 'block' : 'none'
+                                          display: loadedImages[show.id] ? 'block' : 'none',
                                         }}
                                         onLoad={() => handleImageLoad(show.id)}
                                       />
@@ -888,24 +1132,33 @@ export default function VotingPage({ shows: searchableShows }) {
                                       alignItems="center"
                                       sx={{ marginTop: '0.1rem', marginBottom: '-0.5rem' }}
                                     >
-                                      {
-                                        searchableShows.some(searchableShow => searchableShow.id === show.slug) && (
-                                          <a
-                                            href={`/${show.slug}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            style={{ textDecoration: 'none', color: 'inherit' }}
-                                          >
-                                            <Chip sx={{ marginRight: 1, cursor: 'pointer' }} size='large' label="🔍 Search" color="success" variant="filled" />
-                                          </a>
-                                        )
-                                      }
+                                      {searchableShows.some(
+                                        (searchableShow) => searchableShow.id === show.slug
+                                      ) && (
+                                        <a
+                                          href={`/${show.slug}`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          style={{ textDecoration: 'none', color: 'inherit' }}
+                                        >
+                                          <Chip
+                                            sx={{ marginRight: 1, cursor: 'pointer' }}
+                                            size="large"
+                                            label="🔍 Search"
+                                            color="success"
+                                            variant="filled"
+                                          />
+                                        </a>
+                                      )}
                                       <Typography
                                         variant="subtitle2"
                                         color="success.main"
                                         sx={{ fontSize: '0.7rem', opacity: 0.6 }}
                                       >
-                                        <ArrowUpward fontSize="small" sx={{ verticalAlign: 'middle' }} />
+                                        <ArrowUpward
+                                          fontSize="small"
+                                          sx={{ verticalAlign: 'middle' }}
+                                        />
                                         <b>{showVoteData.totalVotesUp || 0}</b>
                                       </Typography>
                                       {rankMethod === 'combined' && (
@@ -915,12 +1168,20 @@ export default function VotingPage({ shows: searchableShows }) {
                                           ml={1}
                                           sx={{ fontSize: '0.7rem', opacity: 0.6 }}
                                         >
-                                          <ArrowDownward fontSize="small" sx={{ verticalAlign: 'middle' }} />
+                                          <ArrowDownward
+                                            fontSize="small"
+                                            sx={{ verticalAlign: 'middle' }}
+                                          />
                                           <b>{showVoteData.totalVotesDown || 0}</b>
                                         </Typography>
                                       )}
                                     </Box>
-                                    <Typography variant="body2" color="text.secondary" mt={1} style={descriptionStyle}>
+                                    <Typography
+                                      variant="body2"
+                                      color="text.secondary"
+                                      mt={1}
+                                      style={descriptionStyle}
+                                    >
                                       {show.description}
                                     </Typography>
                                   </Stack>
@@ -929,7 +1190,12 @@ export default function VotingPage({ shows: searchableShows }) {
                               <Box mr={0}>
                                 {rankMethod === 'combined' ? (
                                   <>
-                                    <Box display="flex" flexDirection="column" justifyContent="space-between" height="100%">
+                                    <Box
+                                      display="flex"
+                                      flexDirection="column"
+                                      justifyContent="space-between"
+                                      height="100%"
+                                    >
                                       {votingStatus[show.id] === 1 ? (
                                         <CircularProgress size={25} sx={{ ml: 1.2, mb: 1.5 }} />
                                       ) : (
@@ -937,12 +1203,13 @@ export default function VotingPage({ shows: searchableShows }) {
                                           disableFocusListener
                                           enterTouchDelay={0}
                                           onOpen={() => {
-                                            calculateTimeRemaining(showVoteData.nextVoteTime);
+                                            calculateTimeRemaining(showVoteData.lastVoteTime);
                                           }}
                                           title={
-                                            (!showVoteData.ableToVote || votingStatus?.[show.id])
-                                              ? user ? `🔒 ${timeRemaining}`
-                                              : 'Upvote'
+                                            !userCanVote || votingStatus?.[show.id]
+                                              ? user
+                                                ? `🔒 ${timeRemaining}`
+                                                : 'Upvote'
                                               : 'Upvote'
                                           }
                                           componentsProps={{
@@ -971,30 +1238,28 @@ export default function VotingPage({ shows: searchableShows }) {
                                               onClick={() =>
                                                 user
                                                   ? handleUpvote(show.id)
-                                                  : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
+                                                  : navigate(
+                                                      `/login?dest=${encodeURIComponent(
+                                                        location.pathname
+                                                      )}`
+                                                    )
                                               }
                                               disabled={
-                                                user &&
-                                                (!showVoteData.ableToVote || votingStatus?.[show.id])
+                                                user && (!userCanVote || votingStatus?.[show.id])
                                               }
                                               size="small"
                                               sx={{
-                                                backgroundColor: showVoteData.lastBoost === 1 ? 'success.light' : 'default',
+                                                backgroundColor: isUpvoted
+                                                  ? 'success.light'
+                                                  : 'default',
                                               }}
                                             >
-                                              {showVoteData.lastBoost === -1 &&
-                                                !showVoteData.ableToVote &&
-                                                rankMethod === 'upvotes' ? (
-                                                <Lock />
+                                              {userCanVote ? (
+                                                <ArrowUpward />
+                                              ) : isUpvoted ? (
+                                                <ArrowUpward sx={{ color: 'success.main' }} />
                                               ) : (
-                                                <ArrowUpward
-                                                  sx={{
-                                                    color:
-                                                      showVoteData.lastBoost === 1 && !showVoteData.ableToVote
-                                                        ? 'success.main'
-                                                        : 'inherit',
-                                                  }}
-                                                />
+                                                <ArrowUpward />
                                               )}
                                             </StyledFab>
                                           </StyledBadge>
@@ -1003,7 +1268,11 @@ export default function VotingPage({ shows: searchableShows }) {
                                     </Box>
 
                                     <Box alignItems="center" height="100%">
-                                      <Typography variant="h5" textAlign="center" color={votesCount(show) < 0 && 'error.main'}>
+                                      <Typography
+                                        variant="h5"
+                                        textAlign="center"
+                                        color={votesCount(show) < 0 && 'error.main'}
+                                      >
                                         {votesCount(show)}
                                       </Typography>
                                     </Box>
@@ -1015,12 +1284,13 @@ export default function VotingPage({ shows: searchableShows }) {
                                           disableFocusListener
                                           enterTouchDelay={0}
                                           onOpen={() => {
-                                            calculateTimeRemaining(showVoteData.nextVoteTime);
+                                            calculateTimeRemaining(showVoteData.lastVoteTime);
                                           }}
                                           title={
-                                            (!showVoteData.ableToVote || votingStatus?.[show.id])
-                                              ? user ? `🔒 ${timeRemaining}`
-                                              : 'Downvote'
+                                            !userCanVote || votingStatus?.[show.id]
+                                              ? user
+                                                ? `🔒 ${timeRemaining}`
+                                                : 'Downvote'
                                               : 'Downvote'
                                           }
                                           componentsProps={{
@@ -1039,7 +1309,7 @@ export default function VotingPage({ shows: searchableShows }) {
                                               vertical: 'bottom',
                                               horizontal: 'right',
                                             }}
-                                            badgeContent={showVoteData.userVotesDown < 0 ? Math.abs(showVoteData.userVotesDown) : null}
+                                            badgeContent={showVoteData.userVotesDown > 0 ? `-${showVoteData.userVotesDown}` : null}
                                             sx={{
                                               color: 'error.main',
                                             }}
@@ -1049,25 +1319,27 @@ export default function VotingPage({ shows: searchableShows }) {
                                               onClick={() =>
                                                 user
                                                   ? handleDownvote(show.id)
-                                                  : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
+                                                  : navigate(
+                                                      `/login?dest=${encodeURIComponent(
+                                                        location.pathname
+                                                      )}`
+                                                    )
                                               }
                                               disabled={
-                                                user &&
-                                                (!showVoteData.ableToVote || votingStatus?.[show.id])
+                                                user && (!userCanVote || votingStatus?.[show.id])
                                               }
                                               size="small"
                                               sx={{
-                                                backgroundColor: showVoteData.lastBoost === -1 ? 'error.light' : 'default',
+                                                backgroundColor: isDownvoted
+                                                  ? 'error.light'
+                                                  : 'default',
                                               }}
                                             >
-                                              <ArrowDownward
-                                                sx={{
-                                                  color:
-                                                    showVoteData.lastBoost === -1 && !showVoteData.ableToVote
-                                                      ? 'error.main'
-                                                      : 'inherit',
-                                                }}
-                                              />
+                                              {isDownvoted ? (
+                                                <ArrowDownward sx={{ color: 'error.main' }} />
+                                              ) : (
+                                                <ArrowDownward />
+                                              )}
                                             </StyledFab>
                                           </StyledBadge>
                                         </Tooltip>
@@ -1075,8 +1347,18 @@ export default function VotingPage({ shows: searchableShows }) {
                                     </Box>
                                   </>
                                 ) : (
-                                  <Stack alignItems="center" spacing={0.7} direction="column" height="100%">
-                                    <Box display="flex" flexDirection="column" justifyContent="space-between" height="100%">
+                                  <Stack
+                                    alignItems="center"
+                                    spacing={0.7}
+                                    direction="column"
+                                    height="100%"
+                                  >
+                                    <Box
+                                      display="flex"
+                                      flexDirection="column"
+                                      justifyContent="space-between"
+                                      height="100%"
+                                    >
                                       {votingStatus[show.id] === 1 ? (
                                         <CircularProgress size={25} sx={{ ml: 1.2, mb: 1.5 }} />
                                       ) : (
@@ -1084,12 +1366,13 @@ export default function VotingPage({ shows: searchableShows }) {
                                           disableFocusListener
                                           enterTouchDelay={0}
                                           onOpen={() => {
-                                            calculateTimeRemaining(showVoteData.nextVoteTime);
+                                            calculateTimeRemaining(showVoteData.lastVoteTime);
                                           }}
                                           title={
-                                            (!showVoteData.ableToVote || votingStatus?.[show.id])
-                                              ? user ? `🔒 ${timeRemaining}`
-                                              : 'Upvote'
+                                            !userCanVote || votingStatus?.[show.id]
+                                              ? user
+                                                ? `🔒 ${timeRemaining}`
+                                                : 'Upvote'
                                               : 'Upvote'
                                           }
                                           componentsProps={{
@@ -1115,31 +1398,39 @@ export default function VotingPage({ shows: searchableShows }) {
                                               onClick={() =>
                                                 user
                                                   ? handleUpvote(show.id)
-                                                  : navigate(`/login?dest=${encodeURIComponent(location.pathname)}`)
+                                                  : navigate(
+                                                      `/login?dest=${encodeURIComponent(
+                                                        location.pathname
+                                                      )}`
+                                                    )
                                               }
-                                              disabled={user && (!showVoteData.ableToVote || votingStatus?.[show.id])}
+                                              disabled={
+                                                user && (!userCanVote || votingStatus?.[show.id])
+                                              }
                                               size="small"
+                                              sx={{
+                                                backgroundColor: isUpvoted
+                                                  ? 'success.light'
+                                                  : 'default',
+                                              }}
                                             >
-                                              {showVoteData.lastBoost === -1 &&
-                                                !showVoteData.ableToVote &&
-                                                rankMethod === 'upvotes' ? (
-                                                <Lock />
+                                              {userCanVote ? (
+                                                <ThumbUp />
+                                              ) : isUpvoted ? (
+                                                <ThumbUp sx={{ color: 'success.main' }} />
                                               ) : (
-                                                <ThumbUp
-                                                  sx={{
-                                                    color:
-                                                      showVoteData.lastBoost === 1 && !showVoteData.ableToVote
-                                                        ? 'success.main'
-                                                        : 'inherit',
-                                                  }}
-                                                />
+                                                <Lock />
                                               )}
                                             </StyledFab>
                                           </StyledBadge>
                                         </Tooltip>
                                       )}
                                     </Box>
-                                    <Typography variant="h5" textAlign="center" color={votesCount(show) < 0 && 'error.main'}>
+                                    <Typography
+                                      variant="h5"
+                                      textAlign="center"
+                                      color={votesCount(show) < 0 && 'error.main'}
+                                    >
                                       {showVoteData.totalVotesUp || 0}
                                     </Typography>
                                   </Stack>
@@ -1154,6 +1445,24 @@ export default function VotingPage({ shows: searchableShows }) {
                 })}
               </FlipMove>
 
+              {/* Add loading indicator for search */}
+              {isSearching && (
+                <Grid 
+                  item 
+                  xs={12} 
+                  style={{
+                    marginTop: 75,
+                    marginBottom: 40,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    padding: '0 20px',
+                  }}
+                >
+                  <CircularProgress />
+                </Grid>
+              )}
+
               {loadingMore && (
                 <Grid item xs={12}>
                   <Box display="flex" justifyContent="center" my={2}>
@@ -1162,7 +1471,7 @@ export default function VotingPage({ shows: searchableShows }) {
                 </Grid>
               )}
 
-              {!isSearching && hasMore && (
+              {!isSearching && hasMore && sortedSeriesMetadata.length >= INITIAL_ITEMS && (
                 <Grid item xs={12} style={{ marginTop: 20 }}>
                   <Button
                     variant="contained"
@@ -1181,58 +1490,67 @@ export default function VotingPage({ shows: searchableShows }) {
                   </Button>
                 </Grid>
               )}
-
-              <Grid
-                item
-                xs={12}
-                style={{
-                  marginTop: 75,
-                  marginBottom: 40,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  padding: '0 20px',
-                }}
-              >
-                <Typography variant="h6" gutterBottom>
-                  What are we missing?
-                </Typography>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={() => {
-                    if (user) {
-                      toggleOpenAddRequest();
-                    } else {
-                      navigate('/signup');
-                    }
-                  }}
+              
+              {!isSearching && (
+                <Grid
+                  item
+                  xs={12}
                   style={{
-                    marginTop: 10,
-                    marginBottom: 50,
-                    backgroundColor: 'rgb(84, 214, 44)',
-                    color: 'black',
+                    marginTop: 75,
+                    marginBottom: 40,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    padding: '0 20px',
                   }}
-                  startIcon={<AddIcon />}
                 >
-                  Make a request
-                </Button>
-              </Grid>
+                  <Typography variant="h6" gutterBottom>
+                    What's missing?
+                  </Typography>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={() => {
+                      if (user) {
+                        toggleOpenAddRequest();
+                      } else {
+                        navigate('/signup');
+                      }
+                    }}
+                    style={{
+                      marginTop: 10,
+                      marginBottom: 50,
+                      backgroundColor: 'rgb(84, 214, 44)',
+                      color: 'black',
+                    }}
+                    startIcon={<AddIcon />}
+                  >
+                    Make a request
+                  </Button>
+                </Grid>
+              )}
             </>
           )}
         </Grid>
       </Container>
-      <Dialog maxWidth='md' fullWidth onClose={toggleOpenAddRequest} open={openAddRequest}>
+      <Dialog maxWidth="md" fullWidth onClose={toggleOpenAddRequest} open={openAddRequest}>
         <DialogTitle>
-          <Typography variant='h4' textAlign='center'>
+          <Typography variant="h4" textAlign="center">
             Request Series
           </Typography>
         </DialogTitle>
         <DialogContent sx={{ paddingTop: 2 }}>
-          <TvdbSearch typeFilter={['series', 'movie']} onClear={() => { setSelectedRequest(); }} onSelect={(value) => { setSelectedRequest(value); }} />
-          {selectedRequest &&
-
-            <Grid container spacing={2} alignItems='center' mt={2}>
+          <TvdbSearch
+            typeFilter={['series', 'movie']}
+            onClear={() => {
+              setSelectedRequest();
+            }}
+            onSelect={(value) => {
+              setSelectedRequest(value);
+            }}
+          />
+          {selectedRequest && (
+            <Grid container spacing={2} alignItems="center" mt={2}>
               <Grid item>
                 <StyledImg
                   src={selectedRequest.image_url}
@@ -1249,33 +1567,58 @@ export default function VotingPage({ shows: searchableShows }) {
                       maxWidth: '200px',
                       maxHeight: '200px',
                     },
-                  }} />
+                  }}
+                />
               </Grid>
               <Grid item xs>
-                <Typography variant='h4'>
+                <Typography variant="h4">
                   {selectedRequest.name}
-                  <Chip size='small' sx={{ ml: 1 }} label={selectedRequest.type} />
+                  <Chip size="small" sx={{ ml: 1 }} label={selectedRequest.type} />
                 </Typography>
-                <Typography variant='body2'>
-                  {selectedRequest.year}
-                </Typography>
-                <Typography variant='body1' mt={2} sx={{
-                  display: '-webkit-box',
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: 'vertical',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}>
+                <Typography variant="body2">{selectedRequest.year}</Typography>
+                <Typography
+                  variant="body1"
+                  mt={2}
+                  sx={{
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
                   {selectedRequest.overview}
                 </Typography>
               </Grid>
             </Grid>
-          }
+          )}
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
-          <LoadingButton onClick={submitRequest} loading={submittingRequest} disabled={!selectedRequest || submittingRequest} variant='contained'>
+          <LoadingButton
+            onClick={submitRequest}
+            loading={submittingRequest}
+            disabled={!selectedRequest || submittingRequest}
+            variant="contained"
+          >
             Submit Request
           </LoadingButton>
+        </DialogActions>
+      </Dialog>
+      <Dialog
+        open={showRefreshDialog}
+        onClose={() => setShowRefreshDialog(false)}
+      >
+        <DialogTitle>Refresh Vote Aggregations</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to refresh the vote aggregations? This process may take a few minutes.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowRefreshDialog(false)}>Cancel</Button>
+          <Button onClick={refreshVoteAggregations} autoFocus>
+            Refresh
+          </Button>
         </DialogActions>
       </Dialog>
     </>
