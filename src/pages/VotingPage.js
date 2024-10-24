@@ -831,19 +831,27 @@ export default function VotingPage({ shows: searchableShows }) {
         // Ensure votesData is an array
         const votesArray = Array.isArray(votesData) ? votesData : votesData.data;
 
-        // Update voteData in state
+        // Update voteData in state, preserving existing user vote data
         setVoteData((prevVoteData) => {
           const updatedVoteData = { ...prevVoteData };
           votesArray.forEach((item) => {
             const seriesId = item.seriesId;
+            const existingData = updatedVoteData[seriesId] || {};
+            
             updatedVoteData[seriesId] = {
+              ...existingData, // Preserve existing data
               totalVotesUp: item.totalVotes.upvotes || 0,
               totalVotesDown: item.totalVotes.downvotes || 0,
-              ableToVote: true,
-              userVotesUp: item.userVotes?.upvotes || 0,
-              userVotesDown: item.userVotes?.downvotes || 0,
-              lastVoteTime: item.userVotes?.lastVoteTime,
-              lastBoost: item.userVotes?.lastBoost,
+              // Only update user-specific data if it exists in the response
+              ...(item.userVotes && {
+                ableToVote: item.userVotes.lastVoteTime ? 
+                  new Date(item.userVotes.lastVoteTime).getTime() + (24 * 60 * 60 * 1000) < Date.now() : 
+                  true,
+                userVotesUp: item.userVotes.upvotes || 0,
+                userVotesDown: item.userVotes.downvotes || 0,
+                lastVoteTime: item.userVotes.lastVoteTime,
+                lastBoost: item.userVotes.lastBoost,
+              })
             };
           });
           return updatedVoteData;
