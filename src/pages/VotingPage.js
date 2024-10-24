@@ -586,10 +586,11 @@ export default function VotingPage({ shows: searchableShows }) {
         }
       };
       fetchSearchResults();
-    } else {
-      setIsSearching(false);
-      // Fetch the initial data when search is cleared or rank method changes
-      fetchVoteData(rankMethod);
+    } else if (debouncedSearchText === '') { // Explicitly check for empty string
+      // Fetch initial data when search is cleared
+      fetchVoteData(rankMethod).finally(() => {
+        setIsSearching(false);
+      });
     }
   }, [debouncedSearchText, rankMethod]);
 
@@ -768,9 +769,10 @@ export default function VotingPage({ shows: searchableShows }) {
     }
   };
 
-  // Add this function to handle clearing the search
+  // Modify the clearSearch function
   const clearSearch = () => {
     setSearchText('');
+    setIsSearching(true); // Set searching to true before clearing
     debouncedSetSearchText('');
   };
 
@@ -943,10 +945,14 @@ export default function VotingPage({ shows: searchableShows }) {
                   <Search />
                 </InputAdornment>
               ),
-              endAdornment: searchText && (
+              endAdornment: (searchText || isSearching) && (
                 <InputAdornment position="end">
-                  <IconButton edge="end" onClick={clearSearch}>
-                    <Close />
+                  <IconButton edge="end" onClick={clearSearch} disabled={isSearching && !searchText}>
+                    {isSearching ? (
+                      <CircularProgress size={20} sx={{ color: 'white' }} />
+                    ) : (
+                      <Close />
+                    )}
                   </IconButton>
                 </InputAdornment>
               ),
@@ -1364,9 +1370,6 @@ export default function VotingPage({ shows: searchableShows }) {
                     padding: '0 20px',
                   }}
                 >
-                  <Typography variant="h6" gutterBottom>
-                    Searching for more
-                  </Typography>
                   <CircularProgress />
                 </Grid>
               )}
@@ -1398,8 +1401,7 @@ export default function VotingPage({ shows: searchableShows }) {
                   </Button>
                 </Grid>
               )}
-
-              {/* Only show "What's missing?" section when not searching */}
+              
               {!isSearching && (
                 <Grid
                   item
