@@ -88,7 +88,7 @@ async function fetchMetadata(items = [], nextToken = null) {
   const result = await API.graphql(
     graphqlOperation(listSeriesAndSeasons, {
       filter: {},
-      limit: 10,
+      limit: 5, // Changed from 10 to 5
       nextToken
     })
   );
@@ -97,12 +97,10 @@ async function fetchMetadata(items = [], nextToken = null) {
     if (a?.name > b?.name) return 1;
     return 0;
   });
-  const allItems = [...items, ...sortedMetadata];
-  const newNextToken = result.data.listSeries.nextToken;
-  if (newNextToken) {
-    return fetchMetadata(allItems, newNextToken);
-  }
-  return allItems;
+  return {
+    items: sortedMetadata,
+    nextToken: result.data.listSeries.nextToken
+  };
 }
 
 let sub;
@@ -334,15 +332,32 @@ export default function DashboardSeriesPage() {
     handleClose();
   }
 
+  // Add new state for nextToken
+  const [nextToken, setNextToken] = useState(null);
+
+  // Update the initial data loading
   useEffect(() => {
     async function getData() {
       const data = await fetchMetadata();
-      setMetadata(data);
-      setFilteredMetadata(data);
+      setMetadata(data.items);
+      setFilteredMetadata(data.items);
+      setNextToken(data.nextToken);
       setLoading(false);
     }
     getData();
   }, []);
+
+  // Add loadMore function
+  const loadMore = async () => {
+    if (!nextToken) return;
+    
+    setLoading(true);
+    const data = await fetchMetadata([], nextToken);
+    setMetadata(prev => [...prev, ...data.items]);
+    setFilteredMetadata(prev => [...prev, ...data.items]);
+    setNextToken(data.nextToken);
+    setLoading(false);
+  };
 
   const searchTvdb = async () => {
     setTvdbResultsLoading(true);
@@ -615,7 +630,7 @@ export default function DashboardSeriesPage() {
             />
           </Tabs>
           <Grid container spacing={2}>
-            {loading
+            {loading && metadata.length === 0
               ? 'Loading'
               : filteredMetadata.map((seriesItem, index) => (
                   <SeriesCard
@@ -644,6 +659,19 @@ export default function DashboardSeriesPage() {
                   />
                 ))}
           </Grid>
+          
+          {/* Add Load More button */}
+          {nextToken && (
+            <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
+              <LoadingButton 
+                variant="contained" 
+                onClick={loadMore}
+                loading={loading}
+              >
+                Load More
+              </LoadingButton>
+            </Box>
+          )}
         </Container>
       </Container>
       <Dialog open={showForm} onClose={handleClose}>
