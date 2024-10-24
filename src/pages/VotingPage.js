@@ -499,24 +499,25 @@ export default function VotingPage({ shows: searchableShows }) {
     }
   }, [filterAndSortSeriesData]);
 
-  // Modify the handleSearchChange function
+  // Modify handleSearchChange to show loading immediately
   const handleSearchChange = (event) => {
     const newSearchText = event.target.value;
     setSearchText(newSearchText);
+    if (newSearchText) {
+      setIsSearching(true); // Show loading immediately when typing
+    } else {
+      setIsSearching(false);
+    }
     debouncedSetSearchText(newSearchText);
   };
 
-  // Replace the useEffect that depends on debouncedSearchText with the following:
-
+  // Update the useEffect that handles search to properly remove loading state
   useEffect(() => {
     if (rankMethod === null) {
       return;
     }
 
     if (debouncedSearchText) {
-      setIsSearching(true);
-      setHasMore(false); // Reset hasMore when searching
-
       const fetchSearchResults = async () => {
         try {
           const response = await API.get('publicapi', '/votes/search', {
@@ -578,11 +579,10 @@ export default function VotingPage({ shows: searchableShows }) {
           // Only set hasMore if we have more items than itemsPerPage
           setHasMore(seriesDataFromCache.length > itemsPerPage);
           
-          setIsSearching(false);
         } catch (error) {
           console.error('Error fetching search results:', error);
-          setIsSearching(false);
-          setHasMore(false);
+        } finally {
+          setIsSearching(false); // Remove loading state after search completes
         }
       };
 
@@ -1348,6 +1348,26 @@ export default function VotingPage({ shows: searchableShows }) {
                   );
                 })}
               </FlipMove>
+
+              {/* Add loading indicator for search */}
+              {isSearching && (
+                <Grid 
+                  item 
+                  xs={12} 
+                  sx={{ 
+                    display: 'flex', 
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    gap: 2,
+                    my: 4 
+                  }}
+                >
+                  <CircularProgress size={20} />
+                  <Typography variant="body1" color="text.secondary">
+                    Searching...
+                  </Typography>
+                </Grid>
+              )}
 
               {loadingMore && (
                 <Grid item xs={12}>
