@@ -82,8 +82,8 @@ export default function VotingPage({ shows: searchableShows }) {
   const [isSearching, setIsSearching] = useState(false);
 
   // Replace the single itemsPerPage constant with these two
-  const INITIAL_ITEMS = 5; // Number of items to show on first load
-  const ITEMS_PER_LOAD = 2; // Number of additional items to load with "Load More"
+  const INITIAL_ITEMS = 50; // Number of items to show on first load
+  const ITEMS_PER_LOAD = 25; // Number of additional items to load with "Load More"
 
   // Local pagination
   const [currentPage, setCurrentPage] = useState(0);
