@@ -81,8 +81,11 @@ export default function VotingPage({ shows: searchableShows }) {
   const [voteData, setVoteData] = useState({});
   const [isSearching, setIsSearching] = useState(false);
 
+  // Replace the single itemsPerPage constant with these two
+  const INITIAL_ITEMS = 50; // Number of items to show on first load
+  const ITEMS_PER_LOAD = 10; // Number of additional items to load with "Load More"
+
   // Local pagination
-  const itemsPerPage = 35; // Number of items to render per page
   const [currentPage, setCurrentPage] = useState(0);
 
   const [sortedSeriesIds, setSortedSeriesIds] = useState([]);
@@ -241,6 +244,7 @@ export default function VotingPage({ shows: searchableShows }) {
     recalculateRanks();
   }, [displayOption, rankMethod, voteData, recalculateRanks]);
 
+  // Update fetchSeriesData function
   const fetchSeriesData = useCallback(async (sortedIds, page, isLoadingMore) => {
     try {
       // Load seriesCache.current from localStorage if available and not expired
@@ -263,8 +267,8 @@ export default function VotingPage({ shows: searchableShows }) {
         console.error('Error loading series data from localStorage:', error);
       }
 
-      const startIdx = page * itemsPerPage;
-      const endIdx = startIdx + itemsPerPage;
+      const startIdx = page === 0 ? 0 : INITIAL_ITEMS + (page - 1) * ITEMS_PER_LOAD;
+      const endIdx = page === 0 ? INITIAL_ITEMS : INITIAL_ITEMS + page * ITEMS_PER_LOAD;
       const paginatedSeriesIds = sortedIds.slice(startIdx, endIdx);
 
       // Create placeholder data for all series in this page
@@ -340,7 +344,7 @@ export default function VotingPage({ shows: searchableShows }) {
       // Recalculate ranks after fetching data
       recalculateRanks();
 
-      // Update hasMore based on whether there are more items
+      // Update hasMore check
       setHasMore(endIdx < sortedIds.length);
 
     } catch (error) {
@@ -349,7 +353,7 @@ export default function VotingPage({ shows: searchableShows }) {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [itemsPerPage, recalculateRanks]);
+  }, [recalculateRanks]);
 
   // Modify fetchVoteData to use the correct endpoint based on the rank method
   const fetchVoteData = useCallback(
@@ -585,7 +589,7 @@ export default function VotingPage({ shows: searchableShows }) {
           await fetchVoteDataForSeries(seriesIds);
           
           // Only set hasMore if we have more items than itemsPerPage
-          setHasMore(seriesDataFromCache.length > itemsPerPage);
+          setHasMore(seriesDataFromCache.length > INITIAL_ITEMS);
           
         } catch (error) {
           console.error('Error fetching search results:', error);
@@ -1467,7 +1471,7 @@ export default function VotingPage({ shows: searchableShows }) {
                 </Grid>
               )}
 
-              {!isSearching && hasMore && sortedSeriesMetadata.length >= itemsPerPage && (
+              {!isSearching && hasMore && sortedSeriesMetadata.length >= INITIAL_ITEMS && (
                 <Grid item xs={12} style={{ marginTop: 20 }}>
                   <Button
                     variant="contained"
