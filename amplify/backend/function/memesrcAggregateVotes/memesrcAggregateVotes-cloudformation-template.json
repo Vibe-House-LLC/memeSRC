@@ -197,7 +197,7 @@
         "Runtime": "nodejs18.x",
         "MemorySize": 2048,
         "Layers": [],
-        "Timeout": 300
+        "Timeout": 900
       }
     },
     "LambdaExecutionRole": {
