@@ -116,6 +116,9 @@ export default function VotingPage({ shows: searchableShows }) {
   // Add this new state
   const [debouncedSearchText, setDebouncedSearchText] = useState('');
 
+  // Add this line with the other refs
+  const searchInputRef = useRef(null);
+
   // Create a debounced function
   const debouncedSetSearchText = useCallback(
     debounce((text) => {
@@ -772,8 +775,10 @@ export default function VotingPage({ shows: searchableShows }) {
   // Modify the clearSearch function
   const clearSearch = () => {
     setSearchText('');
-    setIsSearching(true); // Set searching to true before clearing
+    setIsSearching(true);
     debouncedSetSearchText('');
+    // Focus the input field
+    searchInputRef.current?.focus();
   };
 
   // **Update sortedSeriesMetadata without assigning ranks**
@@ -939,6 +944,7 @@ export default function VotingPage({ shows: searchableShows }) {
             value={searchText}
             onChange={handleSearchChange}
             placeholder="Filter by name..."
+            inputRef={searchInputRef}  // Add this line
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
