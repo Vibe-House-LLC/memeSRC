@@ -27,6 +27,7 @@ import {
   Skeleton,
   ToggleButton,
   ToggleButtonGroup,
+  DialogContentText,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { ArrowUpward, ArrowDownward, Search, Close, ThumbUp, Whatshot, Lock, NewReleasesOutlined, Refresh } from '@mui/icons-material';
@@ -118,6 +119,10 @@ export default function VotingPage({ shows: searchableShows }) {
 
   // Add this line with the other refs
   const searchInputRef = useRef(null);
+
+  // Add these new state variables near the top with other state declarations
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showRefreshDialog, setShowRefreshDialog] = useState(false);
 
   // Create a debounced function
   const debouncedSetSearchText = useCallback(
@@ -891,9 +896,34 @@ export default function VotingPage({ shows: searchableShows }) {
     }
   }, [user]);
 
-  // Add this new function to handle refresh
+  // Add this new function before the return statement
+  const refreshVoteAggregations = async () => {
+    setIsRefreshing(true);
+    setShowRefreshDialog(false);
+    
+    try {
+      // This is a placeholder function - replace with actual API call
+      await new Promise(resolve => setTimeout(resolve, 10000));
+      
+      // After successful refresh, fetch the updated data
+      await fetchVoteData(rankMethod);
+      
+      setMessage('Vote aggregations refreshed successfully');
+      setSeverity('success');
+      setOpen(true);
+    } catch (error) {
+      console.error('Error refreshing vote aggregations:', error);
+      setMessage('Failed to refresh vote aggregations');
+      setSeverity('error');
+      setOpen(true);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  // Update the handleRefresh function
   const handleRefresh = () => {
-    fetchVoteData(rankMethod);
+    setShowRefreshDialog(true);
   };
 
   return (
@@ -997,6 +1027,7 @@ export default function VotingPage({ shows: searchableShows }) {
             {isAdmin && (
               <IconButton
                 onClick={handleRefresh}
+                disabled={isRefreshing}
                 sx={{
                   backgroundColor: 'rgba(255, 255, 255, 0.05)',
                   '&:hover': {
@@ -1004,7 +1035,11 @@ export default function VotingPage({ shows: searchableShows }) {
                   }
                 }}
               >
-                <Refresh />
+                {isRefreshing ? (
+                  <CircularProgress size={24} />
+                ) : (
+                  <Refresh />
+                )}
               </IconButton>
             )}
           </Box>
@@ -1563,6 +1598,23 @@ export default function VotingPage({ shows: searchableShows }) {
           >
             Submit Request
           </LoadingButton>
+        </DialogActions>
+      </Dialog>
+      <Dialog
+        open={showRefreshDialog}
+        onClose={() => setShowRefreshDialog(false)}
+      >
+        <DialogTitle>Refresh Vote Aggregations</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to refresh the vote aggregations? This process may take a few minutes.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowRefreshDialog(false)}>Cancel</Button>
+          <Button onClick={refreshVoteAggregations} autoFocus>
+            Refresh
+          </Button>
         </DialogActions>
       </Dialog>
     </>
