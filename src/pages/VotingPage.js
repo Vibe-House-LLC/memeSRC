@@ -1354,18 +1354,19 @@ export default function VotingPage({ shows: searchableShows }) {
                 <Grid 
                   item 
                   xs={12} 
-                  sx={{ 
-                    display: 'flex', 
-                    justifyContent: 'center',
+                  style={{
+                    marginTop: 75,
+                    marginBottom: 40,
+                    display: 'flex',
+                    flexDirection: 'column',
                     alignItems: 'center',
-                    gap: 2,
-                    my: 4 
+                    padding: '0 20px',
                   }}
                 >
-                  <CircularProgress size={20} />
-                  <Typography variant="body1" color="text.secondary">
-                    Searching...
+                  <Typography variant="h6" gutterBottom>
+                    Searching for more
                   </Typography>
+                  <CircularProgress />
                 </Grid>
               )}
 
@@ -1397,42 +1398,45 @@ export default function VotingPage({ shows: searchableShows }) {
                 </Grid>
               )}
 
-              <Grid
-                item
-                xs={12}
-                style={{
-                  marginTop: 75,
-                  marginBottom: 40,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  padding: '0 20px',
-                }}
-              >
-                <Typography variant="h6" gutterBottom>
-                  What are we missing?
-                </Typography>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={() => {
-                    if (user) {
-                      toggleOpenAddRequest();
-                    } else {
-                      navigate('/signup');
-                    }
-                  }}
+              {/* Only show "What's missing?" section when not searching */}
+              {!isSearching && (
+                <Grid
+                  item
+                  xs={12}
                   style={{
-                    marginTop: 10,
-                    marginBottom: 50,
-                    backgroundColor: 'rgb(84, 214, 44)',
-                    color: 'black',
+                    marginTop: 75,
+                    marginBottom: 40,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    padding: '0 20px',
                   }}
-                  startIcon={<AddIcon />}
                 >
-                  Make a request
-                </Button>
-              </Grid>
+                  <Typography variant="h6" gutterBottom>
+                    What's missing?
+                  </Typography>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={() => {
+                      if (user) {
+                        toggleOpenAddRequest();
+                      } else {
+                        navigate('/signup');
+                      }
+                    }}
+                    style={{
+                      marginTop: 10,
+                      marginBottom: 50,
+                      backgroundColor: 'rgb(84, 214, 44)',
+                      color: 'black',
+                    }}
+                    startIcon={<AddIcon />}
+                  >
+                    Make a request
+                  </Button>
+                </Grid>
+              )}
             </>
           )}
         </Grid>
