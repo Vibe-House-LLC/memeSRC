@@ -81,7 +81,7 @@ export default function VotingPage({ shows: searchableShows }) {
   const [isSearching, setIsSearching] = useState(false);
 
   // Local pagination
-  const itemsPerPage = 35; // Number of items to render per page
+  const itemsPerPage = 5; // Number of items to render per page
   const [currentPage, setCurrentPage] = useState(0);
 
   const [sortedSeriesIds, setSortedSeriesIds] = useState([]);
@@ -511,6 +511,7 @@ export default function VotingPage({ shows: searchableShows }) {
 
     if (debouncedSearchText) {
       setIsSearching(true);
+      setHasMore(false); // Reset hasMore when searching
 
       const fetchSearchResults = async () => {
         try {
@@ -521,11 +522,11 @@ export default function VotingPage({ shows: searchableShows }) {
           });
 
           const hits = response.hits;
-
+          
           // Map over the hits to get series IDs and ranks
           const seriesIds = hits.map(hit => hit.id);
           
-          // Create a map of ranks from search results
+          // Create a map of ranks from search results based on rankMethod
           const searchRanks = {};
           hits.forEach(hit => {
             searchRanks[hit.id] = rankMethod === 'combined' ? 
@@ -566,16 +567,19 @@ export default function VotingPage({ shows: searchableShows }) {
 
           setSeriesMetadata(seriesDataFromCache);
           await fetchVoteDataForSeries(seriesIds);
+          
+          // Only set hasMore if we have more items than itemsPerPage
+          setHasMore(seriesDataFromCache.length > itemsPerPage);
+          
           setIsSearching(false);
-
         } catch (error) {
           console.error('Error fetching search results:', error);
           setIsSearching(false);
+          setHasMore(false);
         }
       };
 
       fetchSearchResults();
-
     } else {
       setIsSearching(false);
       setSeriesMetadata([]);
@@ -1344,7 +1348,7 @@ export default function VotingPage({ shows: searchableShows }) {
                 </Grid>
               )}
 
-              {!isSearching && hasMore && (
+              {!isSearching && hasMore && sortedSeriesMetadata.length >= itemsPerPage && (
                 <Grid item xs={12} style={{ marginTop: 20 }}>
                   <Button
                     variant="contained"
