@@ -81,7 +81,7 @@ exports.handler = async (event) => {
             index: 'votes-series',
             body: {
                 query: {
-                    prefix: {
+                    match_phrase_prefix: {
                         name: searchPrefix.toLowerCase()
                     }
                 },
