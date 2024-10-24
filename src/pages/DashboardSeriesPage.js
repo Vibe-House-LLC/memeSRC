@@ -491,18 +491,20 @@ export default function DashboardSeriesPage() {
       const chunks = chunkArray(filteredMetadata, 3);
 
       const updateSeriesStatus = async (seriesData) => {
-        return API.graphql(
-          graphqlOperation(onUpdateSeries, {
-            filter: { id: { eq: seriesData.id } },
-            update: { statusText: newStatus },
-          })
-        )
-          .then(() => {
-            seriesData.statusText = newStatus;
-          })
-          .catch((error) => {
-            console.warn(`Error updating series with ID ${seriesData.id}:`, error);
-          });
+        try {
+          const result = await API.graphql(
+            graphqlOperation(updateSeries, {
+              input: {
+                id: seriesData.id,
+                statusText: newStatus
+              }
+            })
+          );
+          return result;
+        } catch (error) {
+          console.warn(`Error updating series with ID ${seriesData.id}:`, error);
+          return null;
+        }
       };
 
       for (let i = 0; i < chunks.length; i += 1) {
@@ -517,7 +519,18 @@ export default function DashboardSeriesPage() {
         }
       }
 
-      console.log('Status updated for all series.');
+      // Update local state
+      setMetadata(prevMetadata => 
+        prevMetadata.map(item => ({
+          ...item,
+          statusText: newStatus
+        }))
+      );
+      filterMetadataByMethod(sortMethod, metadata);
+      
+      setMessage('Status updated for all series');
+      setSeverity('success');
+      setOpen(true);
     }
   };
 
@@ -578,7 +591,10 @@ export default function DashboardSeriesPage() {
               </Button>
             </MenuItem>
             {/* Added menu item for changing the status of all series */}
-            <MenuItem onClick={handleChangeAllStatus}>
+            <MenuItem onClick={() => {
+                handleChangeAllStatus();
+                handleOptionsMenuClose();
+              }}>
               <Button fullWidth variant="contained" startIcon={<ChangeHistoryOutlined />}>
                 Change All Status
               </Button>
