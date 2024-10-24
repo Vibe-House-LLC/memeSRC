@@ -83,7 +83,7 @@ export default function VotingPage({ shows: searchableShows }) {
 
   // Replace the single itemsPerPage constant with these two
   const INITIAL_ITEMS = 50; // Number of items to show on first load
-  const ITEMS_PER_LOAD = 10; // Number of additional items to load with "Load More"
+  const ITEMS_PER_LOAD = 15; // Number of additional items to load with "Load More"
 
   // Local pagination
   const [currentPage, setCurrentPage] = useState(0);
@@ -906,8 +906,8 @@ export default function VotingPage({ shows: searchableShows }) {
     setShowRefreshDialog(false);
     
     try {
-      // This is a placeholder function - replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 10000));
+      // Make the actual API call to refresh votes
+      await API.post('publicapi', '/votes/refresh');
       
       // After successful refresh, fetch the updated data
       await fetchVoteData(rankMethod);
@@ -917,7 +917,7 @@ export default function VotingPage({ shows: searchableShows }) {
       setOpen(true);
     } catch (error) {
       console.error('Error refreshing vote aggregations:', error);
-      setMessage('Failed to refresh vote aggregations');
+      setMessage(error.response?.data?.message || 'Failed to refresh vote aggregations');
       setSeverity('error');
       setOpen(true);
     } finally {
