@@ -90,8 +90,11 @@ async function scanDynamoDBTable(params) {
     return allResults;
 }
 
+// Update the compareTitles function to ignore leading "The"
 function compareTitles(a, b) {
-    return a.toLowerCase().localeCompare(b.toLowerCase());
+    const titleA = a.replace(/^The\s+/i, '');
+    const titleB = b.replace(/^The\s+/i, '');
+    return titleA.toLowerCase().localeCompare(titleB.toLowerCase());
 }
 
 exports.handler = async (event) => {
@@ -231,6 +234,7 @@ exports.handler = async (event) => {
         .sort(([aId, a], [bId, b]) => {
             const upvoteDiff = b.upvotes - a.upvotes;
             if (upvoteDiff !== 0) return upvoteDiff;
+            // Use the updated compareTitles function
             return compareTitles(seriesNameMap[aId] || '', seriesNameMap[bId] || '');
         })
         .map(([seriesId, votes], index) => ({ 
@@ -247,6 +251,7 @@ exports.handler = async (event) => {
             const voteDiffB = b.upvotes - b.downvotes;
             const battlegroundDiff = voteDiffB - voteDiffA;
             if (battlegroundDiff !== 0) return battlegroundDiff;
+            // Use the updated compareTitles function
             return compareTitles(seriesNameMap[aId] || '', seriesNameMap[bId] || '');
         })
         .map(([seriesId, votes], index) => ({ 
