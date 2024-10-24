@@ -82,8 +82,8 @@ export default function VotingPage({ shows: searchableShows }) {
   const [isSearching, setIsSearching] = useState(false);
 
   // Replace the single itemsPerPage constant with these two
-  const INITIAL_ITEMS = 50; // Number of items to show on first load
-  const ITEMS_PER_LOAD = 15; // Number of additional items to load with "Load More"
+  const INITIAL_ITEMS = 5; // Number of items to show on first load
+  const ITEMS_PER_LOAD = 2; // Number of additional items to load with "Load More"
 
   // Local pagination
   const [currentPage, setCurrentPage] = useState(0);
@@ -355,21 +355,18 @@ export default function VotingPage({ shows: searchableShows }) {
     }
   }, [recalculateRanks]);
 
-  // Modify fetchVoteData to use the correct endpoint based on the rank method
+  // Update fetchVoteData function
   const fetchVoteData = useCallback(
     async (currentRankMethod) => {
       try {
-        // Determine the API endpoint based on the rankMethod
         const apiEndpoint =
           currentRankMethod === 'combined'
             ? '/vote/new/top/battleground'
             : '/vote/new/top/upvotes';
 
-        // Fetch top votes from the new endpoint
         const topVotesResponse = await API.get('publicapi', apiEndpoint);
         const topVotesData = JSON.parse(topVotesResponse);
 
-        // Create initial voteData object with default values
         const newVoteData = {};
         topVotesData.forEach((item) => {
           newVoteData[item.seriesId] = {
@@ -383,29 +380,29 @@ export default function VotingPage({ shows: searchableShows }) {
           };
         });
 
-        // Fetch votes for all series, regardless of user login status
         const seriesIds = topVotesData.map(item => item.seriesId);
+
+        // Calculate visible and next page series IDs
+        const visibleSeriesIds = seriesIds.slice(0, INITIAL_ITEMS + ITEMS_PER_LOAD);
+
         try {
           const votesResponse = await API.post('publicapi', '/vote/new/count', {
-            body: { seriesIds }
+            body: { seriesIds: visibleSeriesIds }
           });
           const votesData = JSON.parse(votesResponse);
 
-          // Update voteData with total votes and user-specific votes if available
           votesData.forEach((item) => {
             const seriesId = item.seriesId;
             if (newVoteData[seriesId]) {
               newVoteData[seriesId].totalVotesUp = item.totalVotes.upvotes || 0;
               newVoteData[seriesId].totalVotesDown = item.totalVotes.downvotes || 0;
 
-              // Only update user-specific data if the user is logged in
               if (user) {
                 newVoteData[seriesId].userVotesUp = item.userVotes?.upvotes || 0;
                 newVoteData[seriesId].userVotesDown = item.userVotes?.downvotes || 0;
                 newVoteData[seriesId].lastVoteTime = item.userVotes?.lastVoteTime;
                 newVoteData[seriesId].lastBoost = item.userVotes?.lastBoost;
 
-                // Calculate if the user is able to vote based on lastVoteTime
                 if (item.userVotes?.lastVoteTime) {
                   const lastVoteDate = new Date(item.userVotes.lastVoteTime);
                   const now = new Date();
@@ -421,14 +418,10 @@ export default function VotingPage({ shows: searchableShows }) {
 
         setVoteData(newVoteData);
 
-        // Sort the series IDs based on the total votes
         const newSortedSeriesIds = topVotesData.map((item) => item.seriesId);
-
-        // Update the sortedSeriesIds state
         setFullSortedSeriesIds(newSortedSeriesIds);
         setSortedSeriesIds(newSortedSeriesIds);
 
-        // Fetch only the initial page
         fetchSeriesData(newSortedSeriesIds, 0, false);
       } catch (error) {
         console.error('Error in fetchVoteData:', error);
