@@ -38,6 +38,7 @@ const ssm = new SSMClient({ region: REGION });
  */
 
 const TOP_ITEM_COUNT = 250;
+const indexName = `votes-series-${process.env.ENV}`;
 
 // New function to retrieve OpenSearch credentials
 async function getOpenSearchCredentials() {
@@ -110,7 +111,6 @@ exports.handler = async (event) => {
     // Try to create the 'votes-series' index
     try {
         const client = createOpenSearchClient({ username: opensearchUser, password: opensearchPass });
-        const indexName = 'votes-series';
         
         const { body: indexExists } = await client.indices.exists({ index: indexName });
         if (!indexExists) {
@@ -391,7 +391,7 @@ exports.handler = async (event) => {
         }));
         
         const body = enhancedSeries.flatMap(doc => [
-            { index: { _index: 'votes-series', _id: doc.id } },
+            { index: { _index: indexName, _id: doc.id } },
             doc
         ]);
 
