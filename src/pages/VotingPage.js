@@ -41,6 +41,7 @@ import { listSeries, getSeries } from '../graphql/queries';
 import { UserContext } from '../UserContext';
 import TvdbSearch from '../components/TvdbSearch/TvdbSearch';
 import { SnackbarContext } from '../SnackbarContext';
+import { useShows } from '../contexts/useShows';  // Add this import if not already present
 
 const StyledBadge = styled(Badge)(() => ({
   '& .MuiBadge-badge': {
@@ -58,7 +59,8 @@ const StyledFab = styled(Fab)(() => ({
 
 const StyledImg = styled('img')``;
 
-export default function VotingPage({ shows: searchableShows }) {
+export default function VotingPage() {
+  const { shows: searchableShows } = useShows();  // Add this line
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [isChangingRankMethod, setIsChangingRankMethod] = useState(false);
@@ -946,9 +948,14 @@ export default function VotingPage({ shows: searchableShows }) {
       <Helmet>
         <title> Vote and Requests • TV Shows & Movies • memeSRC </title>
       </Helmet>
-      <Container maxWidth="md">
-        <Box my={2} sx={{ marginTop: -2 }}>
-          <Typography variant="h3" component="h1" gutterBottom>
+      <Container maxWidth="md" sx={{ mt: 3 }}>  {/* Add margin top */}
+        <Box my={2}>  {/* Remove the negative margin */}
+          <Typography 
+            variant="h3" 
+            component="h1" 
+            gutterBottom
+            sx={{ fontSize: { xs: '2rem', sm: '2rem', md: '2rem' } }}  // Add this line
+          >
             Voting & Requests
           </Typography>
           <Typography variant="subtitle2">
@@ -1637,12 +1644,3 @@ export default function VotingPage({ shows: searchableShows }) {
     </>
   );
 }
-
-VotingPage.propTypes = {
-  shows: PropTypes.arrayOf(
-    PropTypes.shape({
-      id: PropTypes.string.isRequired,
-      // Add other properties of the show object if needed
-    })
-  ).isRequired,
-};

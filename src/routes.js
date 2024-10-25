@@ -102,7 +102,7 @@ export default function Router() {
         { path: 'faq', element: <SiteWideMaintenance><FAQPage /></SiteWideMaintenance> },
         { path: 'faq/:slug', element: <SiteWideMaintenance><FAQPage /></SiteWideMaintenance> },
         { path: 'series/:seriesId', element: <SiteWideMaintenance><TopBannerSearchRevised><SeriesPage /></TopBannerSearchRevised></SiteWideMaintenance> },
-        { path: '/vote', element: <SiteWideMaintenance><IpfsSearchBar><VotingPage /></IpfsSearchBar></SiteWideMaintenance> },
+        { path: '/vote', element: <SiteWideMaintenance><ShowProvider><VotingPage /></ShowProvider></SiteWideMaintenance> },
         { path: '/contribute', element: <SiteWideMaintenance><ContributorRequest /></SiteWideMaintenance> },
         { path: '/pricing', element: <SiteWideMaintenance><PricingPage /></SiteWideMaintenance> },
         { path: '/:seriesId', element: <SiteWideMaintenance><DynamicRouteHandler /></SiteWideMaintenance> },
