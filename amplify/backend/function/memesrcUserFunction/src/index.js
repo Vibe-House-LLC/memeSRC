@@ -617,8 +617,20 @@ export const handler = async (event) => {
       console.log(`Updated user votes: ${JSON.stringify(currentUserVotes)}`);
 
       // Update AnalyticsMetrics Mutation for User/Series Votes
-      const upsertAnalyticsMetricsMutation = `
+      const updateUserVoteAggregationMutation = `
         mutation UpsertAnalyticsMetrics($id: ID!, $value: String!) {
+          updateAnalyticsMetrics(input: {
+            id: $id,
+            value: $value
+          }) {
+            id
+            value
+          }
+        }
+      `;
+
+      const createUserVoteAggregationMutation = `
+        mutation CreateAnalyticsMetrics($id: ID!, $value: String!) {
           createAnalyticsMetrics(input: {
             id: $id,
             value: $value
@@ -634,8 +646,13 @@ export const handler = async (event) => {
         value: JSON.stringify(currentUserVotes)
       };
 
-      console.log(`Upserting user vote aggregation with variables: ${JSON.stringify(userVoteVariables)}`);
-      const updateUserVoteResponse = await makeRequestWithVariables(upsertAnalyticsMetricsMutation, userVoteVariables);
+      console.log(`Attempting to update user vote aggregation`);
+      let updateUserVoteResponse = await makeRequestWithVariables(updateUserVoteAggregationMutation, userVoteVariables);
+
+      if (updateUserVoteResponse.statusCode === 400) {
+        console.log('User vote aggregation does not exist. Creating a new one.');
+        updateUserVoteResponse = await makeRequestWithVariables(createUserVoteAggregationMutation, userVoteVariables);
+      }
       console.log(`User vote aggregation update response: ${JSON.stringify(updateUserVoteResponse)}`);
 
       // Update overall series vote aggregation
@@ -664,13 +681,42 @@ export const handler = async (event) => {
 
       console.log(`Updated series votes: ${JSON.stringify(currentSeriesVotes)}`);
 
+      const updateSeriesVoteAggregationMutation = `
+        mutation UpsertAnalyticsMetrics($id: ID!, $value: String!) {
+          updateAnalyticsMetrics(input: {
+            id: $id,
+            value: $value
+          }) {
+            id
+            value
+          }
+        }
+      `;
+
+      const createSeriesVoteAggregationMutation = `
+        mutation CreateAnalyticsMetrics($id: ID!, $value: String!) {
+          createAnalyticsMetrics(input: {
+            id: $id,
+            value: $value
+          }) {
+            id
+            value
+          }
+        }
+      `;
+
       const seriesVoteVariables = {
         id: `totalVotes-${seriesId}`,
         value: JSON.stringify(currentSeriesVotes)
       };
 
-      console.log(`Upserting series vote aggregation with variables: ${JSON.stringify(seriesVoteVariables)}`);
-      const updateSeriesVoteResponse = await makeRequestWithVariables(upsertAnalyticsMetricsMutation, seriesVoteVariables);
+      console.log(`Attempting to update series vote aggregation`);
+      let updateSeriesVoteResponse = await makeRequestWithVariables(updateSeriesVoteAggregationMutation, seriesVoteVariables);
+
+      if (updateSeriesVoteResponse.statusCode === 400) {
+        console.log('Series vote aggregation does not exist. Creating a new one.');
+        updateSeriesVoteResponse = await makeRequestWithVariables(createSeriesVoteAggregationMutation, seriesVoteVariables);
+      }
       console.log(`Series vote aggregation update response: ${JSON.stringify(updateSeriesVoteResponse)}`);
 
       response = {
