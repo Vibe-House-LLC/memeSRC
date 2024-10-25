@@ -108,30 +108,51 @@ const FloatingCard = styled(Card)(({ theme, enabled }) => ({
   bottom: 20,
   left: '50%',
   transform: 'translateX(-50%)',
-  width: '90%', // Default to 90% width on mobile
+  width: '90%',
   maxWidth: '100%',
-  margin: '0 20px', // Add some margin on the sides
+  margin: '0 20px',
   zIndex: 1000,
-  backgroundColor: enabled ? theme.palette.success.main : 'rgba(84, 214, 44, 0.16)', // Match the non-hover background color
+  backgroundColor: enabled ? theme.palette.success.main : 'rgba(84, 214, 44, 0.16)',
   transition: 'all 0.3s ease',
   boxShadow: enabled ? '0 0 20px rgba(84, 214, 44, 0.5)' : '0 4px 20px rgba(0, 0, 0, 0.25)',
   cursor: 'pointer',
+  animation: 'slideUp 0.5s ease-out',
+
+  // Add the keyframes for the animation
+  '@keyframes slideUp': {
+    from: {
+      transform: 'translate(-50%, 100%)',
+    },
+    to: {
+      transform: 'translate(-50%, 0)',
+    },
+  },
   
-  // Media query for larger screens
   [theme.breakpoints.up('sm')]: {
     width: 'auto',
     maxWidth: '400px',
     margin: 0,
   },
 
-  // Additional mobile styling
   [theme.breakpoints.down('sm')]: {
     bottom: 0,
-    borderRadius: '16px 16px 0 0', // Rounded corners only on top for mobile
+    borderRadius: '16px 16px 0 0',
     left: 0,
     transform: 'none',
     width: '100%',
     margin: 0,
+    // Update animation for mobile
+    animation: 'slideUpMobile 0.5s ease-out',
+    '@keyframes slideUpMobile': {
+      from: {
+        transform: 'translateY(100%)',
+        opacity: 0,
+      },
+      to: {
+        transform: 'translateY(0)',
+        opacity: 1,
+      },
+    },
   },
 }));
 
