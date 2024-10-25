@@ -211,6 +211,7 @@ export default function VotingPage() {
     const savedPreference = localStorage.getItem('displayOption');
     return savedPreference || 'showAll';
   });
+
   const { setMessage, setOpen, setSeverity } = useContext(SnackbarContext);
 
   // State variables
@@ -232,6 +233,13 @@ export default function VotingPage() {
   const theme = useTheme();
 
   const { user } = useContext(UserContext);
+
+  const [hasSeenMagicVotes, setHasSeenMagicVotes] = useState(() => {
+    if (user && user.username) {
+      return localStorage.getItem(`hasSeenMagicVotes_${user.username}`) === 'true';
+    }
+    return false;
+  });
 
   const toggleOpenAddRequest = () => {
     setOpenAddRequest(!openAddRequest);
@@ -1196,13 +1204,16 @@ export default function VotingPage() {
     return false;
   });
 
-  // Add this useEffect to sync magicVotesEnabled with localStorage per username
   useEffect(() => {
     if (user && user.username) {
       const savedValue = localStorage.getItem(`magicVotesEnabled_${user.username}`);
       setMagicVotesEnabled(savedValue === 'true');
+      // Also load hasSeenMagicVotes from localStorage
+      const seenValue = localStorage.getItem(`hasSeenMagicVotes_${user.username}`);
+      setHasSeenMagicVotes(seenValue === 'true');
     } else {
       setMagicVotesEnabled(false);
+      setHasSeenMagicVotes(false);
     }
   }, [user]);
 
@@ -1216,6 +1227,11 @@ export default function VotingPage() {
     setMagicVotesEnabled(newValue);
     if (user && user.username) {
       localStorage.setItem(`magicVotesEnabled_${user.username}`, newValue.toString());
+      // Set hasSeenMagicVotes to true when enabling for the first time
+      if (newValue && !hasSeenMagicVotes) {
+        setHasSeenMagicVotes(true);
+        localStorage.setItem(`hasSeenMagicVotes_${user.username}`, 'true');
+      }
     }
   };
 
@@ -1999,30 +2015,31 @@ export default function VotingPage() {
         >
           <ShimmerWrapper enabled={magicVotesEnabled} />
           {/* NEW! indicator */}
-          <Box
-            sx={{
-              position: 'absolute',
-              top: '-8px',
-              right: '-8px',
-              backgroundColor: 'red',
-              color: 'white',
-              padding: '2px 6px',
-              fontSize: '0.7rem',
-              fontWeight: 'bold',
-              borderRadius: '4px',
-              boxShadow: '0 0 5px rgba(0,0,0,0.3)',
-              zIndex: 1,
-              transform: 'translate(0, 10%) rotate(15deg)',
-              // Add responsive positioning for small screens
-              [theme.breakpoints.down('sm')]: {
-                top: '8px',
-                right: '8px',
-                transform: 'translate(0, -50%) rotate(15deg)',
-              },
-            }}
-          >
-            NEW!
-          </Box>
+          {!hasSeenMagicVotes && (
+            <Box
+              sx={{
+                position: 'absolute',
+                top: '-8px',
+                right: '-8px',
+                backgroundColor: 'red',
+                color: 'white',
+                padding: '2px 6px',
+                fontSize: '0.7rem',
+                fontWeight: 'bold',
+                borderRadius: '4px',
+                boxShadow: '0 0 5px rgba(0,0,0,0.3)',
+                zIndex: 1,
+                transform: 'translate(0, 10%) rotate(15deg)',
+                [theme.breakpoints.down('sm')]: {
+                  top: '8px',
+                  right: '8px',
+                  transform: 'translate(0, -50%) rotate(15deg)',
+                },
+              }}
+            >
+              NEW!
+            </Box>
+          )}
 
           <CardContent sx={{ 
             position: 'relative',
