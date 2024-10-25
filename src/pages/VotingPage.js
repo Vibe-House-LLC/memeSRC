@@ -270,6 +270,13 @@ export default function VotingPage() {
   // Add this new state to store search result ranks
   const [searchResultRanks, setSearchResultRanks] = useState({});
 
+  // Add these new state variables
+  const [magicVoteDialogOpen, setMagicVoteDialogOpen] = useState(false);
+  const [magicVoteSeries, setMagicVoteSeries] = useState(null);
+  const [magicVoteBoost, setMagicVoteBoost] = useState(1);
+  const [magicVoteType, setMagicVoteType] = useState(1); // 1 for upvote, -1 for downvote
+  const [magicVoteMultiplier, setMagicVoteMultiplier] = useState(1);
+
   // Add this debounced search function after other function declarations
   const debouncedSearch = useCallback(
     debounce(async (searchValue) => {
@@ -813,43 +820,89 @@ export default function VotingPage() {
     fetchVoteDataForSeries(nextPageSeriesIds);
   };
 
+  // Update the handleVote function
   const handleVote = async (seriesId, boost) => {
+    if (magicVotesEnabled) {
+      // Open the magic vote dialog
+      setMagicVoteSeries(seriesCache.current[seriesId]);
+      setMagicVoteBoost(boost);
+      setMagicVoteType(boost > 0 ? 1 : -1);
+      setMagicVoteMultiplier(1); // default multiplier
+      setMagicVoteDialogOpen(true);
+    } else {
+      // Existing voting logic
+      setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: boost }));
+
+      try {
+        await API.post('publicapi', '/vote', {
+          body: {
+            seriesId,
+            boost,
+          },
+        });
+
+        // Update voteData in state
+        setVoteData((prevVoteData) => {
+          // ... existing state update logic
+          const updatedVoteData = { ...prevVoteData };
+          const updatedSeriesData = { ...updatedVoteData[seriesId] };
+
+          if (boost > 0) {
+            updatedSeriesData.totalVotesUp = (updatedSeriesData.totalVotesUp || 0) + Math.abs(boost);
+            updatedSeriesData.userVotesUp = (updatedSeriesData.userVotesUp || 0) + Math.abs(boost);
+          } else if (boost < 0) {
+            updatedSeriesData.totalVotesDown = (updatedSeriesData.totalVotesDown || 0) + Math.abs(boost);
+            updatedSeriesData.userVotesDown = (updatedSeriesData.userVotesDown || 0) + Math.abs(boost);
+          }
+
+          updatedSeriesData.ableToVote = false;
+          const now = new Date();
+          now.setHours(now.getHours() + 24);
+          updatedSeriesData.nextVoteTime = now.toISOString();
+          updatedSeriesData.lastBoost = boost;
+
+          updatedVoteData[seriesId] = updatedSeriesData;
+
+          return updatedVoteData;
+        });
+
+        setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: false }));
+
+      } catch (error) {
+        setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: false }));
+        console.error('Error on voting:', error);
+      }
+    }
+  };
+
+  // Add a new function to handle the boosted vote submission
+  const handleMagicVoteSubmit = async () => {
+    const seriesId = magicVoteSeries.id;
+    const boost = magicVoteType * magicVoteMultiplier; // calculate final boost value
+
     setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: boost }));
+    setMagicVoteDialogOpen(false);
 
     try {
-      let finalBoost = boost;
-      
-      // If magic voting is enabled, prompt for vote count
-      if (magicVotesEnabled) {
-        const voteCount = window.prompt('How many votes would you like to add?', '1');
-        
-        // Validate input is a number and not cancelled
-        if (voteCount !== null) {
-          const parsedCount = parseInt(voteCount, 10);
-          if (!Number.isNaN(parsedCount) && parsedCount > 0) {
-            finalBoost = boost * parsedCount; // Multiply the boost by the count
-          }
-        }
-      }
-
       await API.post('publicapi', '/vote', {
         body: {
           seriesId,
-          boost: finalBoost,
+          boost,
         },
       });
 
       // Update voteData in state
       setVoteData((prevVoteData) => {
+        // ... update vote data logic similar to original handleVote
         const updatedVoteData = { ...prevVoteData };
         const updatedSeriesData = { ...updatedVoteData[seriesId] };
 
-        if (finalBoost > 0) {
-          updatedSeriesData.totalVotesUp = (updatedSeriesData.totalVotesUp || 0) + Math.abs(finalBoost);
-          updatedSeriesData.userVotesUp = (updatedSeriesData.userVotesUp || 0) + Math.abs(finalBoost);
-        } else if (finalBoost < 0) {
-          updatedSeriesData.totalVotesDown = (updatedSeriesData.totalVotesDown || 0) + Math.abs(finalBoost);
-          updatedSeriesData.userVotesDown = (updatedSeriesData.userVotesDown || 0) + Math.abs(finalBoost);
+        if (boost > 0) {
+          updatedSeriesData.totalVotesUp = (updatedSeriesData.totalVotesUp || 0) + Math.abs(boost);
+          updatedSeriesData.userVotesUp = (updatedSeriesData.userVotesUp || 0) + Math.abs(boost);
+        } else if (boost < 0) {
+          updatedSeriesData.totalVotesDown = (updatedSeriesData.totalVotesDown || 0) + Math.abs(boost);
+          updatedSeriesData.userVotesDown = (updatedSeriesData.userVotesDown || 0) + Math.abs(boost);
         }
 
         updatedSeriesData.ableToVote = false;
@@ -871,6 +924,13 @@ export default function VotingPage() {
     }
   };
 
+  const handleMagicVoteMultiplierChange = (event, newMultiplier) => {
+    if (newMultiplier !== null) {
+      setMagicVoteMultiplier(newMultiplier);
+    }
+  };
+
+  // Update handleUpvote and handleDownvote functions to use handleVote
   const handleUpvote = (seriesId) => {
     handleVote(seriesId, 1);
   };
@@ -2011,6 +2071,68 @@ export default function VotingPage() {
           </CardContent>
         </FloatingCard>
       )}
+
+      {/* Add the magic vote dialog */}
+      <Dialog
+        open={magicVoteDialogOpen}
+        onClose={() => setMagicVoteDialogOpen(false)}
+        fullWidth
+        maxWidth="sm"
+        PaperProps={{
+          style: {
+            backgroundColor: 'black',
+            color: 'white',
+          },
+        }}
+      >
+        <DialogTitle>
+          Boost {magicVoteBoost > 0 ? 'Upvote' : 'Downvote'}
+        </DialogTitle>
+        <DialogContent>
+          {/* Display series details */}
+          {magicVoteSeries && (
+            <Box display="flex" alignItems="center">
+              {/* Add series image and name */}
+              <Box mr={2}>
+                <img
+                  src={magicVoteSeries.image || 'path/to/placeholder-image.jpg'}
+                  alt={magicVoteSeries.name}
+                  style={{ width: '80px', height: '120px', objectFit: 'cover' }}
+                />
+              </Box>
+              <Typography variant="h6">
+                {magicVoteSeries.name}
+              </Typography>
+            </Box>
+          )}
+
+          <DialogContentText sx={{ mt: 2 }}>
+            Select the boost multiplier:
+          </DialogContentText>
+
+          <ToggleButtonGroup
+            color="primary"
+            value={magicVoteMultiplier}
+            exclusive
+            onChange={handleMagicVoteMultiplierChange}
+            aria-label="Boost Multiplier"
+            fullWidth
+            sx={{ mt: 2 }}
+          >
+            <ToggleButton value={1}>1x</ToggleButton>
+            <ToggleButton value={5}>5x</ToggleButton>
+            <ToggleButton value={10}>10x</ToggleButton>
+          </ToggleButtonGroup>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setMagicVoteDialogOpen(false)} color="secondary">
+            Cancel
+          </Button>
+          <Button onClick={handleMagicVoteSubmit} variant="contained" color="primary">
+            BOOST VOTE
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 }
