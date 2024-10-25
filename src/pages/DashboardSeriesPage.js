@@ -88,7 +88,7 @@ async function fetchMetadata(items = [], nextToken = null) {
   const result = await API.graphql(
     graphqlOperation(listSeriesAndSeasons, {
       filter: {},
-      limit: 10,
+      limit: 100, // Changed from 10 to 5
       nextToken
     })
   );
@@ -97,12 +97,10 @@ async function fetchMetadata(items = [], nextToken = null) {
     if (a?.name > b?.name) return 1;
     return 0;
   });
-  const allItems = [...items, ...sortedMetadata];
-  const newNextToken = result.data.listSeries.nextToken;
-  if (newNextToken) {
-    return fetchMetadata(allItems, newNextToken);
-  }
-  return allItems;
+  return {
+    items: sortedMetadata,
+    nextToken: result.data.listSeries.nextToken
+  };
 }
 
 let sub;
@@ -139,6 +137,9 @@ export default function DashboardSeriesPage() {
   const [sortMethod, setSortMethod] = useState('all');
   const [selectedIndex, setSelectedIndex] = useState(null)
   const [migrationLoading, setMigrationLoading] = useState(false);
+  const [bulkStatusDialogOpen, setBulkStatusDialogOpen] = useState(false);
+  const [newBulkStatus, setNewBulkStatus] = useState('');
+
   const { setMessage, setSeverity, setOpen } = useContext(SnackbarContext);
 
   // Options Menu
@@ -334,15 +335,66 @@ export default function DashboardSeriesPage() {
     handleClose();
   }
 
+  // Add new state for nextToken
+  const [nextToken, setNextToken] = useState(null);
+
+  // Update the initial data loading
   useEffect(() => {
     async function getData() {
       const data = await fetchMetadata();
-      setMetadata(data);
-      setFilteredMetadata(data);
+      setMetadata(data.items);
+      setFilteredMetadata(data.items);
+      setNextToken(data.nextToken);
       setLoading(false);
     }
     getData();
   }, []);
+
+  // Update the loadMore function
+  const loadMore = async () => {
+    if (!nextToken) return;
+    
+    setLoading(true);
+    const data = await fetchMetadata([], nextToken);
+    const newMetadata = [...metadata, ...data.items];
+    setMetadata(newMetadata);
+    
+    // Apply current filter to entire dataset
+    filterMetadataByMethod(sortMethod, newMetadata);
+    
+    setNextToken(data.nextToken);
+    setLoading(false);
+  };
+
+  // Extract filter logic to reusable function
+  const filterMetadataByMethod = (method, dataToFilter) => {
+    switch (method) {
+      case 'live':
+        setFilteredMetadata(dataToFilter.filter(obj => !obj.statusText));
+        break;
+      case 'vote':
+        setFilteredMetadata(dataToFilter.filter(obj => obj.statusText === "requested"));
+        break;
+      case 'requested':
+        setFilteredMetadata(dataToFilter.filter(obj => obj.statusText === "submittedRequest"));
+        break;
+      case 'other':
+        setFilteredMetadata(dataToFilter.filter(obj => 
+          obj.statusText !== "requested" &&
+          obj.statusText !== "submittedRequest" &&
+          !!obj.statusText
+        ));
+        break;
+      default:
+        setFilteredMetadata(dataToFilter);
+    }
+  };
+
+  // Update the filterResults function to use the new helper
+  const filterResults = (event, value) => {
+    setSortMethod(value);
+    filterMetadataByMethod(value, metadata);
+  };
 
   const searchTvdb = async () => {
     setTvdbResultsLoading(true);
@@ -409,30 +461,6 @@ export default function DashboardSeriesPage() {
     }
   }, [tvdbid]);
 
-  const filterResults = (event, value) => {
-    setSortMethod(value)
-    switch (value) {
-      case 'live':
-        setFilteredMetadata(metadata.filter(obj => !obj.statusText));
-        break;
-      case 'vote':
-        setFilteredMetadata(metadata.filter(obj => obj.statusText === "requested"));
-        break;
-      case 'requested':
-        setFilteredMetadata(metadata.filter(obj => obj.statusText === "submittedRequest"));
-        break;
-      case 'other':
-        setFilteredMetadata(metadata.filter(obj => 
-          obj.statusText !== "requested" &&
-          obj.statusText !== "submittedRequest" &&
-          !!obj.statusText // this ensures we exclude empty or null statusText
-        ));
-        break;
-      default:
-        setFilteredMetadata(metadata);
-    }
-  }
-
   const tvdbIdMigration = () => {
     setMigrationLoading(true)
     listSeriesData().then(results => {
@@ -460,39 +488,53 @@ export default function DashboardSeriesPage() {
   }
 
   const handleChangeAllStatus = async () => {
-    const newStatus = prompt('Please enter the new status for all items:');
+    setBulkStatusDialogOpen(true);
+  };
 
-    if (newStatus) {
+  const handleBulkStatusUpdate = async () => {
+    if (newBulkStatus) {
       const chunks = chunkArray(filteredMetadata, 3);
 
       const updateSeriesStatus = async (seriesData) => {
-        return API.graphql(
-          graphqlOperation(onUpdateSeries, {
-            filter: { id: { eq: seriesData.id } },
-            update: { statusText: newStatus },
-          })
-        )
-          .then(() => {
-            seriesData.statusText = newStatus;
-          })
-          .catch((error) => {
-            console.warn(`Error updating series with ID ${seriesData.id}:`, error);
-          });
+        try {
+          const result = await API.graphql(
+            graphqlOperation(updateSeries, {
+              input: {
+                id: seriesData.id,
+                statusText: newBulkStatus
+              }
+            })
+          );
+          return result;
+        } catch (error) {
+          console.warn(`Error updating series with ID ${seriesData.id}:`, error);
+          return null;
+        }
       };
 
+      /* eslint-disable no-await-in-loop */
       for (let i = 0; i < chunks.length; i += 1) {
         const chunk = chunks[i];
-        // eslint-disable-next-line no-await-in-loop
         await Promise.all(chunk.map(updateSeriesStatus));
-
-        // If this is not the last chunk, add a delay
         if (i < chunks.length - 1) {
-          // eslint-disable-next-line no-await-in-loop
           await new Promise((resolve) => setTimeout(resolve, 100));
         }
       }
+      /* eslint-enable no-await-in-loop */
 
-      console.log('Status updated for all series.');
+      setMetadata(prevMetadata => 
+        prevMetadata.map(item => ({
+          ...item,
+          statusText: newBulkStatus
+        }))
+      );
+      filterMetadataByMethod(sortMethod, metadata);
+      
+      setMessage('Status updated for all series');
+      setSeverity('success');
+      setOpen(true);
+      setBulkStatusDialogOpen(false);
+      setNewBulkStatus('');
     }
   };
 
@@ -553,7 +595,10 @@ export default function DashboardSeriesPage() {
               </Button>
             </MenuItem>
             {/* Added menu item for changing the status of all series */}
-            <MenuItem onClick={handleChangeAllStatus}>
+            <MenuItem onClick={() => {
+                handleChangeAllStatus();
+                handleOptionsMenuClose();
+              }}>
               <Button fullWidth variant="contained" startIcon={<ChangeHistoryOutlined />}>
                 Change All Status
               </Button>
@@ -615,7 +660,7 @@ export default function DashboardSeriesPage() {
             />
           </Tabs>
           <Grid container spacing={2}>
-            {loading
+            {loading && metadata.length === 0
               ? 'Loading'
               : filteredMetadata.map((seriesItem, index) => (
                   <SeriesCard
@@ -644,6 +689,19 @@ export default function DashboardSeriesPage() {
                   />
                 ))}
           </Grid>
+          
+          {/* Add Load More button */}
+          {nextToken && (
+            <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
+              <LoadingButton 
+                variant="contained" 
+                onClick={loadMore}
+                loading={loading}
+              >
+                Load More
+              </LoadingButton>
+            </Box>
+          )}
         </Container>
       </Container>
       <Dialog open={showForm} onClose={handleClose}>
@@ -772,6 +830,46 @@ export default function DashboardSeriesPage() {
           </Typography>
         </Box>
       </Backdrop>
+      <Dialog open={bulkStatusDialogOpen} onClose={() => setBulkStatusDialogOpen(false)}>
+        <DialogTitle>Update Status for Multiple Items</DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="body1" gutterBottom>
+              The following {filteredMetadata.length} items will be updated:
+            </Typography>
+            <List dense>
+              {filteredMetadata.map((item, index) => (
+                <ListItem key={index}>
+                  <ListItemText primary={`• ${item.name}`} />
+                </ListItem>
+              ))}
+            </List>
+            <FormControl fullWidth sx={{ mt: 2 }}>
+              <InputLabel id="bulk-status-select-label">New Status</InputLabel>
+              <Select
+                labelId="bulk-status-select-label"
+                value={newBulkStatus}
+                label="New Status"
+                onChange={(event) => setNewBulkStatus(event.target.value)}
+              >
+                <MenuItem value="active">Active</MenuItem>
+                <MenuItem value="inactive">Inactive</MenuItem>
+                <MenuItem value="requested">Requested</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setBulkStatusDialogOpen(false)}>Cancel</Button>
+          <Button 
+            variant="contained" 
+            onClick={handleBulkStatusUpdate}
+            disabled={!newBulkStatus}
+          >
+            Update All
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 }

@@ -131,7 +131,7 @@ export default function VotingPage({ shows: searchableShows }) {
   const debouncedSetSearchText = useCallback(
     debounce((text) => {
       setDebouncedSearchText(text);
-    }, 300),
+    }, 500),
     []
   );
 
