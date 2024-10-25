@@ -2012,6 +2012,7 @@ export default function VotingPage() {
               borderRadius: '4px',
               boxShadow: '0 0 5px rgba(0,0,0,0.3)',
               zIndex: 1,
+              transform: 'translate(0, 10%) rotate(15deg)',
               // Add responsive positioning for small screens
               [theme.breakpoints.down('sm')]: {
                 top: '8px',
