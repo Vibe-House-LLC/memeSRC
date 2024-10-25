@@ -108,15 +108,30 @@ const FloatingCard = styled(Card)(({ theme, enabled }) => ({
   bottom: 20,
   left: '50%',
   transform: 'translateX(-50%)',
-  width: 'auto',
-  maxWidth: '90%',
+  width: '90%', // Default to 90% width on mobile
+  maxWidth: '100%',
+  margin: '0 20px', // Add some margin on the sides
   zIndex: 1000,
-  backgroundColor: enabled ? '#2E7D32' : '#1B5E20',
-  transition: 'background-color 0.3s ease',
-  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.25)',
-  cursor: 'pointer', // Add cursor pointer
-  '@media (min-width: 600px)': {
+  backgroundColor: enabled ? theme.palette.success.main : '#1A472A',
+  transition: 'all 0.3s ease',
+  boxShadow: enabled ? '0 0 20px rgba(84, 214, 44, 0.5)' : '0 4px 20px rgba(0, 0, 0, 0.25)',
+  cursor: 'pointer',
+  
+  // Media query for larger screens
+  [theme.breakpoints.up('sm')]: {
+    width: 'auto',
     maxWidth: '400px',
+    margin: 0,
+  },
+
+  // Additional mobile styling
+  [theme.breakpoints.down('sm')]: {
+    bottom: 0,
+    borderRadius: '16px 16px 0 0', // Rounded corners only on top for mobile
+    left: 0,
+    transform: 'none',
+    width: '100%',
+    margin: 0,
   },
 }));
 
@@ -1812,27 +1827,32 @@ export default function VotingPage() {
       {isAdmin && (
         <FloatingCard 
           enabled={magicVotesEnabled}
-          onClick={handleMagicVotesToggle} // Add onClick handler
-          onKeyDown={(e) => {  // Add keyboard support
+          onClick={handleMagicVotesToggle}
+          onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
               handleMagicVotesToggle();
             }
           }}
-          tabIndex={0} // Make it focusable
-          role="button" // Add ARIA role
-          aria-pressed={magicVotesEnabled} // Add ARIA state
+          tabIndex={0}
+          role="button"
+          aria-pressed={magicVotesEnabled}
         >
           <CardContent sx={{ 
             display: 'flex', 
             alignItems: 'center', 
             padding: '12px 16px !important',
             gap: 2,
-            '&:last-child': { pb: '12px' } // Override MUI's default padding
+            '&:last-child': { pb: '12px' },
+            // Add responsive padding
+            [theme.breakpoints.down('sm')]: {
+              padding: '16px 24px !important',
+              '&:last-child': { pb: '16px' },
+            }
           }}>
             <AutoAwesomeIcon 
               sx={{ 
-                color: magicVotesEnabled ? '#FFD700' : '#B8860B',
+                color: magicVotesEnabled ? 'black' : '#FFE600', // Change to black when enabled
                 animation: magicVotesEnabled ? 'sparkle 1.5s infinite' : 'none',
                 '@keyframes sparkle': {
                   '0%, 100%': { opacity: 1 },
@@ -1843,21 +1863,25 @@ export default function VotingPage() {
             <Typography 
               variant="body1" 
               sx={{ 
-                color: 'white',
+                color: magicVotesEnabled ? 'black' : 'white',
                 flexGrow: 1
               }}
             >
-              Enable Magic Votes to boost your voting power
+              <b>Enable Magic Votes</b><br />
+              Boost your voting power
             </Typography>
             <Switch
               checked={magicVotesEnabled}
               onChange={handleMagicVotesToggle}
               sx={{
+                '& .MuiSwitch-switchBase': {
+                  color: magicVotesEnabled ? 'black' : '#FFE600', // Change to black when enabled
+                },
                 '& .MuiSwitch-switchBase.Mui-checked': {
-                  color: '#FFD700',
+                  color: 'black', // Always black when checked
                 },
                 '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                  backgroundColor: '#B8860B',
+                  backgroundColor: 'black', // Track becomes black when enabled
                 },
               }}
             />
