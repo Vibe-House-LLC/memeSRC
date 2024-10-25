@@ -2223,7 +2223,7 @@ export default function VotingPage() {
               },
             }}
           >
-            Confirm
+            Submit Vote
           </LoadingButton>
         </Box>
       </Dialog>
