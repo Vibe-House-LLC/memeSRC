@@ -55,17 +55,22 @@ const StyledBadge = styled(Badge)(() => ({
   },
 }));
 
-const StyledFab = styled(Fab)(({ theme, magicEnabled }) => ({
+const StyledFab = styled(Fab)(() => ({
   backgroundColor: 'rgba(255, 255, 255, 0.35)',
   zIndex: 0,
+}));
+
+// Add this new wrapper component
+const MagicVoteWrapper = styled('div')(({ theme, magicEnabled }) => ({
+  position: 'relative',
+  display: 'inline-flex',
+  opacity: magicEnabled ? 1 : 1, // Default opacity
+  transition: 'opacity 0.3s ease',
+  '&:hover': {
+    opacity: magicEnabled ? 0.7 : 1, // Only reduce opacity on hover when magic is enabled
+  },
   ...(magicEnabled && {
-    backgroundColor: 'rgba(255, 255, 255, 1)', // Make background white when enabled
-    boxShadow: '0 0 15px #4CAF50',
-    '&:hover': {
-      backgroundColor: 'rgba(255, 255, 255, 1)', // Pure white on hover
-      boxShadow: '0 0 20px #4CAF50',
-    },
-    '&::after': {
+    '&::before': {
       content: '""',
       position: 'absolute',
       top: -2,
@@ -1384,36 +1389,45 @@ export default function VotingPage() {
                                               color: 'success.main',
                                             }}
                                           >
-                                            <StyledFab
-                                              aria-label="upvote"
-                                              onClick={() =>
-                                                user
-                                                  ? handleUpvote(show.id)
-                                                  : navigate(
-                                                      `/login?dest=${encodeURIComponent(
-                                                        location.pathname
-                                                      )}`
-                                                    )
-                                              }
-                                              disabled={
-                                                user && (!userCanVote || votingStatus?.[show.id])
-                                              }
-                                              size="small"
-                                              sx={{
-                                                backgroundColor: isUpvoted
-                                                  ? 'success.light'
-                                                  : 'default',
-                                              }}
-                                              magicEnabled={magicVotesEnabled && userCanVote}
-                                            >
-                                              {userCanVote ? (
-                                                <ArrowUpward />
-                                              ) : isUpvoted ? (
-                                                <ArrowUpward sx={{ color: 'success.main' }} />
-                                              ) : (
-                                                <ArrowUpward />
-                                              )}
-                                            </StyledFab>
+                                            <MagicVoteWrapper magicEnabled={magicVotesEnabled && userCanVote}>
+                                              <StyledFab
+                                                aria-label="upvote"
+                                                onClick={() =>
+                                                  user
+                                                    ? handleUpvote(show.id)
+                                                    : navigate(
+                                                        `/login?dest=${encodeURIComponent(
+                                                          location.pathname
+                                                        )}`
+                                                      )
+                                                }
+                                                disabled={
+                                                  user && (!userCanVote || votingStatus?.[show.id])
+                                                }
+                                                size="small"
+                                                sx={{
+                                                  backgroundColor: isUpvoted
+                                                    ? 'success.light'
+                                                    : 'default',
+                                                  ...(magicVotesEnabled && userCanVote && {
+                                                    backgroundColor: 'rgba(255, 255, 255, 1)',
+                                                    boxShadow: '0 0 15px #4CAF50',
+                                                    '&:hover': {
+                                                      backgroundColor: 'rgba(255, 255, 255, 1)',
+                                                      boxShadow: '0 0 20px #4CAF50',
+                                                    },
+                                                  }),
+                                                }}
+                                              >
+                                                {userCanVote ? (
+                                                  <ArrowUpward />
+                                                ) : isUpvoted ? (
+                                                  <ArrowUpward sx={{ color: 'success.main' }} />
+                                                ) : (
+                                                  <ArrowUpward />
+                                                )}
+                                              </StyledFab>
+                                            </MagicVoteWrapper>
                                           </StyledBadge>
                                         </Tooltip>
                                       )}
@@ -1466,34 +1480,43 @@ export default function VotingPage() {
                                               color: 'error.main',
                                             }}
                                           >
-                                            <StyledFab
-                                              aria-label="downvote"
-                                              onClick={() =>
-                                                user
-                                                  ? handleDownvote(show.id)
-                                                  : navigate(
-                                                      `/login?dest=${encodeURIComponent(
-                                                        location.pathname
-                                                      )}`
-                                                    )
-                                              }
-                                              disabled={
-                                                user && (!userCanVote || votingStatus?.[show.id])
-                                              }
-                                              size="small"
-                                              sx={{
-                                                backgroundColor: isDownvoted
-                                                  ? 'error.light'
-                                                  : 'default',
-                                              }}
-                                              magicEnabled={magicVotesEnabled && userCanVote}
-                                            >
-                                              {isDownvoted ? (
-                                                <ArrowDownward sx={{ color: 'error.main' }} />
-                                              ) : (
-                                                <ArrowDownward />
-                                              )}
-                                            </StyledFab>
+                                            <MagicVoteWrapper magicEnabled={magicVotesEnabled && userCanVote}>
+                                              <StyledFab
+                                                aria-label="downvote"
+                                                onClick={() =>
+                                                  user
+                                                    ? handleDownvote(show.id)
+                                                    : navigate(
+                                                        `/login?dest=${encodeURIComponent(
+                                                          location.pathname
+                                                        )}`
+                                                      )
+                                                }
+                                                disabled={
+                                                  user && (!userCanVote || votingStatus?.[show.id])
+                                                }
+                                                size="small"
+                                                sx={{
+                                                  backgroundColor: isDownvoted
+                                                    ? 'error.light'
+                                                    : 'default',
+                                                  ...(magicVotesEnabled && userCanVote && {
+                                                    backgroundColor: 'rgba(255, 255, 255, 1)',
+                                                    boxShadow: '0 0 15px #4CAF50',
+                                                    '&:hover': {
+                                                      backgroundColor: 'rgba(255, 255, 255, 1)',
+                                                      boxShadow: '0 0 20px #4CAF50',
+                                                    },
+                                                  }),
+                                                }}
+                                              >
+                                                {isDownvoted ? (
+                                                  <ArrowDownward sx={{ color: 'error.main' }} />
+                                                ) : (
+                                                  <ArrowDownward />
+                                                )}
+                                              </StyledFab>
+                                            </MagicVoteWrapper>
                                           </StyledBadge>
                                         </Tooltip>
                                       )}
@@ -1546,36 +1569,45 @@ export default function VotingPage() {
                                             }}
                                             badgeContent={showVoteData.userVotesUp > 0 ? `+${showVoteData.userVotesUp}` : null}
                                           >
-                                            <StyledFab
-                                              aria-label="upvote"
-                                              onClick={() =>
-                                                user
-                                                  ? handleUpvote(show.id)
-                                                  : navigate(
-                                                      `/login?dest=${encodeURIComponent(
-                                                        location.pathname
-                                                      )}`
-                                                    )
-                                              }
-                                              disabled={
-                                                user && (!userCanVote || votingStatus?.[show.id])
-                                              }
-                                              size="small"
-                                              sx={{
-                                                backgroundColor: isUpvoted
-                                                  ? 'success.light'
-                                                  : 'default',
-                                              }}
-                                              magicEnabled={magicVotesEnabled && userCanVote}
-                                            >
-                                              {userCanVote ? (
-                                                <ThumbUp />
-                                              ) : isUpvoted ? (
-                                                <ThumbUp sx={{ color: 'success.main' }} />
-                                              ) : (
-                                                <Lock />
-                                              )}
-                                            </StyledFab>
+                                            <MagicVoteWrapper magicEnabled={magicVotesEnabled && userCanVote}>
+                                              <StyledFab
+                                                aria-label="upvote"
+                                                onClick={() =>
+                                                  user
+                                                    ? handleUpvote(show.id)
+                                                    : navigate(
+                                                        `/login?dest=${encodeURIComponent(
+                                                          location.pathname
+                                                        )}`
+                                                      )
+                                                }
+                                                disabled={
+                                                  user && (!userCanVote || votingStatus?.[show.id])
+                                                }
+                                                size="small"
+                                                sx={{
+                                                  backgroundColor: isUpvoted
+                                                    ? 'success.light'
+                                                    : 'default',
+                                                  ...(magicVotesEnabled && userCanVote && {
+                                                    backgroundColor: 'rgba(255, 255, 255, 1)',
+                                                    boxShadow: '0 0 15px #4CAF50',
+                                                    '&:hover': {
+                                                      backgroundColor: 'rgba(255, 255, 255, 1)',
+                                                      boxShadow: '0 0 20px #4CAF50',
+                                                    },
+                                                  }),
+                                                }}
+                                              >
+                                                {userCanVote ? (
+                                                  <ThumbUp />
+                                                ) : isUpvoted ? (
+                                                  <ThumbUp sx={{ color: 'success.main' }} />
+                                                ) : (
+                                                  <Lock />
+                                                )}
+                                              </StyledFab>
+                                            </MagicVoteWrapper>
                                           </StyledBadge>
                                         </Tooltip>
                                       )}
