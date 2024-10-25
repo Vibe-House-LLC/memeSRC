@@ -32,7 +32,7 @@ import {
   Switch,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import { ArrowUpward, ArrowDownward, Search, Close, ThumbUp, Whatshot, Lock, NewReleasesOutlined, Refresh } from '@mui/icons-material';
+import { ArrowUpward, ArrowDownward, Search, Close, ThumbUp, Whatshot, Lock, NewReleasesOutlined, Refresh, AutoFixHighRounded } from '@mui/icons-material';
 import FlipMove from 'react-flip-move';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -1853,14 +1853,10 @@ export default function VotingPage() {
               '&:last-child': { pb: '16px' },
             }
           }}>
-            <AutoAwesomeIcon 
+            <AutoFixHighRounded 
               sx={{ 
                 color: magicVotesEnabled ? 'black' : theme.palette.success.main, 
-                animation: magicVotesEnabled ? 'sparkle 1.5s infinite' : 'none',
-                '@keyframes sparkle': {
-                  '0%, 100%': { opacity: 1 },
-                  '50%': { opacity: 0.5 }
-                }
+                fontSize: '2rem',
               }} 
             />
             <Typography 
