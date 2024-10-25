@@ -28,6 +28,7 @@ import {
   ToggleButton,
   ToggleButtonGroup,
   DialogContentText,
+  Autocomplete,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { ArrowUpward, ArrowDownward, Search, Close, ThumbUp, Whatshot, Lock, NewReleasesOutlined, Refresh } from '@mui/icons-material';
@@ -360,6 +361,7 @@ export default function VotingPage() {
   // Update fetchVoteData function
   const fetchVoteData = useCallback(
     async (currentRankMethod) => {
+      setLoading(true);
       try {
         const apiEndpoint =
           currentRankMethod === 'combined'
@@ -427,6 +429,8 @@ export default function VotingPage() {
         fetchSeriesData(newSortedSeriesIds, 0, false);
       } catch (error) {
         console.error('Error in fetchVoteData:', error);
+      } finally {
+        setLoading(false);
       }
     },
     [user, fetchSeriesData]
@@ -506,100 +510,93 @@ export default function VotingPage() {
     }
   }, [filterAndSortSeriesData]);
 
-  // Modify handleSearchChange to show loading immediately
-  const handleSearchChange = (event) => {
-    const newSearchText = event.target.value;
-    setSearchText(newSearchText);
-    if (newSearchText) {
-      setIsSearching(true); // Show loading immediately when typing
-    } else {
+  // Replace the existing search-related functions with these:
+  const [searchOptions, setSearchOptions] = useState([]); // Add this state
+  const [selectedShow, setSelectedShow] = useState(null); // Add this state
+  
+  // Add this new function to handle text search
+  const handleTextSearch = async (searchValue) => {
+    setIsSearching(true);
+    try {
+      const response = await API.get('publicapi', '/votes/search', {
+        queryStringParameters: {
+          prefix: searchValue
+        },
+      });
+      const matchingSeriesIds = response.hits.map(hit => hit.id);
+      const seriesDataFromCache = matchingSeriesIds
+        .map(id => seriesCache.current[id])
+        .filter(Boolean);
+      setSeriesMetadata(seriesDataFromCache);
+      await fetchVoteDataForSeries(matchingSeriesIds);
+    } catch (error) {
+      console.error('Error searching series:', error);
+    } finally {
       setIsSearching(false);
     }
-    debouncedSetSearchText(newSearchText);
   };
 
-  // Update the useEffect that handles search to properly load the initial list
-  useEffect(() => {
-    if (rankMethod === null) {
-      return;
-    }
+  // Update handleSearchChange
+  const handleSearchChange = async (event, newValue, reason) => {
+    if (typeof newValue === 'string') {
+      setSearchText(newValue);
 
-    if (debouncedSearchText) {
-      const fetchSearchResults = async () => {
+      if (newValue === '') {
+        // Text field is cleared, reset the list
+        setSelectedShow(null);
+        setIsSearching(false);
+        setSearchOptions([]);
+
+        // Immediately clear the displayed list and show the loading spinner
+        setSeriesMetadata([]);
+        setLoading(true);
+
+        // Restore original list
+        fetchVoteData(rankMethod);
+        return;
+      }
+
+      if (newValue.length >= 2) {
+        setIsSearching(true);
         try {
           const response = await API.get('publicapi', '/votes/search', {
             queryStringParameters: {
-              prefix: debouncedSearchText
+              prefix: newValue
             },
           });
-
-          const hits = response.hits;
-          
-          // Map over the hits to get series IDs and ranks
-          const seriesIds = hits.map(hit => hit.id);
-          
-          // Create a map of ranks from search results based on rankMethod
-          const searchRanks = {};
-          hits.forEach(hit => {
-            searchRanks[hit.id] = rankMethod === 'combined' ? 
-              hit.rankBattleground : 
-              hit.rankUpvotes;
-          });
-
-          // Update originalRanks with search result ranks
-          setOriginalRanks(prevRanks => ({
-            ...prevRanks,
-            ...searchRanks
-          }));
-
-          // Rest of the existing search logic...
-          const seriesDataFromCache = seriesIds.map(id => seriesCache.current[id]).filter(Boolean);
-          const idsToFetch = seriesIds.filter(id => !seriesCache.current[id]);
-
-          if (idsToFetch.length > 0) {
-            const seriesDataPromises = idsToFetch.map((id) =>
-              API.graphql({
-                ...graphqlOperation(getSeries, { id }),
-                authMode: 'API_KEY',
-              })
-            );
-
-            const seriesDataResponses = await Promise.all(seriesDataPromises);
-            const fetchedSeriesData = seriesDataResponses.map(
-              (response) => response.data.getSeries
-            );
-
-            // Add fetched data to cache
-            fetchedSeriesData.forEach((data) => {
-              seriesCache.current[data.id] = data;
-            });
-
-            seriesDataFromCache.push(...fetchedSeriesData);
-          }
-
-          setSeriesMetadata(seriesDataFromCache.map(show => ({
-            ...show,
-            rank: searchRanks[show.id] || null,
-          })));
-          await fetchVoteDataForSeries(seriesIds);
-          
-          // Only set hasMore if we have more items than itemsPerPage
-          setHasMore(seriesDataFromCache.length > INITIAL_ITEMS);
-          
+          setSearchOptions(
+            response.hits.map(hit => ({
+              id: hit.id,
+              name: hit.name,
+              rank: rankMethod === 'combined' ? hit.rankBattleground : hit.rankUpvotes
+            }))
+          );
         } catch (error) {
           console.error('Error fetching search results:', error);
+          setSearchOptions([]);
         } finally {
-          setIsSearching(false); // Remove loading state after search completes
+          setIsSearching(false);
         }
-      };
-      fetchSearchResults();
-    } else if (debouncedSearchText === '') { // Explicitly check for empty string
-      // Fetch initial data when search is cleared
-      fetchVoteData(rankMethod).finally(() => {
+      } else {
+        // If less than 2 characters, clear search options
+        setSearchOptions([]);
+      }
+    } else if (newValue) {
+      // Handle selection from autocomplete
+      setSelectedShow(newValue);
+      setSearchText(newValue.name);
+      setIsSearching(true);
+      
+      try {
+        const seriesIds = [newValue.id];
+        const seriesDataFromCache = seriesIds.map(id => seriesCache.current[id]).filter(Boolean);
+        setSeriesMetadata(seriesDataFromCache);
+        await fetchVoteDataForSeries(seriesIds);
+      } finally {
         setIsSearching(false);
-      });
+      }
     }
-  }, [debouncedSearchText, rankMethod]);
+  };
 
   useEffect(() => {
     if (!loading && seriesMetadata.length > 0) {
@@ -801,43 +798,39 @@ export default function VotingPage() {
   const sortedSeriesMetadata = useMemo(() => {
     if (seriesMetadata.length === 0) return [];
 
-    const searchFilteredShows = seriesMetadata.filter((show) =>
-      show.name.toLowerCase().includes(searchText.toLowerCase())
-    );
+    // Only filter if there's a selected show
+    const filteredShows = selectedShow 
+      ? seriesMetadata.filter(show => show.id === selectedShow.id)
+      : seriesMetadata;
 
-    const sortedShows = [...searchFilteredShows];
+    const sortedShows = [...filteredShows];
 
-    // Sort the shows based on voteData and rankMethod
+    // Rest of the sorting logic remains the same...
     if (sortedShows.length > 0) {
       switch (rankMethod) {
         case 'combined':
           sortedShows.sort((a, b) => {
-            const voteDiffA =
-              (voteData[a.id]?.totalVotesUp || 0) - (voteData[a.id]?.totalVotesDown || 0);
-            const voteDiffB =
-              (voteData[b.id]?.totalVotesUp || 0) - (voteData[b.id]?.totalVotesDown || 0);
+            const voteDiffA = (voteData[a.id]?.totalVotesUp || 0) - (voteData[a.id]?.totalVotesDown || 0);
+            const voteDiffB = (voteData[b.id]?.totalVotesUp || 0) - (voteData[b.id]?.totalVotesDown || 0);
             return voteDiffB - voteDiffA || safeCompareSeriesTitles(a.id, b.id);
           });
           break;
         case 'downvotes':
           sortedShows.sort((a, b) => {
-            const downvoteDiff =
-              (voteData[b.id]?.totalVotesDown || 0) - (voteData[a.id]?.totalVotesDown || 0);
+            const downvoteDiff = (voteData[b.id]?.totalVotesDown || 0) - (voteData[a.id]?.totalVotesDown || 0);
             return downvoteDiff || safeCompareSeriesTitles(a.id, b.id);
           });
           break;
         default: // 'upvotes'
           sortedShows.sort((a, b) => {
-            const upvoteDiff =
-              (voteData[b.id]?.totalVotesUp || 0) - (voteData[a.id]?.totalVotesUp || 0);
+            const upvoteDiff = (voteData[b.id]?.totalVotesUp || 0) - (voteData[a.id]?.totalVotesUp || 0);
             return upvoteDiff || safeCompareSeriesTitles(a.id, b.id);
           });
       }
     }
 
-    // Do not assign rank here
-    return sortedShows;
-  }, [seriesMetadata, searchText, voteData, rankMethod, safeCompareSeriesTitles]);
+    return sortedShows; // Add explicit return here
+  }, [seriesMetadata, selectedShow, voteData, rankMethod, safeCompareSeriesTitles]);
 
   // Add a new function to fetch vote data for specific series IDs:
 
@@ -940,8 +933,14 @@ export default function VotingPage() {
   const handleSearchKeyDown = (event) => {
     if (event.key === 'Enter') {
       searchInputRef.current?.blur(); // Remove focus from the input
+      handleTextSearch(searchText); // Perform search with current text
     }
   };
+
+  // Make sure this useEffect is present and unchanged
+  useEffect(() => {
+    fetchVoteData(rankMethod);
+  }, [rankMethod]); // Dependencies should include rankMethod
 
   return (
     <>
@@ -1018,33 +1017,57 @@ export default function VotingPage() {
           </ToggleButtonGroup>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <TextField
+            <Autocomplete
               fullWidth
-              size="large"
-              variant="outlined"
-              value={searchText}
-              onChange={handleSearchChange}
-              onKeyDown={handleSearchKeyDown} // Add this line
-              placeholder="Filter by name..."
-              inputRef={searchInputRef}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Search />
-                  </InputAdornment>
-                ),
-                endAdornment: (searchText || isSearching) && (
-                  <InputAdornment position="end">
-                    <IconButton edge="end" onClick={clearSearch} disabled={isSearching && !searchText}>
-                      {isSearching ? (
-                        <CircularProgress size={20} sx={{ color: 'white' }} />
-                      ) : (
-                        <Close />
-                      )}
-                    </IconButton>
-                  </InputAdornment>
-                ),
+              freeSolo
+              options={searchOptions}
+              getOptionLabel={(option) => {
+                if (typeof option === 'string') return option;
+                return option.name;
               }}
+              filterOptions={(x) => x}
+              value={selectedShow}
+              onChange={handleSearchChange}
+              onInputChange={(event, newInputValue, reason) => {
+                handleSearchChange(event, newInputValue, reason);
+              }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  fullWidth
+                  variant="outlined"
+                  placeholder="Search shows..."
+                  onKeyDown={handleSearchKeyDown}
+                  InputProps={{
+                    ...params.InputProps,
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Search />
+                      </InputAdornment>
+                    ),
+                    endAdornment: (
+                      <>
+                        {isSearching && <CircularProgress size={20} sx={{ mr: 1 }} />}
+                        {params.InputProps.endAdornment}
+                      </>
+                    ),
+                  }}
+                />
+              )}
+              renderOption={(props, option) => (
+                <li {...props}>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    {option.rank && (
+                      <Chip 
+                        size="small" 
+                        label={`#${option.rank}`}
+                        sx={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', minWidth: '45px' }}
+                      />
+                    )}
+                    <Typography variant="body1">{option.name}</Typography>
+                  </Stack>
+                </li>
+              )}
             />
             
             {isAdmin && (
