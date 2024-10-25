@@ -1927,8 +1927,8 @@ export default function VotingPage() {
                 flexGrow: 1
               }}
             >
-              <b>Enable Magic Votes</b><br />
-              Boost your voting power
+              <b>{magicVotesEnabled ? 'Magic Votes ON' : 'Enable Magic Votes'}</b><br />
+              {magicVotesEnabled ? 'Boosting voting power' : 'Boost your voting power'}
             </Typography>
             <Switch
               checked={magicVotesEnabled}
