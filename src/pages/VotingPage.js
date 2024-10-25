@@ -29,6 +29,7 @@ import {
   ToggleButtonGroup,
   DialogContentText,
   Autocomplete,
+  Switch,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { ArrowUpward, ArrowDownward, Search, Close, ThumbUp, Whatshot, Lock, NewReleasesOutlined, Refresh } from '@mui/icons-material';
@@ -38,6 +39,7 @@ import { Helmet } from 'react-helmet-async';
 import { LoadingButton } from '@mui/lab';
 import { GridFilterAltIcon, GridSearchIcon } from '@mui/x-data-grid';
 import { debounce } from 'lodash';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'; // Add this import
 import { listSeries, getSeries } from '../graphql/queries';
 import { UserContext } from '../UserContext';
 import TvdbSearch from '../components/TvdbSearch/TvdbSearch';
@@ -53,12 +55,64 @@ const StyledBadge = styled(Badge)(() => ({
   },
 }));
 
-const StyledFab = styled(Fab)(() => ({
+const StyledFab = styled(Fab)(({ theme, magicEnabled }) => ({
   backgroundColor: 'rgba(255, 255, 255, 0.35)',
   zIndex: 0,
+  ...(magicEnabled && {
+    backgroundColor: 'rgba(255, 255, 255, 1)', // Make background white when enabled
+    boxShadow: '0 0 15px #4CAF50',
+    '&:hover': {
+      backgroundColor: 'rgba(255, 255, 255, 1)', // Pure white on hover
+      boxShadow: '0 0 20px #4CAF50',
+    },
+    '&::after': {
+      content: '""',
+      position: 'absolute',
+      top: -2,
+      left: -2,
+      right: -2,
+      bottom: -2,
+      borderRadius: '50%',
+      background: 'linear-gradient(45deg, #4CAF50, #81C784)',
+      opacity: 0.4,
+      zIndex: -1,
+      animation: 'pulse 1.5s infinite',
+    },
+    '@keyframes pulse': {
+      '0%': {
+        transform: 'scale(1)',
+        opacity: 0.4,
+      },
+      '50%': {
+        transform: 'scale(1.2)',
+        opacity: 0.1,
+      },
+      '100%': {
+        transform: 'scale(1)',
+        opacity: 0.4,
+      },
+    },
+  }),
 }));
 
 const StyledImg = styled('img')``;
+
+// Add this styled component after other styled components
+const FloatingCard = styled(Card)(({ theme, enabled }) => ({
+  position: 'fixed',
+  bottom: 20,
+  left: '50%',
+  transform: 'translateX(-50%)',
+  width: 'auto',
+  maxWidth: '90%',
+  zIndex: 1000,
+  backgroundColor: enabled ? '#2E7D32' : '#1B5E20',
+  transition: 'background-color 0.3s ease',
+  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.25)',
+  '@media (min-width: 600px)': {
+    maxWidth: '400px',
+  },
+}));
 
 export default function VotingPage() {
   const { shows: searchableShows } = useShows();  // Add this line
@@ -978,6 +1032,17 @@ export default function VotingPage() {
     setShowRefreshDialog(true);
   };
 
+  const [magicVotesEnabled, setMagicVotesEnabled] = useState(false);
+
+  // Add this handler after other handlers
+  const handleMagicVotesToggle = () => {
+    if (!user) {
+      navigate(`/login?dest=${encodeURIComponent(location.pathname)}`);
+      return;
+    }
+    setMagicVotesEnabled(!magicVotesEnabled);
+  };
+
   return (
     <>
       <Helmet>
@@ -1339,6 +1404,7 @@ export default function VotingPage() {
                                                   ? 'success.light'
                                                   : 'default',
                                               }}
+                                              magicEnabled={magicVotesEnabled && userCanVote}
                                             >
                                               {userCanVote ? (
                                                 <ArrowUpward />
@@ -1420,6 +1486,7 @@ export default function VotingPage() {
                                                   ? 'error.light'
                                                   : 'default',
                                               }}
+                                              magicEnabled={magicVotesEnabled && userCanVote}
                                             >
                                               {isDownvoted ? (
                                                 <ArrowDownward sx={{ color: 'error.main' }} />
@@ -1499,6 +1566,7 @@ export default function VotingPage() {
                                                   ? 'success.light'
                                                   : 'default',
                                               }}
+                                              magicEnabled={magicVotesEnabled && userCanVote}
                                             >
                                               {userCanVote ? (
                                                 <ThumbUp />
@@ -1708,6 +1776,48 @@ export default function VotingPage() {
           </Button>
         </DialogActions>
       </Dialog>
+      {isAdmin && (
+        <FloatingCard enabled={magicVotesEnabled}>
+          <CardContent sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            padding: '12px 16px !important',
+            gap: 2 
+          }}>
+            <AutoAwesomeIcon 
+              sx={{ 
+                color: magicVotesEnabled ? '#FFD700' : '#B8860B',
+                animation: magicVotesEnabled ? 'sparkle 1.5s infinite' : 'none',
+                '@keyframes sparkle': {
+                  '0%, 100%': { opacity: 1 },
+                  '50%': { opacity: 0.5 }
+                }
+              }} 
+            />
+            <Typography 
+              variant="body1" 
+              sx={{ 
+                color: 'white',
+                flexGrow: 1
+              }}
+            >
+              Enable Magic Votes to boost your voting power
+            </Typography>
+            <Switch
+              checked={magicVotesEnabled}
+              onChange={handleMagicVotesToggle}
+              sx={{
+                '& .MuiSwitch-switchBase.Mui-checked': {
+                  color: '#FFD700',
+                },
+                '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                  backgroundColor: '#B8860B',
+                },
+              }}
+            />
+          </CardContent>
+        </FloatingCard>
+      )}
     </>
   );
 }
