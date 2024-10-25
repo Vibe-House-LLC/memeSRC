@@ -116,8 +116,7 @@ const FloatingCard = styled(Card)(({ theme, enabled }) => ({
   transition: 'all 0.3s ease',
   boxShadow: enabled ? '0 0 20px rgba(84, 214, 44, 0.5)' : '0 4px 20px rgba(0, 0, 0, 0.25)',
   cursor: 'pointer',
-  animation: 'slideUp 0.5s ease-out',
-
+  animation: 'slideUp 0.75s',
   // Add the keyframes for the animation
   '@keyframes slideUp': {
     from: {
@@ -142,7 +141,7 @@ const FloatingCard = styled(Card)(({ theme, enabled }) => ({
     width: '100%',
     margin: 0,
     // Update animation for mobile
-    animation: 'slideUpMobile 0.5s ease-out',
+    animation: 'slideUpMobile 0.75s',
     '@keyframes slideUpMobile': {
       from: {
         transform: 'translateY(100%)',
@@ -152,6 +151,45 @@ const FloatingCard = styled(Card)(({ theme, enabled }) => ({
         transform: 'translateY(0)',
         opacity: 1,
       },
+    },
+  },
+}));
+
+// Add this new styled component for the shimmer wrapper
+const ShimmerWrapper = styled('div')(({ enabled }) => ({
+  position: 'absolute',
+  top: 0,
+  left: 0,
+  width: '100%',
+  height: '100%',
+  overflow: 'hidden', // Contain the shimmer effect
+  borderRadius: 'inherit', // Match the card's border radius
+
+  '&::before': {
+    content: '""',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    background: enabled ? 'none' : `linear-gradient(
+      -45deg,
+      transparent 0%,
+      rgba(84, 214, 44, .2) 50%,
+      transparent 100%
+    )`,
+    animation: enabled ? 'none' : 'shimmer 5s infinite',
+    zIndex: 1,
+  },
+
+  '@keyframes shimmer': {
+    '0%': {
+      transform: 'translateX(-200%)',
+      opacity: .75
+    },
+    '100%': {
+      transform: 'translateX(100%)',
+      opacity: .5
     },
   },
 }));
@@ -1899,6 +1937,7 @@ export default function VotingPage() {
             overflow: 'visible', // Ensure the NEW! indicator is fully visible
           }}
         >
+          <ShimmerWrapper enabled={magicVotesEnabled} />
           {/* NEW! indicator */}
           <Box
             sx={{
@@ -1912,6 +1951,7 @@ export default function VotingPage() {
               fontWeight: 'bold',
               borderRadius: '4px',
               boxShadow: '0 0 5px rgba(0,0,0,0.3)',
+              zIndex: 1,
               // Add responsive positioning for small screens
               [theme.breakpoints.down('sm')]: {
                 top: '8px',
@@ -1924,6 +1964,8 @@ export default function VotingPage() {
           </Box>
 
           <CardContent sx={{ 
+            position: 'relative',
+            zIndex: 2,
             display: 'flex', 
             alignItems: 'center', 
             padding: '12px 16px !important',
