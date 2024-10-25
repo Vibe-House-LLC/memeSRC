@@ -114,6 +114,7 @@ const FloatingCard = styled(Card)(({ theme, enabled }) => ({
   backgroundColor: enabled ? '#2E7D32' : '#1B5E20',
   transition: 'background-color 0.3s ease',
   boxShadow: '0 4px 20px rgba(0, 0, 0, 0.25)',
+  cursor: 'pointer', // Add cursor pointer
   '@media (min-width: 600px)': {
     maxWidth: '400px',
   },
@@ -1809,12 +1810,25 @@ export default function VotingPage() {
         </DialogActions>
       </Dialog>
       {isAdmin && (
-        <FloatingCard enabled={magicVotesEnabled}>
+        <FloatingCard 
+          enabled={magicVotesEnabled}
+          onClick={handleMagicVotesToggle} // Add onClick handler
+          onKeyDown={(e) => {  // Add keyboard support
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              handleMagicVotesToggle();
+            }
+          }}
+          tabIndex={0} // Make it focusable
+          role="button" // Add ARIA role
+          aria-pressed={magicVotesEnabled} // Add ARIA state
+        >
           <CardContent sx={{ 
             display: 'flex', 
             alignItems: 'center', 
             padding: '12px 16px !important',
-            gap: 2 
+            gap: 2,
+            '&:last-child': { pb: '12px' } // Override MUI's default padding
           }}>
             <AutoAwesomeIcon 
               sx={{ 
