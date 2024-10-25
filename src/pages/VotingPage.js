@@ -1076,7 +1076,7 @@ export default function VotingPage({ shows: searchableShows }) {
               }}
             >
               <Typography variant="h6" gutterBottom>
-                {isSearching ? 'Searching' : 'Loading'}
+                Loading
               </Typography>
               <CircularProgress />
             </Grid>
@@ -1471,6 +1471,7 @@ export default function VotingPage({ shows: searchableShows }) {
                     padding: '0 20px',
                   }}
                 >
+                  <Typography variant="h6" gutterBottom>Loading</Typography>
                   <CircularProgress />
                 </Grid>
               )}
