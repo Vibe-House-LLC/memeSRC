@@ -133,6 +133,9 @@ export default function VotingPage() {
   // Add this near other state declarations
   const [searchOptions, setSearchOptions] = useState([]);
 
+  // Add this new state to store search result ranks
+  const [searchResultRanks, setSearchResultRanks] = useState({});
+
   // Add this debounced search function after other function declarations
   const debouncedSearch = useCallback(
     debounce(async (searchValue) => {
@@ -544,7 +547,7 @@ export default function VotingPage() {
     }
   }, [filterAndSortSeriesData]);
 
-  // Update the useEffect that handles search to properly load the initial list
+  // Update the useEffect that handles search to store the ranks
   useEffect(() => {
     if (rankMethod === null) {
       return;
@@ -561,7 +564,17 @@ export default function VotingPage() {
 
           const hits = response.hits;
           
-          // Map over the hits to get series IDs and ranks
+          // Store the ranks from search results
+          const newSearchRanks = {};
+          hits.forEach(hit => {
+            newSearchRanks[hit.id] = {
+              upvotes: hit.rankUpvotes,
+              battleground: hit.rankBattleground
+            };
+          });
+          setSearchResultRanks(newSearchRanks);
+
+          // Rest of the existing search logic...
           const seriesIds = hits.map(hit => hit.id);
           
           // Create a map of ranks from search results based on rankMethod
@@ -619,8 +632,9 @@ export default function VotingPage() {
         }
       };
       fetchSearchResults();
-    } else if (debouncedSearchText === '') { // Explicitly check for empty string
-      // Fetch initial data when search is cleared
+    } else if (debouncedSearchText === '') {
+      // Clear search ranks when search is cleared
+      setSearchResultRanks({});
       fetchVoteData(rankMethod).finally(() => {
         setIsSearching(false);
       });
@@ -1157,8 +1171,14 @@ export default function VotingPage() {
                                   <Box mr={2} position="relative">
                                     <Badge
                                       badgeContent={
+                                        // First check if we have the rank in our original data
                                         originalRanks[show.id] !== undefined || show.rank !== null ? (
                                           `#${originalRanks[show.id] || show.rank}`
+                                        ) : // If not, then use search rank as fallback when in search mode
+                                        debouncedSearchText && searchResultRanks[show.id] ? (
+                                          `#${rankMethod === 'combined' ? 
+                                            searchResultRanks[show.id].battleground : 
+                                            searchResultRanks[show.id].upvotes}`
                                         ) : (
                                           <CircularProgress
                                             size={12}
