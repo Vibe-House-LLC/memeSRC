@@ -30,6 +30,7 @@ import {
   DialogContentText,
   Autocomplete,
   Switch,
+  useMediaQuery,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { ArrowUpward, ArrowDownward, Search, Close, ThumbUp, Whatshot, Lock, NewReleasesOutlined, Refresh, AutoFixHighRounded } from '@mui/icons-material';
@@ -1155,6 +1156,7 @@ export default function VotingPage() {
 
   // Add these new state variables after other state declarations
   const [isAdmin, setIsAdmin] = useState(false);
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   // Add this new useEffect to check admin status
   useEffect(() => {
@@ -2099,165 +2101,130 @@ export default function VotingPage() {
         </FloatingCard>
       )}
 
-      {/* Add the magic vote dialog */}
+      {/* Updated Boost Vote Dialog */}
       <Dialog
         open={magicVoteDialogOpen}
         onClose={() => setMagicVoteDialogOpen(false)}
+        maxWidth="xs"
         fullWidth
-        maxWidth="sm"
         PaperProps={{
           sx: {
             backgroundColor: 'black',
             color: 'white',
-            borderRadius: '15px',
+            borderRadius: 2,
           },
         }}
       >
-        <Box sx={{ position: 'relative', p: 3 }}>
-          {/* Close button */}
-          <Fab
-            color="secondary"
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            p: 3,
+            position: 'relative',
+          }}
+        >
+          {/* Cancel Button with X Icon */}
+          <IconButton
             aria-label="close"
             onClick={() => setMagicVoteDialogOpen(false)}
             sx={{
               position: 'absolute',
-              top: (theme) => theme.spacing(1),
-              right: (theme) => theme.spacing(1),
-              backgroundColor: '#222',
-              '&:hover': {
-                backgroundColor: '#333',
-              },
+              top: 8,
+              right: 8,
+              color: 'white',
             }}
           >
             <Close />
-          </Fab>
+          </IconButton>
 
-          {/* Dialog Title */}
-          <Stack
-            direction="row"
-            color="#54d62c"
-            alignItems="center"
-            justifyContent="left"
-            spacing={1}
-            mb={2}
-          >
-            <AutoFixHighRounded fontSize="large" />
-            <Typography variant="h3">
-              Boost {magicVoteBoost > 0 ? 'Upvote' : 'Downvote'}
-            </Typography>
-          </Stack>
+          {/* Boost Upvote/Downvote Heading */}
+          <Typography variant="h5" align="center" gutterBottom sx={{ color: '#54d62c' }}>
+            Boost {magicVoteBoost > 0 ? 'Upvote' : 'Downvote'}
+          </Typography>
 
-          {/* Display series details */}
+          {/* Thumbnail Image and Series Title */}
           {magicVoteSeries && (
-            <Box display="flex" alignItems="center" mb={3}>
-              <Box mr={2}>
-                <img
-                  src={magicVoteSeries.image || 'path/to/placeholder-image.jpg'}
-                  alt={magicVoteSeries.name}
-                  style={{ width: '80px', height: '120px', objectFit: 'cover', borderRadius: '4px' }}
-                />
-              </Box>
-              <Typography variant="h4">{magicVoteSeries.name}</Typography>
+            <Box sx={{ mt: 3, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <img
+                src={magicVoteSeries.image || 'path/to/placeholder-image.jpg'}
+                alt={magicVoteSeries.name}
+                style={{
+                  width: '50px',
+                  height: '75px',
+                  objectFit: 'cover',
+                  borderRadius: 4,
+                  marginRight: 8,
+                }}
+              />
+              <Typography variant="h6" noWrap>
+                {magicVoteSeries.name}
+              </Typography>
             </Box>
           )}
 
-          {/* Instruction Text */}
-          <Typography variant="h5" mb={2}>
-            Select the boost multiplier:
-          </Typography>
-
-          {/* Multiplier Buttons */}
-          <Stack direction="row" spacing={2} justifyContent="center" mb={3}>
-            <Button
-              variant={magicVoteMultiplier === 1 ? 'contained' : 'outlined'}
-              onClick={() => setMagicVoteMultiplier(1)}
-              sx={{
-                color: 'white',
-                borderColor: '#54d62c',
-                backgroundColor: magicVoteMultiplier === 1 ? '#54d62c' : 'transparent',
-                '&:hover': {
-                  backgroundColor: magicVoteMultiplier === 1 ? '#54d62c' : 'rgba(84, 214, 44, 0.1)',
-                },
-              }}
-            >
-              1x
-            </Button>
-            <Button
-              variant={magicVoteMultiplier === 5 ? 'contained' : 'outlined'}
-              onClick={() => setMagicVoteMultiplier(5)}
-              sx={{
-                color: 'white',
-                borderColor: '#54d62c',
-                backgroundColor: magicVoteMultiplier === 5 ? '#54d62c' : 'transparent',
-                '&:hover': {
-                  backgroundColor: magicVoteMultiplier === 5 ? '#54d62c' : 'rgba(84, 214, 44, 0.1)',
-                },
-              }}
-            >
-              5x
-            </Button>
-            <Button
-              variant={magicVoteMultiplier === 10 ? 'contained' : 'outlined'}
-              onClick={() => setMagicVoteMultiplier(10)}
-              sx={{
-                color: 'white',
-                borderColor: '#54d62c',
-                backgroundColor: magicVoteMultiplier === 10 ? '#54d62c' : 'transparent',
-                '&:hover': {
-                  backgroundColor: magicVoteMultiplier === 10 ? '#54d62c' : 'rgba(84, 214, 44, 0.1)',
-                },
-              }}
-            >
-              10x
-            </Button>
-          </Stack>
-
-          {/* Display User Credits */}
-          <Typography variant="body1" component="span" fontWeight={800} fontSize={20} textAlign="center">
-            You have{' '}
-            <Typography
-              variant="body1"
-              component="span"
-              fontWeight={800}
-              fontSize={26}
-              sx={{ color: (theme) => theme.palette.success.main }}
-              textAlign="center"
-            >
-              {user?.userDetails?.credits || 0}
-            </Typography>{' '}
-            credits
-          </Typography>
-
-          {/* Dialog Actions */}
-          <Box mt={4} display="flex" justifyContent="space-between">
-            <Button
-              onClick={() => setMagicVoteDialogOpen(false)}
-              variant="outlined"
-              sx={{
-                color: 'white',
-                borderColor: '#666',
-                '&:hover': {
-                  backgroundColor: '#333',
-                },
-              }}
-            >
-              Cancel
-            </Button>
-            <LoadingButton
-              onClick={handleMagicVoteSubmit}
-              variant="contained"
-              loading={isSubmittingMagicVote}
-              sx={{
-                backgroundColor: '#54d62c',
-                color: 'black',
-                '&:hover': {
-                  backgroundColor: '#45b233',
-                },
-              }}
-            >
-              BOOST VOTE
-            </LoadingButton>
+          {/* Multiplier Selection */}
+          <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
+            <Stack direction="row" spacing={2}>
+              {[1, 5, 10].map((multiplier) => (
+                <Button
+                  key={multiplier}
+                  variant={magicVoteMultiplier === multiplier ? 'contained' : 'outlined'}
+                  onClick={() => setMagicVoteMultiplier(multiplier)}
+                  sx={{
+                    fontSize: '1.5rem',
+                    minWidth: '80px',
+                    height: '80px',
+                    color: magicVoteMultiplier === multiplier ? 'black' : 'white',
+                    borderColor: '#54d62c',
+                    backgroundColor:
+                      magicVoteMultiplier === multiplier ? '#54d62c' : 'transparent',
+                    '&:hover': {
+                      backgroundColor:
+                        magicVoteMultiplier === multiplier
+                          ? '#54d62c'
+                          : 'rgba(84, 214, 44, 0.1)',
+                    },
+                  }}
+                >
+                  {multiplier}×
+                </Button>
+              ))}
+            </Stack>
           </Box>
+
+          {/* Cost Information */}
+          <Typography variant="body2" align="center" sx={{ mt: 2 }}>
+            Cost:{' '}
+            {magicVoteMultiplier === 1
+              ? '0 credits'
+              : magicVoteMultiplier === 5
+              ? '1 credit'
+              : '2 credits'}
+          </Typography>
+
+          {/* Confirm Button */}
+          <LoadingButton
+            onClick={handleMagicVoteSubmit}
+            variant="contained"
+            loading={isSubmittingMagicVote}
+            disabled={
+              user?.userDetails?.credits <
+              (magicVoteMultiplier === 1 ? 0 : magicVoteMultiplier === 5 ? 1 : 2)
+            }
+            fullWidth
+            sx={{
+              mt: 4,
+              py: 1.5,
+              fontSize: '1.2rem',
+              backgroundColor: '#54d62c',
+              color: 'black',
+              '&:hover': {
+                backgroundColor: '#45b233',
+              },
+            }}
+          >
+            Confirm
+          </LoadingButton>
         </Box>
       </Dialog>
     </>
