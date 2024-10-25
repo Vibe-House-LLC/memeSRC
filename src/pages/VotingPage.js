@@ -39,7 +39,7 @@ import { Helmet } from 'react-helmet-async';
 import { LoadingButton } from '@mui/lab';
 import { GridFilterAltIcon, GridSearchIcon } from '@mui/x-data-grid';
 import { debounce } from 'lodash';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'; // Add this import
+import MuiAlert from '@mui/material/Alert';
 import { listSeries, getSeries } from '../graphql/queries';
 import { UserContext } from '../UserContext';
 import TvdbSearch from '../components/TvdbSearch/TvdbSearch';
@@ -194,6 +194,11 @@ const ShimmerWrapper = styled('div')(({ enabled }) => ({
   },
 }));
 
+// Define the Alert component for consistent styling
+const Alert = React.forwardRef((props, ref) => (
+  <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />
+));
+
 export default function VotingPage() {
   const { shows: searchableShows } = useShows();  // Add this line
   const navigate = useNavigate();
@@ -284,6 +289,9 @@ export default function VotingPage() {
   const [magicVoteBoost, setMagicVoteBoost] = useState(1);
   const [magicVoteType, setMagicVoteType] = useState(1); // 1 for upvote, -1 for downvote
   const [magicVoteMultiplier, setMagicVoteMultiplier] = useState(1);
+
+  // Add this state variable for loading state
+  const [isSubmittingMagicVote, setIsSubmittingMagicVote] = useState(false);
 
   // Add this debounced search function after other function declarations
   const debouncedSearch = useCallback(
@@ -885,6 +893,7 @@ export default function VotingPage() {
 
   // Add a new function to handle the boosted vote submission
   const handleMagicVoteSubmit = async () => {
+    setIsSubmittingMagicVote(true); // Set loading state
     const seriesId = magicVoteSeries.id;
     const boost = magicVoteType * magicVoteMultiplier; // calculate final boost value
 
@@ -901,7 +910,6 @@ export default function VotingPage() {
 
       // Update voteData in state
       setVoteData((prevVoteData) => {
-        // ... update vote data logic similar to original handleVote
         const updatedVoteData = { ...prevVoteData };
         const updatedSeriesData = { ...updatedVoteData[seriesId] };
 
@@ -925,10 +933,11 @@ export default function VotingPage() {
       });
 
       setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: false }));
-
     } catch (error) {
       setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: false }));
       console.error('Error on voting:', error);
+    } finally {
+      setIsSubmittingMagicVote(false); // Reset loading state
     }
   };
 
@@ -2097,59 +2106,159 @@ export default function VotingPage() {
         fullWidth
         maxWidth="sm"
         PaperProps={{
-          style: {
+          sx: {
             backgroundColor: 'black',
             color: 'white',
+            borderRadius: '15px',
           },
         }}
       >
-        <DialogTitle>
-          Boost {magicVoteBoost > 0 ? 'Upvote' : 'Downvote'}
-        </DialogTitle>
-        <DialogContent>
+        <Box sx={{ position: 'relative', p: 3 }}>
+          {/* Close button */}
+          <Fab
+            color="secondary"
+            aria-label="close"
+            onClick={() => setMagicVoteDialogOpen(false)}
+            sx={{
+              position: 'absolute',
+              top: (theme) => theme.spacing(1),
+              right: (theme) => theme.spacing(1),
+              backgroundColor: '#222',
+              '&:hover': {
+                backgroundColor: '#333',
+              },
+            }}
+          >
+            <Close />
+          </Fab>
+
+          {/* Dialog Title */}
+          <Stack
+            direction="row"
+            color="#54d62c"
+            alignItems="center"
+            justifyContent="left"
+            spacing={1}
+            mb={2}
+          >
+            <AutoFixHighRounded fontSize="large" />
+            <Typography variant="h3">
+              Boost {magicVoteBoost > 0 ? 'Upvote' : 'Downvote'}
+            </Typography>
+          </Stack>
+
           {/* Display series details */}
           {magicVoteSeries && (
-            <Box display="flex" alignItems="center">
-              {/* Add series image and name */}
+            <Box display="flex" alignItems="center" mb={3}>
               <Box mr={2}>
                 <img
                   src={magicVoteSeries.image || 'path/to/placeholder-image.jpg'}
                   alt={magicVoteSeries.name}
-                  style={{ width: '80px', height: '120px', objectFit: 'cover' }}
+                  style={{ width: '80px', height: '120px', objectFit: 'cover', borderRadius: '4px' }}
                 />
               </Box>
-              <Typography variant="h6">
-                {magicVoteSeries.name}
-              </Typography>
+              <Typography variant="h4">{magicVoteSeries.name}</Typography>
             </Box>
           )}
 
-          <DialogContentText sx={{ mt: 2 }}>
+          {/* Instruction Text */}
+          <Typography variant="h5" mb={2}>
             Select the boost multiplier:
-          </DialogContentText>
+          </Typography>
 
-          <ToggleButtonGroup
-            color="primary"
-            value={magicVoteMultiplier}
-            exclusive
-            onChange={handleMagicVoteMultiplierChange}
-            aria-label="Boost Multiplier"
-            fullWidth
-            sx={{ mt: 2 }}
-          >
-            <ToggleButton value={1}>1x</ToggleButton>
-            <ToggleButton value={5}>5x</ToggleButton>
-            <ToggleButton value={10}>10x</ToggleButton>
-          </ToggleButtonGroup>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setMagicVoteDialogOpen(false)} color="secondary">
-            Cancel
-          </Button>
-          <Button onClick={handleMagicVoteSubmit} variant="contained" color="primary">
-            BOOST VOTE
-          </Button>
-        </DialogActions>
+          {/* Multiplier Buttons */}
+          <Stack direction="row" spacing={2} justifyContent="center" mb={3}>
+            <Button
+              variant={magicVoteMultiplier === 1 ? 'contained' : 'outlined'}
+              onClick={() => setMagicVoteMultiplier(1)}
+              sx={{
+                color: 'white',
+                borderColor: '#54d62c',
+                backgroundColor: magicVoteMultiplier === 1 ? '#54d62c' : 'transparent',
+                '&:hover': {
+                  backgroundColor: magicVoteMultiplier === 1 ? '#54d62c' : 'rgba(84, 214, 44, 0.1)',
+                },
+              }}
+            >
+              1x
+            </Button>
+            <Button
+              variant={magicVoteMultiplier === 5 ? 'contained' : 'outlined'}
+              onClick={() => setMagicVoteMultiplier(5)}
+              sx={{
+                color: 'white',
+                borderColor: '#54d62c',
+                backgroundColor: magicVoteMultiplier === 5 ? '#54d62c' : 'transparent',
+                '&:hover': {
+                  backgroundColor: magicVoteMultiplier === 5 ? '#54d62c' : 'rgba(84, 214, 44, 0.1)',
+                },
+              }}
+            >
+              5x
+            </Button>
+            <Button
+              variant={magicVoteMultiplier === 10 ? 'contained' : 'outlined'}
+              onClick={() => setMagicVoteMultiplier(10)}
+              sx={{
+                color: 'white',
+                borderColor: '#54d62c',
+                backgroundColor: magicVoteMultiplier === 10 ? '#54d62c' : 'transparent',
+                '&:hover': {
+                  backgroundColor: magicVoteMultiplier === 10 ? '#54d62c' : 'rgba(84, 214, 44, 0.1)',
+                },
+              }}
+            >
+              10x
+            </Button>
+          </Stack>
+
+          {/* Display User Credits */}
+          <Typography variant="body1" component="span" fontWeight={800} fontSize={20} textAlign="center">
+            You have{' '}
+            <Typography
+              variant="body1"
+              component="span"
+              fontWeight={800}
+              fontSize={26}
+              sx={{ color: (theme) => theme.palette.success.main }}
+              textAlign="center"
+            >
+              {user?.userDetails?.credits || 0}
+            </Typography>{' '}
+            credits
+          </Typography>
+
+          {/* Dialog Actions */}
+          <Box mt={4} display="flex" justifyContent="space-between">
+            <Button
+              onClick={() => setMagicVoteDialogOpen(false)}
+              variant="outlined"
+              sx={{
+                color: 'white',
+                borderColor: '#666',
+                '&:hover': {
+                  backgroundColor: '#333',
+                },
+              }}
+            >
+              Cancel
+            </Button>
+            <LoadingButton
+              onClick={handleMagicVoteSubmit}
+              variant="contained"
+              loading={isSubmittingMagicVote}
+              sx={{
+                backgroundColor: '#54d62c',
+                color: 'black',
+                '&:hover': {
+                  backgroundColor: '#45b233',
+                },
+              }}
+            >
+              BOOST VOTE
+            </LoadingButton>
+          </Box>
+        </Box>
       </Dialog>
     </>
   );
