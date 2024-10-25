@@ -948,9 +948,14 @@ export default function VotingPage() {
       <Helmet>
         <title> Vote and Requests • TV Shows & Movies • memeSRC </title>
       </Helmet>
-      <Container maxWidth="md">
-        <Box my={2} sx={{ marginTop: -2 }}>
-          <Typography variant="h3" component="h1" gutterBottom>
+      <Container maxWidth="md" sx={{ mt: 3 }}>  {/* Add margin top */}
+        <Box my={2}>  {/* Remove the negative margin */}
+          <Typography 
+            variant="h3" 
+            component="h1" 
+            gutterBottom
+            sx={{ fontSize: { xs: '2rem', sm: '2rem', md: '2rem' } }}  // Add this line
+          >
             Voting & Requests
           </Typography>
           <Typography variant="subtitle2">
