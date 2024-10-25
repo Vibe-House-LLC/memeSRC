@@ -1171,12 +1171,14 @@ export default function VotingPage() {
                                   <Box mr={2} position="relative">
                                     <Badge
                                       badgeContent={
+                                        // First check if we have the rank in our original data
+                                        originalRanks[show.id] !== undefined || show.rank !== null ? (
+                                          `#${originalRanks[show.id] || show.rank}`
+                                        ) : // If not, then use search rank as fallback when in search mode
                                         debouncedSearchText && searchResultRanks[show.id] ? (
                                           `#${rankMethod === 'combined' ? 
                                             searchResultRanks[show.id].battleground : 
                                             searchResultRanks[show.id].upvotes}`
-                                        ) : originalRanks[show.id] !== undefined || show.rank !== null ? (
-                                          `#${originalRanks[show.id] || show.rank}`
                                         ) : (
                                           <CircularProgress
                                             size={12}
