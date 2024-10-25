@@ -78,7 +78,7 @@ const MagicVoteWrapper = styled('div')(({ theme, magicEnabled }) => ({
       right: -2,
       bottom: -2,
       borderRadius: '50%',
-      background: 'linear-gradient(45deg, #4CAF50, #81C784)',
+      background: `linear-gradient(45deg, ${theme.palette.success.main}, #81C784)`, // Use theme color
       opacity: 0.4,
       zIndex: -1,
       animation: 'pulse 1.5s infinite',
@@ -98,7 +98,7 @@ const MagicVoteWrapper = styled('div')(({ theme, magicEnabled }) => ({
       },
     },
   }),
-}));
+})); 
 
 const StyledImg = styled('img')``;
 
@@ -112,7 +112,7 @@ const FloatingCard = styled(Card)(({ theme, enabled }) => ({
   maxWidth: '100%',
   margin: '0 20px', // Add some margin on the sides
   zIndex: 1000,
-  backgroundColor: enabled ? theme.palette.success.main : '#1A472A',
+  backgroundColor: enabled ? theme.palette.success.main : 'rgba(84, 214, 44, 0.16)', // Match the non-hover background color
   transition: 'all 0.3s ease',
   boxShadow: enabled ? '0 0 20px rgba(84, 214, 44, 0.5)' : '0 4px 20px rgba(0, 0, 0, 0.25)',
   cursor: 'pointer',
@@ -1837,6 +1837,9 @@ export default function VotingPage() {
           tabIndex={0}
           role="button"
           aria-pressed={magicVotesEnabled}
+          sx={{
+            backgroundColor: magicVotesEnabled ? theme.palette.success.main : 'rgba(0, 0, 0, 1)', // Full opacity
+          }}
         >
           <CardContent sx={{ 
             display: 'flex', 
@@ -1852,7 +1855,7 @@ export default function VotingPage() {
           }}>
             <AutoAwesomeIcon 
               sx={{ 
-                color: magicVotesEnabled ? 'black' : '#FFE600', // Change to black when enabled
+                color: magicVotesEnabled ? 'black' : theme.palette.success.main, 
                 animation: magicVotesEnabled ? 'sparkle 1.5s infinite' : 'none',
                 '@keyframes sparkle': {
                   '0%, 100%': { opacity: 1 },
@@ -1875,7 +1878,7 @@ export default function VotingPage() {
               onChange={handleMagicVotesToggle}
               sx={{
                 '& .MuiSwitch-switchBase': {
-                  color: magicVotesEnabled ? 'black' : '#FFE600', // Change to black when enabled
+                  color: magicVotesEnabled ? 'black' : theme.palette.success.main,
                 },
                 '& .MuiSwitch-switchBase.Mui-checked': {
                   color: 'black', // Always black when checked
