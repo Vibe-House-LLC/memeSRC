@@ -1279,8 +1279,8 @@ export default function VotingPage() {
                   }
                   const showVoteData = voteData[show.id] || {};
                   const userCanVote = showVoteData.ableToVote !== false;
-                  const isUpvoted = showVoteData.lastBoost === 1 && !userCanVote;
-                  const isDownvoted = showVoteData.lastBoost === -1 && !userCanVote;
+                  const isUpvoted = showVoteData.lastBoost > 0 && !userCanVote;
+                  const isDownvoted = showVoteData.lastBoost < 0 && !userCanVote;
 
                   return (
                     <div key={show.id}>
