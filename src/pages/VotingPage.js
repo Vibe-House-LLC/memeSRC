@@ -2138,29 +2138,9 @@ export default function VotingPage() {
           </IconButton>
 
           {/* Boost Upvote/Downvote Heading */}
-          <Typography variant="h5" align="center" gutterBottom sx={{ color: '#54d62c' }}>
+          <Typography variant="h2" align="center" gutterBottom sx={{ color: '#54d62c', my: 2, mb: 4 }}>
             Boost {magicVoteBoost > 0 ? 'Upvote' : 'Downvote'}
           </Typography>
-
-          {/* Thumbnail Image and Series Title */}
-          {magicVoteSeries && (
-            <Box sx={{ mt: 3, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <img
-                src={magicVoteSeries.image || 'path/to/placeholder-image.jpg'}
-                alt={magicVoteSeries.name}
-                style={{
-                  width: '50px',
-                  height: '75px',
-                  objectFit: 'cover',
-                  borderRadius: 4,
-                  marginRight: 8,
-                }}
-              />
-              <Typography variant="h6" noWrap>
-                {magicVoteSeries.name}
-              </Typography>
-            </Box>
-          )}
 
           {/* Multiplier Selection */}
           <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
