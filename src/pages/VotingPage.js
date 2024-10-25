@@ -779,10 +779,25 @@ export default function VotingPage() {
     setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: boost }));
 
     try {
+      let finalBoost = boost;
+      
+      // If magic voting is enabled, prompt for vote count
+      if (magicVotesEnabled) {
+        const voteCount = window.prompt('How many votes would you like to add?', '1');
+        
+        // Validate input is a number and not cancelled
+        if (voteCount !== null) {
+          const parsedCount = parseInt(voteCount, 10);
+          if (!Number.isNaN(parsedCount) && parsedCount > 0) {
+            finalBoost = boost * parsedCount; // Multiply the boost by the count
+          }
+        }
+      }
+
       await API.post('publicapi', '/vote', {
         body: {
           seriesId,
-          boost,
+          boost: finalBoost,
         },
       });
 
@@ -791,12 +806,12 @@ export default function VotingPage() {
         const updatedVoteData = { ...prevVoteData };
         const updatedSeriesData = { ...updatedVoteData[seriesId] };
 
-        if (boost === 1) {
-          updatedSeriesData.totalVotesUp = (updatedSeriesData.totalVotesUp || 0) + 1;
-          updatedSeriesData.userVotesUp = (updatedSeriesData.userVotesUp || 0) + 1;
-        } else if (boost === -1) {
-          updatedSeriesData.totalVotesDown = (updatedSeriesData.totalVotesDown || 0) + 1;
-          updatedSeriesData.userVotesDown = (updatedSeriesData.userVotesDown || 0) + 1;
+        if (finalBoost > 0) {
+          updatedSeriesData.totalVotesUp = (updatedSeriesData.totalVotesUp || 0) + Math.abs(finalBoost);
+          updatedSeriesData.userVotesUp = (updatedSeriesData.userVotesUp || 0) + Math.abs(finalBoost);
+        } else if (finalBoost < 0) {
+          updatedSeriesData.totalVotesDown = (updatedSeriesData.totalVotesDown || 0) + Math.abs(finalBoost);
+          updatedSeriesData.userVotesDown = (updatedSeriesData.userVotesDown || 0) + Math.abs(finalBoost);
         }
 
         updatedSeriesData.ableToVote = false;
