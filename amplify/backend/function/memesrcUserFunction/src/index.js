@@ -103,8 +103,8 @@ async function processVotes({ allItems, userSub }) {
       currentUserVotesUp[seriesId] = (currentUserVotesUp[seriesId] || 0) + vote.boost;
       votesCountUp[seriesId] = (votesCountUp[seriesId] || 0) + vote.boost;
     } else if (vote.boost < 0) {
-      currentUserVotesDown[seriesId] = (currentUserVotesDown[seriesId] || 0) + vote.boost;
-      votesCountDown[seriesId] = (votesCountDown[seriesId] || 0) + vote.boost;
+      currentUserVotesDown[seriesId] = (currentUserVotesDown[seriesId] || 0) + Math.abs(vote.boost);
+      votesCountDown[seriesId] = (votesCountDown[seriesId] || 0) + Math.abs(vote.boost);
     }
 
     votesCount[seriesId] = (votesCount[seriesId] || 0) + vote.boost;
