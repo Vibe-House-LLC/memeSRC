@@ -41,6 +41,7 @@ import { listSeries, getSeries } from '../graphql/queries';
 import { UserContext } from '../UserContext';
 import TvdbSearch from '../components/TvdbSearch/TvdbSearch';
 import { SnackbarContext } from '../SnackbarContext';
+import { useShows } from '../contexts/useShows';  // Add this import if not already present
 
 const StyledBadge = styled(Badge)(() => ({
   '& .MuiBadge-badge': {
@@ -58,7 +59,8 @@ const StyledFab = styled(Fab)(() => ({
 
 const StyledImg = styled('img')``;
 
-export default function VotingPage({ shows: searchableShows }) {
+export default function VotingPage() {
+  const { shows: searchableShows } = useShows();  // Add this line
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [isChangingRankMethod, setIsChangingRankMethod] = useState(false);
@@ -1637,12 +1639,3 @@ export default function VotingPage({ shows: searchableShows }) {
     </>
   );
 }
-
-VotingPage.propTypes = {
-  shows: PropTypes.arrayOf(
-    PropTypes.shape({
-      id: PropTypes.string.isRequired,
-      // Add other properties of the show object if needed
-    })
-  ).isRequired,
-};
