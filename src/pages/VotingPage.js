@@ -1838,9 +1838,34 @@ export default function VotingPage() {
           role="button"
           aria-pressed={magicVotesEnabled}
           sx={{
-            backgroundColor: magicVotesEnabled ? theme.palette.success.main : 'rgba(0, 0, 0, 1)', // Full opacity
+            backgroundColor: magicVotesEnabled ? theme.palette.success.main : 'rgba(0, 0, 0, 1)',
+            overflow: 'visible', // Ensure the NEW! indicator is fully visible
           }}
         >
+          {/* NEW! indicator */}
+          <Box
+            sx={{
+              position: 'absolute',
+              top: '-8px',
+              right: '-8px',
+              backgroundColor: 'red',
+              color: 'white',
+              padding: '2px 6px',
+              fontSize: '0.7rem',
+              fontWeight: 'bold',
+              borderRadius: '4px',
+              boxShadow: '0 0 5px rgba(0,0,0,0.3)',
+              // Add responsive positioning for small screens
+              [theme.breakpoints.down('sm')]: {
+                top: '8px',
+                right: '8px',
+                transform: 'translate(0, -50%) rotate(15deg)',
+              },
+            }}
+          >
+            NEW!
+          </Box>
+
           <CardContent sx={{ 
             display: 'flex', 
             alignItems: 'center', 
