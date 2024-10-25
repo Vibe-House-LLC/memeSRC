@@ -56,7 +56,7 @@ const StyledBadge = styled(Badge)(() => ({
 }));
 
 const StyledFab = styled(Fab)(() => ({
-  backgroundColor: 'rgba(255, 255, 255, 0.35)',
+  backgroundColor: 'rgba(255, 255, 255, 0.75)',
   zIndex: 0,
 }));
 
@@ -1089,15 +1089,36 @@ export default function VotingPage() {
     setShowRefreshDialog(true);
   };
 
-  const [magicVotesEnabled, setMagicVotesEnabled] = useState(false);
+  // After other state declarations
+  const [magicVotesEnabled, setMagicVotesEnabled] = useState(() => {
+    if (user && user.username) {
+      const savedValue = localStorage.getItem(`magicVotesEnabled_${user.username}`);
+      return savedValue === 'true';
+    }
+    return false;
+  });
 
-  // Add this handler after other handlers
+  // Add this useEffect to sync magicVotesEnabled with localStorage per username
+  useEffect(() => {
+    if (user && user.username) {
+      const savedValue = localStorage.getItem(`magicVotesEnabled_${user.username}`);
+      setMagicVotesEnabled(savedValue === 'true');
+    } else {
+      setMagicVotesEnabled(false);
+    }
+  }, [user]);
+
+  // Update the handleMagicVotesToggle function
   const handleMagicVotesToggle = () => {
     if (!user) {
       navigate(`/login?dest=${encodeURIComponent(location.pathname)}`);
       return;
     }
-    setMagicVotesEnabled(!magicVotesEnabled);
+    const newValue = !magicVotesEnabled;
+    setMagicVotesEnabled(newValue);
+    if (user && user.username) {
+      localStorage.setItem(`magicVotesEnabled_${user.username}`, newValue.toString());
+    }
   };
 
   return (
