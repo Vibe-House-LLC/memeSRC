@@ -702,15 +702,21 @@ export default function VotingPage({ shows: searchableShows }) {
     textOverflow: 'ellipsis',
   };
 
-  // Remove fetchVoteData call from handleRankMethodChange
+  // Update the handleRankMethodChange function
   const handleRankMethodChange = useCallback((event, newValue) => {
     if (newValue !== null) {
+      setIsChangingRankMethod(true); // Show loading state
       localStorage.setItem('rankMethod', newValue);
       setRankMethod(newValue);
       setCurrentPage(0);
       setSeriesMetadata([]);
+      
+      // Fetch new data with the updated rank method
+      fetchVoteData(newValue).finally(() => {
+        setIsChangingRankMethod(false); // Hide loading state
+      });
     }
-  }, []);
+  }, [fetchVoteData]);
 
   const votesCount = (show) => {
     if (!voteData[show.id]) {
@@ -1070,7 +1076,7 @@ export default function VotingPage({ shows: searchableShows }) {
               }}
             >
               <Typography variant="h6" gutterBottom>
-                {isSearching ? 'Searching...' : 'Hang tight while we tally votes'}
+                {isSearching ? 'Searching' : 'Loading'}
               </Typography>
               <CircularProgress />
             </Grid>
