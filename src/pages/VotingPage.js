@@ -1577,8 +1577,8 @@ export default function VotingPage() {
                                             !userCanVote || votingStatus?.[show.id]
                                               ? user
                                                 ? `🔒 ${timeRemaining}`
-                                                : 'Upvote'
-                                              : 'Upvote'
+                                                : ''
+                                              : ''
                                           }
                                           componentsProps={{
                                             tooltip: {
@@ -1668,8 +1668,8 @@ export default function VotingPage() {
                                             !userCanVote || votingStatus?.[show.id]
                                               ? user
                                                 ? `🔒 ${timeRemaining}`
-                                                : 'Downvote'
-                                              : 'Downvote'
+                                                : ''
+                                              : ''
                                           }
                                           componentsProps={{
                                             tooltip: {
@@ -1760,8 +1760,8 @@ export default function VotingPage() {
                                             !userCanVote || votingStatus?.[show.id]
                                               ? user
                                                 ? `🔒 ${timeRemaining}`
-                                                : 'Upvote'
-                                              : 'Upvote'
+                                                : ''
+                                              : ''
                                           }
                                           componentsProps={{
                                             tooltip: {
@@ -2151,52 +2151,71 @@ export default function VotingPage() {
             <Close />
           </IconButton>
 
+          
           {/* Boost Upvote/Downvote Heading */}
-          <Typography variant="h2" align="center" gutterBottom sx={{ color: '#54d62c', my: 2, mb: 4 }}>
+          <Typography 
+            variant="h2" 
+            align="left" 
+            gutterBottom 
+            sx={{ 
+              color: magicVoteBoost > 0 ? '#54d62c' : '#ff4842', // Green for upvote, red for downvote
+              mb: 2,
+            }}
+          >
             Boost {magicVoteBoost > 0 ? 'Upvote' : 'Downvote'}
+          </Typography>
+
+          {/* Series Title */}
+          <Typography variant="p" align="left" gutterBottom sx={{ color: 'white', }}>
+            You're {magicVoteBoost > 0 ? 'upvoting' : 'downvoting'} <b>{magicVoteSeries.name}</b>. You can use magic credits to boost it.
           </Typography>
 
           {/* Multiplier Selection */}
           <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
             <Stack direction="row" spacing={2}>
               {[1, 5, 10].map((multiplier) => (
-                <Button
-                  key={multiplier}
-                  variant={magicVoteMultiplier === multiplier ? 'contained' : 'outlined'}
-                  onClick={() => setMagicVoteMultiplier(multiplier)}
-                  sx={{
-                    fontSize: '1.5rem',
-                    minWidth: '80px',
-                    height: '80px',
-                    color: magicVoteMultiplier === multiplier ? 'black' : 'white',
-                    borderColor: '#54d62c',
-                    backgroundColor:
-                      magicVoteMultiplier === multiplier ? '#54d62c' : 'transparent',
-                    '&:hover': {
+                <Box key={multiplier} sx={{ textAlign: 'center' }}>
+                  <Button
+                    variant={magicVoteMultiplier === multiplier ? 'contained' : 'outlined'}
+                    onClick={() => setMagicVoteMultiplier(multiplier)}
+                    sx={{
+                      fontSize: '1.5rem',
+                      minWidth: '80px',
+                      height: '80px',
+                      color: magicVoteMultiplier === multiplier ? 'black' : 'white',
+                      borderColor: magicVoteBoost > 0 ? '#54d62c' : '#ff4842',
                       backgroundColor:
-                        magicVoteMultiplier === multiplier
-                          ? '#54d62c'
-                          : 'rgba(84, 214, 44, 0.1)',
-                    },
-                  }}
-                >
-                  {multiplier}×
-                </Button>
+                        magicVoteMultiplier === multiplier 
+                          ? (magicVoteBoost > 0 ? '#54d62c' : '#ff4842') 
+                          : 'transparent',
+                      '&:hover': {
+                        backgroundColor:
+                          magicVoteMultiplier === multiplier
+                            ? (magicVoteBoost > 0 ? '#54d62c' : '#ff4842')
+                            : (magicVoteBoost > 0 ? 'rgba(84, 214, 44, 0.1)' : 'rgba(255, 72, 66, 0.1)'),
+                      },
+                    }}
+                  >
+                    {multiplier}×
+                  </Button>
+                  <Typography 
+                    variant="caption" 
+                    sx={{ 
+                      display: 'block', 
+                      mt: 1, 
+                      color: 'grey.500' 
+                    }}
+                  >
+                    {multiplier === 1 ? 'Free' : multiplier === 5 ? '1 credit' : '2 credits'}
+                  </Typography>
+                </Box>
               ))}
             </Stack>
           </Box>
 
-          {/* Cost Information */}
-          <Typography variant="body2" align="center" sx={{ mt: 2 }}>
-            Cost:{' '}
-            {magicVoteMultiplier === 1
-              ? '0 credits'
-              : magicVoteMultiplier === 5
-              ? '1 credit'
-              : '2 credits'}
-          </Typography>
+          {/* Remove the old Cost Information section */}
 
-          {/* Confirm Button */}
+          {/* Update the Confirm Button color based on vote type */}
           <LoadingButton
             onClick={handleMagicVoteSubmit}
             variant="contained"
@@ -2210,10 +2229,10 @@ export default function VotingPage() {
               mt: 4,
               py: 1.5,
               fontSize: '1.2rem',
-              backgroundColor: '#54d62c',
+              backgroundColor: magicVoteBoost > 0 ? '#54d62c' : '#ff4842',
               color: 'black',
               '&:hover': {
-                backgroundColor: '#45b233',
+                backgroundColor: magicVoteBoost > 0 ? '#45b233' : '#ff3333',
               },
             }}
           >
