@@ -2167,7 +2167,7 @@ export default function VotingPage() {
 
           {/* Series Title */}
           <Typography variant="p" align="left" gutterBottom sx={{ color: 'white', }}>
-            You're {magicVoteBoost > 0 ? 'upvoting' : 'downvoting'} <b>{magicVoteSeries?.name}</b>. You can use magic credits to boost it.
+            {magicVoteBoost > 0 ? 'Upvoting' : 'Downvoting'} <b>{magicVoteSeries?.name}</b>. Want to boost it?
           </Typography>
 
           {/* Multiplier Selection */}
@@ -2241,7 +2241,9 @@ export default function VotingPage() {
               },
             }}
           >
-            Submit Vote
+            {(user?.userDetails?.credits < (magicVoteMultiplier === 1 ? 0 : magicVoteMultiplier === 5 ? 1 : 2)) ?
+              'Not enough credits'
+            : `Add ${magicVoteMultiplier !== 1 ? `${magicVoteMultiplier} ` : ''} ${magicVoteBoost > 0 ? 'Upvote' : 'Downvote'}${magicVoteMultiplier !== 1 ? `s` : ''}`}
           </LoadingButton>
         </Box>
       </Dialog>
