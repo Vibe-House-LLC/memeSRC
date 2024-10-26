@@ -2167,7 +2167,7 @@ export default function VotingPage() {
 
           {/* Series Title */}
           <Typography variant="p" align="left" gutterBottom sx={{ color: 'white', }}>
-            You're {magicVoteBoost > 0 ? 'upvoting' : 'downvoting'} <b>{magicVoteSeries.name}</b>. You can use magic credits to boost it.
+            You're {magicVoteBoost > 0 ? 'upvoting' : 'downvoting'} <b>{magicVoteSeries?.name}</b>. You can use magic credits to boost it.
           </Typography>
 
           {/* Multiplier Selection */}
@@ -2201,11 +2201,16 @@ export default function VotingPage() {
                   <Typography 
                     variant="caption" 
                     sx={{ 
-                      display: 'block', 
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
                       mt: 1, 
-                      color: 'grey.500' 
+                      color: magicVoteMultiplier === multiplier ? 'white' : 'grey.500',
+                      fontWeight: magicVoteMultiplier === multiplier ? 700 : 400,
+                      gap: 0.5
                     }}
                   >
+                    {multiplier !== 1 && <AutoFixHighRounded sx={{ fontSize: '1rem' }} />}
                     {multiplier === 1 ? 'Free' : multiplier === 5 ? '1 credit' : '2 credits'}
                   </Typography>
                 </Box>
