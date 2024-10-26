@@ -898,12 +898,9 @@ export default function VotingPage() {
     const seriesId = magicVoteSeries.id;
     const boost = magicVoteType * magicVoteMultiplier;
 
-    // Calculate credit cost based on multiplier to match UI
-    const creditCost = magicVoteMultiplier === 1 ? 0 : 
-                      magicVoteMultiplier === 5 ? 1 : 
-                      magicVoteMultiplier === 10 ? 2 : 0;
-
-    setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: boost }));
+    // Set voting status to show spinner
+    setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: boost > 0 ? 1 : -1 }));
+  
     setMagicVoteDialogOpen(false);
 
     try {
@@ -913,6 +910,11 @@ export default function VotingPage() {
           boost,
         },
       });
+
+      // Calculate credit cost based on multiplier to match UI
+      const creditCost = magicVoteMultiplier === 1 ? 0 : 
+                        magicVoteMultiplier === 5 ? 1 : 
+                        magicVoteMultiplier === 10 ? 2 : 0;
 
       // Deduct credits if using a multiplier
       if (creditCost > 0) {
@@ -944,12 +946,13 @@ export default function VotingPage() {
         return updatedVoteData;
       });
 
-      setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: false }));
     } catch (error) {
-      setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: false }));
       console.error('Error on voting:', error);
+      // Show error message if needed
     } finally {
       setIsSubmittingMagicVote(false);
+      // Clear voting status
+      setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: false }));
     }
   };
 
@@ -1598,7 +1601,7 @@ export default function VotingPage() {
                                               color: 'success.main',
                                             }}
                                           >
-                                            <MagicVoteWrapper magicEnabled={magicVotesEnabled && userCanVote}>
+                                            <MagicVoteWrapper magicEnabled={magicVotesEnabled && userCanVote && !votingStatus[show.id]}>
                                               <StyledFab
                                                 aria-label="upvote"
                                                 onClick={() =>
@@ -1689,7 +1692,7 @@ export default function VotingPage() {
                                               color: 'error.main',
                                             }}
                                           >
-                                            <MagicVoteWrapper magicEnabled={magicVotesEnabled && userCanVote}>
+                                            <MagicVoteWrapper magicEnabled={magicVotesEnabled && userCanVote && !votingStatus[show.id]}>
                                               <StyledFab
                                                 aria-label="downvote"
                                                 onClick={() =>
@@ -1778,7 +1781,7 @@ export default function VotingPage() {
                                             }}
                                             badgeContent={showVoteData.userVotesUp > 0 ? `+${showVoteData.userVotesUp}` : null}
                                           >
-                                            <MagicVoteWrapper magicEnabled={magicVotesEnabled && userCanVote}>
+                                            <MagicVoteWrapper magicEnabled={magicVotesEnabled && userCanVote && !votingStatus[show.id]}>
                                               <StyledFab
                                                 aria-label="upvote"
                                                 onClick={() =>
