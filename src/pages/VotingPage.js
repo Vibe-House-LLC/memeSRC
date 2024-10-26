@@ -2172,16 +2172,30 @@ export default function VotingPage() {
 
           {/* Multiplier Selection */}
           <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
-            <Stack direction="row" spacing={2}>
+            <Stack 
+              direction="row" 
+              spacing={1} // Reduced spacing between buttons
+              sx={{ width: '100%', justifyContent: 'center' }}
+            >
               {[1, 5, 10].map((multiplier) => (
-                <Box key={multiplier} sx={{ textAlign: 'center' }}>
+                <Box 
+                  key={multiplier} 
+                  sx={{ 
+                    textAlign: 'center',
+                    flex: '1 1 0',
+                    minWidth: 0, // Allow shrinking below content size
+                    maxWidth: 120 // Prevent buttons from getting too large
+                  }}
+                >
                   <Button
                     variant={magicVoteMultiplier === multiplier ? 'contained' : 'outlined'}
                     onClick={() => setMagicVoteMultiplier(multiplier)}
                     sx={{
-                      fontSize: '1.5rem',
-                      minWidth: '80px',
-                      height: '80px',
+                      fontSize: { xs: '1.25rem', sm: '1.5rem' }, // Smaller font on mobile
+                      width: '100%', // Take full width of container
+                      height: { xs: 60, sm: 80 }, // Smaller height on mobile
+                      minWidth: 0, // Allow shrinking below content size
+                      px: 1, // Minimal horizontal padding
                       color: magicVoteMultiplier === multiplier ? 'black' : 'white',
                       borderColor: magicVoteBoost > 0 ? '#54d62c' : '#ff4842',
                       backgroundColor:
@@ -2207,11 +2221,12 @@ export default function VotingPage() {
                       mt: 1, 
                       color: magicVoteMultiplier === multiplier ? 'white' : 'grey.500',
                       fontWeight: magicVoteMultiplier === multiplier ? 700 : 400,
-                      gap: 0.5
+                      gap: 0.5,
+                      fontSize: { xs: '0.7rem', sm: '0.75rem' } // Slightly smaller on mobile
                     }}
                   >
                     {multiplier !== 1 && <AutoFixHighRounded sx={{ fontSize: '1rem' }} />}
-                    {multiplier === 1 ? 'Free' : multiplier === 5 ? '1 credit' : '2 credits'}
+                    {multiplier === 1 ? 'Free' : multiplier === 5 ? '1\u00A0credit' : '2\u00A0credits'}
                   </Typography>
                 </Box>
               ))}
