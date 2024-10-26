@@ -2239,12 +2239,22 @@ export default function VotingPage() {
 
           {/* Update the Confirm Button color based on vote type */}
           <LoadingButton
-            onClick={handleMagicVoteSubmit}
+            onClick={() => {
+              const requiredCredits = magicVoteMultiplier === 1 ? 0 : magicVoteMultiplier === 5 ? 1 : 2;
+              const hasEnoughCredits = user?.userDetails?.credits >= requiredCredits;
+              const isPro = user?.userDetails?.magicSubscription === 'true';
+            
+              if (!hasEnoughCredits && !isPro) {
+                navigate(`/pro?dest=${encodeURIComponent(location.pathname)}`);
+                return;
+              }
+              handleMagicVoteSubmit();
+            }}
             variant="contained"
             loading={isSubmittingMagicVote}
             disabled={
-              user?.userDetails?.credits <
-              (magicVoteMultiplier === 1 ? 0 : magicVoteMultiplier === 5 ? 1 : 2)
+              user?.userDetails?.magicSubscription === 'true' && 
+              user?.userDetails?.credits < (magicVoteMultiplier === 1 ? 0 : magicVoteMultiplier === 5 ? 1 : 2)
             }
             fullWidth
             sx={{
@@ -2258,9 +2268,20 @@ export default function VotingPage() {
               },
             }}
           >
-            {(user?.userDetails?.credits < (magicVoteMultiplier === 1 ? 0 : magicVoteMultiplier === 5 ? 1 : 2)) ?
-              'Not enough credits'
-            : `Add ${magicVoteMultiplier !== 1 ? `${magicVoteMultiplier} ` : ''} ${magicVoteBoost > 0 ? 'Upvote' : 'Downvote'}${magicVoteMultiplier !== 1 ? `s` : ''}`}
+            {(() => {
+              const requiredCredits = magicVoteMultiplier === 1 ? 0 : magicVoteMultiplier === 5 ? 1 : 2;
+              const hasEnoughCredits = user?.userDetails?.credits >= requiredCredits;
+              const isPro = user?.userDetails?.magicSubscription === 'true';
+
+              if (!hasEnoughCredits) {
+                if (!isPro) {
+                  return 'Need Credits?';
+                }
+                return 'Not enough credits';
+              }
+              
+              return `Add ${magicVoteMultiplier !== 1 ? `${magicVoteMultiplier} ` : ''} ${magicVoteBoost > 0 ? 'Upvote' : 'Downvote'}${magicVoteMultiplier !== 1 ? `s` : ''}`;
+            })()}
           </LoadingButton>
         </Box>
       </Dialog>
