@@ -2154,7 +2154,7 @@ export default function VotingPage() {
           
           {/* Boost Upvote/Downvote Heading */}
           <Typography 
-            variant="h2" 
+            variant="h3" 
             align="left" 
             gutterBottom 
             sx={{ 
@@ -2196,16 +2196,20 @@ export default function VotingPage() {
                       height: { xs: 60, sm: 80 }, // Smaller height on mobile
                       minWidth: 0, // Allow shrinking below content size
                       px: 1, // Minimal horizontal padding
-                      color: magicVoteMultiplier === multiplier ? 'black' : 'white',
+                      color: multiplier === 1 ? 'white' : (magicVoteMultiplier === multiplier ? 'black' : 'white'),
                       borderColor: magicVoteBoost > 0 ? '#54d62c' : '#ff4842',
                       backgroundColor:
                         magicVoteMultiplier === multiplier 
-                          ? (magicVoteBoost > 0 ? '#54d62c' : '#ff4842') 
+                          ? (magicVoteBoost > 0 
+                              ? `rgba(84, 214, 44, ${multiplier === 1 ? 0.5 : multiplier === 5 ? 0.85 : 1})`
+                              : `rgba(255, 72, 66, ${multiplier === 1 ? 0.5 : multiplier === 5 ? 0.85 : 1})`)
                           : 'transparent',
                       '&:hover': {
                         backgroundColor:
                           magicVoteMultiplier === multiplier
-                            ? (magicVoteBoost > 0 ? '#54d62c' : '#ff4842')
+                            ? (magicVoteBoost > 0 
+                                ? `rgba(84, 214, 44, ${multiplier === 1 ? 0.5 : multiplier === 5 ? 0.85 : 1})`
+                                : `rgba(255, 72, 66, ${multiplier === 1 ? 0.5 : multiplier === 5 ? 0.85 : 1})`)
                             : (magicVoteBoost > 0 ? 'rgba(84, 214, 44, 0.1)' : 'rgba(255, 72, 66, 0.1)'),
                       },
                     }}
