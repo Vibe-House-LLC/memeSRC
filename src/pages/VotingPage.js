@@ -2020,100 +2020,98 @@ export default function VotingPage() {
           </Button>
         </DialogActions>
       </Dialog>
-      {isAdmin && (
-        <FloatingCard 
-          enabled={magicVotesEnabled}
-          onClick={handleMagicVotesToggle}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              handleMagicVotesToggle();
-            }
-          }}
-          tabIndex={0}
-          role="button"
-          aria-pressed={magicVotesEnabled}
-          sx={{
-            backgroundColor: magicVotesEnabled ? theme.palette.success.main : 'rgba(0, 0, 0, 1)',
-            overflow: 'visible', // Ensure the NEW! indicator is fully visible
-          }}
-        >
-          <ShimmerWrapper enabled={magicVotesEnabled} />
-          {/* NEW! indicator */}
-          {!hasSeenMagicVotes && (
-            <Box
-              sx={{
-                position: 'absolute',
-                top: '-8px',
-                right: '-8px',
-                backgroundColor: 'red',
-                color: 'white',
-                padding: '2px 6px',
-                fontSize: '0.7rem',
-                fontWeight: 'bold',
-                borderRadius: '4px',
-                boxShadow: '0 0 5px rgba(0,0,0,0.3)',
-                zIndex: 1,
-                transform: 'translate(0, 10%) rotate(15deg)',
-                [theme.breakpoints.down('sm')]: {
-                  top: '8px',
-                  right: '8px',
-                  transform: 'translate(0, -50%) rotate(15deg)',
-                },
-              }}
-            >
-              NEW!
-            </Box>
-          )}
+      <FloatingCard 
+        enabled={magicVotesEnabled}
+        onClick={handleMagicVotesToggle}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleMagicVotesToggle();
+          }
+        }}
+        tabIndex={0}
+        role="button"
+        aria-pressed={magicVotesEnabled}
+        sx={{
+          backgroundColor: magicVotesEnabled ? theme.palette.success.main : 'rgba(0, 0, 0, 1)',
+          overflow: 'visible', // Ensure the NEW! indicator is fully visible
+        }}
+      >
+        <ShimmerWrapper enabled={magicVotesEnabled} />
+        {/* NEW! indicator */}
+        {!hasSeenMagicVotes && (
+          <Box
+            sx={{
+              position: 'absolute',
+              top: '-8px',
+              right: '-8px',
+              backgroundColor: 'red',
+              color: 'white',
+              padding: '2px 6px',
+              fontSize: '0.7rem',
+              fontWeight: 'bold',
+              borderRadius: '4px',
+              boxShadow: '0 0 5px rgba(0,0,0,0.3)',
+              zIndex: 1,
+              transform: 'translate(0, 10%) rotate(15deg)',
+              [theme.breakpoints.down('sm')]: {
+                top: '8px',
+                right: '8px',
+                transform: 'translate(0, -50%) rotate(15deg)',
+              },
+            }}
+          >
+            NEW!
+          </Box>
+        )}
 
-          <CardContent sx={{ 
-            position: 'relative',
-            zIndex: 2,
-            display: 'flex', 
-            alignItems: 'center', 
-            padding: '12px 16px !important',
-            gap: 2,
-            '&:last-child': { pb: '12px' },
-            // Add responsive padding
-            [theme.breakpoints.down('sm')]: {
-              padding: '16px 24px !important',
-              '&:last-child': { pb: '16px' },
-            }
-          }}>
-            <AutoFixHighRounded 
-              sx={{ 
-                color: magicVotesEnabled ? 'black' : theme.palette.success.main, 
-                fontSize: '2rem',
-              }} 
-            />
-            <Typography 
-              variant="body1" 
-              sx={{ 
-                color: magicVotesEnabled ? 'black' : 'white',
-                flexGrow: 1
-              }}
-            >
-              <b>{magicVotesEnabled ? 'Magic Votes ON' : 'Enable Magic Votes'}</b><br />
-              {magicVotesEnabled ? 'Boosting voting power' : 'Boost your voting power'}
-            </Typography>
-            <Switch
-              checked={magicVotesEnabled}
-              onChange={handleMagicVotesToggle}
-              sx={{
-                '& .MuiSwitch-switchBase': {
-                  color: magicVotesEnabled ? 'black' : theme.palette.success.main,
-                },
-                '& .MuiSwitch-switchBase.Mui-checked': {
-                  color: 'black', // Always black when checked
-                },
-                '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                  backgroundColor: 'black', // Track becomes black when enabled
-                },
-              }}
-            />
-          </CardContent>
-        </FloatingCard>
-      )}
+        <CardContent sx={{ 
+          position: 'relative',
+          zIndex: 2,
+          display: 'flex', 
+          alignItems: 'center', 
+          padding: '12px 16px !important',
+          gap: 2,
+          '&:last-child': { pb: '12px' },
+          // Add responsive padding
+          [theme.breakpoints.down('sm')]: {
+            padding: '16px 24px !important',
+            '&:last-child': { pb: '16px' },
+          }
+        }}>
+          <AutoFixHighRounded 
+            sx={{ 
+              color: magicVotesEnabled ? 'black' : theme.palette.success.main, 
+              fontSize: '2rem',
+            }} 
+          />
+          <Typography 
+            variant="body1" 
+            sx={{ 
+              color: magicVotesEnabled ? 'black' : 'white',
+              flexGrow: 1
+            }}
+          >
+            <b>{magicVotesEnabled ? 'Magic Votes ON' : 'Enable Magic Votes'}</b><br />
+            {magicVotesEnabled ? 'Boosting voting power' : 'Boost your voting power'}
+          </Typography>
+          <Switch
+            checked={magicVotesEnabled}
+            onChange={handleMagicVotesToggle}
+            sx={{
+              '& .MuiSwitch-switchBase': {
+                color: magicVotesEnabled ? 'black' : theme.palette.success.main,
+              },
+              '& .MuiSwitch-switchBase.Mui-checked': {
+                color: 'black', // Always black when checked
+              },
+              '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                backgroundColor: 'black', // Track becomes black when enabled
+              },
+            }}
+          />
+        </CardContent>
+      </FloatingCard>
 
       {/* Updated Boost Vote Dialog */}
       <Dialog
