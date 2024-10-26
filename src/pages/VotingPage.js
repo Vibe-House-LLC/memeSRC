@@ -238,7 +238,7 @@ export default function VotingPage() {
 
   const theme = useTheme();
 
-  const { user } = useContext(UserContext);
+  const { user, setUser } = useContext(UserContext);
 
   const [hasSeenMagicVotes, setHasSeenMagicVotes] = useState(() => {
     if (user && user.username) {
@@ -894,9 +894,14 @@ export default function VotingPage() {
 
   // Add a new function to handle the boosted vote submission
   const handleMagicVoteSubmit = async () => {
-    setIsSubmittingMagicVote(true); // Set loading state
+    setIsSubmittingMagicVote(true);
     const seriesId = magicVoteSeries.id;
-    const boost = magicVoteType * magicVoteMultiplier; // calculate final boost value
+    const boost = magicVoteType * magicVoteMultiplier;
+
+    // Calculate credit cost based on multiplier to match UI
+    const creditCost = magicVoteMultiplier === 1 ? 0 : 
+                      magicVoteMultiplier === 5 ? 1 : 
+                      magicVoteMultiplier === 10 ? 2 : 0;
 
     setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: boost }));
     setMagicVoteDialogOpen(false);
@@ -908,6 +913,12 @@ export default function VotingPage() {
           boost,
         },
       });
+
+      // Deduct credits if using a multiplier
+      if (creditCost > 0) {
+        const newCreditAmount = user?.userDetails.credits - creditCost;
+        setUser({ ...user, userDetails: { ...user?.userDetails, credits: newCreditAmount } });
+      }
 
       // Update voteData in state
       setVoteData((prevVoteData) => {
@@ -938,7 +949,7 @@ export default function VotingPage() {
       setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: false }));
       console.error('Error on voting:', error);
     } finally {
-      setIsSubmittingMagicVote(false); // Reset loading state
+      setIsSubmittingMagicVote(false);
     }
   };
 
