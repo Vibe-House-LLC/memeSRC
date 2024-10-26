@@ -33,7 +33,7 @@ import {
   useMediaQuery,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import { ArrowUpward, ArrowDownward, Search, Close, ThumbUp, Whatshot, Lock, NewReleasesOutlined, Refresh, AutoFixHighRounded } from '@mui/icons-material';
+import { ArrowUpward, ArrowDownward, Search, Close, ThumbUp, Whatshot, Lock, NewReleasesOutlined, Refresh, AutoFixHighRounded, ThumbDown } from '@mui/icons-material';
 import FlipMove from 'react-flip-move';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -2093,7 +2093,7 @@ export default function VotingPage() {
             }}
           >
             <b>{magicVotesEnabled ? 'Magic Votes ON' : 'Enable Magic Votes'}</b><br />
-            {magicVotesEnabled ? 'Boosting voting power' : 'Boost your voting power'}
+            Boost your voting power
           </Typography>
           <Switch
             checked={magicVotesEnabled}
@@ -2268,6 +2268,10 @@ export default function VotingPage() {
               },
             }}
           >
+            {/* ThumbUp Icon if boosting upvote or ThumbDown Icon if boosting downvote */}
+            {magicVoteBoost > 0 ? 
+              <ThumbUp sx={{ fontSize: '1.5rem', mr: 1 }} /> : 
+              <ThumbDown sx={{ fontSize: '1.5rem', mr: 1 }} />}
             {(() => {
               const requiredCredits = magicVoteMultiplier === 1 ? 0 : magicVoteMultiplier === 5 ? 1 : 2;
               const hasEnoughCredits = user?.userDetails?.credits >= requiredCredits;
