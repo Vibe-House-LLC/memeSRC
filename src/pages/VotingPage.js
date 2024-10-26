@@ -29,15 +29,18 @@ import {
   ToggleButtonGroup,
   DialogContentText,
   Autocomplete,
+  Switch,
+  useMediaQuery,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import { ArrowUpward, ArrowDownward, Search, Close, ThumbUp, Whatshot, Lock, NewReleasesOutlined, Refresh } from '@mui/icons-material';
+import { ArrowUpward, ArrowDownward, Search, Close, ThumbUp, Whatshot, Lock, NewReleasesOutlined, Refresh, AutoFixHighRounded } from '@mui/icons-material';
 import FlipMove from 'react-flip-move';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { LoadingButton } from '@mui/lab';
 import { GridFilterAltIcon, GridSearchIcon } from '@mui/x-data-grid';
 import { debounce } from 'lodash';
+import MuiAlert from '@mui/material/Alert';
 import { listSeries, getSeries } from '../graphql/queries';
 import { UserContext } from '../UserContext';
 import TvdbSearch from '../components/TvdbSearch/TvdbSearch';
@@ -54,11 +57,148 @@ const StyledBadge = styled(Badge)(() => ({
 }));
 
 const StyledFab = styled(Fab)(() => ({
-  backgroundColor: 'rgba(255, 255, 255, 0.35)',
+  backgroundColor: 'rgba(255, 255, 255, 0.75)',
   zIndex: 0,
 }));
 
+// Add this new wrapper component
+const MagicVoteWrapper = styled('div')(({ theme, magicEnabled }) => ({
+  position: 'relative',
+  display: 'inline-flex',
+  opacity: magicEnabled ? 1 : 1, // Default opacity
+  transition: 'opacity 0.3s ease',
+  '&:hover': {
+    opacity: magicEnabled ? 0.7 : 1, // Only reduce opacity on hover when magic is enabled
+  },
+  ...(magicEnabled && {
+    '&::before': {
+      content: '""',
+      position: 'absolute',
+      top: -2,
+      left: -2,
+      right: -2,
+      bottom: -2,
+      borderRadius: '50%',
+      background: `linear-gradient(45deg, ${theme.palette.success.main}, #81C784)`, // Use theme color
+      opacity: 0.4,
+      zIndex: -1,
+      animation: 'pulse 1.5s infinite',
+    },
+    '@keyframes pulse': {
+      '0%': {
+        transform: 'scale(1)',
+        opacity: 0.4,
+      },
+      '50%': {
+        transform: 'scale(1.2)',
+        opacity: 0.1,
+      },
+      '100%': {
+        transform: 'scale(1)',
+        opacity: 0.4,
+      },
+    },
+  }),
+})); 
+
 const StyledImg = styled('img')``;
+
+// Add this styled component after other styled components
+const FloatingCard = styled(Card)(({ theme, enabled }) => ({
+  position: 'fixed',
+  bottom: 20,
+  left: '50%',
+  transform: 'translateX(-50%)',
+  width: '90%',
+  maxWidth: '100%',
+  margin: '0 20px',
+  zIndex: 1000,
+  backgroundColor: enabled ? theme.palette.success.main : 'rgba(84, 214, 44, 0.16)',
+  transition: 'all 0.3s ease',
+  boxShadow: enabled ? '0 0 20px rgba(84, 214, 44, 0.5)' : '0 4px 20px rgba(0, 0, 0, 0.25)',
+  cursor: 'pointer',
+  animation: 'slideUp 0.75s',
+  // Add the keyframes for the animation
+  '@keyframes slideUp': {
+    from: {
+      transform: 'translate(-50%, 100%)',
+    },
+    to: {
+      transform: 'translate(-50%, 0)',
+    },
+  },
+  
+  [theme.breakpoints.up('sm')]: {
+    width: 'auto',
+    maxWidth: '400px',
+    margin: 0,
+  },
+
+  [theme.breakpoints.down('sm')]: {
+    bottom: 0,
+    borderRadius: '16px 16px 0 0',
+    left: 0,
+    transform: 'none',
+    width: '100%',
+    margin: 0,
+    // Update animation for mobile
+    animation: 'slideUpMobile 0.75s',
+    '@keyframes slideUpMobile': {
+      from: {
+        transform: 'translateY(100%)',
+        opacity: 0,
+      },
+      to: {
+        transform: 'translateY(0)',
+        opacity: 1,
+      },
+    },
+  },
+}));
+
+// Add this new styled component for the shimmer wrapper
+const ShimmerWrapper = styled('div')(({ enabled }) => ({
+  position: 'absolute',
+  top: 0,
+  left: 0,
+  width: '100%',
+  height: '100%',
+  overflow: 'hidden', // Contain the shimmer effect
+  borderRadius: 'inherit', // Match the card's border radius
+
+  '&::before': {
+    content: '""',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    background: enabled ? 'none' : `linear-gradient(
+      -45deg,
+      transparent 0%,
+      rgba(84, 214, 44, .2) 50%,
+      transparent 100%
+    )`,
+    animation: enabled ? 'none' : 'shimmer 5s infinite',
+    zIndex: 1,
+  },
+
+  '@keyframes shimmer': {
+    '0%': {
+      transform: 'translateX(-200%)',
+      opacity: .75
+    },
+    '100%': {
+      transform: 'translateX(100%)',
+      opacity: .5
+    },
+  },
+}));
+
+// Define the Alert component for consistent styling
+const Alert = React.forwardRef((props, ref) => (
+  <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />
+));
 
 export default function VotingPage() {
   const { shows: searchableShows } = useShows();  // Add this line
@@ -77,6 +217,7 @@ export default function VotingPage() {
     const savedPreference = localStorage.getItem('displayOption');
     return savedPreference || 'showAll';
   });
+
   const { setMessage, setOpen, setSeverity } = useContext(SnackbarContext);
 
   // State variables
@@ -97,7 +238,14 @@ export default function VotingPage() {
 
   const theme = useTheme();
 
-  const { user } = useContext(UserContext);
+  const { user, setUser } = useContext(UserContext);
+
+  const [hasSeenMagicVotes, setHasSeenMagicVotes] = useState(() => {
+    if (user && user.username) {
+      return localStorage.getItem(`hasSeenMagicVotes_${user.username}`) === 'true';
+    }
+    return false;
+  });
 
   const toggleOpenAddRequest = () => {
     setOpenAddRequest(!openAddRequest);
@@ -135,6 +283,16 @@ export default function VotingPage() {
 
   // Add this new state to store search result ranks
   const [searchResultRanks, setSearchResultRanks] = useState({});
+
+  // Add these new state variables
+  const [magicVoteDialogOpen, setMagicVoteDialogOpen] = useState(false);
+  const [magicVoteSeries, setMagicVoteSeries] = useState(null);
+  const [magicVoteBoost, setMagicVoteBoost] = useState(1);
+  const [magicVoteType, setMagicVoteType] = useState(1); // 1 for upvote, -1 for downvote
+  const [magicVoteMultiplier, setMagicVoteMultiplier] = useState(1);
+
+  // Add this state variable for loading state
+  const [isSubmittingMagicVote, setIsSubmittingMagicVote] = useState(false);
 
   // Add this debounced search function after other function declarations
   const debouncedSearch = useCallback(
@@ -679,8 +837,71 @@ export default function VotingPage() {
     fetchVoteDataForSeries(nextPageSeriesIds);
   };
 
+  // Update the handleVote function
   const handleVote = async (seriesId, boost) => {
-    setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: boost }));
+    if (magicVotesEnabled) {
+      // Open the magic vote dialog
+      setMagicVoteSeries(seriesCache.current[seriesId]);
+      setMagicVoteBoost(boost);
+      setMagicVoteType(boost > 0 ? 1 : -1);
+      setMagicVoteMultiplier(1); // default multiplier
+      setMagicVoteDialogOpen(true);
+    } else {
+      // Existing voting logic
+      setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: boost }));
+
+      try {
+        await API.post('publicapi', '/vote', {
+          body: {
+            seriesId,
+            boost,
+          },
+        });
+
+        // Update voteData in state
+        setVoteData((prevVoteData) => {
+          // ... existing state update logic
+          const updatedVoteData = { ...prevVoteData };
+          const updatedSeriesData = { ...updatedVoteData[seriesId] };
+
+          if (boost > 0) {
+            updatedSeriesData.totalVotesUp = (updatedSeriesData.totalVotesUp || 0) + Math.abs(boost);
+            updatedSeriesData.userVotesUp = (updatedSeriesData.userVotesUp || 0) + Math.abs(boost);
+          } else if (boost < 0) {
+            updatedSeriesData.totalVotesDown = (updatedSeriesData.totalVotesDown || 0) + Math.abs(boost);
+            updatedSeriesData.userVotesDown = (updatedSeriesData.userVotesDown || 0) + Math.abs(boost);
+          }
+
+          updatedSeriesData.ableToVote = false;
+          const now = new Date();
+          now.setHours(now.getHours() + 24);
+          updatedSeriesData.nextVoteTime = now.toISOString();
+          updatedSeriesData.lastBoost = boost;
+
+          updatedVoteData[seriesId] = updatedSeriesData;
+
+          return updatedVoteData;
+        });
+
+        setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: false }));
+
+      } catch (error) {
+        setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: false }));
+        console.error('Error on voting:', error);
+      }
+    }
+  };
+
+  // Add a new function to handle the boosted vote submission
+  const handleMagicVoteSubmit = async () => {
+    setIsSubmittingMagicVote(true);
+    const seriesId = magicVoteSeries.id;
+    const boost = magicVoteType * magicVoteMultiplier;
+
+    // Set voting status to show spinner
+    setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: boost > 0 ? 1 : -1 }));
+  
+    setMagicVoteDialogOpen(false);
 
     try {
       await API.post('publicapi', '/vote', {
@@ -690,17 +911,28 @@ export default function VotingPage() {
         },
       });
 
+      // Calculate credit cost based on multiplier to match UI
+      const creditCost = magicVoteMultiplier === 1 ? 0 : 
+                        magicVoteMultiplier === 5 ? 1 : 
+                        magicVoteMultiplier === 10 ? 2 : 0;
+
+      // Deduct credits if using a multiplier
+      if (creditCost > 0) {
+        const newCreditAmount = user?.userDetails.credits - creditCost;
+        setUser({ ...user, userDetails: { ...user?.userDetails, credits: newCreditAmount } });
+      }
+
       // Update voteData in state
       setVoteData((prevVoteData) => {
         const updatedVoteData = { ...prevVoteData };
         const updatedSeriesData = { ...updatedVoteData[seriesId] };
 
-        if (boost === 1) {
-          updatedSeriesData.totalVotesUp = (updatedSeriesData.totalVotesUp || 0) + 1;
-          updatedSeriesData.userVotesUp = (updatedSeriesData.userVotesUp || 0) + 1;
-        } else if (boost === -1) {
-          updatedSeriesData.totalVotesDown = (updatedSeriesData.totalVotesDown || 0) + 1;
-          updatedSeriesData.userVotesDown = (updatedSeriesData.userVotesDown || 0) + 1;
+        if (boost > 0) {
+          updatedSeriesData.totalVotesUp = (updatedSeriesData.totalVotesUp || 0) + Math.abs(boost);
+          updatedSeriesData.userVotesUp = (updatedSeriesData.userVotesUp || 0) + Math.abs(boost);
+        } else if (boost < 0) {
+          updatedSeriesData.totalVotesDown = (updatedSeriesData.totalVotesDown || 0) + Math.abs(boost);
+          updatedSeriesData.userVotesDown = (updatedSeriesData.userVotesDown || 0) + Math.abs(boost);
         }
 
         updatedSeriesData.ableToVote = false;
@@ -714,14 +946,23 @@ export default function VotingPage() {
         return updatedVoteData;
       });
 
-      setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: false }));
-
     } catch (error) {
-      setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: false }));
       console.error('Error on voting:', error);
+      // Show error message if needed
+    } finally {
+      setIsSubmittingMagicVote(false);
+      // Clear voting status
+      setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: false }));
     }
   };
 
+  const handleMagicVoteMultiplierChange = (event, newMultiplier) => {
+    if (newMultiplier !== null) {
+      setMagicVoteMultiplier(newMultiplier);
+    }
+  };
+
+  // Update handleUpvote and handleDownvote functions to use handleVote
   const handleUpvote = (seriesId) => {
     handleVote(seriesId, 1);
   };
@@ -929,6 +1170,7 @@ export default function VotingPage() {
 
   // Add these new state variables after other state declarations
   const [isAdmin, setIsAdmin] = useState(false);
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   // Add this new useEffect to check admin status
   useEffect(() => {
@@ -976,6 +1218,46 @@ export default function VotingPage() {
   // Update the handleRefresh function
   const handleRefresh = () => {
     setShowRefreshDialog(true);
+  };
+
+  // After other state declarations
+  const [magicVotesEnabled, setMagicVotesEnabled] = useState(() => {
+    if (user && user.username) {
+      const savedValue = localStorage.getItem(`magicVotesEnabled_${user.username}`);
+      return savedValue === 'true';
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    if (user && user.username) {
+      const savedValue = localStorage.getItem(`magicVotesEnabled_${user.username}`);
+      setMagicVotesEnabled(savedValue === 'true');
+      // Also load hasSeenMagicVotes from localStorage
+      const seenValue = localStorage.getItem(`hasSeenMagicVotes_${user.username}`);
+      setHasSeenMagicVotes(seenValue === 'true');
+    } else {
+      setMagicVotesEnabled(false);
+      setHasSeenMagicVotes(false);
+    }
+  }, [user]);
+
+  // Update the handleMagicVotesToggle function
+  const handleMagicVotesToggle = () => {
+    if (!user) {
+      navigate(`/login?dest=${encodeURIComponent(location.pathname)}`);
+      return;
+    }
+    const newValue = !magicVotesEnabled;
+    setMagicVotesEnabled(newValue);
+    if (user && user.username) {
+      localStorage.setItem(`magicVotesEnabled_${user.username}`, newValue.toString());
+      // Set hasSeenMagicVotes to true when enabling for the first time
+      if (newValue && !hasSeenMagicVotes) {
+        setHasSeenMagicVotes(true);
+        localStorage.setItem(`hasSeenMagicVotes_${user.username}`, 'true');
+      }
+    }
   };
 
   return (
@@ -1157,8 +1439,8 @@ export default function VotingPage() {
                   }
                   const showVoteData = voteData[show.id] || {};
                   const userCanVote = showVoteData.ableToVote !== false;
-                  const isUpvoted = showVoteData.lastBoost === 1 && !userCanVote;
-                  const isDownvoted = showVoteData.lastBoost === -1 && !userCanVote;
+                  const isUpvoted = showVoteData.lastBoost > 0 && !userCanVote;
+                  const isDownvoted = showVoteData.lastBoost < 0 && !userCanVote;
 
                   return (
                     <div key={show.id}>
@@ -1295,8 +1577,8 @@ export default function VotingPage() {
                                             !userCanVote || votingStatus?.[show.id]
                                               ? user
                                                 ? `🔒 ${timeRemaining}`
-                                                : 'Upvote'
-                                              : 'Upvote'
+                                                : ''
+                                              : ''
                                           }
                                           componentsProps={{
                                             tooltip: {
@@ -1319,35 +1601,45 @@ export default function VotingPage() {
                                               color: 'success.main',
                                             }}
                                           >
-                                            <StyledFab
-                                              aria-label="upvote"
-                                              onClick={() =>
-                                                user
-                                                  ? handleUpvote(show.id)
-                                                  : navigate(
-                                                      `/login?dest=${encodeURIComponent(
-                                                        location.pathname
-                                                      )}`
-                                                    )
-                                              }
-                                              disabled={
-                                                user && (!userCanVote || votingStatus?.[show.id])
-                                              }
-                                              size="small"
-                                              sx={{
-                                                backgroundColor: isUpvoted
-                                                  ? 'success.light'
-                                                  : 'default',
-                                              }}
-                                            >
-                                              {userCanVote ? (
-                                                <ArrowUpward />
-                                              ) : isUpvoted ? (
-                                                <ArrowUpward sx={{ color: 'success.main' }} />
-                                              ) : (
-                                                <ArrowUpward />
-                                              )}
-                                            </StyledFab>
+                                            <MagicVoteWrapper magicEnabled={magicVotesEnabled && userCanVote && !votingStatus[show.id]}>
+                                              <StyledFab
+                                                aria-label="upvote"
+                                                onClick={() =>
+                                                  user
+                                                    ? handleUpvote(show.id)
+                                                    : navigate(
+                                                        `/login?dest=${encodeURIComponent(
+                                                          location.pathname
+                                                        )}`
+                                                      )
+                                                }
+                                                disabled={
+                                                  user && (!userCanVote || votingStatus?.[show.id])
+                                                }
+                                                size="small"
+                                                sx={{
+                                                  backgroundColor: isUpvoted
+                                                    ? 'success.light'
+                                                    : 'default',
+                                                  ...(magicVotesEnabled && userCanVote && {
+                                                    backgroundColor: 'rgba(255, 255, 255, 1)',
+                                                    boxShadow: '0 0 15px #4CAF50',
+                                                    '&:hover': {
+                                                      backgroundColor: 'rgba(255, 255, 255, 1)',
+                                                      boxShadow: '0 0 20px #4CAF50',
+                                                    },
+                                                  }),
+                                                }}
+                                              >
+                                                {userCanVote ? (
+                                                  <ArrowUpward />
+                                                ) : isUpvoted ? (
+                                                  <ArrowUpward sx={{ color: 'success.main' }} />
+                                                ) : (
+                                                  <ArrowUpward />
+                                                )}
+                                              </StyledFab>
+                                            </MagicVoteWrapper>
                                           </StyledBadge>
                                         </Tooltip>
                                       )}
@@ -1376,8 +1668,8 @@ export default function VotingPage() {
                                             !userCanVote || votingStatus?.[show.id]
                                               ? user
                                                 ? `🔒 ${timeRemaining}`
-                                                : 'Downvote'
-                                              : 'Downvote'
+                                                : ''
+                                              : ''
                                           }
                                           componentsProps={{
                                             tooltip: {
@@ -1400,33 +1692,43 @@ export default function VotingPage() {
                                               color: 'error.main',
                                             }}
                                           >
-                                            <StyledFab
-                                              aria-label="downvote"
-                                              onClick={() =>
-                                                user
-                                                  ? handleDownvote(show.id)
-                                                  : navigate(
-                                                      `/login?dest=${encodeURIComponent(
-                                                        location.pathname
-                                                      )}`
-                                                    )
-                                              }
-                                              disabled={
-                                                user && (!userCanVote || votingStatus?.[show.id])
-                                              }
-                                              size="small"
-                                              sx={{
-                                                backgroundColor: isDownvoted
-                                                  ? 'error.light'
-                                                  : 'default',
-                                              }}
-                                            >
-                                              {isDownvoted ? (
-                                                <ArrowDownward sx={{ color: 'error.main' }} />
-                                              ) : (
-                                                <ArrowDownward />
-                                              )}
-                                            </StyledFab>
+                                            <MagicVoteWrapper magicEnabled={magicVotesEnabled && userCanVote && !votingStatus[show.id]}>
+                                              <StyledFab
+                                                aria-label="downvote"
+                                                onClick={() =>
+                                                  user
+                                                    ? handleDownvote(show.id)
+                                                    : navigate(
+                                                        `/login?dest=${encodeURIComponent(
+                                                          location.pathname
+                                                        )}`
+                                                      )
+                                                }
+                                                disabled={
+                                                  user && (!userCanVote || votingStatus?.[show.id])
+                                                }
+                                                size="small"
+                                                sx={{
+                                                  backgroundColor: isDownvoted
+                                                    ? 'error.light'
+                                                    : 'default',
+                                                  ...(magicVotesEnabled && userCanVote && {
+                                                    backgroundColor: 'rgba(255, 255, 255, 1)',
+                                                    boxShadow: '0 0 15px #4CAF50',
+                                                    '&:hover': {
+                                                      backgroundColor: 'rgba(255, 255, 255, 1)',
+                                                      boxShadow: '0 0 20px #4CAF50',
+                                                    },
+                                                  }),
+                                                }}
+                                              >
+                                                {isDownvoted ? (
+                                                  <ArrowDownward sx={{ color: 'error.main' }} />
+                                                ) : (
+                                                  <ArrowDownward />
+                                                )}
+                                              </StyledFab>
+                                            </MagicVoteWrapper>
                                           </StyledBadge>
                                         </Tooltip>
                                       )}
@@ -1458,8 +1760,8 @@ export default function VotingPage() {
                                             !userCanVote || votingStatus?.[show.id]
                                               ? user
                                                 ? `🔒 ${timeRemaining}`
-                                                : 'Upvote'
-                                              : 'Upvote'
+                                                : ''
+                                              : ''
                                           }
                                           componentsProps={{
                                             tooltip: {
@@ -1479,35 +1781,45 @@ export default function VotingPage() {
                                             }}
                                             badgeContent={showVoteData.userVotesUp > 0 ? `+${showVoteData.userVotesUp}` : null}
                                           >
-                                            <StyledFab
-                                              aria-label="upvote"
-                                              onClick={() =>
-                                                user
-                                                  ? handleUpvote(show.id)
-                                                  : navigate(
-                                                      `/login?dest=${encodeURIComponent(
-                                                        location.pathname
-                                                      )}`
-                                                    )
-                                              }
-                                              disabled={
-                                                user && (!userCanVote || votingStatus?.[show.id])
-                                              }
-                                              size="small"
-                                              sx={{
-                                                backgroundColor: isUpvoted
-                                                  ? 'success.light'
-                                                  : 'default',
-                                              }}
-                                            >
-                                              {userCanVote ? (
-                                                <ThumbUp />
-                                              ) : isUpvoted ? (
-                                                <ThumbUp sx={{ color: 'success.main' }} />
-                                              ) : (
-                                                <Lock />
-                                              )}
-                                            </StyledFab>
+                                            <MagicVoteWrapper magicEnabled={magicVotesEnabled && userCanVote && !votingStatus[show.id]}>
+                                              <StyledFab
+                                                aria-label="upvote"
+                                                onClick={() =>
+                                                  user
+                                                    ? handleUpvote(show.id)
+                                                    : navigate(
+                                                        `/login?dest=${encodeURIComponent(
+                                                          location.pathname
+                                                        )}`
+                                                      )
+                                                }
+                                                disabled={
+                                                  user && (!userCanVote || votingStatus?.[show.id])
+                                                }
+                                                size="small"
+                                                sx={{
+                                                  backgroundColor: isUpvoted
+                                                    ? 'success.light'
+                                                    : 'default',
+                                                  ...(magicVotesEnabled && userCanVote && {
+                                                    backgroundColor: 'rgba(255, 255, 255, 1)',
+                                                    boxShadow: '0 0 15px #4CAF50',
+                                                    '&:hover': {
+                                                      backgroundColor: 'rgba(255, 255, 255, 1)',
+                                                      boxShadow: '0 0 20px #4CAF50',
+                                                    },
+                                                  }),
+                                                }}
+                                              >
+                                                {userCanVote ? (
+                                                  <ThumbUp />
+                                                ) : isUpvoted ? (
+                                                  <ThumbUp sx={{ color: 'success.main' }} />
+                                                ) : (
+                                                  <Lock />
+                                                )}
+                                              </StyledFab>
+                                            </MagicVoteWrapper>
                                           </StyledBadge>
                                         </Tooltip>
                                       )}
@@ -1707,6 +2019,271 @@ export default function VotingPage() {
             Refresh
           </Button>
         </DialogActions>
+      </Dialog>
+      <FloatingCard 
+        enabled={magicVotesEnabled}
+        onClick={handleMagicVotesToggle}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleMagicVotesToggle();
+          }
+        }}
+        tabIndex={0}
+        role="button"
+        aria-pressed={magicVotesEnabled}
+        sx={{
+          backgroundColor: magicVotesEnabled ? theme.palette.success.main : 'rgba(0, 0, 0, 1)',
+          overflow: 'visible', // Ensure the NEW! indicator is fully visible
+        }}
+      >
+        <ShimmerWrapper enabled={magicVotesEnabled} />
+        {/* NEW! indicator */}
+        {!hasSeenMagicVotes && (
+          <Box
+            sx={{
+              position: 'absolute',
+              top: '-8px',
+              right: '-8px',
+              backgroundColor: 'red',
+              color: 'white',
+              padding: '2px 6px',
+              fontSize: '0.7rem',
+              fontWeight: 'bold',
+              borderRadius: '4px',
+              boxShadow: '0 0 5px rgba(0,0,0,0.3)',
+              zIndex: 1,
+              transform: 'translate(0, 10%) rotate(15deg)',
+              [theme.breakpoints.down('sm')]: {
+                top: '8px',
+                right: '8px',
+                transform: 'translate(0, -50%) rotate(15deg)',
+              },
+            }}
+          >
+            NEW!
+          </Box>
+        )}
+
+        <CardContent sx={{ 
+          position: 'relative',
+          zIndex: 2,
+          display: 'flex', 
+          alignItems: 'center', 
+          padding: '12px 16px !important',
+          gap: 2,
+          '&:last-child': { pb: '12px' },
+          // Add responsive padding
+          [theme.breakpoints.down('sm')]: {
+            padding: '16px 24px !important',
+            '&:last-child': { pb: '16px' },
+          }
+        }}>
+          <AutoFixHighRounded 
+            sx={{ 
+              color: magicVotesEnabled ? 'black' : theme.palette.success.main, 
+              fontSize: '2rem',
+            }} 
+          />
+          <Typography 
+            variant="body1" 
+            sx={{ 
+              color: magicVotesEnabled ? 'black' : 'white',
+              flexGrow: 1
+            }}
+          >
+            <b>{magicVotesEnabled ? 'Magic Votes ON' : 'Enable Magic Votes'}</b><br />
+            {magicVotesEnabled ? 'Boosting voting power' : 'Boost your voting power'}
+          </Typography>
+          <Switch
+            checked={magicVotesEnabled}
+            onChange={handleMagicVotesToggle}
+            sx={{
+              '& .MuiSwitch-switchBase': {
+                color: magicVotesEnabled ? 'black' : theme.palette.success.main,
+              },
+              '& .MuiSwitch-switchBase.Mui-checked': {
+                color: 'black', // Always black when checked
+              },
+              '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                backgroundColor: 'black', // Track becomes black when enabled
+              },
+            }}
+          />
+        </CardContent>
+      </FloatingCard>
+
+      {/* Updated Boost Vote Dialog */}
+      <Dialog
+        open={magicVoteDialogOpen}
+        onClose={() => setMagicVoteDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          sx: {
+            backgroundColor: 'black',
+            color: 'white',
+            borderRadius: 2,
+          },
+        }}
+      >
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            p: 3,
+            position: 'relative',
+          }}
+        >
+          {/* Cancel Button with X Icon */}
+          <IconButton
+            aria-label="close"
+            onClick={() => setMagicVoteDialogOpen(false)}
+            sx={{
+              position: 'absolute',
+              top: 8,
+              right: 8,
+              color: 'white',
+            }}
+          >
+            <Close />
+          </IconButton>
+
+          
+          {/* Boost Upvote/Downvote Heading */}
+          <Typography 
+            variant="h3" 
+            align="left" 
+            gutterBottom 
+            sx={{ 
+              color: magicVoteBoost > 0 ? '#54d62c' : '#ff4842', // Green for upvote, red for downvote
+              mb: 2,
+            }}
+          >
+            Boost {magicVoteBoost > 0 ? 'Upvote' : 'Downvote'}
+          </Typography>
+
+          {/* Series Title */}
+          <Typography variant="p" align="left" gutterBottom sx={{ color: 'white', }}>
+            {magicVoteBoost > 0 ? 'Upvoting' : 'Downvoting'} <b>{magicVoteSeries?.name}</b>. Want to boost it?
+          </Typography>
+
+          {/* Multiplier Selection */}
+          <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
+            <Stack 
+              direction="row" 
+              spacing={1} // Reduced spacing between buttons
+              sx={{ width: '100%', justifyContent: 'center' }}
+            >
+              {[1, 5, 10].map((multiplier) => (
+                <Box 
+                  key={multiplier} 
+                  sx={{ 
+                    textAlign: 'center',
+                    flex: '1 1 0',
+                    minWidth: 0, // Allow shrinking below content size
+                    maxWidth: 120 // Prevent buttons from getting too large
+                  }}
+                >
+                  <Button
+                    variant={magicVoteMultiplier === multiplier ? 'contained' : 'outlined'}
+                    onClick={() => setMagicVoteMultiplier(multiplier)}
+                    sx={{
+                      fontSize: { xs: '1.25rem', sm: '1.5rem' }, // Smaller font on mobile
+                      width: '100%', // Take full width of container
+                      height: { xs: 60, sm: 80 }, // Smaller height on mobile
+                      minWidth: 0, // Allow shrinking below content size
+                      px: 1, // Minimal horizontal padding
+                      color: multiplier === 1 ? 'white' : (magicVoteMultiplier === multiplier ? 'black' : 'white'),
+                      borderColor: magicVoteBoost > 0 ? '#54d62c' : '#ff4842',
+                      backgroundColor:
+                        magicVoteMultiplier === multiplier 
+                          ? (magicVoteBoost > 0 
+                              ? `rgba(84, 214, 44, ${multiplier === 1 ? 0.5 : multiplier === 5 ? 0.85 : 1})`
+                              : `rgba(255, 72, 66, ${multiplier === 1 ? 0.5 : multiplier === 5 ? 0.85 : 1})`)
+                          : 'transparent',
+                      '&:hover': {
+                        backgroundColor:
+                          magicVoteMultiplier === multiplier
+                            ? (magicVoteBoost > 0 
+                                ? `rgba(84, 214, 44, ${multiplier === 1 ? 0.5 : multiplier === 5 ? 0.85 : 1})`
+                                : `rgba(255, 72, 66, ${multiplier === 1 ? 0.5 : multiplier === 5 ? 0.85 : 1})`)
+                            : (magicVoteBoost > 0 ? 'rgba(84, 214, 44, 0.1)' : 'rgba(255, 72, 66, 0.1)'),
+                      },
+                    }}
+                  >
+                    {multiplier}×
+                  </Button>
+                  <Typography 
+                    variant="caption" 
+                    sx={{ 
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      mt: 1, 
+                      color: magicVoteMultiplier === multiplier ? 'white' : 'grey.500',
+                      fontWeight: magicVoteMultiplier === multiplier ? 700 : 400,
+                      gap: 0.5,
+                      fontSize: { xs: '0.7rem', sm: '0.75rem' } // Slightly smaller on mobile
+                    }}
+                  >
+                    {multiplier !== 1 && <AutoFixHighRounded sx={{ fontSize: '1rem' }} />}
+                    {multiplier === 1 ? 'Free' : multiplier === 5 ? '1\u00A0credit' : '2\u00A0credits'}
+                  </Typography>
+                </Box>
+              ))}
+            </Stack>
+          </Box>
+
+          {/* Remove the old Cost Information section */}
+
+          {/* Update the Confirm Button color based on vote type */}
+          <LoadingButton
+            onClick={() => {
+              const requiredCredits = magicVoteMultiplier === 1 ? 0 : magicVoteMultiplier === 5 ? 1 : 2;
+              const hasEnoughCredits = user?.userDetails?.credits >= requiredCredits;
+              const isPro = user?.userDetails?.magicSubscription === 'true';
+            
+              if (!hasEnoughCredits && !isPro) {
+                navigate(`/pro?dest=${encodeURIComponent(location.pathname)}`);
+                return;
+              }
+              handleMagicVoteSubmit();
+            }}
+            variant="contained"
+            loading={isSubmittingMagicVote}
+            disabled={
+              user?.userDetails?.magicSubscription === 'true' && 
+              user?.userDetails?.credits < (magicVoteMultiplier === 1 ? 0 : magicVoteMultiplier === 5 ? 1 : 2)
+            }
+            fullWidth
+            sx={{
+              mt: 4,
+              py: 1.5,
+              fontSize: '1.2rem',
+              backgroundColor: magicVoteBoost > 0 ? '#54d62c' : '#ff4842',
+              color: 'black',
+              '&:hover': {
+                backgroundColor: magicVoteBoost > 0 ? '#45b233' : '#ff3333',
+              },
+            }}
+          >
+            {(() => {
+              const requiredCredits = magicVoteMultiplier === 1 ? 0 : magicVoteMultiplier === 5 ? 1 : 2;
+              const hasEnoughCredits = user?.userDetails?.credits >= requiredCredits;
+              const isPro = user?.userDetails?.magicSubscription === 'true';
+
+              if (!hasEnoughCredits) {
+                if (!isPro) {
+                  return 'Need Credits?';
+                }
+                return 'Not enough credits';
+              }
+              
+              return `Add ${magicVoteMultiplier !== 1 ? `${magicVoteMultiplier} ` : ''} ${magicVoteBoost > 0 ? 'Upvote' : 'Downvote'}${magicVoteMultiplier !== 1 ? `s` : ''}`;
+            })()}
+          </LoadingButton>
+        </Box>
       </Dialog>
     </>
   );

@@ -17,7 +17,7 @@ export const DialogProvider = ({ children }) => {
   const [subscriptionDialogOpen, setSubscriptionDialogOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState('pro5');
   const [loading, setLoading] = useState(false);
-  const [creditOptionsOpen, setCreditOptionsOpen] = useState(false);
+  const [creditOptionsOpen, setCreditOptionsOpen] = useState(true);
   const { user } = useContext(UserContext);
   const [checkoutLink, setCheckoutLink] = useState();
   const [billingAgreement, setBillingAgreement] = useState(false);
@@ -46,10 +46,6 @@ export const DialogProvider = ({ children }) => {
 
   const subscribeButtonRef = useRef(null);
   const upgradeCreditsRef = useRef(null);
-
-  useEffect(() => {
-    setCreditOptionsOpen(isMd);
-  }, [isMd]);
 
   const setSelectedPlanAndScroll = (plan) => {
     setSelectedPlan(plan);
@@ -213,19 +209,19 @@ export const DialogProvider = ({ children }) => {
             alignItems: 'center',
             justifyContent: 'center',
             position: 'relative',
-            pt: isMd ? 3 : 2,
-            pb: isMd ? 1 : 0.5,
+            pt: isMd ? 2 : 1.5,
+            pb: isMd ? 0.5 : 0,
           }}
         >
           <img
             src="/assets/memeSRC-white.svg"
             alt="memeSRC logo"
-            style={{ height: isMd ? 48 : 40, marginBottom: 8 }}
+            style={{ height: isMd ? 40 : 32, marginBottom: 4 }}
           />
-          <Typography fontSize={isMd ? 32 : 24} fontWeight={700}>
+          <Typography fontSize={isMd ? 28 : 22} fontWeight={700}>
             memeSRC Pro
           </Typography>
-          <IconButton onClick={closeDialog} size="large" sx={{ position: 'absolute', top: isMd ? 10 : 5, right: 10 }}>
+          <IconButton onClick={closeDialog} size="large" sx={{ position: 'absolute', top: isMd ? 8 : 4, right: 10 }}>
             <Close />
           </IconButton>
         </DialogTitle>
@@ -235,11 +231,11 @@ export const DialogProvider = ({ children }) => {
             <Fade in timeout={400}>
               <DialogContent sx={{ py: 4, pb: 6 }}>
                 <Box
-                  p={3}
+                  p={2.5}
                   sx={{
                     backgroundColor: getColor(),
                     borderRadius: 4,
-                    mb: 4,
+                    mb: 3,
                     mt: isMd ? -4 : 0,
                     cursor: 'pointer',
                   }}
@@ -247,23 +243,31 @@ export const DialogProvider = ({ children }) => {
                     subscribeButtonRef.current.scrollIntoView({ behavior: 'smooth' });
                   }}
                 >
-                  <Typography fontSize={25} fontWeight={700} color={getTextColor()} gutterBottom>
+                  <Typography 
+                    fontSize={22} /* reduced from 25 */
+                    fontWeight={700} 
+                    color={getTextColor()}
+                  >
                     {selectedTitleSubtitle?.title}
                   </Typography>
-                  <Typography variant={isMd ? 'h2' : 'h1'} gutterBottom mb={1.25} color={getTextColor()}>
+                  <Typography 
+                    variant={isMd ? 'h2' : 'h1'} 
+                    gutterBottom 
+                    mb={0.75} /* reduced margin from 1.25 */
+                    color={getTextColor()}
+                  >
                     {getPrice()} / mo.
                   </Typography>
-                  <Typography fontSize={16} fontWeight={600} color={getTextColor()} gutterBottom>
+                  <Typography 
+                    fontSize={15} /* reduced from 16 */
+                    fontWeight={600} 
+                    color={getTextColor()}
+                  >
                     {selectedTitleSubtitle?.subtitle}
                   </Typography>
                 </Box>
                 <Grid container spacing={4} alignItems="center">
                   <Grid item xs={12} md={5}>
-                    <Box display="flex" alignItems="center" mx={2} mb={3} mt={-1}>
-                      <Typography variant='body2' sx={{ color: '#C2C2C2', fontSize: isMd ? '20px' : '16px' }}>
-                        <b>memeSRC&nbsp;Pro</b>&nbsp;helps support&nbsp;the&nbsp;site and unlocks these&nbsp;perks:
-                      </Typography>
-                    </Box>
                     <Box display="flex" alignItems="center" mb={2} ml={2}>
                       <Box
                         sx={{
@@ -354,8 +358,8 @@ export const DialogProvider = ({ children }) => {
                         ml: 2,
                       }}
                     >
-                      <Typography variant="h6" sx={{ textDecoration: 'underline' }} mr={1} ref={upgradeCreditsRef}>
-                        Want more magic credits?
+                      <Typography variant="h6" sx={{ textDecoration: 'none', }} mr={1} ref={upgradeCreditsRef}>
+                        WANT MORE CREDITS?
                       </Typography>
                       <ExpandMore
                         sx={{
@@ -721,3 +725,4 @@ export const DialogProvider = ({ children }) => {
     </SubscribeDialogContext.Provider>
   );
 };
+
