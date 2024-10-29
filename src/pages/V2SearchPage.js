@@ -203,7 +203,10 @@ const StickyAdContainer = styled(Box)`
   z-index: 1000;
   transition: transform 0.3s ease-in-out;
   transform: translateY(-100%);
-  padding-top: 50px; // Add this line to create space for the nav bar
+  padding-top: 50px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   &.visible {
     transform: translateY(0);
   }
@@ -490,7 +493,7 @@ export default function SearchPage() {
   useEffect(() => {
     const handleScroll = () => {
       const scrollPosition = window.scrollY;
-      const triggerPosition = 200; // Adjust this value as needed
+      const triggerPosition = 100; // Adjust this value as needed
 
       setIsAdSticky(scrollPosition > triggerPosition);
     };
@@ -592,14 +595,7 @@ export default function SearchPage() {
       <>
         {isMobile && (
           <StickyAdContainer className={isAdSticky ? 'visible' : ''}>
-            <Box sx={{ 
-              width: '300px',
-              height: '50px',
-              backgroundColor: 'black',
-              overflow: 'hidden',
-            }}>
               <FixedMobileBannerAd />
-            </Box>
           </StickyAdContainer>
         )}
         <Grid item xs={12} mt={2}>
