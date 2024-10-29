@@ -6,8 +6,11 @@ const FixedSizeAdContainer = styled(Box)`
   display: flex;
   justify-content: center;
   align-items: center;
-  width: 100%;  // Allow full width
-  height: 50px;  // Fixed height
+  width: 100%;
+  min-width: 300px;
+  max-width: 728px;
+  min-height: 50px;
+  max-height: 90px;
   margin: 0 auto;
   overflow: hidden;
 `;
