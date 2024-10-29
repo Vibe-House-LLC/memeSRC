@@ -815,7 +815,11 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
           {user?.userDetails?.subscriptionStatus !== 'active' && showAd &&
             <Grid item xs={12} mt={1}>
               <center>
-                <Box>
+                <Box sx={{ 
+                  width: { xs: '300px', sm: '100%' }, // 300px on mobile, 100% on larger screens
+                  height: { xs: '50px', sm: 'auto' },  // 50px on mobile, auto on larger screens
+                  overflow: 'hidden',  // Ensure content doesn't overflow
+                }}>
                   <HomePageBannerAd />
                   <Link to="/pro" style={{ textDecoration: 'none' }}>
                     <Typography variant="body2" textAlign="center" color="white" sx={{ marginTop: 1 }}>
