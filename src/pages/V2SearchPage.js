@@ -203,7 +203,7 @@ const StickyAdContainer = styled(Box)`
   z-index: 1000;
   transition: transform 0.3s ease-in-out;
   transform: translateY(-100%);
-  padding-top: 50px;
+  padding-top: 45px;
   display: flex;
   justify-content: center;
   align-items: center;
