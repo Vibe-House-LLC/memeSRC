@@ -6,13 +6,13 @@ const FixedSizeAdContainer = styled(Box)`
   display: flex;
   justify-content: center;
   align-items: center;
-  width: 100%;
-  min-width: 300px;
+  width: 300px;
+  height: 50px;
   max-width: 728px;
-  min-height: 50px;
   max-height: 90px;
   margin: 0 auto;
   overflow: hidden;
+  background-color: yellow;
 `;
 
 const FixedMobileBannerAd = () => {

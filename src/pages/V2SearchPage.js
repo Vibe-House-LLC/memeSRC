@@ -591,27 +591,23 @@ export default function SearchPage() {
           </MinimizedBannerText>
         </MinimizedBanner>
       )} */}
-    {user?.userDetails?.subscriptionStatus !== 'active' &&
-      <>
-        {isMobile && (
-          <StickyAdContainer className={isAdSticky ? 'visible' : ''}>
-              <FixedMobileBannerAd />
-          </StickyAdContainer>
-        )}
-        <Grid item xs={12} mt={2}>
-          <center>
-            <Box>
-              {isMobile ? <FixedMobileBannerAd /> : <HomePageBannerAd />}
-              <Link to="/pro" style={{ textDecoration: 'none' }}>
-                <Typography variant="body2" textAlign="center" color="white" sx={{ marginTop: 1 }}>
-                  ☝️ Remove ads with <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>memeSRC Pro</span>
-                </Typography>
-              </Link>
-            </Box>
-          </center>
-        </Grid>
-      </>
-    }
+      {user?.userDetails?.subscriptionStatus !== 'active' &&
+        <>
+          {isMobile && (
+            <StickyAdContainer className={isAdSticky ? 'visible' : ''}>
+                <FixedMobileBannerAd />
+            </StickyAdContainer>
+          )}
+            <center>
+                  {isMobile ? <FixedMobileBannerAd /> : <HomePageBannerAd />}
+                  <Link to="/pro" style={{ textDecoration: 'none' }}>
+                    <Typography variant="body2" textAlign="center" color="white" sx={{ marginTop: 1 }}>
+                      ☝️ Remove ads with <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>memeSRC Pro</span>
+                    </Typography>
+                  </Link>
+            </center>
+        </>
+      }
     <Grid item xs={12} mt={2}>
       <Typography variant="h3" textAlign="center" mb={2}>
         {newResults && 
