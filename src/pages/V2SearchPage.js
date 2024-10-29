@@ -203,7 +203,6 @@ const StickyAdContainer = styled(Box)`
   transition: transform 0.3s ease-in-out;
   transform: translateY(-100%);
   padding-top: 50px; // Add this line to create space for the nav bar
-  
   &.visible {
     transform: translateY(0);
   }
@@ -588,9 +587,16 @@ export default function SearchPage() {
       )} */}
     {user?.userDetails?.subscriptionStatus !== 'active' &&
       <>
-        {/* <StickyAdContainer className={isAdSticky ? 'visible' : ''}>
-          <HomePageBannerAd />
-        </StickyAdContainer> */}
+        <StickyAdContainer className={isAdSticky ? 'visible' : ''}>
+          <Box sx={{ 
+            width: { xs: '300px', sm: '100%' }, // 300px on mobile, 100% on larger screens
+            height: { xs: '50px', sm: 'auto' },  // 50px on mobile, auto on larger screens
+            backgroundColor: 'black',
+            overflow: 'hidden',  // Ensure content doesn't overflow
+          }}>
+            <HomePageBannerAd />
+          </Box>
+        </StickyAdContainer>
         <Grid item xs={12} mt={2}>
           <center>
             <Box>
