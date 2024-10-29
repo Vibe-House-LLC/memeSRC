@@ -29,15 +29,15 @@ export const DialogProvider = ({ children }) => {
   const { countryCode, countryName } = useUserLocation();
 
   useEffect(() => {
-    if (
-      location.pathname === '/pro' &&
-      user !== null &&
-      user.userDetails?.subscriptionStatus !== 'active'
-    ) {
-      // console.log(user.userDetails);
-      setSubscriptionDialogOpen(true);
+    if (location.pathname === '/pro' && user !== null) {
+      if (user.userDetails?.subscriptionStatus === 'active') {
+        navigate('/account');
+      } else {
+        setSubscriptionDialogOpen(true);
+        navigate('/', { replace: true });
+      }
     }
-  }, [user, location]);
+  }, [user, location, navigate]);
 
   useEffect(() => {
     const randomIndex = Math.floor(Math.random() * titleSubtitlePairs.length);
