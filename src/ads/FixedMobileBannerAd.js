@@ -12,7 +12,6 @@ const FixedSizeAdContainer = styled(Box)`
   max-height: 90px;
   margin: 0 auto;
   overflow: hidden;
-  background-color: yellow;
 `;
 
 const FixedMobileBannerAd = () => {
