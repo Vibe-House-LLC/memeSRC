@@ -214,9 +214,9 @@ export const DialogProvider = ({ children }) => {
               memeSRC Pro
             </Typography>
           </Box>
-          <Fab onClick={closeDialog} size="small" sx={{ position: 'absolute', top: isMd ? 8 : 4, right: 10, zIndex: 1000, opacity: 0.4 }}>
+          <IconButton onClick={closeDialog} size="small" sx={{ position: 'absolute', top: isMd ? 8 : 4, right: 10, zIndex: 1000, opacity: 0.4 }}>
             <Close />
-          </Fab>
+          </IconButton>
         </DialogTitle>
         <Divider />
           <>
