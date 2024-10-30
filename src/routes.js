@@ -13,7 +13,6 @@ import { ShowProvider } from './contexts/useShows';
 const AddSeriesPage = lazy(() => import('./pages/AddSeriesPage'));
 const VotingPage = lazy(() => import('./pages/VotingPage'))
 const InpaintingPage = lazy(() => import('./pages/InpaintingPage'));
-const TopBannerSearchRevised = lazy(() => import('./sections/search/TopBannerSeachRevised'));
 const DashboardSeriesPage = lazy(() => import('./pages/DashboardSeriesPage'));
 const DashboardCidPage = lazy(() => import('./pages/DashboardCidPage'));
 const DashboardAliasPageRevised = lazy(() => import('./pages/DashboardAliasPageRevised'));
@@ -30,17 +29,14 @@ const PrivacyPolicy = lazy(() => import('./sections/legal/PrivacyPolicy'));
 const TermsOfService = lazy(() => import('./sections/legal/TermsOfService'));
 const Page404 = lazy(() => import('./pages/Page404'));
 const ErrorPage = lazy(() => import('./pages/ErrorPage'));
-const ProductsPage = lazy(() => import('./pages/ProductsPage'));
 const DashboardAppPage = lazy(() => import('./pages/DashboardAppPage'));
 const AuthPage = lazy(() => import('./pages/AuthPage'));
 const GuestAuth = lazy(() => import('./sections/auth/login/GuestAuth'));
 const CheckAuth = lazy(() => import('./sections/auth/login/CheckAuth'));
-const ImageUploadPage = lazy(() => import('./pages/ImageUploadPage'));
 const AddToSeriesPage = lazy(() => import('./pages/AddToSeriesPage'));
 const HomePage = lazy(() => import('./pages/HomePage'))
 const V2SearchPage = lazy(() => import('./pages/V2SearchPage'));
 const EditorPage = lazy(() => import('./pages/EditorPage'));
-const SeriesPage = lazy(() => import('./pages/SeriesPage'));
 const SourceMediaList = lazy(() => import('./pages/SourceMediaList'));
 const SourceMediaFileList = lazy(() => import('./pages/SourceMediaFileList'));
 const MetadataPage = lazy(() => import('./pages/MetadataPage'));
@@ -101,7 +97,6 @@ export default function Router() {
         { path: 'support', element: <SiteWideMaintenance><ProSupport /></SiteWideMaintenance> },
         { path: 'faq', element: <SiteWideMaintenance><FAQPage /></SiteWideMaintenance> },
         { path: 'faq/:slug', element: <SiteWideMaintenance><FAQPage /></SiteWideMaintenance> },
-        { path: 'series/:seriesId', element: <SiteWideMaintenance><TopBannerSearchRevised><SeriesPage /></TopBannerSearchRevised></SiteWideMaintenance> },
         { path: '/vote', element: <SiteWideMaintenance><ShowProvider><VotingPage /></ShowProvider></SiteWideMaintenance> },
         { path: '/contribute', element: <SiteWideMaintenance><ContributorRequest /></SiteWideMaintenance> },
         { path: '/pricing', element: <SiteWideMaintenance><PricingPage /></SiteWideMaintenance> },
@@ -116,10 +111,8 @@ export default function Router() {
       children: [
         { element: <Navigate to="/dashboard/app" />, index: true },
         { path: 'app', element: <DashboardAppPage /> },
-        { path: 'imageupload', element: <ImageUploadPage /> },
         { path: 'user', element: <UserPage /> },
         { path: 'support', element: <ProSupportAdmin /> },
-        { path: 'products', element: <ProductsPage /> },
         { path: 'blog', element: <BlogPage /> },
         { path: 'home', element: <HomePage /> },
         { path: 'editor', element: <EditorPage /> },

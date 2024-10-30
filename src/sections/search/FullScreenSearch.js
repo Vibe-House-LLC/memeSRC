@@ -26,6 +26,7 @@ import EditorUpdates from '../../components/v2-feature-section/sections/editor-u
 import PlatformUpdates from '../../components/v2-feature-section/sections/platform-updates';
 import MemeSrcPro from '../../components/v2-feature-section/sections/memesrc-pro';
 import Logo from '../../logo/logo';
+import FixedMobileBannerAd from '../../ads/FixedMobileBannerAd';
 // import FavoritesResetDialog from './FavoritesResetDialog';
 
 const seriesOptions = [
@@ -253,6 +254,8 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   const [favoritesInfoOpen, setFavoritesInfoOpen] = useState(true);
 
   const [showAd, setShowAd] = useState(false);
+
+  const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
 
   useEffect(() => {
     // Get the current number of homepage loads from localStorage
@@ -815,8 +818,8 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
           {user?.userDetails?.subscriptionStatus !== 'active' && showAd &&
             <Grid item xs={12} mt={1}>
               <center>
-                <Box>
-                  <HomePageBannerAd />
+                <Box >
+                  {isMobile ? <FixedMobileBannerAd /> : <HomePageBannerAd />}
                   <Link to="/pro" style={{ textDecoration: 'none' }}>
                     <Typography variant="body2" textAlign="center" color="white" sx={{ marginTop: 1 }}>
                       ☝️ Remove ads with <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>memeSRC Pro</span>

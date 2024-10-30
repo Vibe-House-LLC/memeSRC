@@ -1,31 +1,21 @@
 // V2SearchPage.js
 
 import React, { useState, useEffect, useRef, useContext } from 'react';
-import { Grid, CircularProgress, Card, Chip, Typography, Button, Collapse, IconButton, FormControlLabel, Switch, Dialog, DialogTitle, DialogContent, List, ListItem, ListItemText, DialogActions, Box, CardContent, TextField } from '@mui/material';
+import { Grid, CircularProgress, Card, Chip, Typography, Button, IconButton, Dialog, DialogContent, DialogActions, Box, CardContent, TextField } from '@mui/material';
 import styled from '@emotion/styled';
 import { API, graphqlOperation } from 'aws-amplify';
 import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
-import JSZip from 'jszip';
-import { ReportProblem, Settings } from '@mui/icons-material';
 import InfiniteScroll from 'react-infinite-scroll-component';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@emotion/react';
 import sanitizeHtml from 'sanitize-html';
-import HomePageBannerAd from '../ads/HomePageBannerAd';
-import useSearchDetails from '../hooks/useSearchDetails';
-import IpfsSearchBar from '../sections/search/ipfs-search-bar';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
-import getV2Metadata from '../utils/getV2Metadata';
-
-import SearchPageBannerAd from '../ads/SearchPageBannerAd';
-import SearchPageResultsAd from '../ads/SearchPageResultsAd';
 import { UserContext } from '../UserContext';
 
-import fetchShows from '../utils/fetchShows';
 import { getWebsiteSetting } from '../graphql/queries';
 
 import ImageSkeleton from '../components/ImageSkeleton';
+import SearchPageResultsAd from '../ads/SearchPageResultsAd';
 
 
 
@@ -100,115 +90,6 @@ const BottomCardLabel = styled.div`
   text-align: left;
 `;
 
-const UpgradedIndexBanner = styled.div`
-  background-image: url('https://api-prod-minimal-v510.vercel.app/assets/images/cover/cover_3.jpg');
-  background-size: cover;
-  background-position: center;
-  padding: ${props => props.show ? '40px 20px' : '10px'};
-  text-align: center;
-  position: relative;
-  border-radius: 8px;
-  margin: 0 20px 20px 20px;
-  box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: ${props => props.show ? '200px' : '50px'};
-  transition: all 0.3s ease-in-out;
-
-  &::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    border-radius: 8px;
-  }
-`;
-
-const UpgradedIndexText = styled(Typography)`
-  font-size: 30px;
-  font-weight: bold;
-  margin-bottom: 10px;
-  color: #fff;
-  position: relative;
-  z-index: 1;
-`;
-
-const UpgradedIndexSubtext = styled(Typography)`
-  font-size: 16px;
-  font-weight: 600;
-  color: #E2e2e3;
-  position: relative;
-  z-index: 1;
-  margin-bottom: 10px;
-  margin-left: 10px;
-  margin-right: 10px;
-
-  a {
-    color: #f0f0f0;
-    text-decoration: underline;
-
-    &:hover {
-      color: #fff;
-    }
-  }
-`;
-
-const MinimizedBanner = styled.div`
-  background-image: url('https://api-prod-minimal-v510.vercel.app/assets/images/cover/cover_3.jpg');
-  background-size: cover;
-  background-position: center;
-  padding: 10px;
-  text-align: center;
-  position: relative;
-  border-radius: 8px;
-  margin: 0 20px 20px 20px;
-  box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 50px;
-  cursor: pointer;
-
-  &::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    border-radius: 8px;
-  }
-`;
-
-const MinimizedBannerText = styled(Typography)`
-  font-size: 16px;
-  font-weight: bold;
-  color: #fff;
-  position: relative;
-  z-index: 1;
-`;
-
-const StickyAdContainer = styled(Box)`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 1000;
-  transition: transform 0.3s ease-in-out;
-  transform: translateY(-100%);
-  padding-top: 50px; // Add this line to create space for the nav bar
-  
-  &.visible {
-    transform: translateY(0);
-  }
-`;
-
 export default function SearchPage() {
   const navigate = useNavigate();
   const theme = useTheme();
@@ -223,7 +104,6 @@ export default function SearchPage() {
   const [loadingCsv, setLoadingCsv] = useState(false);
 
   // ===== Upgraded Index Banner States ===== 
-  const [isBannerMinimized, setIsBannerMinimized] = useState(true);
   const [animationsEnabled, setAnimationsEnabled] = useState(false);
   // const [animationsEnabled, setAnimationsEnabled] = useState(
   //   localStorage.getItem('animationsEnabled') === 'true' || false
@@ -441,7 +321,7 @@ export default function SearchPage() {
           throw new Error(`HTTP error! Status: ${response.status}`);
         }
         const results = await response.json();
-        const adInterval = user?.userDetails?.subscriptionStatus !== 'active' ? 5 : Infinity;
+        const adInterval = user?.userDetails?.subscriptionStatus !== 'active' ? 7 : Infinity;
         const resultsWithAds = injectAds(results.results, adInterval);
         setNewResults(resultsWithAds);
         setLoadingResults(false);
@@ -490,7 +370,7 @@ export default function SearchPage() {
   useEffect(() => {
     const handleScroll = () => {
       const scrollPosition = window.scrollY;
-      const triggerPosition = 200; // Adjust this value as needed
+      const triggerPosition = 100; // Adjust this value as needed
 
       setIsAdSticky(scrollPosition > triggerPosition);
     };
@@ -502,109 +382,10 @@ export default function SearchPage() {
     };
   }, []);
 
+  const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
+
   return (
     <>
-      {/* <Collapse in={showBanner}>
-        <UpgradedIndexBanner show={showBanner}>
-          {showBanner && (
-            <>
-              <UpgradedIndexText>Upgraded!</UpgradedIndexText>
-              <UpgradedIndexSubtext>
-                You're searching an upgraded index.{' '}
-                <a href="https://forms.gle/8CETtVbwYoUmxqbi7" target="_blank" rel="noopener noreferrer">
-                  Report&nbsp;a&nbsp;problem
-                </a>
-                .
-              </UpgradedIndexSubtext>
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '10px' }}>
-                <Button
-                  variant="contained"
-                  onClick={() => {
-                    const newAnimationsEnabled = !animationsEnabled;
-                    setAnimationsEnabled(newAnimationsEnabled);
-                    localStorage.setItem('animationsEnabled', newAnimationsEnabled.toString());
-                  }}
-                  style={{
-                    marginTop: '15px',
-                    borderRadius: '20px',
-                    padding: '6px 16px',
-                    backgroundColor: '#fff',
-                    color: '#000',
-                    position: 'relative',
-                    zIndex: 1,
-                    '&:hover': {
-                      backgroundColor: '#eee',
-                    },
-                  }}
-                >
-                  {animationsEnabled ? 'Disable Animations' : 'Enable Animations'}
-                </Button>
-                <Button
-                  variant="contained"
-                  onClick={() => {
-                    setIsBannerMinimized(true);
-                    setShowBanner(false);
-                    localStorage.setItem(`dismissedBanner`, 'true');
-                  }}
-                  style={{
-                    marginTop: '15px',
-                    borderRadius: '20px',
-                    padding: '6px 16px',
-                    backgroundColor: 'rgba(255, 255, 255, 0.7)',
-                    color: '#000',
-                    position: 'relative',
-                    zIndex: 1,
-                    '&:hover': {
-                      backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                    },
-                  }}
-                >
-                  Minimize
-                </Button>
-              </div>
-            </>
-          )}
-        </UpgradedIndexBanner>
-      </Collapse>
-      {!showBanner && (
-        <MinimizedBanner
-          onClick={() => {
-            setShowBanner(true);
-            setIsBannerMinimized(false);
-            localStorage.removeItem(`dismissedBanner`);
-          }}
-        >
-          <MinimizedBannerText style={{ fontWeight: 'bold' }}>You're using a V2 index!</MinimizedBannerText>
-          <MinimizedBannerText
-            style={{
-              textDecoration: 'underline',
-              fontWeight: 'normal',
-              marginLeft: '10px',
-            }}
-          >
-            Settings
-          </MinimizedBannerText>
-        </MinimizedBanner>
-      )} */}
-    {user?.userDetails?.subscriptionStatus !== 'active' &&
-      <>
-        {/* <StickyAdContainer className={isAdSticky ? 'visible' : ''}>
-          <HomePageBannerAd />
-        </StickyAdContainer> */}
-        <Grid item xs={12} mt={2}>
-          <center>
-            <Box>
-              <HomePageBannerAd />
-              <Link to="/pro" style={{ textDecoration: 'none' }}>
-                <Typography variant="body2" textAlign="center" color="white" sx={{ marginTop: 1 }}>
-                  ☝️ Remove ads with <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>memeSRC Pro</span>
-                </Typography>
-              </Link>
-            </Box>
-          </center>
-        </Grid>
-      </>
-    }
     <Grid item xs={12} mt={2}>
       <Typography variant="h3" textAlign="center" mb={2}>
         {newResults && 
@@ -643,15 +424,6 @@ export default function SearchPage() {
             hasMore={displayedResults < newResults.length}
             loader={
               <>
-                {/* {user?.userDetails?.subscriptionStatus !== 'active' && (
-                  <Grid item xs={12} mt={2}>
-                    <center>
-                      <Box sx={{ maxWidth: '800px' }}>
-                        <SearchPageBannerAd />
-                      </Box>
-                    </center>
-                  </Grid>
-                )} */}
                 <Grid item xs={12} textAlign="center" mt={4}>
                   <Button
                     variant="contained"
@@ -765,15 +537,6 @@ export default function SearchPage() {
             </Typography>
           )}
         </>
-      )}
-      {newResults?.length > 0 && user?.userDetails?.subscriptionStatus !== 'active' && (
-            <Grid item xs={12} mt={2}>
-              <center>
-                <Box sx={{ maxWidth: '800px' }}>
-                  <SearchPageBannerAd />
-                </Box>
-              </center>
-            </Grid>
       )}
       <Dialog open={maintenanceDialogOpen} onClose={() => setMaintenanceDialogOpen(false)} maxWidth="sm" fullWidth fullScreen={fullScreen}>
         <Box

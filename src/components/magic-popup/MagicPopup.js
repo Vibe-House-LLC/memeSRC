@@ -27,40 +27,6 @@ export default function MagicPopup({ children }) {
     const [loadingSubscriptionUrl, setLoadingSubscriptionUrl] = useState(false);
     const theme = useTheme();
     const { openSubscriptionDialog } = useSubscribeDialog();
-    const magicPopupRef = useRef(null);
-
-    useEffect(() => {
-      if (
-        location.pathname === '/pro' &&
-        user !== null &&
-        user.userDetails?.subscriptionStatus === 'active'
-      ) {
-        // console.log(user.userDetails);
-        // Set the anchorEl to magicPopup if the element with ID 'magicPopup' exists
-        const magicPopupElement = document.getElementById('magicChip');
-        if (magicPopupElement) {
-          setMagicToolsPopoverAnchorEl(magicPopupElement);
-        } else {
-          setMagicToolsPopoverAnchorEl(null);
-        }
-      }
-    }, [user, location]);
-
-    const logIntoCustomerPortal = () => {
-        setLoadingSubscriptionUrl(true)
-        API.post('publicapi', '/user/update/getPortalLink', {
-            body: {
-                currentUrl: window.location.href
-            }
-        }).then(results => {
-            console.log(results)
-            setLoadingSubscriptionUrl(false)
-            window.location.href = results
-        }).catch(error => {
-            console.log(error.response)
-            setLoadingSubscriptionUrl(false)
-        })
-    }
 
     const handleSubscribe = () => {
         openSubscriptionDialog();
@@ -321,7 +287,10 @@ export default function MagicPopup({ children }) {
                             // </Button>
                             <LoadingButton
                                 loading={loadingSubscriptionUrl}
-                                onClick={() => { navigate('/account'); }}
+                                onClick={() => { 
+                                    navigate('/account');
+                                    setMagicToolsPopoverAnchorEl(null);
+                                }}
                                 variant="contained"
                                 size="large"
                                 fullWidth

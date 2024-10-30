@@ -56,6 +56,7 @@ import getV2Metadata from '../utils/getV2Metadata';
 import FramePageBottomBannerAd from '../ads/FramePageBottomBannerAd';
 import { UserContext } from '../UserContext';
 import HomePageBannerAd from '../ads/HomePageBannerAd';
+import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
 
 // import { listGlobalMessages } from '../../../graphql/queries'
 
@@ -101,6 +102,8 @@ export default function FramePage({ shows = [] }) {
   const [fineTuningBlobs, setFineTuningBlobs] = useState([]);
   const [searchParams, setSearchParams] = useSearchParams();
   const searchQuery = searchParams.get('searchTerm');
+
+  const [textFieldFocused, setTextFieldFocused] = useState(false);
 
   const throttleTimeoutRef = useRef(null);
 
@@ -865,47 +868,6 @@ useEffect(() => {
 
       <Container maxWidth="xl" sx={{ pt: 0 }}>
         <Grid container spacing={2} direction="row" alignItems="center">
-          {/* <img src={imgSrc} alt='alt' /> */}
-
-          {/* {user?.userDetails?.subscriptionStatus !== 'active' && isMd && (
-            <Grid item xs={12} mt={2}>
-              <center>
-                <Box sx={{ maxWidth: '800px' }}>
-                  <FramePageBottomBannerAd />
-                </Box>
-              </center>
-            </Grid>
-          )} */}
-
-          {user?.userDetails?.subscriptionStatus !== 'active' &&
-            <Grid item xs={12} mt={2}>
-              <center>
-                <Box>
-                  <HomePageBannerAd />
-                  <button
-                    onClick={handleProClick}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter') {
-                        handleProClick();
-                      }
-                    }}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      padding: 0,
-                      cursor: 'pointer',
-                      textAlign: 'center',
-                      marginTop: '10px',
-                    }}
-                  >
-                    <Typography variant="body2" color="white">
-                      ☝️ Remove ads with <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>memeSRC Pro</span>
-                    </Typography>
-                  </button>
-                </Box>
-              </center>
-            </Grid>
-          }
 
           <Grid item xs={12} md={6}>
 
@@ -945,16 +907,6 @@ useEffect(() => {
               }}
             />
 
-            {/* {!isMd && user?.userDetails?.subscriptionStatus !== 'active' && (
-              <Grid item xs={12} mt={2}>
-                <center>
-                  <Box sx={{ maxWidth: '800px' }}>
-                    <FramePageBottomBannerAd />
-                  </Box>
-                </center>
-              </Grid>
-            )} */}
-
             <Card>
               {renderFineTuningFrames(imgSrc)}
             </Card>
@@ -962,24 +914,6 @@ useEffect(() => {
 
           <Grid item xs={12} md={6}>
             <Box sx={{ width: '100%' }}>
-              {/* <Card
-                style={{ boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}
-                onClick={(e) => {
-                  // Prevent card click event when clicking on any button or other interactive element inside the card
-                  if (e.target.closest('button, a, input, textarea')) {
-                    return;
-                  }
-
-                  // If showText is already true, do nothing
-                  if (showText) {
-                    return;
-                  }
-
-                  // If showText is false, then set it to true to show the TextField
-                  setShowText(true);
-                }}
-              >
-                <CardContent sx={{ pt: 3 }}> */}
                   {/* Formatting Toolbar */}
                   {showText &&
                     <Box sx={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
@@ -1067,6 +1001,8 @@ useEffect(() => {
                           value={loadedSubtitle}
                           onMouseDown={() => setShowText(true)}
                           onChange={(e) => setLoadedSubtitle(e.target.value)}
+                          onFocus={() => setTextFieldFocused(true)}
+                          onBlur={() => setTextFieldFocused(false)}
                           InputProps={{
                             style: {
                               fontWeight: isBold ? 'bold' : 'normal',
@@ -1112,6 +1048,11 @@ useEffect(() => {
                         >
                           Clear Caption
                         </Button>
+                      )}
+                      {textFieldFocused && user?.userDetails?.subscriptionStatus !== 'active' && (
+                        <Box sx={{ mt: 2 }}>
+                          <FixedMobileBannerAd />
+                        </Box>
                       )}
                       {showText &&
                         <>
