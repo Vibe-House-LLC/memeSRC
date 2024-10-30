@@ -101,7 +101,6 @@ export default function Router() {
         { path: 'support', element: <SiteWideMaintenance><ProSupport /></SiteWideMaintenance> },
         { path: 'faq', element: <SiteWideMaintenance><FAQPage /></SiteWideMaintenance> },
         { path: 'faq/:slug', element: <SiteWideMaintenance><FAQPage /></SiteWideMaintenance> },
-        { path: 'series/:seriesId', element: <SiteWideMaintenance><TopBannerSearchRevised><SeriesPage /></TopBannerSearchRevised></SiteWideMaintenance> },
         { path: '/vote', element: <SiteWideMaintenance><ShowProvider><VotingPage /></ShowProvider></SiteWideMaintenance> },
         { path: '/contribute', element: <SiteWideMaintenance><ContributorRequest /></SiteWideMaintenance> },
         { path: '/pricing', element: <SiteWideMaintenance><PricingPage /></SiteWideMaintenance> },
