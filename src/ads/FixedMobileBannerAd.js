@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect } from 'react';
 import styled from '@emotion/styled';
 import Box from '@mui/material/Box';
 
@@ -15,8 +15,6 @@ const FixedSizeAdContainer = styled(Box)`
 `;
 
 const FixedMobileBannerAd = () => {
-    const [adFailed, setAdFailed] = useState(false);
-    const observerRef = useRef(null);
 
     useEffect(() => {
         // Load the adsbygoogle script
@@ -26,52 +24,18 @@ const FixedMobileBannerAd = () => {
         script.crossOrigin = "anonymous";
         document.body.appendChild(script);
 
-        // Function to handle ad loading
-        const loadAd = () => {
-            try {
-                window.adsbygoogle = window.adsbygoogle || [];
-                window.adsbygoogle.push({});
-                
-                const adElement = document.querySelector('.adsbygoogle');
-                observerRef.current = new MutationObserver((mutations) => {
-                    mutations.forEach((mutation) => {
-                        if (mutation.target.innerHTML === '') {
-                            setAdFailed(true);
-                            setTimeout(() => {
-                                setAdFailed(false);
-                                loadAd();
-                            }, 2000);
-                        }
-                    });
-                });
-
-                observerRef.current.observe(adElement, {
-                    childList: true,
-                    subtree: true
-                });
-            } catch (error) {
-                console.error('Ad loading error:', error);
-                setAdFailed(true);
-            }
-        };
-
-        loadAd();
-
-        // Cleanup observer on unmount
-        return () => {
-            if (observerRef.current) {
-                observerRef.current.disconnect();
-            }
-        };
+        // Initialize the adsbygoogle array if it doesn't exist and push an ad
+        window.adsbygoogle = window.adsbygoogle || [];
+        window.adsbygoogle.push({});
     }, []);
 
     return (
-        <FixedSizeAdContainer style={{ backgroundColor: adFailed ? 'red' : 'transparent' }}>
+        <FixedSizeAdContainer>
             <ins className="adsbygoogle"
-                style={{ display: 'inline-block', width: '300px', height: '50px' }}
-                data-ad-client="ca-pub-1307598869123774"
-                data-ad-slot="2351910795"
-            />
+            style={{ display: 'inline-block', width: '300px', height: '50px' }}
+            data-ad-client="ca-pub-1307598869123774"
+            data-ad-slot="2351910795"
+        />
         </FixedSizeAdContainer>
     );
 }
