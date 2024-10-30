@@ -399,46 +399,64 @@ export const DialogProvider = ({ children }) => {
                       <Stack
                         direction="row" 
                         spacing={1}
-                        sx={{ width: '100%', justifyContent: 'center' }}
+                        sx={{ 
+                          width: '100%', 
+                          justifyContent: 'center',
+                        }}
                       >
                         {[
-                          { plan: 'pro5', credits: 5 },
-                          { plan: 'pro25', credits: 25 },
-                          { plan: 'pro69', credits: 69 }
-                        ].map(({ plan, credits }) => (
+                          { plan: 'pro5', credits: 5, color: 'grey.500', textColor: 'common.black' },
+                          { plan: 'pro25', credits: 25, color: '#ff6900', textColor: 'common.black' },
+                          { plan: 'pro69', credits: 69, color: 'rgb(84, 214, 44)', textColor: 'common.black' }
+                        ].map(({ plan, credits, color, textColor }) => (
                           <Box 
                             key={plan} 
                             sx={{ 
                               textAlign: 'center',
                               flex: '1 1 0',
                               minWidth: 0,
-                              maxWidth: 160
+                              maxWidth: 160,
+                              position: 'relative',
                             }}
                           >
-                            <Button
-                              variant={selectedPlan === plan ? 'contained' : 'outlined'}
+                            <Card
+                              variant="outlined"
                               onClick={() => setSelectedPlanAndScroll(plan)}
                               sx={{
-                                fontSize: { xs: '1.25rem', sm: '1.5rem' },
-                                width: '100%',
                                 height: { xs: 60, sm: 80 },
-                                minWidth: 0,
-                                px: 1,
-                                color: selectedPlan === plan ? getTextColor() : 'common.white',
-                                borderColor: getColor(),
-                                backgroundColor: selectedPlan === plan ? getColor() : 'transparent',
-                                '&:hover': {
-                                  backgroundColor: selectedPlan === plan ? getColor() : `${getColor()}1A`,
-                                },
+                                cursor: 'pointer',
+                                borderColor: 'divider',
+                                backgroundColor: selectedPlan === plan ? color : 'grey.800',
+                                position: 'relative',
+                                overflow: 'hidden',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                '&::before': {
+                                  content: '""',
+                                  position: 'absolute',
+                                  top: 0,
+                                  left: 0,
+                                  width: '100%',
+                                  height: '4px',
+                                  backgroundColor: color,
+                                  display: selectedPlan === plan ? 'none' : 'block'
+                                }
                               }}
                             >
-                              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                  <AutoFixHighRounded sx={{ fontSize: 25, mx: 0.5 }} />
-                                  {credits}
-                                </Box>
+                              <Box 
+                                sx={{ 
+                                  display: 'flex', 
+                                  alignItems: 'center',
+                                  color: selectedPlan === plan ? textColor : 'common.white',
+                                  fontSize: { xs: '1.25rem', sm: '1.5rem' },
+                                  fontWeight: 600,
+                                }}
+                              >
+                                <AutoFixHighRounded sx={{ fontSize: 25, mx: 0.5 }} />
+                                {credits}
                               </Box>
-                            </Button>
+                            </Card>
                             <Typography 
                               variant="caption" 
                               sx={{ 
