@@ -28,6 +28,7 @@ import getV2Metadata from '../utils/getV2Metadata';
 import HomePageBannerAd from '../ads/HomePageBannerAd';
 
 import { calculateEditorSize, getContrastColor, deleteLayer, moveLayerUp } from '../utils/editorFunctions';
+import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
 
 const Alert = forwardRef((props, ref) => <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />);
 
@@ -1576,7 +1577,7 @@ const EditorPage = ({ shows }) => {
               <Grid item xs={12} mt={2}>
                 <center>
                   <Box sx={{ maxWidth: '800px' }}>
-                    <EditorPageBottomBannerAd />
+                    <HomePageBannerAd />
                   </Box>
                 </center>
               </Grid>
@@ -2020,9 +2021,7 @@ const EditorPage = ({ shows }) => {
                 {user?.userDetails?.subscriptionStatus !== 'active' &&
                   <Grid item xs={12} my={2}>
                     <center>
-                      <Box sx={{ maxWidth: '800px' }}>
-                        <HomePageBannerAd />
-                      </Box>
+                        <FixedMobileBannerAd />
                     </center>
                   </Grid>
                 }

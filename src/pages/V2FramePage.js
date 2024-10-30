@@ -56,6 +56,7 @@ import getV2Metadata from '../utils/getV2Metadata';
 import FramePageBottomBannerAd from '../ads/FramePageBottomBannerAd';
 import { UserContext } from '../UserContext';
 import HomePageBannerAd from '../ads/HomePageBannerAd';
+import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
 
 // import { listGlobalMessages } from '../../../graphql/queries'
 
@@ -101,6 +102,8 @@ export default function FramePage({ shows = [] }) {
   const [fineTuningBlobs, setFineTuningBlobs] = useState([]);
   const [searchParams, setSearchParams] = useSearchParams();
   const searchQuery = searchParams.get('searchTerm');
+
+  const [textFieldFocused, setTextFieldFocused] = useState(false);
 
   const throttleTimeoutRef = useRef(null);
 
@@ -998,6 +1001,8 @@ useEffect(() => {
                           value={loadedSubtitle}
                           onMouseDown={() => setShowText(true)}
                           onChange={(e) => setLoadedSubtitle(e.target.value)}
+                          onFocus={() => setTextFieldFocused(true)}
+                          onBlur={() => setTextFieldFocused(false)}
                           InputProps={{
                             style: {
                               fontWeight: isBold ? 'bold' : 'normal',
@@ -1043,6 +1048,11 @@ useEffect(() => {
                         >
                           Clear Caption
                         </Button>
+                      )}
+                      {textFieldFocused && user?.userDetails?.subscriptionStatus !== 'active' && (
+                        <Box sx={{ mt: 2 }}>
+                          <FixedMobileBannerAd />
+                        </Box>
                       )}
                       {showText &&
                         <>
