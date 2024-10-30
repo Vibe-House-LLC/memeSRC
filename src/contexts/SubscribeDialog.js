@@ -277,7 +277,7 @@ export const DialogProvider = ({ children }) => {
                         <Check sx={{ color: getTextColor() }} />
                       </Box>
                       <Typography fontSize={18} fontWeight={500}>
-                        No Ads
+                        Zero Ads
                       </Typography>
                     </Box>
                     <Box display="flex" alignItems="center" mb={2} ml={2}>
@@ -315,7 +315,7 @@ export const DialogProvider = ({ children }) => {
                         <Bolt sx={{ color: getTextColor() }} />
                       </Box>
                       <Typography fontSize={18} fontWeight={500}>
-                        Early Access Features
+                        Exclusive Features
                       </Typography>
                     </Box>
                     <Box display="flex" alignItems="center" ml={2}>
