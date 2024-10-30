@@ -1,21 +1,7 @@
-import PropTypes from 'prop-types';
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
-import { Grid, CircularProgress, Card, Container, Typography } from '@mui/material';
-import styled from '@emotion/styled';
-import { Stack } from '@mui/system';
-import { LoadingButton } from '@mui/lab';
-import { API } from 'aws-amplify';
+import React from 'react';
+import { Container, Typography } from '@mui/material';
 import { Helmet } from 'react-helmet-async';
-import AddSeries from '../sections/@dashboard/series/AddSeries';
 import TvdbSearch from '../components/TvdbSearch/TvdbSearch';
-// import FullScreenSearch from '../sections/search/FullScreenSearch';
-// import TopBannerSearch from '../sections/search/TopBannerSearch';
-
-// Prop types
-// EpisodePage.propTypes = {
-//   setSeriesTitle: PropTypes.func
-// };
 
 export default function AddSeriesPage() {
 
