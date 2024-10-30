@@ -3,20 +3,16 @@
 import styled from "@emotion/styled";
 import { Link, Fab, FormControl, Grid, InputBase, MenuItem, Select, Typography, Divider, Box, Stack, Container, ListSubheader } from "@mui/material";
 import { ArrowBack, Close, Favorite, MapsUgc, Search, Shuffle } from "@mui/icons-material";
-import { API, graphqlOperation } from 'aws-amplify';
+import { API } from 'aws-amplify';
 import { Children, cloneElement, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { LoadingButton } from "@mui/lab";
-import { Outlet, Link as RouterLink, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Link as RouterLink, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { searchPropTypes } from "./SearchPropTypes";
-import Logo from "../../components/logo/Logo";
-import { contentMetadataByStatus, listContentMetadata } from '../../graphql/queries';
-import useSearchDetails from "../../hooks/useSearchDetails";
 import useSearchDetailsV2 from "../../hooks/useSearchDetailsV2";
 import AddCidPopup from "../../components/ipfs/add-cid-popup";
 import { UserContext } from "../../UserContext";
-import fetchShows from "../../utils/fetchShows";
 import useLoadRandomFrame from "../../utils/loadRandomFrame";
-import { useShows } from "../../contexts/useShows";
+import FixedMobileBannerAd from '../../ads/FixedMobileBannerAd';
 
 // Define constants for colors and fonts
 const PRIMARY_COLOR = '#4285F4';
@@ -52,7 +48,7 @@ const StyledSearchInput = styled(InputBase)`
 `;
 
 const StyledLeftFooter = styled('footer')`
-    bottom: 0;
+    bottom: ${props => props.hasAd ? '50px' : '0'};
     left: 0;
     line-height: 0;
     position: fixed;
@@ -65,7 +61,7 @@ const StyledLeftFooter = styled('footer')`
 `;
 
 const StyledRightFooter = styled('footer')`
-    bottom: 0;
+    bottom: ${props => props.hasAd ? '50px' : '0'};
     right: 0;
     line-height: 0;
     position: fixed;
@@ -83,6 +79,19 @@ const StyledHeader = styled('header')(() => ({
   zIndex: '1000',
   paddingBottom: '10px'
 }));
+
+const StyledAdFooter = styled(Box)`
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: black;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1299;
+`;
 
 IpfsSearchBar.propTypes = searchPropTypes;
 
@@ -138,10 +147,6 @@ export default function IpfsSearchBar(props) {
     }
   }, [searchTerm]);
 
-  // useEffect(() => {
-  //   console.log(cid)
-  // }, [cid]);
-
   const handleSelectSeries = (data) => {
     if (data === "editFavorites") {
       navigate("/favorites"); // Navigate to the favorites editing page
@@ -159,19 +164,6 @@ export default function IpfsSearchBar(props) {
     setSelectedFrameIndex()
   }, [params?.subtitleIndex]);
 
-
-  /* -------------------------------------------------------------------------- */
-
-  // useEffect(() => {
-  //   async function getData() {
-  //     // Get shows
-  //     const shows = await fetchShows();
-  //     console.log(shows)
-  //     setShows(shows);
-  //     setLoading(false);
-  //   }
-  //   getData();
-  // }, []);
 
   const getSessionID = async () => {
     let sessionID;
@@ -197,21 +189,12 @@ export default function IpfsSearchBar(props) {
     return false
   }
 
+  const showAd = user?.userDetails?.subscriptionStatus !== 'active';
+
   return (
     <>
       <StyledHeader>
         <Grid container mb={1.5} paddingX={2}>
-          {/* <Grid item marginX={{ xs: 'auto', md: 0 }} marginY='auto'>
-            <Grid display='flex' xs={12} marginBottom={{ xs: 3, md: 0 }}>
-              <Link to="/" component={RouterLink} sx={{ display: 'contents' }}>
-                <Logo style={{ float: 'left' }} />
-                <Typography component='h6' variant='h6' marginY='auto' sx={{ color: '#FFFFFF', textShadow: '1px 1px 3px rgba(0, 0, 0, 0.30);', marginLeft: '6px', display: 'inline' }}>
-                  memeSRC
-                </Typography>
-              </Link>
-            </Grid>
-
-          </Grid> */}
           <Grid item xs={12} md={6} paddingLeft={{ xs: 0, md: 2 }}>
             <form onSubmit={e => searchFunction(e)}>
               <StyledSearchInput
@@ -380,7 +363,7 @@ export default function IpfsSearchBar(props) {
       {Children.map(props.children, (child) => {
         return cloneElement(child, { shows });
       })}
-      <StyledLeftFooter className="bottomBtn">
+      <StyledLeftFooter className="bottomBtn" hasAd={showAd}>
         <a href="https://forms.gle/8CETtVbwYoUmxqbi7" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
           <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black", zIndex: '1300' }} size='medium'>
             <MapsUgc color="white" />
@@ -392,9 +375,16 @@ export default function IpfsSearchBar(props) {
           </Fab>
         </a>
       </StyledLeftFooter>
-      <StyledRightFooter className="bottomBtn">
+      <StyledRightFooter className="bottomBtn" hasAd={showAd}>
         <StyledButton onClick={() => { loadRandomFrame(cid) }} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
       </StyledRightFooter>
+
+      {showAd && (
+        <StyledAdFooter>
+          <FixedMobileBannerAd />
+        </StyledAdFooter>
+      )}
+      
       <AddCidPopup open={addNewCidOpen} setOpen={setAddNewCidOpen} />
     </>
   )
