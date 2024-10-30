@@ -1,5 +1,5 @@
 import { AutoFixHighRounded, Block, Close, Favorite, Star, SupportAgent, ExpandMore, Clear, Check, Bolt, Share, ThumbUp, Feedback } from '@mui/icons-material';
-import { Box, Button, Card, Checkbox, Chip, CircularProgress, Collapse, Dialog, DialogContent, DialogTitle, Divider, Fade, Grid, IconButton, LinearProgress, Typography, useMediaQuery, FormControlLabel } from '@mui/material';
+import { Box, Button, Card, Checkbox, Chip, CircularProgress, Collapse, Dialog, DialogContent, DialogTitle, Divider, Fade, Grid, IconButton, LinearProgress, Typography, useMediaQuery, FormControlLabel, Fab } from '@mui/material';
 import { API, graphqlOperation } from 'aws-amplify';
 import { createContext, useState, useRef, useEffect, useContext } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -209,21 +209,23 @@ export const DialogProvider = ({ children }) => {
             alignItems: 'center',
             justifyContent: 'center',
             position: 'relative',
-            pt: isMd ? 2 : 1.5,
-            pb: isMd ? 0.5 : 0,
+            pt: isMd ? 2 : 1.2,
+            pb: isMd ? 2 : 1.2,
           }}
         >
-          <img
-            src="/assets/memeSRC-white.svg"
-            alt="memeSRC logo"
-            style={{ height: isMd ? 40 : 32, marginBottom: 4 }}
-          />
-          <Typography fontSize={isMd ? 28 : 22} fontWeight={700}>
-            memeSRC Pro
-          </Typography>
-          <IconButton onClick={closeDialog} size="large" sx={{ position: 'absolute', top: isMd ? 8 : 4, right: 10 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <img
+              src="/assets/memeSRC-white.svg"
+              alt="memeSRC logo"
+              style={{ height: isMd ? 36 : 24 }}
+            />
+            <Typography fontSize={isMd ? 28 : 22} fontWeight={700}>
+              memeSRC Pro
+            </Typography>
+          </Box>
+          <Fab onClick={closeDialog} size="small" sx={{ position: 'absolute', top: isMd ? 8 : 4, right: 10, zIndex: 1000, opacity: 0.4 }}>
             <Close />
-          </IconButton>
+          </Fab>
         </DialogTitle>
         <Divider />
           <>
