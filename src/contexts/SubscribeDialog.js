@@ -13,7 +13,7 @@ export const SubscribeDialogContext = createContext();
 export const DialogProvider = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const isMd = useMediaQuery(theme => theme.breakpoints.up('md'));
+  const isMd = useMediaQuery(theme => theme.breakpoints.up('sm'));
   const [subscriptionDialogOpen, setSubscriptionDialogOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState('pro5');
   const [loading, setLoading] = useState(false);
@@ -339,73 +339,130 @@ export const DialogProvider = ({ children }) => {
                       </Typography>
                     </Box>
                   </Grid>
-                  <Grid item xs={12} md={7} mx={2}>
-                    <Stack
-                      direction="row" 
-                      spacing={1}
-                      sx={{ width: '100%', justifyContent: 'center' }}
-                    >
-                      {[
-                        { plan: 'pro5', credits: 5 },
-                        { plan: 'pro25', credits: 25 },
-                        { plan: 'pro69', credits: 69 }
-                      ].map(({ plan, credits }) => (
-                        <Box 
-                          key={plan} 
-                          sx={{ 
-                            textAlign: 'center',
-                            flex: '1 1 0',
-                            minWidth: 0,
-                            maxWidth: 160
-                          }}
-                        >
-                          <Button
-                            variant={selectedPlan === plan ? 'contained' : 'outlined'}
-                            onClick={() => setSelectedPlanAndScroll(plan)}
+                  <Grid item xs={12} md={7}>
+                    {isMd ? (
+                      <Box sx={{ px: 2 }}>
+                        {[
+                          { plan: 'pro5', credits: 5, color: 'grey.500', hoverColor: 'grey.500', activeColor: 'grey.500' },
+                          { plan: 'pro25', credits: 25, color: '#ff6900', hoverColor: '#ff6900', activeColor: '#e65c00' },
+                          { plan: 'pro69', credits: 69, color: 'rgb(84, 214, 44)', hoverColor: 'rgb(84, 214, 44)', activeColor: 'rgb(71, 181, 37)' }
+                        ].map(({ plan, credits, color, hoverColor, activeColor }) => (
+                          <Card
+                            key={plan}
+                            variant="outlined"
                             sx={{
-                              fontSize: { xs: '1.25rem', sm: '1.5rem' },
-                              width: '100%',
-                              height: { xs: 60, sm: 80 },
-                              minWidth: 0,
-                              px: 1,
-                              color: selectedPlan === plan ? getTextColor() : 'common.white',
-                              borderColor: getColor(),
-                              backgroundColor: selectedPlan === plan ? getColor() : 'transparent',
-                              '&:hover': {
-                                backgroundColor: selectedPlan === plan ? getColor() : `${getColor()}1A`,
-                              },
+                              mb: 2,
+                              cursor: 'pointer',
+                              borderColor: selectedPlan === plan ? color : 'divider',
+                              '&:hover': { borderColor: hoverColor },
+                              position: 'relative',
+                              overflow: 'hidden',
                             }}
+                            onClick={() => setSelectedPlanAndScroll(plan)}
                           >
-                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <AutoFixHighRounded sx={{ fontSize: 25, mx: 0.5 }} />
-                                {credits}
-                              </Box>
+                            <Box
+                              sx={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                width: 8,
+                                height: '100%',
+                                backgroundColor: color,
+                              }}
+                            />
+                            <Box
+                              sx={{
+                                p: 2,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                backgroundColor: selectedPlan === plan ? activeColor : 'transparent',
+                                color: selectedPlan === plan ? 'common.black' : 'common.white',
+                              }}
+                            >
+                              <Typography fontSize={18} fontWeight={700} sx={{ ml: 2 }}>
+                                {credits} credits / mo.
+                              </Typography>
+                              <Typography fontSize={18} fontWeight={700} sx={{ mr: 1 }}>
+                                {selectedPlan === plan ? 'included' : 
+                                 plan === 'pro5' ? 
+                                   (selectedPlan === 'pro25' ? '-$2' : '-$4') :
+                                 plan === 'pro25' ? 
+                                   (selectedPlan === 'pro5' ? '+$2' : '-$2') :
+                                 (selectedPlan === 'pro5' ? '+$4' : '+$2')}
+                              </Typography>
                             </Box>
-                          </Button>
-                          <Typography 
-                            variant="caption" 
+                          </Card>
+                        ))}
+                      </Box>
+                    ) : (
+                      <Stack
+                        direction="row" 
+                        spacing={1}
+                        sx={{ width: '100%', justifyContent: 'center' }}
+                      >
+                        {[
+                          { plan: 'pro5', credits: 5 },
+                          { plan: 'pro25', credits: 25 },
+                          { plan: 'pro69', credits: 69 }
+                        ].map(({ plan, credits }) => (
+                          <Box 
+                            key={plan} 
                             sx={{ 
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              mt: 1, 
-                              color: selectedPlan === plan ? 'common.white' : 'grey.500',
-                              fontWeight: selectedPlan === plan ? 800 : 550,
-                              gap: 0.5,
-                              fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                              textAlign: 'center',
+                              flex: '1 1 0',
+                              minWidth: 0,
+                              maxWidth: 160
                             }}
                           >
-                            {selectedPlan === plan ? 'included' : 
-                             plan === 'pro5' ? 
-                               (selectedPlan === 'pro25' ? '-$2/mo' : '-$4/mo') :
-                             plan === 'pro25' ? 
-                               (selectedPlan === 'pro5' ? '+$2/mo' : '-$2/mo') :
-                             (selectedPlan === 'pro5' ? '+$4/mo' : '+$2/mo')}
-                          </Typography>
-                        </Box>
-                      ))}
-                    </Stack>
+                            <Button
+                              variant={selectedPlan === plan ? 'contained' : 'outlined'}
+                              onClick={() => setSelectedPlanAndScroll(plan)}
+                              sx={{
+                                fontSize: { xs: '1.25rem', sm: '1.5rem' },
+                                width: '100%',
+                                height: { xs: 60, sm: 80 },
+                                minWidth: 0,
+                                px: 1,
+                                color: selectedPlan === plan ? getTextColor() : 'common.white',
+                                borderColor: getColor(),
+                                backgroundColor: selectedPlan === plan ? getColor() : 'transparent',
+                                '&:hover': {
+                                  backgroundColor: selectedPlan === plan ? getColor() : `${getColor()}1A`,
+                                },
+                              }}
+                            >
+                              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                  <AutoFixHighRounded sx={{ fontSize: 25, mx: 0.5 }} />
+                                  {credits}
+                                </Box>
+                              </Box>
+                            </Button>
+                            <Typography 
+                              variant="caption" 
+                              sx={{ 
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                mt: 1, 
+                                color: selectedPlan === plan ? 'common.white' : 'grey.500',
+                                fontWeight: selectedPlan === plan ? 800 : 550,
+                                gap: 0.5,
+                                fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                              }}
+                            >
+                              {selectedPlan === plan ? 'included' : 
+                               plan === 'pro5' ? 
+                                 (selectedPlan === 'pro25' ? '-$2/mo' : '-$4/mo') :
+                               plan === 'pro25' ? 
+                                 (selectedPlan === 'pro5' ? '+$2/mo' : '-$2/mo') :
+                               (selectedPlan === 'pro5' ? '+$4/mo' : '+$2/mo')}
+                            </Typography>
+                          </Box>
+                        ))}
+                      </Stack>
+                    )}
                   </Grid>
                 </Grid>
                 <Box mt={4} textAlign="center">
