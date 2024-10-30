@@ -223,11 +223,6 @@ export default function V2EpisodePage({ setSeriesTitle }) {
         {cid} <br />
         <span style={{ fontSize: '18px' }}>Season {season}, Episode {episode}</span>
       </Typography>
-      {user?.userDetails?.subscriptionStatus !== 'active' && (
-        <Box marginBottom="20px">
-          <EpisodePageBannerAd />
-        </Box>
-      )}
       <Box marginBottom="20px">
         {parseInt(frame, 10) > firstFrame && (
           <Button
@@ -313,11 +308,9 @@ export default function V2EpisodePage({ setSeriesTitle }) {
         </Grid>
       )}
 
-      {resultsWithAds.length > 0 && user?.userDetails?.subscriptionStatus !== 'active' && (
         <Box marginTop="20px">
           <EpisodePageBannerAd />
         </Box>
-      )}
 
       <Box marginTop="20px">
         <Button
