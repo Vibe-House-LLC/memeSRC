@@ -35,7 +35,7 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import { ArrowUpward, ArrowDownward, Search, Close, ThumbUp, Whatshot, Lock, NewReleasesOutlined, Refresh, AutoFixHighRounded, ThumbDown } from '@mui/icons-material';
 import FlipMove from 'react-flip-move';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { LoadingButton } from '@mui/lab';
 import { GridFilterAltIcon, GridSearchIcon } from '@mui/x-data-grid';
@@ -46,6 +46,8 @@ import { UserContext } from '../UserContext';
 import TvdbSearch from '../components/TvdbSearch/TvdbSearch';
 import { SnackbarContext } from '../SnackbarContext';
 import { useShows } from '../contexts/useShows';  // Add this import if not already present
+import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
+import HomePageBannerAd from '../ads/HomePageBannerAd';
 
 const StyledBadge = styled(Badge)(() => ({
   '& .MuiBadge-badge': {
@@ -293,6 +295,10 @@ export default function VotingPage() {
 
   // Add this state variable for loading state
   const [isSubmittingMagicVote, setIsSubmittingMagicVote] = useState(false);
+
+  // Add these state variables after other state declarations
+  const [showAd, setShowAd] = useState(false);
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   // Add this debounced search function after other function declarations
   const debouncedSearch = useCallback(
@@ -1170,7 +1176,6 @@ export default function VotingPage() {
 
   // Add these new state variables after other state declarations
   const [isAdmin, setIsAdmin] = useState(false);
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   // Add this new useEffect to check admin status
   useEffect(() => {
@@ -1259,6 +1264,21 @@ export default function VotingPage() {
       }
     }
   };
+
+  // Add this useEffect to handle the ad display logic
+  useEffect(() => {
+    // Get the current number of homepage loads from localStorage
+    let homepageLoads = parseInt(localStorage.getItem('homepageLoads') || '0', 10);
+
+    // Increment the count
+    homepageLoads += 1;
+
+    // Save the updated count back to localStorage
+    localStorage.setItem('homepageLoads', homepageLoads.toString());
+
+    // Show the ad if the count is greater than 2
+    setShowAd(homepageLoads > 2);
+  }, []); // Empty dependency array ensures this runs only once on component mount
 
   return (
     <>
@@ -1432,6 +1452,22 @@ export default function VotingPage() {
             </Grid>
           ) : (
             <>
+              {/* Add the ad section here */}
+              {user?.userDetails?.subscriptionStatus !== 'active' && showAd && (
+                <Grid item xs={12} mb={3}>
+                  <center>
+                    <Box>
+                      {isMobile ? <FixedMobileBannerAd /> : <HomePageBannerAd />}
+                      <Link to="/pro" style={{ textDecoration: 'none' }}>
+                        <Typography variant="body2" textAlign="center" color="white" sx={{ marginTop: 1 }}>
+                          ☝️ Remove ads with <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>memeSRC Pro</span>
+                        </Typography>
+                      </Link>
+                    </Box>
+                  </center>
+                </Grid>
+              )}
+
               <FlipMove key={rankMethod} style={{ minWidth: '100%' }}>
                 {sortedSeriesMetadata.map((show) => {
                   if (!filterShows(show)) {
