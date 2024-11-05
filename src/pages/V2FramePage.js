@@ -859,6 +859,7 @@ useEffect(() => {
     navigate('/pro');
   };
 
+  const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
 
   return (
     <>
@@ -867,6 +868,21 @@ useEffect(() => {
       </Helmet>
 
       <Container maxWidth="xl" sx={{ pt: 0 }}>
+        {user?.userDetails?.subscriptionStatus !== 'active' && (
+          <Grid item xs={12} mb={3}>
+            <center>
+              <Box>
+                {isMobile ? <FixedMobileBannerAd /> : <HomePageBannerAd />}
+                <Link to="/pro" style={{ textDecoration: 'none' }}>
+                  <Typography variant="body2" textAlign="center" color="white" sx={{ marginTop: 1 }}>
+                    ☝️ Remove ads with <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>memeSRC Pro</span>
+                  </Typography>
+                </Link>
+              </Box>
+            </center>
+          </Grid>
+        )}
+
         <Grid container spacing={2} direction="row" alignItems="center">
 
           <Grid item xs={12} md={6}>

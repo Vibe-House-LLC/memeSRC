@@ -4,7 +4,7 @@ import { Fragment, forwardRef, memo, useCallback, useContext, useEffect, useRef,
 import { fabric } from 'fabric';
 import { FabricJSCanvas, useFabricJSEditor } from 'fabricjs-react'
 import { styled } from '@mui/material/styles';
-import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
 import { Accordion, AccordionDetails, AccordionSummary, Backdrop, Button, ButtonGroup, Card, CircularProgress, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, LinearProgress, List, ListItem, ListItemIcon, ListItemText, Popover, Skeleton, Slider, Snackbar, Stack, Tab, Tabs, TextField, ToggleButton, ToggleButtonGroup, Typography, useMediaQuery, useTheme } from '@mui/material';
@@ -1564,6 +1564,9 @@ const EditorPage = ({ shows }) => {
     }
   }, [location.state]);
 
+  // Add this state near other useState declarations
+  const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
+
   return (
     <>
       <Helmet>
@@ -1572,17 +1575,22 @@ const EditorPage = ({ shows }) => {
       <Container maxWidth='xl' disableGutters>
         <ParentContainer sx={{ padding: { xs: 1.5, md: 2 } }} id="parent-container">
 
-          {user?.userDetails?.subscriptionStatus !== 'active' &&
+          {user?.userDetails?.subscriptionStatus !== 'active' && (
             <Grid container>
-              <Grid item xs={12} mt={2}>
+              <Grid item xs={12} mb={3}>
                 <center>
-                  <Box sx={{ maxWidth: '800px' }}>
-                    <HomePageBannerAd />
+                  <Box>
+                    {isMobile ? <FixedMobileBannerAd /> : <HomePageBannerAd />}
+                    <Link to="/pro" style={{ textDecoration: 'none' }}>
+                      <Typography variant="body2" textAlign="center" color="white" sx={{ marginTop: 1 }}>
+                        ☝️ Remove ads with <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>memeSRC Pro</span>
+                      </Typography>
+                    </Link>
                   </Box>
                 </center>
               </Grid>
             </Grid>
-          }
+          )}
 
           <Card sx={{ padding: { xs: 1.5, md: 2 } }}>
             <Grid container spacing={2}>
