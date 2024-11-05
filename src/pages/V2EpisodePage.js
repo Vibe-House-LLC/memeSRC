@@ -191,8 +191,12 @@ export default function V2EpisodePage({ setSeriesTitle }) {
   };
 
   const injectAds = (results, adInterval) => {
-    const injectedResults = [];
+    // Skip ad injection for active subscribers
+    if (user?.userDetails?.subscriptionStatus === 'active') {
+      return results;
+    }
 
+    const injectedResults = [];
     for (let i = 0; i < results.length; i += 1) {
       injectedResults.push(results[i]);
 
@@ -204,7 +208,7 @@ export default function V2EpisodePage({ setSeriesTitle }) {
     return injectedResults;
   };
 
-  const adInterval = user?.userDetails?.subscriptionStatus !== 'active' ? 9 : Infinity;
+  const adInterval = 9;
   const resultsWithAds = injectAds(results, adInterval);
 
   const handleImageLoad = (fid) => {
@@ -309,7 +313,9 @@ export default function V2EpisodePage({ setSeriesTitle }) {
       )}
 
         <Box marginTop="20px">
-          <EpisodePageBannerAd />
+          {user?.userDetails?.subscriptionStatus !== 'active' && (
+            <EpisodePageBannerAd />
+          )}
         </Box>
 
       <Box marginTop="20px">
