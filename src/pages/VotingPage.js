@@ -792,7 +792,7 @@ export default function VotingPage() {
         } catch (error) {
           console.error('Error fetching search results:', error);
         } finally {
-          setIsSearching(false); // Remove loading state after search completes
+          setIsSearching(false);
         }
       };
       fetchSearchResults();
@@ -1489,14 +1489,14 @@ export default function VotingPage() {
                                   <Box mr={2} position="relative">
                                     <Badge
                                       badgeContent={
-                                        // First check if we have the rank in our original data
-                                        originalRanks[show.id] !== undefined || show.rank !== null ? (
-                                          `#${originalRanks[show.id] || show.rank}`
-                                        ) : // If not, then use search rank as fallback when in search mode
+                                        // First check if we're in search mode and have search ranks
                                         debouncedSearchText && searchResultRanks[show.id] ? (
                                           `#${rankMethod === 'combined' ? 
                                             searchResultRanks[show.id].battleground : 
                                             searchResultRanks[show.id].upvotes}`
+                                        ) : // If not searching, use original ranks
+                                        originalRanks[show.id] !== undefined || show.rank !== null ? (
+                                          `#${originalRanks[show.id] || show.rank}`
                                         ) : (
                                           <CircularProgress
                                             size={12}
