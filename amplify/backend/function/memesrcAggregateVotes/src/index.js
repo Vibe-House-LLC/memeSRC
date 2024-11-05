@@ -37,7 +37,7 @@ const ssm = new SSMClient({ region: REGION });
  * @type {import('@types/aws-lambda').APIGatewayProxyHandler}
  */
 
-const TOP_ITEM_COUNT = 5;
+const TOP_ITEM_COUNT = 3000;
 const indexName = `votes-series-${process.env.ENV}`;
 
 // New function to retrieve OpenSearch credentials
