@@ -329,11 +329,6 @@ export default function VotingPage() {
     []
   );
 
-  // Modify handleSearchChange to only update the input value
-  const handleSearchChange = (event) => {
-    setSearchText(event.target.value);
-  };
-
   // Update handleSearchKeyDown to trigger the search
   const handleSearchKeyDown = (event) => {
     if (event.key === 'Enter') {
