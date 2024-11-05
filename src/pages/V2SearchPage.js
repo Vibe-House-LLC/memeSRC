@@ -321,7 +321,7 @@ export default function SearchPage() {
           throw new Error(`HTTP error! Status: ${response.status}`);
         }
         const results = await response.json();
-        const adInterval = user?.userDetails?.subscriptionStatus !== 'active' ? 7 : Infinity;
+        const adInterval = user?.userDetails?.subscriptionStatus !== 'active' ? 5 : Infinity;
         const resultsWithAds = injectAds(results.results, adInterval);
         setNewResults(resultsWithAds);
         setLoadingResults(false);
