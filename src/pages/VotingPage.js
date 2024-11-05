@@ -41,6 +41,8 @@ import { LoadingButton } from '@mui/lab';
 import { GridFilterAltIcon, GridSearchIcon } from '@mui/x-data-grid';
 import { debounce } from 'lodash';
 import MuiAlert from '@mui/material/Alert';
+import match from 'autosuggest-highlight/match';
+import parse from 'autosuggest-highlight/parse';
 import { listSeries, getSeries } from '../graphql/queries';
 import { UserContext } from '../UserContext';
 import TvdbSearch from '../components/TvdbSearch/TvdbSearch';
@@ -323,20 +325,17 @@ export default function VotingPage() {
         console.error('Error fetching search suggestions:', error);
         setSearchOptions([]);
       }
-    }, 300),
+    }, 200),
     []
   );
-
-  // Modify handleSearchChange to only update the input value
-  const handleSearchChange = (event) => {
-    setSearchText(event.target.value);
-  };
 
   // Update handleSearchKeyDown to trigger the search
   const handleSearchKeyDown = (event) => {
     if (event.key === 'Enter') {
       setDebouncedSearchText(searchText); // Trigger the search
       setIsSearching(true); // Show loading state
+      setDisplayOption('showAll'); // Reset display option to show all results
+      // localStorage.setItem('displayOption', 'showAll'); // Update localStorage
       searchInputRef.current?.blur(); // Remove focus from the input
     }
   };
@@ -1392,6 +1391,28 @@ export default function VotingPage() {
                   }}
                 />
               )}
+              renderOption={(props, option, { inputValue }) => {
+                const matches = match(option.label, inputValue);
+                const parts = parse(option.label, matches);
+              
+                return (
+                  <li {...props}>
+                    <Box sx={{ display: 'block' }}>
+                      {parts.map((part, index) => (
+                        <span
+                          key={index}
+                          style={{
+                            fontWeight: part.highlight ? 700 : 400,
+                            whiteSpace: 'pre',
+                          }}
+                        >
+                          {part.text}
+                        </span>
+                      ))}
+                    </Box>
+                  </li>
+                );
+              }}
             />
             
             {isAdmin && (
