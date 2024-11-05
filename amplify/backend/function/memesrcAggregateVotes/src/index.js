@@ -37,7 +37,7 @@ const ssm = new SSMClient({ region: REGION });
  * @type {import('@types/aws-lambda').APIGatewayProxyHandler}
  */
 
-const TOP_ITEM_COUNT = 2500;
+const TOP_ITEM_COUNT = 5;
 const indexName = `votes-series-${process.env.ENV}`;
 
 // New function to retrieve OpenSearch credentials
@@ -195,15 +195,23 @@ exports.handler = async (event) => {
 
     // Initialize voteAggregation with all series, setting votes to 0
     const voteAggregation = {};
-    for (let seriesId of allSeries.map(series => series.id)) {
-        voteAggregation[seriesId] = { upvotes: 0, downvotes: 0 };
-    }
+    allSeries.forEach(series => {
+        if (series && series.id) {
+            voteAggregation[series.id] = { upvotes: 0, downvotes: 0 };
+        }
+    });
 
     const userVoteAggregation = {};
 
     // Aggregate the votes
     for (let item of scanResults) {
         const seriesId = item.seriesUserVoteSeriesId;
+        // Skip if seriesId is invalid or not in our series list
+        if (!seriesId || !voteAggregation[seriesId]) {
+            console.log(`Skipping vote for invalid seriesId: ${JSON.stringify(seriesId)}`);
+            continue;
+        }
+
         const userId = item.userDetailsVotesId;
         const boost = parseInt(item.boost);
         const voteTime = item.createdAt || item.updatedAt;
@@ -387,8 +395,8 @@ exports.handler = async (event) => {
     try {
         const client = createOpenSearchClient({ username: opensearchUser, password: opensearchPass });
         
-        // Enhance series documents with ranking information
-        const enhancedSeries = allSeries.map(doc => ({
+        // Enhance series documents with ranking information and ensure votes exist
+        const enhancedSeries = allSeries.filter(doc => doc && doc.id).map(doc => ({
             ...doc,
             rankUpvotes: upvoteRankMap[doc.id] || 0,
             rankBattleground: battlegroundRankMap[doc.id] || 0,
