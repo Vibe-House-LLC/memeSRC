@@ -85,38 +85,30 @@ const StyledSearchInput = styled.input`
   }
 `;
 
-const StyledLeftFooter = styled('footer')`
-  bottom: 0;
-  left: 0;
-  line-height: 0;
-  position: fixed;
-  padding: 10px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background-color: transparent;
-  z-index: 1300;
-`;
+// Combine footer styles into one component
+const StyledFooter = styled('footer')(({ position = 'left' }) => ({
+  bottom: 0,
+  [position]: 0,
+  lineHeight: 0,
+  position: 'fixed',
+  padding: '10px',
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  backgroundColor: 'transparent',
+  zIndex: 1300
+}));
 
-const StyledRightFooter = styled('footer')`
-  bottom: 0;
-  right: 0;
-  line-height: 0;
-  position: fixed;
-  padding: 10px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background-color: transparent;
-  z-index: 1300;
+// Simplified grid container
+const StyledGridContainer = styled(Grid)`
+  ${({ theme }) => `
+    min-height: 100vh;
+    padding-left: ${theme.spacing(3)};
+    padding-right: ${theme.spacing(3)};
+  `}
 `;
 
 FullScreenSearch.propTypes = searchPropTypes;
-
-// Create a grid container component
-const StyledGridContainer = styled(Grid)`
-  min-height: 100vh;
-`;
 
 // Theme Defaults
 const defaultTitleText = 'memeSRC';
@@ -235,7 +227,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
 
   return (
     <>
-      <StyledGridContainer container paddingX={3} sx={currentThemeBackground}>
+      <StyledGridContainer container sx={currentThemeBackground}>
         <Grid container marginY="auto" justifyContent="center" pb={isMd ? 0 : 8}>
           <Grid container justifyContent="center">
             <Grid item textAlign="center" marginBottom={2}>
@@ -243,7 +235,15 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                 <Box
                   component="img"
                   src={Logo({ color: currentThemeFontColor || 'white' })}
-                  sx={{ objectFit: 'contain', cursor: 'pointer', display: 'block', width: '130px', height: 'auto', margin: '-10px auto 0px', color: 'yellow' }}
+                  sx={{ 
+                    objectFit: 'contain', 
+                    cursor: 'pointer', 
+                    display: 'block', 
+                    width: '130px', 
+                    height: 'auto',
+                    margin: '0 auto',
+                    color: 'yellow' 
+                  }}
                 />
               </Box>
               <Typography
@@ -253,24 +253,23 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                 fontFamily={currentThemeFontFamily}
                 sx={{ 
                   color: currentThemeFontColor, 
-                  textShadow: '1px 1px 1px rgba(0, 0, 0, 0.20);', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
+                  textShadow: '1px 1px 1px rgba(0, 0, 0, 0.20)',
+                  display: 'grid',
+                  gridTemplateColumns: '36px 1fr 36px',
+                  alignItems: 'center',
+                  gap: 1
                 }}
               >
                 {cid && cid !== '_universal' && cid !== '_favorites' && shows.length > 0 ? (
-                  <Box sx={{ marginRight: 1 }}>
-                    <FavoriteToggle
-                      indexId={cid}
-                      initialIsFavorite={shows.find(show => show.id === cid)?.isFavorite || false}
-                    />
-                  </Box>
+                  <FavoriteToggle
+                    indexId={cid}
+                    initialIsFavorite={shows.find(show => show.id === cid)?.isFavorite || false}
+                  />
                 ) : (
-                  <Box sx={{ marginX: 1, width: '36px' }} />
+                  <span />
                 )}
                 {`${currentThemeTitleText} ${currentThemeTitleText === 'memeSRC' ? (user?.userDetails?.magicSubscription === 'true' ? 'Pro' : '') : ''}`}
-                <Box sx={{ marginX: 1, width: '36px' }} /> {/* Invisible spacer on the right */}
+                <span />
               </Typography>
             </Grid>
           </Grid>
@@ -407,7 +406,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
             </Grid>
           }
         </Grid>
-        <StyledLeftFooter className="bottomBtn">
+        <StyledFooter position="left" className="bottomBtn">
           <a
             href="https://forms.gle/8CETtVbwYoUmxqbi7"
             target="_blank"
@@ -433,8 +432,8 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
               <Favorite />
             </Fab>
           </a>
-        </StyledLeftFooter>
-        <StyledRightFooter className="bottomBtn">
+        </StyledFooter>
+        <StyledFooter position="right" className="bottomBtn">
           <StyledButton
             onClick={() => { loadRandomFrame(show) }}
             loading={loadingRandom}
@@ -444,7 +443,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
           >
             Random
           </StyledButton>
-        </StyledRightFooter>
+        </StyledFooter>
       </StyledGridContainer>
       <AddCidPopup open={addNewCidOpen} setOpen={setAddNewCidOpen} />
     </>
