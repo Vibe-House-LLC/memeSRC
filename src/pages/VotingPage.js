@@ -325,7 +325,7 @@ export default function VotingPage() {
         console.error('Error fetching search suggestions:', error);
         setSearchOptions([]);
       }
-    }, 300),
+    }, 200),
     []
   );
 
