@@ -297,7 +297,6 @@ export default function VotingPage() {
   const [isSubmittingMagicVote, setIsSubmittingMagicVote] = useState(false);
 
   // Add these state variables after other state declarations
-  const [showAd, setShowAd] = useState(false);
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   // Add this debounced search function after other function declarations
@@ -1265,21 +1264,6 @@ export default function VotingPage() {
     }
   };
 
-  // Add this useEffect to handle the ad display logic
-  useEffect(() => {
-    // Get the current number of homepage loads from localStorage
-    let homepageLoads = parseInt(localStorage.getItem('homepageLoads') || '0', 10);
-
-    // Increment the count
-    homepageLoads += 1;
-
-    // Save the updated count back to localStorage
-    localStorage.setItem('homepageLoads', homepageLoads.toString());
-
-    // Show the ad if the count is greater than 2
-    setShowAd(homepageLoads > 2);
-  }, []); // Empty dependency array ensures this runs only once on component mount
-
   return (
     <>
       <Helmet>
@@ -1432,6 +1416,21 @@ export default function VotingPage() {
         </Box>
 
         <Grid container style={{ minWidth: '100%' }}>
+          {user?.userDetails?.subscriptionStatus !== 'active' && (
+            <Grid item xs={12} mb={3}>
+              <center>
+                <Box>
+                  {isMobile ? <FixedMobileBannerAd /> : <HomePageBannerAd />}
+                  <Link to="/pro" style={{ textDecoration: 'none' }}>
+                    <Typography variant="body2" textAlign="center" color="white" sx={{ marginTop: 1 }}>
+                      ☝️ Remove ads with <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>memeSRC Pro</span>
+                    </Typography>
+                  </Link>
+                </Box>
+              </center>
+            </Grid>
+          )}
+
           {(loading && !seriesMetadata.length) || isChangingRankMethod ? (
             <Grid
               item
@@ -1452,22 +1451,6 @@ export default function VotingPage() {
             </Grid>
           ) : (
             <>
-              {/* Add the ad section here */}
-              {user?.userDetails?.subscriptionStatus !== 'active' && showAd && (
-                <Grid item xs={12} mb={3}>
-                  <center>
-                    <Box>
-                      {isMobile ? <FixedMobileBannerAd /> : <HomePageBannerAd />}
-                      <Link to="/pro" style={{ textDecoration: 'none' }}>
-                        <Typography variant="body2" textAlign="center" color="white" sx={{ marginTop: 1 }}>
-                          ☝️ Remove ads with <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>memeSRC Pro</span>
-                        </Typography>
-                      </Link>
-                    </Box>
-                  </center>
-                </Grid>
-              )}
-
               <FlipMove key={rankMethod} style={{ minWidth: '100%' }}>
                 {sortedSeriesMetadata.map((show) => {
                   if (!filterShows(show)) {
