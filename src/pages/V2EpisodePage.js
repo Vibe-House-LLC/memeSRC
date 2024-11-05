@@ -208,7 +208,7 @@ export default function V2EpisodePage({ setSeriesTitle }) {
     return injectedResults;
   };
 
-  const adInterval = user?.userDetails?.subscriptionStatus !== 'active' ? 9 : Infinity;
+  const adInterval = 9;
   const resultsWithAds = injectAds(results, adInterval);
 
   const handleImageLoad = (fid) => {
