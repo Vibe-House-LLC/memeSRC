@@ -1,7 +1,7 @@
 // FullScreenSearch.js
 
 import styled from '@emotion/styled';
-import { Button, Fab, Grid, Typography, useMediaQuery, Select, MenuItem, Container, ListSubheader, useTheme } from '@mui/material';
+import { Button, Fab, Grid, Typography, useMediaQuery, Select, MenuItem, ListSubheader, useTheme } from '@mui/material';
 import { Box } from '@mui/system';
 import { Favorite, MapsUgc, Shuffle } from '@mui/icons-material';
 import React, { useCallback, useContext, useEffect, useState } from 'react';
@@ -31,27 +31,6 @@ const StyledSearchForm = styled.form`
   flex-direction: row;
   align-items: center;
   width: 800px;
-`;
-
-const StyledSearchSelector = styled.select`
-  font-family: ${FONT_FAMILY};
-  font-size: 18px;
-  color: #333;
-  background-color: #fff;
-  border: none;
-  border-radius: 8px;
-  padding: 8px 12px;
-  height: 50px;
-  width: 100%;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  transition: box-shadow 0.3s;
-  appearance: none;
-  cursor: pointer;
-
-  &:focus {
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-    outline: none;
-  }
 `;
 
 // Create a search button component
@@ -106,21 +85,6 @@ const StyledSearchInput = styled.input`
   }
 `;
 
-// Create a footer component
-const StyledFooter = styled('footer')`
-  bottom: 0;
-  left: 0;
-  line-height: 0;
-  width: 100%;
-  position: fixed;
-  padding: 10px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background-color: transparent;
-  z-index: 1200;
-`;
-
 const StyledLeftFooter = styled('footer')`
   bottom: 0;
   left: 0;
@@ -170,7 +134,6 @@ const defaultBackground = `linear-gradient(45deg,
 
 export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction, metadata }) {
   const { savedCids, cid, setCid, setSearchQuery: setCidSearchQuery, setShowObj } = useSearchDetailsV2()
-  const [loading, setLoading] = useState(true);
   const { show, setShow, setSearchQuery } = useSearchDetails();
   const isMd = useMediaQuery((theme) => theme.breakpoints.up('sm'));
   const [addNewCidOpen, setAddNewCidOpen] = useState(false);
@@ -224,24 +187,14 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
     if (!selectedSeriesProperties) {
       navigate('/')
     }
-  }, [shows, savedCids]);
-
-  // This useEffect handles the data fetching
-  useEffect(() => {
-    async function getData() {
-      setLoading(false);
-    }
-    getData();
-  }, []);
+  }, [shows, savedCids, navigate]);
 
   // This useEffect ensures the theme is applied based on the seriesId once the data is loaded
   useEffect(() => {
     // Check if shows have been loaded
-    // console.log(defaultShow)
     if (shows.length > 0) {
       // Determine the series to use based on the URL or default to '_universal'
       const currentSeriesId = seriesId || (shows.some(show => show.isFavorite) ? defaultShow : '_universal');
-      // console.log(seriesId || shows.some(show => show.isFavorite) ? defaultShow : '_universal')
       setShow(currentSeriesId)
 
       if (currentSeriesId !== seriesTitle) {
@@ -252,7 +205,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
         navigate((currentSeriesId === '_universal') ? '/' : `/${currentSeriesId}`);
       }
     }
-  }, [seriesId, seriesTitle, shows, handleChangeSeries, navigate, defaultShow]);
+  }, [seriesId, seriesTitle, shows, handleChangeSeries, navigate, defaultShow, setSeriesTitle, setShow]);
 
   useEffect(() => {
     if (pathname === '/_favorites') {
@@ -264,77 +217,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
         backgroundImage: defaultBackground,
       })
     }
-  }, [pathname])
-
-
-  useEffect(() => {
-    const handleScroll = () => {
-      // Find the height of the entire document
-      const { body } = document;
-      const html = document.documentElement;
-      const height = Math.max(
-        body.scrollHeight,
-        body.offsetHeight,
-        html.clientHeight,
-        html.scrollHeight,
-        html.offsetHeight
-      );
-
-      // Calculate how far from bottom the scroll down button should start fading out
-      const scrollBottom = height - window.innerHeight - window.scrollY - 300;
-
-      window.requestAnimationFrame(() => {
-        const scrollDownBtn = document.getElementById('scroll-down-btn');
-
-        // Fade out scroll down button towards bottom of the screen
-        const op = scrollBottom / 100;
-        scrollDownBtn.style.opacity = `${Math.min(Math.max(op, 0.0), 1)}`;
-
-        // Hide scroll down button container once it's reached the bottom of the screen
-        if (scrollBottom <= 0) {
-          scrollDownBtn.parentElement.style.display = 'none';
-        } else {
-          scrollDownBtn.parentElement.style.display = 'flex';
-        }
-
-        // Change the background color of the scroll down button
-        const windowHeight = window.innerHeight / 2;
-        const scrollAmount = 1 - window.scrollY / windowHeight;
-        const scrollRGB = Math.round(scrollAmount * 255);
-        if (scrollRGB >= 0 && scrollRGB <= 255) {
-          scrollDownBtn.style.backgroundColor = `rgb(${scrollRGB}, ${scrollRGB}, ${scrollRGB}, 0.50)`;
-        }
-
-        // Handle the fade in and out of the bottom buttons
-        const bottomButtons = document.querySelectorAll('.bottomBtn');
-        bottomButtons.forEach((elm) => {
-          if (scrollAmount < 0) {
-            elm.style.display = 'none';
-          } else {
-            if (elm.style.display !== 'flex') {
-              elm.style.display = 'flex';
-            }
-            elm.style.opacity = scrollAmount;
-          }
-        });
-      });
-    };
-
-    // Add event listener
-    document.addEventListener('scroll', handleScroll);
-
-    // Return a cleanup function to remove the event listener
-    return () => {
-      document.removeEventListener('scroll', handleScroll);
-    };
-  }, []);
-
-  const searchCid = (e) => {
-    e.preventDefault()
-    setCidSearchQuery(searchTerm)
-    navigate(`/search/${cid}/${encodeURIComponent(searchTerm)}`)
-    return false
-  }
+  }, [pathname, theme?.typography?.fontFamily])
 
   useEffect(() => {
 
@@ -347,7 +230,8 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
         setCidSearchQuery('')
       }
     }
-  }, [pathname, defaultShow]);
+  }, [pathname, defaultShow, metadata?.id, seriesId, setCid, setCidSearchQuery, setSearchQuery, setShowObj, shows]);
+
 
   return (
     <>
@@ -476,7 +360,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                     value={searchTerm}
                     placeholder="What's the quote?"
                     onChange={(e) => {
-                      let value = e.target.value;
+                      let { value } = e.target;
 
                       // Replace curly single quotes with straight single quotes
                       value = value.replace(/[\u2018\u2019]/g, "'");
