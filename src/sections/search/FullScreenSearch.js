@@ -1,76 +1,24 @@
 // FullScreenSearch.js
 
 import styled from '@emotion/styled';
-import { Alert, AlertTitle, Button, Fab, Grid, Typography, IconButton, Stack, useMediaQuery, Select, MenuItem, Chip, Container, ListSubheader, useTheme } from '@mui/material';
+import { Button, Fab, Grid, Typography, useMediaQuery, Select, MenuItem, Container, ListSubheader, useTheme } from '@mui/material';
 import { Box } from '@mui/system';
-import { ArrowDownwardRounded, Favorite, MapsUgc, Shuffle } from '@mui/icons-material';
-import { API, Auth, graphqlOperation } from 'aws-amplify';
+import { Favorite, MapsUgc, Shuffle } from '@mui/icons-material';
 import React, { useCallback, useContext, useEffect, useState } from 'react';
 import { LoadingButton } from '@mui/lab';
 import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
-import CloseIcon from '@mui/icons-material/Close';
 import { UserContext } from '../../UserContext';
 import useSearchDetails from '../../hooks/useSearchDetails';
 import { searchPropTypes } from './SearchPropTypes';
-// import Logo from '../../components/logo/Logo';
-import { contentMetadataByStatus, listContentMetadata, listFavorites, listHomepageSections } from '../../graphql/queries';
-import HomePageSection from './HomePageSection';
 import HomePageBannerAd from '../../ads/HomePageBannerAd';
 import useSearchDetailsV2 from '../../hooks/useSearchDetailsV2';
 import AddCidPopup from '../../components/ipfs/add-cid-popup';
 import FavoriteToggle from '../../components/FavoriteToggle';
-import fetchShows from '../../utils/fetchShows';
 import useLoadRandomFrame from '../../utils/loadRandomFrame';
-import { useSubscribeDialog } from '../../contexts/useSubscribeDialog';
-import EditorUpdates from '../../components/v2-feature-section/sections/editor-updates';
-import PlatformUpdates from '../../components/v2-feature-section/sections/platform-updates';
-import MemeSrcPro from '../../components/v2-feature-section/sections/memesrc-pro';
 import Logo from '../../logo/logo';
 import FixedMobileBannerAd from '../../ads/FixedMobileBannerAd';
-// import FavoritesResetDialog from './FavoritesResetDialog';
-
-const seriesOptions = [
-  { id: '_universal', title: 'All Shows & Movies', emoji: '🌈' },
-  { id: 'seinfeld', title: 'Seinfeld', emoji: '🥨' },
-  { id: 'friends', title: 'Friends', emoji: '👫' },
-  { id: 'breakingbad', title: 'Breaking Bad', emoji: '🧪' },
-  { id: 'game_of_thrones', title: 'Game of Thrones', emoji: '🐉' },
-];
 
 /* --------------------------------- GraphQL -------------------------------- */
-
-const listAliases = /* GraphQL */ `
-  query ListAliases(
-    $filter: ModelAliasFilterInput
-    $limit: Int
-    $nextToken: String
-  ) {
-    listAliases(filter: $filter, limit: $limit, nextToken: $nextToken) {
-      items {
-        id
-        createdAt
-        updatedAt
-        aliasV2ContentMetadataId
-        v2ContentMetadata {
-          colorMain
-          colorSecondary
-          createdAt
-          description
-          emoji
-          frameCount
-          title
-          updatedAt
-          status
-          id
-          version
-        }
-        __typename
-      }
-      nextToken
-      __typename
-    }
-  }
-`;
 
 // Define constants for colors and fonts
 const PRIMARY_COLOR = '#4285F4';
@@ -199,14 +147,6 @@ const StyledRightFooter = styled('footer')`
   z-index: 1300;
 `;
 
-async function fetchSections() {
-  const result = await API.graphql({
-    ...graphqlOperation(listHomepageSections, { filter: {}, limit: 10 }),
-    authMode: 'API_KEY',
-  });
-  return result.data.listHomepageSections.items;
-}
-
 FullScreenSearch.propTypes = searchPropTypes;
 
 // Create a grid container component
@@ -229,29 +169,14 @@ const defaultBackground = `linear-gradient(45deg,
   #00a3e0 0)`;
 
 export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction, metadata }) {
-  const { localCids, setLocalCids, savedCids, cid, setCid, searchQuery: cidSearchQuery, setSearchQuery: setCidSearchQuery, setShowObj, loadingSavedCids } = useSearchDetailsV2()
-  const [sections, setSections] = useState([]);
+  const { savedCids, cid, setCid, setSearchQuery: setCidSearchQuery, setShowObj } = useSearchDetailsV2()
   const [loading, setLoading] = useState(true);
-  // const [loadingRandom, setLoadingRandom] = useState(false);
-  const [scrollToSections, setScrollToSections] = useState();
-  const { show, setShow, searchQuery, setSearchQuery } = useSearchDetails();
+  const { show, setShow, setSearchQuery } = useSearchDetails();
   const isMd = useMediaQuery((theme) => theme.breakpoints.up('sm'));
   const [addNewCidOpen, setAddNewCidOpen] = useState(false);
-  const { user, setUser, shows, setShows, defaultShow, handleUpdateDefaultShow } = useContext(UserContext);
+  const { user, shows, defaultShow, handleUpdateDefaultShow } = useContext(UserContext);
   const { pathname } = useLocation();
-  const { loadRandomFrame, loadingRandom, error } = useLoadRandomFrame();
-
-  const [alertOpen, setAlertOpen] = useState(true);
-
-  const location = useLocation();
-
-  const [aliasesWithMetadata, setAliasesWithMetadata] = useState([]);
-  const [aliasesLoading, setAliasesLoading] = useState(true);
-  const [aliasesError, setAliasesError] = useState(null);
-
-  const { openSubscriptionDialog } = useSubscribeDialog();
-
-  const [favoritesInfoOpen, setFavoritesInfoOpen] = useState(true);
+  const { loadRandomFrame, loadingRandom, } = useLoadRandomFrame();
 
   const [showAd, setShowAd] = useState(false);
 
@@ -276,35 +201,6 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
     window.scrollTo(0, 0);
   }, [])
 
-  // useEffect(() => {
-  //   const fetchAliasesRecursive = async (nextToken = null, accumulator = []) => {
-  //     try {
-  //       const result = await API.graphql(graphqlOperation(listAliases, {
-  //         limit: 10,
-  //         nextToken,
-  //       }));
-
-  //       const fetchedAliases = result.data.listAliases.items;
-  //       const updatedAccumulator = [...accumulator, ...fetchedAliases];
-
-  //       if (result.data.listAliases.nextToken) {
-  //         return fetchAliasesRecursive(result.data.listAliases.nextToken, updatedAccumulator);
-  //       }
-
-  //       setAliasesWithMetadata(updatedAccumulator);
-  //       setAliasesLoading(false);
-  //       return updatedAccumulator;
-  //     } catch (error) {
-  //       console.error('Error fetching aliases:', error);
-  //       setAliasesError('Failed to fetch aliases.');
-  //       setAliasesLoading(false);
-  //       return []; // Return an empty array in case of an error
-  //     }
-  //   };
-
-  //   fetchAliasesRecursive();
-  // }, []);
-
   // Theme States
   const theme = useTheme();
   const [currentThemeBragText, setCurrentThemeBragText] = useState(metadata?.frameCount ? `Search over ${metadata?.frameCount.toLocaleString('en-US')} meme templates from ${metadata?.title}` : defaultBragText);
@@ -318,46 +214,22 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
     }
   );
 
-  const { sectionIndex, seriesId } = useParams();
+  const { seriesId } = useParams();
 
   const navigate = useNavigate();
 
   // The handleChangeSeries function now only handles theme updates
   const handleChangeSeries = useCallback((newSeriesTitle) => {
     const selectedSeriesProperties = shows.find((object) => object.id === newSeriesTitle) || savedCids.find((object) => object.id === newSeriesTitle);
-
     if (!selectedSeriesProperties) {
-      // setCurrentThemeBackground({ backgroundColor: `${selectedSeriesProperties.colorMain}` });
-      // setCurrentThemeFontColor(selectedSeriesProperties.colorSecondary);
-      // setCurrentThemeTitleText(selectedSeriesProperties.title);
-      // setCurrentThemeBragText(
-      //   `Search over ${selectedSeriesProperties.frameCount.toLocaleString('en-US')} meme templates from ${selectedSeriesProperties.title}`
-      // );
       navigate('/')
     }
-    // else {
-    //   navigate('/')
-    // }
   }, [shows, savedCids]);
-
-  // useEffect(() => {
-  //   console.log(metadata)
-  // }, [metadata]);
 
   // This useEffect handles the data fetching
   useEffect(() => {
     async function getData() {
-      // Get shows
-      // const fetchedShows = await fetchShows();
-      // console.log(fetchedShows)
-      // setShows(fetchedShows);
-      // setAliasesWithMetadata(fetchedShows);
       setLoading(false);
-      setAliasesLoading(false);
-
-      // Get homepage sections
-      const fetchedSections = await fetchSections();
-      setSections(fetchedSections);
     }
     getData();
   }, []);
@@ -457,115 +329,6 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
     };
   }, []);
 
-  useEffect(() => {
-    // Set the scrollSections state to contain all elements we want the scroll down button
-    // to scroll to once they have all loaded
-    setScrollToSections(document.querySelectorAll('[data-scroll-to]'));
-    if (sections.length > 0 && sectionIndex) {
-      const sectionElement = sectionIndex.toString();
-      scrollToSection(sectionElement);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sections, sectionIndex]);
-
-  const scrollToSection = (element) => {
-    if (!element) {
-      const nextScroll = {
-        scrollPos: window.innerHeight,
-        element: null,
-      };
-
-      let sectionChosen = false;
-      scrollToSections.forEach((section) => {
-        if (section.getBoundingClientRect().top > 0 && sectionChosen === false) {
-          nextScroll.scrollPos = section.getBoundingClientRect().top;
-          nextScroll.element = section;
-          sectionChosen = true;
-        }
-      });
-
-      if (nextScroll.element != null) {
-        nextScroll.element.scrollIntoView({ behavior: 'smooth' });
-      }
-    } else {
-      const scrolltoelm = document.getElementById(element);
-      // console.log(scrolltoelm);
-      scrolltoelm.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
-
-  const getSessionID = async () => {
-    let sessionID;
-    if ('sessionID' in sessionStorage) {
-      sessionID = sessionStorage.getItem('sessionID');
-      return Promise.resolve(sessionID);
-    }
-    return API.get('publicapi', '/uuid')
-      .then((generatedSessionID) => {
-        sessionStorage.setItem('sessionID', generatedSessionID);
-        return generatedSessionID;
-      })
-      .catch((err) => {
-        console.log(`UUID Gen Fetch Error:  ${err}`);
-        throw err;
-      });
-  };
-
-  // const loadRandomFrame = useCallback(() => {
-  //   setLoadingRandom(true);
-  //   getSessionID().then((sessionId) => {
-  //     const apiName = 'publicapi';
-  //     const path = '/random';
-  //     const myInit = {
-  //       queryStringParameters: {
-  //         series: show,
-  //         sessionId,
-  //       },
-  //     };
-
-  //     API.get(apiName, path, myInit)
-  //       .then((response) => {
-  //         const fid = response.frame_id;
-  //         console.log(fid);
-  //         navigate(`/frame/${fid}`);
-  //         setSearchQuery(null)
-  //         setLoadingRandom(false);
-  //       })
-  //       .catch((error) => {
-  //         console.error(error);
-  //         setLoadingRandom(false);
-  //       });
-  //   });
-  // }, [navigate, seriesTitle]);
-
-  // useEffect(() => {
-  //   // Function to check and parse the local storage value
-  //   const checkAndParseLocalStorage = (key) => {
-  //     const storedValue = localStorage.getItem(key);
-  //     if (!storedValue) {
-  //       return null;
-  //     }
-
-  //     try {
-  //       const parsedValue = JSON.parse(storedValue);
-  //       return Array.isArray(parsedValue) ? parsedValue : null;
-  //     } catch (e) {
-  //       // If parsing fails, return null
-  //       return null;
-  //     }
-  //   };
-
-  //   if (!localCids) {
-  //     // Attempt to retrieve and parse the 'custom_cids' from local storage
-  //     const savedCids = checkAndParseLocalStorage('custom_cids');
-
-  //     // If savedCids is an array, use it; otherwise, default to an empty array
-  //     setLocalCids(savedCids || []);
-  //   }
-  //   console.log(localCids)
-
-  // }, [localCids]);
-
   const searchCid = (e) => {
     e.preventDefault()
     setCidSearchQuery(searchTerm)
@@ -576,32 +339,18 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   useEffect(() => {
 
     setCid(seriesId || metadata?.id || (shows.some(show => show.isFavorite) ? defaultShow : '_universal'))
-    // console.log(seriesId || metadata?.id || shows.some(show => show.isFavorite) ? defaultShow : '_universal')
-
 
     return () => {
       if (pathname === '/') {
-        // setCid(defaultShow || '_universal')
         setShowObj(null)
         setSearchQuery(null)
         setCidSearchQuery('')
-        // console.log('Unset CID')
       }
     }
   }, [pathname, defaultShow]);
 
-  // useEffect(() => {
-  //   console.log('CHANGING DEFAULT: ', defaultShow)
-  // }, [defaultShow]);
-
   return (
     <>
-      {/* {user?.userDetails?.subscriptionStatus === 'active' && (
-        <FavoritesResetDialog
-          open={favoritesInfoOpen}
-          onClose={() => setFavoritesInfoOpen(false)}
-        />
-      )} */}
       <StyledGridContainer container paddingX={3} sx={currentThemeBackground}>
         <Grid container marginY="auto" justifyContent="center" pb={isMd ? 0 : 8}>
           <Grid container justifyContent="center">
@@ -639,43 +388,6 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                 {`${currentThemeTitleText} ${currentThemeTitleText === 'memeSRC' ? (user?.userDetails?.magicSubscription === 'true' ? 'Pro' : '') : ''}`}
                 <Box sx={{ marginX: 1, width: '36px' }} /> {/* Invisible spacer on the right */}
               </Typography>
-              {/* {!localStorage.getItem('alertDismissed-EARLY-ACCESS-COLLAGE-8fs667') && (
-                <Alert
-                  severity="info"
-                  action={
-                    <>
-                      <Button
-                        variant="outlined"
-                        color="inherit"
-                        size="small"
-                        style={{ marginRight: '5px' }}
-                        onClick={async () => {
-                          navigate('/collage');
-                        }}
-                      >
-                        Early Access
-                      </Button>
-                      <IconButton
-                        color="inherit"
-                        size="small"
-                        onClick={() => {
-                          localStorage.setItem('alertDismissed-EARLY-ACCESS-COLLAGE-8fs667', 'true');
-                          setAlertOpen(false);
-                        }}
-                      >
-                        <CloseIcon fontSize="inherit" />
-                      </IconButton>
-                    </>
-                  }
-                  sx={{
-                    opacity: 0.9,
-                    maxWidth: 400,
-                    marginY: 1,
-                  }}
-                >
-                  <b>New:</b> Collages!
-                </Alert>
-              )} */}
             </Grid>
           </Grid>
           <StyledSearchForm onSubmit={(e) => searchFunction(e)}>
@@ -720,9 +432,6 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                     },
                   }}
                 >
-                  {/* {console.log(shows || 'WAITING ON SHOWS')}
-                  {console.log(cid || seriesTitle || defaultShow)}
-                  {console.log(shows.some(show => show.isFavorite))} */}
                   <MenuItem value="_universal">🌈 All Shows & Movies</MenuItem>
 
                   {shows.some(show => show.isFavorite) ? (
@@ -798,22 +507,6 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
             <Typography component="h4" variant="h4">
               {currentThemeBragText}
             </Typography>
-            {/* <Stack justifyContent='center'>
-              <Box sx={{ width: isMd ? '600px' : '100%', mx: 'auto', maxHeight: '150px' }}>
-                <HomePageBannerAd />
-              </Box>
-            </Stack> */}
-            {/* <Button
-              onClick={() => scrollToSection()}
-              startIcon="🚀"
-              sx={[{ marginTop: '12px', backgroundColor: 'unset', '&:hover': { backgroundColor: 'unset' } }]}
-            >
-              <Typography
-                sx={{ textDecoration: 'underline', fontSize: '1em', fontWeight: '800', color: currentThemeFontColor }}
-              >
-                Beta: Layer editor and more!
-              </Typography>
-            </Button> */}
           </Grid>
           {user?.userDetails?.subscriptionStatus !== 'active' && showAd &&
             <Grid item xs={12} mt={1}>
@@ -868,48 +561,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
             Random
           </StyledButton>
         </StyledRightFooter>
-        <StyledFooter>
-          <Fab
-            color="primary"
-            onClick={() => scrollToSection()}
-            aria-label="donate"
-            style={{
-              backgroundColor: 'rgb(255, 255, 255, 0.50)',
-              marginLeft: 'auto',
-              marginRight: 'auto',
-              marginBottom: '4px',
-            }}
-            size="small"
-            id="scroll-down-btn"
-          >
-            <ArrowDownwardRounded />
-          </Fab>
-        </StyledFooter>
       </StyledGridContainer>
-      {/* {sections.map((section) => (
-        <HomePageSection
-          key={section.id}
-          index={section.index}
-          backgroundColor={section.backgroundColor}
-          textColor={section.textColor}
-          title={section.title}
-          subtitle={section.subtitle}
-          buttons={JSON.parse(section.buttons)}
-          bottomImage={JSON.parse(section.bottomImage)}
-          buttonSubtext={JSON.parse(section.buttonSubtext)}
-        />
-      ))} */}
-      <Container data-scroll-to id='editor-updates' maxWidth='true' sx={{ height: '100vh', backgroundColor: '#34933f' }}>
-        <EditorUpdates backgroundColor='#34933f' textColor='white' large />
-      </Container>
-
-      <Container data-scroll-to id='platform-updates' maxWidth='true' sx={{ height: '100vh', backgroundColor: '#ff8d0a' }}>
-        <PlatformUpdates backgroundColor='#ff8d0a' textColor='white' large />
-      </Container>
-
-      <Container data-scroll-to id='memesrc-pro' maxWidth='true' sx={{ height: '100vh', backgroundColor: '#0069cc' }}>
-        <MemeSrcPro backgroundColor='#0069cc' textColor='white' large />
-      </Container>
       <AddCidPopup open={addNewCidOpen} setOpen={setAddNewCidOpen} />
     </>
   );
