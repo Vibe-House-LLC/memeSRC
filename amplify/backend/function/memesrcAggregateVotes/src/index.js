@@ -410,7 +410,7 @@ exports.handler = async (event) => {
 
         const bulkResponse = await client.bulk({ body });
         
-        console.log('Bulk response:', JSON.stringify(bulkResponse, null, 2));
+        // console.log('Bulk response:', JSON.stringify(bulkResponse, null, 2));
         
         if (bulkResponse.body?.errors) {
             console.error('Bulk indexing had errors:', JSON.stringify(bulkResponse.body.items, null, 2));
