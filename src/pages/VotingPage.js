@@ -337,6 +337,8 @@ export default function VotingPage() {
     if (event.key === 'Enter') {
       setDebouncedSearchText(searchText); // Trigger the search
       setIsSearching(true); // Show loading state
+      setDisplayOption('showAll'); // Reset display option to show all results
+      // localStorage.setItem('displayOption', 'showAll'); // Update localStorage
       searchInputRef.current?.blur(); // Remove focus from the input
     }
   };
