@@ -15,7 +15,7 @@ export const DialogProvider = ({ children }) => {
   const location = useLocation();
   const isMd = useMediaQuery(theme => theme.breakpoints.up('sm'));
   const [subscriptionDialogOpen, setSubscriptionDialogOpen] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState('pro5');
+  const [selectedPlan, setSelectedPlan] = useState('pro25');
   const [loading, setLoading] = useState(false);
   const { user } = useContext(UserContext);
   const [checkoutLink, setCheckoutLink] = useState();
