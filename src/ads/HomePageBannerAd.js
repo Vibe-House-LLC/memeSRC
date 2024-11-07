@@ -1,19 +1,19 @@
-import { useEffect } from 'react';
+import { useContext, useEffect } from 'react';
+import { UserContext } from '../UserContext';
+import { useAdsenseLoader } from '../utils/adsenseLoader';
 
 const HomePageBannerAd = () => {
+    const { user } = useContext(UserContext);
+    useAdsenseLoader();
 
     useEffect(() => {
-        // Load the adsbygoogle script
-        const script = document.createElement("script");
-        script.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1307598869123774";
-        script.async = true;
-        script.crossOrigin = "anonymous";
-        document.body.appendChild(script);
-
-        // Initialize the adsbygoogle array if it doesn't exist and push an ad
         window.adsbygoogle = window.adsbygoogle || [];
         window.adsbygoogle.push({});
     }, []);
+
+    if (user?.userDetails?.subscriptionStatus === 'active') {
+        return null;
+    }
 
     return (
         <ins className="adsbygoogle"
