@@ -1,10 +1,23 @@
+import { useContext, useEffect } from 'react';
 import { Link, Typography, Box } from '@mui/material';
-import { useEffect } from 'react';
 import { Close } from '@mui/icons-material';
 import { useSubscribeDialog } from '../contexts/useSubscribeDialog';
+import { UserContext } from '../UserContext';
+import { useAdsenseLoader } from '../utils/adsenseLoader';
 
 const EditorPageBottomBannerAd = () => {
+    const { user } = useContext(UserContext);
     const { openSubscriptionDialog } = useSubscribeDialog();
+    useAdsenseLoader();
+
+    useEffect(() => {
+        window.adsbygoogle = window.adsbygoogle || [];
+        window.adsbygoogle.push({});
+    }, []);
+
+    if (user?.userDetails?.subscriptionStatus === 'active') {
+        return null;
+    }
 
     const adSnippet = (
         <ins className="adsbygoogle"
@@ -15,20 +28,7 @@ const EditorPageBottomBannerAd = () => {
             data-ad-slot="9837867502"
             data-full-width-responsive="true"
         />
-    )
-
-    useEffect(() => {
-        // Load the adsbygoogle script
-        const script = document.createElement("script");
-        script.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1307598869123774";
-        script.async = true;
-        script.crossOrigin = "anonymous";
-        document.body.appendChild(script);
-
-        // Initialize the adsbygoogle array if it doesn't exist and push an ad
-        window.adsbygoogle = window.adsbygoogle || [];
-        window.adsbygoogle.push({});
-    }, []);
+    );
 
     const removeAdsLink = (
         <Box display='flex' justifyContent='center'>
@@ -47,6 +47,6 @@ const EditorPageBottomBannerAd = () => {
             {removeAdsLink}
         </Box>
     );
-}
+};
 
 export default EditorPageBottomBannerAd;
