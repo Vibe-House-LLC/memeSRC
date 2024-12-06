@@ -7,103 +7,9 @@ import { LoadingButton } from '@mui/lab';
 import { UserContext } from '../UserContext';
 import useUserLocation from '../utils/geo/useUserLocation';
 import { createLocationLeads } from '../graphql/mutations';
+import { CountdownTimer, NEW_YEARS, DISCOUNT, HOLIDAY } from '../components/CountdownTimer';
 
 export const SubscribeDialogContext = createContext();
-
-const NEW_YEARS = new Date('2025-01-01T00:00:00').getTime();
-const DISCOUNT = 0.5;
-const HOLIDAY = DISCOUNT > 0;
-
-const SnowflakeDot = () => (
-  <Box
-    sx={{
-      position: 'absolute',
-      width: '3px',
-      height: '3px',
-      backgroundColor: 'rgba(255, 255, 255, 0.7)',
-      borderRadius: '50%',
-      animation: 'snowfall linear infinite',
-      animationDuration: props => `${5 + Math.random() * 5}s`,  // Random duration between 5-10s
-      '@keyframes snowfall': {
-        '0%': {
-          transform: props => `translateY(-20px) translateX(0)`,  // Start above view
-          opacity: 0,  // Start invisible
-        },
-        '10%': {  // Fade in as it enters view
-          transform: props => `translateY(-15px) translateX(${-5 + Math.random() * 10}px)`,
-          opacity: 1,
-        },
-        '100%': {
-          transform: props => `translateY(80px) translateX(${-15 + Math.random() * 30}px)`,
-          opacity: 1,
-        },
-      },
-    }}
-  />
-);
-
-const CountdownTimer = () => {
-  const [timeLeft, setTimeLeft] = useState(() => {
-    const now = new Date().getTime();
-    const distance = NEW_YEARS - now;
-    
-    return {
-      days: Math.floor(distance / (1000 * 60 * 60 * 24)),
-      hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
-      minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
-      seconds: Math.floor((distance % (1000 * 60)) / 1000)
-    };
-  });
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      const now = new Date().getTime();
-      const distance = NEW_YEARS - now;
-
-      setTimeLeft({
-        days: Math.floor(distance / (1000 * 60 * 60 * 24)),
-        hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
-        minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
-        seconds: Math.floor((distance % (1000 * 60)) / 1000)
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, []);
-
-  return (
-    <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mt: 1 }}>
-      {Object.entries(timeLeft).map(([unit, value]) => (
-        <Box key={unit} sx={{ textAlign: 'center' }}>
-          <Typography
-            sx={{
-              fontSize: 20,
-              fontWeight: 700,
-              fontFamily: 'monospace',
-              color: '#fff',
-              backgroundColor: 'rgba(0,0,0,0.3)',
-              borderRadius: 1,
-              px: 1,
-              py: 0.5,
-            }}
-          >
-            {value.toString().padStart(2, '0')}
-          </Typography>
-          <Typography
-            sx={{
-              fontSize: 12,
-              color: 'grey.300',
-              textTransform: 'uppercase',
-              mt: 0.5
-            }}
-          >
-            {unit}
-          </Typography>
-        </Box>
-      ))}
-    </Box>
-  );
-};
 
 export const DialogProvider = ({ children }) => {
   const navigate = useNavigate();
@@ -332,46 +238,7 @@ export const DialogProvider = ({ children }) => {
           {!loading && !checkoutLink && (
             <Fade in timeout={400}>
               <DialogContent sx={{ py: 4, pb: 6 }}>
-                {HOLIDAY && (
-                  <Box
-                    sx={{
-                      position: 'relative',
-                      background: 'linear-gradient(45deg, #1a365d 30%, #2a4a7d 90%)',
-                      borderRadius: 2,
-                      p: 2,
-                      mb: 3,
-                      overflow: 'hidden',
-                      border: '1px solid #2a4a7d',
-                      boxShadow: '0 0 20px rgba(42,74,125,0.5)',
-                    }}
-                  >
-                    {[...Array(30)].map((_, i) => (
-                      <Box
-                        key={i}
-                        sx={{
-                          position: 'absolute',
-                          left: `${Math.random() * 100}%`,
-                          top: 0,
-                          animationPlayState: 'running',
-                          animation: `snowfall ${5 + Math.random() * 5}s linear infinite`,
-                          animationDelay: `-${Math.random() * 10}s`,
-                        }}
-                      >
-                        <SnowflakeDot />
-                      </Box>
-                    ))}
-                    <Typography
-                      fontSize={26}
-                      fontWeight={800}
-                      color="common.white"
-                      textAlign="center"
-                      sx={{ textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}
-                    >
-                      Holiday Sale - 50% Off!
-                    </Typography>
-                    <CountdownTimer />
-                  </Box>
-                )}
+                {HOLIDAY && <CountdownTimer />}
                 <Box
                   p={2.5}
                   sx={{
@@ -884,4 +751,3 @@ export const DialogProvider = ({ children }) => {
     </SubscribeDialogContext.Provider>
   );
 };
-
