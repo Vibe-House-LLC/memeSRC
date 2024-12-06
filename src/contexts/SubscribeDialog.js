@@ -249,7 +249,7 @@ export const DialogProvider = ({ children }) => {
               <DialogContent sx={{ py: 4, pb: 6 }}>
                 {CURRENT_SALE.isActive && isXs && <CountdownTimer />}
                 <Grid container spacing={2}>
-                  <Grid item xs={12} sm={CURRENT_SALE.isActive ? 8 : 12}>
+                  <Grid item xs={12} sm={CURRENT_SALE.isActive ? 6 : 12}>
                     <Box
                       p={isMd ? 2.5 : 2}
                       sx={{
@@ -270,7 +270,7 @@ export const DialogProvider = ({ children }) => {
                     >
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <Typography 
-                          fontSize={isMd ? 22 : 20}
+                          fontSize={isMd ? 22 : 18}
                           fontWeight={700} 
                           color={CURRENT_SALE.isActive ? 'common.white' : getTextColor()}
                         >
@@ -290,7 +290,7 @@ export const DialogProvider = ({ children }) => {
                         )}
                       </Box>
                       <Typography 
-                        variant={isMd ? 'h2' : 'h1'} 
+                        variant={isMd ? 'h2' : 'h3'} 
                         mb={0.75}
                         sx={{ color: CURRENT_SALE.isActive ? getColor() : getTextColor() }}
                       >
@@ -302,7 +302,7 @@ export const DialogProvider = ({ children }) => {
                         ${getPriceForPlan(selectedPlan).toFixed(2)} / mo.
                       </Typography>
                       <Typography 
-                        fontSize={15}
+                        fontSize={isMd ? 15 : 13}
                         fontWeight={600} 
                         color={CURRENT_SALE.isActive ? 'common.white' : getTextColor()}
                       >
@@ -312,7 +312,7 @@ export const DialogProvider = ({ children }) => {
                   </Grid>
 
                   {CURRENT_SALE.isActive && !isXs && (
-                    <Grid item sm={4}>
+                    <Grid item sm={6}>
                       <CountdownTimer />
                     </Grid>
                   )}
