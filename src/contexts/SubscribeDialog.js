@@ -10,6 +10,7 @@ import { createLocationLeads } from '../graphql/mutations';
 
 export const SubscribeDialogContext = createContext();
 
+const NEW_YEARS = new Date('2025-01-01T00:00:00').getTime();
 const DISCOUNT = 0.5;
 const HOLIDAY = DISCOUNT > 0;
 
@@ -25,7 +26,11 @@ const SnowflakeDot = () => (
       animationDuration: props => `${5 + Math.random() * 5}s`,  // Random duration between 5-10s
       '@keyframes snowfall': {
         '0%': {
-          transform: props => `translateY(-20px) translateX(${-15 + Math.random() * 30}px)`,
+          transform: props => `translateY(-20px) translateX(0)`,  // Start above view
+          opacity: 0,  // Start invisible
+        },
+        '10%': {  // Fade in as it enters view
+          transform: props => `translateY(-15px) translateX(${-5 + Math.random() * 10}px)`,
           opacity: 1,
         },
         '100%': {
@@ -36,6 +41,69 @@ const SnowflakeDot = () => (
     }}
   />
 );
+
+const CountdownTimer = () => {
+  const [timeLeft, setTimeLeft] = useState(() => {
+    const now = new Date().getTime();
+    const distance = NEW_YEARS - now;
+    
+    return {
+      days: Math.floor(distance / (1000 * 60 * 60 * 24)),
+      hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+      minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
+      seconds: Math.floor((distance % (1000 * 60)) / 1000)
+    };
+  });
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = new Date().getTime();
+      const distance = NEW_YEARS - now;
+
+      setTimeLeft({
+        days: Math.floor(distance / (1000 * 60 * 60 * 24)),
+        hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+        minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
+        seconds: Math.floor((distance % (1000 * 60)) / 1000)
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mt: 1 }}>
+      {Object.entries(timeLeft).map(([unit, value]) => (
+        <Box key={unit} sx={{ textAlign: 'center' }}>
+          <Typography
+            sx={{
+              fontSize: 20,
+              fontWeight: 700,
+              fontFamily: 'monospace',
+              color: '#fff',
+              backgroundColor: 'rgba(0,0,0,0.3)',
+              borderRadius: 1,
+              px: 1,
+              py: 0.5,
+            }}
+          >
+            {value.toString().padStart(2, '0')}
+          </Typography>
+          <Typography
+            sx={{
+              fontSize: 12,
+              color: 'grey.300',
+              textTransform: 'uppercase',
+              mt: 0.5
+            }}
+          >
+            {unit}
+          </Typography>
+        </Box>
+      ))}
+    </Box>
+  );
+};
 
 export const DialogProvider = ({ children }) => {
   const navigate = useNavigate();
@@ -268,12 +336,13 @@ export const DialogProvider = ({ children }) => {
                   <Box
                     sx={{
                       position: 'relative',
-                      backgroundColor: '#1a365d',
+                      background: 'linear-gradient(45deg, #1a365d 30%, #2a4a7d 90%)',
                       borderRadius: 2,
                       p: 2,
                       mb: 3,
                       overflow: 'hidden',
                       border: '1px solid #2a4a7d',
+                      boxShadow: '0 0 20px rgba(42,74,125,0.5)',
                     }}
                   >
                     {[...Array(30)].map((_, i) => (
@@ -282,29 +351,25 @@ export const DialogProvider = ({ children }) => {
                         sx={{
                           position: 'absolute',
                           left: `${Math.random() * 100}%`,
-                          top: `${Math.random() * 100}%`,  // Initial random vertical position
-                          animationDelay: `${Math.random() * 5}s`,  // Random start time
+                          top: 0,
+                          animationPlayState: 'running',
+                          animation: `snowfall ${5 + Math.random() * 5}s linear infinite`,
+                          animationDelay: `-${Math.random() * 10}s`,
                         }}
                       >
                         <SnowflakeDot />
                       </Box>
                     ))}
                     <Typography
-                      fontSize={16}
-                      fontWeight={600}
+                      fontSize={26}
+                      fontWeight={800}
                       color="common.white"
                       textAlign="center"
+                      sx={{ textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}
                     >
-                      Holiday Sale - 30% Off All Plans
+                      Holiday Sale - 50% Off!
                     </Typography>
-                    <Typography
-                      fontSize={14}
-                      color="grey.300"
-                      textAlign="center"
-                      mt={0.5}
-                    >
-                      Limited time offer. Get Pro for less!
-                    </Typography>
+                    <CountdownTimer />
                   </Box>
                 )}
                 <Box
