@@ -89,9 +89,7 @@ const CountdownTimer = () => {
 
     return {
       days: Math.floor(distance / (1000 * 60 * 60 * 24)),
-      hours: Math.floor(
-        (distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
-      ),
+      hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
       minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
       seconds: Math.floor((distance % (1000 * 60)) / 1000),
     };
@@ -121,7 +119,7 @@ const CountdownTimer = () => {
         position: 'relative',
         background: 'linear-gradient(45deg, #2f1c47 30%, #4a2d71 90%)',
         borderRadius: 2,
-        p: { xs: 1.5, sm: 2 },
+        p: 1.5,
         mb: 3,
         overflow: 'hidden',
         border: '1px solid #6b42a1',
@@ -135,7 +133,7 @@ const CountdownTimer = () => {
           color="#fff"
           textAlign="center"
           sx={{
-            fontSize: { xs: 22, sm: 26, md: 26 },
+            fontSize: 22,
             textShadow: '0 2px 8px rgba(0,0,0,0.2)',
             background: 'linear-gradient(45deg, #fff 30%, #e0e0ff 90%)',
             WebkitBackgroundClip: 'text',
@@ -150,9 +148,9 @@ const CountdownTimer = () => {
         sx={{
           color: '#b794f4',
           textAlign: 'center',
-          fontSize: { xs: 14, sm: 16 },
+          fontSize: 14,
           fontWeight: 500,
-          mt: { xs: 0.5, sm: 1 },
+          mt: 0.5,
         }}
       >
         {'Get '}
@@ -165,8 +163,8 @@ const CountdownTimer = () => {
         sx={{
           display: 'flex',
           justifyContent: 'center',
-          gap: { xs: 1, sm: 2 },
-          mt: { xs: 1, sm: 1.5 },
+          gap: 1,
+          mt: 1,
           position: 'relative',
         }}
       >
@@ -174,14 +172,14 @@ const CountdownTimer = () => {
           <Box key={unit} sx={{ textAlign: 'center' }}>
             <Typography
               sx={{
-                fontSize: { xs: 18, sm: 22 },
+                fontSize: 18,
                 fontWeight: 700,
                 fontFamily: 'monospace',
                 color: '#fff',
                 backgroundColor: 'rgba(107,66,161,0.4)',
                 borderRadius: 1.5,
-                px: { xs: 1, sm: 1.5 },
-                py: { xs: 0.5, sm: 0.75 },
+                px: 1,
+                py: 0.5,
                 border: '1px solid rgba(255,255,255,0.1)',
                 boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
               }}
@@ -190,10 +188,10 @@ const CountdownTimer = () => {
             </Typography>
             <Typography
               sx={{
-                fontSize: { xs: 10, sm: 12 },
+                fontSize: 10,
                 color: '#b794f4',
                 textTransform: 'uppercase',
-                mt: { xs: 0.5, sm: 0.75 },
+                mt: 0.5,
                 fontWeight: 600,
               }}
             >

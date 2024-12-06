@@ -15,7 +15,8 @@ export const SubscribeDialogContext = createContext();
 export const DialogProvider = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const isMd = useMediaQuery(theme => theme.breakpoints.up('sm'));
+  const isXs = useMediaQuery(theme => theme.breakpoints.down('sm'));
+  const isMd = useMediaQuery(theme => theme.breakpoints.up('md'));
   const [subscriptionDialogOpen, setSubscriptionDialogOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState('pro69');
   const [loading, setLoading] = useState(false);
@@ -202,11 +203,11 @@ export const DialogProvider = ({ children }) => {
         aria-describedby="alert-dialog-description"
         maxWidth="md"
         fullWidth
-        fullScreen={!isMd}
+        fullScreen={isXs}
         scroll="paper"
         PaperProps={{
           sx: {
-            borderRadius: isMd ? 5 : 0,
+            borderRadius: isXs ? 0 : 5,
             backgroundColor: (theme) => theme.palette.common.black,
           },
         }}
@@ -241,66 +242,77 @@ export const DialogProvider = ({ children }) => {
           {!loading && !checkoutLink && (
             <Fade in timeout={400}>
               <DialogContent sx={{ py: 4, pb: 6 }}>
-                {CURRENT_SALE.isActive && <CountdownTimer />}
-                <Box
-                  p={isMd ? 2.5 : 2}
-                  sx={{
-                    backgroundColor: CURRENT_SALE.isActive 
-                      ? 'rgba(0, 0, 0, 0.2)' 
-                      : getColor(),
-                    borderRadius: 4,
-                    mb: 2,
-                    cursor: 'pointer',
-                    position: 'relative',
-                    border: CURRENT_SALE.isActive 
-                      ? '1px solid rgba(255, 255, 255, 0.1)'
-                      : 'none',
-                  }}
-                  onClick={() => {
-                    subscribeButtonRef.current.scrollIntoView({ behavior: 'smooth' });
-                  }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Typography 
-                      fontSize={isMd ? 22 : 20}
-                      fontWeight={700} 
-                      color={CURRENT_SALE.isActive ? 'common.white' : getTextColor()}
+                {CURRENT_SALE.isActive && isXs && <CountdownTimer />}
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={CURRENT_SALE.isActive ? 8 : 12}>
+                    <Box
+                      p={isMd ? 2.5 : 2}
+                      sx={{
+                        backgroundColor: CURRENT_SALE.isActive 
+                          ? 'rgba(0, 0, 0, 0.2)' 
+                          : getColor(),
+                        borderRadius: 4,
+                        mb: 2,
+                        cursor: 'pointer',
+                        position: 'relative',
+                        border: CURRENT_SALE.isActive 
+                          ? '1px solid rgba(255, 255, 255, 0.1)'
+                          : 'none',
+                      }}
+                      onClick={() => {
+                        subscribeButtonRef.current.scrollIntoView({ behavior: 'smooth' });
+                      }}
                     >
-                      {selectedTitleSubtitle?.title}
-                    </Typography>
-                    {CURRENT_SALE.isActive && (
-                      <Chip
-                        label={`${(CURRENT_SALE.discountPercent).toFixed(0)}% OFF`}
-                        color="error"
-                        size="small"
-                        sx={{
-                          fontWeight: 700,
-                          fontSize: '0.85rem',
-                          backgroundColor: '#ff1744',
-                        }}
-                      />
-                    )}
-                  </Box>
-                  <Typography 
-                    variant={isMd ? 'h2' : 'h1'} 
-                    mb={0.75}
-                    sx={{ color: CURRENT_SALE.isActive ? getColor() : getTextColor() }}
-                  >
-                    {CURRENT_SALE.isActive && (
-                      <span style={{ textDecoration: 'line-through', fontSize: '0.7em', opacity: 0.7, marginRight: '8px', color: 'white' }}>
-                        ${planPrices[selectedPlan].toFixed(2)}
-                      </span>
-                    )}
-                    ${getPriceForPlan(selectedPlan).toFixed(2)} / mo.
-                  </Typography>
-                  <Typography 
-                    fontSize={15}
-                    fontWeight={600} 
-                    color={CURRENT_SALE.isActive ? 'common.white' : getTextColor()}
-                  >
-                    {selectedTitleSubtitle?.subtitle}
-                  </Typography>
-                </Box>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography 
+                          fontSize={isMd ? 22 : 20}
+                          fontWeight={700} 
+                          color={CURRENT_SALE.isActive ? 'common.white' : getTextColor()}
+                        >
+                          {selectedTitleSubtitle?.title}
+                        </Typography>
+                        {CURRENT_SALE.isActive && (
+                          <Chip
+                            label={`${(CURRENT_SALE.discountPercent).toFixed(0)}% OFF`}
+                            color="error"
+                            size="small"
+                            sx={{
+                              fontWeight: 700,
+                              fontSize: '0.85rem',
+                              backgroundColor: '#ff1744',
+                            }}
+                          />
+                        )}
+                      </Box>
+                      <Typography 
+                        variant={isMd ? 'h2' : 'h1'} 
+                        mb={0.75}
+                        sx={{ color: CURRENT_SALE.isActive ? getColor() : getTextColor() }}
+                      >
+                        {CURRENT_SALE.isActive && (
+                          <span style={{ textDecoration: 'line-through', fontSize: '0.7em', opacity: 0.7, marginRight: '8px', color: 'white' }}>
+                            ${planPrices[selectedPlan].toFixed(2)}
+                          </span>
+                        )}
+                        ${getPriceForPlan(selectedPlan).toFixed(2)} / mo.
+                      </Typography>
+                      <Typography 
+                        fontSize={15}
+                        fontWeight={600} 
+                        color={CURRENT_SALE.isActive ? 'common.white' : getTextColor()}
+                      >
+                        {selectedTitleSubtitle?.subtitle}
+                      </Typography>
+                    </Box>
+                  </Grid>
+
+                  {CURRENT_SALE.isActive && !isXs && (
+                    <Grid item sm={4}>
+                      <CountdownTimer />
+                    </Grid>
+                  )}
+                </Grid>
+
                 <Grid container spacing={isMd ? 4 : 2} alignItems="center">
                   <Grid item xs={12} md={5}>
                     <Box display="flex" alignItems="center" mb={isMd ? 2 : 1.5} ml={2}>
