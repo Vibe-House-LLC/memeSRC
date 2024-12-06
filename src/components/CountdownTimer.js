@@ -10,7 +10,7 @@ export const Snowflake = memo(
         keyframes({
           '0%': {
             transform: `translateY(${startingY}px) rotate(0deg)`,
-            opacity: 0.4,
+            opacity: 0.3,
           },
           '100%': {
             transform: 'translateY(400px) rotate(360deg)',
