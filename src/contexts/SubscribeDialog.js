@@ -512,38 +512,39 @@ export const DialogProvider = ({ children }) => {
                 </Grid>
                 <Box mt={4} textAlign="center">
                   {/* {console.log(user)} */}
-                  {user?.userDetails ? <Button
-                    ref={subscribeButtonRef}
-                    variant="contained"
-                    size="large"
-                    onClick={() => {
-                      if (countryCode === 'US' || countryCode === 'AU' || countryCode === 'CA') {
-                        buySubscription();
-                      } else {
-                        setCheckoutLink('unsupported_country');
-                        console.log('unsupported_country')
-                      }
-                    }}
-                    fullWidth
-                    sx={{
-                      borderRadius: 50,
-                      px: 4,
-                      py: 1.5,
-                      fontSize: 20,
-                      backgroundColor: getColor(),
-                      color: getTextColor(),
-                    }}
-                  >
-                    Subscribe: {CURRENT_SALE.isActive ? (
-                      <>
-                        <span style={{ textDecoration: 'line-through', marginRight: '4px' }}>${planPrices[selectedPlan].toFixed(2)}</span>
-                        ${getPriceForPlan(selectedPlan).toFixed(2)}
-                      </>
-                    ) : (
-                      `$${getPriceForPlan(selectedPlan).toFixed(2)}`
-                    )}/mo
-                  </Button>
-                    :
+                  {user?.userDetails ? (
+                    <Button
+                      ref={subscribeButtonRef}
+                      variant="contained"
+                      size="large"
+                      onClick={() => {
+                        if (countryCode === 'US' || countryCode === 'AU' || countryCode === 'CA') {
+                          buySubscription();
+                        } else {
+                          setCheckoutLink('unsupported_country');
+                          console.log('unsupported_country')
+                        }
+                      }}
+                      fullWidth
+                      sx={{
+                        borderRadius: 50,
+                        px: 4,
+                        py: 1.5,
+                        fontSize: 20,
+                        backgroundColor: getColor(),
+                        color: getTextColor(),
+                      }}
+                    >
+                      Subscribe: {CURRENT_SALE.isActive ? (
+                        <>
+                          <span style={{ textDecoration: 'line-through', marginRight: '4px' }}>${planPrices[selectedPlan].toFixed(2)}</span>
+                          ${getPriceForPlan(selectedPlan).toFixed(2)}
+                        </>
+                      ) : (
+                        `$${getPriceForPlan(selectedPlan).toFixed(2)}`
+                      )}/mo
+                    </Button>
+                  ) : (
                     <Button
                       ref={subscribeButtonRef}
                       variant="contained"
@@ -559,9 +560,16 @@ export const DialogProvider = ({ children }) => {
                         color: getTextColor(),
                       }}
                     >
-                      Please Log In
+                      Subscribe: {CURRENT_SALE.isActive ? (
+                        <>
+                          <span style={{ textDecoration: 'line-through', marginRight: '4px' }}>${planPrices[selectedPlan].toFixed(2)}</span>
+                          ${getPriceForPlan(selectedPlan).toFixed(2)}
+                        </>
+                      ) : (
+                        `$${getPriceForPlan(selectedPlan).toFixed(2)}`
+                      )}/mo
                     </Button>
-                  }
+                  )}
                   <Typography
                     variant="caption"
                     color="text.secondary"
@@ -702,6 +710,39 @@ export const DialogProvider = ({ children }) => {
             <Typography fontSize={45} textAlign='center' fontWeight={700} pt={0.5}>
               Vibe House
             </Typography>
+            <Box
+              sx={{
+                mt: 2,
+                mx: 'auto',
+                p: 1.5,
+                maxWidth: 280,
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                borderRadius: 1.5,
+                backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                backdropFilter: 'blur(10px)',
+              }}
+            >
+              <Typography 
+                fontSize={12} 
+                color="text.secondary"
+                sx={{ mb: 0.5 }}
+              >
+                Your subscription to memeSRC Pro will show on your statement as:
+              </Typography>
+              <Typography 
+                fontFamily="'Roboto Mono', monospace"
+                fontSize={15}
+                fontWeight={500}
+                sx={{
+                  p: 1,
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  borderRadius: 1,
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                }}
+              >
+                VIBE HOUSE LLC
+              </Typography>
+            </Box>
           </Box>
           <Box sx={{ mx: 'auto', mt: 'auto', textAlign: 'center' }}>
             <LoadingButton
