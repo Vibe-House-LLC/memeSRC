@@ -16,7 +16,8 @@ export const DialogProvider = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const isXs = useMediaQuery(theme => theme.breakpoints.down('sm'));
-  const isMd = useMediaQuery(theme => theme.breakpoints.up('md'));
+  const isMd = useMediaQuery(theme => theme.breakpoints.up('sm'));
+  const isCompact = useMediaQuery('(max-width:800px)');
   const [subscriptionDialogOpen, setSubscriptionDialogOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState('pro69');
   const [loading, setLoading] = useState(false);
@@ -247,11 +248,11 @@ export const DialogProvider = ({ children }) => {
           {!loading && !checkoutLink && (
             <Fade in timeout={400}>
               <DialogContent sx={{ py: 4, pb: 6 }}>
-                {CURRENT_SALE.isActive && isXs && <CountdownTimer />}
+                {CURRENT_SALE.isActive && (isXs || isCompact) && <CountdownTimer />}
                 <Grid container spacing={2}>
-                  <Grid item xs={12} sm={CURRENT_SALE.isActive ? 6 : 12}>
+                  <Grid item xs={12} sm={isCompact ? 12 : 6}>
                     <Box
-                      p={isMd ? 2.5 : 2}
+                      p={isMd && !isCompact ? 2.5 : 2}
                       sx={{
                         backgroundColor: CURRENT_SALE.isActive 
                           ? 'rgba(0, 0, 0, 0.2)' 
@@ -311,7 +312,7 @@ export const DialogProvider = ({ children }) => {
                     </Box>
                   </Grid>
 
-                  {CURRENT_SALE.isActive && !isXs && (
+                  {CURRENT_SALE.isActive && !isXs && !isCompact && (
                     <Grid item sm={6}>
                       <CountdownTimer />
                     </Grid>
@@ -319,7 +320,7 @@ export const DialogProvider = ({ children }) => {
                 </Grid>
 
                 <Grid container spacing={isMd ? 4 : 2} alignItems="center">
-                  <Grid item xs={12} md={5}>
+                  <Grid item xs={12} sm={isCompact ? 12 : 5}>
                     <Box display="flex" alignItems="center" mb={isMd ? 2 : 1.5} ml={2}>
                       <Box
                         sx={{
@@ -410,9 +411,9 @@ export const DialogProvider = ({ children }) => {
                       </Typography>
                     </Box>
                   </Grid>
-                  <Grid item xs={12} md={7}>
+                  <Grid item xs={12} sm={isCompact ? 12 : 7}>
                     <Collapse in={creditOptionsExpanded} timeout={300}>
-                      {isMd ? (
+                      {!isCompact ? (
                         <Box sx={{ px: 2 }}>
                           {[
                             { plan: 'pro5', credits: 5, color: 'grey.500', hoverColor: 'grey.500', activeColor: 'grey.500' },
