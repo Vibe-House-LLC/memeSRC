@@ -32,7 +32,7 @@ const Snowflake = memo(
           top: '-20px',
           color: '#fff',
           userSelect: 'none',
-          fontSize: '1.5rem',
+          fontSize: '0.5rem',
           transform: `scale(${scale})`,
           animation: `${snowfall} ${duration}s linear infinite`,
           animationDelay,
