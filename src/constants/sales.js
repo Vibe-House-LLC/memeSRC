@@ -5,6 +5,7 @@ export const SALE_END_DATE = new Date('2025-01-01T00:00:00').getTime();
 export const CURRENT_SALE = {
   isActive: true,
   discountPercent: 40,
+  monthsDuration: 3,
   get discountMultiplier() {
     return 1 - (this.discountPercent / 100);
   },

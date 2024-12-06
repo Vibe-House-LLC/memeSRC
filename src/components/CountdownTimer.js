@@ -135,17 +135,31 @@ const CountdownTimer = () => {
           color="#fff"
           textAlign="center"
           sx={{
-            fontSize: { xs: 20, sm: 24, md: 26 },
-            textShadow: '0 2px 8px rgba(0,0,0,0.5)',
+            fontSize: { xs: 28, sm: 26, md: 26 },
+            textShadow: '0 2px 8px rgba(0,0,0,0.2)',
             background: 'linear-gradient(45deg, #fff 30%, #e0e0ff 90%)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
             position: 'relative',
           }}
         >
-          {CURRENT_SALE.name} - {CURRENT_SALE.discountPercent}% off!
+          {CURRENT_SALE.name}
         </Typography>
       </Box>
+      <Typography
+        sx={{
+          color: '#b794f4',
+          textAlign: 'center',
+          fontSize: 16,
+          fontWeight: 500,
+        }}
+      >
+        {'Get '}
+        <Box component="span" sx={{ color: '#fff', fontWeight: 700 }}>
+          {CURRENT_SALE.discountPercent}% off
+        </Box>
+        {' your first '}{CURRENT_SALE.monthsDuration}{' months!'}
+      </Typography>
       <Box
         sx={{
           display: 'flex',
