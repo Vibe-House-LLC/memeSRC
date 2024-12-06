@@ -239,34 +239,63 @@ export default function Header({ onOpenNav }) {
                   }}
                 />
               ) : (
-                <Badge
-                  ref={setProChipEl}
-                >
-                  <Chip
-                    onClick={() => {
-                      setShowProTip(false);
-                      openSubscriptionDialog();
-                    }}
-                    icon={<LocalPoliceRounded />}
-                    label={CURRENT_SALE.isActive ? `Pro (${CURRENT_SALE.discountPercent}% off!)` : 'Pro'}
-                    size="small"
-                    sx={{
-                      background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
-                      border: '1px solid #8b5cc7',
-                      boxShadow: '0 0 20px rgba(107,66,161,0.5)',
-                      '& .MuiChip-label': {
-                        fontWeight: 'bold',
-                        color: '#fff',
-                      },
-                      '& .MuiChip-icon': {
-                        color: '#fff',
-                      },
-                      '&:hover': {
-                        background: 'linear-gradient(45deg, #472a69 30%, #7b4cb8 90%)',
-                        boxShadow: '0 0 25px rgba(107,66,161,0.6)',
-                      },
-                    }}
-                  />
+                <Badge ref={setProChipEl}>
+                  {CURRENT_SALE.isActive ? (
+                    <Box sx={{ position: 'relative' }}>
+                      <SnowEffect />
+                      <Chip
+                        onClick={() => {
+                          setShowProTip(false);
+                          openSubscriptionDialog();
+                        }}
+                        icon={<LocalPoliceRounded />}
+                        label={CURRENT_SALE.isActive ? `Pro (${CURRENT_SALE.discountPercent}% off)` : 'Pro'}
+                        size="small"
+                        sx={{
+                          background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
+                          border: '1px solid #8b5cc7',
+                          boxShadow: '0 0 20px rgba(107,66,161,0.5)',
+                          '& .MuiChip-label': {
+                            fontWeight: 'bold',
+                            color: '#fff',
+                          },
+                          '& .MuiChip-icon': {
+                            color: '#fff',
+                          },
+                          '&:hover': {
+                            background: 'linear-gradient(45deg, #472a69 30%, #7b4cb8 90%)',
+                            boxShadow: '0 0 25px rgba(107,66,161,0.6)',
+                          },
+                        }}
+                      />
+                    </Box>
+                  ) : (
+                    <Chip
+                      onClick={() => {
+                        setShowProTip(false);
+                        openSubscriptionDialog();
+                      }}
+                      icon={<LocalPoliceRounded />}
+                      label={CURRENT_SALE.isActive ? `Pro (${CURRENT_SALE.discountPercent}% off!)` : 'Pro'}
+                      size="small"
+                      sx={{
+                        background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
+                        border: '1px solid #8b5cc7',
+                        boxShadow: '0 0 20px rgba(107,66,161,0.5)',
+                        '& .MuiChip-label': {
+                          fontWeight: 'bold',
+                          color: '#fff',
+                        },
+                        '& .MuiChip-icon': {
+                          color: '#fff',
+                        },
+                        '&:hover': {
+                          background: 'linear-gradient(45deg, #472a69 30%, #7b4cb8 90%)',
+                          boxShadow: '0 0 25px rgba(107,66,161,0.6)',
+                        },
+                      }}
+                    />
+                  )}
                 </Badge>
               )}
               <AccountPopover />
