@@ -3,7 +3,7 @@ import { keyframes } from '@mui/system';
 import { useState, useEffect, useMemo, memo } from 'react';
 import { SALE_END_DATE, CURRENT_SALE } from '../constants/sales';
 
-const Snowflake = memo(
+export const Snowflake = memo(
   ({ left, startingY, animationDelay, scale, duration }) => {
     const snowfall = useMemo(
       () =>
@@ -41,7 +41,7 @@ const Snowflake = memo(
   }
 );
 
-function SnowEffect() {
+export const SnowEffect = () => {
   const snowflakes = useMemo(
     () =>
       [...Array(30)].map((_, i) => {
@@ -80,7 +80,7 @@ function SnowEffect() {
       )}
     </Box>
   );
-}
+};
 
 const CountdownTimer = () => {
   const [timeLeft, setTimeLeft] = useState(() => {

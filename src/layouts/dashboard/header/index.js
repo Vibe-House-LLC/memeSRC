@@ -20,6 +20,9 @@ import {
   Fab,
   Divider,
   Alert,
+  Popper,
+  Fade,
+  Badge,
 } from '@mui/material';
 import { Add, ArrowCircleUpRounded, ArrowUpward, ArrowUpwardRounded, AutoFixHighRounded, Check, Close, Discount, HdrPlusTwoTone, InfoRounded, LocalOffer, LocalPoliceRounded, MonetizationOnRounded, NewReleasesRounded, UpgradeRounded, Verified } from '@mui/icons-material';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
@@ -43,6 +46,7 @@ import { SnackbarContext } from '../../../SnackbarContext';
 import { MagicPopupContext } from '../../../MagicPopupContext';
 import { SubscribeDialogContext } from '../../../contexts/SubscribeDialog';
 import { CURRENT_SALE } from '../../../constants/sales';
+import { SnowEffect } from '../../../components/CountdownTimer';
 
 // ----------------------------------------------------------------------
 
@@ -82,6 +86,8 @@ export default function Header({ onOpenNav }) {
   const containerRef = useRef(null);
   const [magicAlertOpen, setMagicAlertOpen] = useState(false);
   const { openSubscriptionDialog } = useContext(SubscribeDialogContext);
+  const [proChipEl, setProChipEl] = useState(null);
+  const [showProTip, setShowProTip] = useState(false);
 
   const renderLogo = () => (
     <Grid
@@ -155,6 +161,27 @@ export default function Header({ onOpenNav }) {
     window.localStorage.setItem('earlyAccessInviteAlertDismissed', 'true')
   }
 
+  useEffect(() => {
+    if (!CURRENT_SALE.isActive) {
+      return undefined; // Early return if sale is not active
+    }
+
+    // Show tooltip after a short delay
+    const timer = setTimeout(() => {
+      setShowProTip(true);
+    }, 1000);
+
+    // Hide tooltip after 5 seconds
+    const hideTimer = setTimeout(() => {
+      setShowProTip(false);
+    }, 6000);
+
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(hideTimer);
+    };
+  }, []);
+
   return (
     <>
       <StyledRoot>
@@ -210,28 +237,35 @@ export default function Header({ onOpenNav }) {
                   }}
                 />
               ) : (
-                <Chip
-                  onClick={openSubscriptionDialog}
-                  icon={<LocalPoliceRounded />}
-                  label={CURRENT_SALE.isActive ? `Pro (${CURRENT_SALE.discountPercent}% off!)` : 'Pro'}
-                  size="small"
-                  sx={{
-                    background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
-                    border: '1px solid #8b5cc7',
-                    boxShadow: '0 0 20px rgba(107,66,161,0.5)',
-                    '& .MuiChip-label': {
-                      fontWeight: 'bold',
-                      color: '#fff',
-                    },
-                    '& .MuiChip-icon': {
-                      color: '#fff',
-                    },
-                    '&:hover': {
-                      background: 'linear-gradient(45deg, #472a69 30%, #7b4cb8 90%)',
-                      boxShadow: '0 0 25px rgba(107,66,161,0.6)',
-                    },
-                  }}
-                />
+                <Badge
+                  ref={setProChipEl}
+                >
+                  <Chip
+                    onClick={() => {
+                      setShowProTip(false);
+                      openSubscriptionDialog();
+                    }}
+                    icon={<LocalPoliceRounded />}
+                    label={CURRENT_SALE.isActive ? `Pro (${CURRENT_SALE.discountPercent}% off!)` : 'Pro'}
+                    size="small"
+                    sx={{
+                      background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
+                      border: '1px solid #8b5cc7',
+                      boxShadow: '0 0 20px rgba(107,66,161,0.5)',
+                      '& .MuiChip-label': {
+                        fontWeight: 'bold',
+                        color: '#fff',
+                      },
+                      '& .MuiChip-icon': {
+                        color: '#fff',
+                      },
+                      '&:hover': {
+                        background: 'linear-gradient(45deg, #472a69 30%, #7b4cb8 90%)',
+                        boxShadow: '0 0 25px rgba(107,66,161,0.6)',
+                      },
+                    }}
+                  />
+                </Badge>
               )}
               <AccountPopover />
             </>
@@ -333,6 +367,85 @@ export default function Header({ onOpenNav }) {
           </IconButton>
         </Stack>
       </Popover>
+      <Popper
+        open={showProTip && CURRENT_SALE.isActive}
+        anchorEl={proChipEl}
+        placement="bottom"
+        transition
+      >
+        {({ TransitionProps }) => (
+          <Fade {...TransitionProps} timeout={350}>
+            <Card
+              onClick={() => {
+                setShowProTip(false);
+                openSubscriptionDialog();
+              }}
+              sx={{
+                position: 'relative',
+                p: 1.5,
+                mt: 1.5,
+                maxWidth: 260,
+                background: 'linear-gradient(45deg, #2f1c47 30%, #4a2d71 90%)',
+                border: '1px solid #6b42a1',
+                boxShadow: '0 0 20px rgba(107,66,161,0.3)',
+                cursor: 'pointer',
+                overflow: 'hidden',
+                borderRadius: 2,
+              }}
+            >
+              <SnowEffect />
+              <Typography
+                fontWeight={800}
+                color="#fff"
+                textAlign="center"
+                sx={{
+                  fontSize: 18,
+                  textShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                  background: 'linear-gradient(45deg, #fff 30%, #e0e0ff 90%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  position: 'relative',
+                  mb: 0.5,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 1,
+                }}
+              >
+                {CURRENT_SALE.name}!
+              </Typography>
+              <Typography 
+                variant="body2"
+                sx={{
+                  color: '#b794f4',
+                  textAlign: 'center',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  lineHeight: 1.3,
+                  mb: 1
+                }}
+              >
+                <Box
+                  component="span"
+                  sx={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    backgroundColor: 'rgb(84 214 44)',
+                    display: 'inline-block',
+                    mr: 1,
+                  }}
+                />
+                <Box component="span" sx={{ color: '#fff', fontWeight: 700 }}>
+                  {CURRENT_SALE.discountPercent}% off
+                </Box>
+                {' first '}
+                {CURRENT_SALE.monthsDuration}{' mo!'}
+              </Typography>
+            </Card>
+          </Fade>
+        )}
+      </Popper>
     </>
   );
 }
