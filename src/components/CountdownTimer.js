@@ -121,7 +121,7 @@ const CountdownTimer = () => {
         position: 'relative',
         background: 'linear-gradient(45deg, #2f1c47 30%, #4a2d71 90%)',
         borderRadius: 2,
-        p: 2,
+        p: { xs: 1.5, sm: 2 },
         mb: 3,
         overflow: 'hidden',
         border: '1px solid #6b42a1',
@@ -135,7 +135,7 @@ const CountdownTimer = () => {
           color="#fff"
           textAlign="center"
           sx={{
-            fontSize: { xs: 28, sm: 26, md: 26 },
+            fontSize: { xs: 22, sm: 26, md: 26 },
             textShadow: '0 2px 8px rgba(0,0,0,0.2)',
             background: 'linear-gradient(45deg, #fff 30%, #e0e0ff 90%)',
             WebkitBackgroundClip: 'text',
@@ -150,8 +150,9 @@ const CountdownTimer = () => {
         sx={{
           color: '#b794f4',
           textAlign: 'center',
-          fontSize: 16,
+          fontSize: { xs: 14, sm: 16 },
           fontWeight: 500,
+          mt: { xs: 0.5, sm: 1 },
         }}
       >
         {'Get '}
@@ -164,8 +165,8 @@ const CountdownTimer = () => {
         sx={{
           display: 'flex',
           justifyContent: 'center',
-          gap: 2,
-          mt: 1.5,
+          gap: { xs: 1, sm: 2 },
+          mt: { xs: 1, sm: 1.5 },
           position: 'relative',
         }}
       >
@@ -173,14 +174,14 @@ const CountdownTimer = () => {
           <Box key={unit} sx={{ textAlign: 'center' }}>
             <Typography
               sx={{
-                fontSize: 22,
+                fontSize: { xs: 18, sm: 22 },
                 fontWeight: 700,
                 fontFamily: 'monospace',
                 color: '#fff',
                 backgroundColor: 'rgba(107,66,161,0.4)',
                 borderRadius: 1.5,
-                px: 1.5,
-                py: 0.75,
+                px: { xs: 1, sm: 1.5 },
+                py: { xs: 0.5, sm: 0.75 },
                 border: '1px solid rgba(255,255,255,0.1)',
                 boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
               }}
@@ -189,10 +190,10 @@ const CountdownTimer = () => {
             </Typography>
             <Typography
               sx={{
-                fontSize: 12,
+                fontSize: { xs: 10, sm: 12 },
                 color: '#b794f4',
                 textTransform: 'uppercase',
-                mt: 0.75,
+                mt: { xs: 0.5, sm: 0.75 },
                 fontWeight: 600,
               }}
             >
