@@ -540,11 +540,7 @@ export const DialogProvider = ({ children }) => {
                                 }}
                               >
                                 {selectedPlan === plan ? 'included' : 
-                                 plan === 'pro5' ? 
-                                   (selectedPlan === 'pro25' ? `${formatPriceDelta(getPriceForPlan('pro25') - getPriceForPlan('pro5'))}/mo` : `${formatPriceDelta(getPriceForPlan('pro69') - getPriceForPlan('pro5'))}/mo`) :
-                                 plan === 'pro25' ? 
-                                   (selectedPlan === 'pro5' ? `${formatPriceDelta(getPriceForPlan('pro5') - getPriceForPlan('pro25'))}/mo` : `${formatPriceDelta(getPriceForPlan('pro69') - getPriceForPlan('pro25'))}/mo`) :
-                                 (selectedPlan === 'pro5' ? `${formatPriceDelta(getPriceForPlan('pro69') - getPriceForPlan('pro5'))}/mo` : `${formatPriceDelta(getPriceForPlan('pro69') - getPriceForPlan('pro25'))}/mo`)}
+                                 formatPriceDelta(getPriceForPlan(plan) - getPriceForPlan(selectedPlan))}
                               </Typography>
                             </Box>
                           ))}
