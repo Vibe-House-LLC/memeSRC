@@ -29,6 +29,8 @@ export const DialogProvider = ({ children }) => {
 
   const { countryCode, countryName } = useUserLocation();
 
+  const [creditOptionsExpanded, setCreditOptionsExpanded] = useState(isMd || !CURRENT_SALE.isActive);
+
   useEffect(() => {
     if (location.pathname === '/pro' && user !== null) {
       if (user.userDetails) {
@@ -184,6 +186,10 @@ export const DialogProvider = ({ children }) => {
     const absAmount = Math.abs(amount);
     const formattedPrice = absAmount % 1 === 0 ? absAmount.toFixed(0) : absAmount.toFixed(2);
     return `${sign}$${formattedPrice}`;
+  };
+
+  const toggleCreditOptions = () => {
+    setCreditOptionsExpanded(!creditOptionsExpanded);
   };
 
   return (
@@ -350,7 +356,13 @@ export const DialogProvider = ({ children }) => {
                         Exclusive Features
                       </Typography>
                     </Box>
-                    <Box display="flex" alignItems="center" ml={2}>
+                    <Box 
+                      display="flex" 
+                      alignItems="center" 
+                      ml={2} 
+                      onClick={toggleCreditOptions}
+                      sx={{ cursor: 'pointer' }}
+                    >
                       <Box
                         sx={{
                           backgroundColor: getColor(),
@@ -367,152 +379,160 @@ export const DialogProvider = ({ children }) => {
                       </Box>
                       <Typography fontSize={18} fontWeight={500} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                         {getCreditCount()} Magic Credits / mo
-                        <ExpandMore sx={{ fontSize: 20 }} />
+                        <ExpandMore 
+                          sx={{ 
+                            fontSize: 20,
+                            transform: creditOptionsExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                            transition: 'transform 0.3s',
+                          }} 
+                        />
                       </Typography>
                     </Box>
                   </Grid>
                   <Grid item xs={12} md={7}>
-                    {isMd ? (
-                      <Box sx={{ px: 2 }}>
-                        {[
-                          { plan: 'pro5', credits: 5, color: 'grey.500', hoverColor: 'grey.500', activeColor: 'grey.500' },
-                          { plan: 'pro25', credits: 25, color: '#ff6900', hoverColor: '#ff6900', activeColor: '#e65c00' },
-                          { plan: 'pro69', credits: 69, color: 'rgb(84, 214, 44)', hoverColor: 'rgb(84, 214, 44)', activeColor: 'rgb(71, 181, 37)' }
-                        ].map(({ plan, credits, color, hoverColor, activeColor }) => (
-                          <Card
-                            key={plan}
-                            variant="outlined"
-                            sx={{
-                              mb: 2,
-                              cursor: 'pointer',
-                              borderColor: selectedPlan === plan ? color : 'divider',
-                              '&:hover': { borderColor: hoverColor },
-                              position: 'relative',
-                              overflow: 'hidden',
-                            }}
-                            onClick={() => setSelectedPlanAndScroll(plan)}
-                          >
-                            <Box
-                              sx={{
-                                position: 'absolute',
-                                top: 0,
-                                left: 0,
-                                width: 8,
-                                height: '100%',
-                                backgroundColor: color,
-                              }}
-                            />
-                            <Box
-                              sx={{
-                                p: 2,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                backgroundColor: selectedPlan === plan ? activeColor : 'transparent',
-                                color: selectedPlan === plan ? 'common.black' : 'common.white',
-                              }}
-                            >
-                              <Typography fontSize={18} fontWeight={700} sx={{ ml: 2 }}>
-                                {credits} credits / mo.
-                              </Typography>
-                              <Typography fontSize={18} fontWeight={700} sx={{ mr: 1 }}>
-                                {selectedPlan === plan
-                                  ? 'included'
-                                  : formatPriceDelta(getPriceForPlan(plan) - getPriceForPlan(selectedPlan))}
-                              </Typography>
-                            </Box>
-                          </Card>
-                        ))}
-                      </Box>
-                    ) : (
-                      <Stack
-                        direction="row" 
-                        spacing={1}
-                        sx={{ 
-                          width: '100%', 
-                          justifyContent: 'center',
-                        }}
-                      >
-                        {[
-                          { plan: 'pro5', credits: 5, color: 'grey.500', textColor: 'common.black' },
-                          { plan: 'pro25', credits: 25, color: '#ff6900', textColor: 'common.black' },
-                          { plan: 'pro69', credits: 69, color: 'rgb(84, 214, 44)', textColor: 'common.black' }
-                        ].map(({ plan, credits, color, textColor }) => (
-                          <Box 
-                            key={plan} 
-                            sx={{ 
-                              textAlign: 'center',
-                              flex: '1 1 0',
-                              minWidth: 0,
-                              maxWidth: 160,
-                              position: 'relative',
-                            }}
-                          >
+                    <Collapse in={creditOptionsExpanded} timeout={300}>
+                      {isMd ? (
+                        <Box sx={{ px: 2 }}>
+                          {[
+                            { plan: 'pro5', credits: 5, color: 'grey.500', hoverColor: 'grey.500', activeColor: 'grey.500' },
+                            { plan: 'pro25', credits: 25, color: '#ff6900', hoverColor: '#ff6900', activeColor: '#e65c00' },
+                            { plan: 'pro69', credits: 69, color: 'rgb(84, 214, 44)', hoverColor: 'rgb(84, 214, 44)', activeColor: 'rgb(71, 181, 37)' }
+                          ].map(({ plan, credits, color, hoverColor, activeColor }) => (
                             <Card
+                              key={plan}
                               variant="outlined"
-                              onClick={() => setSelectedPlanAndScroll(plan)}
                               sx={{
-                                height: { xs: 60, sm: 80 },
+                                mb: 2,
                                 cursor: 'pointer',
-                                borderColor: 'divider',
-                                backgroundColor: selectedPlan === plan ? color : 'grey.800',
+                                borderColor: selectedPlan === plan ? color : 'divider',
+                                '&:hover': { borderColor: hoverColor },
                                 position: 'relative',
                                 overflow: 'hidden',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                '&::before': {
-                                  content: '""',
+                              }}
+                              onClick={() => setSelectedPlanAndScroll(plan)}
+                            >
+                              <Box
+                                sx={{
                                   position: 'absolute',
                                   top: 0,
                                   left: 0,
-                                  width: '100%',
-                                  height: '4px',
+                                  width: 8,
+                                  height: '100%',
                                   backgroundColor: color,
-                                  display: selectedPlan === plan ? 'none' : 'block'
-                                }
-                              }}
-                            >
-                              <Box 
-                                sx={{ 
-                                  display: 'flex', 
+                                }}
+                              />
+                              <Box
+                                sx={{
+                                  p: 2,
+                                  display: 'flex',
                                   alignItems: 'center',
-                                  color: selectedPlan === plan ? textColor : 'common.white',
-                                  fontSize: { xs: '1.25rem', sm: '1.5rem' },
-                                  fontWeight: 600,
+                                  justifyContent: 'space-between',
+                                  backgroundColor: selectedPlan === plan ? activeColor : 'transparent',
+                                  color: selectedPlan === plan ? 'common.black' : 'common.white',
                                 }}
                               >
-                                <AutoFixHighRounded sx={{ fontSize: 25, mx: 0.5 }} />
-                                {credits}
+                                <Typography fontSize={18} fontWeight={700} sx={{ ml: 2 }}>
+                                  {credits} credits / mo.
+                                </Typography>
+                                <Typography fontSize={18} fontWeight={700} sx={{ mr: 1 }}>
+                                  {selectedPlan === plan
+                                    ? 'included'
+                                    : formatPriceDelta(getPriceForPlan(plan) - getPriceForPlan(selectedPlan))}
+                                </Typography>
                               </Box>
                             </Card>
-                            <Typography 
-                              variant="caption" 
+                          ))}
+                        </Box>
+                      ) : (
+                        <Stack
+                          direction="row" 
+                          spacing={1}
+                          sx={{ 
+                            width: '100%', 
+                            justifyContent: 'center',
+                          }}
+                        >
+                          {[
+                            { plan: 'pro5', credits: 5, color: 'grey.500', textColor: 'common.black' },
+                            { plan: 'pro25', credits: 25, color: '#ff6900', textColor: 'common.black' },
+                            { plan: 'pro69', credits: 69, color: 'rgb(84, 214, 44)', textColor: 'common.black' }
+                          ].map(({ plan, credits, color, textColor }) => (
+                            <Box 
+                              key={plan} 
                               sx={{ 
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                mt: 1, 
-                                color: selectedPlan === plan ? 'common.white' : 'grey.500',
-                                fontWeight: selectedPlan === plan ? 800 : 550,
-                                gap: 0.5,
-                                fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                                textAlign: 'center',
+                                flex: '1 1 0',
+                                minWidth: 0,
+                                maxWidth: 160,
+                                position: 'relative',
                               }}
                             >
-                              {selectedPlan === plan ? 'included' : 
-                               plan === 'pro5' ? 
-                                 (selectedPlan === 'pro25' ? `${formatPriceDelta(getPriceForPlan('pro25') - getPriceForPlan('pro5'))}/mo` : `${formatPriceDelta(getPriceForPlan('pro69') - getPriceForPlan('pro5'))}/mo`) :
-                               plan === 'pro25' ? 
-                                 (selectedPlan === 'pro5' ? `${formatPriceDelta(getPriceForPlan('pro5') - getPriceForPlan('pro25'))}/mo` : `${formatPriceDelta(getPriceForPlan('pro69') - getPriceForPlan('pro25'))}/mo`) :
-                               (selectedPlan === 'pro5' ? `${formatPriceDelta(getPriceForPlan('pro69') - getPriceForPlan('pro5'))}/mo` : `${formatPriceDelta(getPriceForPlan('pro69') - getPriceForPlan('pro25'))}/mo`)}
-                            </Typography>
-                          </Box>
-                        ))}
-                      </Stack>
-                    )}
+                              <Card
+                                variant="outlined"
+                                onClick={() => setSelectedPlanAndScroll(plan)}
+                                sx={{
+                                  height: { xs: 60, sm: 80 },
+                                  cursor: 'pointer',
+                                  borderColor: 'divider',
+                                  backgroundColor: selectedPlan === plan ? color : 'grey.800',
+                                  position: 'relative',
+                                  overflow: 'hidden',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  '&::before': {
+                                    content: '""',
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    width: '100%',
+                                    height: '4px',
+                                    backgroundColor: color,
+                                    display: selectedPlan === plan ? 'none' : 'block'
+                                  }
+                                }}
+                              >
+                                <Box 
+                                  sx={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center',
+                                    color: selectedPlan === plan ? textColor : 'common.white',
+                                    fontSize: { xs: '1.25rem', sm: '1.5rem' },
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  <AutoFixHighRounded sx={{ fontSize: 25, mx: 0.5 }} />
+                                  {credits}
+                                </Box>
+                              </Card>
+                              <Typography 
+                                variant="caption" 
+                                sx={{ 
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  mt: 1, 
+                                  color: selectedPlan === plan ? 'common.white' : 'grey.500',
+                                  fontWeight: selectedPlan === plan ? 800 : 550,
+                                  gap: 0.5,
+                                  fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                                }}
+                              >
+                                {selectedPlan === plan ? 'included' : 
+                                 plan === 'pro5' ? 
+                                   (selectedPlan === 'pro25' ? `${formatPriceDelta(getPriceForPlan('pro25') - getPriceForPlan('pro5'))}/mo` : `${formatPriceDelta(getPriceForPlan('pro69') - getPriceForPlan('pro5'))}/mo`) :
+                                 plan === 'pro25' ? 
+                                   (selectedPlan === 'pro5' ? `${formatPriceDelta(getPriceForPlan('pro5') - getPriceForPlan('pro25'))}/mo` : `${formatPriceDelta(getPriceForPlan('pro69') - getPriceForPlan('pro25'))}/mo`) :
+                                 (selectedPlan === 'pro5' ? `${formatPriceDelta(getPriceForPlan('pro69') - getPriceForPlan('pro5'))}/mo` : `${formatPriceDelta(getPriceForPlan('pro69') - getPriceForPlan('pro25'))}/mo`)}
+                              </Typography>
+                            </Box>
+                          ))}
+                        </Stack>
+                      )}
+                    </Collapse>
                   </Grid>
                 </Grid>
-                <Box mt={4} textAlign="center">
+                <Box mt={creditOptionsExpanded ? 4 : 0} textAlign="center">
                   {/* {console.log(user)} */}
                   {user?.userDetails ? (
                     <Button
@@ -715,6 +735,7 @@ export const DialogProvider = ({ children }) => {
             <Box
               sx={{
                 mt: 3,
+                mb: 3,
                 mx: 'auto',
                 p: 2.5,
                 maxWidth: 360,
@@ -795,20 +816,21 @@ export const DialogProvider = ({ children }) => {
                 >
                   <Typography
                     fontFamily="'Roboto Mono', monospace"
-                    fontSize={16}
+                    fontSize={{ xs: 13, sm: 16 }}
                     fontWeight={700}
-                    sx={{ letterSpacing: '0.5px' }}
+                    sx={{ letterSpacing: '0.5px', mx: 1 }}
                   >
                     ${getPriceForPlan(selectedPlan).toFixed(2)}
                   </Typography>
                   <Typography
                     fontFamily="'Roboto Mono', monospace"
-                    fontSize={16}
+                    fontSize={{ xs: 13, sm: 16 }}
                     fontWeight={700}
                     sx={{ 
                       letterSpacing: '0.5px',
                       opacity: 0.85,
-                      color: 'white'
+                      color: 'white',
+                      mx: 1
                     }}
                   >
                     VIBE HOUSE LLC
