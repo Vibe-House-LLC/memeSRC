@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { Box, Typography, Button, Container, Divider, Grid, Card, List, ListItem, ListItemIcon, ListItemText, IconButton, Chip, Skeleton, LinearProgress, CircularProgress } from '@mui/material';
 import { Navigate } from 'react-router-dom';
 import { Receipt, Download, Block, SupportAgent, Bolt, AutoFixHighRounded, CreditCard } from '@mui/icons-material';
@@ -94,70 +94,104 @@ const AccountPage = () => {
     ?.replace(/^1\s*×\s*/, '')
     ?.replace(/\s*\(memeSRC\)/i, '');
 
-
+    console.log(recentPaidInvoice?.lines?.data?.[0])
   // Check if user is logged in
   if (!userDetails?.user?.userDetails) {
     return <Navigate to="/login" replace />;
   }
 
+  const formatAmount = (amount, currency) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency || 'usd',
+      minimumFractionDigits: 2,
+    }).format(amount / 100);
+  };
+
   return (
     <Container maxWidth="lg" sx={{ mt: 5 }}>
-      <Typography variant="h4" gutterBottom>
+      <Typography variant="h4" gutterBottom sx={{ fontWeight: 700 }}>
         Account
       </Typography>
       <Divider sx={{ my: 3 }} />
 
       <Grid container spacing={3} alignItems="flex-start">
         <Grid item xs={12} md={6}>
-          <Card sx={{ p: 3, backgroundColor: 'background.paper'}}>
-            <Typography variant="h5" gutterBottom>
+          <Card sx={{ 
+            p: 3, 
+            backgroundColor: 'background.paper',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: 4,
+            boxShadow: '0 4px 24px rgba(0, 0, 0, 0.15)',
+          }}>
+            <Typography variant="h5" gutterBottom sx={{ fontWeight: 700 }}>
               Subscription
             </Typography>
             <Box
               sx={{
                 width: '100%',
-                backgroundColor: userDetails?.user?.userDetails?.magicSubscription === 'true' ? 'success.main' : 'primary.main',
-                borderRadius: 2,
+                background: userDetails?.user?.userDetails?.magicSubscription === 'true' 
+                  ? 'linear-gradient(45deg, rgb(84, 214, 44) 30%, rgb(71, 181, 37) 90%)'
+                  : 'linear-gradient(45deg, #2f1c47 30%, #4a2d71 90%)',
+                borderRadius: 4,
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
                 py: 3,
                 mb: 3,
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                boxShadow: '0 0 20px rgba(107,66,161,0.3)',
+                position: 'relative',
+                overflow: 'hidden',
               }}
             >
-              <Box sx={{ textAlign: 'center' }}>
+              <Box sx={{ textAlign: 'center', width: '100%', px: 2 }}>
                 <Typography variant="h4" sx={{ color: userDetails?.user?.userDetails?.magicSubscription === 'true' ? 'black' : 'white', mb: 1 }}>
                   {userDetails?.user?.userDetails?.magicSubscription === 'true' ? 'memeSRC Pro' : 'Upgrade to memeSRC Pro'}
                 </Typography>
                 {isLoading ? (
                   <Box sx={{ width: '100%', mt: 1 }}>
-                    <LinearProgress
-                      sx={{
-                        '& .MuiLinearProgress-bar': {
-                          background: 'linear-gradient(to right, red 0%, red 20%, orange 20%, orange 40%, yellow 40%, yellow 60%, green 60%, green 80%, blue 80%, blue 100%)',
-                        },
-                      }}
-                    />
+                    <LinearProgress />
                   </Box>
-                ) : userDetails?.user?.userDetails?.magicSubscription === 'true' ? (
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {currentSubscription ? (
-                      <>
-                        <Typography variant="body1" sx={{ color: 'black', mr: 1 }}>
-                          {currentSubscription}
-                        </Typography>
-                        <Chip
-                          label="Active"
-                          color="success"
-                          sx={{ fontWeight: 'bold', backgroundColor: 'common.white', color: 'black' }}
-                        />
-                      </>
-                    ) : (
-                      <Typography variant="body1" sx={{ color: 'black' }}>
-                        No current subscription found.
+                ) : userDetails?.user?.userDetails?.magicSubscription === 'true' && recentPaidInvoice ? (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Typography variant="h6" sx={{ color: 'black' }}>
+                        memeSRC Pro
                       </Typography>
-                    )}
+                      <Chip
+                        label="Active"
+                        color="success"
+                        sx={{ fontWeight: 'bold', backgroundColor: 'common.white', color: 'black' }}
+                      />
+                    </Box>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 1 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        {recentPaidInvoice.lines.data[0].discount_amounts?.length > 0 ? (
+                          <>
+                            <Typography variant="body2" sx={{ color: 'black', textDecoration: 'line-through' }}>
+                              {formatAmount(recentPaidInvoice.lines.data[0].amount_excluding_tax, recentPaidInvoice.currency)}
+                            </Typography>
+                            <Typography variant="body1" sx={{ color: 'black', fontWeight: 'bold' }}>
+                              {formatAmount(recentPaidInvoice.lines.data[0].amount_excluding_tax - recentPaidInvoice.lines.data[0].discount_amounts[0].amount, recentPaidInvoice.currency)}
+                            </Typography>
+                            <Chip 
+                              label={`Save ${Math.round((recentPaidInvoice.lines.data[0].discount_amounts[0].amount / recentPaidInvoice.lines.data[0].amount_excluding_tax) * 100)}%`}
+                              size="small"
+                              sx={{ backgroundColor: 'error.main', color: 'white' }}
+                            />
+                          </>
+                        ) : (
+                          <Typography variant="body1" sx={{ color: 'black', fontWeight: 'bold' }}>
+                            {formatAmount(recentPaidInvoice.lines.data[0].amount_excluding_tax, recentPaidInvoice.currency)}
+                          </Typography>
+                        )}
+                      </Box>
+                      <Typography variant="caption" sx={{ color: 'black.800', mt: 0.5 }}>
+                        Next billing date: {new Date(recentPaidInvoice.lines.data[0].period.end * 1000).toLocaleDateString()}
+                      </Typography>
+                    </Box>
                   </Box>
                 ) : (
                   <Typography variant="body1" sx={{ color: 'white' }}>
@@ -166,26 +200,49 @@ const AccountPage = () => {
                 )}
               </Box>
             </Box>
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="body2" sx={{ mb: 1 }}>
+            <Box sx={{ mt: 3 }}>
+              <Typography variant="body1" sx={{ mb: 2, fontWeight: 600 }}>
                 Subscription Benefits:
               </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <Block sx={{ color: 'action.active', mr: 1 }} />
-                <Typography variant="body2">No Ads</Typography>
-              </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <SupportAgent sx={{ color: 'action.active', mr: 1 }} />
-                <Typography variant="body2">Pro Support</Typography>
-              </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <Bolt sx={{ color: 'action.active', mr: 1 }} />
-                <Typography variant="body2">Early Access Features</Typography>
-              </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <AutoFixHighRounded sx={{ color: 'action.active', mr: 1 }} />
-                <Typography variant="body2">Magic Credits</Typography>
-              </Box>
+              {[
+                { icon: <Block />, text: 'No Ads' },
+                { icon: <SupportAgent />, text: 'Pro Support' },
+                { icon: <Bolt />, text: 'Early Access Features' },
+                { icon: <AutoFixHighRounded />, text: 'Magic Credits' },
+              ].map(({ icon, text }) => (
+                <Box 
+                  key={text}
+                  sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    mb: 2,
+                    p: 1.5,
+                    borderRadius: 2,
+                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                    '&:hover': {
+                      backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                    },
+                  }}
+                >
+                  <Box
+                    sx={{
+                      backgroundColor: 'primary.main',
+                      borderRadius: '50%',
+                      width: 32,
+                      height: 32,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      mr: 2,
+                    }}
+                  >
+                    {React.cloneElement(icon, { sx: { color: 'common.white' } })}
+                  </Box>
+                  <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                    {text}
+                  </Typography>
+                </Box>
+              ))}
             </Box>
             <Box sx={{ mt: 3, textAlign: 'center' }}>
               {userDetails?.user?.userDetails?.magicSubscription !== 'true' && (
@@ -203,12 +260,25 @@ const AccountPage = () => {
         </Grid>
 
         <Grid item xs={12} md={6}>
-          <Card sx={{ p: 3, backgroundColor: 'background.paper', mb: 2 }}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', m: 5}}>
-              <Typography variant="h4" gutterBottom>
+          <Card sx={{ 
+            p: 3, 
+            backgroundColor: 'background.paper',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: 4,
+            boxShadow: '0 4px 24px rgba(0, 0, 0, 0.15)',
+            mb: 2 
+          }}>
+            <Box sx={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              alignItems: 'center', 
+              textAlign: 'center', 
+              m: 3
+            }}>
+              <Typography variant="h4" gutterBottom sx={{ fontWeight: 700 }}>
                 Billing Settings
               </Typography>
-              <Typography variant="p">
+              <Typography variant="body1" sx={{ mb: 3, opacity: 0.8 }}>
                 Update payment methods or cancel your subscription
               </Typography>
               <Button 
@@ -216,7 +286,14 @@ const AccountPage = () => {
                 size="large" 
                 onClick={() => openCustomerPortal()}
                 disabled={loadingPortalUrl}
-                sx={{ minWidth: '200px', m: 2 }}
+                sx={{ 
+                  minWidth: '200px',
+                  borderRadius: 50,
+                  py: 1.5,
+                  px: 4,
+                  fontSize: 18,
+                  fontWeight: 600,
+                }}
               >
                 {loadingPortalUrl ? (
                   <CircularProgress size={24} color="inherit" />
@@ -226,8 +303,15 @@ const AccountPage = () => {
               </Button>
             </Box>
           </Card>
-          <Card sx={{ p: 3, backgroundColor: 'background.paper' }}>
-            <Typography variant="h5" gutterBottom>
+
+          <Card sx={{ 
+            p: 3, 
+            backgroundColor: 'background.paper',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: 4,
+            boxShadow: '0 4px 24px rgba(0, 0, 0, 0.15)',
+          }}>
+            <Typography variant="h5" gutterBottom sx={{ fontWeight: 700 }}>
               Invoices
             </Typography>
             <List>
@@ -235,12 +319,15 @@ const AccountPage = () => {
                 <ListItem
                   key={invoice.id}
                   sx={{
-                    backgroundColor: 'action.hover',
-                    mb: 1,
-                    borderRadius: 1,
+                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                    mb: 1.5,
+                    borderRadius: 2,
                     cursor: invoice.invoice_pdf ? 'pointer' : 'default',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    transition: 'all 0.2s',
                     '&:hover': {
-                      backgroundColor: invoice.invoice_pdf ? 'action.selected' : 'action.hover',
+                      backgroundColor: invoice.invoice_pdf ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.05)',
+                      transform: invoice.invoice_pdf ? 'translateY(-1px)' : 'none',
                     },
                   }}
                   onClick={() => openInvoicePDF(invoice.hosted_invoice_url)}
