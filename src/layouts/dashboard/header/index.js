@@ -378,7 +378,13 @@ export default function Header({ onOpenNav }) {
         {({ TransitionProps }) => (
           <MuiSlide {...TransitionProps} direction="down">
             <Card
-              onClick={() => {
+              onClick={(e) => {
+                // Prevent card click when clicking close button
+                if (e.target.closest('.close-button')) {
+                  e.stopPropagation();
+                  setShowProTip(false);
+                  return;
+                }
                 setShowProTip(false);
                 openSubscriptionDialog();
               }}
@@ -395,6 +401,22 @@ export default function Header({ onOpenNav }) {
                 borderRadius: 2,
               }}
             >
+              <IconButton
+                className="close-button"
+                size="small"
+                sx={{
+                  position: 'absolute',
+                  right: 4,
+                  top: 4,
+                  color: '#b794f4',
+                  padding: '2px',
+                  '&:hover': {
+                    color: '#fff',
+                  },
+                }}
+              >
+                <Close fontSize="small" />
+              </IconButton>
               <SnowEffect />
               <Typography
                 fontWeight={800}
