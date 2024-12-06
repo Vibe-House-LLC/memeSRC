@@ -1,6 +1,7 @@
 import { Box, Typography } from '@mui/material';
 import { keyframes } from '@mui/system';
 import { useState, useEffect, useMemo, memo } from 'react';
+import LocalPoliceRoundedIcon from '@mui/icons-material/LocalPoliceRounded';
 
 const NEW_YEARS = new Date('2025-01-01T00:00:00').getTime();
 const DISCOUNT = 0.5;
@@ -132,21 +133,23 @@ const CountdownTimer = () => {
       }}
     >
       <SnowEffect />
-      <Typography
-        fontSize={26}
-        fontWeight={800}
-        color="#fff"
-        textAlign="center"
-        sx={{
-          textShadow: '0 2px 8px rgba(0,0,0,0.5)',
-          background: 'linear-gradient(45deg, #fff 30%, #e0e0ff 90%)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          position: 'relative',
-        }}
-      >
-        Holiday Sale - 50% Off!
-      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+        <Typography
+          fontSize={26}
+          fontWeight={800}
+          color="#fff"
+          textAlign="center"
+          sx={{
+            textShadow: '0 2px 8px rgba(0,0,0,0.5)',
+            background: 'linear-gradient(45deg, #fff 30%, #e0e0ff 90%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            position: 'relative',
+          }}
+        >
+          Holiday Sale - 50% off!
+        </Typography>
+      </Box>
       <Box
         sx={{
           display: 'flex',

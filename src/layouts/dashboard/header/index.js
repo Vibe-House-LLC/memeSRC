@@ -21,7 +21,7 @@ import {
   Divider,
   Alert,
 } from '@mui/material';
-import { Add, ArrowCircleUpRounded, ArrowUpward, ArrowUpwardRounded, AutoFixHighRounded, Check, Close, HdrPlusTwoTone, InfoRounded, MonetizationOnRounded, NewReleasesRounded, UpgradeRounded, Verified } from '@mui/icons-material';
+import { Add, ArrowCircleUpRounded, ArrowUpward, ArrowUpwardRounded, AutoFixHighRounded, Check, Close, Discount, HdrPlusTwoTone, InfoRounded, LocalOffer, LocalPoliceRounded, MonetizationOnRounded, NewReleasesRounded, UpgradeRounded, Verified } from '@mui/icons-material';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import SupervisedUserCircleIcon from '@mui/icons-material/SupervisedUserCircle';
 // utils
@@ -41,6 +41,7 @@ import { ColorModeContext } from '../../../theme';
 import { UserContext } from '../../../UserContext';
 import { SnackbarContext } from '../../../SnackbarContext';
 import { MagicPopupContext } from '../../../MagicPopupContext';
+import { SubscribeDialogContext } from '../../../contexts/SubscribeDialog';
 
 // ----------------------------------------------------------------------
 
@@ -79,6 +80,7 @@ export default function Header({ onOpenNav }) {
   const { setOpen, setMessage, setSeverity } = useContext(SnackbarContext)
   const containerRef = useRef(null);
   const [magicAlertOpen, setMagicAlertOpen] = useState(false);
+  const { openSubscriptionDialog } = useContext(SubscribeDialogContext);
 
   const renderLogo = () => (
     <Grid
@@ -188,25 +190,24 @@ export default function Header({ onOpenNav }) {
             } */}
             <>
               <Chip
-                onClick={(event) => {
-                  setMagicToolsPopoverAnchorEl(event.currentTarget);
-                }}
-                id="magicChip"
-                icon={<AutoFixHighRounded />}
-                // We should probably handle this a little better, but I left this so that we can later make changes. Currently a credit balance of 0 will show Early Access.
-                // However, everyone starts with 0 I believe, so this will likely just change to showing credits if early access is turned on.
-                label={
-                  user?.userDetails?.earlyAccessStatus || user?.userDetails?.credits > 0
-                    ? user?.userDetails?.credits
-                      ? user?.userDetails?.credits
-                      : 'Magic'
-                    : 'Magic'
-                }
+                onClick={openSubscriptionDialog}
+                icon={<LocalPoliceRounded />}
+                label="Pro (50% off!)"
                 size="small"
-                color="success"
                 sx={{
+                  background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
+                  border: '1px solid #8b5cc7',
+                  boxShadow: '0 0 20px rgba(107,66,161,0.5)',
                   '& .MuiChip-label': {
                     fontWeight: 'bold',
+                    color: '#fff',
+                  },
+                  '& .MuiChip-icon': {
+                    color: '#fff',
+                  },
+                  '&:hover': {
+                    background: 'linear-gradient(45deg, #472a69 30%, #7b4cb8 90%)',
+                    boxShadow: '0 0 25px rgba(107,66,161,0.6)',
                   },
                 }}
               />
