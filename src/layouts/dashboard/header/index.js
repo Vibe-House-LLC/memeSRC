@@ -391,6 +391,7 @@ export default function Header({ onOpenNav }) {
               sx={{
                 position: 'relative',
                 p: 1.5,
+                pr: 5,
                 mt: 1.5,
                 maxWidth: 260,
                 background: 'linear-gradient(45deg, #2f1c47 30%, #4a2d71 90%)',
@@ -418,44 +419,50 @@ export default function Header({ onOpenNav }) {
                 <Close fontSize="small" />
               </IconButton>
               <SnowEffect />
-              <Typography
-                fontWeight={800}
-                color="#fff"
-                textAlign="center"
-                sx={{
-                  fontSize: 18,
-                  textShadow: '0 2px 8px rgba(0,0,0,0.2)',
-                  background: 'linear-gradient(45deg, #fff 30%, #e0e0ff 90%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  position: 'relative',
-                  mb: 0.5,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 1,
-                }}
-              >
-                {CURRENT_SALE.name}!
-              </Typography>
-              <Typography 
-                variant="body2"
-                sx={{
-                  color: '#b794f4',
-                  textAlign: 'center',
-                  fontSize: 13,
-                  fontWeight: 500,
-                  lineHeight: 1.3,
-                  mb: 0.5,
-                  mx: 3,
-                }}
-              >
-                <Box component="span" sx={{ color: '#fff', fontWeight: 700 }}>
-                  {CURRENT_SALE.discountPercent}% off
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Box sx={{ display: 'flex', alignItems: 'center', pl: 1 }}>
+                  <LocalOffer sx={{ color: '#b794f4', fontSize: 32 }} />
                 </Box>
-                {' first '}
-                {CURRENT_SALE.monthsDuration}{' mo!'}
-              </Typography>
+                <Box>
+                  <Typography
+                    fontWeight={800}
+                    color="#fff"
+                    textAlign="center"
+                    sx={{
+                      fontSize: 18,
+                      textShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                      background: 'linear-gradient(45deg, #fff 30%, #e0e0ff 90%)',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      position: 'relative',
+                      mb: 0.5,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 1,
+                    }}
+                  >
+                    {CURRENT_SALE.name}!
+                  </Typography>
+                  <Typography 
+                    variant="body2"
+                    sx={{
+                      color: '#b794f4',
+                      textAlign: 'center',
+                      fontSize: 13,
+                      fontWeight: 500,
+                      lineHeight: 1.3,
+                      mb: 0.5,
+                    }}
+                  >
+                    <Box component="span" sx={{ color: '#fff', fontWeight: 700 }}>
+                      {CURRENT_SALE.discountPercent}% off
+                    </Box>
+                    {' first '}
+                    {CURRENT_SALE.monthsDuration}{' mo!'}
+                  </Typography>
+                </Box>
+              </Stack>
             </Card>
           </MuiSlide>
         )}
