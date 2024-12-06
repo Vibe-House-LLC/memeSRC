@@ -170,7 +170,7 @@ export default function Header({ onOpenNav }) {
     // Show tooltip after a short delay
     const timer = setTimeout(() => {
       setShowProTip(true);
-    }, 500);
+    }, 1000);
 
     // Hide tooltip after 7 seconds
     const hideTimer = setTimeout(() => {
