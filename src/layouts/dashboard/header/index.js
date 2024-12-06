@@ -187,11 +187,33 @@ export default function Header({ onOpenNav }) {
             }}
           >
             <>
-              {CURRENT_SALE.isActive && (
+              {user?.userDetails?.subscriptionStatus === 'active' ? (
+                <Chip
+                  onClick={(event) => {
+                    setMagicToolsPopoverAnchorEl(event.currentTarget);
+                  }}
+                  id="magicChip"
+                  icon={<AutoFixHighRounded />}
+                  label={
+                    user?.userDetails?.earlyAccessStatus || user?.userDetails?.credits > 0
+                      ? user?.userDetails?.credits
+                        ? user?.userDetails?.credits
+                        : 'Magic'
+                      : 'Magic'
+                  }
+                  size="small"
+                  color="success"
+                  sx={{
+                    '& .MuiChip-label': {
+                      fontWeight: 'bold',
+                    },
+                  }}
+                />
+              ) : (
                 <Chip
                   onClick={openSubscriptionDialog}
                   icon={<LocalPoliceRounded />}
-                  label={`Pro (${CURRENT_SALE.discountPercent}% off!)`}
+                  label={CURRENT_SALE.isActive ? `Pro (${CURRENT_SALE.discountPercent}% off!)` : 'Pro'}
                   size="small"
                   sx={{
                     background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
