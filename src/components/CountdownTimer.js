@@ -1,11 +1,7 @@
 import { Box, Typography } from '@mui/material';
 import { keyframes } from '@mui/system';
 import { useState, useEffect, useMemo, memo } from 'react';
-import LocalPoliceRoundedIcon from '@mui/icons-material/LocalPoliceRounded';
-
-const NEW_YEARS = new Date('2025-01-01T00:00:00').getTime();
-const DISCOUNT = 0.25;
-const HOLIDAY = DISCOUNT > 0;
+import { SALE_END_DATE, CURRENT_SALE } from '../constants/sales';
 
 const Snowflake = memo(
   ({ left, startingY, animationDelay, scale, duration }) => {
@@ -89,7 +85,7 @@ function SnowEffect() {
 const CountdownTimer = () => {
   const [timeLeft, setTimeLeft] = useState(() => {
     const now = new Date().getTime();
-    const distance = NEW_YEARS - now;
+    const distance = SALE_END_DATE - now;
 
     return {
       days: Math.floor(distance / (1000 * 60 * 60 * 24)),
@@ -104,7 +100,7 @@ const CountdownTimer = () => {
   useEffect(() => {
     const timer = setInterval(() => {
       const now = new Date().getTime();
-      const distance = NEW_YEARS - now;
+      const distance = SALE_END_DATE - now;
 
       setTimeLeft({
         days: Math.floor(distance / (1000 * 60 * 60 * 24)),
@@ -147,7 +143,7 @@ const CountdownTimer = () => {
             position: 'relative',
           }}
         >
-          Holiday Sale - 50% off!
+          {CURRENT_SALE.name} - {CURRENT_SALE.discountPercent}% off!
         </Typography>
       </Box>
       <Box
@@ -195,4 +191,4 @@ const CountdownTimer = () => {
   );
 };
 
-export { CountdownTimer, NEW_YEARS, DISCOUNT, HOLIDAY };
+export { CountdownTimer };

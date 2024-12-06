@@ -7,7 +7,8 @@ import { LoadingButton } from '@mui/lab';
 import { UserContext } from '../UserContext';
 import useUserLocation from '../utils/geo/useUserLocation';
 import { createLocationLeads } from '../graphql/mutations';
-import { CountdownTimer, NEW_YEARS, DISCOUNT, HOLIDAY } from '../components/CountdownTimer';
+import { CountdownTimer } from '../components/CountdownTimer';
+import { CURRENT_SALE } from '../constants/sales';
 
 export const SubscribeDialogContext = createContext();
 
@@ -113,25 +114,18 @@ export const DialogProvider = ({ children }) => {
     }
   };
 
-  const getPrice = () => {
-    const basePrice = (() => {
-      switch (selectedPlan) {
-        case 'pro5':
-          return 2.99;
-        case 'pro25':
-          return 4.99;
-        case 'pro69':
-          return 6.99;
-        default:
-          return 2.99;
-      }
-    })();
+  const planPrices = {
+    pro5: 2.99,
+    pro25: 4.99,
+    pro69: 6.99,
+  };
 
-    const discountedPrice = HOLIDAY ? basePrice * (1 - DISCOUNT) : basePrice;
-    return { 
-      base: basePrice,
-      final: `$${discountedPrice.toFixed(2)}`
-    };
+  const getPriceForPlan = (plan) => {
+    const basePrice = planPrices[plan];
+    const discountedPrice = CURRENT_SALE.isActive 
+      ? basePrice * CURRENT_SALE.discountMultiplier 
+      : basePrice;
+    return discountedPrice;
   };
 
   const getColor = () => {
@@ -183,10 +177,11 @@ export const DialogProvider = ({ children }) => {
     }
   }, [countryCode, checkoutLink]);
 
-  // Helper function to format price delta
   const formatPriceDelta = (amount) => {
-    const price = amount * DISCOUNT;
-    return `${amount >= 0 ? '+' : '-'}$${price % 1 === 0 ? Math.floor(Math.abs(price)) : Math.abs(price).toFixed(2)}`;
+    const sign = amount >= 0 ? '+' : '-';
+    const absAmount = Math.abs(amount);
+    const formattedPrice = absAmount % 1 === 0 ? absAmount.toFixed(0) : absAmount.toFixed(2);
+    return `${sign}$${formattedPrice}`;
   };
 
   return (
@@ -238,7 +233,7 @@ export const DialogProvider = ({ children }) => {
           {!loading && !checkoutLink && (
             <Fade in timeout={400}>
               <DialogContent sx={{ py: 4, pb: 6 }}>
-                {HOLIDAY && <CountdownTimer />}
+                {CURRENT_SALE.isActive && <CountdownTimer />}
                 <Box
                   p={2.5}
                   sx={{
@@ -261,9 +256,9 @@ export const DialogProvider = ({ children }) => {
                     >
                       {selectedTitleSubtitle?.title}
                     </Typography>
-                    {HOLIDAY && (
+                    {CURRENT_SALE.isActive && (
                       <Chip
-                        label={`${(DISCOUNT * 100).toFixed(0)}% OFF`}
+                        label={`${(CURRENT_SALE.discountPercent).toFixed(0)}% OFF`}
                         color="error"
                         size="small"
                         sx={{
@@ -279,12 +274,12 @@ export const DialogProvider = ({ children }) => {
                     mb={0.75}
                     color={getTextColor()}
                   >
-                    {HOLIDAY && (
+                    {CURRENT_SALE.isActive && (
                       <span style={{ textDecoration: 'line-through', fontSize: '0.7em', opacity: 0.7, marginRight: '8px' }}>
-                        ${getPrice().base.toFixed(2)}
+                        ${planPrices[selectedPlan].toFixed(2)}
                       </span>
                     )}
-                    {getPrice().final} / mo.
+                    ${getPriceForPlan(selectedPlan).toFixed(2)} / mo.
                   </Typography>
                   <Typography 
                     fontSize={15} /* reduced from 16 */
@@ -419,12 +414,9 @@ export const DialogProvider = ({ children }) => {
                                 {credits} credits / mo.
                               </Typography>
                               <Typography fontSize={18} fontWeight={700} sx={{ mr: 1 }}>
-                                {selectedPlan === plan ? 'included' : 
-                                 plan === 'pro5' ? 
-                                   (selectedPlan === 'pro25' ? formatPriceDelta(-2) : formatPriceDelta(-4)) :
-                                 plan === 'pro25' ? 
-                                   (selectedPlan === 'pro5' ? formatPriceDelta(2) : formatPriceDelta(-2)) :
-                                 (selectedPlan === 'pro5' ? formatPriceDelta(4) : formatPriceDelta(2))}
+                                {selectedPlan === plan
+                                  ? 'included'
+                                  : formatPriceDelta(getPriceForPlan(plan) - getPriceForPlan(selectedPlan))}
                               </Typography>
                             </Box>
                           </Card>
@@ -507,10 +499,10 @@ export const DialogProvider = ({ children }) => {
                             >
                               {selectedPlan === plan ? 'included' : 
                                plan === 'pro5' ? 
-                                 (selectedPlan === 'pro25' ? `${formatPriceDelta(-2)}/mo` : `${formatPriceDelta(-4)}/mo`) :
+                                 (selectedPlan === 'pro25' ? `${formatPriceDelta(getPriceForPlan('pro25') - getPriceForPlan('pro5'))}/mo` : `${formatPriceDelta(getPriceForPlan('pro69') - getPriceForPlan('pro5'))}/mo`) :
                                plan === 'pro25' ? 
-                                 (selectedPlan === 'pro5' ? `${formatPriceDelta(2)}/mo` : `${formatPriceDelta(-2)}/mo`) :
-                               (selectedPlan === 'pro5' ? `${formatPriceDelta(4)}/mo` : `${formatPriceDelta(2)}/mo`)}
+                                 (selectedPlan === 'pro5' ? `${formatPriceDelta(getPriceForPlan('pro5') - getPriceForPlan('pro25'))}/mo` : `${formatPriceDelta(getPriceForPlan('pro69') - getPriceForPlan('pro25'))}/mo`) :
+                               (selectedPlan === 'pro5' ? `${formatPriceDelta(getPriceForPlan('pro69') - getPriceForPlan('pro5'))}/mo` : `${formatPriceDelta(getPriceForPlan('pro69') - getPriceForPlan('pro25'))}/mo`)}
                             </Typography>
                           </Box>
                         ))}
@@ -542,7 +534,14 @@ export const DialogProvider = ({ children }) => {
                       color: getTextColor(),
                     }}
                   >
-                    {HOLIDAY ? "Subscribe with 30% OFF: " : "Subscribe: "}{getPrice().final}/mo
+                    Subscribe: {CURRENT_SALE.isActive ? (
+                      <>
+                        <span style={{ textDecoration: 'line-through', marginRight: '4px' }}>${planPrices[selectedPlan].toFixed(2)}</span>
+                        ${getPriceForPlan(selectedPlan).toFixed(2)}
+                      </>
+                    ) : (
+                      `$${getPriceForPlan(selectedPlan).toFixed(2)}`
+                    )}/mo
                   </Button>
                     :
                     <Button

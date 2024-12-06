@@ -42,6 +42,7 @@ import { UserContext } from '../../../UserContext';
 import { SnackbarContext } from '../../../SnackbarContext';
 import { MagicPopupContext } from '../../../MagicPopupContext';
 import { SubscribeDialogContext } from '../../../contexts/SubscribeDialog';
+import { CURRENT_SALE } from '../../../constants/sales';
 
 // ----------------------------------------------------------------------
 
@@ -185,32 +186,31 @@ export default function Header({ onOpenNav }) {
               xs: 2,
             }}
           >
-            {/* {user &&
-              <NotificationsPopover />
-            } */}
             <>
-              <Chip
-                onClick={openSubscriptionDialog}
-                icon={<LocalPoliceRounded />}
-                label="Pro (50% off!)"
-                size="small"
-                sx={{
-                  background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
-                  border: '1px solid #8b5cc7',
-                  boxShadow: '0 0 20px rgba(107,66,161,0.5)',
-                  '& .MuiChip-label': {
-                    fontWeight: 'bold',
-                    color: '#fff',
-                  },
-                  '& .MuiChip-icon': {
-                    color: '#fff',
-                  },
-                  '&:hover': {
-                    background: 'linear-gradient(45deg, #472a69 30%, #7b4cb8 90%)',
-                    boxShadow: '0 0 25px rgba(107,66,161,0.6)',
-                  },
-                }}
-              />
+              {CURRENT_SALE.isActive && (
+                <Chip
+                  onClick={openSubscriptionDialog}
+                  icon={<LocalPoliceRounded />}
+                  label={`Pro (${CURRENT_SALE.discountPercent}% off!)`}
+                  size="small"
+                  sx={{
+                    background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
+                    border: '1px solid #8b5cc7',
+                    boxShadow: '0 0 20px rgba(107,66,161,0.5)',
+                    '& .MuiChip-label': {
+                      fontWeight: 'bold',
+                      color: '#fff',
+                    },
+                    '& .MuiChip-icon': {
+                      color: '#fff',
+                    },
+                    '&:hover': {
+                      background: 'linear-gradient(45deg, #472a69 30%, #7b4cb8 90%)',
+                      boxShadow: '0 0 25px rgba(107,66,161,0.6)',
+                    },
+                  }}
+                />
+              )}
               <AccountPopover />
             </>
           </Stack>
