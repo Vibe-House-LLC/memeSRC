@@ -135,11 +135,11 @@ const CountdownTimer = () => {
       <SnowEffect />
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
         <Typography
-          fontSize={26}
           fontWeight={800}
           color="#fff"
           textAlign="center"
           sx={{
+            fontSize: { xs: 20, sm: 24, md: 26 },
             textShadow: '0 2px 8px rgba(0,0,0,0.5)',
             background: 'linear-gradient(45deg, #fff 30%, #e0e0ff 90%)',
             WebkitBackgroundClip: 'text',
