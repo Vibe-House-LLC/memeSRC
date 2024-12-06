@@ -10,8 +10,32 @@ import { createLocationLeads } from '../graphql/mutations';
 
 export const SubscribeDialogContext = createContext();
 
-const HOLIDAY = true;  // Toggle for holiday sale
-const DISCOUNT = 0.7;  // 30% off (multiply by 0.7)
+const DISCOUNT = 0.5;
+const HOLIDAY = DISCOUNT > 0;
+
+const SnowflakeDot = () => (
+  <Box
+    sx={{
+      position: 'absolute',
+      width: '3px',
+      height: '3px',
+      backgroundColor: 'rgba(255, 255, 255, 0.7)',
+      borderRadius: '50%',
+      animation: 'snowfall linear infinite',
+      animationDuration: props => `${5 + Math.random() * 5}s`,  // Random duration between 5-10s
+      '@keyframes snowfall': {
+        '0%': {
+          transform: props => `translateY(-20px) translateX(${-15 + Math.random() * 30}px)`,
+          opacity: 1,
+        },
+        '100%': {
+          transform: props => `translateY(80px) translateX(${-15 + Math.random() * 30}px)`,
+          opacity: 1,
+        },
+      },
+    }}
+  />
+);
 
 export const DialogProvider = ({ children }) => {
   const navigate = useNavigate();
@@ -129,8 +153,11 @@ export const DialogProvider = ({ children }) => {
       }
     })();
 
-    const price = HOLIDAY ? basePrice * DISCOUNT : basePrice;
-    return `$${price % 1 === 0 ? Math.floor(price) : price.toFixed(2)}`;
+    const discountedPrice = HOLIDAY ? basePrice * (1 - DISCOUNT) : basePrice;
+    return { 
+      base: basePrice,
+      final: `$${discountedPrice.toFixed(2)}`
+    };
   };
 
   const getColor = () => {
@@ -237,13 +264,56 @@ export const DialogProvider = ({ children }) => {
           {!loading && !checkoutLink && (
             <Fade in timeout={400}>
               <DialogContent sx={{ py: 4, pb: 6 }}>
+                {HOLIDAY && (
+                  <Box
+                    sx={{
+                      position: 'relative',
+                      backgroundColor: '#1a365d',
+                      borderRadius: 2,
+                      p: 2,
+                      mb: 3,
+                      overflow: 'hidden',
+                      border: '1px solid #2a4a7d',
+                    }}
+                  >
+                    {[...Array(30)].map((_, i) => (
+                      <Box
+                        key={i}
+                        sx={{
+                          position: 'absolute',
+                          left: `${Math.random() * 100}%`,
+                          top: `${Math.random() * 100}%`,  // Initial random vertical position
+                          animationDelay: `${Math.random() * 5}s`,  // Random start time
+                        }}
+                      >
+                        <SnowflakeDot />
+                      </Box>
+                    ))}
+                    <Typography
+                      fontSize={16}
+                      fontWeight={600}
+                      color="common.white"
+                      textAlign="center"
+                    >
+                      Holiday Sale - 30% Off All Plans
+                    </Typography>
+                    <Typography
+                      fontSize={14}
+                      color="grey.300"
+                      textAlign="center"
+                      mt={0.5}
+                    >
+                      Limited time offer. Get Pro for less!
+                    </Typography>
+                  </Box>
+                )}
                 <Box
                   p={2.5}
                   sx={{
                     backgroundColor: getColor(),
                     borderRadius: 4,
                     mb: 3,
-                    mt: isMd ? -4 : 0,
+                    // mt: isMd ? -4 : 0,
                     cursor: 'pointer',
                     position: 'relative',
                   }}
@@ -261,7 +331,7 @@ export const DialogProvider = ({ children }) => {
                     </Typography>
                     {HOLIDAY && (
                       <Chip
-                        label="30% OFF"
+                        label={`${(DISCOUNT * 100).toFixed(0)}% OFF`}
                         color="error"
                         size="small"
                         sx={{
@@ -274,16 +344,15 @@ export const DialogProvider = ({ children }) => {
                   </Box>
                   <Typography 
                     variant={isMd ? 'h2' : 'h1'} 
-                    gutterBottom 
-                    mb={0.75} /* reduced margin from 1.25 */
+                    mb={0.75}
                     color={getTextColor()}
                   >
                     {HOLIDAY && (
                       <span style={{ textDecoration: 'line-through', fontSize: '0.7em', opacity: 0.7, marginRight: '8px' }}>
-                        ${(parseFloat(getPrice().replace('$', '')) / DISCOUNT).toFixed(2)}
+                        ${getPrice().base.toFixed(2)}
                       </span>
                     )}
-                    {getPrice()} / mo.
+                    {getPrice().final} / mo.
                   </Typography>
                   <Typography 
                     fontSize={15} /* reduced from 16 */
@@ -541,7 +610,7 @@ export const DialogProvider = ({ children }) => {
                       color: getTextColor(),
                     }}
                   >
-                    {HOLIDAY ? "Subscribe with 30% OFF: " : "Subscribe: "}{getPrice()}/mo
+                    {HOLIDAY ? "Subscribe with 30% OFF: " : "Subscribe: "}{getPrice().final}/mo
                   </Button>
                     :
                     <Button
