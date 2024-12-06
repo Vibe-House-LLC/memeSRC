@@ -129,8 +129,8 @@ export const DialogProvider = ({ children }) => {
       }
     })();
 
-    const finalPrice = HOLIDAY ? (basePrice * DISCOUNT).toFixed(2) : basePrice.toFixed(2);
-    return `$${finalPrice}`;
+    const price = HOLIDAY ? basePrice * DISCOUNT : basePrice;
+    return `$${price % 1 === 0 ? Math.floor(price) : price.toFixed(2)}`;
   };
 
   const getColor = () => {
@@ -181,6 +181,12 @@ export const DialogProvider = ({ children }) => {
       })
     }
   }, [countryCode, checkoutLink]);
+
+  // Helper function to format price delta
+  const formatPriceDelta = (amount) => {
+    const price = amount * DISCOUNT;
+    return `${amount >= 0 ? '+' : '-'}$${price % 1 === 0 ? Math.floor(Math.abs(price)) : Math.abs(price).toFixed(2)}`;
+  };
 
   return (
     <SubscribeDialogContext.Provider value={{ openSubscriptionDialog }}>
@@ -414,10 +420,10 @@ export const DialogProvider = ({ children }) => {
                               <Typography fontSize={18} fontWeight={700} sx={{ mr: 1 }}>
                                 {selectedPlan === plan ? 'included' : 
                                  plan === 'pro5' ? 
-                                   (selectedPlan === 'pro25' ? `-$${(2 * DISCOUNT).toFixed(2)}` : `-$${(4 * DISCOUNT).toFixed(2)}`) :
+                                   (selectedPlan === 'pro25' ? formatPriceDelta(-2) : formatPriceDelta(-4)) :
                                  plan === 'pro25' ? 
-                                   (selectedPlan === 'pro5' ? `+$${(2 * DISCOUNT).toFixed(2)}` : `-$${(2 * DISCOUNT).toFixed(2)}`) :
-                                 (selectedPlan === 'pro5' ? `+$${(4 * DISCOUNT).toFixed(2)}` : `+$${(2 * DISCOUNT).toFixed(2)}`)}
+                                   (selectedPlan === 'pro5' ? formatPriceDelta(2) : formatPriceDelta(-2)) :
+                                 (selectedPlan === 'pro5' ? formatPriceDelta(4) : formatPriceDelta(2))}
                               </Typography>
                             </Box>
                           </Card>
@@ -500,10 +506,10 @@ export const DialogProvider = ({ children }) => {
                             >
                               {selectedPlan === plan ? 'included' : 
                                plan === 'pro5' ? 
-                                 (selectedPlan === 'pro25' ? `-$${(2 * DISCOUNT).toFixed(2)}/mo` : `-$${(4 * DISCOUNT).toFixed(2)}/mo`) :
+                                 (selectedPlan === 'pro25' ? `${formatPriceDelta(-2)}/mo` : `${formatPriceDelta(-4)}/mo`) :
                                plan === 'pro25' ? 
-                                 (selectedPlan === 'pro5' ? `+$${(2 * DISCOUNT).toFixed(2)}/mo` : `-$${(2 * DISCOUNT).toFixed(2)}/mo`) :
-                               (selectedPlan === 'pro5' ? `+$${(4 * DISCOUNT).toFixed(2)}/mo` : `+$${(2 * DISCOUNT).toFixed(2)}/mo`)}
+                                 (selectedPlan === 'pro5' ? `${formatPriceDelta(2)}/mo` : `${formatPriceDelta(-2)}/mo`) :
+                               (selectedPlan === 'pro5' ? `${formatPriceDelta(4)}/mo` : `${formatPriceDelta(2)}/mo`)}
                             </Typography>
                           </Box>
                         ))}
