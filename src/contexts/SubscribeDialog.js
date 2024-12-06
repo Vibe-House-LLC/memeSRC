@@ -716,50 +716,127 @@ export const DialogProvider = ({ children }) => {
               sx={{
                 mt: 3,
                 mx: 'auto',
-                p: 2,
-                maxWidth: 320,
+                p: 2.5,
+                maxWidth: 360,
                 border: '1px solid rgba(255, 255, 255, 0.15)',
-                borderRadius: 2,
+                borderRadius: 2.5,
                 backgroundColor: 'rgba(255, 255, 255, 0.05)',
                 backdropFilter: 'blur(10px)',
+                boxShadow: '0 4px 24px rgba(0, 0, 0, 0.15)',
               }}
             >
               <Typography 
                 fontSize={13}
                 color="text.secondary"
                 sx={{ 
-                  mb: 1,
-                  fontWeight: 500
+                  mb: 1.5,
+                  fontWeight: 500,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1
                 }}
               >
-                Your subscription to memeSRC Pro will show on your statement as:
+                <Typography
+                  component="span"
+                  sx={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 24,
+                    transform: 'translateY(-50%)',
+                    backgroundColor: 'background.paper',
+                    px: 1,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: 'text.secondary',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                  }}
+                >
+                  <Box 
+                    component="span" 
+                    sx={{ 
+                      width: 8, 
+                      height: 8, 
+                      borderRadius: '50%', 
+                      backgroundColor: 'success.main',
+                      animation: 'pulse 2s infinite',
+                      '@keyframes pulse': {
+                        '0%': { opacity: 0.4 },
+                        '50%': { opacity: 1 },
+                        '100%': { opacity: 0.4 },
+                      }
+                    }} 
+                  />
+                  <b>Reminder</b>
+                </Typography>
+                Your subscription to memeSRC Pro will be billed monthly and will appear on your statement as:
               </Typography>
-              <Typography 
-                fontFamily="'Roboto Mono', monospace"
-                fontSize={16}
-                fontWeight={700}
+              <Box
                 sx={{
                   p: 1.5,
                   backgroundColor: 'rgba(0, 0, 0, 0.25)',
                   borderRadius: 1.5,
                   border: '1px solid rgba(255, 255, 255, 0.12)',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  letterSpacing: '0.5px',
                   position: 'relative',
-                  '&::after': {
-                    content: '"...................."',
-                    position: 'absolute',
-                    left: '50%',
-                    top: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    opacity: 0.3,
-                    letterSpacing: '3px',
-                  }
+                  overflow: 'hidden',
                 }}
               >
-                <span>${getPriceForPlan(selectedPlan).toFixed(2)}</span>
-                <span style={{ opacity: 0.85 }}>VIBE HOUSE LLC</span>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    position: 'relative',
+                    zIndex: 1,
+                  }}
+                >
+                  <Typography
+                    fontFamily="'Roboto Mono', monospace"
+                    fontSize={16}
+                    fontWeight={700}
+                    sx={{ letterSpacing: '0.5px' }}
+                  >
+                    ${getPriceForPlan(selectedPlan).toFixed(2)}
+                  </Typography>
+                  <Typography
+                    fontFamily="'Roboto Mono', monospace"
+                    fontSize={16}
+                    fontWeight={700}
+                    sx={{ 
+                      letterSpacing: '0.5px',
+                      opacity: 0.85,
+                      color: 'white'
+                    }}
+                  >
+                    VIBE HOUSE LLC
+                  </Typography>
+                </Box>
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    left: 0,
+                    top: '50%',
+                    width: '100%',
+                    height: 1,
+                    borderBottom: '2px dotted rgba(255, 255, 255, 0.1)',
+                    transform: 'translateY(-50%)',
+                  }}
+                />
+              </Box>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ 
+                  display: 'block',
+                  mt: 1.5,
+                  textAlign: 'center',
+                  opacity: 0.7
+                }}
+              >
+                Processed securely through Stripe
               </Typography>
             </Box>
           </Box>
@@ -790,7 +867,7 @@ export const DialogProvider = ({ children }) => {
               {!loading && checkoutLink ? 'Agree & Continue' : ''}
             </LoadingButton>
             <Typography variant="caption" sx={{ mt: 2, lineHeight: 1.2, }}>
-              I am a U.S. resident and understand memeSRC&nbsp;Pro is billed as Vibe&nbsp;House&nbsp;LLC and agree to the{' '}
+              By continuing, you are confirming: (1) you are a U.S. resident, (2) you understand memeSRC&nbsp;Pro is billed as Vibe&nbsp;House&nbsp;LLC, and you agree to the{' '}
               <a href="/termsofservice" target="_blank" style={{ color: 'white', textDecoration: 'none', fontWeight: 'bold' }}>
                 Terms&nbsp;of&nbsp;Service
               </a>{' '}
