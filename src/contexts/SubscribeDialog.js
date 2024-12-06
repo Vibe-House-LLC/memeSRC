@@ -48,6 +48,13 @@ export const DialogProvider = ({ children }) => {
     setSelectedTitleSubtitle(titleSubtitlePairs[randomIndex]);
   }, []);
 
+  useEffect(() => {
+    if (user?.userDetails?.subscriptionStatus === 'active' && subscriptionDialogOpen) {
+      closeDialog();
+      navigate('/account');
+    }
+  }, [user?.userDetails?.subscriptionStatus, subscriptionDialogOpen, navigate]);
+
   const subscribeButtonRef = useRef(null);
 
   const setSelectedPlanAndScroll = (plan) => {
