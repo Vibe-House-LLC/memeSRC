@@ -10,12 +10,15 @@ import { createLocationLeads } from '../graphql/mutations';
 
 export const SubscribeDialogContext = createContext();
 
+const HOLIDAY = true;  // Toggle for holiday sale
+const DISCOUNT = 0.7;  // 30% off (multiply by 0.7)
+
 export const DialogProvider = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const isMd = useMediaQuery(theme => theme.breakpoints.up('sm'));
   const [subscriptionDialogOpen, setSubscriptionDialogOpen] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState('pro25');
+  const [selectedPlan, setSelectedPlan] = useState('pro69');
   const [loading, setLoading] = useState(false);
   const { user } = useContext(UserContext);
   const [checkoutLink, setCheckoutLink] = useState();
@@ -113,16 +116,21 @@ export const DialogProvider = ({ children }) => {
   };
 
   const getPrice = () => {
-    switch (selectedPlan) {
-      case 'pro5':
-        return '$2.99';
-      case 'pro25':
-        return '$4.99';
-      case 'pro69':
-        return '$6.99';
-      default:
-        return '$2.99';
-    }
+    const basePrice = (() => {
+      switch (selectedPlan) {
+        case 'pro5':
+          return 2.99;
+        case 'pro25':
+          return 4.99;
+        case 'pro69':
+          return 6.99;
+        default:
+          return 2.99;
+      }
+    })();
+
+    const finalPrice = HOLIDAY ? (basePrice * DISCOUNT).toFixed(2) : basePrice.toFixed(2);
+    return `$${finalPrice}`;
   };
 
   const getColor = () => {
@@ -231,24 +239,44 @@ export const DialogProvider = ({ children }) => {
                     mb: 3,
                     mt: isMd ? -4 : 0,
                     cursor: 'pointer',
+                    position: 'relative',
                   }}
                   onClick={() => {
                     subscribeButtonRef.current.scrollIntoView({ behavior: 'smooth' });
                   }}
                 >
-                  <Typography 
-                    fontSize={22} /* reduced from 25 */
-                    fontWeight={700} 
-                    color={getTextColor()}
-                  >
-                    {selectedTitleSubtitle?.title}
-                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography 
+                      fontSize={22}
+                      fontWeight={700} 
+                      color={getTextColor()}
+                    >
+                      {selectedTitleSubtitle?.title}
+                    </Typography>
+                    {HOLIDAY && (
+                      <Chip
+                        label="30% OFF"
+                        color="error"
+                        size="small"
+                        sx={{
+                          fontWeight: 700,
+                          fontSize: '0.85rem',
+                          backgroundColor: '#ff1744',
+                        }}
+                      />
+                    )}
+                  </Box>
                   <Typography 
                     variant={isMd ? 'h2' : 'h1'} 
                     gutterBottom 
                     mb={0.75} /* reduced margin from 1.25 */
                     color={getTextColor()}
                   >
+                    {HOLIDAY && (
+                      <span style={{ textDecoration: 'line-through', fontSize: '0.7em', opacity: 0.7, marginRight: '8px' }}>
+                        ${(parseFloat(getPrice().replace('$', '')) / DISCOUNT).toFixed(2)}
+                      </span>
+                    )}
                     {getPrice()} / mo.
                   </Typography>
                   <Typography 
@@ -386,10 +414,10 @@ export const DialogProvider = ({ children }) => {
                               <Typography fontSize={18} fontWeight={700} sx={{ mr: 1 }}>
                                 {selectedPlan === plan ? 'included' : 
                                  plan === 'pro5' ? 
-                                   (selectedPlan === 'pro25' ? '-$2' : '-$4') :
+                                   (selectedPlan === 'pro25' ? `-$${(2 * DISCOUNT).toFixed(2)}` : `-$${(4 * DISCOUNT).toFixed(2)}`) :
                                  plan === 'pro25' ? 
-                                   (selectedPlan === 'pro5' ? '+$2' : '-$2') :
-                                 (selectedPlan === 'pro5' ? '+$4' : '+$2')}
+                                   (selectedPlan === 'pro5' ? `+$${(2 * DISCOUNT).toFixed(2)}` : `-$${(2 * DISCOUNT).toFixed(2)}`) :
+                                 (selectedPlan === 'pro5' ? `+$${(4 * DISCOUNT).toFixed(2)}` : `+$${(2 * DISCOUNT).toFixed(2)}`)}
                               </Typography>
                             </Box>
                           </Card>
@@ -472,10 +500,10 @@ export const DialogProvider = ({ children }) => {
                             >
                               {selectedPlan === plan ? 'included' : 
                                plan === 'pro5' ? 
-                                 (selectedPlan === 'pro25' ? '-$2/mo' : '-$4/mo') :
+                                 (selectedPlan === 'pro25' ? `-$${(2 * DISCOUNT).toFixed(2)}/mo` : `-$${(4 * DISCOUNT).toFixed(2)}/mo`) :
                                plan === 'pro25' ? 
-                                 (selectedPlan === 'pro5' ? '+$2/mo' : '-$2/mo') :
-                               (selectedPlan === 'pro5' ? '+$4/mo' : '+$2/mo')}
+                                 (selectedPlan === 'pro5' ? `+$${(2 * DISCOUNT).toFixed(2)}/mo` : `-$${(2 * DISCOUNT).toFixed(2)}/mo`) :
+                               (selectedPlan === 'pro5' ? `+$${(4 * DISCOUNT).toFixed(2)}/mo` : `+$${(2 * DISCOUNT).toFixed(2)}/mo`)}
                             </Typography>
                           </Box>
                         ))}
@@ -507,7 +535,7 @@ export const DialogProvider = ({ children }) => {
                       color: getTextColor(),
                     }}
                   >
-                    Subscribe: {getPrice()}/mo
+                    {HOLIDAY ? "Subscribe with 30% OFF: " : "Subscribe: "}{getPrice()}/mo
                   </Button>
                     :
                     <Button
