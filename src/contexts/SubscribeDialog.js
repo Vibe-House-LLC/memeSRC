@@ -31,14 +31,16 @@ export const DialogProvider = ({ children }) => {
 
   useEffect(() => {
     if (location.pathname === '/pro' && user !== null) {
-      if (user.userDetails?.subscriptionStatus === 'active') {
-        navigate('/account');
-      } else {
-        setSubscriptionDialogOpen(true);
-        navigate('/', { replace: true });
+      if (user.userDetails) {
+        if (user.userDetails?.subscriptionStatus === 'active') {
+          navigate('/account');
+        } else {
+          setSubscriptionDialogOpen(true);
+          navigate('/', { replace: true });
+        }
       }
     }
-  }, [user, location, navigate]);
+  }, [user, location, navigate, user?.userDetails?.subscriptionStatus]);
 
   useEffect(() => {
     const randomIndex = Math.floor(Math.random() * titleSubtitlePairs.length);
