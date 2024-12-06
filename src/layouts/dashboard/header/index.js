@@ -23,6 +23,7 @@ import {
   Popper,
   Fade,
   Badge,
+  Slide as MuiSlide,
 } from '@mui/material';
 import { Add, ArrowCircleUpRounded, ArrowUpward, ArrowUpwardRounded, AutoFixHighRounded, Check, Close, Discount, HdrPlusTwoTone, InfoRounded, LocalOffer, LocalPoliceRounded, MonetizationOnRounded, NewReleasesRounded, UpgradeRounded, Verified } from '@mui/icons-material';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
@@ -162,25 +163,26 @@ export default function Header({ onOpenNav }) {
   }
 
   useEffect(() => {
-    if (!CURRENT_SALE.isActive) {
-      return undefined; // Early return if sale is not active
+    if (!CURRENT_SALE.isActive || location.pathname !== '/') {
+      setShowProTip(false);
+      return undefined;
     }
 
     // Show tooltip after a short delay
     const timer = setTimeout(() => {
       setShowProTip(true);
-    }, 1000);
+    }, 500);
 
-    // Hide tooltip after 5 seconds
+    // Hide tooltip after 7 seconds
     const hideTimer = setTimeout(() => {
       setShowProTip(false);
-    }, 6000);
+    }, 7000);
 
     return () => {
       clearTimeout(timer);
       clearTimeout(hideTimer);
     };
-  }, []);
+  }, [location.pathname]);
 
   return (
     <>
@@ -374,7 +376,7 @@ export default function Header({ onOpenNav }) {
         transition
       >
         {({ TransitionProps }) => (
-          <Fade {...TransitionProps} timeout={350}>
+          <MuiSlide {...TransitionProps} direction="down">
             <Card
               onClick={() => {
                 setShowProTip(false);
@@ -422,7 +424,8 @@ export default function Header({ onOpenNav }) {
                   fontSize: 13,
                   fontWeight: 500,
                   lineHeight: 1.3,
-                  mb: 1
+                  mb: 0.5,
+                  mx: 3,
                 }}
               >
                 <Box
@@ -443,7 +446,7 @@ export default function Header({ onOpenNav }) {
                 {CURRENT_SALE.monthsDuration}{' mo!'}
               </Typography>
             </Card>
-          </Fade>
+          </MuiSlide>
         )}
       </Popper>
     </>
