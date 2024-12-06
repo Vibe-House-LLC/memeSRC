@@ -106,7 +106,6 @@ export default function Header({ onOpenNav }) {
           alignItems: 'center',
           justifyContent: 'center',
           textDecoration: 'none',
-          ml: 1,
           cursor: 'pointer',
           color: 'inherit',
           '&:hover': {
@@ -115,7 +114,7 @@ export default function Header({ onOpenNav }) {
         }}
       >
         <Logo />
-        <Typography component='h6' variant='h6' sx={{ color: '#FFFFFF', textShadow: '1px 1px 3px rgba(0, 0, 0, 0.30);', marginLeft: '6px', display: 'inline' }}>
+        <Typography component='h6' variant='h6' sx={{ color: '#FFFFFF', textShadow: '1px 1px 3px rgba(0, 0, 0, 0.30);', marginLeft: '4px', display: 'inline' }}>
           memeSRC
         </Typography>
       </Link>
@@ -192,6 +191,7 @@ export default function Header({ onOpenNav }) {
             onClick={onOpenNav}
             sx={{
               color: 'text.primary',
+              ml: -1,
             }}
             size="large"
           >
