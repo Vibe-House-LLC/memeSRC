@@ -243,12 +243,11 @@ export const DialogProvider = ({ children }) => {
               <DialogContent sx={{ py: 4, pb: 6 }}>
                 {CURRENT_SALE.isActive && <CountdownTimer />}
                 <Box
-                  p={2.5}
+                  p={isMd ? 2.5 : 2}
                   sx={{
                     backgroundColor: getColor(),
                     borderRadius: 4,
-                    mb: 3,
-                    // mt: isMd ? -4 : 0,
+                    mb: 2,
                     cursor: 'pointer',
                     position: 'relative',
                   }}
@@ -258,7 +257,7 @@ export const DialogProvider = ({ children }) => {
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <Typography 
-                      fontSize={22}
+                      fontSize={isMd ? 22 : 20}
                       fontWeight={700} 
                       color={getTextColor()}
                     >
@@ -297,62 +296,62 @@ export const DialogProvider = ({ children }) => {
                     {selectedTitleSubtitle?.subtitle}
                   </Typography>
                 </Box>
-                <Grid container spacing={4} alignItems="center">
+                <Grid container spacing={isMd ? 4 : 2} alignItems="center">
                   <Grid item xs={12} md={5}>
-                    <Box display="flex" alignItems="center" mb={2} ml={2}>
+                    <Box display="flex" alignItems="center" mb={isMd ? 2 : 1.5} ml={2}>
                       <Box
                         sx={{
                           backgroundColor: getColor(),
                           borderRadius: '50%',
-                          width: 32,
-                          height: 32,
+                          width: isMd ? 32 : 28,
+                          height: isMd ? 32 : 28,
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
                           mr: 2,
                         }}
                       >
-                        <Check sx={{ color: getTextColor() }} />
+                        <Check sx={{ color: getTextColor(), fontSize: isMd ? 24 : 20 }} />
                       </Box>
-                      <Typography fontSize={18} fontWeight={500}>
+                      <Typography fontSize={isMd ? 18 : 16} fontWeight={500}>
                         Zero Ads
                       </Typography>
                     </Box>
-                    <Box display="flex" alignItems="center" mb={2} ml={2}>
+                    <Box display="flex" alignItems="center" mb={isMd ? 2 : 1.5} ml={2}>
                       <Box
                         sx={{
                           backgroundColor: getColor(),
                           borderRadius: '50%',
-                          width: 32,
-                          height: 32,
+                          width: isMd ? 32 : 28,
+                          height: isMd ? 32 : 28,
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
                           mr: 2,
                         }}
                       >
-                        <SupportAgent sx={{ color: getTextColor() }} />
+                        <SupportAgent sx={{ color: getTextColor(), fontSize: isMd ? 24 : 20 }} />
                       </Box>
-                      <Typography fontSize={18} fontWeight={500}>
+                      <Typography fontSize={isMd ? 18 : 16} fontWeight={500}>
                         Pro Support
                       </Typography>
                     </Box>
-                    <Box display="flex" alignItems="center" mb={2} ml={2}>
+                    <Box display="flex" alignItems="center" mb={isMd ? 2 : 1.5} ml={2}>
                       <Box
                         sx={{
                           backgroundColor: getColor(),
                           borderRadius: '50%',
-                          width: 32,
-                          height: 32,
+                          width: isMd ? 32 : 28,
+                          height: isMd ? 32 : 28,
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
                           mr: 2,
                         }}
                       >
-                        <Bolt sx={{ color: getTextColor() }} />
+                        <Bolt sx={{ color: getTextColor(), fontSize: isMd ? 24 : 20 }} />
                       </Box>
-                      <Typography fontSize={18} fontWeight={500}>
+                      <Typography fontSize={isMd ? 18 : 16} fontWeight={500}>
                         Exclusive Features
                       </Typography>
                     </Box>
@@ -367,17 +366,17 @@ export const DialogProvider = ({ children }) => {
                         sx={{
                           backgroundColor: getColor(),
                           borderRadius: '50%',
-                          width: 32,
-                          height: 32,
+                          width: isMd ? 32 : 28,
+                          height: isMd ? 32 : 28,
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
                           mr: 2,
                         }}
                       >
-                        <AutoFixHighRounded sx={{ color: getTextColor() }} />
+                        <AutoFixHighRounded sx={{ color: getTextColor(), fontSize: isMd ? 24 : 20 }} />
                       </Box>
-                      <Typography fontSize={18} fontWeight={500} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Typography fontSize={isMd ? 18 : 16} fontWeight={500} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                         {getCreditCount()} Magic Credits / mo
                         <ExpandMore 
                           sx={{ 
@@ -532,7 +531,7 @@ export const DialogProvider = ({ children }) => {
                     </Collapse>
                   </Grid>
                 </Grid>
-                <Box mt={creditOptionsExpanded ? 4 : 0} textAlign="center">
+                <Box mt={creditOptionsExpanded ? (isMd ? 4 : 2) : 0} textAlign="center">
                   {/* {console.log(user)} */}
                   {user?.userDetails ? (
                     <Button
@@ -551,20 +550,13 @@ export const DialogProvider = ({ children }) => {
                       sx={{
                         borderRadius: 50,
                         px: 4,
-                        py: 1.5,
-                        fontSize: 20,
+                        py: isMd ? 1.5 : 1.25,
+                        fontSize: isMd ? 20 : 18,
                         backgroundColor: getColor(),
                         color: getTextColor(),
                       }}
                     >
-                      Subscribe: {CURRENT_SALE.isActive ? (
-                        <>
-                          <span style={{ textDecoration: 'line-through', marginRight: '4px' }}>${planPrices[selectedPlan].toFixed(2)}</span>
-                          ${getPriceForPlan(selectedPlan).toFixed(2)}
-                        </>
-                      ) : (
-                        `$${getPriceForPlan(selectedPlan).toFixed(2)}`
-                      )}/mo
+                      Upgrade Account
                     </Button>
                   ) : (
                     <Button
@@ -576,8 +568,8 @@ export const DialogProvider = ({ children }) => {
                       sx={{
                         borderRadius: 50,
                         px: 4,
-                        py: 1.5,
-                        fontSize: 20,
+                        py: isMd ? 1.5 : 1.25,
+                        fontSize: isMd ? 20 : 18,
                         backgroundColor: getColor(),
                         color: getTextColor(),
                       }}
