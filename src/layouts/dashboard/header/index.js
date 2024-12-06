@@ -162,7 +162,9 @@ export default function Header({ onOpenNav }) {
   }
 
   useEffect(() => {
-    if (!CURRENT_SALE.isActive || location.pathname !== '/') {
+    if (!CURRENT_SALE.isActive || 
+        location.pathname !== '/' || 
+        user?.userDetails?.subscriptionStatus === 'active') {
       setShowProTip(false);
       return undefined;
     }
@@ -181,7 +183,7 @@ export default function Header({ onOpenNav }) {
       clearTimeout(timer);
       clearTimeout(hideTimer);
     };
-  }, [location.pathname]);
+  }, [location.pathname, user?.userDetails?.subscriptionStatus]);
 
   return (
     <>
