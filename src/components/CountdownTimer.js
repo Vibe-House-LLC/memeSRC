@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, memo } from 'react';
 import LocalPoliceRoundedIcon from '@mui/icons-material/LocalPoliceRounded';
 
 const NEW_YEARS = new Date('2025-01-01T00:00:00').getTime();
-const DISCOUNT = 0.5;
+const DISCOUNT = 0.25;
 const HOLIDAY = DISCOUNT > 0;
 
 const Snowflake = memo(
