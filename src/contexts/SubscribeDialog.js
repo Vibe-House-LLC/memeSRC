@@ -714,35 +714,52 @@ export const DialogProvider = ({ children }) => {
             </Typography>
             <Box
               sx={{
-                mt: 2,
+                mt: 3,
                 mx: 'auto',
-                p: 1.5,
-                maxWidth: 280,
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                borderRadius: 1.5,
-                backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                p: 2,
+                maxWidth: 320,
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                borderRadius: 2,
+                backgroundColor: 'rgba(255, 255, 255, 0.05)',
                 backdropFilter: 'blur(10px)',
               }}
             >
               <Typography 
-                fontSize={12} 
+                fontSize={13}
                 color="text.secondary"
-                sx={{ mb: 0.5 }}
+                sx={{ 
+                  mb: 1,
+                  fontWeight: 500
+                }}
               >
                 Your subscription to memeSRC Pro will show on your statement as:
               </Typography>
               <Typography 
                 fontFamily="'Roboto Mono', monospace"
-                fontSize={15}
-                fontWeight={500}
+                fontSize={16}
+                fontWeight={700}
                 sx={{
-                  p: 1,
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                  borderRadius: 1,
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  p: 1.5,
+                  backgroundColor: 'rgba(0, 0, 0, 0.25)',
+                  borderRadius: 1.5,
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  letterSpacing: '0.5px',
+                  position: 'relative',
+                  '&::after': {
+                    content: '"...................."',
+                    position: 'absolute',
+                    left: '50%',
+                    top: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    opacity: 0.3,
+                    letterSpacing: '3px',
+                  }
                 }}
               >
-                VIBE HOUSE LLC
+                <span>${getPriceForPlan(selectedPlan).toFixed(2)}</span>
+                <span style={{ opacity: 0.85 }}>VIBE HOUSE LLC</span>
               </Typography>
             </Box>
           </Box>
