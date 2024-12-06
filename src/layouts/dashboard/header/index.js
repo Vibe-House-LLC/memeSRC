@@ -450,17 +450,6 @@ export default function Header({ onOpenNav }) {
                   mx: 3,
                 }}
               >
-                <Box
-                  component="span"
-                  sx={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: '50%',
-                    backgroundColor: 'rgb(84 214 44)',
-                    display: 'inline-block',
-                    mr: 1,
-                  }}
-                />
                 <Box component="span" sx={{ color: '#fff', fontWeight: 700 }}>
                   {CURRENT_SALE.discountPercent}% off
                 </Box>
