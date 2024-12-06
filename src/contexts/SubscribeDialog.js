@@ -245,11 +245,16 @@ export const DialogProvider = ({ children }) => {
                 <Box
                   p={isMd ? 2.5 : 2}
                   sx={{
-                    backgroundColor: getColor(),
+                    backgroundColor: CURRENT_SALE.isActive 
+                      ? 'rgba(0, 0, 0, 0.2)' 
+                      : getColor(),
                     borderRadius: 4,
                     mb: 2,
                     cursor: 'pointer',
                     position: 'relative',
+                    border: CURRENT_SALE.isActive 
+                      ? '1px solid rgba(255, 255, 255, 0.1)'
+                      : 'none',
                   }}
                   onClick={() => {
                     subscribeButtonRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -259,7 +264,7 @@ export const DialogProvider = ({ children }) => {
                     <Typography 
                       fontSize={isMd ? 22 : 20}
                       fontWeight={700} 
-                      color={getTextColor()}
+                      color={CURRENT_SALE.isActive ? 'common.white' : getTextColor()}
                     >
                       {selectedTitleSubtitle?.title}
                     </Typography>
@@ -279,19 +284,19 @@ export const DialogProvider = ({ children }) => {
                   <Typography 
                     variant={isMd ? 'h2' : 'h1'} 
                     mb={0.75}
-                    color={getTextColor()}
+                    sx={{ color: CURRENT_SALE.isActive ? getColor() : getTextColor() }}
                   >
                     {CURRENT_SALE.isActive && (
-                      <span style={{ textDecoration: 'line-through', fontSize: '0.7em', opacity: 0.7, marginRight: '8px' }}>
+                      <span style={{ textDecoration: 'line-through', fontSize: '0.7em', opacity: 0.7, marginRight: '8px', color: 'white' }}>
                         ${planPrices[selectedPlan].toFixed(2)}
                       </span>
                     )}
                     ${getPriceForPlan(selectedPlan).toFixed(2)} / mo.
                   </Typography>
                   <Typography 
-                    fontSize={15} /* reduced from 16 */
+                    fontSize={15}
                     fontWeight={600} 
-                    color={getTextColor()}
+                    color={CURRENT_SALE.isActive ? 'common.white' : getTextColor()}
                   >
                     {selectedTitleSubtitle?.subtitle}
                   </Typography>
@@ -531,7 +536,7 @@ export const DialogProvider = ({ children }) => {
                     </Collapse>
                   </Grid>
                 </Grid>
-                <Box mt={creditOptionsExpanded ? (isMd ? 4 : 2) : 0} textAlign="center">
+                <Box mt={creditOptionsExpanded || isMd ? 4 : 2} textAlign="center">
                   {/* {console.log(user)} */}
                   {user?.userDetails ? (
                     <Button
