@@ -1,4 +1,4 @@
-import { AutoFixHighRounded, Block, Close, Favorite, Star, SupportAgent, ExpandMore, Clear, Check, Bolt, Share, ThumbUp, Feedback } from '@mui/icons-material';
+import { AutoFixHighRounded, Block, Close, Favorite, Star, SupportAgent, ExpandMore, Clear, Check, Bolt, Share, ThumbUp, Feedback, ArrowBack } from '@mui/icons-material';
 import { Box, Button, Card, Checkbox, Chip, CircularProgress, Collapse, Dialog, DialogContent, DialogTitle, Divider, Fade, Grid, IconButton, LinearProgress, Typography, useMediaQuery, FormControlLabel, Fab, Stack } from '@mui/material';
 import { API, graphqlOperation } from 'aws-amplify';
 import { createContext, useState, useRef, useEffect, useContext } from 'react';
@@ -746,182 +746,201 @@ export const DialogProvider = ({ children }) => {
         )}
         {(countryCode === 'US' || countryCode === 'AU' || countryCode === 'CA') && (
           <DialogContent sx={{ minHeight: 500, display: 'flex', flexDirection: 'column', mb: 5 }}>
-          <Box sx={{ m: 'auto' }}>
-            <Typography fontSize={20} textAlign='center' fontWeight={700}>
-              Powered by
-            </Typography>
-            <Typography fontSize={45} textAlign='center' fontWeight={700} pt={0.5}>
-              Vibe House
-            </Typography>
-            <Box
-              sx={{
-                mt: 3,
-                mb: 3,
-                mx: 'auto',
-                p: 2.5,
-                maxWidth: 360,
-                border: '1px solid rgba(255, 255, 255, 0.15)',
-                borderRadius: 2.5,
-                backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                backdropFilter: 'blur(10px)',
-                boxShadow: '0 4px 24px rgba(0, 0, 0, 0.15)',
+            <Button
+              onClick={() => {
+                setCheckoutLink(undefined);
+                setLoading(false);
               }}
+              sx={{
+                color: 'white',
+                opacity: 0.7,
+                alignSelf: 'flex-start',
+                mb: 2,
+                '&:hover': {
+                  opacity: 1,
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                },
+              }}
+              startIcon={<ArrowBack />}
             >
-              <Typography 
-                fontSize={13}
-                color="text.secondary"
-                sx={{ 
-                  mb: 1.5,
-                  fontWeight: 500,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1
-                }}
-              >
-                <Typography
-                  component="span"
-                  sx={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 24,
-                    transform: 'translateY(-50%)',
-                    backgroundColor: 'background.paper',
-                    px: 1,
-                    fontSize: 13,
-                    fontWeight: 600,
-                    color: 'text.secondary',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1,
-                  }}
-                >
-                  <Box 
-                    component="span" 
-                    sx={{ 
-                      width: 8, 
-                      height: 8, 
-                      borderRadius: '50%', 
-                      backgroundColor: 'success.main',
-                      animation: 'pulse 2s infinite',
-                      '@keyframes pulse': {
-                        '0%': { opacity: 0.4 },
-                        '50%': { opacity: 1 },
-                        '100%': { opacity: 0.4 },
-                      }
-                    }} 
-                  />
-                  <b>Reminder</b>
-                </Typography>
-                Your subscription to memeSRC Pro will be billed monthly and will appear on your statement as:
+              Go Back
+            </Button>
+            <Box sx={{ m: 'auto' }}>
+              <Typography fontSize={20} textAlign='center' fontWeight={700}>
+                Powered by
+              </Typography>
+              <Typography fontSize={45} textAlign='center' fontWeight={700} pt={0.5}>
+                Vibe House
               </Typography>
               <Box
                 sx={{
-                  p: 1.5,
-                  backgroundColor: 'rgba(0, 0, 0, 0.25)',
-                  borderRadius: 1.5,
-                  border: '1px solid rgba(255, 255, 255, 0.12)',
-                  position: 'relative',
-                  overflow: 'hidden',
+                  mt: 3,
+                  mb: 3,
+                  mx: 'auto',
+                  p: 2.5,
+                  maxWidth: 360,
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  borderRadius: 2.5,
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  backdropFilter: 'blur(10px)',
+                  boxShadow: '0 4px 24px rgba(0, 0, 0, 0.15)',
                 }}
               >
-                <Box
-                  sx={{
+                <Typography 
+                  fontSize={13}
+                  color="text.secondary"
+                  sx={{ 
+                    mb: 1.5,
+                    fontWeight: 500,
                     display: 'flex',
-                    justifyContent: 'space-between',
                     alignItems: 'center',
-                    position: 'relative',
-                    zIndex: 1,
+                    gap: 1
                   }}
                 >
                   <Typography
-                    fontFamily="'Roboto Mono', monospace"
-                    fontSize={{ xs: 13, sm: 16 }}
-                    fontWeight={700}
-                    sx={{ letterSpacing: '0.5px', mx: 1 }}
-                  >
-                    ${getPriceForPlan(selectedPlan).toFixed(2)}
-                  </Typography>
-                  <Typography
-                    fontFamily="'Roboto Mono', monospace"
-                    fontSize={{ xs: 13, sm: 16 }}
-                    fontWeight={700}
-                    sx={{ 
+                    component="span"
+                    sx={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 24,
+                      transform: 'translateY(-50%)',
+                      backgroundColor: 'background.paper',
+                      px: 1,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: 'text.secondary',
+                      textTransform: 'uppercase',
                       letterSpacing: '0.5px',
-                      opacity: 0.85,
-                      color: 'white',
-                      mx: 1
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
                     }}
                   >
-                    VIBE HOUSE LLC
+                    <Box 
+                      component="span" 
+                      sx={{ 
+                        width: 8, 
+                        height: 8, 
+                        borderRadius: '50%', 
+                        backgroundColor: 'success.main',
+                        animation: 'pulse 2s infinite',
+                        '@keyframes pulse': {
+                          '0%': { opacity: 0.4 },
+                          '50%': { opacity: 1 },
+                          '100%': { opacity: 0.4 },
+                        }
+                      }} 
+                    />
+                    <b>Reminder</b>
                   </Typography>
-                </Box>
+                  Your subscription to memeSRC Pro will be billed monthly and will appear on your statement as:
+                </Typography>
                 <Box
                   sx={{
-                    position: 'absolute',
-                    left: 0,
-                    top: '50%',
-                    width: '100%',
-                    height: 1,
-                    borderBottom: '2px dotted rgba(255, 255, 255, 0.1)',
-                    transform: 'translateY(-50%)',
+                    p: 1.5,
+                    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+                    borderRadius: 1.5,
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    position: 'relative',
+                    overflow: 'hidden',
                   }}
-                />
+                >
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      position: 'relative',
+                      zIndex: 1,
+                    }}
+                  >
+                    <Typography
+                      fontFamily="'Roboto Mono', monospace"
+                      fontSize={{ xs: 13, sm: 16 }}
+                      fontWeight={700}
+                      sx={{ letterSpacing: '0.5px', mx: 1 }}
+                    >
+                      ${getPriceForPlan(selectedPlan).toFixed(2)}
+                    </Typography>
+                    <Typography
+                      fontFamily="'Roboto Mono', monospace"
+                      fontSize={{ xs: 13, sm: 16 }}
+                      fontWeight={700}
+                      sx={{ 
+                        letterSpacing: '0.5px',
+                        opacity: 0.85,
+                        color: 'white',
+                        mx: 1
+                      }}
+                    >
+                      VIBE HOUSE LLC
+                    </Typography>
+                  </Box>
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      left: 0,
+                      top: '50%',
+                      width: '100%',
+                      height: 1,
+                      borderBottom: '2px dotted rgba(255, 255, 255, 0.1)',
+                      transform: 'translateY(-50%)',
+                    }}
+                  />
+                </Box>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ 
+                    display: 'block',
+                    mt: 1.5,
+                    textAlign: 'center',
+                    opacity: 0.7
+                  }}
+                >
+                  Processed securely through Stripe
+                </Typography>
               </Box>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ 
-                  display: 'block',
-                  mt: 1.5,
-                  textAlign: 'center',
-                  opacity: 0.7
+            </Box>
+            <Box sx={{ mx: 'auto', mt: 'auto', textAlign: 'center' }}>
+              <LoadingButton
+                loading={loading || !checkoutLink}
+                loadingIndicator={
+                  <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                    <CircularProgress color="inherit" size={16} sx={{ mr: 1 }} />
+                    <span>Preparing&nbsp;Checkout...</span>
+                  </Box>
+                }
+                variant="contained"
+                size="large"
+                fullWidth
+                sx={{
+                  borderRadius: 50,
+                  px: 0,
+                  py: 1.5,
+                  fontSize: 20,
+                  backgroundColor: getColor(),
+                  color: getTextColor(),
+                }}
+                onClick={() => {
+                  window.location.href = checkoutLink;
                 }}
               >
-                Processed securely through Stripe
+                {!loading && checkoutLink ? 'Agree & Continue' : ''}
+              </LoadingButton>
+              <Typography variant="caption" sx={{ mt: 2, lineHeight: 1.2, }}>
+                By continuing, you are confirming: (1) you are a U.S. resident, (2) you understand memeSRC&nbsp;Pro is billed as Vibe&nbsp;House&nbsp;LLC, and you agree to the{' '}
+                <a href="/termsofservice" target="_blank" style={{ color: 'white', textDecoration: 'none', fontWeight: 'bold' }}>
+                  Terms&nbsp;of&nbsp;Service
+                </a>{' '}
+                and{' '}
+                <a href="/privacypolicy" target="_blank" style={{ color: 'white', textDecoration: 'none', fontWeight: 'bold' }}>
+                  Privacy&nbsp;Policy
+                </a>
+                .
               </Typography>
             </Box>
-          </Box>
-          <Box sx={{ mx: 'auto', mt: 'auto', textAlign: 'center' }}>
-            <LoadingButton
-              loading={loading || !checkoutLink}
-              loadingIndicator={
-                <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-                  <CircularProgress color="inherit" size={16} sx={{ mr: 1 }} />
-                  <span>Preparing&nbsp;Checkout...</span>
-                </Box>
-              }
-              variant="contained"
-              size="large"
-              fullWidth
-              sx={{
-                borderRadius: 50,
-                px: 0,
-                py: 1.5,
-                fontSize: 20,
-                backgroundColor: getColor(),
-                color: getTextColor(),
-              }}
-              onClick={() => {
-                window.location.href = checkoutLink;
-              }}
-            >
-              {!loading && checkoutLink ? 'Agree & Continue' : ''}
-            </LoadingButton>
-            <Typography variant="caption" sx={{ mt: 2, lineHeight: 1.2, }}>
-              By continuing, you are confirming: (1) you are a U.S. resident, (2) you understand memeSRC&nbsp;Pro is billed as Vibe&nbsp;House&nbsp;LLC, and you agree to the{' '}
-              <a href="/termsofservice" target="_blank" style={{ color: 'white', textDecoration: 'none', fontWeight: 'bold' }}>
-                Terms&nbsp;of&nbsp;Service
-              </a>{' '}
-              and{' '}
-              <a href="/privacypolicy" target="_blank" style={{ color: 'white', textDecoration: 'none', fontWeight: 'bold' }}>
-                Privacy&nbsp;Policy
-              </a>
-              .
-            </Typography>
-          </Box>
-        </DialogContent>
+          </DialogContent>
         )}
             </>
             )}
