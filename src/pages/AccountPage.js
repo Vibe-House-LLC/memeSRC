@@ -378,7 +378,7 @@ const AccountPage = () => {
                   { icon: <Block />, text: 'Ad-Free Experience' },
                   { icon: <SupportAgent />, text: 'Priority Support' },
                   { icon: <Bolt />, text: 'Early Access to New Features' },
-                  { icon: <AutoFixHighRounded />, text: 'Unlimited Magic Credits' },
+                  { icon: <AutoFixHighRounded />, text: 'Monthly Magic Credits' },
                 ].map(({ icon, text }) => (
                   <Box 
                     key={text}
