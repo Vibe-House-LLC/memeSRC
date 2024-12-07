@@ -826,7 +826,7 @@ export const DialogProvider = ({ children }) => {
                     />
                     <b>Reminder</b>
                   </Typography>
-                  Your subscription to memeSRC Pro will be billed monthly and will appear on your statement as:
+                  Your subscription to memeSRC Pro will be billed monthly and appear on your statement as:
                 </Typography>
                 <Box
                   sx={{
