@@ -603,14 +603,7 @@ export const DialogProvider = ({ children }) => {
                         color: getTextColor(),
                       }}
                     >
-                      Subscribe: {CURRENT_SALE.isActive ? (
-                        <>
-                          <span style={{ textDecoration: 'line-through', marginRight: '4px' }}>${planPrices[selectedPlan].toFixed(2)}</span>
-                          ${getPriceForPlan(selectedPlan).toFixed(2)}
-                        </>
-                      ) : (
-                        `$${getPriceForPlan(selectedPlan).toFixed(2)}`
-                      )}/mo
+                      Upgrade Account
                     </Button>
                   )}
                   <Typography
