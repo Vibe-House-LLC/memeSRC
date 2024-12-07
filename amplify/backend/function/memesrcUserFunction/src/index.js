@@ -1431,7 +1431,7 @@ export const handler = async (event) => {
         ],
         mode: 'subscription',
         discounts: [{
-          coupon: `${process.env.ENV === 'beta' ? 'TODO' : '1UE38YJK'}`
+          coupon: `${process.env.ENV === 'beta' ? '9rKTV0QH' : '1UE38YJK'}`
         }],
         metadata: {
           callbackUrl: body.currentUrl
