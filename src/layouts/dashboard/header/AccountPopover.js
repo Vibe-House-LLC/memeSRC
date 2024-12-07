@@ -2,6 +2,7 @@ import { useState, useContext, useEffect } from 'react';
 // @mui
 import { alpha } from '@mui/material/styles';
 import { Box, Divider, Typography, Stack, MenuItem, Avatar, IconButton, Popover, CircularProgress } from '@mui/material';
+import { AutoFixHigh } from '@mui/icons-material';
 // mocks_
 import { useNavigate } from 'react-router-dom';
 import { API, Auth } from 'aws-amplify';
@@ -161,15 +162,24 @@ export default function AccountPopover() {
               </Typography>
             </Box>
 
-            {/* <Divider sx={{ borderStyle: 'dashed' }} /> */}
-
-            {/* <Stack sx={{ p: 1 }}>
-              {MENU_OPTIONS.map((option) => (
-                <MenuItem key={option.label} onClick={handleClose}>
-                  {option.label}
-                </MenuItem>
-              ))}
-            </Stack> */}
+            <Divider sx={{ borderStyle: 'dashed' }} />
+            
+            <MenuItem sx={{ m: 1 }}>
+              <Typography 
+                variant="body2" 
+                sx={{ 
+                  color: 'success.main',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.5,
+                  fontWeight: 'bold'
+                }} 
+                noWrap
+              >
+                <AutoFixHigh sx={{ fontSize: 16 }} />
+                <span style={{ fontSize: '1.1em' }}>{userDetails?.user?.userDetails?.credits || 0}</span> credits
+              </Typography>
+            </MenuItem>
 
             {userDetails?.user && (
               <>
