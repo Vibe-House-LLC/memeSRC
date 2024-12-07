@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { Box, Typography, Button, Container, Divider, Grid, Card, List, ListItem, ListItemIcon, ListItemText, IconButton, Chip, Skeleton, LinearProgress, CircularProgress } from '@mui/material';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { Receipt, Download, Block, SupportAgent, Bolt, AutoFixHighRounded, CreditCard, LockOpen } from '@mui/icons-material';
+import { Receipt, Download, Block, SupportAgent, Bolt, AutoFixHighRounded, CreditCard, LockOpen, ContentCopy, CheckCircle } from '@mui/icons-material';
 import { API, Auth } from 'aws-amplify';
 import { UserContext } from '../UserContext';
 import { useSubscribeDialog } from '../contexts/useSubscribeDialog';
@@ -17,7 +17,10 @@ const AccountPage = () => {
   const [page, setPage] = useState(1);
   const [loadingSubscription, setLoadingSubscription] = useState(true);
   const [loadingCancelUrl, setLoadingCancelUrl] = useState(false);
+  const [showCopySuccess, setShowCopySuccess] = useState(false);
   const navigate = useNavigate();
+
+  console.log('User Details:', userDetails?.user);
 
   useEffect(() => {
     fetchInvoices();
@@ -185,6 +188,34 @@ const AccountPage = () => {
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Typography variant="body2" sx={{ color: 'text.secondary' }}>Email</Typography>
                   <Typography variant="body2">{userDetails?.user?.userDetails?.email || 'N/A'}</Typography>
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>Customer ID</Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer' }}
+                    onClick={async () => {
+                      if (userDetails?.user?.sub) {
+                        try {
+                          await navigator.clipboard.writeText(userDetails.user.sub);
+                          setShowCopySuccess(true);
+                          setTimeout(() => setShowCopySuccess(false), 2000); // Reset after 2 seconds
+                          console.log('Copied:', userDetails.user.sub);
+                        } catch (err) {
+                          console.error('Failed to copy:', err);
+                        }
+                      }
+                    }}
+                  >
+                    {showCopySuccess ? (
+                      <CheckCircle sx={{ fontSize: 16, opacity: 0.7, color: 'success.main' }} />
+                    ) : (
+                      <ContentCopy sx={{ fontSize: 16, opacity: 0.7 }} />
+                    )}
+                    <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
+                      {userDetails?.user?.sub 
+                        ? `${userDetails?.user?.sub.slice(0, 4)}...${userDetails?.user?.sub.slice(-4)}`
+                        : 'N/A'}
+                    </Typography>
+                  </Box>
                 </Box>
               </Box>
             </Box>
