@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { Box, Typography, Button, Container, Divider, Grid, Card, List, ListItem, ListItemIcon, ListItemText, IconButton, Chip, Skeleton, LinearProgress, CircularProgress } from '@mui/material';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { Receipt, Download, Block, SupportAgent, Bolt, AutoFixHighRounded, CreditCard, LockOpen } from '@mui/icons-material';
-import { API } from 'aws-amplify';
+import { API, Auth } from 'aws-amplify';
 import { UserContext } from '../UserContext';
 import { useSubscribeDialog } from '../contexts/useSubscribeDialog';
+import { getShowsWithFavorites } from '../utils/fetchShowsRevised';
 
 const AccountPage = () => {
   const userDetails = useContext(UserContext);
@@ -15,6 +16,8 @@ const AccountPage = () => {
   const [loadingPortalUrl, setLoadingPortalUrl] = useState(false);
   const [page, setPage] = useState(1);
   const [loadingSubscription, setLoadingSubscription] = useState(true);
+  const [loadingCancelUrl, setLoadingCancelUrl] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchInvoices();
@@ -72,20 +75,49 @@ const AccountPage = () => {
     }
   };
 
-  const openCustomerPortal = () => {
-    setLoadingPortalUrl(true);
+  const openCustomerPortal = (isCancel = false) => {
+    if (isCancel) {
+      setLoadingCancelUrl(true);
+    } else {
+      setLoadingPortalUrl(true);
+    }
+    
     API.post('publicapi', '/user/update/getPortalLink', {
       body: {
         currentUrl: window.location.href
       }
     }).then(results => {
       console.log(results);
-      setLoadingPortalUrl(false);
+      if (isCancel) {
+        setLoadingCancelUrl(false);
+      } else {
+        setLoadingPortalUrl(false);
+      }
       window.location.href = results;
     }).catch(error => {
       console.log(error.response);
-      setLoadingPortalUrl(false);
+      if (isCancel) {
+        setLoadingCancelUrl(false);
+      } else {
+        setLoadingPortalUrl(false);
+      }
     });
+  };
+
+  const handleLogout = () => {
+    Auth.signOut().then(() => {
+      userDetails?.setUser(null);
+      window.localStorage.removeItem('memeSRCUserDetails')
+      userDetails?.setDefaultShow('_universal')
+      getShowsWithFavorites().then(loadedShows => {
+        window.localStorage.setItem('memeSRCShows', JSON.stringify(loadedShows))
+        userDetails?.setShows(loadedShows)
+      })
+    }).catch((err) => {
+      alert(err)
+    }).finally(() => {
+      navigate('/')
+    })
   };
 
   const isLoading = loadingInvoices || loadingSubscription;
@@ -109,12 +141,7 @@ const AccountPage = () => {
   };
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 5 }}>
-      <Typography variant="h2" gutterBottom sx={{ fontWeight: 700 }}>
-        My Account
-      </Typography>
-      <Divider sx={{ my: 3 }} />
-
+    <Container maxWidth="lg" sx={{ mt: 2 }}>
       <Grid container spacing={3} alignItems="flex-start">
         <Grid item xs={12} md={6}>
           <Card sx={{ 
@@ -124,7 +151,43 @@ const AccountPage = () => {
             borderRadius: 4,
             boxShadow: '0 4px 24px rgba(0, 0, 0, 0.15)',
           }}>
-            
+            <Box sx={{ mb: 3 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                  Account Details
+                </Typography>
+                <Typography 
+                  variant="body2" 
+                  onClick={handleLogout}
+                  sx={{ 
+                    color: 'error.main',
+                    cursor: 'pointer',
+                    '&:hover': {
+                      textDecoration: 'underline'
+                    }
+                  }}
+                >
+                  Sign Out
+                </Typography>
+              </Box>
+              <Box sx={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                gap: 1,
+                p: 2,
+                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                borderRadius: 2,
+              }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>Username</Typography>
+                  <Typography variant="body2">{userDetails?.user?.userDetails?.username || 'N/A'}</Typography>
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>Email</Typography>
+                  <Typography variant="body2">{userDetails?.user?.userDetails?.email || 'N/A'}</Typography>
+                </Box>
+              </Box>
+            </Box>
             {isLoading ? (
               <Box sx={{ width: '100%', py: 4 }}>
                 <CircularProgress />
@@ -170,11 +233,15 @@ const AccountPage = () => {
                       </Typography>
                       {userDetails?.user?.userDetails?.magicSubscription === 'true' && (
                         <Chip
-                          label="Active"
+                          label={userDetails?.user?.userDetails?.subscriptionStatus === 'failedPayment' ? 'Payment Failed' : 'Active'}
                           size="small"
                           sx={{
-                            backgroundColor: '#4ADE80',
-                            color: '#064E3B',
+                            backgroundColor: userDetails?.user?.userDetails?.subscriptionStatus === 'failedPayment' 
+                              ? '#EF4444'  // Red for failed payment
+                              : '#4ADE80', // Green for active
+                            color: userDetails?.user?.userDetails?.subscriptionStatus === 'failedPayment'
+                              ? '#7F1D1D'  // Dark red text
+                              : '#064E3B', // Dark green text
                             fontWeight: 600,
                             height: '24px',
                             fontSize: '0.75rem',
@@ -182,6 +249,41 @@ const AccountPage = () => {
                         />
                       )}
                     </Box>
+
+                    {userDetails?.user?.userDetails?.subscriptionStatus === 'failedPayment' && (
+                      <Box sx={{ 
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)', // Light red background
+                        borderRadius: 2,
+                        p: 2,
+                        mb: 3
+                      }}>
+                        <Typography sx={{ 
+                          color: 'white',
+                          fontSize: '0.875rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1
+                        }}>
+                          <CreditCard sx={{ fontSize: 20 }} />
+                          Your last payment failed. Please update your payment method to continue using Pro features.
+                        </Typography>
+                        <Button
+                          variant="contained"
+                          size="small"
+                          onClick={() => openCustomerPortal()}
+                          sx={{
+                            mt: 2,
+                            backgroundColor: 'white',
+                            color: '#EF4444',
+                            '&:hover': {
+                              backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                            },
+                          }}
+                        >
+                          Update Payment Method
+                        </Button>
+                      </Box>
+                    )}
 
                     {userDetails?.user?.userDetails?.magicSubscription === 'true' && recentPaidInvoice && (
                       <Box sx={{ 
@@ -312,6 +414,37 @@ const AccountPage = () => {
                       }}
                     >
                       Unlock these features
+                    </Typography>
+                  </Box>
+                )}
+
+                {userDetails?.user?.userDetails?.magicSubscription === 'true' && (
+                  <Box 
+                    sx={{ 
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      mt: 3,
+                    }}
+                  >
+                    <Typography 
+                      onClick={() => openCustomerPortal(true)}
+                      sx={{ 
+                        color: 'error.main',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        '&:hover': {
+                          textDecoration: 'underline',
+                        },
+                      }}
+                    >
+                      {loadingCancelUrl ? (
+                        <CircularProgress size={16} color="error" />
+                      ) : (
+                        'Cancel Subscription'
+                      )}
                     </Typography>
                   </Box>
                 )}
