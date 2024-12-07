@@ -1422,7 +1422,7 @@ export const handler = async (event) => {
       //   }
       // }))
       const session = await stripe.checkout.sessions.create({
-        allow_promotion_codes: true,
+        // allow_promotion_codes: true,
         success_url: `https://api.memesrc.com/${process.env.ENV}/public/stripeVerification?checkoutSessionId={CHECKOUT_SESSION_ID}`,
         cancel_url: body.currentUrl,
         customer: stripeCustomerId,
@@ -1430,9 +1430,9 @@ export const handler = async (event) => {
           { price: priceMap[priceKey], quantity: 1 },
         ],
         mode: 'subscription',
-        // discounts: [{
-        //   coupon: `${process.env.ENV === 'beta' ? 'DIdAixG9' : 'GTke5f0s'}`
-        // }],
+        discounts: [{
+          coupon: `${process.env.ENV === 'beta' ? '9rKTV0QH' : '1UE38YJK'}`
+        }],
         metadata: {
           callbackUrl: body.currentUrl
         }
