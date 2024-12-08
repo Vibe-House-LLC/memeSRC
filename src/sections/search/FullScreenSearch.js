@@ -392,9 +392,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
         </Grid>
         <StyledFooter position="left" className="bottomBtn">
           <a
-            href="https://forms.gle/8CETtVbwYoUmxqbi7"
-            target="_blank"
-            rel="noreferrer"
+            href="/support"
             style={{ color: 'white', textDecoration: 'none' }}
           >
             <Fab
