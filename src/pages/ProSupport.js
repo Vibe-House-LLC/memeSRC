@@ -9,6 +9,7 @@ import LockIcon from '@mui/icons-material/Lock';
 import { UserContext } from '../UserContext';
 import { SnackbarContext } from '../SnackbarContext';
 import { useSubscribeDialog } from '../contexts/useSubscribeDialog';
+import { CURRENT_SALE } from '../constants/sales';
 
 export default function ProSupport() {
   const [loadingSubmitStatus, setLoadingSubmitStatus] = useState();
@@ -128,9 +129,23 @@ export default function ProSupport() {
                   onClick={openSubscriptionDialog}
                   variant="contained"
                   size="large"
-                  sx={{ mt: 5, fontSize: 17 }}
+                  sx={{ 
+                    mt: 5, 
+                    fontSize: 17,
+                    background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
+                    border: '1px solid #8b5cc7',
+                    boxShadow: '0 0 20px rgba(107,66,161,0.5)',
+                    color: '#fff',
+                    '&:hover': {
+                      background: 'linear-gradient(45deg, #472a69 30%, #7b4cb8 90%)',
+                      boxShadow: '0 0 25px rgba(107,66,161,0.6)',
+                    },
+                  }}
                 >
-                  Upgrade to Pro
+                  {CURRENT_SALE.isActive 
+                    ? `Upgrade to Pro (${CURRENT_SALE.discountPercent}% off)`
+                    : 'Upgrade to Pro'
+                  }
                 </LoadingButton>
               </center>
               <Typography variant="body1" textAlign="center" style={{ opacity: 0.7 }}>
