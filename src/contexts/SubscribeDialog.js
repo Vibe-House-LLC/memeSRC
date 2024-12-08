@@ -523,7 +523,7 @@ export const DialogProvider = ({ children }) => {
                                 variant="outlined"
                                 onClick={() => setSelectedPlanAndScroll(plan)}
                                 sx={{
-                                  height: isCompact ? 60 : 80,
+                                  height: isCompact ? 54 : 80,
                                   cursor: 'pointer',
                                   borderColor: 'divider',
                                   backgroundColor: selectedPlan === plan ? color : 'grey.800',
@@ -549,11 +549,11 @@ export const DialogProvider = ({ children }) => {
                                     display: 'flex', 
                                     alignItems: 'center',
                                     color: selectedPlan === plan ? textColor : 'common.white',
-                                    fontSize: isCompact ? '1.25rem' : '1.5rem',
+                                    fontSize: isCompact ? '1.2rem' : '1.5rem',
                                     fontWeight: 600,
                                   }}
                                 >
-                                  <AutoFixHighRounded sx={{ fontSize: isCompact ? 25 : 28, mx: 0.5 }} />
+                                  <AutoFixHighRounded sx={{ fontSize: isCompact ? 23 : 28, mx: 0.5 }} />
                                   {credits}
                                 </Box>
                               </Card>
