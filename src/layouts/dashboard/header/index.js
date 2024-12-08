@@ -461,8 +461,36 @@ export default function Header({ onOpenNav }) {
               </IconButton>
               <SnowEffect />
               <Stack direction="row" spacing={1} alignItems="center">
-                <Box sx={{ display: 'flex', alignItems: 'center', pl: 1 }}>
-                  <LocalOffer sx={{ color: '#b794f4', fontSize: 32 }} />
+                <Box sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center',
+                  position: 'relative',
+                  pl: 1 
+                }}>
+                  <Box
+                    sx={{
+                      width: 42,
+                      height: 42,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      overflow: 'hidden'
+                    }}
+                  >
+                    <Logo 
+                      color="white"
+                      sx={{ 
+                        width: 38,
+                        height: 38,
+                        position: 'relative',
+                        left: -3,
+                        objectFit: 'contain',
+                        padding: 0,
+                        margin: 0,
+                        display: 'block'
+                      }} 
+                    />
+                  </Box>
                 </Box>
                 <Box>
                   <Typography
