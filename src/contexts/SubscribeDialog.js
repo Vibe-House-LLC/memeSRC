@@ -31,7 +31,7 @@ export const DialogProvider = ({ children }) => {
 
   const { countryCode, countryName } = useUserLocation();
 
-  const [creditOptionsExpanded, setCreditOptionsExpanded] = useState(!isCompact || !CURRENT_SALE.isActive);
+  const [creditOptionsExpanded, setCreditOptionsExpanded] = useState(!isCompact);
 
   useEffect(() => {
     if (location.pathname === '/pro' && user !== null) {
@@ -55,6 +55,10 @@ export const DialogProvider = ({ children }) => {
       navigate('/account');
     }
   }, [user?.userDetails?.subscriptionStatus, subscriptionDialogOpen, navigate]);
+
+  useEffect(() => {
+    setCreditOptionsExpanded(!isCompact);
+  }, [isCompact]);
 
   const subscribeButtonRef = useRef(null);
 
@@ -199,7 +203,9 @@ export const DialogProvider = ({ children }) => {
   };
 
   const toggleCreditOptions = () => {
-    setCreditOptionsExpanded(!creditOptionsExpanded);
+    if (isCompact) {
+      setCreditOptionsExpanded(!creditOptionsExpanded);
+    }
   };
 
   return (
@@ -395,8 +401,8 @@ export const DialogProvider = ({ children }) => {
                       display="flex" 
                       alignItems="center" 
                       ml={2} 
-                      onClick={toggleCreditOptions}
-                      sx={{ cursor: 'pointer' }}
+                      onClick={isCompact ? toggleCreditOptions : undefined}
+                      sx={{ cursor: isCompact ? 'pointer' : 'default' }}
                     >
                       <Box
                         sx={{
