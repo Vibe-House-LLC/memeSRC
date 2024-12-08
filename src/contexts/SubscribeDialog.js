@@ -1,4 +1,4 @@
-import { AutoFixHighRounded, Block, Close, Favorite, Star, SupportAgent, ExpandMore, Clear, Check, Bolt, Share, ThumbUp, Feedback, ArrowBack } from '@mui/icons-material';
+import { AutoFixHighRounded, Block, Close, Favorite, Star, SupportAgent, ExpandMore, Clear, Check, Bolt, Share, ThumbUp, Feedback, ArrowBack, Settings } from '@mui/icons-material';
 import { Box, Button, Card, Checkbox, Chip, CircularProgress, Collapse, Dialog, DialogContent, DialogTitle, Divider, Fade, Grid, IconButton, LinearProgress, Typography, useMediaQuery, FormControlLabel, Fab, Stack } from '@mui/material';
 import { API, graphqlOperation } from 'aws-amplify';
 import { createContext, useState, useRef, useEffect, useContext } from 'react';
@@ -19,7 +19,7 @@ export const DialogProvider = ({ children }) => {
   const isMd = useMediaQuery(theme => theme.breakpoints.up('sm'));
   const isCompact = useMediaQuery('(max-width:850px)');
   const [subscriptionDialogOpen, setSubscriptionDialogOpen] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState('pro69');
+  const [selectedPlan, setSelectedPlan] = useState('pro25');
   const [loading, setLoading] = useState(false);
   const { user } = useContext(UserContext);
   const [checkoutLink, setCheckoutLink] = useState();
@@ -61,6 +61,9 @@ export const DialogProvider = ({ children }) => {
   const setSelectedPlanAndScroll = (plan) => {
     setSelectedPlan(plan);
     setAskedAboutCredits(false);
+    if (isCompact) {
+      setCreditOptionsExpanded(false);
+    }
     subscribeButtonRef.current.scrollIntoView({ behavior: 'smooth' });
   };
 
@@ -144,9 +147,9 @@ export const DialogProvider = ({ children }) => {
       case 'pro5':
         return 'primary.main';
       case 'pro25':
-        return '#ff6900';
-      case 'pro69':
         return 'rgb(84, 214, 44)';
+      case 'pro69':
+        return '#ff6900';
       default:
         return 'primary.main';
     }
@@ -410,14 +413,31 @@ export const DialogProvider = ({ children }) => {
                         <AutoFixHighRounded sx={{ color: getTextColor(), fontSize: isCompact ? 20 : 24 }} />
                       </Box>
                       <Typography fontSize={isCompact ? 16 : 18} fontWeight={500} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        {getCreditCount()} Magic Credits / mo
-                        <ExpandMore 
-                          sx={{ 
-                            fontSize: 20,
-                            transform: creditOptionsExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                            transition: 'transform 0.3s',
-                          }} 
-                        />
+                        {getCreditCount()} Magic Credits
+                        {isCompact && !creditOptionsExpanded && (
+                          <Box
+                            component="span"
+                            sx={{
+                              color: 'rgba(255, 255, 255, 0.5)',
+                              cursor: 'pointer',
+                              ml: 1,
+                              fontSize: '0.75em',
+                              fontWeight: 600,
+                              userSelect: 'none',
+                              transition: 'all 0.2s',
+                              textDecoration: 'underline',
+                              '&:hover': {
+                                color: 'rgba(255, 255, 255, 0.8)',
+                              }
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleCreditOptions();
+                            }}
+                          >
+                            change
+                          </Box>
+                        )}
                       </Typography>
                     </Box>
                   </Grid>
@@ -427,8 +447,8 @@ export const DialogProvider = ({ children }) => {
                         <Box sx={{ px: 2 }}>
                           {[
                             { plan: 'pro5', credits: 5, color: 'grey.500', hoverColor: 'grey.500', activeColor: 'grey.500' },
-                            { plan: 'pro25', credits: 25, color: '#ff6900', hoverColor: '#ff6900', activeColor: '#e65c00' },
-                            { plan: 'pro69', credits: 69, color: 'rgb(84, 214, 44)', hoverColor: 'rgb(84, 214, 44)', activeColor: 'rgb(71, 181, 37)' }
+                            { plan: 'pro25', credits: 25, color: 'rgb(84, 214, 44)', hoverColor: 'rgb(84, 214, 44)', activeColor: 'rgb(71, 181, 37)' },
+                            { plan: 'pro69', credits: 69, color: '#ff6900', hoverColor: '#ff6900', activeColor: '#e65c00' }
                           ].map(({ plan, credits, color, hoverColor, activeColor }) => (
                             <Card
                               key={plan}
@@ -486,8 +506,8 @@ export const DialogProvider = ({ children }) => {
                         >
                           {[
                             { plan: 'pro5', credits: 5, color: 'grey.500', textColor: 'common.black' },
-                            { plan: 'pro25', credits: 25, color: '#ff6900', textColor: 'common.black' },
-                            { plan: 'pro69', credits: 69, color: 'rgb(84, 214, 44)', textColor: 'common.black' }
+                            { plan: 'pro25', credits: 25, color: 'rgb(84, 214, 44)', textColor: 'common.black' },
+                            { plan: 'pro69', credits: 69, color: '#ff6900', textColor: 'common.black' }
                           ].map(({ plan, credits, color, textColor }) => (
                             <Box 
                               key={plan} 
