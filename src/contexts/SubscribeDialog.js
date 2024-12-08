@@ -12,6 +12,25 @@ import { CURRENT_SALE } from '../constants/sales';
 
 export const SubscribeDialogContext = createContext();
 
+const getInitialPlan = () => {
+  const savedPlan = localStorage.getItem('defaultProPlan');
+  if (savedPlan) return savedPlan;
+
+  const random = Math.random();
+  let selectedPlan;
+  
+  if (random < 0.2) {
+    selectedPlan = 'pro5';  // 20% probability
+  } else if (random < 0.75) {
+    selectedPlan = 'pro25'; // 55% probability
+  } else {
+    selectedPlan = 'pro69'; // 25% probability
+  }
+
+  localStorage.setItem('defaultProPlan', selectedPlan);
+  return selectedPlan;
+};
+
 export const DialogProvider = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -19,7 +38,7 @@ export const DialogProvider = ({ children }) => {
   const isMd = useMediaQuery(theme => theme.breakpoints.up('sm'));
   const isCompact = useMediaQuery('(max-width:850px)');
   const [subscriptionDialogOpen, setSubscriptionDialogOpen] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState('pro25');
+  const [selectedPlan, setSelectedPlan] = useState(getInitialPlan());
   const [loading, setLoading] = useState(false);
   const { user } = useContext(UserContext);
   const [checkoutLink, setCheckoutLink] = useState();
