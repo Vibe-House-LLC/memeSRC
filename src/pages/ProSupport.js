@@ -1,10 +1,11 @@
 import { useContext, useEffect, useState } from 'react';
 import { API } from 'aws-amplify';
 import { Helmet } from 'react-helmet-async';
-import { Typography, Container, Grid, Stack, TextField, Box, Button, Paper, Divider, FormControl, FormLabel, Card, CardContent, List, ListItem, ListItemText, IconButton, Checkbox, FormControlLabel } from '@mui/material';
+import { Typography, Container, Grid, Stack, TextField, Box, Button, Paper, Divider, FormControl, FormLabel, Card, CardContent, List, ListItem, ListItemText, IconButton, Checkbox, FormControlLabel, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
 import { Link } from 'react-router-dom';
 import DeleteIcon from '@mui/icons-material/Delete';
+import LockIcon from '@mui/icons-material/Lock';
 import { UserContext } from '../UserContext';
 import { SnackbarContext } from '../SnackbarContext';
 import { useSubscribeDialog } from '../contexts/useSubscribeDialog';
@@ -19,6 +20,7 @@ export default function ProSupport() {
   const [messageError, setMessageError] = useState(false);
   const [emailConsentError, setEmailConsentError] = useState(false);
   const [formSubmitted, setFormSubmitted] = useState(false);
+  const [openDialog, setOpenDialog] = useState(false);
 
   const authorized = user?.userDetails?.magicSubscription === 'true';
 
@@ -89,6 +91,16 @@ export default function ProSupport() {
     }
   };
 
+  const handleFeedbackClick = (e) => {
+    e.preventDefault();
+    setOpenDialog(true);
+  };
+
+  const handleDialogClose = () => {
+    setOpenDialog(false);
+    window.open('https://forms.gle/8CETtVbwYoUmxqbi7', '_blank', 'noopener,noreferrer');
+  };
+
   return (
     <>
       <Helmet>
@@ -125,9 +137,64 @@ export default function ProSupport() {
                 <br />
                 <br />
                 Or submit <b>anonymous feedback</b> using{' '}
-                <a href="https://forms.gle/8CETtVbwYoUmxqbi7" style={{ color: 'white' }} target="_blank" rel="noreferrer">
-                <b>this form</b>
-                </a>.
+                <a 
+                  href="https://forms.gle/8CETtVbwYoUmxqbi7" 
+                  style={{ color: 'white' }} 
+                  onClick={handleFeedbackClick}
+                >
+                  <b>this form</b>
+                </a>
+                <Dialog 
+                  open={openDialog} 
+                  onClose={() => setOpenDialog(false)}
+                  PaperProps={{
+                    sx: {
+                      borderRadius: 2,
+                      minWidth: '350px',
+                    }
+                  }}
+                >
+                  <DialogTitle sx={{ 
+                    pb: 1,
+                    background: 'linear-gradient(90deg, #ff6900 0%, #ff8d0a 100%)',
+                    color: 'black',
+                    fontWeight: 'bold',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    mb: 1
+                  }}>
+                    <LockIcon sx={{ fontSize: 20, color: 'black' }} />
+                    Anonymous Feedback
+                  </DialogTitle>
+                  <DialogContent sx={{ pt: 3 }}>
+                    <Typography>
+                      We can't see who submits feedback using Google Forms.
+                    </Typography>
+                  </DialogContent>
+                  <DialogActions sx={{ p: 2, pt: 1 }}>
+                    <Button 
+                      onClick={() => setOpenDialog(false)}
+                      sx={{ color: 'text.secondary' }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      onClick={handleDialogClose} 
+                      variant="contained"
+                      sx={{ 
+                        px: 3,
+                        color: 'black',
+                        background: 'linear-gradient(90deg, #ff6900 0%, #ff8d0a 100%)',
+                        '&:hover': {
+                          background: 'linear-gradient(90deg, #ff8d0a 0%, #ffa94d 100%)'
+                        }
+                      }}
+                    >
+                      Continue to Form
+                    </Button>
+                  </DialogActions>
+                </Dialog>
               </Typography>
             </Grid>
           </Grid>
