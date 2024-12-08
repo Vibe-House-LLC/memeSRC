@@ -1,4 +1,4 @@
-import { AutoFixHighRounded, Block, Close, Favorite, Star, SupportAgent, ExpandMore, Clear, Check, Bolt, Share, ThumbUp, Feedback, ArrowBack } from '@mui/icons-material';
+import { AutoFixHighRounded, Block, Close, Favorite, Star, SupportAgent, ExpandMore, Clear, Check, Bolt, Share, ThumbUp, Feedback, ArrowBack, Settings } from '@mui/icons-material';
 import { Box, Button, Card, Checkbox, Chip, CircularProgress, Collapse, Dialog, DialogContent, DialogTitle, Divider, Fade, Grid, IconButton, LinearProgress, Typography, useMediaQuery, FormControlLabel, Fab, Stack } from '@mui/material';
 import { API, graphqlOperation } from 'aws-amplify';
 import { createContext, useState, useRef, useEffect, useContext } from 'react';
@@ -12,6 +12,25 @@ import { CURRENT_SALE } from '../constants/sales';
 
 export const SubscribeDialogContext = createContext();
 
+const getInitialPlan = () => {
+  const savedPlan = localStorage.getItem('defaultProPlan');
+  if (savedPlan) return savedPlan;
+
+  const random = Math.random();
+  let selectedPlan;
+  
+  if (random < 0.2) {
+    selectedPlan = 'pro5';  // 20% probability
+  } else if (random < 0.75) {
+    selectedPlan = 'pro25'; // 55% probability
+  } else {
+    selectedPlan = 'pro69'; // 25% probability
+  }
+
+  localStorage.setItem('defaultProPlan', selectedPlan);
+  return selectedPlan;
+};
+
 export const DialogProvider = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -19,7 +38,7 @@ export const DialogProvider = ({ children }) => {
   const isMd = useMediaQuery(theme => theme.breakpoints.up('sm'));
   const isCompact = useMediaQuery('(max-width:850px)');
   const [subscriptionDialogOpen, setSubscriptionDialogOpen] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState('pro69');
+  const [selectedPlan, setSelectedPlan] = useState(getInitialPlan());
   const [loading, setLoading] = useState(false);
   const { user } = useContext(UserContext);
   const [checkoutLink, setCheckoutLink] = useState();
@@ -31,7 +50,7 @@ export const DialogProvider = ({ children }) => {
 
   const { countryCode, countryName } = useUserLocation();
 
-  const [creditOptionsExpanded, setCreditOptionsExpanded] = useState(!isCompact || !CURRENT_SALE.isActive);
+  const [creditOptionsExpanded, setCreditOptionsExpanded] = useState(!isCompact);
 
   useEffect(() => {
     if (location.pathname === '/pro' && user !== null) {
@@ -56,11 +75,18 @@ export const DialogProvider = ({ children }) => {
     }
   }, [user?.userDetails?.subscriptionStatus, subscriptionDialogOpen, navigate]);
 
+  useEffect(() => {
+    setCreditOptionsExpanded(!isCompact);
+  }, [isCompact]);
+
   const subscribeButtonRef = useRef(null);
 
   const setSelectedPlanAndScroll = (plan) => {
     setSelectedPlan(plan);
     setAskedAboutCredits(false);
+    if (isCompact) {
+      setCreditOptionsExpanded(false);
+    }
     subscribeButtonRef.current.scrollIntoView({ behavior: 'smooth' });
   };
 
@@ -144,9 +170,9 @@ export const DialogProvider = ({ children }) => {
       case 'pro5':
         return 'primary.main';
       case 'pro25':
-        return '#ff6900';
-      case 'pro69':
         return 'rgb(84, 214, 44)';
+      case 'pro69':
+        return '#ff6900';
       default:
         return 'primary.main';
     }
@@ -196,7 +222,9 @@ export const DialogProvider = ({ children }) => {
   };
 
   const toggleCreditOptions = () => {
-    setCreditOptionsExpanded(!creditOptionsExpanded);
+    if (isCompact) {
+      setCreditOptionsExpanded(!creditOptionsExpanded);
+    }
   };
 
   return (
@@ -392,8 +420,8 @@ export const DialogProvider = ({ children }) => {
                       display="flex" 
                       alignItems="center" 
                       ml={2} 
-                      onClick={toggleCreditOptions}
-                      sx={{ cursor: 'pointer' }}
+                      onClick={isCompact ? toggleCreditOptions : undefined}
+                      sx={{ cursor: isCompact ? 'pointer' : 'default' }}
                     >
                       <Box
                         sx={{
@@ -410,14 +438,31 @@ export const DialogProvider = ({ children }) => {
                         <AutoFixHighRounded sx={{ color: getTextColor(), fontSize: isCompact ? 20 : 24 }} />
                       </Box>
                       <Typography fontSize={isCompact ? 16 : 18} fontWeight={500} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        {getCreditCount()} Magic Credits / mo
-                        <ExpandMore 
-                          sx={{ 
-                            fontSize: 20,
-                            transform: creditOptionsExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                            transition: 'transform 0.3s',
-                          }} 
-                        />
+                        {getCreditCount()} Magic Credits
+                        {isCompact && !creditOptionsExpanded && (
+                          <Box
+                            component="span"
+                            sx={{
+                              color: 'rgba(255, 255, 255, 0.5)',
+                              cursor: 'pointer',
+                              ml: 1,
+                              fontSize: '0.75em',
+                              fontWeight: 600,
+                              userSelect: 'none',
+                              transition: 'all 0.2s',
+                              textDecoration: 'underline',
+                              '&:hover': {
+                                color: 'rgba(255, 255, 255, 0.8)',
+                              }
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleCreditOptions();
+                            }}
+                          >
+                            change
+                          </Box>
+                        )}
                       </Typography>
                     </Box>
                   </Grid>
@@ -427,8 +472,8 @@ export const DialogProvider = ({ children }) => {
                         <Box sx={{ px: 2 }}>
                           {[
                             { plan: 'pro5', credits: 5, color: 'grey.500', hoverColor: 'grey.500', activeColor: 'grey.500' },
-                            { plan: 'pro25', credits: 25, color: '#ff6900', hoverColor: '#ff6900', activeColor: '#e65c00' },
-                            { plan: 'pro69', credits: 69, color: 'rgb(84, 214, 44)', hoverColor: 'rgb(84, 214, 44)', activeColor: 'rgb(71, 181, 37)' }
+                            { plan: 'pro25', credits: 25, color: 'rgb(84, 214, 44)', hoverColor: 'rgb(84, 214, 44)', activeColor: 'rgb(71, 181, 37)' },
+                            { plan: 'pro69', credits: 69, color: '#ff6900', hoverColor: '#ff6900', activeColor: '#e65c00' }
                           ].map(({ plan, credits, color, hoverColor, activeColor }) => (
                             <Card
                               key={plan}
@@ -486,8 +531,8 @@ export const DialogProvider = ({ children }) => {
                         >
                           {[
                             { plan: 'pro5', credits: 5, color: 'grey.500', textColor: 'common.black' },
-                            { plan: 'pro25', credits: 25, color: '#ff6900', textColor: 'common.black' },
-                            { plan: 'pro69', credits: 69, color: 'rgb(84, 214, 44)', textColor: 'common.black' }
+                            { plan: 'pro25', credits: 25, color: 'rgb(84, 214, 44)', textColor: 'common.black' },
+                            { plan: 'pro69', credits: 69, color: '#ff6900', textColor: 'common.black' }
                           ].map(({ plan, credits, color, textColor }) => (
                             <Box 
                               key={plan} 
@@ -503,7 +548,7 @@ export const DialogProvider = ({ children }) => {
                                 variant="outlined"
                                 onClick={() => setSelectedPlanAndScroll(plan)}
                                 sx={{
-                                  height: isCompact ? 60 : 80,
+                                  height: isCompact ? 54 : 80,
                                   cursor: 'pointer',
                                   borderColor: 'divider',
                                   backgroundColor: selectedPlan === plan ? color : 'grey.800',
@@ -529,11 +574,11 @@ export const DialogProvider = ({ children }) => {
                                     display: 'flex', 
                                     alignItems: 'center',
                                     color: selectedPlan === plan ? textColor : 'common.white',
-                                    fontSize: isCompact ? '1.25rem' : '1.5rem',
+                                    fontSize: isCompact ? '1.2rem' : '1.5rem',
                                     fontWeight: 600,
                                   }}
                                 >
-                                  <AutoFixHighRounded sx={{ fontSize: isCompact ? 25 : 28, mx: 0.5 }} />
+                                  <AutoFixHighRounded sx={{ fontSize: isCompact ? 23 : 28, mx: 0.5 }} />
                                   {credits}
                                 </Box>
                               </Card>
