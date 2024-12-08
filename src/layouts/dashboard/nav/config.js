@@ -95,8 +95,8 @@ const navConfig = [
       },
       {
         title: 'Feedback',
-        path: 'https://forms.gle/8CETtVbwYoUmxqbi7',
-        externalLink: true,
+        path: '/support',
+        externalLink: false,
         icon: <MapsUgc />
       },
     ]

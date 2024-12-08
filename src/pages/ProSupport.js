@@ -121,12 +121,12 @@ export default function ProSupport() {
                   Upgrade to Pro
                 </LoadingButton>
               </center>
-              <Typography variant="body2" textAlign="center" style={{ opacity: 0.7 }}>
+              <Typography variant="body1" textAlign="center" style={{ opacity: 0.7 }}>
                 <br />
                 <br />
-                Or, submit general feedback using{' '}
+                Or submit <b>anonymous feedback</b> using{' '}
                 <a href="https://forms.gle/8CETtVbwYoUmxqbi7" style={{ color: 'white' }} target="_blank" rel="noreferrer">
-                  this form
+                <b>this form</b>
                 </a>.
               </Typography>
             </Grid>
