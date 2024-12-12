@@ -9,6 +9,7 @@ const SubtitleViewerPage = () => {
   const [subtitles, setSubtitles] = useState([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [searchQuery, setSearchQuery] = useState('');
   const [formValues, setFormValues] = useState({
     showId: '',
     season: '',
@@ -76,6 +77,10 @@ const SubtitleViewerPage = () => {
     setPage(0);
   };
 
+  const filteredSubtitles = subtitles.filter(subtitle =>
+    subtitle.subtitle_text.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <Container maxWidth="md">
       <Typography fontSize={30} fontWeight={700}>
@@ -118,6 +123,19 @@ const SubtitleViewerPage = () => {
         </Button>
       </Paper>
 
+      {subtitles.length > 0 && (
+        <Paper sx={{ p: 2, mb: 2 }}>
+          <TextField
+            fullWidth
+            label="Search subtitles"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            margin="normal"
+            placeholder="Type to filter subtitles..."
+          />
+        </Paper>
+      )}
+
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
@@ -129,7 +147,7 @@ const SubtitleViewerPage = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {subtitles
+            {filteredSubtitles
               .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
               .map((subtitle) => (
                 <TableRow key={subtitle.subtitle_index}>
@@ -143,7 +161,7 @@ const SubtitleViewerPage = () => {
         </Table>
         <Stack spacing={2} alignItems="center" sx={{ p: 2 }}>
           <Pagination 
-            count={Math.ceil(subtitles.length / rowsPerPage)}
+            count={Math.ceil(filteredSubtitles.length / rowsPerPage)}
             page={page + 1}
             onChange={(e, newPage) => setPage(newPage - 1)}
             color="primary"
@@ -151,7 +169,7 @@ const SubtitleViewerPage = () => {
             showLastButton
           />
           <Typography variant="caption" color="text.secondary">
-            Showing {page * rowsPerPage + 1}-{Math.min((page + 1) * rowsPerPage, subtitles.length)} of {subtitles.length} items
+            Showing {page * rowsPerPage + 1}-{Math.min((page + 1) * rowsPerPage, filteredSubtitles.length)} of {filteredSubtitles.length} items
           </Typography>
         </Stack>
       </TableContainer>
