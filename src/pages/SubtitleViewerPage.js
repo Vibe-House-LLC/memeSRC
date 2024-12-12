@@ -3,6 +3,7 @@ import { Container, Divider, Paper, Table, TableBody, TableCell, TableContainer,
 import { Storage } from 'aws-amplify';
 import { Buffer } from 'buffer';
 import sanitizeHtml from 'sanitize-html';
+import { useNavigate } from 'react-router-dom';
 import { extractVideoFrames } from '../utils/videoFrameExtractor';
 
 const SubtitleViewerPage = () => {
@@ -18,6 +19,8 @@ const SubtitleViewerPage = () => {
   });
   const [frameImages, setFrameImages] = useState({});
   const [loadedImages, setLoadedImages] = useState({});
+
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -220,7 +223,7 @@ const SubtitleViewerPage = () => {
           <TableHead>
             <TableRow>
               <TableCell><b>Thumbnail</b></TableCell>
-              <TableCell><b>Time Range</b></TableCell>
+              <TableCell><b>Time</b></TableCell>
               <TableCell><b>Subtitle Text</b></TableCell>
             </TableRow>
           </TableHead>
@@ -228,8 +231,17 @@ const SubtitleViewerPage = () => {
             {filteredSubtitles
               .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
               .map((subtitle) => (
-                <TableRow key={subtitle.subtitle_index}>
-                  <TableCell style={{ width: 100 }}>
+                <TableRow 
+                  key={subtitle.subtitle_index}
+                  onClick={() => navigate(`/frame/${formValues.showId}/${formValues.season}/${formValues.episode}/${subtitle.middle_frame}`)}
+                  sx={{ 
+                    cursor: 'pointer',
+                    '&:hover': { 
+                      backgroundColor: 'rgba(0, 0, 0, 0.04)' 
+                    }
+                  }}
+                >
+                  <TableCell style={{ width: 160 }}>
                     {frameImages[subtitle.middle_frame] && (
                       <img 
                         src={frameImages[subtitle.middle_frame]} 
@@ -237,7 +249,8 @@ const SubtitleViewerPage = () => {
                         style={{ 
                           width: '100%', 
                           height: 'auto',
-                          display: loadedImages[subtitle.middle_frame] ? 'block' : 'none'
+                          display: loadedImages[subtitle.middle_frame] ? 'block' : 'none',
+                          cursor: 'pointer'
                         }}
                         onLoad={() => handleImageLoad(subtitle.middle_frame)}
                         onError={() => handleImageError(subtitle.middle_frame)}
@@ -255,7 +268,7 @@ const SubtitleViewerPage = () => {
                     )}
                   </TableCell>
                   <TableCell>
-                    {frameToTimeCode(subtitle.start_frame)} - {frameToTimeCode(subtitle.end_frame)}
+                    {frameToTimeCode(subtitle.middle_frame)}
                   </TableCell>
                   <TableCell>{subtitle.subtitle_text}</TableCell>
                 </TableRow>
