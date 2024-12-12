@@ -130,7 +130,12 @@ const SubtitleViewerPage = () => {
       .forEach(subtitle => fetchFrameImage(subtitle.middle_frame));
   };
 
-  // Also add this effect to handle search changes
+  // Move filteredSubtitles definition here, before it's used
+  const filteredSubtitles = subtitles.filter(subtitle =>
+    subtitle.subtitle_text.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Now the useEffect will have access to filteredSubtitles
   useEffect(() => {
     if (filteredSubtitles.length > 0) {
       // Fetch images for current page when search results change
@@ -139,10 +144,6 @@ const SubtitleViewerPage = () => {
         .forEach(subtitle => fetchFrameImage(subtitle.middle_frame));
     }
   }, [searchQuery, page, rowsPerPage]);
-
-  const filteredSubtitles = subtitles.filter(subtitle =>
-    subtitle.subtitle_text.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   const handleImageLoad = (frame) => {
     setLoadedImages(prev => ({
@@ -218,10 +219,8 @@ const SubtitleViewerPage = () => {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell><b>Index</b></TableCell>
               <TableCell><b>Thumbnail</b></TableCell>
-              <TableCell><b>Start Time</b></TableCell>
-              <TableCell><b>End Time</b></TableCell>
+              <TableCell><b>Time Range</b></TableCell>
               <TableCell><b>Subtitle Text</b></TableCell>
             </TableRow>
           </TableHead>
@@ -230,7 +229,6 @@ const SubtitleViewerPage = () => {
               .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
               .map((subtitle) => (
                 <TableRow key={subtitle.subtitle_index}>
-                  <TableCell>{subtitle.subtitle_index}</TableCell>
                   <TableCell style={{ width: 100 }}>
                     {frameImages[subtitle.middle_frame] && (
                       <img 
@@ -256,8 +254,9 @@ const SubtitleViewerPage = () => {
                       />
                     )}
                   </TableCell>
-                  <TableCell>{frameToTimeCode(subtitle.start_frame)}</TableCell>
-                  <TableCell>{frameToTimeCode(subtitle.end_frame)}</TableCell>
+                  <TableCell>
+                    {frameToTimeCode(subtitle.start_frame)} - {frameToTimeCode(subtitle.end_frame)}
+                  </TableCell>
                   <TableCell>{subtitle.subtitle_text}</TableCell>
                 </TableRow>
               ))}
