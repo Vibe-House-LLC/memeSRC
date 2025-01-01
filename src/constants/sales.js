@@ -3,7 +3,7 @@ export const SALE_END_DATE = new Date('2025-01-01T00:00:00').getTime();
 
 // Current sale configuration
 export const CURRENT_SALE = {
-  isActive: true,
+  isActive: false,
   discountPercent: 40,
   monthsDuration: 3,
   get discountMultiplier() {
