@@ -288,7 +288,7 @@ export const DialogProvider = ({ children }) => {
               <DialogContent sx={{ py: isCompact ? 2 : 4, pb: isCompact ? 3 : 6 }}>
                 {CURRENT_SALE.isActive && (isXs || isCompact) && <CountdownTimer />}
                 <Grid container spacing={2}>
-                  <Grid item xs={12} sm={isCompact ? 12 : 6}>
+                  <Grid item xs={12} sm={CURRENT_SALE.isActive ? (isCompact ? 12 : 6) : 12}>
                     <Box
                       p={isCompact ? 2 : 2.5}
                       sx={{

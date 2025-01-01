@@ -1430,9 +1430,9 @@ export const handler = async (event) => {
           { price: priceMap[priceKey], quantity: 1 },
         ],
         mode: 'subscription',
-        discounts: [{
-          coupon: `${process.env.ENV === 'beta' ? '9rKTV0QH' : '1UE38YJK'}`
-        }],
+        // discounts: [{
+        //   coupon: `${process.env.ENV === 'beta' ? '9rKTV0QH' : '1UE38YJK'}`
+        // }],
         metadata: {
           callbackUrl: body.currentUrl
         }
