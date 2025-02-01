@@ -4,6 +4,11 @@
 }
 
 @font-face {
+    font-family: 'Baveuse';
+    src: url('./fonts/baveuse.ttf') format('truetype');
+}
+
+@font-face {
     font-family: 'Futurama';
     src: url('./fonts/fr-bold.ttf') format('truetype');
 }
