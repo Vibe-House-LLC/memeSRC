@@ -38,7 +38,7 @@ export default function CollagePage() {
   const [selectedImages, setSelectedImages] = useState([]);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [selectedAspectRatio, setSelectedAspectRatio] = useState('square');
-  const [panelCount, setPanelCount] = useState(2); // Default panel count: 2
+  const [panelCount, setPanelCount] = useState(2); // Updated default panel count to 2
   const [activeStep, setActiveStep] = useState(0);
   
   const theme = useTheme();
@@ -71,13 +71,17 @@ export default function CollagePage() {
   const getCompatibleTemplates = () => {
     // Use getLayoutsForPanelCount which handles prioritization based on aspect ratio
     if (typeof getLayoutsForPanelCount === 'function') {
-      return getLayoutsForPanelCount(panelCount, selectedAspectRatio);
+      // Ensure minimum panel count of 2
+      const adjustedPanelCount = Math.max(2, panelCount);
+      return getLayoutsForPanelCount(adjustedPanelCount, selectedAspectRatio);
     }
     
     // If the function isn't available, fallback to basic filtering
     // First find templates that can handle the panel count
+    // Ensure minimum panel count of 2
+    const adjustedPanelCount = Math.max(2, panelCount);
     const panelCompatible = layoutTemplates.filter(template => 
-      template.minImages <= panelCount && template.maxImages >= panelCount
+      template.minImages <= adjustedPanelCount && template.maxImages >= adjustedPanelCount
     );
     
     // Then sort by their suitability for the current aspect ratio
