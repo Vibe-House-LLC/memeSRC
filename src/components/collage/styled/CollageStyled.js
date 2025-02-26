@@ -14,20 +14,21 @@ export const PageContainer = styled(Box)(({ theme }) => ({
 
 // Template card
 export const TemplateCard = styled(Paper)(({ theme, selected }) => ({
-  padding: theme.spacing(2),
+  padding: theme.spacing(0.5),
   cursor: 'pointer',
   position: 'relative',
-  height: '100%',
   display: 'flex',
   flexDirection: 'column',
-  transition: 'all 0.3s ease',
-  borderRadius: theme.shape.borderRadius * 1.5,
+  alignItems: 'center',
+  justifyContent: 'center',
+  transition: 'all 0.2s ease',
+  borderRadius: theme.shape.borderRadius,
   border: selected ? `2px solid ${theme.palette.primary.main}` : `1px solid ${alpha(theme.palette.divider, 0.2)}`,
   backgroundColor: selected 
-    ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.12 : 0.06)
+    ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.2 : 0.06)
     : theme.palette.background.paper,
   '&:hover': {
-    borderColor: theme.palette.primary.main
+    borderColor: selected ? theme.palette.primary.main : theme.palette.primary.light
   }
 }));
 

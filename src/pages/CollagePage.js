@@ -167,16 +167,14 @@ export default function CollagePage() {
                 border: isMobile ? 'none' : undefined // Remove border on mobile
               }}
             >
-              <Typography variant="h4" gutterBottom sx={{ 
+              <Typography variant="h3" gutterBottom sx={{ 
                 display: 'flex', 
-                alignItems: 'center', 
-                color: '#FFFFFF',
-                backgroundColor: theme.palette.primary.main,
-                padding: 1.5,
-                borderRadius: 1,
-                pl: 2
+                alignItems: 'center',
+                fontWeight: 'bold',
+                fontSize: '2.5rem',
+                mb: 2.5
               }}>
-                <Dashboard sx={{ mr: 1 }} /> Collage Tool
+                <Dashboard sx={{ mr: 1.5, color: 'primary.main', fontSize: '2.2rem' }} /> Collage Tool
               </Typography>
               <Typography variant="body2" color="text.secondary" paragraph>
                 Select your preferred aspect ratio, number of panels, and layout template.

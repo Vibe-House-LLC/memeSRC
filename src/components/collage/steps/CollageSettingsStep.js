@@ -32,10 +32,9 @@ import { aspectRatioPresets, layoutTemplates, getLayoutsForPanelCount } from "..
 
 // Create a new styled component for aspect ratio cards
 const AspectRatioCard = styled(Paper)(({ theme, selected }) => ({
-  padding: theme.spacing(1.5),
+  padding: theme.spacing(0.5),
   cursor: 'pointer',
   position: 'relative',
-  height: '100%',
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
@@ -48,7 +47,10 @@ const AspectRatioCard = styled(Paper)(({ theme, selected }) => ({
   '&:hover': {
     borderColor: selected ? theme.palette.primary.main : theme.palette.primary.light
   },
-  minWidth: 100
+  // Fixed size of 100x100 pixels for both card types
+  width: 100,
+  height: 100,
+  flexShrink: 0
 }));
 
 // Panel Counter component for panel count selector
@@ -94,9 +96,12 @@ const HorizontalScroller = styled(Box)(({ theme }) => ({
   },
   '-ms-overflow-style': 'none',  // IE, Edge
   gap: theme.spacing(2),
-  padding: theme.spacing(1, 0),
+  padding: theme.spacing(2, 1),
   position: 'relative',
-  scrollBehavior: 'smooth'
+  scrollBehavior: 'smooth',
+  alignItems: 'center',  // Center items vertically
+  justifyContent: 'flex-start',  // Start alignment for consistent scrolling
+  minHeight: 120  // Ensure container is tall enough for 100px cards + padding
 }));
 
 // Scroll button for scrollers
@@ -108,9 +113,13 @@ const ScrollButton = styled(IconButton)(({ theme, direction }) => ({
   backgroundColor: theme.palette.background.paper,
   boxShadow: theme.shadows[4],
   '&:hover': {
-    backgroundColor: theme.palette.grey[800],
+    backgroundColor: theme.palette.mode === 'dark' ? theme.palette.grey[800] : theme.palette.grey[200],
   },
-  ...(direction === 'left' ? { left: -4 } : { right: -4 }),
+  // Position the buttons for smaller cards
+  ...(direction === 'left' ? { left: -8 } : { right: -8 }),
+  // Size for smaller buttons
+  width: 36,
+  height: 36,
 }));
 
 // Scroll indicator for horizontal scrollers
@@ -118,15 +127,15 @@ const ScrollIndicator = styled(Box)(({ theme, direction, visible }) => ({
   position: 'absolute',
   top: 0,
   bottom: 0,
-  width: { xs: 30, sm: 40 },
+  width: { xs: 30, sm: 36 },
   background: `linear-gradient(to ${direction}, transparent, ${alpha(theme.palette.background.default, 0.9)})`,
   display: visible ? 'flex' : 'none',
   alignItems: 'center',
   justifyContent: direction === 'right' ? 'flex-end' : 'flex-start',
-  paddingLeft: direction === 'left' ? 4 : 0,
-  paddingRight: direction === 'right' ? 4 : 0,
+  paddingLeft: direction === 'left' ? 8 : 0,
+  paddingRight: direction === 'right' ? 8 : 0,
   pointerEvents: 'none',
-  zIndex: 2,
+  zIndex: 5,
   ...(direction === 'left' ? { left: 0 } : { right: 0 }),
 }));
 
@@ -135,6 +144,27 @@ const StepSectionHeading = styled(Box)(({ theme }) => ({
   alignItems: 'center',
   marginBottom: theme.spacing(2),
 }));
+
+// Helper function to convert aspect ratio value to a friendly format
+const getFriendlyAspectRatio = (value) => {
+  if (value === 1) return '1:1';
+  if (value === 'custom') return 'Custom';
+  
+  // Common aspect ratios with friendly names
+  if (Math.abs(value - 0.8) < 0.01) return '4:5';      // Portrait
+  if (Math.abs(value - 0.5625) < 0.01) return '9:16';  // Instagram Story
+  if (Math.abs(value - 1.33) < 0.01) return '4:3';     // Classic
+  if (Math.abs(value - 1.78) < 0.01) return '16:9';    // Landscape
+  
+  // For other values, find the closest simple fraction
+  if (value > 1) {
+    // Landscape orientation
+    return `${Math.round(value)}:1`;
+  } else {
+    // Portrait orientation
+    return `1:${Math.round(1/value)}`;
+  }
+};
 
 // Renamed component to CollageLayoutSettings
 const CollageLayoutSettings = ({ 
@@ -334,48 +364,35 @@ const CollageLayoutSettings = ({
     if (value === 'custom') {
       return (
         <Box sx={{ 
-          width: '100%', 
-          height: 60, 
+          width: '80%', 
+          height: '80%', 
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'center',
           border: theme => `1px dashed ${theme.palette.divider}`,
           borderRadius: 1,
-          mb: 1
         }}>
-          <Typography variant="caption">Custom Size</Typography>
+          <Typography variant="caption">Custom</Typography>
         </Box>
       );
     }
     
     // Calculate dimensions based on the aspect ratio value
-    // Keep the height at a fixed value, and adjust width based on aspect ratio
-    const maxHeight = 60;
-    const maxWidth = 100; // 100% of the container
+    const friendlyRatio = getFriendlyAspectRatio(value);
+  
+    // Size the preview to fill 85% of the container while maintaining aspect ratio
+    const containerSize = 85;
     
-    let previewWidth;
-    let previewHeight;
+    let previewWidth, previewHeight;
     
     if (value >= 1) {
       // Landscape or square orientation (wider than tall)
-      previewHeight = maxHeight;
-      previewWidth = maxHeight * value;
-      
-      // Constrain width if it exceeds container
-      if (previewWidth > maxWidth) {
-        previewWidth = maxWidth;
-        previewHeight = previewWidth / value;
-      }
+      previewWidth = containerSize;
+      previewHeight = containerSize / value;
     } else {
       // Portrait orientation (taller than wide)
-      previewWidth = maxWidth;
-      previewHeight = maxWidth / value;
-      
-      // Constrain height if it exceeds max height
-      if (previewHeight > maxHeight) {
-        previewHeight = maxHeight;
-        previewWidth = previewHeight * value;
-      }
+      previewHeight = containerSize;
+      previewWidth = containerSize * value;
     }
     
     return (
@@ -383,14 +400,13 @@ const CollageLayoutSettings = ({
         display: 'flex',
         alignItems: 'center', 
         justifyContent: 'center',
-        height: maxHeight,
+        height: '100%',
         width: '100%',
-        mb: 1
       }}>
         <Box 
           sx={{ 
-            width: `${previewWidth}px`,
-            height: `${previewHeight}px`,
+            width: `${previewWidth}%`,
+            height: `${previewHeight}%`,
             backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
             borderRadius: '2px',
             border: theme => `1px solid ${theme.palette.divider}`,
@@ -400,9 +416,9 @@ const CollageLayoutSettings = ({
             justifyContent: 'center',
           }}
         >
-          {/* Optional: Display aspect ratio value */}
-          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem', opacity: 0.8 }}>
-            {value === 1 ? '1:1' : value > 1 ? `${value.toFixed(1)}:1` : `1:${(1/value).toFixed(1)}`}
+          {/* Display aspect ratio with friendly format - smaller text for smaller cards */}
+          <Typography variant="caption" fontWeight="medium" color="text.primary" sx={{ opacity: 0.9 }}>
+            {friendlyRatio}
           </Typography>
         </Box>
       </Box>
@@ -495,32 +511,25 @@ const CollageLayoutSettings = ({
                 selected={selectedAspectRatio === preset.id}
                 onClick={() => handleSelectAspectRatio(preset.id)}
                 elevation={selectedAspectRatio === preset.id ? 3 : 1}
-                sx={{ 
-                  minWidth: { xs: 110, sm: 130, md: 150 },
-                  flexShrink: 0 
-                }}
               >
                 {renderAspectRatioPreview(preset)}
-                <Typography variant="caption" align="center">
-                  {preset.name}
-                </Typography>
                 
                 {selectedAspectRatio === preset.id && (
                   <Box 
                     sx={{ 
                       position: 'absolute', 
-                      top: 8, 
-                      right: 8, 
+                      top: 4, 
+                      right: 4, 
                       bgcolor: 'primary.main',
                       borderRadius: '50%',
-                      width: 16,
-                      height: 16,
+                      width: 20,
+                      height: 20,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center'
                     }}
                   >
-                    <Check sx={{ fontSize: 12, color: 'white' }} />
+                    <Check sx={{ fontSize: 14, color: 'white' }} />
                   </Box>
                 )}
               </AspectRatioCard>
@@ -598,58 +607,62 @@ const CollageLayoutSettings = ({
                     key={template.id}
                     sx={{ 
                       flexShrink: 0,
-                      minWidth: { xs: 180, sm: 220, md: 250 }
+                      // Fixed size of 100x100 pixels to match aspect ratio cards
+                      width: 100,
+                      height: 100,
                     }}
                   >
                     <TemplateCard
                       selected={isSelected}
                       onClick={() => handleTemplateClick(template)}
+                      sx={{
+                        width: '100%',
+                        height: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: theme.spacing(0.5),
+                      }}
                     >
+                      {/* Container to properly handle aspect ratio */}
                       <Box 
                         sx={{ 
                           position: 'relative',
-                          '&:before': {
-                            content: '""',
-                            display: 'block',
-                            paddingTop: `${100 / aspectRatioValue}%`,
-                          }
+                          width: '100%',
+                          height: '100%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
                         }}
                       >
-                        <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+                        {/* Aspect ratio constraining box */}
+                        <Box
+                          sx={{
+                            position: 'relative',
+                            width: aspectRatioValue >= 1 ? '85%' : `${85 * aspectRatioValue}%`,
+                            height: aspectRatioValue >= 1 ? `${85 / aspectRatioValue}%` : '85%',
+                          }}
+                        >
                           {template.renderPreview(aspectRatioValue, theme, panelCount)}
                         </Box>
                       </Box>
-                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 1 }}>
-                        <Typography 
-                          variant="body2" 
-                          sx={{ 
-                            fontWeight: isSelected ? 600 : 400
-                          }}
-                        >
-                          {template.name}
-                        </Typography>
-                        <Chip 
-                          size="small" 
-                          label={`${template.minImages} panel${template.minImages !== 1 ? 's' : ''}`}
-                          sx={{ height: 20, fontSize: '0.7rem' }}
-                        />
-                      </Box>
+                      
                       {isSelected && (
                         <Box 
                           sx={{ 
                             position: 'absolute', 
-                            top: 8, 
-                            right: 8, 
+                            top: 4, 
+                            right: 4, 
                             bgcolor: 'primary.main',
                             borderRadius: '50%',
-                            width: 24,
-                            height: 24,
+                            width: 20,
+                            height: 20,
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center'
                           }}
                         >
-                          <Check sx={{ fontSize: 18, color: 'white' }} />
+                          <Check sx={{ fontSize: 14, color: 'white' }} />
                         </Box>
                       )}
                     </TemplateCard>
