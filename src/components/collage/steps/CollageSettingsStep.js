@@ -429,47 +429,9 @@ const CollageLayoutSettings = ({
   const selectedAspectRatioObj = aspectRatioPresets.find(p => p.id === selectedAspectRatio);
   
   return (
-    <Box sx={{ pt: 2 }}>
-      {/* Panel Count Selector - New section */}
-      <Box sx={{ mb: 4 }}>
-        <StepSectionHeading>
-          <Settings sx={{ mr: 1.5, color: 'primary.main' }} />
-          <Typography variant="h6">
-            Number of Panels
-          </Typography>
-        </StepSectionHeading>
-        
-        <PanelCounter>
-          <PanelCountButton 
-            aria-label="Decrease panel count" 
-            disabled={panelCount <= 2}
-            onClick={handlePanelCountDecrease}
-            size="medium"
-          >
-            <Remove />
-          </PanelCountButton>
-          
-          <Typography variant="h5" sx={{ 
-            minWidth: 40, 
-            textAlign: 'center',
-            fontWeight: 600
-          }}>
-            {panelCount}
-          </Typography>
-          
-          <PanelCountButton 
-            aria-label="Increase panel count" 
-            disabled={panelCount >= 5}
-            onClick={handlePanelCountIncrease}
-            size="medium"
-          >
-            <Add />
-          </PanelCountButton>
-        </PanelCounter>
-      </Box>
-      
+    <Box sx={{ pt: 1 }}>
       {/* Aspect Ratio Section - with horizontal scrolling */}
-      <Box sx={{ mb: 4 }}>
+      <Box sx={{ mb: 3 }}>
         <StepSectionHeading>
           <AspectRatio sx={{ mr: 1.5, color: 'primary.main' }} />
           <Typography variant="h6">
@@ -556,8 +518,46 @@ const CollageLayoutSettings = ({
         </Box>
       </Box>
       
+      {/* Panel Count Selector - Moved below Aspect Ratio */}
+      <Box sx={{ mb: 3 }}>
+        <StepSectionHeading>
+          <Settings sx={{ mr: 1.5, color: 'primary.main' }} />
+          <Typography variant="h6">
+            Number of Panels
+          </Typography>
+        </StepSectionHeading>
+        
+        <PanelCounter>
+          <PanelCountButton 
+            aria-label="Decrease panel count" 
+            disabled={panelCount <= 2}
+            onClick={handlePanelCountDecrease}
+            size="medium"
+          >
+            <Remove />
+          </PanelCountButton>
+          
+          <Typography variant="h5" sx={{ 
+            minWidth: 40, 
+            textAlign: 'center',
+            fontWeight: 600
+          }}>
+            {panelCount}
+          </Typography>
+          
+          <PanelCountButton 
+            aria-label="Increase panel count" 
+            disabled={panelCount >= 5}
+            onClick={handlePanelCountIncrease}
+            size="medium"
+          >
+            <Add />
+          </PanelCountButton>
+        </PanelCounter>
+      </Box>
+      
       {/* Layout Section - shows compatible layouts based on panel count */}
-      <Box sx={{ mb: 4 }}>
+      <Box sx={{ mb: 3 }}>
         <StepSectionHeading>
           <GridView sx={{ mr: 1.5, color: 'primary.main' }} />
           <Typography variant="h6">

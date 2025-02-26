@@ -134,30 +134,28 @@ export default function CollagePage() {
     return (
       <Box component="main" sx={{ 
         flexGrow: 1,
-        pb: 8
+        pb: 6
       }}>
         <Container maxWidth="lg" sx={{
-          pt: 4,
+          pt: 3,
           px: isMobile ? 1 : 3 // Reduce horizontal padding on mobile
         }}>
           <Paper 
             elevation={isMobile ? 0 : 1} 
             sx={{ 
-              p: isMobile ? 0 : 3, // Remove padding on mobile
+              p: isMobile ? 0 : 2, // Reduced padding from 3 to 2
               borderRadius: isMobile ? 0 : 2, // Remove border radius on mobile
               backgroundColor: theme.palette.background.default,
               border: isMobile ? 'none' : undefined // Remove border on mobile
             }}
           >
-            {/* Removed Page Title "Create a Collage" */}
-            
             {/* Choose Layout Section - Renamed to "Collage Tool" */}
             <Paper
               variant={isMobile ? "plain" : "outlined"}
               elevation={0}
               sx={{
-                p: isMobile ? 1 : 3, // Reduce padding on mobile
-                mb: isMobile ? 2 : 4, // Reduce margin on mobile
+                p: isMobile ? 1 : 2, // Reduced padding from 3 to 2
+                mb: isMobile ? 1.5 : 3, // Reduced margin bottom
                 borderRadius: isMobile ? 0 : 2, // Remove border radius on mobile
                 backgroundColor: isMobile 
                   ? 'transparent' 
@@ -171,12 +169,12 @@ export default function CollagePage() {
                 display: 'flex', 
                 alignItems: 'center',
                 fontWeight: 'bold',
-                fontSize: '2.5rem',
-                mb: 2.5
+                fontSize: '2.2rem', // Reduced font size
+                mb: 1.5 // Reduced margin bottom
               }}>
-                <Dashboard sx={{ mr: 1.5, color: 'primary.main', fontSize: '2.2rem' }} /> Collage Tool
+                <Dashboard sx={{ mr: 1.5, color: 'primary.main', fontSize: '2rem' }} /> Collage Tool
               </Typography>
-              <Typography variant="body2" color="text.secondary" paragraph>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
                 Select your preferred aspect ratio, number of panels, and layout template.
               </Typography>
               
@@ -198,8 +196,8 @@ export default function CollagePage() {
               variant={isMobile ? "plain" : "outlined"}
               elevation={0}
               sx={{
-                p: isMobile ? 1 : 3, // Reduce padding on mobile
-                mb: isMobile ? 2 : 4, // Reduce margin on mobile
+                p: isMobile ? 1 : 2, // Reduced padding from 3 to 2
+                mb: isMobile ? 1.5 : 3, // Reduced margin bottom
                 borderRadius: isMobile ? 0 : 2, // Remove border radius on mobile
                 backgroundColor: isMobile 
                   ? 'transparent' 
@@ -209,10 +207,15 @@ export default function CollagePage() {
                 border: isMobile ? 'none' : undefined // Remove border on mobile
               }}
             >
-              <Typography variant="h5" gutterBottom sx={{ display: 'flex', alignItems: 'center', color: theme.palette.primary.main }}>
+              <Typography variant="h5" gutterBottom sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                color: theme.palette.primary.main,
+                mb: 1
+              }}>
                 <PhotoLibrary sx={{ mr: 1 }} /> Add Images & Create Collage
               </Typography>
-              <Typography variant="body2" color="text.secondary" paragraph>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
                 Select images for your collage and assign them to panels by clicking on the layout.
               </Typography>
               
@@ -226,15 +229,18 @@ export default function CollagePage() {
                 setPanelImageMapping={setPanelImageMapping}
               />
               
-              <Divider sx={{ my: isMobile ? 2 : 3 }} />
+              <Divider sx={{ my: isMobile ? 1.5 : 2 }} />
               
               <Box sx={{ 
                 display: 'flex', 
                 flexDirection: 'column', 
                 alignItems: 'center', 
-                mt: isMobile ? 1 : 2 
+                mt: isMobile ? 0.5 : 1.5 
               }}>
-                <Typography variant="body1" color="text.secondary" paragraph align="center" sx={{ maxWidth: 500 }}>
+                <Typography variant="body1" color="text.secondary" paragraph align="center" sx={{ 
+                  maxWidth: 500,
+                  mb: 1.5 
+                }}>
                   Ready to create your collage? Make sure you've selected a layout and added images to all panels.
                 </Typography>
                 
@@ -258,13 +264,13 @@ export default function CollagePage() {
                 </LoadingButton>
                 
                 {!selectedTemplate && (
-                  <Typography variant="caption" color="error" sx={{ mt: 1 }}>
+                  <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
                     Please select a layout template first.
                   </Typography>
                 )}
                 
                 {selectedTemplate && selectedImages.length === 0 && (
-                  <Typography variant="caption" color="error" sx={{ mt: 1 }}>
+                  <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
                     Please add at least one image.
                   </Typography>
                 )}

@@ -147,12 +147,12 @@ const CollageImagesStep = ({
   }, [renderedImage]);
 
   return (
-    <Box sx={{ my: 2 }}>
-      <Typography variant="h6" gutterBottom>
+    <Box sx={{ my: 1 }}>
+      <Typography variant="h6" gutterBottom sx={{ mb: 1 }}>
         Select Images for Your Collage
       </Typography>
       
-      <Typography variant="body2" color="text.secondary" paragraph>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         Click on a panel in the layout to assign an image to it. You can assign up to {panelCount} images.
       </Typography>
       
@@ -161,13 +161,13 @@ const CollageImagesStep = ({
         elevation={1}
         sx={{
           p: 2,
-          mb: 3,
+          mb: 2,
           backgroundColor: theme.palette.background.paper,
           borderRadius: 2,
           textAlign: 'center'
         }}
       >
-        <Typography variant="subtitle1" gutterBottom>
+        <Typography variant="subtitle1" gutterBottom sx={{ mb: 1 }}>
           Layout Preview
         </Typography>
         
@@ -179,16 +179,16 @@ const CollageImagesStep = ({
             onClick={handlePreviewClick}
             sx={{
               maxWidth: '100%',
-              maxHeight: 400,
+              maxHeight: 350,
               objectFit: 'contain',
               borderRadius: 1,
-              cursor: 'pointer' // Add pointer cursor to indicate clickable
+              cursor: 'pointer'
             }}
           />
         ) : (
           <Box
             sx={{
-              height: 200,
+              height: 180,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -232,16 +232,16 @@ const CollageImagesStep = ({
           elevation={1}
           sx={{
             p: 2,
-            mb: 3,
+            mb: 2,
             backgroundColor: theme.palette.background.paper,
             borderRadius: 2
           }}
         >
-          <Typography variant="subtitle1" gutterBottom>
+          <Typography variant="subtitle1" gutterBottom sx={{ mb: 1 }}>
             Image Assignments
           </Typography>
           
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
             {Object.entries(panelToImageMap).map(([panelId, imageIndex]) => (
               <Box 
                 key={panelId}
