@@ -297,8 +297,8 @@ export default function CollagePage() {
                       }}>
                         <Settings sx={{ mr: 1, color: 'text.secondary' }} /> Settings
                       </Typography>
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-                        Select your preferred aspect ratio, number of panels, and layout template.
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 0 }}>
+                        Merge images together to create multi-panel memes
                       </Typography>
                       
                       <Box sx={{ 
