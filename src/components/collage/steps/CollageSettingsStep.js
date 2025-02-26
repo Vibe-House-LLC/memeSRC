@@ -160,10 +160,9 @@ const getFriendlyAspectRatio = (value) => {
   if (value > 1) {
     // Landscape orientation
     return `${Math.round(value)}:1`;
-  } else {
-    // Portrait orientation
-    return `1:${Math.round(1/value)}`;
   }
+  // Portrait orientation
+  return `1:${Math.round(1/value)}`;
 };
 
 // Renamed component to CollageLayoutSettings
@@ -383,7 +382,8 @@ const CollageLayoutSettings = ({
     // Size the preview to fill 85% of the container while maintaining aspect ratio
     const containerSize = 85;
     
-    let previewWidth, previewHeight;
+    let previewWidth;
+    let previewHeight;
     
     if (value >= 1) {
       // Landscape or square orientation (wider than tall)
