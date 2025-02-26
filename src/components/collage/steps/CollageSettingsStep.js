@@ -139,10 +139,10 @@ const ScrollIndicator = styled(Box)(({ theme, direction, visible }) => ({
   ...(direction === 'left' ? { left: 0 } : { right: 0 }),
 }));
 
-const StepSectionHeading = styled(Box)(({ theme }) => ({
+const StepSectionHeading = styled(Box)(({ theme, isMobile }) => ({
   display: 'flex',
   alignItems: 'center',
-  marginBottom: theme.spacing(2),
+  marginBottom: isMobile ? theme.spacing(1) : theme.spacing(1.5),
 }));
 
 // Helper function to convert aspect ratio value to a friendly format
@@ -429,12 +429,12 @@ const CollageLayoutSettings = ({
   const selectedAspectRatioObj = aspectRatioPresets.find(p => p.id === selectedAspectRatio);
   
   return (
-    <Box sx={{ pt: 1 }}>
+    <Box sx={{ pt: isMobile ? 0.5 : 1 }}>
       {/* Aspect Ratio Section - with horizontal scrolling */}
-      <Box sx={{ mb: 3 }}>
-        <StepSectionHeading>
-          <AspectRatio sx={{ mr: 1.5, color: 'primary.main' }} />
-          <Typography variant="h6">
+      <Box sx={{ mb: isMobile ? 2 : 3 }}>
+        <StepSectionHeading isMobile={isMobile}>
+          <AspectRatio sx={{ mr: 1, color: 'text.secondary', fontSize: isMobile ? '1.1rem' : undefined }} />
+          <Typography variant={isMobile ? "body1" : "subtitle1"} fontWeight={isMobile ? 500 : undefined}>
             Aspect Ratio
           </Typography>
         </StepSectionHeading>
@@ -519,10 +519,10 @@ const CollageLayoutSettings = ({
       </Box>
       
       {/* Panel Count Selector - Moved below Aspect Ratio */}
-      <Box sx={{ mb: 3 }}>
-        <StepSectionHeading>
-          <Settings sx={{ mr: 1.5, color: 'primary.main' }} />
-          <Typography variant="h6">
+      <Box sx={{ mb: isMobile ? 2 : 3 }}>
+        <StepSectionHeading isMobile={isMobile}>
+          <Settings sx={{ mr: 1, color: 'text.secondary', fontSize: isMobile ? '1.1rem' : undefined }} />
+          <Typography variant={isMobile ? "body1" : "subtitle1"} fontWeight={isMobile ? 500 : undefined}>
             Number of Panels
           </Typography>
         </StepSectionHeading>
@@ -557,10 +557,10 @@ const CollageLayoutSettings = ({
       </Box>
       
       {/* Layout Section - shows compatible layouts based on panel count */}
-      <Box sx={{ mb: 3 }}>
-        <StepSectionHeading>
-          <GridView sx={{ mr: 1.5, color: 'primary.main' }} />
-          <Typography variant="h6">
+      <Box sx={{ mb: isMobile ? 2 : 3 }}>
+        <StepSectionHeading isMobile={isMobile}>
+          <GridView sx={{ mr: 1, color: 'text.secondary', fontSize: isMobile ? '1.1rem' : undefined }} />
+          <Typography variant={isMobile ? "body1" : "subtitle1"} fontWeight={isMobile ? 500 : undefined}>
             Choose Layout
           </Typography>
         </StepSectionHeading>

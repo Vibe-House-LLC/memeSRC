@@ -147,29 +147,26 @@ const CollageImagesStep = ({
   }, [renderedImage]);
 
   return (
-    <Box sx={{ my: 1 }}>
-      <Typography variant="h6" gutterBottom sx={{ mb: 1 }}>
-        Select Images for Your Collage
-      </Typography>
-      
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Click on a panel in the layout to assign an image to it. You can assign up to {panelCount} images.
-      </Typography>
-      
+    <Box sx={{ my: isMobile ? 0 : 0.5 }}>
       {/* Layout Preview */}
       <Paper
         elevation={1}
         sx={{
-          p: 2,
-          mb: 2,
+          p: isMobile ? 1 : 2,
+          mb: isMobile ? 1 : 2,
           backgroundColor: theme.palette.background.paper,
           borderRadius: 2,
-          textAlign: 'center'
+          textAlign: 'center',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center'
         }}
       >
-        <Typography variant="subtitle1" gutterBottom sx={{ mb: 1 }}>
-          Layout Preview
-        </Typography>
+        {!isMobile && (
+          <Typography variant="subtitle2" color="text.secondary" gutterBottom sx={{ mb: 1 }}>
+            Preview
+          </Typography>
+        )}
         
         {renderedImage ? (
           <Box
@@ -179,16 +176,19 @@ const CollageImagesStep = ({
             onClick={handlePreviewClick}
             sx={{
               maxWidth: '100%',
-              maxHeight: 350,
+              maxHeight: isMobile ? 300 : 350, // Slightly smaller on mobile
               objectFit: 'contain',
               borderRadius: 1,
-              cursor: 'pointer'
+              cursor: 'pointer',
+              margin: '0 auto',
+              display: 'block'
             }}
           />
         ) : (
           <Box
             sx={{
               height: 180,
+              width: '100%',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -204,9 +204,9 @@ const CollageImagesStep = ({
         
         {/* Display information about clicked panel if any */}
         {selectedPanel && (
-          <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <Box sx={{ mt: 1.5, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <Typography variant="body2" color="primary">
-              Selected panel: {selectedPanel.name} (Panel #{selectedPanel.id + 1})
+              Panel #{selectedPanel.id + 1}
               {panelToImageMap[selectedPanel.id] !== undefined && 
                 ` - Image ${panelToImageMap[selectedPanel.id] + 1} assigned`}
             </Typography>
@@ -231,15 +231,17 @@ const CollageImagesStep = ({
         <Paper
           elevation={1}
           sx={{
-            p: 2,
-            mb: 2,
+            p: isMobile ? 1.5 : 2,
+            mb: isMobile ? 1 : 2,
             backgroundColor: theme.palette.background.paper,
             borderRadius: 2
           }}
         >
-          <Typography variant="subtitle1" gutterBottom sx={{ mb: 1 }}>
-            Image Assignments
-          </Typography>
+          {!isMobile && (
+            <Typography variant="subtitle2" color="text.secondary" gutterBottom sx={{ mb: 1 }}>
+              Image Assignments
+            </Typography>
+          )}
           
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
             {Object.entries(panelToImageMap).map(([panelId, imageIndex]) => (
@@ -249,7 +251,7 @@ const CollageImagesStep = ({
                   display: 'flex', 
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  p: 1,
+                  p: isMobile ? 0.75 : 1,
                   borderRadius: 1,
                   bgcolor: theme.palette.action.hover
                 }}
@@ -263,7 +265,7 @@ const CollageImagesStep = ({
                   size="small"
                   onClick={() => clearPanelImage(parseInt(panelId, 10))}
                 >
-                  Remove
+                  {isMobile ? "✕" : "Remove"}
                 </Button>
               </Box>
             ))}
