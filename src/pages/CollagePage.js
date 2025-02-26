@@ -185,6 +185,14 @@ export default function CollagePage() {
                   maxWidth: '100vw', // Ensure content doesn't exceed viewport width
                   overflowX: 'auto' // Changed from 'hidden' to 'auto' to allow scrolling indicators
                 }}>
+                  
+                  <Typography variant="body2" color="text.secondary" sx={{ 
+                    mb: 1.5,
+                    px: 0.5
+                  }}>
+                    Merge images together to create multi-panel memes
+                  </Typography>
+                  
                   <Box sx={{ 
                     width: '100%', 
                     overflowX: 'auto', // Changed from 'hidden' to 'auto' to allow scrolling indicators
