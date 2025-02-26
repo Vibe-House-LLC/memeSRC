@@ -40,9 +40,7 @@ const AspectRatioCard = styled(Paper)(({ theme, selected }) => ({
     ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.2 : 0.06)
     : theme.palette.background.paper,
   '&:hover': {
-    borderColor: selected ? theme.palette.primary.main : theme.palette.primary.light,
-    boxShadow: theme.shadows[4],
-    transform: 'translateY(-2px)'
+    borderColor: selected ? theme.palette.primary.main : theme.palette.primary.light
   },
   minWidth: 100
 }));

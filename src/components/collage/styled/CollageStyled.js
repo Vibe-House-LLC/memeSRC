@@ -27,9 +27,7 @@ export const TemplateCard = styled(Paper)(({ theme, selected }) => ({
     ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.12 : 0.06)
     : theme.palette.background.paper,
   '&:hover': {
-    borderColor: theme.palette.primary.main,
-    transform: 'translateY(-4px)',
-    boxShadow: theme.shadows[selected ? 4 : 2]
+    borderColor: theme.palette.primary.main
   }
 }));
 
@@ -181,7 +179,6 @@ export const AspectRatioOption = styled(Box)(({ theme, selected }) => ({
   '&:hover': {
     backgroundColor: selected 
       ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.18 : 0.08)
-      : alpha(theme.palette.divider, 0.05),
-    transform: selected ? 'none' : 'translateY(-2px)'
+      : alpha(theme.palette.divider, 0.05)
   }
 })); 
