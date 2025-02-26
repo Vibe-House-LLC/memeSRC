@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from "react";
-import { Box, Button, Typography, IconButton, Fade, useMediaQuery, useTheme } from "@mui/material";
-import { AddPhotoAlternate, Delete, KeyboardArrowRight, CloudUpload } from "@mui/icons-material";
+import { Box, Button, Typography, IconButton, Fade, useMediaQuery, useTheme, Alert } from "@mui/material";
+import { AddPhotoAlternate, Delete, KeyboardArrowRight, KeyboardArrowLeft, CloudUpload } from "@mui/icons-material";
 import { styled } from "@mui/material/styles";
 
 // Import styled components
@@ -21,7 +21,9 @@ const ActionButtonsContainer = styled(Box)(({ theme }) => ({
 
 const CollageImagesStep = ({ 
   selectedImages, 
-  setSelectedImages, 
+  setSelectedImages,
+  panelCount,
+  handleBack, 
   handleNext 
 }) => {
   const fileInputRef = useRef(null);
@@ -38,66 +40,64 @@ const CollageImagesStep = ({
   };
   
   const processFiles = (files) => {
-    // Maximum of 9 images allowed
-    const maxImages = 9;
+    // Maximum number of images allowed based on panel count
+    const maxImages = panelCount;
     const remainingSlots = maxImages - selectedImages.length;
     
     if (remainingSlots <= 0) {
       // Handle max images reached
-      alert("Maximum of 9 images allowed");
+      alert(`Maximum of ${panelCount} images allowed based on your panel selection`);
       return;
     }
     
+    // Process only the number of files that can fit in the remaining slots
     const filesToProcess = Array.from(files).slice(0, remainingSlots);
     
-    filesToProcess.forEach(file => {
-      if (!file.type.match('image.*')) {
-        return; // Skip non-image files
-      }
-      
-      const reader = new FileReader();
-      
-      reader.onload = (e) => {
-        setSelectedImages(prevImages => [
-          ...prevImages, 
-          {
-            src: e.target.result,
-            file,
-            name: file.name
-          }
-        ]);
-      };
-      
-      reader.readAsDataURL(file);
-    });
+    // Process each file
+    const newImages = filesToProcess.map(file => ({
+      id: Math.random().toString(36).substring(7),
+      file,
+      url: URL.createObjectURL(file),
+      name: file.name
+    }));
+    
+    setSelectedImages([...selectedImages, ...newImages]);
   };
+  
+  // Cleanup URLs when component unmounts
+  useEffect(() => {
+    return () => {
+      selectedImages.forEach(image => {
+        if (image.url && image.url.startsWith('blob:')) {
+          URL.revokeObjectURL(image.url);
+        }
+      });
+    };
+  }, [selectedImages]);
   
   const handleRemoveImage = (index) => {
-    setSelectedImages(prevImages => 
-      prevImages.filter((_, i) => i !== index)
-    );
-  };
-  
-  // Enable automatic advancing to next step when images are selected
-  useEffect(() => {
-    if (selectedImages.length > 0 && !isMobile) {
-      // Can auto-advance on desktop, but on mobile let user control the flow
-      // Optional: could add a timeout here to auto-advance after a delay
+    const newImages = [...selectedImages];
+    
+    // Cleanup URL
+    if (newImages[index].url.startsWith('blob:')) {
+      URL.revokeObjectURL(newImages[index].url);
     }
-  }, [selectedImages, isMobile]);
+    
+    // Remove the image
+    newImages.splice(index, 1);
+    setSelectedImages(newImages);
+  };
   
   // Drag and drop handlers
   const handleDragEnter = (e) => {
     e.preventDefault();
-    e.stopPropagation();
     setIsDragging(true);
   };
   
   const handleDragLeave = (e) => {
     e.preventDefault();
-    e.stopPropagation();
-    
-    // Only set to false if we're leaving the dropzone itself, not its children
+    // Only set isDragging to false if we're leaving the dropzone
+    // and not entering a child element
     if (e.currentTarget === e.target) {
       setIsDragging(false);
     }
@@ -105,166 +105,134 @@ const CollageImagesStep = ({
   
   const handleDragOver = (e) => {
     e.preventDefault();
-    e.stopPropagation();
   };
   
   const handleDrop = (e) => {
     e.preventDefault();
-    e.stopPropagation();
     setIsDragging(false);
     
-    if (e.dataTransfer.files) {
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       processFiles(e.dataTransfer.files);
     }
   };
   
+  const handleBrowseClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+  
   return (
-    <Fade in>
-      <Box>
-        <Box sx={{ maxWidth: 800, mx: 'auto' }}>
-          {/* Image upload area */}
-          <ImageDropzone
-            ref={dropzoneRef}
-            isDragActive={isDragging}
-            hasImages={selectedImages.length > 0}
-            onClick={() => fileInputRef.current?.click()}
-            onDragEnter={handleDragEnter}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            sx={{
-              borderRadius: 2,
-              transition: 'all 0.3s ease',
-              transform: isDragging ? 'scale(1.01)' : 'scale(1)'
+    <Box sx={{ pt: 2 }}>
+      <Typography variant="body1" paragraph>
+        Add up to <strong>{panelCount} images</strong> for your collage.
+      </Typography>
+      
+      {selectedImages.length < panelCount ? (
+        <ImageDropzone
+          ref={dropzoneRef}
+          onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+          isDragging={isDragging}
+          onClick={handleBrowseClick}
+          sx={{ mb: 3 }}
+        >
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleImageSelection}
+            accept="image/*"
+            multiple
+            style={{ display: 'none' }}
+          />
+          <CloudUpload sx={{ fontSize: 40, mb: 1, color: 'primary.main' }} />
+          <Typography variant="h6">
+            Drop images here or click to browse
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Supports JPG, PNG, WebP, and GIFs
+          </Typography>
+        </ImageDropzone>
+      ) : (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          You've reached the maximum of {panelCount} images for your selected layout. 
+          To add more, either remove some images or go back and increase the panel count.
+        </Alert>
+      )}
+      
+      {selectedImages.length > 0 && (
+        <Box>
+          <Typography variant="subtitle1" gutterBottom>
+            {selectedImages.length} of {panelCount} images selected
+          </Typography>
+          <Box 
+            sx={{ 
+              display: 'grid', 
+              gridTemplateColumns: { 
+                xs: 'repeat(2, 1fr)', 
+                sm: 'repeat(3, 1fr)', 
+                md: 'repeat(4, 1fr)',
+                lg: 'repeat(5, 1fr)'
+              },
+              gap: 2
             }}
           >
-            <input
-              type="file"
-              multiple
-              accept="image/*"
-              onChange={handleImageSelection}
-              ref={fileInputRef}
-              style={{ display: 'none' }}
-            />
-            
-            <CloudUpload 
-              color="primary" 
-              sx={{ 
-                fontSize: isMobile ? 40 : 64, 
-                opacity: 0.7,
-                mb: 2 
-              }} 
-            />
-            
-            <Typography 
-              variant={isMobile ? "body1" : "h6"} 
-              align="center" 
-              color="textSecondary"
-              sx={{ fontWeight: 500 }}
-            >
-              {isDragging ? "Drop images here" : "Drag and drop images here"}
-            </Typography>
-            
-            <Typography 
-              variant="body2" 
-              align="center" 
-              color="textSecondary" 
-              sx={{ mt: 1, opacity: 0.7 }}
-            >
-              or click to browse
-            </Typography>
-            
-            {selectedImages.length > 0 ? (
-              <Typography 
-                variant="caption" 
-                color="primary" 
-                sx={{ mt: 1, fontWeight: 'medium' }}
-              >
-                {selectedImages.length} {selectedImages.length === 1 ? 'image' : 'images'} selected
-                {selectedImages.length < 9 && ` (${9 - selectedImages.length} more allowed)`}
-              </Typography>
-            ) : null}
-          </ImageDropzone>
-          
-          {/* Preview of selected images */}
-          {selectedImages.length > 0 && (
-            <Box mt={4}>
-              <Typography 
-                variant="h6" 
-                sx={{ 
-                  mb: 2, 
-                  fontWeight: 500,
-                  fontSize: isMobile ? '1.1rem' : '1.25rem' 
-                }}
-              >
-                Selected Images
-              </Typography>
-              
-              <SelectedImagePreview
-                sx={{
-                  gridTemplateColumns: isMobile 
-                    ? 'repeat(auto-fill, minmax(80px, 1fr))' 
-                    : 'repeat(auto-fill, minmax(120px, 1fr))',
-                  gap: isMobile ? 1 : 2
-                }}
-              >
-                {selectedImages.map((image, index) => (
-                  <Fade key={index} in>
-                    <ImageThumb>
-                      <ThumbImage src={image.src} alt={`Selected ${index + 1}`} />
-                      <ImageActions className="image-actions">
-                        <IconButton 
-                          size="small" 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRemoveImage(index);
-                          }}
-                          sx={{ 
-                            color: 'white',
-                            bgcolor: 'rgba(0,0,0,0.4)',
-                            '&:hover': {
-                              bgcolor: 'rgba(211, 47, 47, 0.8)'
-                            }
-                          }}
-                        >
-                          <Delete fontSize="small" />
-                        </IconButton>
-                      </ImageActions>
-                    </ImageThumb>
-                  </Fade>
-                ))}
-              </SelectedImagePreview>
-            </Box>
-          )}
-          
-          {/* Action buttons */}
-          <ActionButtonsContainer>
-            <Box /> {/* Empty box for flex spacing */}
-            <Button
-              variant="contained"
-              color="primary"
-              disabled={selectedImages.length === 0}
-              onClick={handleNext}
-              endIcon={<KeyboardArrowRight />}
-              sx={{ 
-                mt: 2,
-                borderRadius: 2,
-                px: 3,
-                py: 1,
-                boxShadow: selectedImages.length > 0 ? 4 : 0,
-                transition: 'all 0.2s ease',
-                '&:hover': {
-                  transform: selectedImages.length > 0 ? 'translateY(-2px)' : 'none',
-                  boxShadow: selectedImages.length > 0 ? 6 : 0
-                }
-              }}
-            >
-              Continue
-            </Button>
-          </ActionButtonsContainer>
+            {selectedImages.map((image, index) => (
+              <Fade key={image.id} in timeout={300} style={{ transitionDelay: `${index * 50}ms` }}>
+                <SelectedImagePreview>
+                  <ImageThumb>
+                    <ThumbImage src={image.url} alt={`Selected image ${index + 1}`} />
+                  </ImageThumb>
+                  <ImageActions>
+                    <IconButton 
+                      size="small" 
+                      onClick={() => handleRemoveImage(index)}
+                      aria-label="Remove image"
+                    >
+                      <Delete />
+                    </IconButton>
+                  </ImageActions>
+                  <Typography variant="caption" noWrap sx={{ maxWidth: '100%', display: 'block' }}>
+                    {image.name}
+                  </Typography>
+                </SelectedImagePreview>
+              </Fade>
+            ))}
+          </Box>
         </Box>
-      </Box>
-    </Fade>
+      )}
+      
+      <ActionButtonsContainer>
+        <Button
+          onClick={handleBack}
+          startIcon={<KeyboardArrowLeft />}
+        >
+          Back to Layout
+        </Button>
+      
+        <Button
+          variant="contained"
+          onClick={handleNext}
+          disabled={selectedImages.length === 0}
+          endIcon={<KeyboardArrowRight />}
+          sx={{
+            borderRadius: 2,
+            px: 3,
+            py: 1,
+            boxShadow: selectedImages.length > 0 ? 4 : 0,
+            transition: 'all 0.2s ease',
+            '&:hover': {
+              transform: selectedImages.length > 0 ? 'translateY(-2px)' : 'none',
+              boxShadow: selectedImages.length > 0 ? 6 : 0
+            }
+          }}
+        >
+          Arrange Images
+        </Button>
+      </ActionButtonsContainer>
+    </Box>
   );
 };
 

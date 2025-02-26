@@ -28,6 +28,7 @@ const CollageStepperNavigation = ({
   selectedImages,
   selectedTemplate,
   compatibleTemplates,
+  panelCount,
   children
 }) => {
   const theme = useTheme();
@@ -36,25 +37,29 @@ const CollageStepperNavigation = ({
 
   // Handler for clicking on a step label to navigate
   const handleStepClick = (stepIndex) => {
-    // For step 1 (images), we need at least one image to proceed to later steps
-    if (stepIndex > 0 && selectedImages.length === 0) {
-      return; // Don't allow navigation if no images are selected
+    // For step 1 (layout/settings), always allow navigation
+    if (stepIndex === 0) {
+      setActiveStep(0);
+      return;
     }
     
-    // For step 3 (layouts), we need a compatible template
-    if (stepIndex === 2 && compatibleTemplates.length === 0) {
-      return; // Don't allow navigation if no compatible templates exist
+    // For step 2 (images), we need a compatible template
+    if (stepIndex === 1 && compatibleTemplates.length > 0 && selectedTemplate) {
+      setActiveStep(1);
+      return;
     }
     
-    // Allow navigation in either direction
-    setActiveStep(stepIndex);
+    // For step 3 (arrange), we need images and a template
+    if (stepIndex === 2 && selectedImages.length > 0 && selectedTemplate) {
+      setActiveStep(2);
+    }
   };
 
   // Check if a step is clickable
   const isStepClickable = (index) => {
     if (index === 0) return true; // First step is always clickable
-    if (index === 1) return selectedImages.length > 0; // Need images for step 2
-    if (index === 2) return selectedImages.length > 0 && compatibleTemplates.length > 0; // Need both for step 3
+    if (index === 1) return compatibleTemplates.length > 0 && selectedTemplate; // Need template for step 2
+    if (index === 2) return selectedImages.length > 0 && selectedTemplate; // Need images and template for step 3
     return false;
   };
 

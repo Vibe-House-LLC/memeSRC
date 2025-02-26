@@ -11,8 +11,8 @@ import {
   useMediaQuery
 } from "@mui/material";
 import { 
-  PhotoLibrary,
   Settings,
+  PhotoLibrary,
   Dashboard
 } from "@mui/icons-material";
 
@@ -38,6 +38,7 @@ export default function CollagePage() {
   const [selectedImages, setSelectedImages] = useState([]);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [selectedAspectRatio, setSelectedAspectRatio] = useState('square');
+  const [panelCount, setPanelCount] = useState(4); // Default panel count: 4
   const [activeStep, setActiveStep] = useState(0);
   
   const theme = useTheme();
@@ -47,17 +48,17 @@ export default function CollagePage() {
 
   const authorized = (user?.userDetails?.magicSubscription === "true" || user?.['cognito:groups']?.includes('admins'));
 
-  // Steps definition for the guided workflow - simplified for modern look
+  // Steps definition for the guided workflow - reordered with Settings first
   const steps = [
+    {
+      label: 'Layout',
+      description: 'Set panels, aspect ratio and template',
+      icon: <Settings />
+    },
     {
       label: 'Select Images',
       description: 'Choose up to 9 images',
       icon: <PhotoLibrary />
-    },
-    {
-      label: 'Layout',
-      description: 'Set aspect ratio and template',
-      icon: <Settings />
     },
     {
       label: 'Arrange',
@@ -66,48 +67,44 @@ export default function CollagePage() {
     }
   ];
 
-  // Select a template if it's compatible with the current image count
+  // Get compatible templates based on panel count instead of image count
+  const getCompatibleTemplates = () => {
+    return layoutTemplates.filter(template => 
+      template.minImages <= panelCount && template.maxImages >= panelCount
+    );
+  };
+
+  // Select a template if it's compatible with the current panel count
   useEffect(() => {
-    const imageCount = selectedImages.length;
-    
     // If we already have a selected template, check if it's still valid
     if (selectedTemplate) {
       const isValid = 
-        (selectedTemplate.minImages <= imageCount && 
-         selectedTemplate.maxImages >= imageCount);
+        (selectedTemplate.minImages <= panelCount && 
+         selectedTemplate.maxImages >= panelCount);
       
       // If not valid, set to null
       if (!isValid) {
         setSelectedTemplate(null);
       }
     } 
-    // If no template is selected but we have images, try to find a compatible one
-    else if (imageCount > 0) {
-      const compatibleTemplates = layoutTemplates.filter(template => 
-        template.minImages <= imageCount && template.maxImages >= imageCount
-      );
+    // If no template is selected but we have a panel count, try to find a compatible one
+    else if (panelCount > 0) {
+      const compatibleTemplates = getCompatibleTemplates();
       
       if (compatibleTemplates.length > 0) {
         // Select the first compatible template
         setSelectedTemplate(compatibleTemplates[0]);
       }
     }
-  }, [selectedImages]);
-
-  // Get compatible templates based on image count
-  const getCompatibleTemplates = () => {
-    const imageCount = selectedImages.length;
-    return layoutTemplates.filter(template => 
-      template.minImages <= imageCount && template.maxImages >= imageCount
-    );
-  };
+  }, [panelCount]);
 
   // Submit the collage for creation
   const handleCreateCollage = () => {
     console.log("Would create collage with:", {
       images: selectedImages,
       template: selectedTemplate,
-      aspectRatio: selectedAspectRatio
+      aspectRatio: selectedAspectRatio,
+      panelCount
     });
     // Future implementation would use these values to create the collage
   };
@@ -131,24 +128,27 @@ export default function CollagePage() {
       switch (step) {
         case 0:
           return (
-            <CollageImagesStep 
-              selectedImages={selectedImages} 
-              setSelectedImages={setSelectedImages} 
-              handleNext={handleNext} 
-            />
-          );
-        case 1:
-          return (
             <CollageSettingsStep 
               selectedImages={selectedImages}
               selectedTemplate={selectedTemplate}
               setSelectedTemplate={setSelectedTemplate}
               selectedAspectRatio={selectedAspectRatio}
               setSelectedAspectRatio={setSelectedAspectRatio}
-              handleBack={handleBack}
+              panelCount={panelCount}
+              setPanelCount={setPanelCount}
               handleNext={handleNext}
               aspectRatioPresets={aspectRatioPresets}
               layoutTemplates={layoutTemplates}
+            />
+          );
+        case 1:
+          return (
+            <CollageImagesStep 
+              selectedImages={selectedImages} 
+              setSelectedImages={setSelectedImages}
+              panelCount={panelCount}
+              handleBack={handleBack} 
+              handleNext={handleNext} 
             />
           );
         case 2:
@@ -186,6 +186,7 @@ export default function CollagePage() {
             selectedImages={selectedImages}
             selectedTemplate={selectedTemplate}
             compatibleTemplates={compatibleTemplates}
+            panelCount={panelCount}
           >
             {getStepContent(activeStep)}
           </CollageStepperNavigation>

@@ -18,7 +18,10 @@ import {
   ChevronRight,
   AspectRatio,
   GridView,
-  Check
+  Check,
+  Add,
+  Remove,
+  Dashboard
 } from "@mui/icons-material";
 
 // Import styled components
@@ -43,6 +46,32 @@ const AspectRatioCard = styled(Paper)(({ theme, selected }) => ({
     borderColor: selected ? theme.palette.primary.main : theme.palette.primary.light
   },
   minWidth: 100
+}));
+
+// Panel Counter component for panel count selector
+const PanelCounter = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: theme.spacing(2),
+  padding: theme.spacing(2),
+  backgroundColor: alpha(theme.palette.background.paper, 0.6),
+  borderRadius: theme.shape.borderRadius,
+  border: `1px solid ${theme.palette.divider}`,
+  marginBottom: theme.spacing(3)
+}));
+
+// Panel Count Button
+const PanelCountButton = styled(IconButton)(({ theme }) => ({
+  backgroundColor: theme.palette.mode === 'dark' ? alpha(theme.palette.primary.main, 0.2) : alpha(theme.palette.primary.main, 0.08),
+  color: theme.palette.primary.main,
+  '&:hover': {
+    backgroundColor: theme.palette.mode === 'dark' ? alpha(theme.palette.primary.main, 0.3) : alpha(theme.palette.primary.main, 0.15),
+  },
+  '&.Mui-disabled': {
+    backgroundColor: theme.palette.mode === 'dark' ? alpha(theme.palette.action.disabled, 0.2) : alpha(theme.palette.action.disabled, 0.1),
+    color: theme.palette.action.disabled,
+  }
 }));
 
 // Create a new styled component for the action buttons container
@@ -104,14 +133,15 @@ const StepSectionHeading = styled(Box)(({ theme }) => ({
   marginBottom: theme.spacing(2),
 }));
 
-// Main component
-const CollageDesigner = ({ 
+// Renamed component to CollageLayoutSettings
+const CollageLayoutSettings = ({ 
   selectedImages, 
   selectedTemplate, 
   setSelectedTemplate, 
   selectedAspectRatio, 
-  setSelectedAspectRatio, 
-  handleBack, 
+  setSelectedAspectRatio,
+  panelCount,
+  setPanelCount,
   handleNext,
   aspectRatioPresets,
   layoutTemplates 
@@ -128,7 +158,6 @@ const CollageDesigner = ({
   
   // Theme and responsive helpers
   const theme = useTheme();
-  const imageCount = selectedImages.length;
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   
   // Get aspect ratio value based on selected preset
@@ -137,15 +166,15 @@ const CollageDesigner = ({
     return preset ? preset.value : 1;
   };
   
-  // Check if a template is compatible with the current number of images
+  // Check if a template is compatible with the current panel count
   const isTemplateCompatible = (template) => {
-    return template.minImages <= imageCount && template.maxImages >= imageCount;
+    return template.minImages <= panelCount && template.maxImages >= panelCount;
   };
 
-  // Get compatible templates based on image count
+  // Get compatible templates based on panel count
   const getCompatibleTemplates = () => {
     return layoutTemplates.filter(template => 
-      template.minImages <= imageCount && template.maxImages >= imageCount
+      template.minImages <= panelCount && template.maxImages >= panelCount
     );
   };
   
@@ -158,6 +187,19 @@ const CollageDesigner = ({
   const handleTemplateClick = (template) => {
     if (isTemplateCompatible(template)) {
       setSelectedTemplate(template);
+    }
+  };
+
+  // Handle panel count changes
+  const handlePanelCountIncrease = () => {
+    if (panelCount < 9) {
+      setPanelCount(prevCount => prevCount + 1);
+    }
+  };
+
+  const handlePanelCountDecrease = () => {
+    if (panelCount > 2) {
+      setPanelCount(prevCount => prevCount - 1);
     }
   };
   
@@ -327,6 +369,192 @@ const CollageDesigner = ({
   
   return (
     <Box sx={{ pt: 2 }}>
+      {/* Panel Count Selector - New section */}
+      <Box sx={{ mb: 4 }}>
+        <StepSectionHeading>
+          <Dashboard sx={{ mr: 1.5, color: 'primary.main' }} />
+          <Typography variant="h6">
+            Number of Panels
+          </Typography>
+          <Chip 
+            label={`${panelCount} panels`} 
+            size="small" 
+            color="primary" 
+            variant="outlined"
+            sx={{ ml: 2 }}
+          />
+        </StepSectionHeading>
+        
+        <PanelCounter>
+          <PanelCountButton 
+            aria-label="Decrease panel count" 
+            disabled={panelCount <= 2}
+            onClick={handlePanelCountDecrease}
+            size="medium"
+          >
+            <Remove />
+          </PanelCountButton>
+          
+          <Typography variant="h5" sx={{ 
+            minWidth: 40, 
+            textAlign: 'center',
+            fontWeight: 600
+          }}>
+            {panelCount}
+          </Typography>
+          
+          <PanelCountButton 
+            aria-label="Increase panel count" 
+            disabled={panelCount >= 9}
+            onClick={handlePanelCountIncrease}
+            size="medium"
+          >
+            <Add />
+          </PanelCountButton>
+        </PanelCounter>
+      </Box>
+      
+      {/* Layout Section - shows compatible layouts based on panel count */}
+      <Box sx={{ mb: 4 }}>
+        <StepSectionHeading>
+          <GridView sx={{ mr: 1.5, color: 'primary.main' }} />
+          <Typography variant="h6">
+            Select a Layout
+          </Typography>
+          {selectedTemplate && (
+            <Chip 
+              label={selectedTemplate.name} 
+              size="small" 
+              color="primary" 
+              variant="outlined"
+              sx={{ ml: 2 }}
+            />
+          )}
+        </StepSectionHeading>
+        
+        {compatibleTemplates.length === 0 ? (
+          <Alert severity="info" sx={{ mb: 1 }}>
+            No templates match the current panel count ({panelCount}). Try a different number of panels.
+          </Alert>
+        ) : (
+          <Box sx={{ position: 'relative', px: { xs: 1, sm: 3 } }}>
+            {!isMobile && (
+              <>
+                <ScrollButton 
+                  direction="left" 
+                  onClick={() => scrollLeft(layoutsRef)} 
+                  size="small"
+                  aria-label="Scroll left"
+                  sx={{ display: layoutLeftScroll ? 'flex' : 'none' }}
+                >
+                  <ChevronLeft />
+                </ScrollButton>
+                
+                <ScrollButton 
+                  direction="right" 
+                  onClick={() => scrollRight(layoutsRef)} 
+                  size="small"
+                  aria-label="Scroll right"
+                  sx={{ display: layoutRightScroll ? 'flex' : 'none' }}
+                >
+                  <ChevronRight />
+                </ScrollButton>
+              </>
+            )}
+            
+            <HorizontalScroller 
+              ref={layoutsRef}
+            >
+              {compatibleTemplates.map(template => {
+                const isSelected = selectedTemplate?.id === template.id;
+                const aspectRatioValue = getAspectRatioValue();
+                
+                return (
+                  <Box
+                    key={template.id}
+                    sx={{ 
+                      flexShrink: 0,
+                      minWidth: { xs: 180, sm: 220, md: 250 }
+                    }}
+                  >
+                    <TemplateCard
+                      selected={isSelected}
+                      onClick={() => handleTemplateClick(template)}
+                    >
+                      <Box 
+                        sx={{ 
+                          position: 'relative',
+                          '&:before': {
+                            content: '""',
+                            display: 'block',
+                            paddingTop: `${100 / aspectRatioValue}%`,
+                          }
+                        }}
+                      >
+                        <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+                          {template.renderPreview(aspectRatioValue, theme, panelCount)}
+                        </Box>
+                      </Box>
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 1 }}>
+                        <Typography 
+                          variant="body2" 
+                          sx={{ 
+                            fontWeight: isSelected ? 600 : 400
+                          }}
+                        >
+                          {template.name}
+                        </Typography>
+                        <Chip 
+                          size="small" 
+                          label={`${template.minImages} panel${template.minImages !== 1 ? 's' : ''}`}
+                          sx={{ height: 20, fontSize: '0.7rem' }}
+                        />
+                      </Box>
+                      {isSelected && (
+                        <Box 
+                          sx={{ 
+                            position: 'absolute', 
+                            top: 8, 
+                            right: 8, 
+                            bgcolor: 'primary.main',
+                            borderRadius: '50%',
+                            width: 24,
+                            height: 24,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                        >
+                          <Check sx={{ fontSize: 18, color: 'white' }} />
+                        </Box>
+                      )}
+                    </TemplateCard>
+                  </Box>
+                );
+              })}
+              
+              {/* Spacer to ensure last items can be centered when scrolled fully */}
+              <Box sx={{ minWidth: 4, flexShrink: 0 }} />
+            </HorizontalScroller>
+            
+            {/* Visual indicators for scrolling */}
+            <ScrollIndicator 
+              direction="left" 
+              visible={layoutLeftScroll}
+            >
+              <ChevronLeft fontSize="small" sx={{ opacity: 0.7, color: 'text.secondary' }} />
+            </ScrollIndicator>
+            
+            <ScrollIndicator 
+              direction="right" 
+              visible={layoutRightScroll}
+            >
+              <ChevronRight fontSize="small" sx={{ opacity: 0.7, color: 'text.secondary' }} />
+            </ScrollIndicator>
+          </Box>
+        )}
+      </Box>
+
       {/* Aspect Ratio Section - with horizontal scrolling */}
       <Box sx={{ mb: 4 }}>
         <StepSectionHeading>
@@ -431,147 +659,6 @@ const CollageDesigner = ({
         </Box>
       </Box>
       
-      {/* Layout Section - now also with horizontal scrolling */}
-      <Box sx={{ mb: 4 }}>
-        <StepSectionHeading>
-          <GridView sx={{ mr: 1.5, color: 'primary.main' }} />
-          <Typography variant="h6">
-            Select a Layout
-          </Typography>
-          {selectedTemplate && (
-            <Chip 
-              label={selectedTemplate.name} 
-              size="small" 
-              color="primary" 
-              variant="outlined"
-              sx={{ ml: 2 }}
-            />
-          )}
-        </StepSectionHeading>
-        
-        {compatibleTemplates.length === 0 ? (
-          <Alert severity="info" sx={{ mb: 1 }}>
-            No templates match the current number of images ({imageCount}). Try adding more images or removing some.
-          </Alert>
-        ) : (
-          <Box sx={{ position: 'relative', px: { xs: 1, sm: 3 } }}>
-            {!isMobile && (
-              <>
-                <ScrollButton 
-                  direction="left" 
-                  onClick={() => scrollLeft(layoutsRef)} 
-                  size="small"
-                  aria-label="Scroll left"
-                  sx={{ display: layoutLeftScroll ? 'flex' : 'none' }}
-                >
-                  <ChevronLeft />
-                </ScrollButton>
-                
-                <ScrollButton 
-                  direction="right" 
-                  onClick={() => scrollRight(layoutsRef)} 
-                  size="small"
-                  aria-label="Scroll right"
-                  sx={{ display: layoutRightScroll ? 'flex' : 'none' }}
-                >
-                  <ChevronRight />
-                </ScrollButton>
-              </>
-            )}
-            
-            <HorizontalScroller 
-              ref={layoutsRef}
-            >
-              {compatibleTemplates.map(template => {
-                const isSelected = selectedTemplate?.id === template.id;
-                const aspectRatioValue = getAspectRatioValue();
-                
-                return (
-                  <Box
-                    key={template.id}
-                    sx={{ 
-                      flexShrink: 0,
-                      minWidth: { xs: 180, sm: 220, md: 250 }
-                    }}
-                  >
-                    <TemplateCard
-                      selected={isSelected}
-                      onClick={() => handleTemplateClick(template)}
-                    >
-                      <Box 
-                        sx={{ 
-                          position: 'relative',
-                          '&:before': {
-                            content: '""',
-                            display: 'block',
-                            paddingTop: `${100 / aspectRatioValue}%`,
-                          }
-                        }}
-                      >
-                        <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
-                          {template.renderPreview(aspectRatioValue, theme, imageCount)}
-                        </Box>
-                      </Box>
-                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 1 }}>
-                        <Typography 
-                          variant="body2" 
-                          sx={{ 
-                            fontWeight: isSelected ? 600 : 400
-                          }}
-                        >
-                          {template.name}
-                        </Typography>
-                        <Chip 
-                          size="small" 
-                          label={`${template.minImages} image${template.minImages !== 1 ? 's' : ''}`}
-                          sx={{ height: 20, fontSize: '0.7rem' }}
-                        />
-                      </Box>
-                      {isSelected && (
-                        <Box 
-                          sx={{ 
-                            position: 'absolute', 
-                            top: 8, 
-                            right: 8, 
-                            bgcolor: 'primary.main',
-                            borderRadius: '50%',
-                            width: 24,
-                            height: 24,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                          }}
-                        >
-                          <Check sx={{ fontSize: 18, color: 'white' }} />
-                        </Box>
-                      )}
-                    </TemplateCard>
-                  </Box>
-                );
-              })}
-              
-              {/* Spacer to ensure last items can be centered when scrolled fully */}
-              <Box sx={{ minWidth: 4, flexShrink: 0 }} />
-            </HorizontalScroller>
-            
-            {/* Visual indicators for scrolling */}
-            <ScrollIndicator 
-              direction="left" 
-              visible={layoutLeftScroll}
-            >
-              <ChevronLeft fontSize="small" sx={{ opacity: 0.7, color: 'text.secondary' }} />
-            </ScrollIndicator>
-            
-            <ScrollIndicator 
-              direction="right" 
-              visible={layoutRightScroll}
-            >
-              <ChevronRight fontSize="small" sx={{ opacity: 0.7, color: 'text.secondary' }} />
-            </ScrollIndicator>
-          </Box>
-        )}
-      </Box>
-      
       <ActionButtonsContainer>
         <Button
           variant="contained"
@@ -590,11 +677,11 @@ const CollageDesigner = ({
             }
           }}
         >
-          Create Collage
+          Next: Select Images
         </Button>
       </ActionButtonsContainer>
     </Box>
   );
 };
 
-export default CollageDesigner; 
+export default CollageLayoutSettings; 
