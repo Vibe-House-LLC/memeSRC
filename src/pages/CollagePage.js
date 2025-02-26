@@ -175,6 +175,8 @@ export default function CollagePage() {
               panelCount={panelCount}
               handleBack={handleBack} 
               handleNext={handleNext} 
+              selectedTemplate={selectedTemplate}
+              selectedAspectRatio={selectedAspectRatio}
             />
           );
         case 2:
