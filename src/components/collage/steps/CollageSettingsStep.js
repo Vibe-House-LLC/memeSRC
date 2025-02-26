@@ -101,7 +101,25 @@ const HorizontalScroller = styled(Box)(({ theme }) => ({
   scrollBehavior: 'smooth',
   alignItems: 'center',  // Center items vertically
   justifyContent: 'flex-start',  // Start alignment for consistent scrolling
-  minHeight: 120  // Ensure container is tall enough for 100px cards + padding
+  minHeight: 120,  // Ensure container is tall enough for 100px cards + padding
+  maxWidth: '100%', // Ensure it doesn't exceed container width
+  width: '100%', // Take full width of parent
+  boxSizing: 'border-box', // Include padding in width calculation
+  // Contain content to prevent layout shift
+  contain: 'content',
+  // Add more space on the right to prevent items from touching the edge
+  paddingRight: theme.spacing(2.5),
+  // Smoother momentum scrolling (for Safari)
+  WebkitOverflowScrolling: 'touch',
+  // Add custom styling for desktop
+  [theme.breakpoints.up('sm')]: {
+    padding: theme.spacing(2.5),
+    // Wider gap on desktop for better spacing
+    gap: theme.spacing(2.5),
+    // Add more horizontal spacing to prevent edge issues
+    paddingLeft: theme.spacing(2),
+    paddingRight: theme.spacing(4),
+  }
 }));
 
 // Scroll button for scrollers
@@ -110,33 +128,51 @@ const ScrollButton = styled(IconButton)(({ theme, direction }) => ({
   top: '50%',
   transform: 'translateY(-50%)',
   zIndex: 10,
-  backgroundColor: theme.palette.background.paper,
-  boxShadow: theme.shadows[4],
+  backgroundColor: theme.palette.mode === 'dark' 
+    ? alpha(theme.palette.background.paper, 0.85)
+    : alpha(theme.palette.background.paper, 0.95),
+  boxShadow: 'none', // Remove shadow
+  color: theme.palette.text.secondary,
   '&:hover': {
-    backgroundColor: theme.palette.mode === 'dark' ? theme.palette.grey[800] : theme.palette.grey[200],
+    backgroundColor: theme.palette.mode === 'dark' 
+      ? alpha(theme.palette.background.paper, 0.95)
+      : theme.palette.background.paper,
+    color: theme.palette.text.primary,
   },
-  // Position the buttons for smaller cards
-  ...(direction === 'left' ? { left: -8 } : { right: -8 }),
-  // Size for smaller buttons
-  width: 36,
-  height: 36,
+  // Position the buttons
+  ...(direction === 'left' ? { left: 0 } : { right: 0 }),
+  // Size for mobile
+  width: 28,
+  height: 28,
+  minWidth: 'unset',
+  padding: 0,
+  // Styles for desktop
+  [theme.breakpoints.up('sm')]: {
+    width: 32,
+    height: 32,
+    // Position flush with container edge
+    ...(direction === 'left' ? { left: 0 } : { right: 0 }),
+    // Semi-circular shape on desktop
+    borderRadius: direction === 'left' ? '0 50% 50% 0' : '50% 0 0 50%',
+    border: 'none',
+    opacity: 0.7, // Make buttons more subtle
+    '&:hover': {
+      opacity: 1,
+      backgroundColor: theme.palette.mode === 'dark' 
+        ? alpha(theme.palette.background.paper, 0.95)
+        : theme.palette.background.paper,
+      color: theme.palette.text.primary,
+    },
+    // Add transition for smooth hover
+    transition: theme.transitions.create(['background-color', 'color', 'opacity'], {
+      duration: theme.transitions.duration.shorter,
+    }),
+  }
 }));
 
-// Scroll indicator for horizontal scrollers
+// Scroll indicator for horizontal scrollers - REMOVING THESE COMPLETELY
 const ScrollIndicator = styled(Box)(({ theme, direction, visible }) => ({
-  position: 'absolute',
-  top: 0,
-  bottom: 0,
-  width: { xs: 30, sm: 36 },
-  background: `linear-gradient(to ${direction}, transparent, ${alpha(theme.palette.background.default, 0.9)})`,
-  display: visible ? 'flex' : 'none',
-  alignItems: 'center',
-  justifyContent: direction === 'right' ? 'flex-end' : 'flex-start',
-  paddingLeft: direction === 'left' ? 8 : 0,
-  paddingRight: direction === 'right' ? 8 : 0,
-  pointerEvents: 'none',
-  zIndex: 5,
-  ...(direction === 'left' ? { left: 0 } : { right: 0 }),
+  display: 'none', // Hide completely - no more gradient shadows
 }));
 
 const StepSectionHeading = styled(Box)(({ theme, isMobile }) => ({
@@ -276,16 +312,20 @@ const CollageLayoutSettings = ({
     }
   };
   
-  // Scroll handlers for scrollers
+  // Function to improve scroll experience - refactored to smooth the experience
   const scrollLeft = (ref) => {
     if (ref.current) {
-      ref.current.scrollBy({ left: -200, behavior: 'smooth' });
+      // Calculate a smoother scroll distance - approx 2 items
+      const scrollDistance = Math.min(ref.current.clientWidth * 0.65, 300);
+      ref.current.scrollBy({ left: -scrollDistance, behavior: 'smooth' });
     }
   };
   
   const scrollRight = (ref) => {
     if (ref.current) {
-      ref.current.scrollBy({ left: 200, behavior: 'smooth' });
+      // Calculate a smoother scroll distance - approx 2 items
+      const scrollDistance = Math.min(ref.current.clientWidth * 0.65, 300);
+      ref.current.scrollBy({ left: scrollDistance, behavior: 'smooth' });
     }
   };
 
@@ -439,7 +479,15 @@ const CollageLayoutSettings = ({
           </Typography>
         </StepSectionHeading>
         
-        <Box sx={{ position: 'relative', px: { xs: 1, sm: 3 } }}>
+        <Box sx={{ 
+          position: 'relative', 
+          width: '100%',
+          // Desktop specific styling
+          [theme.breakpoints.up('sm')]: {
+            width: 'calc(100% + 8px)', // Slightly wider to accommodate buttons
+            marginLeft: '-4px', // Center the expanded container
+          }
+        }}>
           {!isMobile && (
             <>
               <ScrollButton 
@@ -447,9 +495,11 @@ const CollageLayoutSettings = ({
                 onClick={() => scrollLeft(aspectRatioRef)} 
                 size="small"
                 aria-label="Scroll left"
-                sx={{ display: aspectLeftScroll ? 'flex' : 'none' }}
+                sx={{ 
+                  display: aspectLeftScroll ? 'flex' : 'none',
+                }}
               >
-                <ChevronLeft />
+                <ChevronLeft fontSize="small" />
               </ScrollButton>
               
               <ScrollButton 
@@ -457,9 +507,11 @@ const CollageLayoutSettings = ({
                 onClick={() => scrollRight(aspectRatioRef)} 
                 size="small"
                 aria-label="Scroll right"
-                sx={{ display: aspectRightScroll ? 'flex' : 'none' }}
+                sx={{ 
+                  display: aspectRightScroll ? 'flex' : 'none',
+                }}
               >
-                <ChevronRight />
+                <ChevronRight fontSize="small" />
               </ScrollButton>
             </>
           )}
@@ -501,20 +553,16 @@ const CollageLayoutSettings = ({
             <Box sx={{ minWidth: 4, flexShrink: 0 }} />
           </HorizontalScroller>
           
-          {/* Visual indicators for scrolling */}
+          {/* Visual indicators for scrolling - simplified with no icons */}
           <ScrollIndicator 
             direction="left" 
             visible={aspectLeftScroll}
-          >
-            <ChevronLeft fontSize="small" sx={{ opacity: 0.7, color: 'text.secondary' }} />
-          </ScrollIndicator>
+          />
           
           <ScrollIndicator 
             direction="right" 
             visible={aspectRightScroll}
-          >
-            <ChevronRight fontSize="small" sx={{ opacity: 0.7, color: 'text.secondary' }} />
-          </ScrollIndicator>
+          />
         </Box>
       </Box>
       
@@ -570,7 +618,15 @@ const CollageLayoutSettings = ({
             No templates match the current panel count ({panelCount}). Try a different number of panels.
           </Alert>
         ) : (
-          <Box sx={{ position: 'relative', px: { xs: 1, sm: 3 } }}>
+          <Box sx={{ 
+            position: 'relative', 
+            width: '100%',
+            // Desktop specific styling
+            [theme.breakpoints.up('sm')]: {
+              width: 'calc(100% + 8px)', // Slightly wider to accommodate buttons
+              marginLeft: '-4px', // Center the expanded container
+            }
+          }}>
             {!isMobile && (
               <>
                 <ScrollButton 
@@ -578,9 +634,11 @@ const CollageLayoutSettings = ({
                   onClick={() => scrollLeft(layoutsRef)} 
                   size="small"
                   aria-label="Scroll left"
-                  sx={{ display: layoutLeftScroll ? 'flex' : 'none' }}
+                  sx={{ 
+                    display: layoutLeftScroll ? 'flex' : 'none',
+                  }}
                 >
-                  <ChevronLeft />
+                  <ChevronLeft fontSize="small" />
                 </ScrollButton>
                 
                 <ScrollButton 
@@ -588,9 +646,11 @@ const CollageLayoutSettings = ({
                   onClick={() => scrollRight(layoutsRef)} 
                   size="small"
                   aria-label="Scroll right"
-                  sx={{ display: layoutRightScroll ? 'flex' : 'none' }}
+                  sx={{ 
+                    display: layoutRightScroll ? 'flex' : 'none',
+                  }}
                 >
-                  <ChevronRight />
+                  <ChevronRight fontSize="small" />
                 </ScrollButton>
               </>
             )}
@@ -674,20 +734,16 @@ const CollageLayoutSettings = ({
               <Box sx={{ minWidth: 4, flexShrink: 0 }} />
             </HorizontalScroller>
             
-            {/* Visual indicators for scrolling */}
+            {/* Visual indicators for scrolling - simplified with no icons */}
             <ScrollIndicator 
               direction="left" 
               visible={layoutLeftScroll}
-            >
-              <ChevronLeft fontSize="small" sx={{ opacity: 0.7, color: 'text.secondary' }} />
-            </ScrollIndicator>
+            />
             
             <ScrollIndicator 
               direction="right" 
               visible={layoutRightScroll}
-            >
-              <ChevronRight fontSize="small" sx={{ opacity: 0.7, color: 'text.secondary' }} />
-            </ScrollIndicator>
+            />
           </Box>
         )}
       </Box>
