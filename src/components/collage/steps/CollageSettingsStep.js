@@ -21,7 +21,7 @@ import {
   Check,
   Add,
   Remove,
-  Dashboard
+  Settings
 } from "@mui/icons-material";
 
 // Import styled components
@@ -417,7 +417,7 @@ const CollageLayoutSettings = ({
       {/* Panel Count Selector - New section */}
       <Box sx={{ mb: 4 }}>
         <StepSectionHeading>
-          <Dashboard sx={{ mr: 1.5, color: 'primary.main' }} />
+          <Settings sx={{ mr: 1.5, color: 'primary.main' }} />
           <Typography variant="h6">
             Number of Panels
           </Typography>

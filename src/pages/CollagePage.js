@@ -16,7 +16,8 @@ import {
 import { 
   Settings,
   PhotoLibrary,
-  Save
+  Save,
+  Dashboard
 } from "@mui/icons-material";
 
 import { UserContext } from "../UserContext";
@@ -148,12 +149,9 @@ export default function CollagePage() {
               border: isMobile ? 'none' : undefined // Remove border on mobile
             }}
           >
-            {/* Page Title */}
-            <Typography variant="h4" align="center" gutterBottom sx={{ mb: isMobile ? 2 : 3, fontWeight: 500, pt: isMobile ? 2 : 0 }}>
-              Create a Collage
-            </Typography>
+            {/* Removed Page Title "Create a Collage" */}
             
-            {/* Choose Layout Section */}
+            {/* Choose Layout Section - Renamed to "Collage Tool" */}
             <Paper
               variant={isMobile ? "plain" : "outlined"}
               elevation={0}
@@ -169,8 +167,16 @@ export default function CollagePage() {
                 border: isMobile ? 'none' : undefined // Remove border on mobile
               }}
             >
-              <Typography variant="h5" gutterBottom sx={{ display: 'flex', alignItems: 'center', color: theme.palette.primary.main }}>
-                <Settings sx={{ mr: 1 }} /> Choose Layout
+              <Typography variant="h4" gutterBottom sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                color: '#FFFFFF',
+                backgroundColor: theme.palette.primary.main,
+                padding: 1.5,
+                borderRadius: 1,
+                pl: 2
+              }}>
+                <Dashboard sx={{ mr: 1 }} /> Collage Tool
               </Typography>
               <Typography variant="body2" color="text.secondary" paragraph>
                 Select your preferred aspect ratio, number of panels, and layout template.

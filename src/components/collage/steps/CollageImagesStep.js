@@ -273,27 +273,6 @@ const CollageImagesStep = ({
       
       {/* Hidden canvas fallback for browsers without OffscreenCanvas support */}
       <canvas ref={canvasRef} style={{ display: "none" }} />
-      
-      {/* Navigation Buttons */}
-      <Box sx={{ display: 'flex', flexDirection: 'row', pt: 2 }}>
-        <Button
-          color="inherit"
-          onClick={handleBack}
-          sx={{ mr: 1 }}
-          startIcon={<KeyboardArrowLeft />}
-        >
-          Back to Settings
-        </Button>
-        <Box sx={{ flex: '1 1 auto' }} />
-        <Button
-          variant="contained"
-          onClick={handleNext}
-          endIcon={<KeyboardArrowRight />}
-          disabled={Object.keys(panelToImageMap).length === 0}
-        >
-          Continue to Arrange
-        </Button>
-      </Box>
     </Box>
   );
 };
