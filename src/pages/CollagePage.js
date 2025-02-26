@@ -1,641 +1,631 @@
-import { useContext, useEffect, useRef, useState, useCallback, memo } from "react";
+import { useContext, useState, useRef, useEffect } from "react";
 import { Helmet } from "react-helmet-async";
+import { useNavigate, useLocation } from 'react-router-dom'; 
+import { useTheme, styled } from "@mui/material/styles";
+import { LoadingButton } from "@mui/lab";
 import {
   Box,
   Button,
   Typography,
-  IconButton,
-  Fab,
-  useMediaQuery,
-  Menu,
   MenuItem,
   Grid,
   Stack,
-  Alert,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  RadioGroup,
-  FormControlLabel,
-  Radio,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Select,
   FormControl,
-  InputLabel,
-  Stepper,
-  Step,
-  StepLabel,
-  ToggleButton,
-  Popover,
+  Select,
+  Paper,
+  IconButton,
+  Alert,
+  Divider,
+  Chip,
+  Tooltip,
+  Zoom,
+  CircularProgress
 } from "@mui/material";
-import { styled } from "@mui/system";
-import { Delete, Add, ArrowBack, ArrowForward, ExpandMore, Close, Edit, ArrowUpward, ArrowDownward, Save, FormatColorFill } from "@mui/icons-material";
-import { useNavigate, useLocation } from 'react-router-dom'; 
-import { LoadingButton } from "@mui/lab";
+import { 
+  ArrowForward, 
+  AddPhotoAlternate,
+  Delete,
+  Check,
+  Info
+} from "@mui/icons-material";
 import BasePage from "./BasePage";
 import { UserContext } from "../UserContext";
 import { useSubscribeDialog } from "../contexts/useSubscribeDialog";
 
-const CollageContainer = styled(Box)({
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  marginTop: "32px",
-});
+// Import styled components
+import {
+  PageContainer,
+  TemplateCard,
+  ImageDropzone,
+  SelectedImagePreview,
+  ImageThumb,
+  ImageActions,
+  ThumbImage,
+  PreviewContainer
+} from "../components/collage/styled/CollageStyled";
 
-const CollageImage = styled("img")({
-  maxWidth: "100%",
-  height: "auto",
-  marginBottom: "24px",
-});
+// Import configuration
+import { aspectRatioPresets, layoutTemplates } from "../components/collage/config/CollageConfig";
 
-const ImageContainer = styled(Box)({
-  position: "relative",
-  marginBottom: "16px",
-  "&:hover .delete-button, &:active .delete-button, &:hover .edit-button, &:active .edit-button, &:hover .move-up-button, &:active .move-up-button, &:hover .move-down-button, &:active .move-down-button": {
-    display: "flex",
-  },
-});
-
-const ImageWrapper = styled(Box)({
-  position: "relative",
-  width: "350px",
-  margin: "auto",
-});
-
-const UploadButton = styled(Fab)({
-  left: "50%",
-  transform: "translateX(-50%)",
-  zIndex: 1,
-});
-
-const EditButton = styled(IconButton)({
-  position: "absolute",
-  top: "8px",
-  right: "48px",
-  zIndex: 1,
-  backgroundColor: "white",
-  color: "blue",
-  border: "2px solid blue",
-  padding: "4px",
-  display: "none",
-  '&:hover': {
-    backgroundColor: "#e6e6ff",
-  },
-});
-
-const DeleteButton = styled(IconButton)({
-  position: "absolute",
-  top: "8px",
-  right: "8px",
-  zIndex: 1,
-  backgroundColor: "white",
-  color: "red",
-  border: "2px solid red",
-  padding: "4px",
-  display: "none",
-  '&:hover': {
-    backgroundColor: "#ffe6e6",
-  },
-});
-
-const MoveUpButton = styled(IconButton)({
-  position: "absolute",
-  top: "48px",
-  right: "48px",
-  zIndex: 1,
-  backgroundColor: "white",
-  color: "green",
-  border: "2px solid green",
-  padding: "4px",
-  display: "none",
-  '&:hover': {
-    backgroundColor: "#e6ffe6",
-  },
-});
-
-const MoveDownButton = styled(IconButton)({
-  position: "absolute",
-  top: "48px",
-  right: "8px",
-  zIndex: 1,
-  backgroundColor: "white",
-  color: "orange",
-  border: "2px solid orange",
-  padding: "4px",
-  display: "none",
-  '&:hover': {
-    backgroundColor: "#fff2e6",
-  },
-});
-
-const EmptyStateContainer = styled(Box)(({ theme }) => ({
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
-  minHeight: "300px",
-  width: "100%",
-  maxWidth: "800px", // Set a reasonable maximum width
-  margin: "0 auto", // Center the container
-  border: `2px dashed #ccc`,
-  borderRadius: "8px",
-  padding: "16px",
-  textAlign: "center",
-  marginBottom: "32px",
-  cursor: "pointer",
-  transition: "background-color 0.3s",
-  "&:hover": {
-    backgroundColor: theme.palette.action.hover,
-  },
-}));
-
-const ResultContainer = styled(Box)(({ theme }) => ({
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  padding: theme.spacing(4),
-  backgroundColor: theme.palette.background.paper,
-  borderRadius: theme.shape.borderRadius,
-  boxShadow: theme.shadows[3],
-  marginTop: theme.spacing(3),
-  marginBottom: theme.spacing(3),
-}));
-
-const ResultOptionsContainer = styled(Box)(({ theme }) => ({
+// Create a new styled component for aspect ratio cards
+const AspectRatioCard = styled(Paper)(({ theme, selected }) => ({
+  padding: theme.spacing(1.5),
+  cursor: 'pointer',
+  position: 'relative',
+  height: '100%',
   display: 'flex',
   flexDirection: 'column',
-  gap: theme.spacing(3),
-  width: '100%',
-  maxWidth: '600px',
-  margin: '0 auto',
-  marginBottom: theme.spacing(4),
-}));
-
-const OptionGroup = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  gap: theme.spacing(2),
-  [theme.breakpoints.down('sm')]: {
-    flexDirection: 'column',
-  },
-}));
-
-const ThumbnailContainer = styled(Box)(({ theme }) => ({
-  display: 'flex',
+  alignItems: 'center',
   justifyContent: 'center',
-  alignItems: 'center',
-  marginTop: theme.spacing(4),
-  marginBottom: theme.spacing(4),
-}));
-
-const CollageThumbnail = styled('img')(({ theme }) => ({
-  maxWidth: '300px',
-  maxHeight: '300px',
-  objectFit: 'contain',
-  borderRadius: theme.shape.borderRadius,
-  boxShadow: theme.shadows[2],
-}));
-
-const BorderThicknessControl = styled(FormControl)(({ theme }) => ({
-  minWidth: 120,
-  // marginBottom: theme.spacing(2),
-}));
-
-const StepperContainer = styled(Box)(({ theme }) => ({
-  width: '100%',
-  marginBottom: theme.spacing(4),
-}));
-
-const StepButton = styled(Button)(({ theme }) => ({
-  color: 'white',
-  backgroundColor: theme.palette.grey[800],
+  transition: 'all 0.2s ease',
+  border: selected ? `2px solid ${theme.palette.primary.main}` : `1px solid ${theme.palette.divider}`,
   '&:hover': {
-    backgroundColor: theme.palette.grey[700],
-  },
+    borderColor: selected ? theme.palette.primary.main : theme.palette.primary.light,
+    boxShadow: theme.shadows[2]
+  }
 }));
-
-const StepContainer = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  gap: theme.spacing(1),
-  maxWidth: '800px',
-  margin: '0 auto',
-  padding: theme.spacing(2),
-}));
-
-const ButtonGroup = styled(Box)(({ theme }) => ({
-  display: 'grid',
-  gridTemplateColumns: '1fr 1fr',
-  gap: theme.spacing(2),
-  width: '100%',
-  marginTop: theme.spacing(2),
-}));
-
-const FullWidthButtonGroup = styled(Box)(({ theme }) => ({
-  width: '100%',
-  marginTop: theme.spacing(2),
-}));
-
-const OptionsContainer = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  flexDirection: 'row',
-  gap: theme.spacing(2),
-  marginBottom: theme.spacing(3),
-  [theme.breakpoints.down('sm')]: {
-    flexDirection: 'column',
-  },
-}));
-
-const OptionItem = styled(Box)(({ theme }) => ({
-  flex: 1,
-  minWidth: 0,
-}));
-
-const borderColorOptions = [
-  { label: 'White', value: '#FFFFFF' },
-  { label: 'Black', value: '#000000' },
-  { label: 'Red', value: '#FF0000' },
-  { label: 'Blue', value: '#0000FF' },
-  { label: 'Green', value: '#00FF00' },
-  { label: 'Custom', value: 'custom' },
-];
 
 export default function CollagePage() {
-  const [images, setImages] = useState([]);
-  const [borderThickness, setBorderThickness] = useState(15);
-  const [collageBlob, setCollageBlob] = useState(null);
-  const [editMode, setEditMode] = useState(true);
-  const [activeStep, setActiveStep] = useState(0);
-  const [accordionExpanded, setAccordionExpanded] = useState(false);
-  const canvasRef = useRef(null);
-  const isMobile = useMediaQuery("(max-width:600px)");
-  const [anchorEl, setAnchorEl] = useState(null);
-  const [menuIndex, setMenuIndex] = useState(null);
-  const imageRefs = useRef([]);
-  const imagesOnly = true; // Set this to true to use images as default option
-  const [borderColor, setBorderColor] = useState('#FFFFFF');
-  const [showColorPicker, setShowColorPicker] = useState(false);
-  const [hasAddedImages, setHasAddedImages] = useState(false);
-
+  const [selectedImages, setSelectedImages] = useState([]); // Array of selected image files/URLs
+  const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [selectedAspectRatio, setSelectedAspectRatio] = useState('square');
+  const [isDragging, setIsDragging] = useState(false);
+  
+  const fileInputRef = useRef(null);
+  const dropzoneRef = useRef(null);
+  const theme = useTheme();
   const { user } = useContext(UserContext);
   const { openSubscriptionDialog } = useSubscribeDialog();
-
   const navigate = useNavigate();
 
   const authorized = (user?.userDetails?.magicSubscription === "true" || user?.['cognito:groups']?.includes('admins'));
 
-
-  const handleReset = () => {
-    // Clear all state variables
-    setImages([]);
-    setBorderThickness(15);
-    setBorderColor('#FFFFFF');
-    setShowColorPicker(false);
-    setActiveStep(0);
-    setEditMode(true);
-    setAccordionExpanded(false);
-    setCollageBlob(null);
-
-    // Clear sessionStorage
-    sessionStorage.removeItem('collageState');
-
-    // Clear any state passed through navigation
-    if (navigate) {
-      navigate(location.pathname, { replace: true, state: {} });
-    }
-  };
-
+  // Select a template if it's compatible with the current image count
   useEffect(() => {
-    createCollage();
-  }, [images, borderThickness, borderColor]);
-
-  const location = useLocation();
-  const searchParams = new URLSearchParams(location.search);
-  const isEditing = searchParams.get('editing') === 'true';
-
-  useEffect(() => {
-    if (!isEditing) {
-      // Clear the state in session storage
-      sessionStorage.removeItem('collageState');
-
-      // Add ?editing=true to the URL
-      searchParams.set('editing', 'true');
-      navigate(`${location.pathname}?${searchParams.toString()}`, { replace: true });
-    } else {
-      const storedCollageState = sessionStorage.getItem('collageState');
-      if (storedCollageState) {
-        try {
-          const parsedCollageState = JSON.parse(storedCollageState);
-          setImages(parsedCollageState.images);
-          setBorderThickness(parsedCollageState.borderThickness);
-          setBorderColor(parsedCollageState.borderColor || '#FFFFFF');
-          setEditMode(parsedCollageState.editMode);
-          setAccordionExpanded(parsedCollageState.accordionExpanded);
-          setActiveStep(parsedCollageState.activeStep);
-          setHasAddedImages(true);
-        } catch (error) {
-          console.error('Error parsing stored collage state:', error);
-        }
+    const imageCount = selectedImages.length;
+    
+    // If we already have a selected template, check if it's still valid
+    if (selectedTemplate) {
+      const isValid = 
+        (selectedTemplate.minImages <= imageCount && 
+         selectedTemplate.maxImages >= imageCount);
+      
+      // If not valid, set to null
+      if (!isValid) {
+        setSelectedTemplate(null);
+      }
+    } 
+    // If no template is selected but we have images, try to find a compatible one
+    else if (imageCount > 0) {
+      const compatibleTemplates = layoutTemplates.filter(template => 
+        template.minImages <= imageCount && template.maxImages >= imageCount
+      );
+      
+      if (compatibleTemplates.length > 0) {
+        // Select the first compatible template
+        setSelectedTemplate(compatibleTemplates[0]);
       }
     }
+  }, [selectedImages]);
 
-    if (location.state?.updatedCollageState) {
-      const { images, borderThickness, editMode, accordionExpanded } = location.state.updatedCollageState;
-      setImages(images.map(img => ({
-        ...img,
-        width: img.width || img.naturalWidth,
-        height: img.height || img.naturalHeight,
-      })));
-      setBorderThickness(borderThickness);
-      setEditMode(editMode);
-      setAccordionExpanded(accordionExpanded);
-    }
-  }, [location.search, location.state, navigate]);
-
-  useEffect(() => {
-    if (hasAddedImages) {
-      const collageState = {
-        images,
-        borderThickness,
-        borderColor,
-        editMode,
-        accordionExpanded,
-        activeStep,
-      };
-      sessionStorage.setItem('collageState', JSON.stringify(collageState));
-    }
-  }, [images, borderThickness, borderColor, editMode, accordionExpanded, activeStep, hasAddedImages]);
-  
-
-  const handleImageUpload = (event, index) => {
-    const uploadedImages = Array.from(event.target.files);
-  
-    const loadImage = (file) => {
-      return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const img = new Image();
-          img.onload = () => {
-            resolve({
-              id: Date.now().toString(),
-              src: e.target.result,
-              width: img.width,
-              height: img.height,
-            });
-          };
-          img.src = e.target.result;
-        };
-        reader.readAsDataURL(file);
-      });
-    };
-  
-    Promise.all(uploadedImages.map(loadImage)).then((newImages) => {
-      setImages((prevImages) => {
-        const updatedImages = [...prevImages];
-        updatedImages.splice(index, 0, ...newImages);
-        return updatedImages;
-      });
-      setHasAddedImages(true);
-    });
+  // Handle aspect ratio change
+  const handleAspectRatioChange = (event) => {
+    setSelectedAspectRatio(event.target.value);
   };
 
-  const handleEditImage = (index) => {
-    const image = images[index];
-    const collageState = {
-      images,
-      editingImageIndex: index,
-      borderThickness,
-      borderColor,
-      editMode,
-      accordionExpanded,
-      activeStep,
-    };
-    sessionStorage.setItem('collageState', JSON.stringify(collageState));
+  // Get aspect ratio value based on selected preset
+  const getAspectRatioValue = () => {
+    const preset = aspectRatioPresets.find(p => p.id === selectedAspectRatio);
+    return preset ? preset.value : 1;
+  };
 
-    fetch(image.src)
-      .then(res => res.blob())
-      .then(blob => {
-        const uploadedImage = URL.createObjectURL(blob);
-        navigate('/editor/project/new', { 
-          state: { 
-            uploadedImage,
-            fromCollage: true,
-            collageState
-          } 
+  // Handle image file selection
+  const handleImageSelection = (event) => {
+    const files = Array.from(event.target.files);
+    processFiles(files);
+  };
+
+  // Process selected files
+  const processFiles = (files) => {
+    // Don't allow more than 9 images total
+    const allowedFiles = files.slice(0, 9 - selectedImages.length);
+    
+    if (allowedFiles.length > 0) {
+      setSelectedImages(prev => {
+        const newSelection = [...prev];
+        
+        allowedFiles.forEach(file => {
+          // Create object URLs for preview
+          newSelection.push({
+            file,
+            url: URL.createObjectURL(file),
+          });
         });
+        
+        return newSelection;
       });
+    }
+    
+    // Reset the file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = null;
+    }
   };
 
-  const addTextArea = (index) => {
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    const text = "My reaction to the collage editor";
-    const fontSize = 24;
-    const padding = 20;
-
-    ctx.font = `${fontSize}px Arial`;
-    const textWidth = ctx.measureText(text).width;
-
-    canvas.width = textWidth + padding * 2;
-    canvas.height = fontSize + padding * 2;
-
-    ctx.fillStyle = "white";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "black";
-    ctx.fillText(text, padding, fontSize + padding);
-
-    const newImage = {
-      id: Date.now().toString(),
-      src: canvas.toDataURL(),
-      width: canvas.width,
-      height: canvas.height,
-    };
-
-    setImages((prevImages) => {
-      const newImages = [...prevImages];
-      newImages.splice(index, 0, newImage);
-      return newImages;
-    });
-  };
-
-  const deleteImage = (index) => {
-    setImages((prevImages) => {
-      const newImages = [...prevImages];
+  // Handle removing a selected image
+  const handleRemoveImage = (index) => {
+    setSelectedImages(prev => {
+      const newImages = [...prev];
+      
+      // Revoke the object URL to prevent memory leaks
+      if (newImages[index]?.url) {
+        URL.revokeObjectURL(newImages[index].url);
+      }
+      
       newImages.splice(index, 1);
       return newImages;
     });
   };
-  
-  const moveImage = (index, direction) => {
-    setImages((prevImages) => {
-      const newImages = [...prevImages];
-      if (index + direction < 0 || index + direction >= newImages.length) {
-        return newImages; // Return the original array if the move is out of bounds
-      }
-      const temp = newImages[index];
-      newImages[index] = newImages[index + direction];
-      newImages[index + direction] = temp;
-      return newImages;
-    });
+
+  // Check if a template is compatible with the current number of images
+  const isTemplateCompatible = (template) => {
+    const imageCount = selectedImages.length;
+    return template.minImages <= imageCount && template.maxImages >= imageCount;
   };
 
-  const createCollage = () => {
-    if (images.length === 0) return;
-  
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-  
-    const maxWidth = 1000; // Set a maximum width for the collage
-    let totalHeight = 0;
-  
-    const resizedImages = images.map((image) => {
-      const scaleFactor = maxWidth / image.width;
-      const scaledHeight = image.height * scaleFactor;
-      totalHeight += scaledHeight;
-      return {
-        src: image.src,
-        width: maxWidth,
-        height: scaledHeight,
-      };
-    });
-  
-    totalHeight += borderThickness * (resizedImages.length + 1);
-    canvas.width = maxWidth + borderThickness * 2;
-    canvas.height = totalHeight;
-  
-    ctx.fillStyle = borderColor;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-  
-    let currentHeight = borderThickness;
-    resizedImages.forEach((image, index) => {
-      const img = new Image();
-      img.onload = () => {
-        ctx.drawImage(img, borderThickness, currentHeight, image.width, image.height);
-        currentHeight += image.height + borderThickness;
-  
-        if (index === resizedImages.length - 1) {
-          canvas.toBlob((blob) => {
-            const url = URL.createObjectURL(blob);
-            setCollageBlob(url);
-          }, "image/png");
-        }
-      };
-      img.src = image.src;
-    });
+  // Get compatible templates based on image count
+  const getCompatibleTemplates = () => {
+    const imageCount = selectedImages.length;
+    return layoutTemplates.filter(template => 
+      template.minImages <= imageCount && template.maxImages >= imageCount
+    );
   };
 
-  const handleMenuClick = (event, index) => {
-    if (imagesOnly) {
-      document.getElementById(`file-input-${index}`).click();
-    } else {
-      setAnchorEl(event.currentTarget);
-      setMenuIndex(index);
+  // Handle drag events
+  const handleDragEnter = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.currentTarget === dropzoneRef.current) {
+      setIsDragging(false);
     }
   };
 
-  const handleMenuClose = (action) => {
-    setAnchorEl(null);
-    if (action === "image") {
-      document.getElementById(`file-input-${menuIndex}`).click();
-    } else if (action === "text") {
-      addTextArea(menuIndex);
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    
+    const files = Array.from(e.dataTransfer.files).filter(
+      file => file.type.startsWith('image/')
+    );
+    
+    if (files.length > 0) {
+      processFiles(files);
     }
   };
 
-  const calculateButtonPositions = useCallback(() => {
-    const positions = [];
-    imageRefs.current.forEach((ref, index) => {
-      if (ref) {
-        const { top, height } = ref.getBoundingClientRect();
-        positions[index] = top + height / 2;
-      }
+  // Handle template selection
+  const handleTemplateClick = (template) => {
+    if (isTemplateCompatible(template)) {
+      setSelectedTemplate(template);
+    }
+  };
+  
+  // Submit the collage for creation
+  const handleCreateCollage = () => {
+    console.log("Would create collage with:", {
+      images: selectedImages,
+      template: selectedTemplate,
+      aspectRatio: selectedAspectRatio
     });
-    return positions;
-  }, [images]);
-
-  const buttonPositions = calculateButtonPositions();
-
-  const handleBorderChange = (event) => {
-    const value = parseInt(event.target.value, 10);
-    setBorderThickness(value);
-    setAccordionExpanded(false); // Collapse the accordion
+    // Future implementation would use these values to create the collage
   };
 
-  const [openSaveDialog, setOpenSaveDialog] = useState(false);
-
-  const handleOpenInEditor = () => {
-    // Store the current state in sessionStorage
-    const collageState = {
-      images,
-      borderThickness,
-      borderColor,
-      editMode,
-      accordionExpanded,
-      activeStep,
-    };
-    sessionStorage.setItem('collageState', JSON.stringify(collageState));
-
-    // Create the resulting image blob
-    const resultImage = canvasRef.current.toDataURL({
-      format: 'jpeg',
-      quality: 0.8
-    });
-
-    fetch(resultImage)
-      .then(res => res.blob())
-      .then(blob => {
-        const uploadedImage = URL.createObjectURL(blob);
-        navigate('/editor/project/new', { 
-          state: { 
-            uploadedImage,
-            fromCollage: true
-          } 
-        });
-      });
-  };
-
-  const handleSave = () => {
-    setOpenSaveDialog(true);
-  };
-
-  const handleCloseSaveDialog = () => {
-    setOpenSaveDialog(false);
-  };
-
-  const steps = ['Add Images', 'Adjust Borders', 'Save or Edit'];
-
-  const handleNext = () => {
-    setActiveStep((prevActiveStep) => prevActiveStep + 1);
-    if (activeStep === 0) {
-      createCollage();
-      setEditMode(false);
-      window.scrollTo(0, 0);
-    }
-  };
-
-  const handleBack = () => {
-    setActiveStep((prevActiveStep) => prevActiveStep - 1);
-    if (activeStep === 1) {
-      setEditMode(true);
-    }
-  };
-
-  const handleBorderColorChange = (event) => {
-    const value = event.target.value;
+  // Render aspect ratio preview
+  const renderAspectRatioPreview = (preset) => {
+    const { value, name } = preset;
+    // For custom value, show a different preview
     if (value === 'custom') {
-      setShowColorPicker(true);
-    } else {
-      setBorderColor(value);
-      setShowColorPicker(false);
+      return (
+        <Box sx={{ 
+          width: '100%', 
+          height: 60, 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          border: theme => `1px dashed ${theme.palette.divider}`,
+          borderRadius: 1,
+          mb: 1
+        }}>
+          <Typography variant="caption">Custom Size</Typography>
+        </Box>
+      );
     }
+    
+    // Calculate dimensions based on the aspect ratio value
+    // Keep the height at a fixed value, and adjust width based on aspect ratio
+    const maxHeight = 60;
+    const maxWidth = 100; // 100% of the container
+    
+    let previewWidth;
+    let previewHeight;
+    
+    if (value >= 1) {
+      // Landscape or square orientation (wider than tall)
+      previewHeight = maxHeight;
+      previewWidth = maxHeight * value;
+      
+      // Constrain width if it exceeds container
+      if (previewWidth > maxWidth) {
+        previewWidth = maxWidth;
+        previewHeight = previewWidth / value;
+      }
+    } else {
+      // Portrait orientation (taller than wide)
+      previewWidth = maxWidth;
+      previewHeight = maxWidth / value;
+      
+      // Constrain height if it exceeds max height
+      if (previewHeight > maxHeight) {
+        previewHeight = maxHeight;
+        previewWidth = previewHeight * value;
+      }
+    }
+    
+    return (
+      <Box sx={{ 
+        display: 'flex',
+        alignItems: 'center', 
+        justifyContent: 'center',
+        height: maxHeight,
+        width: '100%',
+        mb: 1
+      }}>
+        <Box 
+          sx={{ 
+            width: `${previewWidth}px`,
+            height: `${previewHeight}px`,
+            backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+            borderRadius: '2px',
+            border: theme => `1px solid ${theme.palette.divider}`,
+            transition: 'all 0.2s ease',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          {/* Optional: Display aspect ratio value */}
+          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem', opacity: 0.8 }}>
+            {value === 1 ? '1:1' : value > 1 ? `${value.toFixed(1)}:1` : `1:${(1/value).toFixed(1)}`}
+          </Typography>
+        </Box>
+      </Box>
+    );
   };
 
-  const handleCustomColorChange = (event) => {
-    setBorderColor(event.target.value);
+  // Render the main page content
+  const renderCollageCreator = () => {
+    const aspectRatioValue = getAspectRatioValue();
+    const imageCount = selectedImages.length;
+    const compatibleTemplates = getCompatibleTemplates();
+    
+    return (
+      <PageContainer>
+        <Grid container spacing={4}>
+          {/* Left side: Image Selection */}
+          <Grid item xs={12} md={6}>
+            <Typography variant="h6" gutterBottom>
+              Add Images
+            </Typography>
+            
+            <ImageDropzone
+              ref={dropzoneRef}
+              isDragActive={isDragging}
+              hasImages={imageCount > 0}
+              onClick={() => fileInputRef.current.click()}
+              onDragEnter={handleDragEnter}
+              onDragLeave={handleDragLeave}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+            >
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                style={{ display: 'none' }}
+                ref={fileInputRef}
+                onChange={handleImageSelection}
+              />
+              
+              <AddPhotoAlternate sx={{ fontSize: 40, mb: 2, color: 'text.secondary' }} />
+              
+              <Typography variant="body1" gutterBottom textAlign="center">
+                {isDragging ? "Drop images here" : "Drag and drop images here"}
+              </Typography>
+              
+              <Typography variant="body2" color="text.secondary" textAlign="center">
+                or <Button size="small">Browse Files</Button>
+              </Typography>
+              
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 2 }}>
+                Support JPG, PNG, GIF, BMP (max 9 images)
+              </Typography>
+            </ImageDropzone>
+            
+            {imageCount > 0 && (
+              <Box mt={3}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                  <Typography variant="subtitle1">
+                    Selected Images ({imageCount}/9)
+                  </Typography>
+                  
+                  {imageCount > 1 && (
+                    <Button 
+                      size="small" 
+                      onClick={() => setSelectedImages([])}
+                      color="error"
+                      variant="text"
+                    >
+                      Clear All
+                    </Button>
+                  )}
+                </Box>
+                
+                <SelectedImagePreview>
+                  {selectedImages.map((image, index) => (
+                    <ImageThumb key={index}>
+                      <ThumbImage src={image.url} alt={`Image ${index + 1}`} />
+                      <ImageActions className="image-actions">
+                        <IconButton 
+                          size="small" 
+                          onClick={() => handleRemoveImage(index)}
+                          sx={{ color: 'white' }}
+                        >
+                          <Delete />
+                        </IconButton>
+                      </ImageActions>
+                    </ImageThumb>
+                  ))}
+                  
+                  {imageCount < 9 && (
+                    <ImageThumb 
+                      sx={{ 
+                        display: 'flex', 
+                        justifyContent: 'center', 
+                        alignItems: 'center',
+                        border: theme => `2px dashed ${theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)'}`
+                      }}
+                      onClick={() => fileInputRef.current.click()}
+                    >
+                      <AddPhotoAlternate sx={{ color: 'text.secondary' }} />
+                    </ImageThumb>
+                  )}
+                </SelectedImagePreview>
+              </Box>
+            )}
+            
+            <Box mt={4}>
+              <Typography variant="h6" gutterBottom>
+                Configure Output
+              </Typography>
+              
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Aspect Ratio
+              </Typography>
+              
+              <Grid container spacing={1.5} sx={{ mb: 3 }}>
+                {aspectRatioPresets.map(preset => (
+                  <Grid item xs={4} sm={4} key={preset.id}>
+                    <AspectRatioCard
+                      selected={selectedAspectRatio === preset.id}
+                      onClick={() => setSelectedAspectRatio(preset.id)}
+                      elevation={selectedAspectRatio === preset.id ? 2 : 0}
+                    >
+                      {renderAspectRatioPreview(preset)}
+                      <Typography variant="caption" align="center">
+                        {preset.name}
+                      </Typography>
+                      
+                      {selectedAspectRatio === preset.id && (
+                        <Box 
+                          sx={{ 
+                            position: 'absolute', 
+                            top: 8, 
+                            right: 8, 
+                            bgcolor: 'primary.main',
+                            borderRadius: '50%',
+                            width: 16,
+                            height: 16,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                        >
+                          <Check sx={{ fontSize: 12, color: 'white' }} />
+                        </Box>
+                      )}
+                    </AspectRatioCard>
+                  </Grid>
+                ))}
+              </Grid>
+            </Box>
+          </Grid>
+          
+          {/* Right side: Template Selection & Preview */}
+          <Grid item xs={12} md={6}>
+            <Box sx={{ position: 'sticky', top: 20 }}>
+              <Typography variant="h6" gutterBottom>
+                Choose Layout
+                {imageCount === 0 && (
+                  <Tooltip title="Add images first to see compatible layouts" arrow>
+                    <Info fontSize="small" sx={{ ml: 1, verticalAlign: 'middle', opacity: 0.7 }} />
+                  </Tooltip>
+                )}
+              </Typography>
+              
+              {imageCount === 0 ? (
+                <Alert severity="info" sx={{ mb: 3 }}>
+                  Add images first to see compatible layout options
+                </Alert>
+              ) : compatibleTemplates.length === 0 ? (
+                <Alert severity="info" sx={{ mb: 3 }}>
+                  No templates match the current number of images ({imageCount})
+                </Alert>
+              ) : (
+                <>
+                  <Grid container spacing={2} sx={{ mb: 3 }}>
+                    {compatibleTemplates.map(template => {
+                      const isSelected = selectedTemplate?.id === template.id;
+                      
+                      return (
+                        <Grid item xs={6} key={template.id}>
+                          <TemplateCard
+                            selected={isSelected}
+                            onClick={() => handleTemplateClick(template)}
+                          >
+                            <Box 
+                              sx={{ 
+                                position: 'relative',
+                                '&:before': {
+                                  content: '""',
+                                  display: 'block',
+                                  paddingTop: `${100 / aspectRatioValue}%`,
+                                }
+                              }}
+                            >
+                              <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+                                {template.renderPreview(aspectRatioValue, theme, imageCount)}
+                              </Box>
+                            </Box>
+                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 1 }}>
+                              <Typography 
+                                variant="body2" 
+                                sx={{ 
+                                  fontWeight: isSelected ? 600 : 400
+                                }}
+                              >
+                                {template.name}
+                              </Typography>
+                              <Chip 
+                                size="small" 
+                                label={`${template.minImages} image${template.minImages !== 1 ? 's' : ''}`}
+                                sx={{ height: 20, fontSize: '0.7rem' }}
+                              />
+                            </Box>
+                            {isSelected && (
+                              <Box 
+                                sx={{ 
+                                  position: 'absolute', 
+                                  top: 8, 
+                                  right: 8, 
+                                  bgcolor: 'primary.main',
+                                  borderRadius: '50%',
+                                  width: 24,
+                                  height: 24,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center'
+                                }}
+                              >
+                                <Check sx={{ fontSize: 18, color: 'white' }} />
+                              </Box>
+                            )}
+                          </TemplateCard>
+                        </Grid>
+                      );
+                    })}
+                  </Grid>
+                  
+                  {selectedTemplate && (
+                    <Box sx={{ mt: 4 }}>
+                      <Divider sx={{ mb: 3 }} />
+                      <Typography variant="h6" gutterBottom>
+                        Preview
+                      </Typography>
+                      
+                      <Box 
+                        sx={{ 
+                          border: theme => `1px solid ${theme.palette.divider}`,
+                          borderRadius: 1,
+                          padding: 1,
+                          position: 'relative',
+                          '&:before': {
+                            content: '""',
+                            display: 'block',
+                            paddingTop: `${100 / aspectRatioValue}%`,
+                          }
+                        }}
+                      >
+                        <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+                          {selectedTemplate.renderPreview(aspectRatioValue, theme, imageCount)}
+                        </Box>
+                      </Box>
+                      
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        size="large"
+                        fullWidth
+                        disabled={!selectedTemplate || imageCount < selectedTemplate.minImages}
+                        onClick={handleCreateCollage}
+                        sx={{ mt: 3 }}
+                        endIcon={<ArrowForward />}
+                      >
+                        Create Collage
+                      </Button>
+                    </Box>
+                  )}
+                </>
+              )}
+            </Box>
+          </Grid>
+        </Grid>
+      </PageContainer>
+    );
+  };
+
+  // Render subscription page
+  const renderSubscriptionPage = () => {
+    return (
+      <Grid container height="100%" justifyContent="center" alignItems="center" mt={6}>
+        <Grid item>
+          <Stack spacing={3} justifyContent="center">
+            <img
+              src="/assets/memeSRC-white.svg"
+              alt="memeSRC logo"
+              style={{ height: 48, marginBottom: -15 }}
+            />
+            <Typography variant="h3" textAlign="center">
+              memeSRC&nbsp;Collage Tool
+            </Typography>
+            <Typography variant="body" textAlign="center">
+              While in Early Access, the Collage Tool is only available for memeSRC&nbsp;Pro subscribers.
+            </Typography>
+          </Stack>
+          <center>
+            <LoadingButton
+              onClick={openSubscriptionDialog}
+              variant="contained"
+              size="large"
+              sx={{ mt: 5, fontSize: 17 }}
+            >
+              Upgrade to Pro
+            </LoadingButton>
+          </center>
+        </Grid>
+      </Grid>
+    );
   };
 
   return (
@@ -650,409 +640,7 @@ export default function CollagePage() {
         <title>Collage Tool - Editor - memeSRC</title>
       </Helmet>
 
-      {!authorized ? (
-        <Grid container height="100%" justifyContent="center" alignItems="center" mt={6}>
-          <Grid item>
-            <Stack spacing={3} justifyContent="center">
-              <img
-                src="/assets/memeSRC-white.svg"
-                alt="memeSRC logo"
-                style={{ height: 48, marginBottom: -15 }}
-              />
-              <Typography variant="h3" textAlign="center">
-                memeSRC&nbsp;Collage Tool
-              </Typography>
-              <Typography variant="body" textAlign="center">
-                While in Early Access, the Collage Tool is only available for memeSRC&nbsp;Pro subscribers.
-              </Typography>
-            </Stack>
-            <center>
-                <LoadingButton
-                  onClick={openSubscriptionDialog}
-                  variant="contained"
-                  size="large"
-                  sx={{ mt: 5, fontSize: 17 }}
-                >
-                  Upgrade to Pro
-                </LoadingButton>
-              </center>
-          </Grid>
-        </Grid>
-      ) : (
-        <>
-          <StepperContainer>
-            <Stepper activeStep={activeStep} alternativeLabel>
-              {steps.map((label) => (
-                <Step key={label}>
-                  <StepLabel>{label}</StepLabel>
-                </Step>
-              ))}
-            </Stepper>
-          </StepperContainer>
-
-          {activeStep === 0 && (
-            <StepContainer>
-              {images.length > 0 && (
-                <ButtonGroup>
-                  <StepButton
-                    variant="contained"
-                    startIcon={<Delete />}
-                    onClick={handleReset}
-                    fullWidth
-                  >
-                    Reset
-                  </StepButton>
-                  <StepButton
-                    variant="contained"
-                    startIcon={<ArrowForward />}
-                    onClick={handleNext}
-                    fullWidth
-                  >
-                    Continue
-                  </StepButton>
-                </ButtonGroup>
-              )}
-              {images.length === 0 ? (
-                  <EmptyStateContainer onClick={(event) => handleMenuClick(event, 0)}>
-                  <Typography variant="h6" gutterBottom>
-                    Add Images
-                  </Typography>
-                  <Typography variant="body1" marginBottom={2}>
-                    Upload images for your collage
-                  </Typography>
-                  <Fab
-                    color="primary"
-                    size="large"
-                    component="label"
-                  >
-                    <Add />
-                  </Fab>
-                  <Menu
-                    anchorEl={anchorEl}
-                    open={Boolean(anchorEl)}
-                    onClose={() => handleMenuClose(null)}
-                  >
-                    <MenuItem onClick={() => handleMenuClose("image")}>Add Image</MenuItem>
-                    <MenuItem onClick={() => handleMenuClose("text")}>Add Text</MenuItem>
-                  </Menu>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    hidden
-                    id="file-input-0"
-                    onChange={(event) => handleImageUpload(event, 0)}
-                    multiple
-                  />
-                </EmptyStateContainer>
-              ) : (
-                <Box sx={{ position: "relative" }}>
-                  <UploadButton
-                    color="primary"
-                    size="small"
-                    component="label"
-                    sx={{ marginTop: '16px', marginBottom: '16px' }}
-                    onClick={(event) => handleMenuClick(event, 0)}
-                  >
-                    <Add />
-                  </UploadButton>
-                  <Menu
-                    anchorEl={anchorEl}
-                    open={Boolean(anchorEl)}
-                    onClose={() => handleMenuClose(null)}
-                  >
-                    <MenuItem onClick={() => handleMenuClose("image")}>Add Image</MenuItem>
-                    <MenuItem onClick={() => handleMenuClose("text")}>Add Text</MenuItem>
-                  </Menu>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    hidden
-                    id="file-input-0"
-                    onChange={(event) => handleImageUpload(event, 0)}
-                    multiple
-                  />
-        
-                  {images.map((image, index) => (
-                    <>
-                      <ImageContainer ref={(el) => { imageRefs.current[index] = el; }}>
-                        <ImageWrapper>
-                          <img src={image.src} alt={`layer ${index + 1}`} style={{ width: "100%" }} />
-                          <DeleteButton className="delete-button" onClick={() => deleteImage(index)}>
-                            <Close />
-                          </DeleteButton>
-                          <EditButton className="edit-button" onClick={() => handleEditImage(index)}>
-                            <Edit />
-                          </EditButton>
-                          <MoveUpButton className="move-up-button" onClick={() => moveImage(index, -1)}>
-                            <ArrowUpward />
-                          </MoveUpButton>
-                          <MoveDownButton className="move-down-button" onClick={() => moveImage(index, 1)}>
-                            <ArrowDownward />
-                          </MoveDownButton>
-                        </ImageWrapper>
-                      </ImageContainer>
-                      {index < images.length - 1 && (
-                        <Box sx={{ display: 'flex', justifyContent: 'center', marginTop: '16px', marginBottom: '16px' }}>
-                          <Fab
-                            color="primary"
-                            size="small"
-                            component="label"
-                            onClick={(event) => handleMenuClick(event, index + 1)}
-                          >
-                            <Add />
-                          </Fab>
-                          <Menu
-                            anchorEl={anchorEl}
-                            open={Boolean(anchorEl)}
-                            onClose={() => handleMenuClose(null)}
-                          >
-                            <MenuItem onClick={() => handleMenuClose("image", index + 1)}>Add Image</MenuItem>
-                            <MenuItem onClick={() => handleMenuClose("text", index + 1)}>Add Text</MenuItem>
-                          </Menu>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            hidden
-                            id={`file-input-${index + 1}`}
-                            onChange={(event) => handleImageUpload(event, index + 1)}
-                            multiple
-                          />
-                        </Box>
-                      )}
-                    </>
-                  ))}
-        
-                  <UploadButton
-                    color="primary"
-                    size="small"
-                    component="label"
-                    onClick={(event) => handleMenuClick(event, images.length)}
-                  >
-                    <Add />
-                  </UploadButton>
-                  <Menu
-                    anchorEl={anchorEl}
-                    open={Boolean(anchorEl)}
-                    onClose={() => handleMenuClose(null)}
-                  >
-                    <MenuItem onClick={() => handleMenuClose("image", images.length)}>Add Image</MenuItem>
-                    <MenuItem onClick={() => handleMenuClose("text", images.length)}>Add Text</MenuItem>
-                  </Menu>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    hidden
-                    id={`file-input-${images.length}`}
-                    onChange={(event) => handleImageUpload(event, images.length)}
-                    multiple
-                  />
-                </Box>
-              )}
-              {images.length > 0 && (
-                <ButtonGroup>
-                  <StepButton
-                    variant="contained"
-                    startIcon={<Delete />}
-                    onClick={handleReset}
-                    fullWidth
-                  >
-                    Reset
-                  </StepButton>
-                  <StepButton
-                    variant="contained"
-                    startIcon={<ArrowForward />}
-                    onClick={handleNext}
-                    fullWidth
-                  >
-                    Continue
-                  </StepButton>
-                </ButtonGroup>
-              )}
-            </StepContainer>
-          )}
-
-          {activeStep === 1 && (
-            <StepContainer>
-              <ButtonGroup>
-                <StepButton
-                  onClick={handleBack}
-                  startIcon={<ArrowBack />}
-                  fullWidth
-                >
-                  Back
-                </StepButton>
-                <StepButton
-                  variant="contained"
-                  onClick={handleNext}
-                  endIcon={<ArrowForward />}
-                  fullWidth
-                >
-                  Continue
-                </StepButton>
-              </ButtonGroup>
-
-              <Grid container spacing={2} sx={{ mt: 2, mb: 2 }}>
-                <Grid item xs={6}>
-                  <FormControl fullWidth>
-                    <InputLabel id="border-thickness-label">Border Thickness</InputLabel>
-                    <Select
-                      labelId="border-thickness-label"
-                      id="border-thickness-select"
-                      value={borderThickness}
-                      label="Border Thickness"
-                      onChange={handleBorderChange}
-                    >
-                      <MenuItem value={0}>No border</MenuItem>
-                      <MenuItem value={5}>Thin</MenuItem>
-                      <MenuItem value={15}>Medium</MenuItem>
-                      <MenuItem value={30}>Thick</MenuItem>
-                      <MenuItem value={65}>Extra Thick</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={6}>
-                  <FormControl fullWidth>
-                    <InputLabel id="border-color-label">Border Color</InputLabel>
-                    <Select
-                      labelId="border-color-label"
-                      id="border-color-select"
-                      value={showColorPicker ? 'custom' : borderColor}
-                      label="Border Color"
-                      onChange={handleBorderColorChange}
-                    >
-                      {borderColorOptions.map((option) => (
-                        <MenuItem key={option.value} value={option.value}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            {option.value !== 'custom' && (
-                              <Box
-                                sx={{
-                                  width: 20,
-                                  height: 20,
-                                  backgroundColor: option.value,
-                                  border: '1px solid #ccc',
-                                }}
-                              />
-                            )}
-                            <Typography>{option.label}</Typography>
-                          </Box>
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-              </Grid>
-
-              {showColorPicker && (
-                <Box sx={{ margin: 0, display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Typography>Custom Color:</Typography>
-                  <input
-                    type="color"
-                    value={borderColor}
-                    onChange={handleCustomColorChange}
-                    style={{
-                      width: '30px',
-                      height: '30px',
-                      padding: 0,
-                      border: 'none',
-                      borderRadius: '50%',
-                      overflow: 'hidden',
-                      cursor: 'pointer',
-                    }}
-                  />
-                </Box>
-              )}
-
-              <ThumbnailContainer sx={{ my: 2 }}>
-                <CollageThumbnail src={collageBlob} alt="Collage Result" />
-              </ThumbnailContainer>
-
-              <ButtonGroup>
-                <StepButton
-                  onClick={handleBack}
-                  startIcon={<ArrowBack />}
-                  fullWidth
-                >
-                  Back
-                </StepButton>
-                <StepButton
-                  variant="contained"
-                  onClick={handleNext}
-                  endIcon={<ArrowForward />}
-                  fullWidth
-                >
-                  Continue
-                </StepButton>
-              </ButtonGroup>
-            </StepContainer>
-          )}
-
-          {activeStep === 2 && (
-            <StepContainer>
-              <Typography variant="h4" gutterBottom sx={{ mb: 1 }}>
-                ✅ Your Collage is Ready!
-              </Typography>
-              
-              <ThumbnailContainer sx={{ my: 2 }}>
-                <CollageThumbnail src={collageBlob} alt="Collage Result" />
-              </ThumbnailContainer>
-
-              <ResultOptionsContainer sx={{ gap: 2 }}>
-                <OptionGroup>
-                  <StepButton
-                    variant="contained"
-                    startIcon={<Edit />}
-                    onClick={handleOpenInEditor}
-                    fullWidth
-                  >
-                    Advanced Editor
-                  </StepButton>
-                  <StepButton
-                    variant="contained"
-                    startIcon={<Save />}
-                    onClick={handleSave}
-                    fullWidth
-                  >
-                    Save Collage
-                  </StepButton>
-                </OptionGroup>
-
-                <StepButton
-                  variant="outlined"
-                  startIcon={<ArrowBack />}
-                  onClick={handleBack}
-                  fullWidth
-                >
-                  Back
-                </StepButton>
-              </ResultOptionsContainer>
-            </StepContainer>
-          )}
-
-          <canvas ref={canvasRef} style={{ display: "none" }} />
-        </>
-      )}
-
-      <Dialog open={openSaveDialog} onClose={handleCloseSaveDialog}>
-        <DialogTitle>Save Your Collage</DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 2 }}>
-            <CollageImage src={collageBlob} alt="Collage Result" sx={{ maxWidth: '100%', height: 'auto', mb: 2 }} />
-            <Typography variant="body1" gutterBottom>
-              To save your collage:
-            </Typography>
-            <Typography variant="body2" component="ol" sx={{ pl: 2 }}>
-              <li>{'ontouchstart' in window ? 'Tap and hold' : 'Right-click'} on the image above</li>
-              <li>Select "Save image" from the menu</li>
-              <li>Choose a location on your device to save the collage</li>
-            </Typography>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseSaveDialog} color="primary">
-            Close
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {!authorized ? renderSubscriptionPage() : renderCollageCreator()}
     </BasePage>
   );
- }
+}
