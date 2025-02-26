@@ -32,25 +32,42 @@ import { aspectRatioPresets, layoutTemplates, getLayoutsForPanelCount } from "..
 
 // Create a new styled component for aspect ratio cards
 const AspectRatioCard = styled(Paper)(({ theme, selected }) => ({
-  padding: theme.spacing(0.5),
   cursor: 'pointer',
   position: 'relative',
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
   justifyContent: 'center',
-  transition: 'all 0.2s ease',
-  border: selected ? `2px solid ${theme.palette.primary.main}` : `1px solid ${theme.palette.divider}`,
+  transition: theme.transitions.create(
+    ['border-color', 'background-color', 'box-shadow', 'transform'],
+    { duration: theme.transitions.duration.shorter }
+  ),
+  border: selected 
+    ? `2px solid ${theme.palette.primary.main}` 
+    : `1px solid ${theme.palette.divider}`,
   backgroundColor: selected 
-    ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.2 : 0.06)
+    ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.15 : 0.08)
     : theme.palette.background.paper,
+  borderRadius: theme.shape.borderRadius,
   '&:hover': {
+    transform: 'translateY(-2px)',
+    boxShadow: selected 
+      ? `0 4px 12px ${alpha(theme.palette.primary.main, 0.3)}`
+      : theme.palette.mode === 'dark'
+        ? '0 4px 12px rgba(0,0,0,0.25)'
+        : '0 4px 12px rgba(0,0,0,0.1)',
     borderColor: selected ? theme.palette.primary.main : theme.palette.primary.light
   },
-  // Changed size from 100x100 to 75x75 pixels for both card types
-  width: 75,
-  height: 75,
-  flexShrink: 0
+  // Card dimensions
+  width: 80,
+  height: 80,
+  padding: theme.spacing(1),
+  flexShrink: 0,
+  // Subtle animation on click
+  '&:active': {
+    transform: 'translateY(0)',
+    transition: 'transform 0.1s',
+  }
 }));
 
 // Panel Counter component for panel count selector
@@ -97,12 +114,12 @@ const HorizontalScroller = styled(Box)(({ theme }) => ({
   },
   '-ms-overflow-style': 'none',  // IE, Edge
   gap: theme.spacing(2),
-  padding: 0, // Removed padding
+  padding: theme.spacing(1, 0), // Increased padding for better visual spacing
   position: 'relative',
   scrollBehavior: 'smooth',
   alignItems: 'center',  // Center items vertically
   justifyContent: 'flex-start',  // Start alignment for consistent scrolling
-  minHeight: 95,  // Reduced height to match smaller cards
+  minHeight: 95,  // Consistent height for all devices
   maxWidth: '100%', // Ensure it doesn't exceed container width
   width: '100%', // Take full width of parent
   boxSizing: 'border-box', // Include padding in width calculation
@@ -110,65 +127,89 @@ const HorizontalScroller = styled(Box)(({ theme }) => ({
   contain: 'content',
   // Smoother momentum scrolling (for Safari)
   WebkitOverflowScrolling: 'touch',
-  // Add custom styling for desktop
+  // Show that content is scrollable on mobile
+  overscrollBehavior: 'contain',
+  // Consistent spacing across devices
   [theme.breakpoints.up('sm')]: {
-    padding: 0, // Removed padding
-    // Wider gap on desktop for better spacing
-    gap: theme.spacing(2.5),
+    padding: theme.spacing(1, 0), // Consistent padding
+    gap: theme.spacing(2), // Consistent gap
   }
 }));
 
-// Scroll button for scrollers
+// Improved ScrollButton for consistent appearance
 const ScrollButton = styled(IconButton)(({ theme, direction }) => ({
   position: 'absolute',
   top: '50%',
   transform: 'translateY(-50%)',
   zIndex: 10,
+  // Consistent styling across all devices
   backgroundColor: theme.palette.mode === 'dark' 
-    ? alpha(theme.palette.background.paper, 0.85)
-    : alpha(theme.palette.background.paper, 0.95),
-  boxShadow: 'none', // Remove shadow
-  color: theme.palette.text.secondary,
+    ? alpha(theme.palette.background.paper, 0.8)
+    : alpha(theme.palette.background.paper, 0.9),
+  // Better shadow for depth without overwhelming the UI
+  boxShadow: `0 2px 8px ${theme.palette.mode === 'dark' 
+    ? 'rgba(0,0,0,0.3)' 
+    : 'rgba(0,0,0,0.15)'}`,
+  // Clean border
+  border: `1px solid ${theme.palette.mode === 'dark'
+    ? alpha(theme.palette.divider, 0.5)
+    : theme.palette.divider}`,
+  // Primary color for better visibility
+  color: theme.palette.primary.main,
   '&:hover': {
     backgroundColor: theme.palette.mode === 'dark' 
-      ? alpha(theme.palette.background.paper, 0.95)
-      : theme.palette.background.paper,
-    color: theme.palette.text.primary,
+      ? alpha(theme.palette.background.paper, 0.9)
+      : alpha(theme.palette.background.default, 0.95),
+    color: theme.palette.primary.dark,
   },
-  // Position the buttons
-  ...(direction === 'left' ? { left: 0 } : { right: 0 }),
-  // Size for mobile
-  width: 28,
-  height: 28,
+  // Consistent positioning for both directions
+  ...(direction === 'left' ? { left: -8 } : { right: -8 }),
+  // Consistent sizing across devices
+  width: 32,
+  height: 32,
   minWidth: 'unset',
   padding: 0,
-  // Styles for desktop
+  // Consistent circular shape on all devices
+  borderRadius: '50%',
+  // Better transition for hover states
+  transition: theme.transitions.create(
+    ['background-color', 'color', 'box-shadow', 'transform', 'opacity'], 
+    { duration: theme.transitions.duration.shorter }
+  ),
+  // Animation on hover
+  '&:hover': {
+    transform: 'translateY(-50%) scale(1.05)',
+    boxShadow: `0 3px 10px ${theme.palette.mode === 'dark' 
+      ? 'rgba(0,0,0,0.4)' 
+      : 'rgba(0,0,0,0.2)'}`,
+  },
+  // Same styling for mobile and desktop
   [theme.breakpoints.up('sm')]: {
-    width: 32,
-    height: 32,
-    // Position flush with container edge
-    ...(direction === 'left' ? { left: 0 } : { right: 0 }),
-    // Semi-circular shape on desktop
-    borderRadius: direction === 'left' ? '0 50% 50% 0' : '50% 0 0 50%',
-    border: 'none',
-    opacity: 0.7, // Make buttons more subtle
-    '&:hover': {
-      opacity: 1,
-      backgroundColor: theme.palette.mode === 'dark' 
-        ? alpha(theme.palette.background.paper, 0.95)
-        : theme.palette.background.paper,
-      color: theme.palette.text.primary,
-    },
-    // Add transition for smooth hover
-    transition: theme.transitions.create(['background-color', 'color', 'opacity'], {
-      duration: theme.transitions.duration.shorter,
-    }),
+    width: 36,
+    height: 36,
+    // Consistent positioning for desktop
+    ...(direction === 'left' ? { left: -12 } : { right: -12 }),
   }
 }));
 
-// Scroll indicator for horizontal scrollers - REMOVING THESE COMPLETELY
+// Improved ScrollIndicator with subtle gradient
 const ScrollIndicator = styled(Box)(({ theme, direction, visible }) => ({
-  display: 'none', // Hide completely - no more gradient shadows
+  position: 'absolute',
+  top: 0,
+  bottom: 0,
+  width: 40, // Slightly narrower for subtlety
+  pointerEvents: 'none',
+  zIndex: 2,
+  opacity: visible ? 1 : 0,
+  transition: 'opacity 0.3s ease',
+  background: direction === 'left'
+    ? `linear-gradient(90deg, ${theme.palette.mode === 'dark' 
+        ? 'rgba(25,25,25,0.9)' 
+        : 'rgba(255,255,255,0.9)'} 0%, transparent 100%)`
+    : `linear-gradient(270deg, ${theme.palette.mode === 'dark' 
+        ? 'rgba(25,25,25,0.9)' 
+        : 'rgba(255,255,255,0.9)'} 0%, transparent 100%)`,
+  ...(direction === 'left' ? { left: 0 } : { right: 0 })
 }));
 
 const StepSectionHeading = styled(Box)(({ theme }) => ({
@@ -310,20 +351,38 @@ const CollageLayoutSettings = ({
     }
   };
   
-  // Function to improve scroll experience - refactored to smooth the experience
+  // Function to improve scroll experience - refactored for smooth and consistent behavior
   const scrollLeft = (ref) => {
     if (ref.current) {
-      // Calculate a smoother scroll distance - approx 2 items
-      const scrollDistance = Math.min(ref.current.clientWidth * 0.65, 300);
+      // Calculate a consistent scroll distance based on container width
+      const scrollDistance = Math.min(ref.current.clientWidth * 0.5, 250);
       ref.current.scrollBy({ left: -scrollDistance, behavior: 'smooth' });
+      
+      // Update scroll indicators after scrolling
+      setTimeout(() => {
+        if (ref === aspectRatioRef) {
+          handleAspectScroll();
+        } else if (ref === layoutsRef) {
+          handleLayoutScroll();
+        }
+      }, 350); // Slightly longer timeout to ensure scroll completes
     }
   };
   
   const scrollRight = (ref) => {
     if (ref.current) {
-      // Calculate a smoother scroll distance - approx 2 items
-      const scrollDistance = Math.min(ref.current.clientWidth * 0.65, 300);
+      // Calculate a consistent scroll distance based on container width
+      const scrollDistance = Math.min(ref.current.clientWidth * 0.5, 250);
       ref.current.scrollBy({ left: scrollDistance, behavior: 'smooth' });
+      
+      // Update scroll indicators after scrolling
+      setTimeout(() => {
+        if (ref === aspectRatioRef) {
+          handleAspectScroll();
+        } else if (ref === layoutsRef) {
+          handleLayoutScroll();
+        }
+      }, 350); // Slightly longer timeout to ensure scroll completes
     }
   };
 
@@ -332,8 +391,8 @@ const CollageLayoutSettings = ({
     if (!ref.current) return;
     
     const { scrollLeft, scrollWidth, clientWidth } = ref.current;
-    const hasLeft = scrollLeft > 0;
-    const hasRight = scrollLeft < scrollWidth - clientWidth - 2; // 2px buffer for rounding
+    const hasLeft = scrollLeft > 5; // Use a small threshold to detect left scrollability
+    const hasRight = scrollLeft < scrollWidth - clientWidth - 5; // Use a small threshold to detect right scrollability
     
     setLeftScroll(hasLeft);
     setRightScroll(hasRight);
@@ -348,51 +407,65 @@ const CollageLayoutSettings = ({
     checkScrollPosition(layoutsRef, setLayoutLeftScroll, setLayoutRightScroll);
   };
 
-  // Monitor scroll position changes for aspect ratio
+  // Check scroll positions on initial render and window resize
   useEffect(() => {
+    // Initial check of scroll positions
+    handleAspectScroll();
+    handleLayoutScroll();
+    
+    // Add resize listener to update scroll indicators
+    const handleResize = () => {
+      handleAspectScroll();
+      handleLayoutScroll();
+    };
+    
+    // Add scroll event listeners to both containers
     const aspectRatioElement = aspectRatioRef.current;
+    const layoutsElement = layoutsRef.current;
     
     if (aspectRatioElement) {
-      // Initial check
-      handleAspectScroll();
-      
-      // Add scroll event listener
       aspectRatioElement.addEventListener('scroll', handleAspectScroll);
-      
-      // Recheck on window resize
-      window.addEventListener('resize', handleAspectScroll);
     }
     
+    if (layoutsElement) {
+      layoutsElement.addEventListener('scroll', handleLayoutScroll);
+    }
+    
+    window.addEventListener('resize', handleResize);
+    
+    // Clean up event listeners
     return () => {
       if (aspectRatioElement) {
         aspectRatioElement.removeEventListener('scroll', handleAspectScroll);
       }
-      window.removeEventListener('resize', handleAspectScroll);
-    };
-  }, []);
-  
-  // Monitor scroll position changes for layouts
-  useEffect(() => {
-    const layoutsElement = layoutsRef.current;
-    
-    if (layoutsElement) {
-      // Initial check
-      handleLayoutScroll();
       
-      // Add scroll event listener
-      layoutsElement.addEventListener('scroll', handleLayoutScroll);
-      
-      // Recheck on window resize
-      window.addEventListener('resize', handleLayoutScroll);
-    }
-    
-    return () => {
       if (layoutsElement) {
         layoutsElement.removeEventListener('scroll', handleLayoutScroll);
       }
-      window.removeEventListener('resize', handleLayoutScroll);
+      
+      window.removeEventListener('resize', handleResize);
     };
-  }, [getCompatibleTemplates()]);
+  }, []);
+  
+  // Update scroll indicators when content or panel count changes
+  useEffect(() => {
+    handleAspectScroll();
+    
+    // Small delay to ensure layout has updated
+    setTimeout(() => {
+      handleAspectScroll();
+    }, 100);
+  }, [selectedAspectRatio, panelCount]);
+  
+  // Update layout scroll indicators when templates or panel count changes
+  useEffect(() => {
+    handleLayoutScroll();
+    
+    // Small delay to ensure layout has updated
+    setTimeout(() => {
+      handleLayoutScroll();
+    }, 100);
+  }, [panelCount, selectedAspectRatio, selectedTemplate]);
   
   // Render aspect ratio preview
   const renderAspectRatioPreview = (preset) => {
@@ -408,8 +481,9 @@ const CollageLayoutSettings = ({
           justifyContent: 'center',
           border: theme => `1px dashed ${theme.palette.divider}`,
           borderRadius: 1,
+          background: theme => alpha(theme.palette.action.selected, 0.1)
         }}>
-          <Typography variant="caption">Custom</Typography>
+          <Typography variant="caption" fontWeight="medium">Custom</Typography>
         </Box>
       );
     }
@@ -417,45 +491,48 @@ const CollageLayoutSettings = ({
     // Calculate dimensions based on the aspect ratio value
     const friendlyRatio = getFriendlyAspectRatio(value);
   
-    // Size the preview to fill 85% of the container while maintaining aspect ratio
-    const containerSize = 85;
-    
-    let previewWidth;
-    let previewHeight;
-    
-    if (value >= 1) {
-      // Landscape or square orientation (wider than tall)
-      previewWidth = containerSize;
-      previewHeight = containerSize / value;
-    } else {
-      // Portrait orientation (taller than wide)
-      previewHeight = containerSize;
-      previewWidth = containerSize * value;
-    }
+    // Determine box dimensions based on whether it's portrait or landscape
+    const isPortrait = value < 1;
     
     return (
-      <Box sx={{ 
-        display: 'flex',
-        alignItems: 'center', 
-        justifyContent: 'center',
-        height: '100%',
-        width: '100%',
-      }}>
+      <Box sx={{ position: 'relative', width: '100%', height: '100%' }}>
         <Box 
-          sx={{ 
-            width: `${previewWidth}%`,
-            height: `${previewHeight}%`,
-            backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
-            borderRadius: '2px',
-            border: theme => `1px solid ${theme.palette.divider}`,
-            transition: 'all 0.2s ease',
+          sx={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: isPortrait ? '60%' : '80%',
+            height: isPortrait ? '80%' : '60%',
+            border: theme => `2px solid ${alpha(
+              theme.palette.mode === 'dark' 
+                ? theme.palette.primary.light 
+                : theme.palette.primary.main, 
+              0.8
+            )}`,
+            borderRadius: 1,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            background: theme => alpha(
+              theme.palette.mode === 'dark' 
+                ? theme.palette.primary.dark 
+                : theme.palette.primary.light, 
+              0.15
+            ),
           }}
         >
           {/* Display aspect ratio with friendly format - smaller text for smaller cards */}
-          <Typography variant="caption" fontWeight="medium" color="text.primary" sx={{ opacity: 0.9 }}>
+          <Typography 
+            variant="caption" 
+            fontWeight="medium" 
+            color="text.primary" 
+            sx={{ 
+              opacity: 0.9,
+              fontSize: '0.7rem',
+              letterSpacing: '0.02em'
+            }}
+          >
             {friendlyRatio}
           </Typography>
         </Box>
@@ -526,44 +603,47 @@ const CollageLayoutSettings = ({
         <Box sx={{ 
           position: 'relative', 
           width: '100%',
-          // Remove any extra margin
-          mt: 0,
-          pt: 0, // Explicitly set padding-top to 0
-          // Desktop specific styling
+          // Consistent padding for container
+          mt: 1,
+          pt: 0.5, 
+          pb: 0.5,
+          // Consistent styling across devices
           [theme.breakpoints.up('sm')]: {
-            width: 'calc(100% + 8px)', // Slightly wider to accommodate buttons
-            marginLeft: '-4px', // Center the expanded container
-            mt: 0, // Ensure no margin on desktop either
-            pt: 0, // Ensure no padding on desktop either
+            width: '100%', // Full width container
+            mt: 1, // Consistent margin
+            pt: 0.5,
+            pb: 0.5
           }
         }}>
-          {!isMobile && (
-            <>
-              <ScrollButton 
-                direction="left" 
-                onClick={() => scrollLeft(aspectRatioRef)} 
-                size="small"
-                aria-label="Scroll left"
-                sx={{ 
-                  display: aspectLeftScroll ? 'flex' : 'none',
-                }}
-              >
-                <ChevronLeft fontSize="small" />
-              </ScrollButton>
-              
-              <ScrollButton 
-                direction="right" 
-                onClick={() => scrollRight(aspectRatioRef)} 
-                size="small"
-                aria-label="Scroll right"
-                sx={{ 
-                  display: aspectRightScroll ? 'flex' : 'none',
-                }}
-              >
-                <ChevronRight fontSize="small" />
-              </ScrollButton>
-            </>
-          )}
+          <ScrollButton 
+            direction="left" 
+            onClick={() => scrollLeft(aspectRatioRef)} 
+            size="small"
+            aria-label="Scroll left"
+            sx={{ 
+              // Always display buttons for consistency, just disable them
+              display: 'flex',
+              visibility: aspectLeftScroll ? 'visible' : 'hidden',
+              opacity: aspectLeftScroll ? 1 : 0,
+            }}
+          >
+            <ChevronLeft fontSize="small" />
+          </ScrollButton>
+          
+          <ScrollButton 
+            direction="right" 
+            onClick={() => scrollRight(aspectRatioRef)} 
+            size="small"
+            aria-label="Scroll right"
+            sx={{ 
+              // Always display buttons for consistency, just disable them
+              display: 'flex',
+              visibility: aspectRightScroll ? 'visible' : 'hidden',
+              opacity: aspectRightScroll ? 1 : 0,
+            }}
+          >
+            <ChevronRight fontSize="small" />
+          </ScrollButton>
           
           <HorizontalScroller 
             ref={aspectRatioRef}
@@ -637,44 +717,47 @@ const CollageLayoutSettings = ({
           <Box sx={{ 
             position: 'relative', 
             width: '100%',
-            // Remove any extra margin
-            mt: 0,
-            pt: 0, // Explicitly set padding-top to 0
-            // Desktop specific styling
+            // Consistent padding for container
+            mt: 1,
+            pt: 0.5, 
+            pb: 0.5,
+            // Consistent styling across devices
             [theme.breakpoints.up('sm')]: {
-              width: 'calc(100% + 8px)', // Slightly wider to accommodate buttons
-              marginLeft: '-4px', // Center the expanded container
-              mt: 0, // Ensure no margin on desktop either
-              pt: 0, // Ensure no padding on desktop either
+              width: '100%', // Full width container
+              mt: 1, // Consistent margin
+              pt: 0.5,
+              pb: 0.5
             }
           }}>
-            {!isMobile && (
-              <>
-                <ScrollButton 
-                  direction="left" 
-                  onClick={() => scrollLeft(layoutsRef)} 
-                  size="small"
-                  aria-label="Scroll left"
-                  sx={{ 
-                    display: layoutLeftScroll ? 'flex' : 'none',
-                  }}
-                >
-                  <ChevronLeft fontSize="small" />
-                </ScrollButton>
-                
-                <ScrollButton 
-                  direction="right" 
-                  onClick={() => scrollRight(layoutsRef)} 
-                  size="small"
-                  aria-label="Scroll right"
-                  sx={{ 
-                    display: layoutRightScroll ? 'flex' : 'none',
-                  }}
-                >
-                  <ChevronRight fontSize="small" />
-                </ScrollButton>
-              </>
-            )}
+            <ScrollButton 
+              direction="left" 
+              onClick={() => scrollLeft(layoutsRef)} 
+              size="small"
+              aria-label="Scroll left"
+              sx={{ 
+                // Always display buttons for consistency, just disable them
+                display: 'flex',
+                visibility: layoutLeftScroll ? 'visible' : 'hidden',
+                opacity: layoutLeftScroll ? 1 : 0,
+              }}
+            >
+              <ChevronLeft fontSize="small" />
+            </ScrollButton>
+            
+            <ScrollButton 
+              direction="right" 
+              onClick={() => scrollRight(layoutsRef)} 
+              size="small"
+              aria-label="Scroll right"
+              sx={{ 
+                // Always display buttons for consistency, just disable them
+                display: 'flex',
+                visibility: layoutRightScroll ? 'visible' : 'hidden',
+                opacity: layoutRightScroll ? 1 : 0,
+              }}
+            >
+              <ChevronRight fontSize="small" />
+            </ScrollButton>
             
             <HorizontalScroller 
               ref={layoutsRef}
@@ -689,9 +772,9 @@ const CollageLayoutSettings = ({
                     key={template.id}
                     sx={{ 
                       flexShrink: 0,
-                      // Changed size from 100x100 to 75x75 pixels to match aspect ratio cards
-                      width: 75,
-                      height: 75,
+                      // Use same dimensions as AspectRatioCard for consistency
+                      width: 80,
+                      height: 80,
                     }}
                   >
                     <TemplateCard
@@ -703,7 +786,25 @@ const CollageLayoutSettings = ({
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        padding: theme.spacing(0.5),
+                        padding: theme.spacing(1),
+                        // Add transition and hover effects to match AspectRatioCard
+                        transition: theme.transitions.create(
+                          ['border-color', 'background-color', 'box-shadow', 'transform'],
+                          { duration: theme.transitions.duration.shorter }
+                        ),
+                        '&:hover': {
+                          transform: 'translateY(-2px)',
+                          boxShadow: isSelected 
+                            ? `0 4px 12px ${alpha(theme.palette.primary.main, 0.3)}`
+                            : theme.palette.mode === 'dark'
+                              ? '0 4px 12px rgba(0,0,0,0.25)'
+                              : '0 4px 12px rgba(0,0,0,0.1)',
+                        },
+                        // Subtle animation on click
+                        '&:active': {
+                          transform: 'translateY(0)',
+                          transition: 'transform 0.1s',
+                        }
                       }}
                     >
                       {/* Container to properly handle aspect ratio */}

@@ -14,21 +14,36 @@ export const PageContainer = styled(Box)(({ theme }) => ({
 
 // Template card
 export const TemplateCard = styled(Paper)(({ theme, selected }) => ({
-  padding: theme.spacing(0.5),
   cursor: 'pointer',
   position: 'relative',
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
   justifyContent: 'center',
-  transition: 'all 0.2s ease',
+  transition: theme.transitions.create(
+    ['border-color', 'background-color', 'box-shadow', 'transform'],
+    { duration: theme.transitions.duration.shorter }
+  ),
   borderRadius: theme.shape.borderRadius,
-  border: selected ? `2px solid ${theme.palette.primary.main}` : `1px solid ${alpha(theme.palette.divider, 0.2)}`,
+  border: selected 
+    ? `2px solid ${theme.palette.primary.main}` 
+    : `1px solid ${theme.palette.divider}`,
   backgroundColor: selected 
-    ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.2 : 0.06)
+    ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.15 : 0.08)
     : theme.palette.background.paper,
   '&:hover': {
+    transform: 'translateY(-2px)',
+    boxShadow: selected 
+      ? `0 4px 12px ${alpha(theme.palette.primary.main, 0.3)}`
+      : theme.palette.mode === 'dark'
+        ? '0 4px 12px rgba(0,0,0,0.25)'
+        : '0 4px 12px rgba(0,0,0,0.1)',
     borderColor: selected ? theme.palette.primary.main : theme.palette.primary.light
+  },
+  // Subtle animation on click
+  '&:active': {
+    transform: 'translateY(0)',
+    transition: 'transform 0.1s',
   }
 }));
 

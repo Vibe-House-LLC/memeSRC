@@ -180,14 +180,19 @@ export default function CollagePage() {
                   pb: 1,
                   width: '100%',
                   maxWidth: '100vw', // Ensure content doesn't exceed viewport width
-                  overflowX: 'hidden' // Hide horizontal overflow
+                  overflowX: 'auto' // Changed from 'hidden' to 'auto' to allow scrolling indicators
                 }}>
                   <Box sx={{ 
                     width: '100%', 
-                    overflowX: 'hidden',
+                    overflowX: 'auto', // Changed from 'hidden' to 'auto' to allow scrolling indicators
                     position: 'relative',
                     mx: -1, // Negative margin for overflow control
-                    px: 1 // Padding to offset negative margin
+                    px: 1, // Padding to offset negative margin
+                    // Desktop specific styling
+                    [theme.breakpoints.up('sm')]: {
+                      mx: -1.5,
+                      px: 1.5
+                    }
                   }}>
                     <CollageSettingsStep 
                       selectedImages={selectedImages}
@@ -209,7 +214,7 @@ export default function CollagePage() {
                   pb: 2,
                   width: '100%',
                   maxWidth: '100vw', // Ensure content doesn't exceed viewport width
-                  overflowX: 'hidden' // Hide horizontal overflow
+                  overflowX: 'auto' // Changed from 'hidden' to 'auto' to allow scrolling indicators
                 }}>
                   <Box sx={{ 
                     display: 'flex', 
@@ -287,7 +292,7 @@ export default function CollagePage() {
                         backgroundColor: theme.palette.mode === 'dark' 
                           ? theme.palette.background.paper 
                           : theme.palette.grey[50],
-                        overflowX: 'hidden' // Prevent horizontal scrolling
+                        overflowX: 'auto' // Changed from 'hidden' to 'auto' to allow scrolling indicators
                       }}
                     >
                       <Typography variant="h6" gutterBottom sx={{ 
@@ -303,7 +308,7 @@ export default function CollagePage() {
                       
                       <Box sx={{ 
                         width: '100%', 
-                        overflowX: 'hidden',
+                        overflowX: 'auto', // Changed from 'hidden' to 'auto' to allow scrolling indicators
                         position: 'relative',
                         mx: -1, // Negative margin for overflow control
                         px: 1, // Padding to offset negative margin
@@ -340,7 +345,7 @@ export default function CollagePage() {
                         backgroundColor: theme.palette.mode === 'dark' 
                           ? theme.palette.background.paper 
                           : theme.palette.grey[50],
-                        overflowX: 'hidden' // Prevent horizontal scrolling
+                        overflowX: 'auto' // Changed from 'hidden' to 'auto' to allow scrolling indicators
                       }}
                     >
                       <Typography variant="h6" gutterBottom sx={{ 
