@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useTheme, styled } from "@mui/material/styles";
+import { useState, useRef, useEffect } from "react";
+import { useTheme, styled, alpha } from "@mui/material/styles";
 import {
   Box,
   Button,
@@ -8,17 +8,17 @@ import {
   Paper,
   Alert,
   Chip,
-  Collapse
+  IconButton,
+  useMediaQuery
 } from "@mui/material";
 import {
   KeyboardArrowLeft,
   KeyboardArrowRight,
+  ChevronLeft,
+  ChevronRight,
   AspectRatio,
   GridView,
-  Check,
-  Edit,
-  ExpandLess,
-  ExpandMore
+  Check
 } from "@mui/icons-material";
 
 // Import styled components
@@ -36,20 +36,78 @@ const AspectRatioCard = styled(Paper)(({ theme, selected }) => ({
   justifyContent: 'center',
   transition: 'all 0.2s ease',
   border: selected ? `2px solid ${theme.palette.primary.main}` : `1px solid ${theme.palette.divider}`,
+  backgroundColor: selected 
+    ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.2 : 0.06)
+    : theme.palette.background.paper,
   '&:hover': {
     borderColor: selected ? theme.palette.primary.main : theme.palette.primary.light,
-    boxShadow: theme.shadows[2]
-  }
+    boxShadow: theme.shadows[4],
+    transform: 'translateY(-2px)'
+  },
+  minWidth: 100
 }));
 
 // Create a new styled component for the action buttons container
 const ActionButtonsContainer = styled(Box)(({ theme }) => ({
   display: 'flex',
-  justifyContent: 'space-between',
+  justifyContent: 'flex-end',
   marginTop: theme.spacing(3),
 }));
 
-const CollageSettingsStep = ({ 
+// Horizontal scrollable container for horizontal scrolling sections
+const HorizontalScroller = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  overflowX: 'auto',
+  scrollbarWidth: 'none',  // Firefox
+  '&::-webkit-scrollbar': {
+    display: 'none',  // Chrome, Safari, Opera
+  },
+  '-ms-overflow-style': 'none',  // IE, Edge
+  gap: theme.spacing(2),
+  padding: theme.spacing(1, 0),
+  position: 'relative',
+  scrollBehavior: 'smooth'
+}));
+
+// Scroll button for scrollers
+const ScrollButton = styled(IconButton)(({ theme, direction }) => ({
+  position: 'absolute',
+  top: '50%',
+  transform: 'translateY(-50%)',
+  zIndex: 10,
+  backgroundColor: theme.palette.background.paper,
+  boxShadow: theme.shadows[4],
+  '&:hover': {
+    backgroundColor: theme.palette.grey[800],
+  },
+  ...(direction === 'left' ? { left: -4 } : { right: -4 }),
+}));
+
+// Scroll indicator for horizontal scrollers
+const ScrollIndicator = styled(Box)(({ theme, direction, visible }) => ({
+  position: 'absolute',
+  top: 0,
+  bottom: 0,
+  width: { xs: 30, sm: 40 },
+  background: `linear-gradient(to ${direction}, transparent, ${alpha(theme.palette.background.default, 0.9)})`,
+  display: visible ? 'flex' : 'none',
+  alignItems: 'center',
+  justifyContent: direction === 'right' ? 'flex-end' : 'flex-start',
+  paddingLeft: direction === 'left' ? 4 : 0,
+  paddingRight: direction === 'right' ? 4 : 0,
+  pointerEvents: 'none',
+  zIndex: 2,
+  ...(direction === 'left' ? { left: 0 } : { right: 0 }),
+}));
+
+const StepSectionHeading = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  marginBottom: theme.spacing(2),
+}));
+
+// Main component
+const CollageDesigner = ({ 
   selectedImages, 
   selectedTemplate, 
   setSelectedTemplate, 
@@ -60,11 +118,20 @@ const CollageSettingsStep = ({
   aspectRatioPresets,
   layoutTemplates 
 }) => {
-  const [aspectRatioExpanded, setAspectRatioExpanded] = useState(true);
-  const [layoutExpanded, setLayoutExpanded] = useState(true);
-  const theme = useTheme();
+  // State for scroll indicators
+  const [aspectLeftScroll, setAspectLeftScroll] = useState(false);
+  const [aspectRightScroll, setAspectRightScroll] = useState(false);
+  const [layoutLeftScroll, setLayoutLeftScroll] = useState(false);
+  const [layoutRightScroll, setLayoutRightScroll] = useState(false);
   
+  // Refs for scrollable containers
+  const aspectRatioRef = useRef(null);
+  const layoutsRef = useRef(null);
+  
+  // Theme and responsive helpers
+  const theme = useTheme();
   const imageCount = selectedImages.length;
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   
   // Get aspect ratio value based on selected preset
   const getAspectRatioValue = () => {
@@ -87,28 +154,93 @@ const CollageSettingsStep = ({
   // Handle aspect ratio change
   const handleSelectAspectRatio = (aspectRatioId) => {
     setSelectedAspectRatio(aspectRatioId);
-    setAspectRatioExpanded(false);
-    
-    // If we have images and a template is already selected, auto-advance
-    if (selectedImages.length > 0 && selectedTemplate) {
-      setLayoutExpanded(true);
-    }
   };
   
-  // Handle template selection and collapse section
+  // Handle template selection
   const handleTemplateClick = (template) => {
     if (isTemplateCompatible(template)) {
       setSelectedTemplate(template);
-      setLayoutExpanded(false);
-      
-      // Auto-advance to panels step if both settings are selected
-      if (selectedAspectRatio && !aspectRatioExpanded) {
-        setTimeout(() => {
-          handleNext();
-        }, 500); // Small delay to let the user see the selection before advancing
-      }
     }
   };
+  
+  // Scroll handlers for scrollers
+  const scrollLeft = (ref) => {
+    if (ref.current) {
+      ref.current.scrollBy({ left: -200, behavior: 'smooth' });
+    }
+  };
+  
+  const scrollRight = (ref) => {
+    if (ref.current) {
+      ref.current.scrollBy({ left: 200, behavior: 'smooth' });
+    }
+  };
+
+  // Check if scrolling is needed and update indicator states
+  const checkScrollPosition = (ref, setLeftScroll, setRightScroll) => {
+    if (!ref.current) return;
+    
+    const { scrollLeft, scrollWidth, clientWidth } = ref.current;
+    const hasLeft = scrollLeft > 0;
+    const hasRight = scrollLeft < scrollWidth - clientWidth - 2; // 2px buffer for rounding
+    
+    setLeftScroll(hasLeft);
+    setRightScroll(hasRight);
+  };
+
+  // Monitor scroll position changes for aspect ratio
+  useEffect(() => {
+    const aspectRatioElement = aspectRatioRef.current;
+    
+    const handleAspectScroll = () => {
+      checkScrollPosition(aspectRatioRef, setAspectLeftScroll, setAspectRightScroll);
+    };
+    
+    if (aspectRatioElement) {
+      // Initial check
+      handleAspectScroll();
+      
+      // Add scroll event listener
+      aspectRatioElement.addEventListener('scroll', handleAspectScroll);
+      
+      // Recheck on window resize
+      window.addEventListener('resize', handleAspectScroll);
+    }
+    
+    return () => {
+      if (aspectRatioElement) {
+        aspectRatioElement.removeEventListener('scroll', handleAspectScroll);
+      }
+      window.removeEventListener('resize', handleAspectScroll);
+    };
+  }, []);
+  
+  // Monitor scroll position changes for layouts
+  useEffect(() => {
+    const layoutsElement = layoutsRef.current;
+    
+    const handleLayoutScroll = () => {
+      checkScrollPosition(layoutsRef, setLayoutLeftScroll, setLayoutRightScroll);
+    };
+    
+    if (layoutsElement) {
+      // Initial check
+      handleLayoutScroll();
+      
+      // Add scroll event listener
+      layoutsElement.addEventListener('scroll', handleLayoutScroll);
+      
+      // Recheck on window resize
+      window.addEventListener('resize', handleLayoutScroll);
+    }
+    
+    return () => {
+      if (layoutsElement) {
+        layoutsElement.removeEventListener('scroll', handleLayoutScroll);
+      }
+      window.removeEventListener('resize', handleLayoutScroll);
+    };
+  }, [getCompatibleTemplates()]);
   
   // Render aspect ratio preview
   const renderAspectRatioPreview = (preset) => {
@@ -196,268 +328,275 @@ const CollageSettingsStep = ({
   const selectedAspectRatioObj = aspectRatioPresets.find(p => p.id === selectedAspectRatio);
   
   return (
-    <>
-      <Typography variant="body1" paragraph>
-        Choose the aspect ratio and layout for your collage.
-      </Typography>
-      
-      {/* Aspect Ratio Section */}
-      <Paper 
-        elevation={1} 
-        sx={{ 
-          mb: 3, 
-          overflow: 'hidden',
-          border: theme => `1px solid ${theme.palette.divider}`
-        }}
-      >
-        <Box 
-          sx={{ 
-            p: 2, 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center',
-            backgroundColor: theme => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)'
-          }}
-          onClick={() => setAspectRatioExpanded(!aspectRatioExpanded)}
-          style={{ cursor: 'pointer' }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <AspectRatio sx={{ mr: 1.5, color: 'primary.main' }} />
-            <Typography variant="h6" sx={{ mr: 1 }}>
-              Aspect Ratio
-            </Typography>
-            {!aspectRatioExpanded && selectedAspectRatioObj && (
-              <Chip 
-                label={selectedAspectRatioObj.name} 
-                size="small" 
-                color="primary" 
-                variant="outlined"
-                sx={{ ml: 1 }}
-              />
-            )}
-          </Box>
-          <Box>
-            {aspectRatioExpanded ? (
-              <ExpandLess color="action" />
-            ) : (
-              <ExpandMore color="action" />
-            )}
-          </Box>
-        </Box>
+    <Box sx={{ pt: 2 }}>
+      {/* Aspect Ratio Section - with horizontal scrolling */}
+      <Box sx={{ mb: 4 }}>
+        <StepSectionHeading>
+          <AspectRatio sx={{ mr: 1.5, color: 'primary.main' }} />
+          <Typography variant="h6">
+            Choose an Aspect Ratio
+          </Typography>
+          {selectedAspectRatioObj && (
+            <Chip 
+              label={selectedAspectRatioObj.name} 
+              size="small" 
+              color="primary" 
+              variant="outlined"
+              sx={{ ml: 2 }}
+            />
+          )}
+        </StepSectionHeading>
         
-        <Collapse in={aspectRatioExpanded}>
-          <Box sx={{ p: 2 }}>
-            <Grid container spacing={1.5}>
-              {aspectRatioPresets.map(preset => (
-                <Grid item xs={6} sm={4} md={3} key={preset.id}>
-                  <AspectRatioCard
-                    selected={selectedAspectRatio === preset.id}
-                    onClick={() => handleSelectAspectRatio(preset.id)}
-                    elevation={selectedAspectRatio === preset.id ? 2 : 0}
+        <Box sx={{ position: 'relative', px: { xs: 1, sm: 3 } }}>
+          {!isMobile && (
+            <>
+              <ScrollButton 
+                direction="left" 
+                onClick={() => scrollLeft(aspectRatioRef)} 
+                size="small"
+                aria-label="Scroll left"
+                sx={{ display: aspectLeftScroll ? 'flex' : 'none' }}
+              >
+                <ChevronLeft />
+              </ScrollButton>
+              
+              <ScrollButton 
+                direction="right" 
+                onClick={() => scrollRight(aspectRatioRef)} 
+                size="small"
+                aria-label="Scroll right"
+                sx={{ display: aspectRightScroll ? 'flex' : 'none' }}
+              >
+                <ChevronRight />
+              </ScrollButton>
+            </>
+          )}
+          
+          <HorizontalScroller 
+            ref={aspectRatioRef}
+          >
+            {aspectRatioPresets.map(preset => (
+              <AspectRatioCard
+                key={preset.id}
+                selected={selectedAspectRatio === preset.id}
+                onClick={() => handleSelectAspectRatio(preset.id)}
+                elevation={selectedAspectRatio === preset.id ? 3 : 1}
+                sx={{ 
+                  minWidth: { xs: 110, sm: 130, md: 150 },
+                  flexShrink: 0 
+                }}
+              >
+                {renderAspectRatioPreview(preset)}
+                <Typography variant="caption" align="center">
+                  {preset.name}
+                </Typography>
+                
+                {selectedAspectRatio === preset.id && (
+                  <Box 
+                    sx={{ 
+                      position: 'absolute', 
+                      top: 8, 
+                      right: 8, 
+                      bgcolor: 'primary.main',
+                      borderRadius: '50%',
+                      width: 16,
+                      height: 16,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
                   >
-                    {renderAspectRatioPreview(preset)}
-                    <Typography variant="caption" align="center">
-                      {preset.name}
-                    </Typography>
-                    
-                    {selectedAspectRatio === preset.id && (
+                    <Check sx={{ fontSize: 12, color: 'white' }} />
+                  </Box>
+                )}
+              </AspectRatioCard>
+            ))}
+            
+            {/* Spacer to ensure last items can be centered when scrolled fully */}
+            <Box sx={{ minWidth: 4, flexShrink: 0 }} />
+          </HorizontalScroller>
+          
+          {/* Visual indicators for scrolling */}
+          <ScrollIndicator 
+            direction="left" 
+            visible={aspectLeftScroll}
+          >
+            <ChevronLeft fontSize="small" sx={{ opacity: 0.7, color: 'text.secondary' }} />
+          </ScrollIndicator>
+          
+          <ScrollIndicator 
+            direction="right" 
+            visible={aspectRightScroll}
+          >
+            <ChevronRight fontSize="small" sx={{ opacity: 0.7, color: 'text.secondary' }} />
+          </ScrollIndicator>
+        </Box>
+      </Box>
+      
+      {/* Layout Section - now also with horizontal scrolling */}
+      <Box sx={{ mb: 4 }}>
+        <StepSectionHeading>
+          <GridView sx={{ mr: 1.5, color: 'primary.main' }} />
+          <Typography variant="h6">
+            Select a Layout
+          </Typography>
+          {selectedTemplate && (
+            <Chip 
+              label={selectedTemplate.name} 
+              size="small" 
+              color="primary" 
+              variant="outlined"
+              sx={{ ml: 2 }}
+            />
+          )}
+        </StepSectionHeading>
+        
+        {compatibleTemplates.length === 0 ? (
+          <Alert severity="info" sx={{ mb: 1 }}>
+            No templates match the current number of images ({imageCount}). Try adding more images or removing some.
+          </Alert>
+        ) : (
+          <Box sx={{ position: 'relative', px: { xs: 1, sm: 3 } }}>
+            {!isMobile && (
+              <>
+                <ScrollButton 
+                  direction="left" 
+                  onClick={() => scrollLeft(layoutsRef)} 
+                  size="small"
+                  aria-label="Scroll left"
+                  sx={{ display: layoutLeftScroll ? 'flex' : 'none' }}
+                >
+                  <ChevronLeft />
+                </ScrollButton>
+                
+                <ScrollButton 
+                  direction="right" 
+                  onClick={() => scrollRight(layoutsRef)} 
+                  size="small"
+                  aria-label="Scroll right"
+                  sx={{ display: layoutRightScroll ? 'flex' : 'none' }}
+                >
+                  <ChevronRight />
+                </ScrollButton>
+              </>
+            )}
+            
+            <HorizontalScroller 
+              ref={layoutsRef}
+            >
+              {compatibleTemplates.map(template => {
+                const isSelected = selectedTemplate?.id === template.id;
+                const aspectRatioValue = getAspectRatioValue();
+                
+                return (
+                  <Box
+                    key={template.id}
+                    sx={{ 
+                      flexShrink: 0,
+                      minWidth: { xs: 180, sm: 220, md: 250 }
+                    }}
+                  >
+                    <TemplateCard
+                      selected={isSelected}
+                      onClick={() => handleTemplateClick(template)}
+                    >
                       <Box 
                         sx={{ 
-                          position: 'absolute', 
-                          top: 8, 
-                          right: 8, 
-                          bgcolor: 'primary.main',
-                          borderRadius: '50%',
-                          width: 16,
-                          height: 16,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center'
+                          position: 'relative',
+                          '&:before': {
+                            content: '""',
+                            display: 'block',
+                            paddingTop: `${100 / aspectRatioValue}%`,
+                          }
                         }}
                       >
-                        <Check sx={{ fontSize: 12, color: 'white' }} />
+                        <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+                          {template.renderPreview(aspectRatioValue, theme, imageCount)}
+                        </Box>
                       </Box>
-                    )}
-                  </AspectRatioCard>
-                </Grid>
-              ))}
-            </Grid>
-          </Box>
-        </Collapse>
-        
-        {!aspectRatioExpanded && (
-          <Box 
-            sx={{ 
-              p: 1.5, 
-              display: 'flex', 
-              justifyContent: 'flex-end',
-              borderTop: theme => `1px solid ${theme.palette.divider}`
-            }}
-          >
-            <Button 
-              size="small" 
-              startIcon={<Edit />}
-              onClick={() => setAspectRatioExpanded(true)}
-            >
-              Change
-            </Button>
-          </Box>
-        )}
-      </Paper>
-      
-      {/* Layout Section */}
-      <Paper 
-        elevation={1} 
-        sx={{ 
-          mb: 3,
-          overflow: 'hidden',
-          border: theme => `1px solid ${theme.palette.divider}`
-        }}
-      >
-        <Box 
-          sx={{ 
-            p: 2, 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center',
-            backgroundColor: theme => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)'
-          }}
-          onClick={() => setLayoutExpanded(!layoutExpanded)}
-          style={{ cursor: 'pointer' }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <GridView sx={{ mr: 1.5, color: 'primary.main' }} />
-            <Typography variant="h6" sx={{ mr: 1 }}>
-              Layout
-            </Typography>
-            {!layoutExpanded && selectedTemplate && (
-              <Chip 
-                label={selectedTemplate.name} 
-                size="small" 
-                color="primary" 
-                variant="outlined"
-                sx={{ ml: 1 }}
-              />
-            )}
-          </Box>
-          <Box>
-            {layoutExpanded ? (
-              <ExpandLess color="action" />
-            ) : (
-              <ExpandMore color="action" />
-            )}
-          </Box>
-        </Box>
-        
-        <Collapse in={layoutExpanded}>
-          <Box sx={{ p: 2 }}>
-            {compatibleTemplates.length === 0 ? (
-              <Alert severity="info" sx={{ mb: 1 }}>
-                No templates match the current number of images ({imageCount}). Try adding more images or removing some.
-              </Alert>
-            ) : (
-              <Grid container spacing={2}>
-                {compatibleTemplates.map(template => {
-                  const isSelected = selectedTemplate?.id === template.id;
-                  const aspectRatioValue = getAspectRatioValue();
-                  
-                  return (
-                    <Grid item xs={6} sm={4} md={3} key={template.id}>
-                      <TemplateCard
-                        selected={isSelected}
-                        onClick={() => handleTemplateClick(template)}
-                      >
-                        <Box 
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 1 }}>
+                        <Typography 
+                          variant="body2" 
                           sx={{ 
-                            position: 'relative',
-                            '&:before': {
-                              content: '""',
-                              display: 'block',
-                              paddingTop: `${100 / aspectRatioValue}%`,
-                            }
+                            fontWeight: isSelected ? 600 : 400
                           }}
                         >
-                          <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
-                            {template.renderPreview(aspectRatioValue, theme, imageCount)}
-                          </Box>
+                          {template.name}
+                        </Typography>
+                        <Chip 
+                          size="small" 
+                          label={`${template.minImages} image${template.minImages !== 1 ? 's' : ''}`}
+                          sx={{ height: 20, fontSize: '0.7rem' }}
+                        />
+                      </Box>
+                      {isSelected && (
+                        <Box 
+                          sx={{ 
+                            position: 'absolute', 
+                            top: 8, 
+                            right: 8, 
+                            bgcolor: 'primary.main',
+                            borderRadius: '50%',
+                            width: 24,
+                            height: 24,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                        >
+                          <Check sx={{ fontSize: 18, color: 'white' }} />
                         </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 1 }}>
-                          <Typography 
-                            variant="body2" 
-                            sx={{ 
-                              fontWeight: isSelected ? 600 : 400
-                            }}
-                          >
-                            {template.name}
-                          </Typography>
-                          <Chip 
-                            size="small" 
-                            label={`${template.minImages} image${template.minImages !== 1 ? 's' : ''}`}
-                            sx={{ height: 20, fontSize: '0.7rem' }}
-                          />
-                        </Box>
-                        {isSelected && (
-                          <Box 
-                            sx={{ 
-                              position: 'absolute', 
-                              top: 8, 
-                              right: 8, 
-                              bgcolor: 'primary.main',
-                              borderRadius: '50%',
-                              width: 24,
-                              height: 24,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center'
-                            }}
-                          >
-                            <Check sx={{ fontSize: 18, color: 'white' }} />
-                          </Box>
-                        )}
-                      </TemplateCard>
-                    </Grid>
-                  );
-                })}
-              </Grid>
-            )}
-          </Box>
-        </Collapse>
-        
-        {!layoutExpanded && (
-          <Box 
-            sx={{ 
-              p: 1.5, 
-              display: 'flex', 
-              justifyContent: 'flex-end',
-              borderTop: theme => `1px solid ${theme.palette.divider}`
-            }}
-          >
-            <Button 
-              size="small" 
-              startIcon={<Edit />}
-              onClick={() => setLayoutExpanded(true)}
+                      )}
+                    </TemplateCard>
+                  </Box>
+                );
+              })}
+              
+              {/* Spacer to ensure last items can be centered when scrolled fully */}
+              <Box sx={{ minWidth: 4, flexShrink: 0 }} />
+            </HorizontalScroller>
+            
+            {/* Visual indicators for scrolling */}
+            <ScrollIndicator 
+              direction="left" 
+              visible={layoutLeftScroll}
             >
-              Change
-            </Button>
+              <ChevronLeft fontSize="small" sx={{ opacity: 0.7, color: 'text.secondary' }} />
+            </ScrollIndicator>
+            
+            <ScrollIndicator 
+              direction="right" 
+              visible={layoutRightScroll}
+            >
+              <ChevronRight fontSize="small" sx={{ opacity: 0.7, color: 'text.secondary' }} />
+            </ScrollIndicator>
           </Box>
         )}
-      </Paper>
+      </Box>
       
       <ActionButtonsContainer>
-        <Button onClick={handleBack} startIcon={<KeyboardArrowLeft />}>
-          Back to Images
-        </Button>
         <Button
           variant="contained"
           onClick={handleNext}
           endIcon={<KeyboardArrowRight />}
-          disabled={!selectedTemplate}
+          disabled={!selectedTemplate || !selectedAspectRatio}
+          sx={{
+            borderRadius: 2,
+            px: 3,
+            py: 1,
+            boxShadow: (selectedTemplate && selectedAspectRatio) ? 4 : 0,
+            transition: 'all 0.2s ease',
+            '&:hover': {
+              transform: (selectedTemplate && selectedAspectRatio) ? 'translateY(-2px)' : 'none',
+              boxShadow: (selectedTemplate && selectedAspectRatio) ? 6 : 0
+            }
+          }}
         >
-          Continue to Panels
+          Create Collage
         </Button>
       </ActionButtonsContainer>
-    </>
+    </Box>
   );
 };
 
-export default CollageSettingsStep; 
+export default CollageDesigner; 
