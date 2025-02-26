@@ -222,10 +222,16 @@ export default function CollagePage() {
                   <Box sx={{ 
                     display: 'flex', 
                     alignItems: 'center',
-                    mb: 1
+                    mb: 1.25,
+                    paddingLeft: theme.spacing(0.5),
+                    paddingRight: theme.spacing(0.5),
                   }}>
-                    <PhotoLibrary sx={{ mr: 1, color: 'text.secondary', fontSize: '1.1rem' }} />
-                    <Typography variant="body1" fontWeight={500}>
+                    <PhotoLibrary sx={{ 
+                      mr: 1.5, 
+                      color: '#fff', 
+                      fontSize: '1.3rem' 
+                    }} />
+                    <Typography variant="h5" fontWeight={600} sx={{ color: '#fff' }}>
                       Images
                     </Typography>
                   </Box>
@@ -351,12 +357,14 @@ export default function CollagePage() {
                         overflowX: 'auto' // Changed from 'hidden' to 'auto' to allow scrolling indicators
                       }}
                     >
-                      <Typography variant="h6" gutterBottom sx={{ 
+                      <Typography variant="h5" gutterBottom sx={{ 
                         display: 'flex', 
                         alignItems: 'center',
-                        mb: 1
+                        mb: 1.25,
+                        fontWeight: 600,
+                        color: '#fff'
                       }}>
-                        <PhotoLibrary sx={{ mr: 1, color: 'text.secondary' }} /> Images
+                        <PhotoLibrary sx={{ mr: 1.5, color: '#fff', fontSize: '1.3rem' }} /> Images
                       </Typography>
                       
                       <CollageImagesStep 
