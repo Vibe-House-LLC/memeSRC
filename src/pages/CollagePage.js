@@ -8,15 +8,17 @@ import {
   Paper,
   Typography,
   Stack,
-  useMediaQuery
+  Button,
+  useMediaQuery,
+  Divider,
+  Container
 } from "@mui/material";
 import { 
   Settings,
   PhotoLibrary,
-  Dashboard
+  Save
 } from "@mui/icons-material";
 
-import BasePage from "./BasePage";
 import { UserContext } from "../UserContext";
 import { useSubscribeDialog } from "../contexts/useSubscribeDialog";
 
@@ -26,21 +28,18 @@ import { PageContainer } from "../components/collage/styled/CollageStyled";
 // Import configuration
 import { aspectRatioPresets, layoutTemplates, getLayoutsForPanelCount } from "../components/collage/config/CollageConfig";
 
-// Import step components
+// Import components from steps
 import CollageImagesStep from "../components/collage/steps/CollageImagesStep";
 import CollageSettingsStep from "../components/collage/steps/CollageSettingsStep";
-import CollagePanelsStep from "../components/collage/steps/CollagePanelsStep";
-
-// Import navigation component
-import CollageStepperNavigation from "../components/collage/navigation/CollageStepperNavigation";
 
 export default function CollagePage() {
   const [selectedImages, setSelectedImages] = useState([]);
   const [panelImageMapping, setPanelImageMapping] = useState({});
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [selectedAspectRatio, setSelectedAspectRatio] = useState('portrait');
-  const [panelCount, setPanelCount] = useState(2); // Updated default panel count to 2
-  const [activeStep, setActiveStep] = useState(0);
+  const [panelCount, setPanelCount] = useState(2); // Default panel count of 2
+  const [finalImage, setFinalImage] = useState(null);
+  const [isCreatingCollage, setIsCreatingCollage] = useState(false);
   
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -48,25 +47,6 @@ export default function CollagePage() {
   const { openSubscriptionDialog } = useSubscribeDialog();
 
   const authorized = (user?.userDetails?.magicSubscription === "true" || user?.['cognito:groups']?.includes('admins'));
-
-  // Steps definition for the guided workflow - reordered with Settings first
-  const steps = [
-    {
-      label: 'Layout',
-      description: 'Set panels, aspect ratio and template',
-      icon: <Settings />
-    },
-    {
-      label: 'Select Images',
-      description: 'Choose up to 5 images',
-      icon: <PhotoLibrary />
-    },
-    {
-      label: 'Arrange',
-      description: 'Position your images',
-      icon: <Dashboard />
-    }
-  ];
 
   // Enhanced function to get compatible templates based on panel count and aspect ratio
   const getCompatibleTemplates = () => {
@@ -127,103 +107,230 @@ export default function CollagePage() {
 
   // Submit the collage for creation
   const handleCreateCollage = () => {
-    console.log("Would create collage with:", {
-      images: selectedImages,
-      template: selectedTemplate,
-      aspectRatio: selectedAspectRatio,
-      panelCount
-    });
-    // Future implementation would use these values to create the collage
+    setIsCreatingCollage(true);
+    
+    // Simulate creating the collage (would be replaced with actual implementation)
+    setTimeout(() => {
+      // In a real implementation, this would be where we generate the final collage
+      console.log("Creating collage with:", {
+        images: selectedImages,
+        template: selectedTemplate,
+        aspectRatio: selectedAspectRatio,
+        panelCount,
+        panelImageMapping
+      });
+      
+      // Placeholder for setting the final image - would be replaced with actual image generation
+      setFinalImage("https://placeholder.com/collage.jpg");
+      setIsCreatingCollage(false);
+    }, 1500);
   };
 
-  // Handle next step navigation
-  const handleNext = () => {
-    setActiveStep((prevActiveStep) => prevActiveStep + 1);
-  };
-
-  // Handle previous step navigation
-  const handleBack = () => {
-    setActiveStep((prevActiveStep) => prevActiveStep - 1);
-  };
-
-  // Render the main page content with steppers
-  const renderGuidedCollageCreator = () => {
+  // Render the main page content as a single page
+  const renderSinglePageCollageCreator = () => {
     const compatibleTemplates = getCompatibleTemplates();
     
-    // Show step content based on active step
-    const getStepContent = (step) => {
-      switch (step) {
-        case 0:
-          return (
-            <CollageSettingsStep 
-              selectedImages={selectedImages}
-              selectedTemplate={selectedTemplate}
-              setSelectedTemplate={setSelectedTemplate}
-              selectedAspectRatio={selectedAspectRatio}
-              setSelectedAspectRatio={setSelectedAspectRatio}
-              panelCount={panelCount}
-              setPanelCount={setPanelCount}
-              handleNext={handleNext}
-              aspectRatioPresets={aspectRatioPresets}
-              layoutTemplates={layoutTemplates}
-            />
-          );
-        case 1:
-          return (
-            <CollageImagesStep 
-              selectedImages={selectedImages} 
-              setSelectedImages={setSelectedImages}
-              panelCount={panelCount}
-              handleBack={handleBack} 
-              handleNext={handleNext} 
-              selectedTemplate={selectedTemplate}
-              selectedAspectRatio={selectedAspectRatio}
-              panelImageMapping={panelImageMapping}
-              setPanelImageMapping={setPanelImageMapping}
-            />
-          );
-        case 2:
-          return (
-            <CollagePanelsStep 
-              handleBack={handleBack}
-              handleCreateCollage={handleCreateCollage}
-              selectedTemplate={selectedTemplate}
-              selectedImages={selectedImages}
-              panelImageMapping={panelImageMapping}
-            />
-          );
-        default:
-          return 'Unknown step';
-      }
-    };
-    
     return (
-      <Box sx={{ 
-        maxWidth: '1200px', 
-        mx: 'auto', 
-        px: isMobile ? 1 : 3, 
-        pt: isMobile ? 2 : 4 
+      <Box component="main" sx={{ 
+        flexGrow: 1,
+        pb: 8
       }}>
-        <Paper 
-          elevation={isMobile ? 0 : 1} 
-          sx={{ 
-            p: isMobile ? 1 : 3,
-            borderRadius: 2,
-            backgroundColor: theme.palette.background.default
-          }}
-        >
-          <CollageStepperNavigation
-            steps={steps}
-            activeStep={activeStep}
-            setActiveStep={setActiveStep}
-            selectedImages={selectedImages}
-            selectedTemplate={selectedTemplate}
-            compatibleTemplates={compatibleTemplates}
-            panelCount={panelCount}
+        <Container maxWidth="lg" sx={{
+          pt: 4,
+          px: isMobile ? 1 : 3 // Reduce horizontal padding on mobile
+        }}>
+          <Paper 
+            elevation={isMobile ? 0 : 1} 
+            sx={{ 
+              p: isMobile ? 0 : 3, // Remove padding on mobile
+              borderRadius: isMobile ? 0 : 2, // Remove border radius on mobile
+              backgroundColor: theme.palette.background.default,
+              border: isMobile ? 'none' : undefined // Remove border on mobile
+            }}
           >
-            {getStepContent(activeStep)}
-          </CollageStepperNavigation>
-        </Paper>
+            {/* Page Title */}
+            <Typography variant="h4" align="center" gutterBottom sx={{ mb: isMobile ? 2 : 3, fontWeight: 500, pt: isMobile ? 2 : 0 }}>
+              Create a Collage
+            </Typography>
+            
+            {/* Choose Layout Section */}
+            <Paper
+              variant={isMobile ? "plain" : "outlined"}
+              elevation={0}
+              sx={{
+                p: isMobile ? 1 : 3, // Reduce padding on mobile
+                mb: isMobile ? 2 : 4, // Reduce margin on mobile
+                borderRadius: isMobile ? 0 : 2, // Remove border radius on mobile
+                backgroundColor: isMobile 
+                  ? 'transparent' 
+                  : (theme.palette.mode === 'dark' 
+                      ? theme.palette.background.paper 
+                      : theme.palette.grey[50]),
+                border: isMobile ? 'none' : undefined // Remove border on mobile
+              }}
+            >
+              <Typography variant="h5" gutterBottom sx={{ display: 'flex', alignItems: 'center', color: theme.palette.primary.main }}>
+                <Settings sx={{ mr: 1 }} /> Choose Layout
+              </Typography>
+              <Typography variant="body2" color="text.secondary" paragraph>
+                Select your preferred aspect ratio, number of panels, and layout template.
+              </Typography>
+              
+              <CollageSettingsStep 
+                selectedImages={selectedImages}
+                selectedTemplate={selectedTemplate}
+                setSelectedTemplate={setSelectedTemplate}
+                selectedAspectRatio={selectedAspectRatio}
+                setSelectedAspectRatio={setSelectedAspectRatio}
+                panelCount={panelCount}
+                setPanelCount={setPanelCount}
+                aspectRatioPresets={aspectRatioPresets}
+                layoutTemplates={layoutTemplates}
+              />
+            </Paper>
+            
+            {/* Combined Add Images and Save Section */}
+            <Paper
+              variant={isMobile ? "plain" : "outlined"}
+              elevation={0}
+              sx={{
+                p: isMobile ? 1 : 3, // Reduce padding on mobile
+                mb: isMobile ? 2 : 4, // Reduce margin on mobile
+                borderRadius: isMobile ? 0 : 2, // Remove border radius on mobile
+                backgroundColor: isMobile 
+                  ? 'transparent' 
+                  : (theme.palette.mode === 'dark' 
+                      ? theme.palette.background.paper 
+                      : theme.palette.grey[50]),
+                border: isMobile ? 'none' : undefined // Remove border on mobile
+              }}
+            >
+              <Typography variant="h5" gutterBottom sx={{ display: 'flex', alignItems: 'center', color: theme.palette.primary.main }}>
+                <PhotoLibrary sx={{ mr: 1 }} /> Add Images & Create Collage
+              </Typography>
+              <Typography variant="body2" color="text.secondary" paragraph>
+                Select images for your collage and assign them to panels by clicking on the layout.
+              </Typography>
+              
+              <CollageImagesStep 
+                selectedImages={selectedImages} 
+                setSelectedImages={setSelectedImages}
+                panelCount={panelCount}
+                selectedTemplate={selectedTemplate}
+                selectedAspectRatio={selectedAspectRatio}
+                panelImageMapping={panelImageMapping}
+                setPanelImageMapping={setPanelImageMapping}
+              />
+              
+              <Divider sx={{ my: isMobile ? 2 : 3 }} />
+              
+              <Box sx={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'center', 
+                mt: isMobile ? 1 : 2 
+              }}>
+                <Typography variant="body1" color="text.secondary" paragraph align="center" sx={{ maxWidth: 500 }}>
+                  Ready to create your collage? Make sure you've selected a layout and added images to all panels.
+                </Typography>
+                
+                <LoadingButton
+                  variant="contained"
+                  color="primary"
+                  size="large"
+                  loading={isCreatingCollage}
+                  startIcon={<Save />}
+                  onClick={handleCreateCollage}
+                  disabled={!selectedTemplate || selectedImages.length === 0}
+                  sx={{ 
+                    py: 1.5, 
+                    px: 4, 
+                    borderRadius: 2,
+                    fontWeight: 'bold',
+                    boxShadow: 3
+                  }}
+                >
+                  Create Collage
+                </LoadingButton>
+                
+                {!selectedTemplate && (
+                  <Typography variant="caption" color="error" sx={{ mt: 1 }}>
+                    Please select a layout template first.
+                  </Typography>
+                )}
+                
+                {selectedTemplate && selectedImages.length === 0 && (
+                  <Typography variant="caption" color="error" sx={{ mt: 1 }}>
+                    Please add at least one image.
+                  </Typography>
+                )}
+              </Box>
+            </Paper>
+            
+            {/* Display Final Collage if available */}
+            {finalImage && (
+              <Box sx={{ mt: isMobile ? 3 : 6, pb: isMobile ? 2 : 4 }}>
+                <Divider sx={{ mb: isMobile ? 2 : 4 }}>
+                  <Paper
+                    elevation={3}
+                    sx={{ 
+                      px: 3, 
+                      py: 1, 
+                      borderRadius: 5,
+                      backgroundColor: theme.palette.success.main,
+                      color: '#fff'
+                    }}
+                  >
+                    <Typography variant="h6" sx={{ fontWeight: 500 }}>
+                      Your Collage Is Ready!
+                    </Typography>
+                  </Paper>
+                </Divider>
+                
+                <Paper 
+                  elevation={isMobile ? 1 : 3}
+                  sx={{ 
+                    p: isMobile ? 2 : 3, 
+                    maxWidth: '700px', 
+                    mx: 'auto', 
+                    bgcolor: theme.palette.background.paper,
+                    borderRadius: 2,
+                    border: `1px solid ${theme.palette.success.main}`,
+                    boxShadow: `0 0 20px ${theme.palette.mode === 'dark' ? 'rgba(0,200,83,0.2)' : 'rgba(0,200,83,0.1)'}`
+                  }}
+                >
+                  <img 
+                    src={finalImage} 
+                    alt="Final Collage" 
+                    style={{ width: '100%', borderRadius: theme.shape.borderRadius, marginBottom: 16 }} 
+                  />
+                  <Box sx={{ 
+                    mt: 2, 
+                    display: 'flex', 
+                    justifyContent: 'center', 
+                    gap: 2,
+                    flexWrap: 'wrap'
+                  }}>
+                    <Button 
+                      variant="contained" 
+                      color="primary"
+                      startIcon={<Box component="span" sx={{ fontSize: 18 }}>📥</Box>}
+                    >
+                      Download Collage
+                    </Button>
+                    <Button 
+                      variant="outlined" 
+                      color="primary" 
+                      onClick={() => setFinalImage(null)}
+                    >
+                      Create New Collage
+                    </Button>
+                  </Box>
+                </Paper>
+              </Box>
+            )}
+          </Paper>
+        </Container>
       </Box>
     );
   };
@@ -231,72 +338,75 @@ export default function CollagePage() {
   // Render subscription page with a cleaner design
   const renderSubscriptionPage = () => {
     return (
-      <Grid container height="100%" justifyContent="center" alignItems="center" mt={4}>
-        <Grid item xs={12} sm={10} md={8} lg={5}>
-          <Paper 
-            elevation={1} 
-            sx={{ 
-              p: isMobile ? 3 : 4, 
-              borderRadius: 2, 
-              textAlign: 'center',
-              background: theme.palette.mode === 'dark' 
-                ? 'linear-gradient(145deg, rgba(30,30,35,1) 0%, rgba(20,20,25,1) 100%)' 
-                : 'linear-gradient(145deg, #ffffff 0%, #f5f5f5 100%)'
-            }}
-          >
-            <Stack spacing={3} justifyContent="center">
-              <img
-                src="/assets/memeSRC-white.svg"
-                alt="memeSRC logo"
-                style={{ height: 48, margin: '0 auto' }}
-              />
-              <Typography variant="h4" textAlign="center" fontWeight="500">
-                Collage Tool
-              </Typography>
-              <Typography 
-                variant="body1" 
-                textAlign="center" 
-                color="text.secondary"
-                sx={{ maxWidth: '400px', mx: 'auto' }}
-              >
-                While in Early Access, the Collage Tool is only available for memeSRC Pro subscribers.
-              </Typography>
-              <LoadingButton
-                onClick={openSubscriptionDialog}
-                variant="contained"
-                size="large"
+      <Box component="main" sx={{ 
+        flexGrow: 1,
+        pb: 8
+      }}>
+        <Container maxWidth="lg" sx={{
+          pt: 4
+        }}>
+          <Grid container height="100%" justifyContent="center" alignItems="center" mt={4}>
+            <Grid item xs={12} sm={10} md={8} lg={5}>
+              <Paper 
+                elevation={1} 
                 sx={{ 
-                  mt: 2, 
-                  fontSize: 16, 
-                  maxWidth: 200, 
-                  mx: 'auto',
-                  py: 1.2,
-                  borderRadius: 2,
-                  boxShadow: '0 4px 14px 0 rgba(0,0,0,0.1)'
+                  p: isMobile ? 3 : 4, 
+                  borderRadius: 2, 
+                  textAlign: 'center',
+                  background: theme.palette.mode === 'dark' 
+                    ? 'linear-gradient(145deg, rgba(30,30,35,1) 0%, rgba(20,20,25,1) 100%)' 
+                    : 'linear-gradient(145deg, #ffffff 0%, #f5f5f5 100%)'
                 }}
               >
-                Upgrade to Pro
-              </LoadingButton>
-            </Stack>
-          </Paper>
-        </Grid>
-      </Grid>
+                <Stack spacing={3} justifyContent="center">
+                  <img
+                    src="/assets/memeSRC-white.svg"
+                    alt="memeSRC logo"
+                    style={{ height: 48, margin: '0 auto' }}
+                  />
+                  <Typography variant="h4" textAlign="center" fontWeight="500">
+                    Collage Tool
+                  </Typography>
+                  <Typography 
+                    variant="body1" 
+                    textAlign="center" 
+                    color="text.secondary"
+                    sx={{ maxWidth: '400px', mx: 'auto' }}
+                  >
+                    While in Early Access, the Collage Tool is only available for memeSRC Pro subscribers.
+                  </Typography>
+                  <LoadingButton
+                    onClick={openSubscriptionDialog}
+                    variant="contained"
+                    size="large"
+                    sx={{ 
+                      mt: 2, 
+                      fontSize: 16, 
+                      maxWidth: 200, 
+                      mx: 'auto',
+                      py: 1.2,
+                      borderRadius: 2,
+                      boxShadow: '0 4px 14px 0 rgba(0,0,0,0.1)'
+                    }}
+                  >
+                    Upgrade to Pro
+                  </LoadingButton>
+                </Stack>
+              </Paper>
+            </Grid>
+          </Grid>
+        </Container>
+      </Box>
     );
   };
 
   return (
-    <BasePage
-      pageTitle="Create a collage"
-      breadcrumbLinks={[
-        { name: "Edit", path: "/edit" },
-        { name: "Collage Tool" },
-      ]}
-    >
+    <>
       <Helmet>
         <title>Collage Tool - Editor - memeSRC</title>
       </Helmet>
 
-      {!authorized ? renderSubscriptionPage() : renderGuidedCollageCreator()}
-    </BasePage>
+      {!authorized ? renderSubscriptionPage() : renderSinglePageCollageCreator()}
+    </>
   );
 }

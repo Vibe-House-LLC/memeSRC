@@ -678,28 +678,6 @@ const CollageLayoutSettings = ({
           </Box>
         )}
       </Box>
-      
-      <ActionButtonsContainer>
-        <Button
-          variant="contained"
-          onClick={handleNext}
-          endIcon={<KeyboardArrowRight />}
-          disabled={!selectedTemplate || !selectedAspectRatio}
-          sx={{
-            borderRadius: 2,
-            px: 3,
-            py: 1,
-            boxShadow: (selectedTemplate && selectedAspectRatio) ? 4 : 0,
-            transition: 'all 0.2s ease',
-            '&:hover': {
-              transform: (selectedTemplate && selectedAspectRatio) ? 'translateY(-2px)' : 'none',
-              boxShadow: (selectedTemplate && selectedAspectRatio) ? 6 : 0
-            }
-          }}
-        >
-          Next: Select Images
-        </Button>
-      </ActionButtonsContainer>
     </Box>
   );
 };
