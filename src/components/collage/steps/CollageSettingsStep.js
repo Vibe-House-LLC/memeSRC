@@ -27,6 +27,9 @@ import {
 // Import styled components
 import { TemplateCard } from "../styled/CollageStyled";
 
+// Import layout configuration
+import { aspectRatioPresets, layoutTemplates, getLayoutsForPanelCount } from "../config/CollageConfig";
+
 // Create a new styled component for aspect ratio cards
 const AspectRatioCard = styled(Paper)(({ theme, selected }) => ({
   padding: theme.spacing(1.5),
@@ -166,13 +169,14 @@ const CollageLayoutSettings = ({
     return preset ? preset.value : 1;
   };
   
-  // Check if a template is compatible with the current panel count
-  const isTemplateCompatible = (template) => {
-    return template.minImages <= panelCount && template.maxImages >= panelCount;
-  };
-
   // Get compatible templates based on panel count
   const getCompatibleTemplates = () => {
+    // Use our new getLayoutsForPanelCount function if it exists, otherwise fall back
+    if (typeof getLayoutsForPanelCount === 'function') {
+      return getLayoutsForPanelCount(panelCount, selectedAspectRatio);
+    }
+    
+    // Legacy fallback (should not be needed once updated)
     return layoutTemplates.filter(template => 
       template.minImages <= panelCount && template.maxImages >= panelCount
     );
@@ -181,11 +185,25 @@ const CollageLayoutSettings = ({
   // Handle aspect ratio change
   const handleSelectAspectRatio = (aspectRatioId) => {
     setSelectedAspectRatio(aspectRatioId);
+    
+    // Get templates optimized for the new aspect ratio
+    const newCompatibleTemplates = (typeof getLayoutsForPanelCount === 'function') 
+      ? getLayoutsForPanelCount(panelCount, aspectRatioId)
+      : compatibleTemplates;
+      
+    // If we have templates, select the most suitable one
+    if (newCompatibleTemplates.length > 0) {
+      // The templates should already be prioritized based on aspect ratio suitability
+      // The most suitable template for this aspect ratio will be first in the list
+      setSelectedTemplate(newCompatibleTemplates[0]);
+    }
   };
   
   // Handle template selection
   const handleTemplateClick = (template) => {
-    if (isTemplateCompatible(template)) {
+    // Check compatibility - templates from getLayoutsForPanelCount are always compatible
+    const isCompatible = template.minImages <= panelCount && template.maxImages >= panelCount;
+    if (isCompatible) {
       setSelectedTemplate(template);
     }
   };
@@ -193,13 +211,39 @@ const CollageLayoutSettings = ({
   // Handle panel count changes
   const handlePanelCountIncrease = () => {
     if (panelCount < 9) {
-      setPanelCount(prevCount => prevCount + 1);
+      const newCount = panelCount + 1;
+      setPanelCount(newCount);
+      
+      // Get optimized templates for the new panel count
+      const newTemplates = (typeof getLayoutsForPanelCount === 'function')
+        ? getLayoutsForPanelCount(newCount, selectedAspectRatio)
+        : layoutTemplates.filter(t => t.minImages <= newCount && t.maxImages >= newCount);
+      
+      // Select the best template for the new panel count
+      if (newTemplates.length > 0) {
+        setSelectedTemplate(newTemplates[0]);
+      } else {
+        setSelectedTemplate(null);
+      }
     }
   };
 
   const handlePanelCountDecrease = () => {
     if (panelCount > 2) {
-      setPanelCount(prevCount => prevCount - 1);
+      const newCount = panelCount - 1;
+      setPanelCount(newCount);
+      
+      // Get optimized templates for the new panel count
+      const newTemplates = (typeof getLayoutsForPanelCount === 'function')
+        ? getLayoutsForPanelCount(newCount, selectedAspectRatio)
+        : layoutTemplates.filter(t => t.minImages <= newCount && t.maxImages >= newCount);
+      
+      // Select the best template for the new panel count
+      if (newTemplates.length > 0) {
+        setSelectedTemplate(newTemplates[0]);
+      } else {
+        setSelectedTemplate(null);
+      }
     }
   };
   

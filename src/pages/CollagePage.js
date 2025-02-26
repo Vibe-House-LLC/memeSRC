@@ -24,7 +24,7 @@ import { useSubscribeDialog } from "../contexts/useSubscribeDialog";
 import { PageContainer } from "../components/collage/styled/CollageStyled";
 
 // Import configuration
-import { aspectRatioPresets, layoutTemplates } from "../components/collage/config/CollageConfig";
+import { aspectRatioPresets, layoutTemplates, getLayoutsForPanelCount } from "../components/collage/config/CollageConfig";
 
 // Import step components
 import CollageImagesStep from "../components/collage/steps/CollageImagesStep";
@@ -38,7 +38,7 @@ export default function CollagePage() {
   const [selectedImages, setSelectedImages] = useState([]);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [selectedAspectRatio, setSelectedAspectRatio] = useState('square');
-  const [panelCount, setPanelCount] = useState(4); // Default panel count: 4
+  const [panelCount, setPanelCount] = useState(2); // Default panel count: 2
   const [activeStep, setActiveStep] = useState(0);
   
   const theme = useTheme();
@@ -67,36 +67,58 @@ export default function CollagePage() {
     }
   ];
 
-  // Get compatible templates based on panel count instead of image count
+  // Enhanced function to get compatible templates based on panel count and aspect ratio
   const getCompatibleTemplates = () => {
-    return layoutTemplates.filter(template => 
+    // Use getLayoutsForPanelCount which handles prioritization based on aspect ratio
+    if (typeof getLayoutsForPanelCount === 'function') {
+      return getLayoutsForPanelCount(panelCount, selectedAspectRatio);
+    }
+    
+    // If the function isn't available, fallback to basic filtering
+    // First find templates that can handle the panel count
+    const panelCompatible = layoutTemplates.filter(template => 
       template.minImages <= panelCount && template.maxImages >= panelCount
     );
+    
+    // Then sort by their suitability for the current aspect ratio
+    // This is a simplified version of what getLayoutsForPanelCount does
+    return panelCompatible.sort((a, b) => {
+      // Auto layouts should be prioritized
+      if (a.arrangement === 'auto') return -1;
+      if (b.arrangement === 'auto') return 1;
+      
+      // Check if template has preferred aspect ratios
+      const aPreference = a.aspectRatioPreference || [];
+      const bPreference = b.aspectRatioPreference || [];
+      
+      const aHasPreference = aPreference.includes(selectedAspectRatio);
+      const bHasPreference = bPreference.includes(selectedAspectRatio);
+      
+      // Prioritize templates that match the current aspect ratio
+      if (aHasPreference && !bHasPreference) return -1;
+      if (!aHasPreference && bHasPreference) return 1;
+      
+      return 0;
+    });
   };
 
-  // Select a template if it's compatible with the current panel count
+  // Select the most suitable template when panel count or aspect ratio changes
   useEffect(() => {
-    // If we already have a selected template, check if it's still valid
-    if (selectedTemplate) {
-      const isValid = 
-        (selectedTemplate.minImages <= panelCount && 
-         selectedTemplate.maxImages >= panelCount);
-      
-      // If not valid, set to null
-      if (!isValid) {
-        setSelectedTemplate(null);
-      }
-    } 
-    // If no template is selected but we have a panel count, try to find a compatible one
-    else if (panelCount > 0) {
-      const compatibleTemplates = getCompatibleTemplates();
+    const compatibleTemplates = getCompatibleTemplates();
+    
+    // If no template is selected or the current one isn't compatible, select the first one
+    if (!selectedTemplate || 
+        selectedTemplate.minImages > panelCount || 
+        selectedTemplate.maxImages < panelCount) {
       
       if (compatibleTemplates.length > 0) {
-        // Select the first compatible template
+        // Select the first (highest priority) compatible template
         setSelectedTemplate(compatibleTemplates[0]);
+      } else {
+        setSelectedTemplate(null);
       }
     }
-  }, [panelCount]);
+  }, [panelCount, selectedAspectRatio, selectedTemplate]);
 
   // Submit the collage for creation
   const handleCreateCollage = () => {
