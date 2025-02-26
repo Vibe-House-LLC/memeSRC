@@ -36,6 +36,7 @@ import CollageStepperNavigation from "../components/collage/navigation/CollageSt
 
 export default function CollagePage() {
   const [selectedImages, setSelectedImages] = useState([]);
+  const [panelImageMapping, setPanelImageMapping] = useState({});
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [selectedAspectRatio, setSelectedAspectRatio] = useState('portrait');
   const [panelCount, setPanelCount] = useState(2); // Updated default panel count to 2
@@ -177,6 +178,8 @@ export default function CollagePage() {
               handleNext={handleNext} 
               selectedTemplate={selectedTemplate}
               selectedAspectRatio={selectedAspectRatio}
+              panelImageMapping={panelImageMapping}
+              setPanelImageMapping={setPanelImageMapping}
             />
           );
         case 2:
@@ -185,6 +188,8 @@ export default function CollagePage() {
               handleBack={handleBack}
               handleCreateCollage={handleCreateCollage}
               selectedTemplate={selectedTemplate}
+              selectedImages={selectedImages}
+              panelImageMapping={panelImageMapping}
             />
           );
         default:
