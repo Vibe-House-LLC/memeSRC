@@ -1,113 +1,187 @@
-import { styled } from "@mui/system";
-import { Box } from "@mui/material";
+import { styled } from "@mui/material/styles";
+import { Box, Paper, Card, alpha } from "@mui/material";
 
-// Styled components for the page
+// Container for the page
 export const PageContainer = styled(Box)(({ theme }) => ({
+  width: '100%',
   maxWidth: '1200px',
   margin: '0 auto',
-  padding: theme.spacing(2),
-}));
-
-export const TemplateCard = styled(Box)(({ theme, selected, disabled }) => ({
-  border: `2px solid ${selected ? theme.palette.primary.main : disabled ? theme.palette.grey[700] : 'transparent'}`,
-  borderRadius: theme.shape.borderRadius,
-  padding: theme.spacing(2),
-  background: theme.palette.mode === 'dark' 
-    ? selected ? 'rgba(25, 118, 210, 0.15)' : disabled ? 'rgba(0, 0, 0, 0.1)' : 'rgba(255, 255, 255, 0.03)'
-    : selected ? 'rgba(25, 118, 210, 0.08)' : disabled ? 'rgba(0, 0, 0, 0.05)' : 'rgba(0, 0, 0, 0.02)',
-  transition: 'all 0.2s ease',
-  cursor: disabled ? 'not-allowed' : 'pointer',
-  opacity: disabled ? 0.6 : 1,
-  position: 'relative',
-  overflow: 'hidden',
-  '&:hover': {
-    transform: disabled ? 'none' : 'translateY(-2px)',
-    boxShadow: disabled ? 'none' : theme.shadows[3],
-    backgroundColor: theme.palette.mode === 'dark'
-      ? selected ? 'rgba(25, 118, 210, 0.2)' : 'rgba(255, 255, 255, 0.05)'
-      : selected ? 'rgba(25, 118, 210, 0.12)' : 'rgba(0, 0, 0, 0.04)',
+  padding: theme.spacing(3),
+  [theme.breakpoints.down('sm')]: {
+    padding: theme.spacing(1.5),
   }
 }));
 
-export const ImageDropzone = styled(Box)(({ theme, isDragActive, hasImages }) => ({
-  border: `2px dashed ${isDragActive 
-    ? theme.palette.primary.main 
-    : hasImages 
-      ? theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.2)' 
-      : theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)'}`,
-  borderRadius: theme.shape.borderRadius,
-  padding: theme.spacing(3),
-  minHeight: '200px',
+// Template card
+export const TemplateCard = styled(Paper)(({ theme, selected }) => ({
+  padding: theme.spacing(2),
+  cursor: 'pointer',
+  position: 'relative',
+  height: '100%',
   display: 'flex',
   flexDirection: 'column',
-  justifyContent: 'center',
-  alignItems: 'center',
-  backgroundColor: isDragActive 
-    ? theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.1)' : 'rgba(25, 118, 210, 0.05)'
-    : 'transparent',
-  transition: 'all 0.2s ease',
-  position: 'relative',
+  transition: 'all 0.3s ease',
+  borderRadius: theme.shape.borderRadius * 1.5,
+  border: selected ? `2px solid ${theme.palette.primary.main}` : `1px solid ${alpha(theme.palette.divider, 0.2)}`,
+  backgroundColor: selected 
+    ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.12 : 0.06)
+    : theme.palette.background.paper,
   '&:hover': {
-    backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
     borderColor: theme.palette.primary.main,
+    transform: 'translateY(-4px)',
+    boxShadow: theme.shadows[selected ? 4 : 2]
   }
 }));
 
-export const SelectedImagePreview = styled(Box)(({ theme }) => ({
+// Image dropzone
+export const ImageDropzone = styled(Box)(({ theme, isDragActive, hasImages }) => ({
+  border: `2px dashed ${
+    isDragActive 
+      ? theme.palette.primary.main 
+      : alpha(theme.palette.mode === 'dark' ? '#fff' : '#000', 0.15)
+  }`,
+  borderRadius: theme.shape.borderRadius * 1.5,
+  backgroundColor: isDragActive
+    ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.12 : 0.06)
+    : alpha(theme.palette.mode === 'dark' ? '#fff' : '#000', 0.02),
+  padding: hasImages ? theme.spacing(3) : theme.spacing(5),
   display: 'flex',
-  flexWrap: 'wrap',
-  gap: theme.spacing(2),
-  marginTop: theme.spacing(2),
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  cursor: 'pointer',
+  transition: 'all 0.3s ease',
+  minHeight: hasImages ? 120 : 200,
+  [theme.breakpoints.down('sm')]: {
+    minHeight: hasImages ? 100 : 160,
+    padding: hasImages ? theme.spacing(2) : theme.spacing(3),
+  },
+  '&:hover': {
+    backgroundColor: alpha(theme.palette.mode === 'dark' ? '#fff' : '#000', 0.04),
+    borderColor: isDragActive
+      ? theme.palette.primary.main
+      : alpha(theme.palette.mode === 'dark' ? '#fff' : '#000', 0.25)
+  }
 }));
 
+// Preview of selected images
+export const SelectedImagePreview = styled(Box)(({ theme }) => ({
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
+  gap: theme.spacing(2),
+  marginTop: theme.spacing(2),
+  [theme.breakpoints.down('sm')]: {
+    gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))',
+    gap: theme.spacing(1),
+  }
+}));
+
+// Thumbnail container
 export const ImageThumb = styled(Box)(({ theme }) => ({
   position: 'relative',
   borderRadius: theme.shape.borderRadius,
   overflow: 'hidden',
-  width: '100px',
-  height: '100px',
-  background: theme.palette.mode === 'dark' ? '#1e1e1e' : '#f5f5f5',
+  aspectRatio: '1/1',
   boxShadow: theme.shadows[1],
+  transition: 'all 0.2s ease',
+  '&:hover': {
+    boxShadow: theme.shadows[3],
+    transform: 'scale(1.02)'
+  },
   '&:hover .image-actions': {
-    opacity: 1,
+    opacity: 1
   }
 }));
 
+// Actions overlay for image thumbnails
 export const ImageActions = styled(Box)(({ theme }) => ({
   position: 'absolute',
   top: 0,
   left: 0,
   right: 0,
   bottom: 0,
-  background: 'rgba(0,0,0,0.5)',
+  background: 'rgba(0, 0, 0, 0.4)',
   display: 'flex',
-  justifyContent: 'center',
   alignItems: 'center',
+  justifyContent: 'center',
   opacity: 0,
-  transition: 'opacity 0.2s ease',
-  zIndex: 2,
+  transition: 'opacity 0.3s ease',
+  [theme.breakpoints.down('sm')]: {
+    // On mobile, always show the action buttons with reduced opacity
+    opacity: 0.8
+  }
 }));
 
+// Thumbnail image
 export const ThumbImage = styled('img')({
   width: '100%',
   height: '100%',
-  objectFit: 'cover',
+  objectFit: 'cover'
 });
 
+// Preview container for the final result
 export const PreviewContainer = styled(Box)(({ theme }) => ({
-  position: 'relative',
   width: '100%',
-  height: '100%',
-  display: 'flex',
-  justifyContent: 'center',
-  alignItems: 'center',
+  maxWidth: 600,
+  margin: '0 auto',
+  border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
+  borderRadius: theme.shape.borderRadius * 1.5,
+  overflow: 'hidden',
+  backgroundColor: theme.palette.mode === 'dark' ? alpha('#fff', 0.04) : '#fff',
+  boxShadow: theme.shadows[2]
+}));
+
+// Step card component for mobile view
+export const StepCard = styled(Card)(({ theme }) => ({
+  marginBottom: theme.spacing(3),
+  borderRadius: theme.shape.borderRadius * 1.5,
+  boxShadow: theme.shadows[1],
+  overflow: 'hidden',
+  border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+  borderLeft: `4px solid ${theme.palette.primary.main}`,
 }));
 
 // SVG Template Preview Component with dynamic aspect ratio
 export const SVGTemplatePreview = styled('svg')(({ theme }) => ({
   width: '100%',
   height: 'auto',
-  backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
+  backgroundColor: theme.palette.mode === 'dark' 
+    ? alpha('#fff', 0.04) 
+    : alpha('#000', 0.02),
   borderRadius: theme.shape.borderRadius,
   transition: 'all 0.3s ease',
+}));
+
+// Section divider for visual separation
+export const SectionDivider = styled(Box)(({ theme }) => ({
+  height: 1,
+  backgroundColor: alpha(theme.palette.divider, 0.1),
+  margin: `${theme.spacing(4)} 0`,
+  width: '100%'
+}));
+
+// Aspect ratio option button
+export const AspectRatioOption = styled(Box)(({ theme, selected }) => ({
+  padding: theme.spacing(1.5),
+  borderRadius: theme.shape.borderRadius,
+  border: `2px solid ${selected 
+    ? theme.palette.primary.main 
+    : alpha(theme.palette.divider, 0.2)
+  }`,
+  backgroundColor: selected 
+    ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.12 : 0.06)
+    : 'transparent',
+  cursor: 'pointer',
+  transition: 'all 0.2s ease',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: theme.spacing(1),
+  '&:hover': {
+    backgroundColor: selected 
+      ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.18 : 0.08)
+      : alpha(theme.palette.divider, 0.05),
+    transform: selected ? 'none' : 'translateY(-2px)'
+  }
 })); 

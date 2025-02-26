@@ -28,6 +28,47 @@ const SimplePanel = ({ filled, theme }) => (
   />
 );
 
+// Common grid container style properties
+const getBaseGridStyle = (theme) => ({
+  width: '100%',
+  height: '100%',
+  display: 'grid',
+  gap: '4px',
+  padding: '4px',
+  backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
+  borderRadius: theme.shape.borderRadius,
+  transition: 'all 0.3s ease',
+  boxSizing: 'border-box',
+});
+
+// Shared render function for all layouts
+const renderLayoutGrid = (layoutConfig, theme, imageCount) => {
+  return (
+    <div
+      style={{
+        ...getBaseGridStyle(theme),
+        gridTemplateColumns: layoutConfig.gridTemplateColumns,
+        gridTemplateRows: layoutConfig.gridTemplateRows,
+        gridTemplateAreas: layoutConfig.gridTemplateAreas,
+      }}
+    >
+      {layoutConfig.items.map((item, index) => (
+        <div key={index} style={item}>
+          <SimplePanel theme={theme} filled={imageCount > index} />
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// Helper to create simple grid layout configurations
+const createSimpleGridConfig = (columns, rows, itemCount) => ({
+  gridTemplateColumns: typeof columns === 'number' ? `repeat(${columns}, 1fr)` : columns,
+  gridTemplateRows: typeof rows === 'number' ? `repeat(${rows}, 1fr)` : rows,
+  gridAreas: null,
+  items: Array(itemCount).fill({ gridArea: null })
+});
+
 // Layout templates
 export const layoutTemplates = [
   {
@@ -38,208 +79,76 @@ export const layoutTemplates = [
     minImages: 2,
     maxImages: 9,
     renderPreview: (aspectRatio, theme, imageCount = 0) => {
-      // Calculate the optimal grid layout based on image count
-      let columns;
-      let rows;
+      // Layout configurations organized by image count
+      const layoutConfigs = {
+        2: createSimpleGridConfig('1fr 1fr', '1fr', 2),
+        3: createSimpleGridConfig('1fr 1fr 1fr', '1fr', 3),
+        4: createSimpleGridConfig('1fr 1fr', '1fr 1fr', 4),
+        5: {
+          gridTemplateColumns: '1fr 1fr 1fr',
+          gridTemplateRows: '1fr 1fr',
+          gridTemplateAreas: `
+            "one one two"
+            "three four five"
+          `,
+          items: [
+            { gridArea: 'one' },
+            { gridArea: 'two' },
+            { gridArea: 'three' },
+            { gridArea: 'four' },
+            { gridArea: 'five' }
+          ]
+        },
+        6: createSimpleGridConfig('1fr 1fr 1fr', '1fr 1fr', 6),
+        7: {
+          gridTemplateColumns: '1fr 1fr 1fr 1fr',
+          gridTemplateRows: '1fr 1fr 1fr',
+          gridTemplateAreas: `
+            "one one two two"
+            "three four five six"
+            "three seven seven six"
+          `,
+          items: [
+            { gridArea: 'one' },
+            { gridArea: 'two' },
+            { gridArea: 'three' },
+            { gridArea: 'four' },
+            { gridArea: 'five' },
+            { gridArea: 'six' },
+            { gridArea: 'seven' }
+          ]
+        },
+        8: {
+          gridTemplateColumns: '1fr 1fr 1fr 1fr',
+          gridTemplateRows: '1fr 1fr 1fr',
+          gridTemplateAreas: `
+            "one one two two"
+            "three four five six"
+            "seven seven eight eight"
+          `,
+          items: [
+            { gridArea: 'one' },
+            { gridArea: 'two' },
+            { gridArea: 'three' },
+            { gridArea: 'four' },
+            { gridArea: 'five' },
+            { gridArea: 'six' },
+            { gridArea: 'seven' },
+            { gridArea: 'eight' }
+          ]
+        },
+        9: createSimpleGridConfig('1fr 1fr 1fr', '1fr 1fr 1fr', 9)
+      };
       
-      switch(imageCount) {
-        case 2:
-          columns = 2;
-          rows = 1;
-          break;
-        case 3:
-          columns = 3;
-          rows = 1;
-          break;
-        case 4:
-          columns = 2;
-          rows = 2;
-          break;
-        case 5:
-          columns = 3;
-          rows = 2;
-          break;
-        case 6:
-          columns = 3;
-          rows = 2;
-          break;
-        case 7:
-          columns = 4; // Adjust to 4 columns to avoid empty cells
-          rows = 2;
-          break;
-        case 8:
-          columns = 4; // Adjust to 4 columns to avoid empty cells
-          rows = 2;
-          break;
-        case 9:
-          columns = 3;
-          rows = 3;
-          break;
-        default:
-          columns = 2;
-          rows = 2;
-      }
+      // Get layout config for current image count or fallback to a default layout
+      const layoutConfig = layoutConfigs[imageCount] || {
+        gridTemplateColumns: '1fr 1fr',
+        gridTemplateRows: '1fr 1fr',
+        gridAreas: null,
+        items: Array(Math.min(4, imageCount)).fill({ gridArea: null })
+      };
       
-      // Generate special layout for 5, 7, or 8 images
-      if (imageCount === 5) {
-        return (
-          <div
-            style={{
-              width: '100%',
-              height: '100%',
-              display: 'grid',
-              gridTemplateAreas: `
-                "one one two"
-                "three four five"
-              `,
-              gridTemplateColumns: '1fr 1fr 1fr',
-              gridTemplateRows: '1fr 1fr',
-              gap: '4px',
-              padding: '4px',
-              backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
-              borderRadius: theme.shape.borderRadius,
-              transition: 'all 0.3s ease',
-              boxSizing: 'border-box',
-            }}
-          >
-            <div style={{ gridArea: 'one' }}>
-              <SimplePanel theme={theme} filled={imageCount > 0} />
-            </div>
-            <div style={{ gridArea: 'two' }}>
-              <SimplePanel theme={theme} filled={imageCount > 1} />
-            </div>
-            <div style={{ gridArea: 'three' }}>
-              <SimplePanel theme={theme} filled={imageCount > 2} />
-            </div>
-            <div style={{ gridArea: 'four' }}>
-              <SimplePanel theme={theme} filled={imageCount > 3} />
-            </div>
-            <div style={{ gridArea: 'five' }}>
-              <SimplePanel theme={theme} filled={imageCount > 4} />
-            </div>
-          </div>
-        );
-      }
-      
-      if (imageCount === 7) {
-        return (
-          <div
-            style={{
-              width: '100%',
-              height: '100%',
-              display: 'grid',
-              gridTemplateAreas: `
-                "one one two two"
-                "three four five six"
-                "three seven seven six"
-              `,
-              gridTemplateColumns: '1fr 1fr 1fr 1fr',
-              gridTemplateRows: '1fr 1fr 1fr',
-              gap: '4px',
-              padding: '4px',
-              backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
-              borderRadius: theme.shape.borderRadius,
-              transition: 'all 0.3s ease',
-              boxSizing: 'border-box',
-            }}
-          >
-            <div style={{ gridArea: 'one' }}>
-              <SimplePanel theme={theme} filled={imageCount > 0} />
-            </div>
-            <div style={{ gridArea: 'two' }}>
-              <SimplePanel theme={theme} filled={imageCount > 1} />
-            </div>
-            <div style={{ gridArea: 'three' }}>
-              <SimplePanel theme={theme} filled={imageCount > 2} />
-            </div>
-            <div style={{ gridArea: 'four' }}>
-              <SimplePanel theme={theme} filled={imageCount > 3} />
-            </div>
-            <div style={{ gridArea: 'five' }}>
-              <SimplePanel theme={theme} filled={imageCount > 4} />
-            </div>
-            <div style={{ gridArea: 'six' }}>
-              <SimplePanel theme={theme} filled={imageCount > 5} />
-            </div>
-            <div style={{ gridArea: 'seven' }}>
-              <SimplePanel theme={theme} filled={imageCount > 6} />
-            </div>
-          </div>
-        );
-      }
-      
-      if (imageCount === 8) {
-        return (
-          <div
-            style={{
-              width: '100%',
-              height: '100%',
-              display: 'grid',
-              gridTemplateAreas: `
-                "one one two two"
-                "three four five six"
-                "seven seven eight eight"
-              `,
-              gridTemplateColumns: '1fr 1fr 1fr 1fr',
-              gridTemplateRows: '1fr 1fr 1fr',
-              gap: '4px',
-              padding: '4px',
-              backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
-              borderRadius: theme.shape.borderRadius,
-              transition: 'all 0.3s ease',
-              boxSizing: 'border-box',
-            }}
-          >
-            <div style={{ gridArea: 'one' }}>
-              <SimplePanel theme={theme} filled={imageCount > 0} />
-            </div>
-            <div style={{ gridArea: 'two' }}>
-              <SimplePanel theme={theme} filled={imageCount > 1} />
-            </div>
-            <div style={{ gridArea: 'three' }}>
-              <SimplePanel theme={theme} filled={imageCount > 2} />
-            </div>
-            <div style={{ gridArea: 'four' }}>
-              <SimplePanel theme={theme} filled={imageCount > 3} />
-            </div>
-            <div style={{ gridArea: 'five' }}>
-              <SimplePanel theme={theme} filled={imageCount > 4} />
-            </div>
-            <div style={{ gridArea: 'six' }}>
-              <SimplePanel theme={theme} filled={imageCount > 5} />
-            </div>
-            <div style={{ gridArea: 'seven' }}>
-              <SimplePanel theme={theme} filled={imageCount > 6} />
-            </div>
-            <div style={{ gridArea: 'eight' }}>
-              <SimplePanel theme={theme} filled={imageCount > 7} />
-            </div>
-          </div>
-        );
-      }
-      
-      // Standard grid layout for other image counts
-      return (
-        <div
-          style={{
-            width: '100%',
-            height: '100%',
-            display: 'grid',
-            gridTemplateColumns: `repeat(${columns}, 1fr)`,
-            gridTemplateRows: `repeat(${rows}, 1fr)`,
-            gap: '4px',
-            padding: '4px',
-            backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
-            borderRadius: theme.shape.borderRadius,
-            transition: 'all 0.3s ease',
-            boxSizing: 'border-box',
-          }}
-        >
-          {Array.from({ length: imageCount }, (_, i) => (
-            <SimplePanel key={i} theme={theme} filled={imageCount > i} />
-          ))}
-        </div>
-      );
+      return renderLayoutGrid(layoutConfig, theme, imageCount);
     }
   },
   {
@@ -250,192 +159,72 @@ export const layoutTemplates = [
     minImages: 2,
     maxImages: 6, // Limit to 6 images as per user request
     renderPreview: (aspectRatio, theme, imageCount = 0) => {
-      if (imageCount === 2) {
-        return (
-          <div
-            style={{
-              width: '100%',
-              height: '100%',
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: '4px',
-              padding: '4px',
-              backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
-              borderRadius: theme.shape.borderRadius,
-              boxSizing: 'border-box',
-            }}
-          >
-            <SimplePanel theme={theme} filled={imageCount > 0} />
-            <SimplePanel theme={theme} filled={imageCount > 1} />
-          </div>
-        );
-      }
+      // Layout configurations organized by image count
+      const layoutConfigs = {
+        2: createSimpleGridConfig('1fr 1fr', '1fr', 2),
+        3: {
+          gridTemplateColumns: '1fr 1fr',
+          gridTemplateRows: '1fr 1fr',
+          gridAreas: null,
+          items: [
+            { gridRow: 'span 2' },
+            { gridArea: null },
+            { gridArea: null }
+          ]
+        },
+        4: {
+          gridTemplateColumns: '1fr 1fr 1fr',
+          gridTemplateRows: '1fr 1fr 1fr',
+          gridTemplateAreas: `
+            "main main right1"
+            "main main right2"
+            "bottom bottom bottom"
+          `,
+          items: [
+            { gridArea: 'main' },
+            { gridArea: 'right1' },
+            { gridArea: 'right2' },
+            { gridArea: 'bottom' }
+          ]
+        },
+        5: {
+          gridTemplateColumns: '1fr 1fr 1fr',
+          gridTemplateRows: '1fr 1fr',
+          gridTemplateAreas: `
+            "main main right1"
+            "bottom1 bottom2 right2"
+          `,
+          items: [
+            { gridArea: 'main' },
+            { gridArea: 'right1' },
+            { gridArea: 'right2' },
+            { gridArea: 'bottom1' },
+            { gridArea: 'bottom2' }
+          ]
+        },
+        6: {
+          gridTemplateColumns: '1fr 1fr 1fr',
+          gridTemplateRows: '1fr 1fr 1fr',
+          gridTemplateAreas: `
+            "main main right1"
+            "main main right2"
+            "bottom1 bottom2 bottom3"
+          `,
+          items: [
+            { gridArea: 'main' },
+            { gridArea: 'right1' },
+            { gridArea: 'right2' },
+            { gridArea: 'bottom1' },
+            { gridArea: 'bottom2' },
+            { gridArea: 'bottom3' }
+          ]
+        }
+      };
       
-      if (imageCount === 3) {
-        return (
-          <div
-            style={{
-              width: '100%',
-              height: '100%',
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gridTemplateRows: '1fr 1fr',
-              gap: '4px',
-              padding: '4px',
-              backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
-              borderRadius: theme.shape.borderRadius,
-              boxSizing: 'border-box',
-            }}
-          >
-            <div style={{ gridRow: 'span 2' }}>
-              <SimplePanel theme={theme} filled={imageCount > 0} />
-            </div>
-            <SimplePanel theme={theme} filled={imageCount > 1} />
-            <SimplePanel theme={theme} filled={imageCount > 2} />
-          </div>
-        );
-      }
+      // Get layout config for current image count or fallback to the 2-image layout
+      const layoutConfig = layoutConfigs[imageCount] || layoutConfigs[2];
       
-      if (imageCount === 4) {
-        return (
-          <div
-            style={{
-              width: '100%',
-              height: '100%',
-              display: 'grid',
-              gridTemplateAreas: `
-                "main main right1"
-                "main main right2"
-                "bottom bottom bottom"
-              `,
-              gridTemplateColumns: '1fr 1fr 1fr',
-              gridTemplateRows: '1fr 1fr 1fr',
-              gap: '4px',
-              padding: '4px',
-              backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
-              borderRadius: theme.shape.borderRadius,
-              boxSizing: 'border-box',
-            }}
-          >
-            <div style={{ gridArea: 'main' }}>
-              <SimplePanel theme={theme} filled={imageCount > 0} />
-            </div>
-            <div style={{ gridArea: 'right1' }}>
-              <SimplePanel theme={theme} filled={imageCount > 1} />
-            </div>
-            <div style={{ gridArea: 'right2' }}>
-              <SimplePanel theme={theme} filled={imageCount > 2} />
-            </div>
-            <div style={{ gridArea: 'bottom' }}>
-              <SimplePanel theme={theme} filled={imageCount > 3} />
-            </div>
-          </div>
-        );
-      }
-      
-      // For 5 images
-      if (imageCount === 5) {
-        return (
-          <div
-            style={{
-              width: '100%',
-              height: '100%',
-              display: 'grid',
-              gridTemplateAreas: `
-                "main main right1"
-                "bottom1 bottom2 right2"
-              `,
-              gridTemplateColumns: '1fr 1fr 1fr',
-              gridTemplateRows: '1fr 1fr',
-              gap: '4px',
-              padding: '4px',
-              backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
-              borderRadius: theme.shape.borderRadius,
-              boxSizing: 'border-box',
-            }}
-          >
-            <div style={{ gridArea: 'main' }}>
-              <SimplePanel theme={theme} filled={imageCount > 0} />
-            </div>
-            <div style={{ gridArea: 'right1' }}>
-              <SimplePanel theme={theme} filled={imageCount > 1} />
-            </div>
-            <div style={{ gridArea: 'right2' }}>
-              <SimplePanel theme={theme} filled={imageCount > 2} />
-            </div>
-            <div style={{ gridArea: 'bottom1' }}>
-              <SimplePanel theme={theme} filled={imageCount > 3} />
-            </div>
-            <div style={{ gridArea: 'bottom2' }}>
-              <SimplePanel theme={theme} filled={imageCount > 4} />
-            </div>
-          </div>
-        );
-      }
-      
-      // For 6 images
-      if (imageCount === 6) {
-        return (
-          <div
-            style={{
-              width: '100%',
-              height: '100%',
-              display: 'grid',
-              gridTemplateAreas: `
-                "main main right1"
-                "main main right2"
-                "bottom1 bottom2 bottom3"
-              `,
-              gridTemplateColumns: '1fr 1fr 1fr',
-              gridTemplateRows: '1fr 1fr 1fr',
-              gap: '4px',
-              padding: '4px',
-              backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
-              borderRadius: theme.shape.borderRadius,
-              boxSizing: 'border-box',
-            }}
-          >
-            <div style={{ gridArea: 'main' }}>
-              <SimplePanel theme={theme} filled={imageCount > 0} />
-            </div>
-            <div style={{ gridArea: 'right1' }}>
-              <SimplePanel theme={theme} filled={imageCount > 1} />
-            </div>
-            <div style={{ gridArea: 'right2' }}>
-              <SimplePanel theme={theme} filled={imageCount > 2} />
-            </div>
-            <div style={{ gridArea: 'bottom1' }}>
-              <SimplePanel theme={theme} filled={imageCount > 3} />
-            </div>
-            <div style={{ gridArea: 'bottom2' }}>
-              <SimplePanel theme={theme} filled={imageCount > 4} />
-            </div>
-            <div style={{ gridArea: 'bottom3' }}>
-              <SimplePanel theme={theme} filled={imageCount > 5} />
-            </div>
-          </div>
-        );
-      }
-      
-      // Default to the 2-image layout if something goes wrong
-      return (
-        <div
-          style={{
-            width: '100%',
-            height: '100%',
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '4px',
-            padding: '4px',
-            backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
-            borderRadius: theme.shape.borderRadius,
-            boxSizing: 'border-box',
-          }}
-        >
-          <SimplePanel theme={theme} filled={imageCount > 0} />
-          <SimplePanel theme={theme} filled={imageCount > 1} />
-        </div>
-      );
+      return renderLayoutGrid(layoutConfig, theme, imageCount);
     }
   },
   {
@@ -446,258 +235,98 @@ export const layoutTemplates = [
     minImages: 2,
     maxImages: 7, // Only allow up to 7 images
     renderPreview: (aspectRatio, theme, imageCount = 0) => {
-      // For 2 images, a simple vertical split with first image taking 2/3 of the space
-      if (imageCount === 2) {
-        return (
-          <div
-            style={{
-              width: '100%',
-              height: '100%',
-              display: 'grid',
-              gridTemplateRows: '2fr 1fr',
-              gap: '4px',
-              padding: '4px',
-              backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
-              borderRadius: theme.shape.borderRadius,
-              boxSizing: 'border-box',
-            }}
-          >
-            <SimplePanel theme={theme} filled={imageCount > 0} />
-            <SimplePanel theme={theme} filled={imageCount > 1} />
-          </div>
-        );
-      }
+      // Layout configurations organized by image count
+      const layoutConfigs = {
+        2: {
+          gridTemplateColumns: '1fr',
+          gridTemplateRows: '2fr 1fr',
+          gridAreas: null,
+          items: [
+            { gridArea: null },
+            { gridArea: null }
+          ]
+        },
+        3: {
+          gridTemplateColumns: '1fr 1fr',
+          gridTemplateRows: '2fr 1fr',
+          gridAreas: null,
+          items: [
+            { gridColumn: 'span 2' },
+            { gridArea: null },
+            { gridArea: null }
+          ]
+        },
+        4: {
+          gridTemplateColumns: '1fr 1fr 1fr',
+          gridTemplateRows: '2fr 1fr',
+          gridAreas: null,
+          items: [
+            { gridColumn: 'span 3' },
+            { gridArea: null },
+            { gridArea: null },
+            { gridArea: null }
+          ]
+        },
+        5: {
+          gridTemplateColumns: '1fr 1fr 1fr 1fr',
+          gridTemplateRows: '1fr 1fr 1fr',
+          gridTemplateAreas: `
+            "featured featured featured side1"
+            "featured featured featured side2"
+            "side3 side4 side5 side5"
+          `,
+          items: [
+            { gridArea: 'featured' },
+            { gridArea: 'side1' },
+            { gridArea: 'side2' },
+            { gridArea: 'side3' },
+            { gridArea: 'side4' },
+            { gridArea: 'side5' }
+          ]
+        },
+        6: {
+          gridTemplateColumns: '1fr 1fr 1fr 1fr',
+          gridTemplateRows: '1fr 1fr 1fr',
+          gridTemplateAreas: `
+            "featured featured side1 side2"
+            "featured featured side3 side4"
+            "featured featured side5 side6"
+          `,
+          items: [
+            { gridArea: 'featured' },
+            { gridArea: 'side1' },
+            { gridArea: 'side2' },
+            { gridArea: 'side3' },
+            { gridArea: 'side4' },
+            { gridArea: 'side5' },
+            { gridArea: 'side6' }
+          ]
+        },
+        7: {
+          gridTemplateColumns: '1fr 1fr 1fr 1fr',
+          gridTemplateRows: '1fr 1fr 1fr',
+          gridTemplateAreas: `
+            "featured featured side1 side2"
+            "featured featured side3 side4"
+            "side5 side6 side7 side7"
+          `,
+          items: [
+            { gridArea: 'featured' },
+            { gridArea: 'side1' },
+            { gridArea: 'side2' },
+            { gridArea: 'side3' },
+            { gridArea: 'side4' },
+            { gridArea: 'side5' },
+            { gridArea: 'side6' },
+            { gridArea: 'side7' }
+          ]
+        }
+      };
       
-      // For 3 images, make the first image take up the full width on top
-      if (imageCount === 3) {
-        return (
-          <div
-            style={{
-              width: '100%',
-              height: '100%',
-              display: 'grid',
-              gridTemplateRows: '2fr 1fr',
-              gridTemplateColumns: '1fr 1fr',
-              gap: '4px',
-              padding: '4px',
-              backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
-              borderRadius: theme.shape.borderRadius,
-              boxSizing: 'border-box',
-            }}
-          >
-            <div style={{ gridColumn: 'span 2' }}>
-              <SimplePanel theme={theme} filled={imageCount > 0} />
-            </div>
-            <SimplePanel theme={theme} filled={imageCount > 1} />
-            <SimplePanel theme={theme} filled={imageCount > 2} />
-          </div>
-        );
-      }
+      // Get layout config for current image count or fallback to the 2-image layout
+      const layoutConfig = layoutConfigs[imageCount] || layoutConfigs[2];
       
-      // For 4 images, T-shaped layout
-      if (imageCount === 4) {
-        return (
-          <div
-            style={{
-              width: '100%',
-              height: '100%',
-              display: 'grid',
-              gridTemplateRows: '2fr 1fr',
-              gridTemplateColumns: '1fr 1fr 1fr',
-              gap: '4px',
-              padding: '4px',
-              backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
-              borderRadius: theme.shape.borderRadius,
-              boxSizing: 'border-box',
-            }}
-          >
-            <div style={{ gridColumn: 'span 3' }}>
-              <SimplePanel theme={theme} filled={imageCount > 0} />
-            </div>
-            <SimplePanel theme={theme} filled={imageCount > 1} />
-            <SimplePanel theme={theme} filled={imageCount > 2} />
-            <SimplePanel theme={theme} filled={imageCount > 3} />
-          </div>
-        );
-      }
-      
-      // For 5+ images, create a layout with a featured image and a grid
-      if (imageCount === 5) {
-        return (
-          <div
-            style={{
-              width: '100%',
-              height: '100%',
-              display: 'grid',
-              gridTemplateAreas: `
-                "featured featured featured side1"
-                "featured featured featured side2"
-                "side3 side4 side5 side5"
-              `,
-              gridTemplateColumns: '1fr 1fr 1fr 1fr',
-              gridTemplateRows: '1fr 1fr 1fr',
-              gap: '4px',
-              padding: '4px',
-              backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
-              borderRadius: theme.shape.borderRadius,
-              boxSizing: 'border-box',
-            }}
-          >
-            <div style={{ gridArea: 'featured' }}>
-              <SimplePanel theme={theme} filled={imageCount > 0} />
-            </div>
-            <div style={{ gridArea: 'side1' }}>
-              <SimplePanel theme={theme} filled={imageCount > 1} />
-            </div>
-            <div style={{ gridArea: 'side2' }}>
-              <SimplePanel theme={theme} filled={imageCount > 2} />
-            </div>
-            <div style={{ gridArea: 'side3' }}>
-              <SimplePanel theme={theme} filled={imageCount > 3} />
-            </div>
-            <div style={{ gridArea: 'side4' }}>
-              <SimplePanel theme={theme} filled={imageCount > 4} />
-            </div>
-            <div style={{ gridArea: 'side5' }}>
-              <SimplePanel theme={theme} filled />
-            </div>
-          </div>
-        );
-      }
-      
-      // For 6 images
-      if (imageCount === 6) {
-        return (
-          <div
-            style={{
-              width: '100%',
-              height: '100%',
-              display: 'grid',
-              gridTemplateAreas: `
-                "featured featured side1 side2"
-                "featured featured side3 side4"
-                "featured featured side5 side6"
-              `,
-              gridTemplateColumns: '1fr 1fr 1fr 1fr',
-              gridTemplateRows: '1fr 1fr 1fr',
-              gap: '4px',
-              padding: '4px',
-              backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
-              borderRadius: theme.shape.borderRadius,
-              boxSizing: 'border-box',
-            }}
-          >
-            <div style={{ gridArea: 'featured' }}>
-              <SimplePanel theme={theme} filled={imageCount > 0} />
-            </div>
-            <div style={{ gridArea: 'side1' }}>
-              <SimplePanel theme={theme} filled={imageCount > 1} />
-            </div>
-            <div style={{ gridArea: 'side2' }}>
-              <SimplePanel theme={theme} filled={imageCount > 2} />
-            </div>
-            <div style={{ gridArea: 'side3' }}>
-              <SimplePanel theme={theme} filled={imageCount > 3} />
-            </div>
-            <div style={{ gridArea: 'side4' }}>
-              <SimplePanel theme={theme} filled={imageCount > 4} />
-            </div>
-            <div style={{ gridArea: 'side5' }}>
-              <SimplePanel theme={theme} filled={imageCount > 5} />
-            </div>
-            <div style={{ gridArea: 'side6' }}>
-              <SimplePanel theme={theme} filled />
-            </div>
-          </div>
-        );
-      }
-      
-      // For 7 images
-      if (imageCount === 7) {
-        return (
-          <div
-            style={{
-              width: '100%',
-              height: '100%',
-              display: 'grid',
-              gridTemplateAreas: `
-                "featured featured side1 side2"
-                "featured featured side3 side4"
-                "side5 side6 side7 side7"
-              `,
-              gridTemplateColumns: '1fr 1fr 1fr 1fr',
-              gridTemplateRows: '1fr 1fr 1fr',
-              gap: '4px',
-              padding: '4px',
-              backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
-              borderRadius: theme.shape.borderRadius,
-              boxSizing: 'border-box',
-            }}
-          >
-            <div style={{ gridArea: 'featured' }}>
-              <SimplePanel theme={theme} filled={imageCount > 0} />
-            </div>
-            <div style={{ gridArea: 'side1' }}>
-              <SimplePanel theme={theme} filled={imageCount > 1} />
-            </div>
-            <div style={{ gridArea: 'side2' }}>
-              <SimplePanel theme={theme} filled={imageCount > 2} />
-            </div>
-            <div style={{ gridArea: 'side3' }}>
-              <SimplePanel theme={theme} filled={imageCount > 3} />
-            </div>
-            <div style={{ gridArea: 'side4' }}>
-              <SimplePanel theme={theme} filled={imageCount > 4} />
-            </div>
-            <div style={{ gridArea: 'side5' }}>
-              <SimplePanel theme={theme} filled={imageCount > 5} />
-            </div>
-            <div style={{ gridArea: 'side6' }}>
-              <SimplePanel theme={theme} filled={imageCount > 6} />
-            </div>
-            <div style={{ gridArea: 'side7' }}>
-              <SimplePanel theme={theme} filled />
-            </div>
-          </div>
-        );
-      }
-      
-      // Default layout - no longer used but kept as fallback
-      return (
-        <div
-          style={{
-            width: '100%',
-            height: '100%',
-            display: 'grid',
-            gridTemplateColumns: '3fr 2fr',
-            gap: '4px',
-            padding: '4px',
-            backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
-            borderRadius: theme.shape.borderRadius,
-            boxSizing: 'border-box',
-          }}
-        >
-          {/* Featured image */}
-          <SimplePanel theme={theme} filled={imageCount > 0} />
-          
-          {/* Grid of smaller images */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(2, 1fr)',
-              gridTemplateRows: 'repeat(3, 1fr)',
-              gap: '4px',
-            }}
-          >
-            <SimplePanel theme={theme} filled={imageCount > 1} />
-            <SimplePanel theme={theme} filled={imageCount > 2} />
-            <SimplePanel theme={theme} filled={imageCount > 3} />
-            <SimplePanel theme={theme} filled={imageCount > 4} />
-            <SimplePanel theme={theme} filled={imageCount > 5} />
-            <SimplePanel theme={theme} filled={imageCount > 6} />
-          </div>
-        </div>
-      );
+      return renderLayoutGrid(layoutConfig, theme, imageCount);
     }
   },
   {
@@ -708,199 +337,67 @@ export const layoutTemplates = [
     minImages: 2,
     maxImages: 6, // Limit to 6 images as per user request
     renderPreview: (aspectRatio, theme, imageCount = 0) => {
-      // For 2 images, a stylish split layout
-      if (imageCount === 2) {
-        return (
-          <div
-            style={{
-              width: '100%',
-              height: '100%',
-              display: 'grid',
-              gridTemplateColumns: '1.5fr 1fr',
-              gap: '4px',
-              padding: '4px',
-              backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
-              borderRadius: theme.shape.borderRadius,
-              boxSizing: 'border-box',
-            }}
-          >
-            <SimplePanel theme={theme} filled={imageCount > 0} />
-            <SimplePanel theme={theme} filled={imageCount > 1} />
-          </div>
-        );
-      }
+      // Layout configurations organized by image count
+      const layoutConfigs = {
+        2: {
+          gridTemplateColumns: '1.5fr 1fr',
+          gridTemplateRows: '1fr',
+          gridAreas: null,
+          items: [
+            { gridArea: null },
+            { gridArea: null }
+          ]
+        },
+        3: {
+          gridTemplateColumns: '2fr 1fr',
+          gridTemplateRows: '1fr 1fr',
+          gridAreas: null,
+          items: [
+            { gridArea: null },
+            { gridRow: 'span 2' },
+            { gridArea: null }
+          ]
+        },
+        4: {
+          gridTemplateColumns: '1fr 1fr 1fr',
+          gridTemplateRows: '1fr 1fr 1fr',
+          gridTemplateAreas: `
+            "main main side1"
+            "main main side1"
+            "side2 side3 side1"
+          `,
+          items: [
+            { gridArea: 'main' },
+            { gridArea: 'side1' },
+            { gridArea: 'side2' },
+            { gridArea: 'side3' }
+          ]
+        },
+        // Consolidated 5 and 6 image layouts since they're identical
+        5: {
+          gridTemplateColumns: '1fr 1fr 1fr',
+          gridTemplateRows: '1fr 1fr 1fr',
+          gridTemplateAreas: `
+            "featured featured side1"
+            "featured featured side2"
+            "side3 side4 side5"
+          `,
+          items: [
+            { gridArea: 'featured' },
+            { gridArea: 'side1' },
+            { gridArea: 'side2' },
+            { gridArea: 'side3' },
+            { gridArea: 'side4' },
+            { gridArea: 'side5' }
+          ]
+        }
+      };
       
-      // For 3 images, offset grid layout
-      if (imageCount === 3) {
-        return (
-          <div
-            style={{
-              width: '100%',
-              height: '100%',
-              display: 'grid',
-              gridTemplateColumns: '2fr 1fr',
-              gridTemplateRows: '1fr 1fr',
-              gap: '4px',
-              padding: '4px',
-              backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
-              borderRadius: theme.shape.borderRadius,
-              boxSizing: 'border-box',
-            }}
-          >
-            <SimplePanel theme={theme} filled={imageCount > 0} />
-            <div style={{ gridRow: 'span 2' }}>
-              <SimplePanel theme={theme} filled={imageCount > 1} />
-            </div>
-            <SimplePanel theme={theme} filled={imageCount > 2} />
-          </div>
-        );
-      }
+      // Get layout config for current image count or fallback to the 2-image layout
+      // For 6 images, use the 5-image layout
+      const layoutConfig = layoutConfigs[imageCount === 6 ? 5 : imageCount] || layoutConfigs[2];
       
-      // For 4 images, magazine spread
-      if (imageCount === 4) {
-        return (
-          <div
-            style={{
-              width: '100%',
-              height: '100%',
-              display: 'grid',
-              gridTemplateAreas: `
-                "main main side1"
-                "main main side1"
-                "side2 side3 side1"
-              `,
-              gridTemplateColumns: '1fr 1fr 1fr',
-              gridTemplateRows: '1fr 1fr 1fr',
-              gap: '4px',
-              padding: '4px',
-              backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
-              borderRadius: theme.shape.borderRadius,
-              boxSizing: 'border-box',
-            }}
-          >
-            <div style={{ gridArea: 'main' }}>
-              <SimplePanel theme={theme} filled={imageCount > 0} />
-            </div>
-            <div style={{ gridArea: 'side1' }}>
-              <SimplePanel theme={theme} filled={imageCount > 1} />
-            </div>
-            <div style={{ gridArea: 'side2' }}>
-              <SimplePanel theme={theme} filled={imageCount > 2} />
-            </div>
-            <div style={{ gridArea: 'side3' }}>
-              <SimplePanel theme={theme} filled={imageCount > 3} />
-            </div>
-          </div>
-        );
-      }
-      
-      // For 5 images, magazine layout
-      if (imageCount === 5) {
-        return (
-          <div
-            style={{
-              width: '100%',
-              height: '100%',
-              display: 'grid',
-              gridTemplateAreas: `
-                "featured featured side1"
-                "featured featured side2"
-                "side3 side4 side5"
-              `,
-              gridTemplateColumns: '1fr 1fr 1fr',
-              gridTemplateRows: '1fr 1fr 1fr',
-              gap: '4px',
-              padding: '4px',
-              backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
-              borderRadius: theme.shape.borderRadius,
-              boxSizing: 'border-box',
-            }}
-          >
-            <div style={{ gridArea: 'featured' }}>
-              <SimplePanel theme={theme} filled={imageCount > 0} />
-            </div>
-            <div style={{ gridArea: 'side1' }}>
-              <SimplePanel theme={theme} filled={imageCount > 1} />
-            </div>
-            <div style={{ gridArea: 'side2' }}>
-              <SimplePanel theme={theme} filled={imageCount > 2} />
-            </div>
-            <div style={{ gridArea: 'side3' }}>
-              <SimplePanel theme={theme} filled={imageCount > 3} />
-            </div>
-            <div style={{ gridArea: 'side4' }}>
-              <SimplePanel theme={theme} filled={imageCount > 4} />
-            </div>
-            <div style={{ gridArea: 'side5' }}>
-              <SimplePanel theme={theme} filled={imageCount > 4} />
-            </div>
-          </div>
-        );
-      }
-      
-      // For 6 images, magazine layout
-      if (imageCount === 6) {
-        return (
-          <div
-            style={{
-              width: '100%',
-              height: '100%',
-              display: 'grid',
-              gridTemplateAreas: `
-                "featured featured side1"
-                "featured featured side2"
-                "side3 side4 side5"
-              `,
-              gridTemplateColumns: '1fr 1fr 1fr',
-              gridTemplateRows: '1fr 1fr 1fr',
-              gap: '4px',
-              padding: '4px',
-              backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
-              borderRadius: theme.shape.borderRadius,
-              boxSizing: 'border-box',
-            }}
-          >
-            <div style={{ gridArea: 'featured' }}>
-              <SimplePanel theme={theme} filled={imageCount > 0} />
-            </div>
-            <div style={{ gridArea: 'side1' }}>
-              <SimplePanel theme={theme} filled={imageCount > 1} />
-            </div>
-            <div style={{ gridArea: 'side2' }}>
-              <SimplePanel theme={theme} filled={imageCount > 2} />
-            </div>
-            <div style={{ gridArea: 'side3' }}>
-              <SimplePanel theme={theme} filled={imageCount > 3} />
-            </div>
-            <div style={{ gridArea: 'side4' }}>
-              <SimplePanel theme={theme} filled={imageCount > 4} />
-            </div>
-            <div style={{ gridArea: 'side5' }}>
-              <SimplePanel theme={theme} filled={imageCount > 5} />
-            </div>
-          </div>
-        );
-      }
-      
-      // Default to the 2-image layout if something goes wrong
-      return (
-        <div
-          style={{
-            width: '100%',
-            height: '100%',
-            display: 'grid',
-            gridTemplateColumns: '1.5fr 1fr',
-            gap: '4px',
-            padding: '4px',
-            backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
-            borderRadius: theme.shape.borderRadius,
-            boxSizing: 'border-box',
-          }}
-        >
-          <SimplePanel theme={theme} filled={imageCount > 0} />
-          <SimplePanel theme={theme} filled={imageCount > 1} />
-        </div>
-      );
+      return renderLayoutGrid(layoutConfig, theme, imageCount);
     }
   },
   {
@@ -913,28 +410,8 @@ export const layoutTemplates = [
     minImages: 4,
     maxImages: 4,
     renderPreview: (aspectRatio, theme, imageCount = 0) => {
-      return (
-        <div
-          style={{
-            width: '100%',
-            height: '100%',
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gridTemplateRows: '1fr 1fr',
-            gap: '4px',
-            padding: '4px',
-            backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
-            borderRadius: theme.shape.borderRadius,
-            transition: 'all 0.3s ease',
-            boxSizing: 'border-box',
-          }}
-        >
-          <SimplePanel theme={theme} filled={imageCount > 0} />
-          <SimplePanel theme={theme} filled={imageCount > 1} />
-          <SimplePanel theme={theme} filled={imageCount > 2} />
-          <SimplePanel theme={theme} filled={imageCount > 3} />
-        </div>
-      );
+      const layoutConfig = createSimpleGridConfig(2, 2, 4);
+      return renderLayoutGrid(layoutConfig, theme, imageCount);
     }
   },
   {
@@ -945,26 +422,13 @@ export const layoutTemplates = [
     minImages: 3,
     maxImages: 3,
     renderPreview: (aspectRatio, theme, imageCount = 0) => {
-      return (
-        <div
-          style={{
-            width: '100%',
-            height: '100%',
-            display: 'grid',
-            gridTemplateRows: '1fr 1fr 1fr',
-            gap: '4px',
-            padding: '4px',
-            backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
-            borderRadius: theme.shape.borderRadius,
-            transition: 'all 0.3s ease',
-            boxSizing: 'border-box',
-          }}
-        >
-          <SimplePanel theme={theme} filled={imageCount > 0} />
-          <SimplePanel theme={theme} filled={imageCount > 1} />
-          <SimplePanel theme={theme} filled={imageCount > 2} />
-        </div>
-      );
+      const layoutConfig = {
+        gridTemplateColumns: '1fr',
+        gridTemplateRows: '1fr 1fr 1fr',
+        gridAreas: null,
+        items: Array(3).fill({ gridArea: null })
+      };
+      return renderLayoutGrid(layoutConfig, theme, imageCount);
     }
   },
   {
@@ -975,26 +439,13 @@ export const layoutTemplates = [
     minImages: 3,
     maxImages: 3,
     renderPreview: (aspectRatio, theme, imageCount = 0) => {
-      return (
-        <div
-          style={{
-            width: '100%',
-            height: '100%',
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr 1fr',
-            gap: '4px',
-            padding: '4px',
-            backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
-            borderRadius: theme.shape.borderRadius,
-            transition: 'all 0.3s ease',
-            boxSizing: 'border-box',
-          }}
-        >
-          <SimplePanel theme={theme} filled={imageCount > 0} />
-          <SimplePanel theme={theme} filled={imageCount > 1} />
-          <SimplePanel theme={theme} filled={imageCount > 2} />
-        </div>
-      );
+      const layoutConfig = {
+        gridTemplateColumns: '1fr 1fr 1fr',
+        gridTemplateRows: '1fr',
+        gridAreas: null,
+        items: Array(3).fill({ gridArea: null })
+      };
+      return renderLayoutGrid(layoutConfig, theme, imageCount);
     }
   },
   {
@@ -1006,25 +457,13 @@ export const layoutTemplates = [
     minImages: 2,
     maxImages: 2,
     renderPreview: (aspectRatio, theme, imageCount = 0) => {
-      return (
-        <div
-          style={{
-            width: '100%',
-            height: '100%',
-            display: 'grid',
-            gridTemplateRows: '1fr 1fr',
-            gap: '4px',
-            padding: '4px',
-            backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
-            borderRadius: theme.shape.borderRadius,
-            transition: 'all 0.3s ease',
-            boxSizing: 'border-box',
-          }}
-        >
-          <SimplePanel theme={theme} filled={imageCount > 0} />
-          <SimplePanel theme={theme} filled={imageCount > 1} />
-        </div>
-      );
+      const layoutConfig = {
+        gridTemplateColumns: '1fr',
+        gridTemplateRows: '1fr 1fr',
+        gridAreas: null,
+        items: Array(2).fill({ gridArea: null })
+      };
+      return renderLayoutGrid(layoutConfig, theme, imageCount);
     }
   },
 ]; 
