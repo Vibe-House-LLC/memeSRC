@@ -148,14 +148,17 @@ export default function CollagePage() {
           }}
           disableGutters={isMobile} // Disable container gutters on mobile
         >
-          <Typography variant="h4" gutterBottom sx={{ 
+          <Typography variant="h3" gutterBottom sx={{ 
             display: 'flex', 
             alignItems: 'center',
-            fontWeight: '500', 
-            mb: isMobile ? 1 : 2,
-            pl: isMobile ? 1 : 0
+            fontWeight: '700', 
+            mb: isMobile ? 1.5 : 2.5,
+            pl: isMobile ? 1 : 0,
+            color: '#fff',
+            fontSize: isMobile ? '2.2rem' : '2.5rem',
+            textShadow: '0px 2px 4px rgba(0,0,0,0.15)'
           }}>
-            <Dashboard sx={{ mr: 1.5, color: 'text.primary' }} /> Collage Tool
+            <Dashboard sx={{ mr: 2, color: 'inherit', fontSize: 40 }} /> Collage Tool
           </Typography>
         
           <Paper 

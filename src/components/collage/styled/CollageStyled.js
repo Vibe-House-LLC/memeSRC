@@ -21,7 +21,7 @@ export const TemplateCard = styled(Paper)(({ theme, selected }) => ({
   alignItems: 'center',
   justifyContent: 'center',
   transition: theme.transitions.create(
-    ['border-color', 'background-color', 'box-shadow', 'transform'],
+    ['border-color', 'background-color', 'box-shadow'],
     { duration: theme.transitions.duration.shorter }
   ),
   borderRadius: theme.shape.borderRadius,
@@ -32,7 +32,6 @@ export const TemplateCard = styled(Paper)(({ theme, selected }) => ({
     ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.15 : 0.08)
     : theme.palette.background.paper,
   '&:hover': {
-    transform: 'translateY(-2px)',
     boxShadow: selected 
       ? `0 4px 12px ${alpha(theme.palette.primary.main, 0.3)}`
       : theme.palette.mode === 'dark'
@@ -42,7 +41,7 @@ export const TemplateCard = styled(Paper)(({ theme, selected }) => ({
   },
   // Subtle animation on click
   '&:active': {
-    transform: 'translateY(0)',
+    transform: 'scale(0.98)',
     transition: 'transform 0.1s',
   }
 }));

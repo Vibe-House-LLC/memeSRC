@@ -39,7 +39,7 @@ const AspectRatioCard = styled(Paper)(({ theme, selected }) => ({
   alignItems: 'center',
   justifyContent: 'center',
   transition: theme.transitions.create(
-    ['border-color', 'background-color', 'box-shadow', 'transform'],
+    ['border-color', 'background-color', 'box-shadow'],
     { duration: theme.transitions.duration.shorter }
   ),
   border: selected 
@@ -50,7 +50,6 @@ const AspectRatioCard = styled(Paper)(({ theme, selected }) => ({
     : theme.palette.background.paper,
   borderRadius: theme.shape.borderRadius,
   '&:hover': {
-    transform: 'translateY(-2px)',
     boxShadow: selected 
       ? `0 4px 12px ${alpha(theme.palette.primary.main, 0.3)}`
       : theme.palette.mode === 'dark'
@@ -65,7 +64,7 @@ const AspectRatioCard = styled(Paper)(({ theme, selected }) => ({
   flexShrink: 0,
   // Subtle animation on click
   '&:active': {
-    transform: 'translateY(0)',
+    transform: 'scale(0.98)',
     transition: 'transform 0.1s',
   }
 }));
@@ -114,7 +113,7 @@ const HorizontalScroller = styled(Box)(({ theme }) => ({
   },
   '-ms-overflow-style': 'none',  // IE, Edge
   gap: theme.spacing(2),
-  padding: theme.spacing(1, 0), // Increased padding for better visual spacing
+  padding: theme.spacing(1, 0, 2, 0), // Increased bottom padding for the hanging chips
   position: 'relative',
   scrollBehavior: 'smooth',
   alignItems: 'center',  // Center items vertically
@@ -131,7 +130,7 @@ const HorizontalScroller = styled(Box)(({ theme }) => ({
   overscrollBehavior: 'contain',
   // Consistent spacing across devices
   [theme.breakpoints.up('sm')]: {
-    padding: theme.spacing(1, 0), // Consistent padding
+    padding: theme.spacing(1, 0, 2, 0), // Consistent padding with increased bottom
     gap: theme.spacing(2), // Consistent gap
   }
 }));
@@ -161,6 +160,10 @@ const ScrollButton = styled(IconButton)(({ theme, direction }) => ({
       ? alpha(theme.palette.background.paper, 0.9)
       : alpha(theme.palette.background.default, 0.95),
     color: theme.palette.primary.dark,
+    transform: 'translateY(-50%) scale(1.05)',
+    boxShadow: `0 3px 10px ${theme.palette.mode === 'dark' 
+      ? 'rgba(0,0,0,0.4)' 
+      : 'rgba(0,0,0,0.2)'}`,
   },
   // Consistent positioning for both directions
   ...(direction === 'left' ? { left: -8 } : { right: -8 }),
@@ -176,13 +179,6 @@ const ScrollButton = styled(IconButton)(({ theme, direction }) => ({
     ['background-color', 'color', 'box-shadow', 'transform', 'opacity'], 
     { duration: theme.transitions.duration.shorter }
   ),
-  // Animation on hover
-  '&:hover': {
-    transform: 'translateY(-50%) scale(1.05)',
-    boxShadow: `0 3px 10px ${theme.palette.mode === 'dark' 
-      ? 'rgba(0,0,0,0.4)' 
-      : 'rgba(0,0,0,0.2)'}`,
-  },
   // Same styling for mobile and desktop
   [theme.breakpoints.up('sm')]: {
     width: 36,
@@ -474,16 +470,23 @@ const CollageLayoutSettings = ({
     if (value === 'custom') {
       return (
         <Box sx={{ 
-          width: '80%', 
-          height: '80%', 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center',
-          border: theme => `1px dashed ${theme.palette.divider}`,
-          borderRadius: 1,
-          background: theme => alpha(theme.palette.action.selected, 0.1)
+          display: 'flex',
+          flexDirection: 'column',
+          width: '100%',
+          height: '100%',
+          alignItems: 'center',
+          justifyContent: 'center'
         }}>
-          <Typography variant="caption" fontWeight="medium">Custom</Typography>
+          <Box sx={{ 
+            width: '65%', 
+            height: '65%', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            border: theme => `1px dashed ${theme.palette.divider}`,
+            borderRadius: 1,
+            background: theme => alpha(theme.palette.action.selected, 0.1)
+          }} />
         </Box>
       );
     }
@@ -491,19 +494,36 @@ const CollageLayoutSettings = ({
     // Calculate dimensions based on the aspect ratio value
     const friendlyRatio = getFriendlyAspectRatio(value);
   
-    // Determine box dimensions based on whether it's portrait or landscape
+    // Determine box dimensions to exactly match the aspect ratio
     const isPortrait = value < 1;
+    let width;
+    let height;
+    
+    if (isPortrait) {
+      // For portrait: height is fixed at 60%, width is calculated to match aspect ratio
+      height = 60; 
+      width = height * value; // width = height * (width/height)
+    } else {
+      // For landscape or square: width is fixed at 60%, height is calculated to match aspect ratio
+      width = 60;
+      height = width / value; // height = width / (width/height)
+    }
     
     return (
-      <Box sx={{ position: 'relative', width: '100%', height: '100%' }}>
+      <Box sx={{ 
+        position: 'relative', 
+        width: '100%', 
+        height: '100%', 
+        display: 'flex', 
+        flexDirection: 'column',
+        alignItems: 'center', 
+        justifyContent: 'center',
+        padding: 0.5
+      }}>
         <Box 
           sx={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: isPortrait ? '60%' : '80%',
-            height: isPortrait ? '80%' : '60%',
+            width: `${width}%`,
+            height: `${height}%`,
             border: theme => `2px solid ${alpha(
               theme.palette.mode === 'dark' 
                 ? theme.palette.primary.light 
@@ -520,22 +540,9 @@ const CollageLayoutSettings = ({
                 : theme.palette.primary.light, 
               0.15
             ),
+            boxShadow: '0px 2px 4px rgba(0,0,0,0.1)'
           }}
-        >
-          {/* Display aspect ratio with friendly format - smaller text for smaller cards */}
-          <Typography 
-            variant="caption" 
-            fontWeight="medium" 
-            color="text.primary" 
-            sx={{ 
-              opacity: 0.9,
-              fontSize: '0.7rem',
-              letterSpacing: '0.02em'
-            }}
-          >
-            {friendlyRatio}
-          </Typography>
-        </Box>
+        />
       </Box>
     );
   };
@@ -550,10 +557,10 @@ const CollageLayoutSettings = ({
         <StepSectionHeading>
           <Settings sx={{ 
             mr: 1.5, 
-            color: 'text.secondary', 
-            fontSize: '1.1rem' 
+            color: '#fff', 
+            fontSize: '1.3rem' 
           }} />
-          <Typography variant="subtitle1" fontWeight={500}>
+          <Typography variant="h5" fontWeight={600} sx={{ color: '#fff' }}>
             Number of Panels
           </Typography>
         </StepSectionHeading>
@@ -564,14 +571,26 @@ const CollageLayoutSettings = ({
             disabled={panelCount <= 2}
             onClick={handlePanelCountDecrease}
             size="medium"
+            sx={{
+              color: '#fff',
+              bgcolor: 'rgba(255, 255, 255, 0.15)',
+              '&:hover': {
+                bgcolor: 'rgba(255, 255, 255, 0.25)',
+              },
+              width: 40,
+              height: 40
+            }}
           >
             <Remove />
           </PanelCountButton>
           
-          <Typography variant="h5" sx={{ 
-            minWidth: 40, 
+          <Typography variant="h4" sx={{ 
+            minWidth: 60, 
             textAlign: 'center',
-            fontWeight: 600
+            fontWeight: 700,
+            color: '#fff',
+            fontSize: '2.4rem',
+            textShadow: '0px 2px 3px rgba(0,0,0,0.1)'
           }}>
             {panelCount}
           </Typography>
@@ -581,6 +600,15 @@ const CollageLayoutSettings = ({
             disabled={panelCount >= 5}
             onClick={handlePanelCountIncrease}
             size="medium"
+            sx={{
+              color: '#fff',
+              bgcolor: 'rgba(255, 255, 255, 0.15)',
+              '&:hover': {
+                bgcolor: 'rgba(255, 255, 255, 0.25)',
+              },
+              width: 40,
+              height: 40
+            }}
           >
             <Add />
           </PanelCountButton>
@@ -592,10 +620,10 @@ const CollageLayoutSettings = ({
         <StepSectionHeading>
           <AspectRatio sx={{ 
             mr: 1.5, 
-            color: 'text.secondary', 
-            fontSize: '1.1rem' 
+            color: '#fff', 
+            fontSize: '1.3rem' 
           }} />
-          <Typography variant="subtitle1" fontWeight={500}>
+          <Typography variant="h5" fontWeight={600} sx={{ color: '#fff' }}>
             Aspect Ratio
           </Typography>
         </StepSectionHeading>
@@ -655,6 +683,7 @@ const CollageLayoutSettings = ({
                 selected={selectedAspectRatio === preset.id}
                 onClick={() => handleSelectAspectRatio(preset.id)}
                 elevation={selectedAspectRatio === preset.id ? 3 : 1}
+                sx={{ mb: 0 }} // Remove margin bottom as the HorizontalScroller now has padding
               >
                 {renderAspectRatioPreview(preset)}
                 
@@ -676,6 +705,34 @@ const CollageLayoutSettings = ({
                     <Check sx={{ fontSize: 14, color: 'white' }} />
                   </Box>
                 )}
+                
+                <Chip
+                  label={preset.value === 'custom' ? 'Custom' : getFriendlyAspectRatio(preset.value)}
+                  size="small"
+                  variant="filled"
+                  sx={{
+                    position: 'absolute',
+                    bottom: -10,
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    height: 20,
+                    fontSize: '0.65rem',
+                    fontWeight: 'bold',
+                    px: 0.75,
+                    backgroundColor: theme => selectedAspectRatio === preset.id 
+                      ? theme.palette.primary.main
+                      : theme.palette.mode === 'dark' 
+                        ? 'rgba(255, 255, 255, 0.15)' 
+                        : 'rgba(0, 0, 0, 0.08)',
+                    color: theme => selectedAspectRatio === preset.id 
+                      ? theme.palette.primary.contrastText
+                      : theme.palette.text.primary,
+                    '& .MuiChip-label': {
+                      px: 0.75,
+                      py: 0
+                    }
+                  }}
+                />
               </AspectRatioCard>
             ))}
             
@@ -701,10 +758,10 @@ const CollageLayoutSettings = ({
         <StepSectionHeading>
           <GridView sx={{ 
             mr: 1.5, 
-            color: 'text.secondary', 
-            fontSize: '1.1rem' 
+            color: '#fff', 
+            fontSize: '1.3rem' 
           }} />
-          <Typography variant="subtitle1" fontWeight={500}>
+          <Typography variant="h5" fontWeight={600} sx={{ color: '#fff' }}>
             Choose Layout
           </Typography>
         </StepSectionHeading>
@@ -789,20 +846,19 @@ const CollageLayoutSettings = ({
                         padding: theme.spacing(1),
                         // Add transition and hover effects to match AspectRatioCard
                         transition: theme.transitions.create(
-                          ['border-color', 'background-color', 'box-shadow', 'transform'],
+                          ['border-color', 'background-color', 'box-shadow'],
                           { duration: theme.transitions.duration.shorter }
                         ),
                         '&:hover': {
-                          transform: 'translateY(-2px)',
                           boxShadow: isSelected 
                             ? `0 4px 12px ${alpha(theme.palette.primary.main, 0.3)}`
                             : theme.palette.mode === 'dark'
                               ? '0 4px 12px rgba(0,0,0,0.25)'
                               : '0 4px 12px rgba(0,0,0,0.1)',
                         },
-                        // Subtle animation on click
+                        // Subtle animation on click - keep this but make it less dramatic
                         '&:active': {
-                          transform: 'translateY(0)',
+                          transform: 'scale(0.98)',
                           transition: 'transform 0.1s',
                         }
                       }}
