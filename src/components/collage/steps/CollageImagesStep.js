@@ -85,7 +85,7 @@ const CollageImagesStep = ({
     // Update the effective selected images based on panel mapping
     const effectiveSelectedImages = Object.entries(panelToImageMap).map(
       ([panelId, imageIndex]) => ({
-        panel: parseInt(panelId),
+        panel: parseInt(panelId, 10),
         image: selectedImages[imageIndex],
         imageIndex
       })
@@ -255,13 +255,13 @@ const CollageImagesStep = ({
                 }}
               >
                 <Typography variant="body2">
-                  Panel {parseInt(panelId) + 1} ➔ Image {imageIndex + 1}
+                  Panel {parseInt(panelId, 10) + 1} ➔ Image {imageIndex + 1}
                 </Typography>
                 <Button 
                   variant="text" 
                   color="error" 
                   size="small"
-                  onClick={() => clearPanelImage(parseInt(panelId))}
+                  onClick={() => clearPanelImage(parseInt(panelId, 10))}
                 >
                   Remove
                 </Button>

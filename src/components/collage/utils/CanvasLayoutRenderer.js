@@ -19,7 +19,8 @@ export const calculateCanvasDimensions = (selectedAspectRatio) => {
   const aspectRatio = getAspectRatioValue(selectedAspectRatio);
   const maxSize = 1500; // Max size for longest dimension
   
-  let width, height;
+  let width;
+  let height;
   
   if (aspectRatio >= 1) {
     // Landscape or square
@@ -75,7 +76,8 @@ const parseValue = (value) => {
  */
 const createDefaultGridLayout = (count, selectedAspectRatio) => {
   // Determine grid dimensions based on panel count
-  let columns, rows;
+  let columns;
+  let rows;
   
   switch(count) {
     case 1:
@@ -101,6 +103,7 @@ const createDefaultGridLayout = (count, selectedAspectRatio) => {
       // Generic grid for any other counts
       columns = Math.ceil(Math.sqrt(count));
       rows = Math.ceil(count / columns);
+      break;
   }
   
   return {
@@ -209,6 +212,8 @@ const createLayoutConfigFromId = (templateId, count) => {
           gridTemplateAreas: null,
           items: Array(2).fill({ gridArea: null })
         };
+      default:
+        break;
     }
   }
   
@@ -265,6 +270,8 @@ const createLayoutConfigFromId = (templateId, count) => {
           gridTemplateAreas: '"left right" "bottom bottom"',
           areas: ['left', 'right', 'bottom']
         };
+      default:
+        break;
     }
   }
   
@@ -313,6 +320,8 @@ const createLayoutConfigFromId = (templateId, count) => {
           gridTemplateAreas: null,
           items: Array(4).fill({ gridArea: null })
         };
+      default:
+        break;
     }
   }
   
@@ -355,6 +364,8 @@ const createLayoutConfigFromId = (templateId, count) => {
           gridTemplateAreas: '"main top-left top-right" "main bottom-left bottom-right"',
           areas: ['main', 'top-left', 'top-right', 'bottom-left', 'bottom-right']
         };
+      default:
+        break;
     }
   }
   
@@ -447,8 +458,8 @@ const drawLayoutPanels = (ctx, layoutConfig, canvasWidth, canvasHeight, panelCou
   } else {
     // Draw a simple grid layout
     let panelIndex = 0;
-    for (let row = 0; row < rows.length; row++) {
-      for (let col = 0; col < columns.length; col++) {
+    for (let row = 0; row < rows.length; row += 1) {
+      for (let col = 0; col < columns.length; col += 1) {
         // Only draw up to the panel count
         if (panelIndex < panelCount) {
           const x = colPositions[col];
@@ -472,7 +483,7 @@ const drawLayoutPanels = (ctx, layoutConfig, canvasWidth, canvasHeight, panelCou
             height: height - borderWidth
           });
           
-          panelIndex++;
+          panelIndex += 1;
         }
       }
     }
@@ -506,7 +517,8 @@ export const renderTemplateToCanvas = ({
   
   const { width, height } = calculateCanvasDimensions(selectedAspectRatio);
   
-  let canvas, ctx;
+  let canvas;
+  let ctx;
   
   // Try to use OffscreenCanvas if supported
   try {
@@ -554,7 +566,7 @@ export const renderTemplateToCanvas = ({
     console.log("Looking for layout with ID:", selectedTemplate.id);
     
     // Try to find the exact selected template in the layouts by ID
-    let matchingLayout = layouts.find(layout => layout.id === selectedTemplate.id);
+    const matchingLayout = layouts.find(layout => layout.id === selectedTemplate.id);
     
     // Always use our template ID to create layout first if we have a specific one
     if (selectedTemplate.id && selectedTemplate.id !== 'autoLayout' && 
