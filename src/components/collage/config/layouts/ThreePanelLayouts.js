@@ -8,6 +8,7 @@ const threePanelLayouts = {
       id: 'main-with-two-bottom',
       name: 'Feature Top',
       panels: 3,
+      hasWidePanels: true,
       getLayoutConfig: () => ({
         gridTemplateColumns: '1fr 1fr',
         gridTemplateRows: '2fr 1fr',
@@ -19,6 +20,8 @@ const threePanelLayouts = {
       id: '3-columns',
       name: '3 Columns',
       panels: 3,
+      hasEqualPanels: true,
+      hasWidePanels: true,
       getLayoutConfig: () => ({
         gridTemplateColumns: 'repeat(3, 1fr)',
         gridTemplateRows: '1fr',
@@ -30,6 +33,7 @@ const threePanelLayouts = {
       id: '3-rows',
       name: '3 Rows',
       panels: 3,
+      hasEqualPanels: true,
       getLayoutConfig: () => ({
         gridTemplateColumns: '1fr',
         gridTemplateRows: 'repeat(3, 1fr)',
@@ -41,6 +45,7 @@ const threePanelLayouts = {
       id: 'center-feature-wide',
       name: 'Center Feature',
       panels: 3,
+      hasWidePanels: true,
       getLayoutConfig: () => ({
         gridTemplateColumns: '1fr 2fr 1fr',
         gridTemplateRows: '1fr',
@@ -52,6 +57,7 @@ const threePanelLayouts = {
       id: 'side-stack-wide',
       name: 'Left + Side Stack',
       panels: 3, 
+      hasWidePanels: true,
       getLayoutConfig: () => ({
         gridTemplateColumns: '2fr 1fr',
         gridTemplateRows: '1fr 1fr',
@@ -65,6 +71,7 @@ const threePanelLayouts = {
       id: '3-rows',
       name: '3 Rows',
       panels: 3,
+      hasEqualPanels: true,
       getLayoutConfig: () => ({
         gridTemplateColumns: '1fr',
         gridTemplateRows: 'repeat(3, 1fr)',
@@ -76,6 +83,7 @@ const threePanelLayouts = {
       id: 'main-with-two-right',
       name: 'Feature Left',
       panels: 3,
+      hasWidePanels: true,
       getLayoutConfig: () => ({
         gridTemplateColumns: '2fr 1fr',
         gridTemplateRows: '1fr 1fr',
@@ -87,6 +95,8 @@ const threePanelLayouts = {
       id: '3-columns',
       name: '3 Columns',
       panels: 3,
+      hasEqualPanels: true,
+      hasWidePanels: true,
       getLayoutConfig: () => ({
         gridTemplateColumns: 'repeat(3, 1fr)',
         gridTemplateRows: '1fr',
@@ -109,6 +119,7 @@ const threePanelLayouts = {
       id: 'two-and-one-tall',
       name: 'Two Top + One Bottom',
       panels: 3,
+      hasWidePanels: true,
       getLayoutConfig: () => ({
         gridTemplateColumns: '1fr 1fr',
         gridTemplateRows: '1fr 1fr',
@@ -122,6 +133,7 @@ const threePanelLayouts = {
       id: 'main-with-two-right',
       name: 'Feature Left',
       panels: 3,
+      hasWidePanels: true,
       getLayoutConfig: () => ({
         gridTemplateColumns: '2fr 1fr',
         gridTemplateRows: '1fr 1fr',
@@ -133,6 +145,7 @@ const threePanelLayouts = {
       id: 'main-with-two-bottom',
       name: 'Feature Top',
       panels: 3,
+      hasWidePanels: true,
       getLayoutConfig: () => ({
         gridTemplateColumns: '1fr 1fr',
         gridTemplateRows: '2fr 1fr',
@@ -144,6 +157,7 @@ const threePanelLayouts = {
       id: '3-rows',
       name: '3 Rows',
       panels: 3,
+      hasEqualPanels: true,
       getLayoutConfig: () => ({
         gridTemplateColumns: '1fr',
         gridTemplateRows: 'repeat(3, 1fr)',
@@ -155,6 +169,7 @@ const threePanelLayouts = {
       id: 'two-and-one-square',
       name: 'Two Top + One Bottom',
       panels: 3,
+      hasWidePanels: true,
       getLayoutConfig: () => ({
         gridTemplateColumns: '1fr 1fr',
         gridTemplateRows: '1fr 1fr',
@@ -166,6 +181,7 @@ const threePanelLayouts = {
       id: 'triptych',
       name: 'Triptych',
       panels: 3,
+      hasWidePanels: true,
       getLayoutConfig: () => ({
         gridTemplateColumns: '1fr 2fr 1fr',
         gridTemplateRows: '1fr',

@@ -96,10 +96,10 @@ export const layoutStyleMapping = {
  * These will be prioritized in the UI
  */
 export const recommendedLayouts = {
-  2: ['split-horizontal', 'split-vertical', 'wide-left-narrow-right'],
-  3: ['main-with-two-bottom', 'main-with-two-right', '3-columns'],
-  4: ['grid-2x2', 'big-and-3-bottom', 'big-and-3-right'],
-  5: ['featured-top-with-4-below', 'featured-left-with-4-right', '5-columns']
+  2: ['split-horizontal', 'split-vertical', 'two-thirds-one-third-h'],
+  3: ['3-rows', 'main-with-two-bottom', '3-columns'],
+  4: ['grid-2x2', 'big-and-3-bottom', '4-rows'],
+  5: ['5-rows', 'featured-top-with-4-below', '5-columns']
 };
 
 /**
@@ -107,7 +107,6 @@ export const recommendedLayouts = {
  */
 export const getLayoutsForPanelCount = (panelCount, aspectRatioId = 'square') => {
   // Ensure panel count is in the supported range (2-5)
-  // Enforce minimum panel count of 2
   const adjustedPanelCount = Math.max(2, Math.min(panelCount, 5));
   
   const category = getAspectRatioCategory(aspectRatioId);
@@ -123,17 +122,45 @@ export const getLayoutsForPanelCount = (panelCount, aspectRatioId = 'square') =>
     maxImages: layout.panels,
     style: layoutStyleMapping[layout.id] || 'grid',
     recommended: recommendedLayouts[adjustedPanelCount]?.includes(layout.id) || false,
+    // Add properties for panel aspect ratios and equality
+    hasTallPanels: layout.hasTallPanels || false,
+    hasWidePanels: layout.hasWidePanels || true, // Default to wide panels
+    hasEqualPanels: layout.hasEqualPanels || 
+      ['grid-2x2', 'split-horizontal', 'split-vertical', '3-rows', '3-columns', '4-rows', '4-columns', '5-rows', '5-columns'].includes(layout.id),
     renderPreview: (aspectRatio, theme, imageCount = 0) => {
       const layoutConfig = layout.getLayoutConfig();
       return renderLayoutGrid(layoutConfig, theme, imageCount || layout.panels);
     }
   }));
   
-  // Sort layouts: first by recommended status, then by style priority
+  // Update recommended layouts for each panel count based on preference for tall/square and wide panel ratios
+  if (category === 'portrait' || category === 'square') {
+    if (adjustedPanelCount === 3) {
+      recommendedLayouts[3] = ['3-rows', 'main-with-two-bottom', '3-columns']; 
+    } else if (adjustedPanelCount === 4) {
+      recommendedLayouts[4] = ['grid-2x2', 'big-and-3-bottom', '4-rows'];
+    } else if (adjustedPanelCount === 5) {
+      recommendedLayouts[5] = ['5-rows', 'featured-top-with-4-below', '5-columns'];
+    }
+  }
+  
+  // Sort layouts with new priority system:
+  // 1. Recommended status
+  // 2. Panels with wider aspect ratios 
+  // 3. Equal-sized panels as tiebreaker
+  // 4. Style category
   return mappedLayouts.sort((a, b) => {
     // First sort by recommended status
     if (a.recommended && !b.recommended) return -1;
     if (!a.recommended && b.recommended) return 1;
+    
+    // Then prioritize layouts with wider panel aspect ratios  
+    if (a.hasWidePanels && !b.hasWidePanels) return -1;
+    if (!a.hasWidePanels && b.hasWidePanels) return 1;
+    
+    // Then prioritize layouts with more equal-sized panels
+    if (a.hasEqualPanels && !b.hasEqualPanels) return -1;
+    if (!a.hasEqualPanels && b.hasEqualPanels) return 1;
     
     // Then sort by style category priority (based on layoutStyles order)
     const aStyleIndex = layoutStyles.findIndex(style => style.id === a.style);

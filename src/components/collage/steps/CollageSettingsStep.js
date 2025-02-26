@@ -210,7 +210,7 @@ const CollageLayoutSettings = ({
 
   // Handle panel count changes
   const handlePanelCountIncrease = () => {
-    if (panelCount < 9) {
+    if (panelCount < 5) {
       const newCount = panelCount + 1;
       setPanelCount(newCount);
       
@@ -420,13 +420,6 @@ const CollageLayoutSettings = ({
           <Typography variant="h6">
             Number of Panels
           </Typography>
-          <Chip 
-            label={`${panelCount} panels`} 
-            size="small" 
-            color="primary" 
-            variant="outlined"
-            sx={{ ml: 2 }}
-          />
         </StepSectionHeading>
         
         <PanelCounter>
@@ -449,7 +442,7 @@ const CollageLayoutSettings = ({
           
           <PanelCountButton 
             aria-label="Increase panel count" 
-            disabled={panelCount >= 9}
+            disabled={panelCount >= 5}
             onClick={handlePanelCountIncrease}
             size="medium"
           >
@@ -458,22 +451,108 @@ const CollageLayoutSettings = ({
         </PanelCounter>
       </Box>
       
+      {/* Aspect Ratio Section - with horizontal scrolling */}
+      <Box sx={{ mb: 4 }}>
+        <StepSectionHeading>
+          <AspectRatio sx={{ mr: 1.5, color: 'primary.main' }} />
+          <Typography variant="h6">
+            Aspect Ratio
+          </Typography>
+        </StepSectionHeading>
+        
+        <Box sx={{ position: 'relative', px: { xs: 1, sm: 3 } }}>
+          {!isMobile && (
+            <>
+              <ScrollButton 
+                direction="left" 
+                onClick={() => scrollLeft(aspectRatioRef)} 
+                size="small"
+                aria-label="Scroll left"
+                sx={{ display: aspectLeftScroll ? 'flex' : 'none' }}
+              >
+                <ChevronLeft />
+              </ScrollButton>
+              
+              <ScrollButton 
+                direction="right" 
+                onClick={() => scrollRight(aspectRatioRef)} 
+                size="small"
+                aria-label="Scroll right"
+                sx={{ display: aspectRightScroll ? 'flex' : 'none' }}
+              >
+                <ChevronRight />
+              </ScrollButton>
+            </>
+          )}
+          
+          <HorizontalScroller 
+            ref={aspectRatioRef}
+          >
+            {aspectRatioPresets.map(preset => (
+              <AspectRatioCard
+                key={preset.id}
+                selected={selectedAspectRatio === preset.id}
+                onClick={() => handleSelectAspectRatio(preset.id)}
+                elevation={selectedAspectRatio === preset.id ? 3 : 1}
+                sx={{ 
+                  minWidth: { xs: 110, sm: 130, md: 150 },
+                  flexShrink: 0 
+                }}
+              >
+                {renderAspectRatioPreview(preset)}
+                <Typography variant="caption" align="center">
+                  {preset.name}
+                </Typography>
+                
+                {selectedAspectRatio === preset.id && (
+                  <Box 
+                    sx={{ 
+                      position: 'absolute', 
+                      top: 8, 
+                      right: 8, 
+                      bgcolor: 'primary.main',
+                      borderRadius: '50%',
+                      width: 16,
+                      height: 16,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <Check sx={{ fontSize: 12, color: 'white' }} />
+                  </Box>
+                )}
+              </AspectRatioCard>
+            ))}
+            
+            {/* Spacer to ensure last items can be centered when scrolled fully */}
+            <Box sx={{ minWidth: 4, flexShrink: 0 }} />
+          </HorizontalScroller>
+          
+          {/* Visual indicators for scrolling */}
+          <ScrollIndicator 
+            direction="left" 
+            visible={aspectLeftScroll}
+          >
+            <ChevronLeft fontSize="small" sx={{ opacity: 0.7, color: 'text.secondary' }} />
+          </ScrollIndicator>
+          
+          <ScrollIndicator 
+            direction="right" 
+            visible={aspectRightScroll}
+          >
+            <ChevronRight fontSize="small" sx={{ opacity: 0.7, color: 'text.secondary' }} />
+          </ScrollIndicator>
+        </Box>
+      </Box>
+      
       {/* Layout Section - shows compatible layouts based on panel count */}
       <Box sx={{ mb: 4 }}>
         <StepSectionHeading>
           <GridView sx={{ mr: 1.5, color: 'primary.main' }} />
           <Typography variant="h6">
-            Select a Layout
+            Choose Layout
           </Typography>
-          {selectedTemplate && (
-            <Chip 
-              label={selectedTemplate.name} 
-              size="small" 
-              color="primary" 
-              variant="outlined"
-              sx={{ ml: 2 }}
-            />
-          )}
         </StepSectionHeading>
         
         {compatibleTemplates.length === 0 ? (
@@ -597,110 +676,6 @@ const CollageLayoutSettings = ({
             </ScrollIndicator>
           </Box>
         )}
-      </Box>
-
-      {/* Aspect Ratio Section - with horizontal scrolling */}
-      <Box sx={{ mb: 4 }}>
-        <StepSectionHeading>
-          <AspectRatio sx={{ mr: 1.5, color: 'primary.main' }} />
-          <Typography variant="h6">
-            Choose an Aspect Ratio
-          </Typography>
-          {selectedAspectRatioObj && (
-            <Chip 
-              label={selectedAspectRatioObj.name} 
-              size="small" 
-              color="primary" 
-              variant="outlined"
-              sx={{ ml: 2 }}
-            />
-          )}
-        </StepSectionHeading>
-        
-        <Box sx={{ position: 'relative', px: { xs: 1, sm: 3 } }}>
-          {!isMobile && (
-            <>
-              <ScrollButton 
-                direction="left" 
-                onClick={() => scrollLeft(aspectRatioRef)} 
-                size="small"
-                aria-label="Scroll left"
-                sx={{ display: aspectLeftScroll ? 'flex' : 'none' }}
-              >
-                <ChevronLeft />
-              </ScrollButton>
-              
-              <ScrollButton 
-                direction="right" 
-                onClick={() => scrollRight(aspectRatioRef)} 
-                size="small"
-                aria-label="Scroll right"
-                sx={{ display: aspectRightScroll ? 'flex' : 'none' }}
-              >
-                <ChevronRight />
-              </ScrollButton>
-            </>
-          )}
-          
-          <HorizontalScroller 
-            ref={aspectRatioRef}
-          >
-            {aspectRatioPresets.map(preset => (
-              <AspectRatioCard
-                key={preset.id}
-                selected={selectedAspectRatio === preset.id}
-                onClick={() => handleSelectAspectRatio(preset.id)}
-                elevation={selectedAspectRatio === preset.id ? 3 : 1}
-                sx={{ 
-                  minWidth: { xs: 110, sm: 130, md: 150 },
-                  flexShrink: 0 
-                }}
-              >
-                {renderAspectRatioPreview(preset)}
-                <Typography variant="caption" align="center">
-                  {preset.name}
-                </Typography>
-                
-                {selectedAspectRatio === preset.id && (
-                  <Box 
-                    sx={{ 
-                      position: 'absolute', 
-                      top: 8, 
-                      right: 8, 
-                      bgcolor: 'primary.main',
-                      borderRadius: '50%',
-                      width: 16,
-                      height: 16,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                  >
-                    <Check sx={{ fontSize: 12, color: 'white' }} />
-                  </Box>
-                )}
-              </AspectRatioCard>
-            ))}
-            
-            {/* Spacer to ensure last items can be centered when scrolled fully */}
-            <Box sx={{ minWidth: 4, flexShrink: 0 }} />
-          </HorizontalScroller>
-          
-          {/* Visual indicators for scrolling */}
-          <ScrollIndicator 
-            direction="left" 
-            visible={aspectLeftScroll}
-          >
-            <ChevronLeft fontSize="small" sx={{ opacity: 0.7, color: 'text.secondary' }} />
-          </ScrollIndicator>
-          
-          <ScrollIndicator 
-            direction="right" 
-            visible={aspectRightScroll}
-          >
-            <ChevronRight fontSize="small" sx={{ opacity: 0.7, color: 'text.secondary' }} />
-          </ScrollIndicator>
-        </Box>
       </Box>
       
       <ActionButtonsContainer>

@@ -37,7 +37,7 @@ import CollageStepperNavigation from "../components/collage/navigation/CollageSt
 export default function CollagePage() {
   const [selectedImages, setSelectedImages] = useState([]);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
-  const [selectedAspectRatio, setSelectedAspectRatio] = useState('square');
+  const [selectedAspectRatio, setSelectedAspectRatio] = useState('portrait');
   const [panelCount, setPanelCount] = useState(2); // Updated default panel count to 2
   const [activeStep, setActiveStep] = useState(0);
   
@@ -57,7 +57,7 @@ export default function CollagePage() {
     },
     {
       label: 'Select Images',
-      description: 'Choose up to 9 images',
+      description: 'Choose up to 5 images',
       icon: <PhotoLibrary />
     },
     {
@@ -71,15 +71,15 @@ export default function CollagePage() {
   const getCompatibleTemplates = () => {
     // Use getLayoutsForPanelCount which handles prioritization based on aspect ratio
     if (typeof getLayoutsForPanelCount === 'function') {
-      // Ensure minimum panel count of 2
-      const adjustedPanelCount = Math.max(2, panelCount);
+      // Ensure minimum panel count of 2 and maximum of 5
+      const adjustedPanelCount = Math.max(2, Math.min(panelCount, 5));
       return getLayoutsForPanelCount(adjustedPanelCount, selectedAspectRatio);
     }
     
     // If the function isn't available, fallback to basic filtering
     // First find templates that can handle the panel count
-    // Ensure minimum panel count of 2
-    const adjustedPanelCount = Math.max(2, panelCount);
+    // Ensure minimum panel count of 2 and maximum of 5
+    const adjustedPanelCount = Math.max(2, Math.min(panelCount, 5));
     const panelCompatible = layoutTemplates.filter(template => 
       template.minImages <= adjustedPanelCount && template.maxImages >= adjustedPanelCount
     );

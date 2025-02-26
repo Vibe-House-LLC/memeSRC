@@ -9,11 +9,11 @@ import {
 
 // Aspect ratio presets
 export const aspectRatioPresets = [
-  { id: 'landscape', name: 'Landscape (16:9)', value: 1.78 },
-  { id: 'classic', name: 'Classic (4:3)', value: 1.33 },
   { id: 'square', name: 'Square (1:1)', value: 1 },
   { id: 'portrait', name: 'Portrait (4:5)', value: 0.8 },
   { id: 'story', name: 'Instagram Story (9:16)', value: 0.5625 },
+  { id: 'classic', name: 'Classic (4:3)', value: 1.33 },
+  { id: 'landscape', name: 'Landscape (16:9)', value: 1.78 },
   { id: 'custom', name: 'Custom', value: 'custom' }
 ];
 
