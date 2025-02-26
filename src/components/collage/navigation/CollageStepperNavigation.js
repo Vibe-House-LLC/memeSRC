@@ -60,7 +60,7 @@ const CollageStepperNavigation = ({
     if (index === 0) return true; // First step is always clickable
     if (index === 1) return compatibleTemplates.length > 0 && selectedTemplate; // Need template for step 2
     if (index === 2) return selectedImages.length > 0 && selectedTemplate; // Need images and template for step 3
-    return false;
+    return false; // Default case
   };
 
   const handleNext = () => {
