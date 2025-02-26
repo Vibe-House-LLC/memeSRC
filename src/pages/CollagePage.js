@@ -276,7 +276,7 @@ export default function CollagePage() {
                 {/* For larger screens, use a grid layout */}
                 <Grid container spacing={3} sx={{ width: '100%', margin: 0 }}>
                   {/* Settings Section */}
-                  <Grid item xs={12} md={5} lg={4}>
+                  <Grid item xs={12} md={6} lg={6}>
                     <Paper
                       variant="outlined"
                       elevation={0}
@@ -329,7 +329,7 @@ export default function CollagePage() {
                   </Grid>
                   
                   {/* Images Section */}
-                  <Grid item xs={12} md={7} lg={8}>
+                  <Grid item xs={12} md={6} lg={6}>
                     <Paper
                       variant="outlined"
                       elevation={0}

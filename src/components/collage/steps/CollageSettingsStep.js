@@ -47,9 +47,9 @@ const AspectRatioCard = styled(Paper)(({ theme, selected }) => ({
   '&:hover': {
     borderColor: selected ? theme.palette.primary.main : theme.palette.primary.light
   },
-  // Fixed size of 100x100 pixels for both card types
-  width: 100,
-  height: 100,
+  // Changed size from 100x100 to 75x75 pixels for both card types
+  width: 75,
+  height: 75,
   flexShrink: 0
 }));
 
@@ -63,6 +63,7 @@ const PanelCounter = styled(Box)(({ theme }) => ({
   backgroundColor: alpha(theme.palette.background.paper, 0.6),
   borderRadius: theme.shape.borderRadius,
   border: `1px solid ${theme.palette.divider}`,
+  marginTop: 0,
   marginBottom: theme.spacing(3)
 }));
 
@@ -96,29 +97,24 @@ const HorizontalScroller = styled(Box)(({ theme }) => ({
   },
   '-ms-overflow-style': 'none',  // IE, Edge
   gap: theme.spacing(2),
-  padding: theme.spacing(2, 1),
+  padding: 0, // Removed padding
   position: 'relative',
   scrollBehavior: 'smooth',
   alignItems: 'center',  // Center items vertically
   justifyContent: 'flex-start',  // Start alignment for consistent scrolling
-  minHeight: 120,  // Ensure container is tall enough for 100px cards + padding
+  minHeight: 95,  // Reduced height to match smaller cards
   maxWidth: '100%', // Ensure it doesn't exceed container width
   width: '100%', // Take full width of parent
   boxSizing: 'border-box', // Include padding in width calculation
   // Contain content to prevent layout shift
   contain: 'content',
-  // Add more space on the right to prevent items from touching the edge
-  paddingRight: theme.spacing(2.5),
   // Smoother momentum scrolling (for Safari)
   WebkitOverflowScrolling: 'touch',
   // Add custom styling for desktop
   [theme.breakpoints.up('sm')]: {
-    padding: theme.spacing(2.5),
+    padding: 0, // Removed padding
     // Wider gap on desktop for better spacing
     gap: theme.spacing(2.5),
-    // Add more horizontal spacing to prevent edge issues
-    paddingLeft: theme.spacing(2),
-    paddingRight: theme.spacing(4),
   }
 }));
 
@@ -175,10 +171,12 @@ const ScrollIndicator = styled(Box)(({ theme, direction, visible }) => ({
   display: 'none', // Hide completely - no more gradient shadows
 }));
 
-const StepSectionHeading = styled(Box)(({ theme, isMobile }) => ({
+const StepSectionHeading = styled(Box)(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
-  marginBottom: isMobile ? theme.spacing(1) : theme.spacing(1.5),
+  marginBottom: theme.spacing(1.25),
+  paddingLeft: theme.spacing(0.5),
+  paddingRight: theme.spacing(0.5),
 }));
 
 // Helper function to convert aspect ratio value to a friendly format
@@ -469,12 +467,58 @@ const CollageLayoutSettings = ({
   const selectedAspectRatioObj = aspectRatioPresets.find(p => p.id === selectedAspectRatio);
   
   return (
-    <Box sx={{ pt: isMobile ? 0.5 : 1 }}>
+    <Box sx={{ pt: isMobile ? 3 : 4 }}>
+      {/* Panel Count Selector - Moved to the top */}
+      <Box sx={{ mb: isMobile ? 0 : 1 }}>
+        <StepSectionHeading>
+          <Settings sx={{ 
+            mr: 1.5, 
+            color: 'text.secondary', 
+            fontSize: '1.1rem' 
+          }} />
+          <Typography variant="subtitle1" fontWeight={500}>
+            Number of Panels
+          </Typography>
+        </StepSectionHeading>
+        
+        <PanelCounter>
+          <PanelCountButton 
+            aria-label="Decrease panel count" 
+            disabled={panelCount <= 2}
+            onClick={handlePanelCountDecrease}
+            size="medium"
+          >
+            <Remove />
+          </PanelCountButton>
+          
+          <Typography variant="h5" sx={{ 
+            minWidth: 40, 
+            textAlign: 'center',
+            fontWeight: 600
+          }}>
+            {panelCount}
+          </Typography>
+          
+          <PanelCountButton 
+            aria-label="Increase panel count" 
+            disabled={panelCount >= 5}
+            onClick={handlePanelCountIncrease}
+            size="medium"
+          >
+            <Add />
+          </PanelCountButton>
+        </PanelCounter>
+      </Box>
+    
       {/* Aspect Ratio Section - with horizontal scrolling */}
-      <Box sx={{ mb: isMobile ? 2 : 3 }}>
-        <StepSectionHeading isMobile={isMobile}>
-          <AspectRatio sx={{ mr: 1, color: 'text.secondary', fontSize: isMobile ? '1.1rem' : undefined }} />
-          <Typography variant={isMobile ? "body1" : "subtitle1"} fontWeight={isMobile ? 500 : undefined}>
+      <Box sx={{ mb: isMobile ? 1 : 2 }}>
+        <StepSectionHeading>
+          <AspectRatio sx={{ 
+            mr: 1.5, 
+            color: 'text.secondary', 
+            fontSize: '1.1rem' 
+          }} />
+          <Typography variant="subtitle1" fontWeight={500}>
             Aspect Ratio
           </Typography>
         </StepSectionHeading>
@@ -482,10 +526,15 @@ const CollageLayoutSettings = ({
         <Box sx={{ 
           position: 'relative', 
           width: '100%',
+          // Remove any extra margin
+          mt: 0,
+          pt: 0, // Explicitly set padding-top to 0
           // Desktop specific styling
           [theme.breakpoints.up('sm')]: {
             width: 'calc(100% + 8px)', // Slightly wider to accommodate buttons
             marginLeft: '-4px', // Center the expanded container
+            mt: 0, // Ensure no margin on desktop either
+            pt: 0, // Ensure no padding on desktop either
           }
         }}>
           {!isMobile && (
@@ -518,6 +567,7 @@ const CollageLayoutSettings = ({
           
           <HorizontalScroller 
             ref={aspectRatioRef}
+            sx={{ pt: 0, mt: 0 }}
           >
             {aspectRatioPresets.map(preset => (
               <AspectRatioCard
@@ -566,49 +616,15 @@ const CollageLayoutSettings = ({
         </Box>
       </Box>
       
-      {/* Panel Count Selector - Moved below Aspect Ratio */}
-      <Box sx={{ mb: isMobile ? 2 : 3 }}>
-        <StepSectionHeading isMobile={isMobile}>
-          <Settings sx={{ mr: 1, color: 'text.secondary', fontSize: isMobile ? '1.1rem' : undefined }} />
-          <Typography variant={isMobile ? "body1" : "subtitle1"} fontWeight={isMobile ? 500 : undefined}>
-            Number of Panels
-          </Typography>
-        </StepSectionHeading>
-        
-        <PanelCounter>
-          <PanelCountButton 
-            aria-label="Decrease panel count" 
-            disabled={panelCount <= 2}
-            onClick={handlePanelCountDecrease}
-            size="medium"
-          >
-            <Remove />
-          </PanelCountButton>
-          
-          <Typography variant="h5" sx={{ 
-            minWidth: 40, 
-            textAlign: 'center',
-            fontWeight: 600
-          }}>
-            {panelCount}
-          </Typography>
-          
-          <PanelCountButton 
-            aria-label="Increase panel count" 
-            disabled={panelCount >= 5}
-            onClick={handlePanelCountIncrease}
-            size="medium"
-          >
-            <Add />
-          </PanelCountButton>
-        </PanelCounter>
-      </Box>
-      
       {/* Layout Section - shows compatible layouts based on panel count */}
       <Box sx={{ mb: isMobile ? 2 : 3 }}>
-        <StepSectionHeading isMobile={isMobile}>
-          <GridView sx={{ mr: 1, color: 'text.secondary', fontSize: isMobile ? '1.1rem' : undefined }} />
-          <Typography variant={isMobile ? "body1" : "subtitle1"} fontWeight={isMobile ? 500 : undefined}>
+        <StepSectionHeading>
+          <GridView sx={{ 
+            mr: 1.5, 
+            color: 'text.secondary', 
+            fontSize: '1.1rem' 
+          }} />
+          <Typography variant="subtitle1" fontWeight={500}>
             Choose Layout
           </Typography>
         </StepSectionHeading>
@@ -621,10 +637,15 @@ const CollageLayoutSettings = ({
           <Box sx={{ 
             position: 'relative', 
             width: '100%',
+            // Remove any extra margin
+            mt: 0,
+            pt: 0, // Explicitly set padding-top to 0
             // Desktop specific styling
             [theme.breakpoints.up('sm')]: {
               width: 'calc(100% + 8px)', // Slightly wider to accommodate buttons
               marginLeft: '-4px', // Center the expanded container
+              mt: 0, // Ensure no margin on desktop either
+              pt: 0, // Ensure no padding on desktop either
             }
           }}>
             {!isMobile && (
@@ -657,6 +678,7 @@ const CollageLayoutSettings = ({
             
             <HorizontalScroller 
               ref={layoutsRef}
+              sx={{ pt: 0, mt: 0 }}
             >
               {compatibleTemplates.map(template => {
                 const isSelected = selectedTemplate?.id === template.id;
@@ -667,9 +689,9 @@ const CollageLayoutSettings = ({
                     key={template.id}
                     sx={{ 
                       flexShrink: 0,
-                      // Fixed size of 100x100 pixels to match aspect ratio cards
-                      width: 100,
-                      height: 100,
+                      // Changed size from 100x100 to 75x75 pixels to match aspect ratio cards
+                      width: 75,
+                      height: 75,
                     }}
                   >
                     <TemplateCard
