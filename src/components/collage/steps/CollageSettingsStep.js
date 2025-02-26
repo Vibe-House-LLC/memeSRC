@@ -272,13 +272,18 @@ const CollageLayoutSettings = ({
     setRightScroll(hasRight);
   };
 
+  // Define scroll handler functions outside useEffect for accessibility in cleanup
+  const handleAspectScroll = () => {
+    checkScrollPosition(aspectRatioRef, setAspectLeftScroll, setAspectRightScroll);
+  };
+  
+  const handleLayoutScroll = () => {
+    checkScrollPosition(layoutsRef, setLayoutLeftScroll, setLayoutRightScroll);
+  };
+
   // Monitor scroll position changes for aspect ratio
   useEffect(() => {
     const aspectRatioElement = aspectRatioRef.current;
-    
-    const handleAspectScroll = () => {
-      checkScrollPosition(aspectRatioRef, setAspectLeftScroll, setAspectRightScroll);
-    };
     
     if (aspectRatioElement) {
       // Initial check
@@ -302,10 +307,6 @@ const CollageLayoutSettings = ({
   // Monitor scroll position changes for layouts
   useEffect(() => {
     const layoutsElement = layoutsRef.current;
-    
-    const handleLayoutScroll = () => {
-      checkScrollPosition(layoutsRef, setLayoutLeftScroll, setLayoutRightScroll);
-    };
     
     if (layoutsElement) {
       // Initial check
