@@ -75,10 +75,13 @@ export default function CollagePage() {
       if (e.target.files && e.target.files[0]) {
         const file = e.target.files[0];
         const imageUrl = URL.createObjectURL(file);
-        // Add the new image to selectedImages
+        
+        // Add the new image to selectedImages if it's not already there
         const newImageIndex = selectedImages.length;
         setSelectedImages([...selectedImages, imageUrl]);
+        
         // Update the panel mapping
+        console.log(`Adding image to panel ${panelId} at index ${newImageIndex}`);
         setPanelImageMapping({
           ...panelImageMapping,
           [panelId]: newImageIndex
@@ -233,7 +236,7 @@ export default function CollagePage() {
           
           // Use panelImageMapping if available, otherwise assign sequentially
           if (panelImageMapping && Object.keys(panelImageMapping).length > 0) {
-            // Use the existing mapping
+            // Use the existing mapping - panel ID to image index
             Object.entries(panelImageMapping).forEach(([panelId, imageIndex]) => {
               if (selectedImages[imageIndex]) {
                 panelToImageUrl[panelId] = selectedImages[imageIndex].url || selectedImages[imageIndex];
@@ -247,6 +250,13 @@ export default function CollagePage() {
               }
             });
           }
+          
+          // Clear the canvas before drawing images
+          ctx.clearRect(0, 0, width, height);
+          
+          // Set background color
+          ctx.fillStyle = theme.palette.mode === 'dark' ? '#121212' : '#f5f5f5';
+          ctx.fillRect(0, 0, width, height);
           
           // Load and draw each image
           panelRegions.forEach(panel => {
@@ -286,8 +296,17 @@ export default function CollagePage() {
                     drawY = panel.y + (panel.height - drawHeight) / 2;
                   }
                   
+                  // Draw the image scaled to fill the panel
                   ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
                   ctx.restore();
+                  
+                  // Draw panel border if needed
+                  if (borderThicknessValue > 0) {
+                    ctx.strokeStyle = 'white';
+                    ctx.lineWidth = borderThicknessValue;
+                    ctx.strokeRect(panel.x, panel.y, panel.width, panel.height);
+                  }
+                  
                   resolve();
                 };
                 
@@ -305,6 +324,17 @@ export default function CollagePage() {
               });
               
               imageLoadPromises.push(promise);
+            } else {
+              // No image assigned, draw placeholder
+              ctx.fillStyle = '#808080';
+              ctx.fillRect(panel.x, panel.y, panel.width, panel.height);
+              
+              // Draw panel border if needed
+              if (borderThicknessValue > 0) {
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = borderThicknessValue;
+                ctx.strokeRect(panel.x, panel.y, panel.width, panel.height);
+              }
             }
           });
           

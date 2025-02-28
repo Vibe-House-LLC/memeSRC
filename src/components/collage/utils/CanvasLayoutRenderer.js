@@ -493,6 +493,9 @@ const drawLayoutPanels = (ctx, layoutConfig, canvasWidth, canvasHeight, panelCou
   const shouldDrawBorder = borderThickness > 0;
   console.log("Should draw border:", shouldDrawBorder, "Border thickness:", borderThickness);
 
+  // Create an array to collect panel regions
+  const newPanelRegions = [];
+
   // Draw panels function with border handling
   const drawPanel = (x, y, width, height, id, name) => {
     // For panel regions, use the full panel dimensions
@@ -501,13 +504,19 @@ const drawLayoutPanels = (ctx, layoutConfig, canvasWidth, canvasHeight, panelCou
     const adjustedWidth = width;
     const adjustedHeight = height;
     
+    // Debug panel info
+    console.log(`Drawing panel ${id} (${name}) at (${adjustedX}, ${adjustedY}) with size ${adjustedWidth}x${adjustedHeight}`);
+    
     // Check if this panel has an associated image
     const imageIndex = panelImageMapping[id];
+    console.log(`Panel ${id} mapped to image index: ${imageIndex}`);
+    
     const hasImage = typeof imageIndex === 'number' && imageIndex >= 0 && imageIndex < selectedImages.length;
     
     if (hasImage) {
       // Draw the image with auto-scaling
       const imageUrl = selectedImages[imageIndex];
+      console.log(`Drawing image ${imageIndex} (${imageUrl}) in panel ${id}`);
       
       // Draw a placeholder until the image loads
       ctx.fillRect(adjustedX, adjustedY, adjustedWidth, adjustedHeight);
@@ -522,7 +531,10 @@ const drawLayoutPanels = (ctx, layoutConfig, canvasWidth, canvasHeight, panelCou
         const imgAspect = img.width / img.height;
         const panelAspect = adjustedWidth / adjustedHeight;
         
-        let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
+        let drawWidth;
+        let drawHeight;
+        let offsetX = 0;
+        let offsetY = 0;
         
         if (imgAspect > panelAspect) {
           // Image is wider than panel (relative to height)
@@ -537,7 +549,12 @@ const drawLayoutPanels = (ctx, layoutConfig, canvasWidth, canvasHeight, panelCou
         }
         
         // Draw the image centered in the panel
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(adjustedX, adjustedY, adjustedWidth, adjustedHeight);
+        ctx.clip();
         ctx.drawImage(img, adjustedX + offsetX, adjustedY + offsetY, drawWidth, drawHeight);
+        ctx.restore();
         
         // Apply the border on top if needed
         if (shouldDrawBorder) {
@@ -557,6 +574,11 @@ const drawLayoutPanels = (ctx, layoutConfig, canvasWidth, canvasHeight, panelCou
         } else {
           setRenderedImage(canvas.toDataURL('image/png'));
         }
+      };
+      img.crossOrigin = 'anonymous'; // Handle CORS issues
+      img.onerror = (err) => {
+        console.error('Error loading image for panel', id, err);
+        // Just show the placeholder on error
       };
       img.src = imageUrl;
     } else {
@@ -644,9 +666,6 @@ const drawLayoutPanels = (ctx, layoutConfig, canvasWidth, canvasHeight, panelCou
     colPositions[index] = currentX;
     currentX += cellWidths[index];
   });
-  
-  // Store panel regions for click detection
-  const newPanelRegions = [];
   
   // Parse gridTemplateAreas if available
   let areaMapping = null;
@@ -802,6 +821,7 @@ export const renderTemplateToCanvas = ({
   panelImageMapping = {}
 }) => {
   console.log("renderTemplateToCanvas called with border thickness:", borderThickness);
+  console.log("Panel image mapping:", panelImageMapping);
   
   // Check if we have a valid template
   if (!selectedTemplate) {
@@ -939,7 +959,7 @@ export const renderTemplateToCanvas = ({
               "Type:", typeof borderThickness, 
               "Will draw borders:", borderThickness > 0);
   
-  // Draw the layout panels
+  // Drawing the layout panels
   drawLayoutPanels(
     ctx, 
     layoutConfig, 
