@@ -293,6 +293,13 @@ const createLayoutConfigFromId = (templateId, count) => {
           gridTemplateAreas: '"main main main" "left middle right"',
           areas: ['main', 'left', 'middle', 'right']
         };
+      case 'big-and-3-right':
+        return {
+          gridTemplateColumns: '2fr 1fr',
+          gridTemplateRows: '1fr 1fr 1fr',
+          gridTemplateAreas: '"main top" "main middle" "main bottom"',
+          areas: ['main', 'top', 'middle', 'bottom']
+        };
       case '4-columns':
         return {
           gridTemplateColumns: 'repeat(4, 1fr)',
@@ -314,12 +321,33 @@ const createLayoutConfigFromId = (templateId, count) => {
           gridTemplateAreas: '"main top" "main middle" "main bottom"',
           areas: ['main', 'top', 'middle', 'bottom']
         };
-      case 'panoramic-strips':
+      case 'right-feature-with-3-left':
         return {
-          gridTemplateColumns: '1fr',
-          gridTemplateRows: 'repeat(4, 1fr)',
-          gridTemplateAreas: null,
-          items: Array(4).fill({ gridArea: null })
+          gridTemplateColumns: '1fr 2fr',
+          gridTemplateRows: 'repeat(3, 1fr)',
+          gridTemplateAreas: '"top main" "middle main" "bottom main"',
+          areas: ['top', 'middle', 'bottom', 'main']
+        };
+      case 'top-feature-with-3-bottom':
+        return {
+          gridTemplateColumns: 'repeat(3, 1fr)',
+          gridTemplateRows: '2fr 1fr',
+          gridTemplateAreas: '"main main main" "left middle right"',
+          areas: ['main', 'left', 'middle', 'right']
+        };
+      case 'bottom-feature-with-3-top':
+        return {
+          gridTemplateColumns: 'repeat(3, 1fr)',
+          gridTemplateRows: '1fr 2fr',
+          gridTemplateAreas: '"left middle right" "main main main"',
+          areas: ['left', 'middle', 'right', 'main']
+        };
+      case 'split-bottom-feature-tall':
+        return {
+          gridTemplateColumns: '1fr 1fr',
+          gridTemplateRows: '1fr 1fr 2fr',
+          gridTemplateAreas: '"top-left top-right" "bottom-left bottom-right" "bottom bottom"',
+          areas: ['top-left', 'top-right', 'bottom-left', 'bottom-right']
         };
       default:
         break;
@@ -335,6 +363,21 @@ const createLayoutConfigFromId = (templateId, count) => {
           gridTemplateRows: '2fr 1fr',
           gridTemplateAreas: '"main main main main" "one two three four"',
           areas: ['main', 'one', 'two', 'three', 'four']
+        };
+      case 'featured-left-with-4-right':
+      case 'featured-left-with-grid':
+        return {
+          gridTemplateColumns: '2fr 1fr 1fr',
+          gridTemplateRows: 'repeat(2, 1fr)',
+          gridTemplateAreas: '"main top-left top-right" "main bottom-left bottom-right"',
+          areas: ['main', 'top-left', 'top-right', 'bottom-left', 'bottom-right']
+        };
+      case 'featured-center-with-4-corners':
+        return {
+          gridTemplateColumns: 'repeat(3, 1fr)',
+          gridTemplateRows: 'repeat(3, 1fr)',
+          gridTemplateAreas: '"top-left . top-right" ". main ." "bottom-left . bottom-right"',
+          areas: ['top-left', 'top-right', 'main', 'bottom-left', 'bottom-right']
         };
       case '5-columns':
         return {
@@ -357,13 +400,47 @@ const createLayoutConfigFromId = (templateId, count) => {
           gridTemplateAreas: '"top-left top-middle top-right" "bottom-left bottom-left bottom-right"',
           areas: ['top-left', 'top-middle', 'top-right', 'bottom-left', 'bottom-right']
         };
-      case 'featured-left-with-grid':
-      case 'featured-left-with-4-right':
+      case 'split-5-panels':
         return {
-          gridTemplateColumns: '2fr 1fr 1fr',
-          gridTemplateRows: 'repeat(2, 1fr)',
-          gridTemplateAreas: '"main top-left top-right" "main bottom-left bottom-right"',
-          areas: ['main', 'top-left', 'top-right', 'bottom-left', 'bottom-right']
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gridTemplateRows: 'repeat(3, 1fr)',
+          gridTemplateAreas: '"top-left top-right" "middle-left middle-right" "bottom bottom"',
+          areas: ['top-left', 'top-right', 'middle-left', 'middle-right', 'bottom']
+        };
+      case 'vertical-asymmetric-5':
+        return {
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gridTemplateRows: 'repeat(3, 1fr)',
+          gridTemplateAreas: '"top-left top-right" "middle middle" "bottom-left bottom-right"',
+          areas: ['top-left', 'top-right', 'middle', 'bottom-left', 'bottom-right']
+        };
+      case 'tall-mosaic':
+        return {
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gridTemplateRows: 'repeat(4, 1fr)',
+          gridTemplateAreas: 
+            '"top top" ' +
+            '"middle-left middle-right" ' +
+            '"middle-left middle-right" ' +
+            '"bottom-left bottom-right"',
+          areas: ['top', 'middle-left', 'middle-right', 'bottom-left', 'bottom-right']
+        };
+      case 'wide-mosaic':
+        return {
+          gridTemplateColumns: 'repeat(4, 1fr)',
+          gridTemplateRows: 'repeat(3, 1fr)',
+          gridTemplateAreas: 
+            '"left-top left-top right-top right-top" ' +
+            '"left-middle left-middle right-top right-top" ' +
+            '"left-bottom right-bottom right-bottom right-bottom"',
+          areas: ['left-top', 'left-middle', 'left-bottom', 'right-top', 'right-bottom']
+        };
+      case 'featured-bottom-with-4-top':
+        return {
+          gridTemplateColumns: 'repeat(4, 1fr)',
+          gridTemplateRows: '1fr 2fr',
+          gridTemplateAreas: '"one two three four" "main main main main"',
+          areas: ['one', 'two', 'three', 'four', 'main']
         };
       default:
         break;

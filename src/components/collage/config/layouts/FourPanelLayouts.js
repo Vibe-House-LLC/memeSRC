@@ -47,17 +47,6 @@ const fourPanelLayouts = {
         gridTemplateAreas: '"main top" "main middle" "main bottom"',
         areas: ['main', 'top', 'middle', 'bottom']
       })
-    },
-    {
-      id: 'panoramic-strips',
-      name: 'Panoramic Strips',
-      panels: 4,
-      getLayoutConfig: () => ({
-        gridTemplateColumns: '1fr',
-        gridTemplateRows: 'repeat(4, 1fr)',
-        gridTemplateAreas: null,
-        items: Array(4).fill({ gridArea: null })
-      })
     }
   ],
   tall: [
