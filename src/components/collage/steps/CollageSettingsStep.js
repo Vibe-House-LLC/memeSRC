@@ -21,7 +21,8 @@ import {
   Check,
   Add,
   Remove,
-  Settings
+  Settings,
+  Tag
 } from "@mui/icons-material";
 
 // Import styled components
@@ -75,12 +76,12 @@ const PanelCounter = styled(Box)(({ theme }) => ({
   alignItems: 'center',
   justifyContent: 'center',
   gap: theme.spacing(2),
-  padding: theme.spacing(2),
+  padding: theme.spacing(1.25), // Reduced padding to decrease height
   backgroundColor: alpha(theme.palette.background.paper, 0.6),
   borderRadius: theme.shape.borderRadius,
   border: `1px solid ${theme.palette.divider}`,
   marginTop: 0,
-  marginBottom: theme.spacing(3)
+  marginBottom: theme.spacing(2) // Reduced bottom margin
 }));
 
 // Panel Count Button
@@ -107,18 +108,19 @@ const ActionButtonsContainer = styled(Box)(({ theme }) => ({
 const HorizontalScroller = styled(Box)(({ theme }) => ({
   display: 'flex',
   overflowX: 'auto',
+  overflowY: 'hidden', // Explicitly prevent vertical scrolling
   scrollbarWidth: 'none',  // Firefox
   '&::-webkit-scrollbar': {
     display: 'none',  // Chrome, Safari, Opera
   },
   '-ms-overflow-style': 'none',  // IE, Edge
   gap: theme.spacing(2),
-  padding: theme.spacing(1, 0, 2, 0), // Increased bottom padding for the hanging chips
+  padding: theme.spacing(1, 0, 1.25, 0), // Added more bottom padding to accommodate hanging chips
   position: 'relative',
   scrollBehavior: 'smooth',
   alignItems: 'center',  // Center items vertically
   justifyContent: 'flex-start',  // Start alignment for consistent scrolling
-  minHeight: 95,  // Consistent height for all devices
+  minHeight: 80,  // Reduced height to match content better
   maxWidth: '100%', // Ensure it doesn't exceed container width
   width: '100%', // Take full width of parent
   boxSizing: 'border-box', // Include padding in width calculation
@@ -130,7 +132,7 @@ const HorizontalScroller = styled(Box)(({ theme }) => ({
   overscrollBehavior: 'contain',
   // Consistent spacing across devices
   [theme.breakpoints.up('sm')]: {
-    padding: theme.spacing(1, 0, 2, 0), // Consistent padding with increased bottom
+    padding: theme.spacing(1, 0, 1.25, 0), // Added more bottom padding to accommodate hanging chips
     gap: theme.spacing(2), // Consistent gap
   }
 }));
@@ -138,7 +140,7 @@ const HorizontalScroller = styled(Box)(({ theme }) => ({
 // Improved ScrollButton for consistent appearance
 const ScrollButton = styled(IconButton)(({ theme, direction }) => ({
   position: 'absolute',
-  top: '50%',
+  top: 'calc(50% - 8px)', // Further adjusted to account for the increased bottom padding
   transform: 'translateY(-50%)',
   zIndex: 10,
   // Consistent styling across all devices
@@ -533,7 +535,7 @@ const CollageLayoutSettings = ({
       {/* Panel Count Selector - Moved to the top */}
       <Box sx={{ mb: isMobile ? 0 : 1 }}>
         <StepSectionHeading>
-          <Settings sx={{ 
+          <Tag sx={{ 
             mr: 1.5, 
             color: '#fff', 
             fontSize: '1.3rem' 
@@ -555,19 +557,20 @@ const CollageLayoutSettings = ({
               '&:hover': {
                 bgcolor: 'rgba(255, 255, 255, 0.25)',
               },
-              width: 40,
-              height: 40
+              width: 32,
+              height: 32,
+              padding: 0.5
             }}
           >
             <Remove />
           </PanelCountButton>
           
           <Typography variant="h4" sx={{ 
-            minWidth: 60, 
+            minWidth: 50, 
             textAlign: 'center',
             fontWeight: 700,
             color: '#fff',
-            fontSize: '2.4rem',
+            fontSize: '2rem',
             textShadow: '0px 2px 3px rgba(0,0,0,0.1)'
           }}>
             {panelCount}
@@ -584,8 +587,9 @@ const CollageLayoutSettings = ({
               '&:hover': {
                 bgcolor: 'rgba(255, 255, 255, 0.25)',
               },
-              width: 40,
-              height: 40
+              width: 32,
+              height: 32,
+              padding: 0.5
             }}
           >
             <Add />
@@ -690,10 +694,10 @@ const CollageLayoutSettings = ({
                   variant="filled"
                   sx={{
                     position: 'absolute',
-                    bottom: -10,
+                    bottom: -8,
                     left: '50%',
                     transform: 'translateX(-50%)',
-                    height: 20,
+                    height: 18,
                     fontSize: '0.65rem',
                     fontWeight: 'bold',
                     px: 0.75,
@@ -729,29 +733,6 @@ const CollageLayoutSettings = ({
             visible={aspectRightScroll}
           />
         </Box>
-      </Box>
-      
-      {/* Border Thickness UI with Horizontal Scroller */}
-      <Box sx={{ mb: isMobile ? 1 : 2 }}>
-        <StepSectionHeading>
-          <Settings sx={{ mr: 1.5, color: '#fff', fontSize: '1.3rem' }} />
-          <Typography variant="h5" fontWeight={600} sx={{ color: '#fff' }}>
-            Border Thickness
-          </Typography>
-        </StepSectionHeading>
-
-        <HorizontalScroller sx={{ mt: 1 }}>
-          {borderThicknessOptions.map(option => (
-            <Chip
-              key={option.label}
-              label={option.label}
-              clickable
-              color={borderThickness === option.label.toLowerCase() ? 'primary' : 'default'}
-              onClick={() => setBorderThickness(option.label.toLowerCase())}
-              sx={{ fontWeight: borderThickness === option.label.toLowerCase() ? 'bold' : 'normal' }}
-            />
-          ))}
-        </HorizontalScroller>
       </Box>
       
       {/* Layout Section - shows compatible layouts based on panel count */}
@@ -845,7 +826,6 @@ const CollageLayoutSettings = ({
                         alignItems: 'center',
                         justifyContent: 'center',
                         padding: theme.spacing(1),
-                        // Add transition and hover effects to match AspectRatioCard
                         transition: theme.transitions.create(
                           ['border-color', 'background-color', 'box-shadow'],
                           { duration: theme.transitions.duration.shorter }
@@ -857,7 +837,6 @@ const CollageLayoutSettings = ({
                               ? '0 4px 12px rgba(0,0,0,0.25)'
                               : '0 4px 12px rgba(0,0,0,0.1)',
                         },
-                        // Subtle animation on click - keep this but make it less dramatic
                         '&:active': {
                           transform: 'scale(0.98)',
                           transition: 'transform 0.1s',
@@ -926,6 +905,38 @@ const CollageLayoutSettings = ({
             />
           </Box>
         )}
+      </Box>
+      
+      {/* Border Thickness UI with Horizontal Scroller - Moved below Choose Layout */}
+      <Box sx={{ mb: isMobile ? 1 : 2 }}>
+        <StepSectionHeading>
+          <Settings sx={{ mr: 1.5, color: '#fff', fontSize: '1.3rem' }} />
+          <Typography variant="h5" fontWeight={600} sx={{ color: '#fff' }}>
+            Border Thickness
+          </Typography>
+        </StepSectionHeading>
+
+        {/* Modified HorizontalScroller with reduced vertical space */}
+        <Box sx={{ 
+          display: 'flex',
+          overflowX: 'auto',
+          scrollbarWidth: 'none',
+          '&::-webkit-scrollbar': { display: 'none' },
+          gap: theme.spacing(1),
+          py: 0.75, // Further reduced vertical padding
+          mt: 0.5
+        }}>
+          {borderThicknessOptions.map(option => (
+            <Chip
+              key={option.label}
+              label={option.label}
+              clickable
+              color={borderThickness === option.label.toLowerCase() ? 'primary' : 'default'}
+              onClick={() => setBorderThickness(option.label.toLowerCase())}
+              sx={{ fontWeight: borderThickness === option.label.toLowerCase() ? 'bold' : 'normal' }}
+            />
+          ))}
+        </Box>
       </Box>
     </Box>
   );
