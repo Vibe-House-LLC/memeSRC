@@ -24,6 +24,31 @@ import {
   clearPanelImage as clearPanelImageUtil
 } from "../utils/PanelManager";
 
+// Debug flag - set to false in production
+const DEBUG_MODE = false;
+
+// Helper debug logger function that only logs when DEBUG_MODE is true
+const debugLog = (...args) => {
+  if (DEBUG_MODE) {
+    console.log(...args);
+  }
+};
+
+// Helper for warnings that should still show in production
+const debugWarn = (...args) => {
+  if (DEBUG_MODE) {
+    console.warn(...args);
+  } else if (args[0] && args[0].includes('critical')) {
+    // Allow critical warnings to show even in production
+    console.warn(...args);
+  }
+};
+
+// Helper for errors that should always show
+const logError = (...args) => {
+  console.error(...args);
+};
+
 /**
  * CollageImagesStep - The second step of the collage creation process
  * Renders a preview of the final collage layout using OffscreenCanvas
@@ -58,7 +83,7 @@ const CollageImagesStep = ({
   
   // Enhance the handlePreviewClick function
   const handlePreviewClick = (event) => {
-    console.log("Preview image clicked");
+    debugLog("Preview image clicked");
     
     // Get the click coordinates relative to the image
     const image = event.currentTarget;
@@ -68,15 +93,15 @@ const CollageImagesStep = ({
     const clickX = (event.clientX - rect.left) / rect.width;
     const clickY = (event.clientY - rect.top) / rect.height;
     
-    console.log("Click coordinates as percentage:", { clickX, clickY });
+    debugLog("Click coordinates as percentage:", { clickX, clickY });
     
     // Convert to canvas coordinates
     const { width, height } = calculateCanvasDimensions(selectedAspectRatio);
     const canvasX = clickX * width;
     const canvasY = clickY * height;
     
-    console.log("Canvas coordinates:", { canvasX, canvasY });
-    console.log("Available panel regions:", panelRegions);
+    debugLog("Canvas coordinates:", { canvasX, canvasY });
+    debugLog("Available panel regions:", panelRegions);
     
     // Find which panel was clicked
     const clickedPanel = panelRegions.find(panel => 
@@ -87,18 +112,18 @@ const CollageImagesStep = ({
     );
     
     if (clickedPanel) {
-      console.log(`Clicked on panel ${clickedPanel.id}`);
+      debugLog(`Clicked on panel ${clickedPanel.id}`);
       setSelectedPanel(clickedPanel);
       
       // Use the new onPanelClick handler from props
       if (typeof onPanelClick === 'function') {
-        console.log("Calling onPanelClick with id:", clickedPanel.id);
+        debugLog("Calling onPanelClick with id:", clickedPanel.id);
         onPanelClick(clickedPanel.id);
       } else {
-        console.warn("onPanelClick is not a function", onPanelClick);
+        debugWarn("onPanelClick is not a function", onPanelClick);
       }
     } else {
-      console.log("No panel was clicked");
+      debugLog("No panel was clicked");
     }
   };
   
@@ -130,7 +155,7 @@ const CollageImagesStep = ({
       })
     );
     
-    console.log("Effective selected images:", effectiveSelectedImages);
+    debugLog("Effective selected images:", effectiveSelectedImages);
     
     // If you need to update the parent component's selectedImages state,
     // you would do so here
@@ -151,7 +176,7 @@ const CollageImagesStep = ({
         }
       }
       
-      console.log("Preview rendering with border thickness:", borderThicknessValue);
+      debugLog("Preview rendering with border thickness:", borderThicknessValue);
       
       // Create a mapping from panel IDs to image indices
       const mapping = {};
@@ -180,7 +205,7 @@ const CollageImagesStep = ({
   // Add a dedicated effect just for border thickness changes to ensure it triggers a redraw
   useEffect(() => {
     if (selectedTemplate && borderThickness) {
-      console.log("Border thickness changed to:", borderThickness);
+      debugLog("Border thickness changed to:", borderThickness);
       
       // Get the numeric value for the border thickness
       let borderThicknessValue = 4; // Default to medium (4px)
@@ -190,7 +215,7 @@ const CollageImagesStep = ({
         );
         if (option) {
           borderThicknessValue = option.value;
-          console.log("Found numeric border thickness value:", borderThicknessValue);
+          debugLog("Found numeric border thickness value:", borderThicknessValue);
         }
       }
       
@@ -213,23 +238,23 @@ const CollageImagesStep = ({
   // Add additional useEffect for debugging:
   // Log relevant information about the selected template
   useEffect(() => {
-    if (selectedTemplate) {
-      console.log("Selected Template Details:");
-      console.log("- ID:", selectedTemplate.id);
-      console.log("- Name:", selectedTemplate.name);
-      console.log("- Arrangement:", selectedTemplate.arrangement);
-      console.log("- Panel Count:", selectedTemplate.panels);
-      console.log("- Min/Max Images:", selectedTemplate.minImages, "/", selectedTemplate.maxImages);
-      console.log("- Style:", selectedTemplate.style);
-      console.log("- Has getLayoutConfig:", typeof selectedTemplate.getLayoutConfig === 'function');
+    if (DEBUG_MODE && selectedTemplate) {
+      debugLog("Selected Template Details:");
+      debugLog("- ID:", selectedTemplate.id);
+      debugLog("- Name:", selectedTemplate.name);
+      debugLog("- Arrangement:", selectedTemplate.arrangement);
+      debugLog("- Panel Count:", selectedTemplate.panels);
+      debugLog("- Min/Max Images:", selectedTemplate.minImages, "/", selectedTemplate.maxImages);
+      debugLog("- Style:", selectedTemplate.style);
+      debugLog("- Has getLayoutConfig:", typeof selectedTemplate.getLayoutConfig === 'function');
       
       // Get layouts that should be compatible with this template
       const layouts = getLayoutsForPanelCount(panelCount, selectedAspectRatio);
       const matchingLayout = layouts.find(layout => layout.id === selectedTemplate.id);
-      console.log("Direct match in layouts array:", matchingLayout ? "Yes" : "No");
+      debugLog("Direct match in layouts array:", matchingLayout ? "Yes" : "No");
       
       if (matchingLayout) {
-        console.log("Matching layout has getLayoutConfig:", typeof matchingLayout.getLayoutConfig === 'function');
+        debugLog("Matching layout has getLayoutConfig:", typeof matchingLayout.getLayoutConfig === 'function');
       }
     }
   }, [selectedTemplate, selectedAspectRatio, panelCount]);

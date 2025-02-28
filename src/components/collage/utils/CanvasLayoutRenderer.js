@@ -1,6 +1,31 @@
 import { aspectRatioPresets, getLayoutsForPanelCount } from "../config/CollageConfig";
 import { getAspectRatioCategory } from "../config/layouts/LayoutUtils";
 
+// Debug flag - set to false in production
+const DEBUG_MODE = false;
+
+// Helper debug logger function that only logs when DEBUG_MODE is true
+const debugLog = (...args) => {
+  if (DEBUG_MODE) {
+    console.log(...args);
+  }
+};
+
+// Helper for warnings that should still show in production
+const debugWarn = (...args) => {
+  if (DEBUG_MODE) {
+    console.warn(...args);
+  } else if (args[0] && args[0].includes('critical')) {
+    // Allow critical warnings to show even in production
+    console.warn(...args);
+  }
+};
+
+// Helper for errors that should always show
+const logError = (...args) => {
+  console.error(...args);
+};
+
 /**
  * Get the aspect ratio value from the presets
  * @param {string} selectedAspectRatio - The ID of the selected aspect ratio
@@ -448,7 +473,7 @@ const createLayoutConfigFromId = (templateId, count) => {
   }
   
   // Fall back to default grid layout if no specific layout found
-  console.warn(`Template ID '${templateId}' not found in direct mapping, using default grid layout. This ID should be added to createLayoutConfigFromId function.`);
+  debugWarn(`Template ID '${templateId}' not found in direct mapping, using default grid layout. This ID should be added to createLayoutConfigFromId function.`);
   return createDefaultGridLayout(count);
 };
 
@@ -467,18 +492,18 @@ const createLayoutConfigFromId = (templateId, count) => {
  * @param {function} setRenderedImage - Function to set rendered image
  */
 const drawLayoutPanels = (ctx, layoutConfig, canvasWidth, canvasHeight, panelCount, setPanelRegions, borderThickness = 4, selectedImages = [], panelImageMapping = {}, canvas, setRenderedImage) => {
-  console.log("Drawing layout with config:", layoutConfig);
-  console.log("Using border thickness:", borderThickness);
-  console.log("Selected images:", selectedImages);
-  console.log("Panel image mapping:", panelImageMapping);
+  debugLog("Drawing layout with config:", layoutConfig);
+  debugLog("Using border thickness:", borderThickness);
+  debugLog("Selected images:", selectedImages);
+  debugLog("Panel image mapping:", panelImageMapping);
   
   const { gridTemplateColumns, gridTemplateRows, areas, gridTemplateAreas, items } = layoutConfig;
   
   // Parse grid template columns and rows
   const columns = parseGridTemplate(gridTemplateColumns);
   const rows = parseGridTemplate(gridTemplateRows);
-  console.log("Parsed grid columns:", columns);
-  console.log("Parsed grid rows:", rows);
+  debugLog("Parsed grid columns:", columns);
+  debugLog("Parsed grid rows:", rows);
   
   // Calculate the actual width/height of each grid cell
   const totalColumnFr = columns.reduce((sum, val) => sum + val, 0);
@@ -494,7 +519,7 @@ const drawLayoutPanels = (ctx, layoutConfig, canvasWidth, canvasHeight, panelCou
   
   // Determine if we should draw borders - explicitly check if thickness is exactly 0
   const shouldDrawBorder = borderThickness > 0;
-  console.log("Should draw border:", shouldDrawBorder, "Border thickness:", borderThickness);
+  debugLog("Should draw border:", shouldDrawBorder, "Border thickness:", borderThickness);
 
   // Create an array to collect panel regions
   const newPanelRegions = [];
@@ -508,11 +533,11 @@ const drawLayoutPanels = (ctx, layoutConfig, canvasWidth, canvasHeight, panelCou
     const adjustedHeight = height;
     
     // Debug panel info
-    console.log(`Drawing panel ${id} (${name}) at (${adjustedX}, ${adjustedY}) with size ${adjustedWidth}x${adjustedHeight}`);
+    debugLog(`Drawing panel ${id} (${name}) at (${adjustedX}, ${adjustedY}) with size ${adjustedWidth}x${adjustedHeight}`);
     
     // Check if this panel has an associated image
     const imageIndex = panelImageMapping[id];
-    console.log(`Panel ${id} mapped to image index: ${imageIndex}`);
+    debugLog(`Panel ${id} mapped to image index: ${imageIndex}`);
     
     const hasImage = typeof imageIndex === 'number' && imageIndex >= 0 && imageIndex < selectedImages.length;
     
@@ -523,7 +548,7 @@ const drawLayoutPanels = (ctx, layoutConfig, canvasWidth, canvasHeight, panelCou
         ? imageItem.imageUrl 
         : imageItem;
       
-      console.log(`Drawing image ${imageIndex} (${imageUrl}) in panel ${id}`);
+      debugLog(`Drawing image ${imageIndex} (${imageUrl}) in panel ${id}`);
       
       // Draw a placeholder until the image loads
       ctx.fillRect(adjustedX, adjustedY, adjustedWidth, adjustedHeight);
@@ -576,7 +601,7 @@ const drawLayoutPanels = (ctx, layoutConfig, canvasWidth, canvasHeight, panelCou
               setRenderedImage(url);
             })
             .catch(err => {
-              console.error('Error converting canvas to blob:', err);
+              logError('Error converting canvas to blob:', err);
             });
         } else {
           setRenderedImage(canvas.toDataURL('image/png'));
@@ -584,7 +609,7 @@ const drawLayoutPanels = (ctx, layoutConfig, canvasWidth, canvasHeight, panelCou
       };
       img.crossOrigin = 'anonymous'; // Handle CORS issues
       img.onerror = (err) => {
-        console.error('Error loading image for panel', id, err);
+        logError('Error loading image for panel', id, err);
         // Just show the placeholder on error
       };
       img.src = imageUrl;
@@ -698,7 +723,7 @@ const drawLayoutPanels = (ctx, layoutConfig, canvasWidth, canvasHeight, panelCou
       });
     });
     
-    console.log("Area mapping from gridTemplateAreas:", areaMapping);
+    debugLog("Area mapping from gridTemplateAreas:", areaMapping);
   }
   
   // If the layout uses areas with gridTemplateAreas, use that for precise placement
@@ -827,12 +852,12 @@ export const renderTemplateToCanvas = ({
   selectedImages = [],
   panelImageMapping = {}
 }) => {
-  console.log("renderTemplateToCanvas called with border thickness:", borderThickness);
-  console.log("Panel image mapping:", panelImageMapping);
+  debugLog("renderTemplateToCanvas called with border thickness:", borderThickness);
+  debugLog("Panel image mapping:", panelImageMapping);
   
   // Check if we have a valid template
   if (!selectedTemplate) {
-    console.error('No template selected for rendering');
+    logError('No template selected for rendering');
     return;
   }
   
@@ -846,7 +871,7 @@ export const renderTemplateToCanvas = ({
     canvas = new OffscreenCanvas(width, height);
     ctx = canvas.getContext('2d');
   } catch (error) {
-    console.warn("OffscreenCanvas not supported, falling back to regular canvas", error);
+    debugWarn("OffscreenCanvas not supported, falling back to regular canvas", error);
     // Fall back to a regular canvas if OffscreenCanvas is not supported
     if (canvasRef.current) {
       canvas = canvasRef.current;
@@ -854,7 +879,7 @@ export const renderTemplateToCanvas = ({
       canvas.height = height;
       ctx = canvas.getContext('2d');
     } else {
-      console.error("No canvas available for rendering");
+      logError("No canvas available for rendering");
       return;
     }
   }
@@ -867,10 +892,10 @@ export const renderTemplateToCanvas = ({
   let layoutConfig;
   
   // For debugging
-  console.log("Selected template:", selectedTemplate);
-  console.log("Template ID:", selectedTemplate.id);
-  console.log("Template name:", selectedTemplate.name);
-  console.log("Template arrangement:", selectedTemplate.arrangement);
+  debugLog("Selected template:", selectedTemplate);
+  debugLog("Template ID:", selectedTemplate.id);
+  debugLog("Template name:", selectedTemplate.name);
+  debugLog("Template arrangement:", selectedTemplate.arrangement);
   
   // IMPROVED APPROACH: First get all compatible layouts for the current panel count and aspect ratio
   const aspectRatioId = selectedAspectRatio || 'square';
@@ -878,11 +903,11 @@ export const renderTemplateToCanvas = ({
     ? getLayoutsForPanelCount(panelCount, aspectRatioId)
     : [];
   
-  console.log("Compatible layouts:", layouts);
+  debugLog("Compatible layouts:", layouts);
   
   // For complex layouts, let's log more details to understand what's happening
   if (selectedTemplate && selectedTemplate.id) {
-    console.log("Template details:", {
+    debugLog("Template details:", {
       id: selectedTemplate.id,
       name: selectedTemplate.name,
       arrangement: selectedTemplate.arrangement,
@@ -896,22 +921,22 @@ export const renderTemplateToCanvas = ({
   let matchingLayout = layouts.find(layout => layout.id === selectedTemplate.id);
   
   if (!matchingLayout && layouts.length > 0) {
-    console.log("Could not find exact template match, using first compatible layout");
-    console.log("Available layouts:", layouts.map(l => l.id));
+    debugLog("Could not find exact template match, using first compatible layout");
+    debugLog("Available layouts:", layouts.map(l => l.id));
     matchingLayout = layouts[0];
   }
   
   if (matchingLayout) {
-    console.log("Using layout:", matchingLayout.id);
+    debugLog("Using layout:", matchingLayout.id);
   } else {
-    console.log("No matching layout found");
+    debugLog("No matching layout found");
   }
   
   // APPROACH ALIGNED WITH PREVIEW RENDERING:
   // Handle different layout types consistently with how previews render them
   if (selectedTemplate.arrangement === 'auto') {
     // For auto layouts, create a suitable grid layout that matches what the preview would use
-    console.log("Creating auto layout configuration");
+    debugLog("Creating auto layout configuration");
     layoutConfig = createLayoutConfigFromAutoLayout(
       panelCount, 
       getAspectRatioValue(selectedAspectRatio)
@@ -919,7 +944,7 @@ export const renderTemplateToCanvas = ({
   } 
   // For dynamic layouts, ensure we're using the exact same layout as the preview
   else if (selectedTemplate.arrangement === 'dynamic') {
-    console.log("Processing dynamic layout");
+    debugLog("Processing dynamic layout");
     // Find the first compatible layout (like the preview does)
     if (layouts.length > 0) {
       if (layouts[0].getLayoutConfig) {
@@ -933,36 +958,36 @@ export const renderTemplateToCanvas = ({
   } 
   // For specific layouts, ensure we use the exact template configuration
   else if (matchingLayout) {
-    console.log("Found matching layout by ID:", matchingLayout.id);
+    debugLog("Found matching layout by ID:", matchingLayout.id);
     if (matchingLayout.getLayoutConfig && typeof matchingLayout.getLayoutConfig === 'function') {
-      console.log("Using getLayoutConfig function from matching layout");
+      debugLog("Using getLayoutConfig function from matching layout");
       layoutConfig = matchingLayout.getLayoutConfig();
     } else {
-      console.log("Creating layout from ID:", matchingLayout.id);
+      debugLog("Creating layout from ID:", matchingLayout.id);
       layoutConfig = createLayoutConfigFromId(matchingLayout.id, panelCount);
     }
   }
   // Fallback to original template if it has layout config
   else if (selectedTemplate.getLayoutConfig && typeof selectedTemplate.getLayoutConfig === 'function') {
-    console.log("Using template's built-in layout config");
+    debugLog("Using template's built-in layout config");
     layoutConfig = selectedTemplate.getLayoutConfig();
   }
   // As a last resort, create a layout from ID or default
   else if (selectedTemplate.id) {
-    console.log("Creating layout from template ID:", selectedTemplate.id);
+    debugLog("Creating layout from template ID:", selectedTemplate.id);
     layoutConfig = createLayoutConfigFromId(selectedTemplate.id, panelCount);
   } else {
-    console.log("Creating default grid layout (no layout found)");
+    debugLog("Creating default grid layout (no layout found)");
     layoutConfig = createDefaultGridLayout(panelCount, selectedAspectRatio);
   }
   
   if (!layoutConfig) {
-    console.error('No layout configuration found for the selected template');
+    logError('No layout configuration found for the selected template');
     return;
   }
   
   // Explicitly log the border thickness that will be used for drawing
-  console.log("About to draw layout with border thickness:", borderThickness, 
+  debugLog("About to draw layout with border thickness:", borderThickness, 
               "Type:", typeof borderThickness, 
               "Will draw borders:", borderThickness > 0);
   
@@ -982,8 +1007,6 @@ export const renderTemplateToCanvas = ({
   );
   
   // Initial conversion of the canvas to an image (for the placeholder display)
-  // Note: When images are loaded asynchronously, this will be overridden 
-  // by the image onload handler in drawPanel
   if (canvas instanceof OffscreenCanvas) {
     // If using OffscreenCanvas, convert to ImageBitmap first
     canvas.convertToBlob({ type: 'image/png' })
@@ -992,7 +1015,7 @@ export const renderTemplateToCanvas = ({
         setRenderedImage(url);
       })
       .catch(err => {
-        console.error('Error converting canvas to blob:', err);
+        logError('Error converting canvas to blob:', err);
       });
   } else {
     // If using regular canvas, get data URL directly

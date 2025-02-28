@@ -121,9 +121,6 @@ export default function CollagePage() {
           });
         }
         
-        console.log(`Added/updated image for panel ${panelId}`);
-        console.log("Current panel mapping:", {...panelImageMapping, [panelId]: existingMappingIndex !== undefined ? existingMappingIndex : selectedImages.length});
-        
         // Force a re-render by updating a dependent state value
         if (selectedTemplate) {
           // This is a hack to force a re-render of the template
@@ -208,8 +205,6 @@ export default function CollagePage() {
     
     // Sanitize the panel mapping before proceeding
     const cleanMapping = sanitizePanelImageMapping(panelImageMapping, selectedImages, panelCount);
-    console.log("Original mapping:", panelImageMapping);
-    console.log("Sanitized mapping:", cleanMapping);
     
     // Create an offscreen canvas for collage generation
     const generateCollage = async () => {
@@ -238,10 +233,6 @@ export default function CollagePage() {
           option => option.label.toLowerCase() === borderThickness.toLowerCase()
         )?.value ?? 4; // Use nullish coalescing to default to 4 if not found
         
-        console.log("Border thickness selection:", borderThickness);
-        console.log("Found border thickness value:", borderThicknessValue);
-        console.log("All border thickness options:", borderThicknessOptions.map(o => `${o.label}: ${o.value}`).join(', '));
-        
         // Call the renderTemplateToCanvas function manually
         await new Promise(resolve => {
           // Set up functions to receive rendering results
@@ -266,9 +257,6 @@ export default function CollagePage() {
           });
         });
         
-        console.log("Panel regions:", panelRegions);
-        console.log("Panel image mapping:", cleanMapping);
-        
         // Load all selected images and draw them onto the canvas
         if (selectedImages.length > 0) {
           // Create a mapping from panel ID to image URL
@@ -282,9 +270,6 @@ export default function CollagePage() {
                 panelToImageUrl[panelId] = selectedImages[imageIndex].url || selectedImages[imageIndex];
               }
             });
-            
-            // Log the mapping for debugging
-            console.log("Using panel-to-image mapping:", panelToImageUrl);
           } else {
             // Assign images sequentially to panels
             panelRegions.forEach((panel, index) => {
@@ -292,8 +277,6 @@ export default function CollagePage() {
                 panelToImageUrl[panel.id] = selectedImages[index].url || selectedImages[index];
               }
             });
-            
-            console.log("Using sequential image assignment");
           }
           
           // Clear the canvas before drawing images
@@ -307,7 +290,6 @@ export default function CollagePage() {
           panelRegions.forEach(panel => {
             // Ensure panel has a valid ID
             if (!panel.id) {
-              console.warn("Panel missing ID:", panel);
               return; // Skip panels without IDs
             }
             
