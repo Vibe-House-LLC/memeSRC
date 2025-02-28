@@ -11,13 +11,20 @@ import {
   Button,
   useMediaQuery,
   Divider,
-  Container
+  Container,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  IconButton
 } from "@mui/material";
 import { 
   Settings,
   PhotoLibrary,
   Save,
-  Dashboard
+  Dashboard,
+  Close,
+  AspectRatio
 } from "@mui/icons-material";
 
 import { UserContext } from "../UserContext";
@@ -33,6 +40,9 @@ import { aspectRatioPresets, layoutTemplates, getLayoutsForPanelCount } from "..
 import CollageImagesStep from "../components/collage/steps/CollageImagesStep";
 import CollageSettingsStep from "../components/collage/steps/CollageSettingsStep";
 
+// Import new panel image editor component
+import PanelImageEditor from "../components/collage/components/PanelImageEditor";
+
 // Import new utilities for collage generation
 import { 
   calculateCanvasDimensions, 
@@ -41,38 +51,120 @@ import {
 } from "../components/collage/utils/CanvasLayoutRenderer";
 
 // Utility function to ensure panel mapping is valid
-const sanitizePanelImageMapping = (mapping, imageArray, panelCount) => {
-  if (!mapping || typeof mapping !== 'object') return {};
+const sanitizePanelImageMapping = (imageArray, selectedImages, panelCount) => {
+  console.log('Sanitizing panel mapping', { 
+    imageArrayLength: imageArray.length, 
+    selectedImagesLength: selectedImages.length, 
+    panelCount 
+  });
   
-  // Create a clean mapping object with only valid entries
-  const cleanMapping = {};
+  // Create a map object with correct panel to image mappings
+  const panelToImageMap = {};
   
-  Object.entries(mapping).forEach(([panelId, imageIndex]) => {
-    // Convert panelId to number if it's a string number
-    // Use Number.isNaN or alternative approach to avoid eslint error
-    const numericPanelId = !Number.isNaN(Number(panelId)) ? Number(panelId) : panelId;
-    
-    // Only keep mapping if image index is valid
-    if (imageIndex !== undefined && 
-        imageIndex >= 0 && 
-        imageIndex < imageArray.length && 
-        imageArray[imageIndex]) {
-      cleanMapping[numericPanelId] = imageIndex;
+  // Map each panel image to its index
+  imageArray.forEach((img, index) => {
+    // Check if img exists and panelId is defined (including 0)
+    if (img && img.panelId !== undefined) {
+      console.log(`Mapping panel ${img.panelId} to image index ${index}`);
+      panelToImageMap[img.panelId] = index;
     }
   });
   
-  return cleanMapping;
+  console.log('Final panel to image mapping:', panelToImageMap);
+  return panelToImageMap;
+};
+
+// Simple Image Preview Dialog Component
+const ImagePreviewDialog = ({ open, imageUrl, aspectRatio, onClose, onCropClick }) => {
+  const theme = useTheme();
+  
+  return (
+    <Dialog 
+      open={open} 
+      onClose={onClose} 
+      maxWidth="md" 
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: 2,
+          backgroundColor: theme.palette.background.paper
+        }
+      }}
+    >
+      <DialogTitle sx={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center',
+        borderBottom: `1px solid ${theme.palette.divider}`
+      }}>
+        <Typography variant="h6">Image Preview</Typography>
+        <IconButton onClick={onClose} size="small">
+          <Close />
+        </IconButton>
+      </DialogTitle>
+      
+      <DialogContent sx={{ p: 2, textAlign: 'center' }}>
+        <Box sx={{ 
+          position: 'relative',
+          width: '100%',
+          height: 'auto',
+          maxHeight: '60vh',
+          overflow: 'hidden',
+          my: 2,
+          borderRadius: 1,
+          border: `1px solid ${theme.palette.divider}`
+        }}>
+          <img 
+            src={imageUrl} 
+            alt="Preview" 
+            style={{ 
+              maxWidth: '100%', 
+              maxHeight: '60vh',
+              objectFit: 'contain'
+            }} 
+          />
+        </Box>
+        
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Click "Crop Image" to proceed to the image editor where you can crop, zoom, and rotate your image.
+        </Typography>
+      </DialogContent>
+      
+      <DialogActions sx={{ p: 2, borderTop: `1px solid ${theme.palette.divider}` }}>
+        <Button onClick={onClose} color="inherit">
+          Cancel
+        </Button>
+        <Button 
+          onClick={onCropClick} 
+          variant="contained" 
+          color="primary"
+          startIcon={<AspectRatio />}
+        >
+          Crop Image
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
 };
 
 export default function CollagePage() {
   const [selectedImages, setSelectedImages] = useState([]);
-  const [panelImageMapping, setPanelImageMapping] = useState({});
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [selectedAspectRatio, setSelectedAspectRatio] = useState('portrait');
   const [panelCount, setPanelCount] = useState(2); // Default panel count of 2
   const [finalImage, setFinalImage] = useState(null);
   const [isCreatingCollage, setIsCreatingCollage] = useState(false);
   const [borderThickness, setBorderThickness] = useState('medium'); // Default border thickness
+  
+  // Add new state variables for the image editor
+  const [imageEditorOpen, setImageEditorOpen] = useState(false);
+  const [currentPanelId, setCurrentPanelId] = useState(null);
+  const [currentImageUrl, setCurrentImageUrl] = useState(null);
+  const [currentPanelAspectRatio, setCurrentPanelAspectRatio] = useState(1);
+  
+  // Add new state for image preview dialog
+  const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
+  const [previewImageUrl, setPreviewImageUrl] = useState(null);
   
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -90,48 +182,192 @@ export default function CollagePage() {
     { label: 'Extra Thicc', value: 12 }
   ];
 
-  // Add this new function to CollagePage.js
-  const handlePanelClick = (panelId) => {
-    const fileInput = document.createElement('input');
-    fileInput.type = 'file';
-    fileInput.accept = 'image/*';
-    fileInput.onchange = async (e) => {
-      if (e.target.files && e.target.files[0]) {
-        const file = e.target.files[0];
-        const imageUrl = URL.createObjectURL(file);
+  // Select the most suitable template when panel count or aspect ratio changes
+  useEffect(() => {
+    const compatibleTemplates = getCompatibleTemplates();
+    
+    // If no template is selected or the current one isn't compatible, select the first one
+    if (!selectedTemplate || 
+        selectedTemplate.minImages > panelCount || 
+        selectedTemplate.maxImages < panelCount) {
+      
+      if (compatibleTemplates.length > 0) {
+        // Select the first (highest priority) compatible template
         
-        // Find if there's already an image for this panel
-        const existingMappingIndex = panelImageMapping[panelId];
+        // Create a template with regions
+        const newTemplate = {
+          ...compatibleTemplates[0],
+          // Add regions based on panel count (these will be just placeholders until renderTemplateToCanvas creates the actual regions)
+          regions: Array.from({ length: panelCount }, (_, i) => ({
+            id: i,
+            name: `panel-${i}`,
+            x: 0,
+            y: 0,
+            width: 100,
+            height: 100
+          }))
+        };
         
-        // If this panel already has an image, replace it in the selectedImages array
-        if (existingMappingIndex !== undefined && selectedImages[existingMappingIndex]) {
-          // Create a new array with the replaced image
-          const newSelectedImages = [...selectedImages];
-          newSelectedImages[existingMappingIndex] = imageUrl;
-          setSelectedImages(newSelectedImages);
-        } else {
-          // Add the new image to selectedImages
-          const newImageIndex = selectedImages.length;
-          setSelectedImages([...selectedImages, imageUrl]);
-          
-          // Update the panel mapping
-          setPanelImageMapping({
-            ...panelImageMapping,
-            [panelId]: newImageIndex
-          });
-        }
-        
-        console.log(`Added/updated image for panel ${panelId}`);
-        console.log("Current panel mapping:", {...panelImageMapping, [panelId]: existingMappingIndex !== undefined ? existingMappingIndex : selectedImages.length});
-        
-        // Force a re-render by updating a dependent state value
-        if (selectedTemplate) {
-          // This is a hack to force a re-render of the template
-          setSelectedTemplate({...selectedTemplate});
-        }
+        setSelectedTemplate(newTemplate);
+      } else {
+        setSelectedTemplate(null);
       }
-    };
-    fileInput.click();
+    }
+  }, [panelCount, selectedAspectRatio]);
+  
+  // Find the handlePanelClick function and update it
+  const handlePanelClick = (panelId) => {
+    // Check if we have a selected template
+    if (!selectedTemplate) {
+      // Consider showing a user-friendly notification here
+      return;
+    }
+    
+    // Ensure that the template has regions defined
+    if (!selectedTemplate.regions || !Array.isArray(selectedTemplate.regions)) {
+      
+      // Create placeholder regions if none exist
+      if (selectedTemplate && !selectedTemplate.regions) {
+        const placeholderRegions = Array.from({ length: panelCount }, (_, i) => ({
+          id: i,
+          name: `panel-${i}`,
+          x: 0,
+          y: 0,
+          width: 100,
+          height: 100
+        }));
+        
+        // Update the template with placeholder regions
+        setSelectedTemplate({
+          ...selectedTemplate,
+          regions: placeholderRegions
+        });
+        
+        // Since we just updated the template, we need to return and let the
+        // effect take place before continuing
+        return;
+      }
+      
+      return;
+    }
+    
+    // Parse panelId to number if it's a string
+    const numericPanelId = typeof panelId === 'string' ? parseInt(panelId, 10) : panelId;
+    
+    // Find the target panel from the template
+    const targetPanel = selectedTemplate.regions.find(region => region.id === numericPanelId);
+    if (!targetPanel) {
+      return;
+    }
+    
+    // Calculate aspect ratio
+    const aspectRatio = targetPanel.width / targetPanel.height;
+    
+    // Check if we already have an image for this panel
+    const existingImageIndex = selectedImages.findIndex(img => img.panelId === numericPanelId);
+    
+    if (existingImageIndex !== -1) {
+      // We already have an image for this panel, open the editor directly
+      setCurrentPanelId(numericPanelId);
+      setCurrentImageUrl(selectedImages[existingImageIndex].imageUrl);
+      setCurrentPanelAspectRatio(aspectRatio);
+      setImageEditorOpen(true);
+    } else {
+      // We need to get an image first
+      
+      // Create a file input element
+      const fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.accept = 'image/*';
+      
+      // Handle file selection
+      fileInput.onchange = (e) => {
+        if (e.target.files && e.target.files[0]) {
+          const file = e.target.files[0];
+          
+          // Create a URL for the selected image
+          const imageUrl = URL.createObjectURL(file);
+          
+          // Set state for preview dialog
+          setCurrentPanelId(numericPanelId);
+          setCurrentPanelAspectRatio(aspectRatio);
+          setPreviewImageUrl(imageUrl);
+          setImagePreviewOpen(true);
+        }
+      };
+      
+      // Trigger the file selection dialog
+      fileInput.click();
+    }
+  };
+  
+  // Add a new function to handle the transition from preview to editor
+  const handleCropImageClick = () => {
+    // Close the preview dialog
+    setImagePreviewOpen(false);
+    
+    // Set the current image URL from the preview
+    setCurrentImageUrl(previewImageUrl);
+    
+    // Open the editor dialog
+    setTimeout(() => {
+      setImageEditorOpen(true);
+    }, 50);
+  };
+  
+  // Update the handleSaveEditedImage function
+  const handleSaveEditedImage = (panelId, editedImageUrl) => {
+    console.log('Saving edited image', { panelId, editedImageUrl: `${editedImageUrl.substring(0, 50)}...` });
+    
+    // Use the passed panelId instead of relying on currentPanelId
+    // Important: Check if panelId is undefined or null, not just truthy/falsy
+    // because panelId can be 0 which is falsy but valid
+    const targetPanelId = panelId !== undefined && panelId !== null ? panelId : currentPanelId;
+    
+    if (targetPanelId === undefined || targetPanelId === null) {
+      console.error('No panel ID provided for saving edited image');
+      return;
+    }
+    
+    // Find the index of the selected panel in selectedImages
+    const existingImageIndex = selectedImages.findIndex(img => img.panelId === targetPanelId);
+    
+    // Check if we should update or add a new image
+    if (existingImageIndex !== -1) {
+      // Create a copy of the current selectedImages array
+      const updatedImages = [...selectedImages];
+      
+      // Get the old image URL to revoke it later
+      const oldImageUrl = updatedImages[existingImageIndex].imageUrl;
+      
+      // Update the image at the existing index
+      updatedImages[existingImageIndex] = {
+        ...updatedImages[existingImageIndex],
+        imageUrl: editedImageUrl
+      };
+      
+      // Update state
+      setSelectedImages(updatedImages);
+      
+      // Revoke old object URL to free up memory
+      if (oldImageUrl && oldImageUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(oldImageUrl);
+      }
+    } else {
+      // Add a new image to the array
+      setSelectedImages([
+        ...selectedImages,
+        { panelId: targetPanelId, imageUrl: editedImageUrl }
+      ]);
+    }
+    
+    // Close the editor
+    setImageEditorOpen(false);
+    
+    // Clear current panel state
+    setCurrentPanelId(null);
+    setCurrentImageUrl(null);
+    setCurrentPanelAspectRatio(1);
   };
 
   // Clean up ObjectURLs when component unmounts or when images are replaced
@@ -184,32 +420,41 @@ export default function CollagePage() {
     });
   };
 
-  // Select the most suitable template when panel count or aspect ratio changes
+  // Add an effect to handle initial template selection
   useEffect(() => {
-    const compatibleTemplates = getCompatibleTemplates();
-    
-    // If no template is selected or the current one isn't compatible, select the first one
-    if (!selectedTemplate || 
-        selectedTemplate.minImages > panelCount || 
-        selectedTemplate.maxImages < panelCount) {
+    // If no template is selected yet, select one on component mount
+    if (!selectedTemplate) {
+      const compatibleTemplates = getCompatibleTemplates();
       
       if (compatibleTemplates.length > 0) {
-        // Select the first (highest priority) compatible template
-        setSelectedTemplate(compatibleTemplates[0]);
-      } else {
-        setSelectedTemplate(null);
+        // Create a template with regions
+        const initialTemplate = {
+          ...compatibleTemplates[0],
+          // Add regions based on panel count
+          regions: Array.from({ length: panelCount }, (_, i) => ({
+            id: i,
+            name: `panel-${i}`,
+            x: 0,
+            y: 0,
+            width: 100,
+            height: 100
+          }))
+        };
+        
+        setSelectedTemplate(initialTemplate);
       }
     }
-  }, [panelCount, selectedAspectRatio, selectedTemplate]);
+  }, [panelCount, selectedTemplate]); // Include panelCount in dependencies
 
   // Submit the collage for creation
   const handleCreateCollage = () => {
     setIsCreatingCollage(true);
     
+    // Log the selected images before sanitizing
+    console.log('Selected images before sanitizing:', selectedImages);
+    
     // Sanitize the panel mapping before proceeding
-    const cleanMapping = sanitizePanelImageMapping(panelImageMapping, selectedImages, panelCount);
-    console.log("Original mapping:", panelImageMapping);
-    console.log("Sanitized mapping:", cleanMapping);
+    const cleanMapping = sanitizePanelImageMapping(selectedImages, selectedImages, panelCount);
     
     // Create an offscreen canvas for collage generation
     const generateCollage = async () => {
@@ -224,7 +469,6 @@ export default function CollagePage() {
         const ctx = tempCanvas.getContext('2d');
         
         if (!ctx) {
-          console.error('Failed to get canvas context');
           setIsCreatingCollage(false);
           return;
         }
@@ -238,9 +482,7 @@ export default function CollagePage() {
           option => option.label.toLowerCase() === borderThickness.toLowerCase()
         )?.value ?? 4; // Use nullish coalescing to default to 4 if not found
         
-        console.log("Border thickness selection:", borderThickness);
-        console.log("Found border thickness value:", borderThicknessValue);
-        console.log("All border thickness options:", borderThicknessOptions.map(o => `${o.label}: ${o.value}`).join(', '));
+        console.log('About to draw layout with border thickness:', borderThicknessValue, 'Type:', typeof borderThicknessValue, 'Will draw borders:', borderThicknessValue > 0);
         
         // Call the renderTemplateToCanvas function manually
         await new Promise(resolve => {
@@ -266,9 +508,6 @@ export default function CollagePage() {
           });
         });
         
-        console.log("Panel regions:", panelRegions);
-        console.log("Panel image mapping:", cleanMapping);
-        
         // Load all selected images and draw them onto the canvas
         if (selectedImages.length > 0) {
           // Create a mapping from panel ID to image URL
@@ -277,24 +516,32 @@ export default function CollagePage() {
           // Use panelImageMapping if available, otherwise assign sequentially
           if (cleanMapping && Object.keys(cleanMapping).length > 0) {
             // Use the existing mapping - panel ID to image index
+            console.log('Using clean mapping:', cleanMapping);
             Object.entries(cleanMapping).forEach(([panelId, imageIndex]) => {
+              // Convert panelId to number if it's a string
+              const numericPanelId = typeof panelId === 'string' ? parseInt(panelId, 10) : panelId;
+              console.log(`Mapping panel ${numericPanelId} to image at index ${imageIndex}:`, selectedImages[imageIndex]);
+              
+              // Check if the image exists at the specified index
               if (selectedImages[imageIndex]) {
-                panelToImageUrl[panelId] = selectedImages[imageIndex].url || selectedImages[imageIndex];
+                panelToImageUrl[numericPanelId] = selectedImages[imageIndex].imageUrl;
               }
             });
-            
-            // Log the mapping for debugging
-            console.log("Using panel-to-image mapping:", panelToImageUrl);
           } else {
             // Assign images sequentially to panels
+            console.log('No clean mapping available, assigning sequentially');
             panelRegions.forEach((panel, index) => {
+              // Ensure panel.id is treated as a number
+              const numericPanelId = typeof panel.id === 'string' ? parseInt(panel.id, 10) : panel.id;
+              console.log(`Sequential mapping: panel ${numericPanelId} to image at index ${index}:`, index < selectedImages.length ? selectedImages[index] : 'No image');
+              
               if (index < selectedImages.length && selectedImages[index]) {
-                panelToImageUrl[panel.id] = selectedImages[index].url || selectedImages[index];
+                panelToImageUrl[numericPanelId] = selectedImages[index].imageUrl;
               }
             });
-            
-            console.log("Using sequential image assignment");
           }
+          
+          console.log('Final panel to image URL mapping:', panelToImageUrl);
           
           // Clear the canvas before drawing images
           ctx.clearRect(0, 0, width, height);
@@ -305,86 +552,86 @@ export default function CollagePage() {
           
           // Draw each panel with its assigned image
           panelRegions.forEach(panel => {
-            // Ensure panel has a valid ID
-            if (!panel.id) {
-              console.warn("Panel missing ID:", panel);
-              return; // Skip panels without IDs
-            }
-            
-            const imageUrl = panelToImageUrl[panel.id];
-            
-            if (imageUrl) {
-              const promise = new Promise((resolve, reject) => {
-                const img = new Image();
-                img.crossOrigin = 'anonymous';
-                img.onload = () => {
-                  // Draw the image within its panel region
-                  ctx.save();
-                  ctx.beginPath();
-                  ctx.rect(panel.x, panel.y, panel.width, panel.height);
-                  ctx.clip();
-                  
-                  // Calculate dimensions to maintain aspect ratio while filling the panel
-                  const imgAspect = img.width / img.height;
-                  const panelAspect = panel.width / panel.height;
-                  
-                  let drawWidth = 0;
-                  let drawHeight = 0;
-                  let drawX = 0;
-                  let drawY = 0;
-                  
-                  if (imgAspect > panelAspect) {
-                    // Image is wider than panel (proportionally)
-                    drawHeight = panel.height;
-                    drawWidth = drawHeight * imgAspect;
-                    drawX = panel.x + (panel.width - drawWidth) / 2;
-                    drawY = panel.y;
-                  } else {
-                    // Image is taller than panel (proportionally)
-                    drawWidth = panel.width;
-                    drawHeight = drawWidth / imgAspect;
-                    drawX = panel.x;
-                    drawY = panel.y + (panel.height - drawHeight) / 2;
-                  }
-                  
-                  // Draw the image scaled to fill the panel
-                  ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
-                  ctx.restore();
-                  
-                  // Draw panel border if needed
-                  if (borderThicknessValue > 0) {
-                    ctx.strokeStyle = 'white';
-                    ctx.lineWidth = borderThicknessValue;
-                    ctx.strokeRect(panel.x, panel.y, panel.width, panel.height);
-                  }
-                  
-                  resolve();
-                };
-                
-                img.onerror = () => {
-                  console.error(`Failed to load image: ${imageUrl}`);
-                  // Draw placeholder for failed image
-                  ctx.save();
-                  ctx.fillStyle = '#FF6B6B';
-                  ctx.fillRect(panel.x, panel.y, panel.width, panel.height);
-                  ctx.restore();
-                  resolve(); // Still resolve so we don't block other images
-                };
-                
-                img.src = imageUrl;
-              });
+            // Ensure panel has a valid ID (including 0)
+            if (panel.id !== undefined && panel.id !== null) {
+              // Convert panel.id to number if it's a string
+              const numericPanelId = typeof panel.id === 'string' ? parseInt(panel.id, 10) : panel.id;
+              const imageUrl = panelToImageUrl[numericPanelId];
               
-              imageLoadPromises.push(promise);
-            } else {
-              // No image assigned, draw placeholder
-              ctx.fillStyle = '#808080';
-              ctx.fillRect(panel.x, panel.y, panel.width, panel.height);
+              console.log(`Drawing panel ${numericPanelId} with image URL:`, imageUrl ? `${imageUrl.substring(0, 30)}...` : 'No image');
               
-              // Draw panel border if needed
-              if (borderThicknessValue > 0) {
-                ctx.strokeStyle = 'white';
-                ctx.lineWidth = borderThicknessValue;
-                ctx.strokeRect(panel.x, panel.y, panel.width, panel.height);
+              if (imageUrl) {
+                const promise = new Promise((resolve, reject) => {
+                  const img = new Image();
+                  img.crossOrigin = 'anonymous';
+                  img.onload = () => {
+                    // Draw the image within its panel region
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.rect(panel.x, panel.y, panel.width, panel.height);
+                    ctx.clip();
+                    
+                    // Calculate dimensions to maintain aspect ratio while filling the panel
+                    const imgAspect = img.width / img.height;
+                    const panelAspect = panel.width / panel.height;
+                    
+                    let drawWidth = 0;
+                    let drawHeight = 0;
+                    let drawX = 0;
+                    let drawY = 0;
+                    
+                    if (imgAspect > panelAspect) {
+                      // Image is wider than panel (proportionally)
+                      drawHeight = panel.height;
+                      drawWidth = drawHeight * imgAspect;
+                      drawX = panel.x + (panel.width - drawWidth) / 2;
+                      drawY = panel.y;
+                    } else {
+                      // Image is taller than panel (proportionally)
+                      drawWidth = panel.width;
+                      drawHeight = drawWidth / imgAspect;
+                      drawX = panel.x;
+                      drawY = panel.y + (panel.height - drawHeight) / 2;
+                    }
+                    
+                    // Draw the image scaled to fill the panel
+                    ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
+                    ctx.restore();
+                    
+                    // Draw panel border if needed
+                    if (borderThicknessValue > 0) {
+                      ctx.strokeStyle = 'white';
+                      ctx.lineWidth = borderThicknessValue;
+                      ctx.strokeRect(panel.x, panel.y, panel.width, panel.height);
+                    }
+                    
+                    resolve();
+                  };
+                  
+                  img.onerror = () => {
+                    // Draw placeholder for failed image
+                    ctx.save();
+                    ctx.fillStyle = '#FF6B6B';
+                    ctx.fillRect(panel.x, panel.y, panel.width, panel.height);
+                    ctx.restore();
+                    resolve(); // Still resolve so we don't block other images
+                  };
+                  
+                  img.src = imageUrl;
+                });
+                
+                imageLoadPromises.push(promise);
+              } else {
+                // No image assigned, draw placeholder
+                ctx.fillStyle = '#808080';
+                ctx.fillRect(panel.x, panel.y, panel.width, panel.height);
+                
+                // Draw panel border if needed
+                if (borderThicknessValue > 0) {
+                  ctx.strokeStyle = 'white';
+                  ctx.lineWidth = borderThicknessValue;
+                  ctx.strokeRect(panel.x, panel.y, panel.width, panel.height);
+                }
               }
             }
           });
@@ -399,7 +646,6 @@ export default function CollagePage() {
         setIsCreatingCollage(false);
         
       } catch (error) {
-        console.error('Error generating collage:', error);
         setIsCreatingCollage(false);
       }
     };
@@ -533,10 +779,6 @@ export default function CollagePage() {
                     panelCount={panelCount}
                     selectedTemplate={selectedTemplate}
                     selectedAspectRatio={selectedAspectRatio}
-                    panelImageMapping={panelImageMapping}
-                    setPanelImageMapping={setPanelImageMapping}
-                    borderThickness={borderThickness}
-                    borderThicknessOptions={borderThicknessOptions}
                     onPanelClick={handlePanelClick}
                   />
                 
@@ -634,10 +876,6 @@ export default function CollagePage() {
                         panelCount={panelCount}
                         selectedTemplate={selectedTemplate}
                         selectedAspectRatio={selectedAspectRatio}
-                        panelImageMapping={panelImageMapping}
-                        setPanelImageMapping={setPanelImageMapping}
-                        borderThickness={borderThickness}
-                        borderThicknessOptions={borderThicknessOptions}
                         onPanelClick={handlePanelClick}
                       />
                       
@@ -714,6 +952,36 @@ export default function CollagePage() {
                   </Box>
                 </Paper>
               </Box>
+            )}
+
+            {/* Add the ImagePreviewDialog component */}
+            <ImagePreviewDialog
+              open={imagePreviewOpen}
+              imageUrl={previewImageUrl}
+              aspectRatio={currentPanelAspectRatio}
+              onClose={() => {
+                setImagePreviewOpen(false);
+                // Revoke the object URL to free up memory
+                if (previewImageUrl && previewImageUrl.startsWith('blob:')) {
+                  URL.revokeObjectURL(previewImageUrl);
+                }
+                setPreviewImageUrl(null);
+              }}
+              onCropClick={handleCropImageClick}
+            />
+
+            {/* Add the PanelImageEditor component */}
+            {imageEditorOpen && currentPanelId !== null && currentImageUrl && (
+              <PanelImageEditor
+                open={imageEditorOpen}
+                imageUrl={currentImageUrl}
+                aspectRatio={currentPanelAspectRatio}
+                panelId={currentPanelId}
+                onClose={() => {
+                  setImageEditorOpen(false);
+                }}
+                onSave={handleSaveEditedImage}
+              />
             )}
           </Paper>
         </Container>

@@ -7,7 +7,7 @@ import {
   Paper,
   useMediaQuery
 } from "@mui/material";
-import { KeyboardArrowLeft, KeyboardArrowRight } from "@mui/icons-material";
+import { KeyboardArrowLeft, KeyboardArrowRight, Edit } from "@mui/icons-material";
 
 // Import from the collage configuration
 import { aspectRatioPresets, getLayoutsForPanelCount } from "../config/CollageConfig";
@@ -56,8 +56,10 @@ const CollageImagesStep = ({
   // Store selected images per panel
   const [panelToImageMap, setPanelToImageMap] = useState({});
   
-  // Function to handle click events on the preview image
+  // Enhance the handlePreviewClick function
   const handlePreviewClick = (event) => {
+    console.log("Preview image clicked");
+    
     // Get the click coordinates relative to the image
     const image = event.currentTarget;
     const rect = image.getBoundingClientRect();
@@ -66,10 +68,15 @@ const CollageImagesStep = ({
     const clickX = (event.clientX - rect.left) / rect.width;
     const clickY = (event.clientY - rect.top) / rect.height;
     
+    console.log("Click coordinates as percentage:", { clickX, clickY });
+    
     // Convert to canvas coordinates
     const { width, height } = calculateCanvasDimensions(selectedAspectRatio);
     const canvasX = clickX * width;
     const canvasY = clickY * height;
+    
+    console.log("Canvas coordinates:", { canvasX, canvasY });
+    console.log("Available panel regions:", panelRegions);
     
     // Find which panel was clicked
     const clickedPanel = panelRegions.find(panel => 
@@ -80,16 +87,18 @@ const CollageImagesStep = ({
     );
     
     if (clickedPanel) {
-      console.log(`Clicked on panel ${clickedPanel.id}: ${clickedPanel.name}`);
+      console.log(`Clicked on panel ${clickedPanel.id}`);
       setSelectedPanel(clickedPanel);
       
-      // Use the onPanelClick prop if it's provided
-      if (onPanelClick) {
+      // Use the new onPanelClick handler from props
+      if (typeof onPanelClick === 'function') {
+        console.log("Calling onPanelClick with id:", clickedPanel.id);
         onPanelClick(clickedPanel.id);
       } else {
-        // Fall back to the old behavior if onPanelClick is not provided
-        handlePanelImageSelection(clickedPanel);
+        console.warn("onPanelClick is not a function", onPanelClick);
       }
+    } else {
+      console.log("No panel was clicked");
     }
   };
   
@@ -144,6 +153,14 @@ const CollageImagesStep = ({
       
       console.log("Preview rendering with border thickness:", borderThicknessValue);
       
+      // Create a mapping from panel IDs to image indices
+      const mapping = {};
+      selectedImages.forEach((img, index) => {
+        if (img && img.panelId !== undefined) {
+          mapping[img.panelId] = index;
+        }
+      });
+      
       // Call the imported renderTemplateToCanvas function
       renderTemplateToCanvas({
         selectedTemplate,
@@ -155,7 +172,7 @@ const CollageImagesStep = ({
         setRenderedImage,
         borderThickness: borderThicknessValue,
         selectedImages,
-        panelImageMapping
+        panelImageMapping: mapping
       });
     }
   }, [selectedTemplate, selectedAspectRatio, panelCount, theme.palette.mode, borderThickness, borderThicknessOptions, selectedImages, panelImageMapping]);
@@ -249,21 +266,23 @@ const CollageImagesStep = ({
         )}
         
         {renderedImage ? (
-          <Box
-            component="img"
-            src={renderedImage}
-            alt="Collage Layout Preview"
-            onClick={handlePreviewClick}
-            sx={{
-              maxWidth: '100%',
-              maxHeight: isMobile ? 300 : 350, // Slightly smaller on mobile
-              objectFit: 'contain',
-              borderRadius: 1,
-              cursor: 'pointer',
-              margin: '0 auto',
-              display: 'block'
-            }}
-          />
+          <>
+            <Box
+              component="img"
+              src={renderedImage}
+              alt="Collage Layout Preview"
+              onClick={handlePreviewClick}
+              sx={{
+                maxWidth: '100%',
+                maxHeight: isMobile ? 300 : 350, // Slightly smaller on mobile
+                objectFit: 'contain',
+                borderRadius: 1,
+                cursor: 'pointer',
+                margin: '0 auto',
+                display: 'block'
+              }}
+            />
+          </>
         ) : (
           <Box
             sx={{

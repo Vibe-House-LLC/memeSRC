@@ -469,6 +469,9 @@ const createLayoutConfigFromId = (templateId, count) => {
 const drawLayoutPanels = (ctx, layoutConfig, canvasWidth, canvasHeight, panelCount, setPanelRegions, borderThickness = 4, selectedImages = [], panelImageMapping = {}, canvas, setRenderedImage) => {
   console.log("Drawing layout with config:", layoutConfig);
   console.log("Using border thickness:", borderThickness);
+  console.log("Selected images:", selectedImages);
+  console.log("Panel image mapping:", panelImageMapping);
+  
   const { gridTemplateColumns, gridTemplateRows, areas, gridTemplateAreas, items } = layoutConfig;
   
   // Parse grid template columns and rows
@@ -514,8 +517,12 @@ const drawLayoutPanels = (ctx, layoutConfig, canvasWidth, canvasHeight, panelCou
     const hasImage = typeof imageIndex === 'number' && imageIndex >= 0 && imageIndex < selectedImages.length;
     
     if (hasImage) {
-      // Draw the image with auto-scaling
-      const imageUrl = selectedImages[imageIndex];
+      // Get the image URL - handle both direct URLs and objects with imageUrl property
+      const imageItem = selectedImages[imageIndex];
+      const imageUrl = typeof imageItem === 'object' && imageItem !== null 
+        ? imageItem.imageUrl 
+        : imageItem;
+      
       console.log(`Drawing image ${imageIndex} (${imageUrl}) in panel ${id}`);
       
       // Draw a placeholder until the image loads
