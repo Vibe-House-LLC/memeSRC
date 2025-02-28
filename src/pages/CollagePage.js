@@ -40,6 +40,30 @@ import {
   getAspectRatioValue
 } from "../components/collage/utils/CanvasLayoutRenderer";
 
+// Utility function to ensure panel mapping is valid
+const sanitizePanelImageMapping = (mapping, imageArray, panelCount) => {
+  if (!mapping || typeof mapping !== 'object') return {};
+  
+  // Create a clean mapping object with only valid entries
+  const cleanMapping = {};
+  
+  Object.entries(mapping).forEach(([panelId, imageIndex]) => {
+    // Convert panelId to number if it's a string number
+    // Use Number.isNaN or alternative approach to avoid eslint error
+    const numericPanelId = !Number.isNaN(Number(panelId)) ? Number(panelId) : panelId;
+    
+    // Only keep mapping if image index is valid
+    if (imageIndex !== undefined && 
+        imageIndex >= 0 && 
+        imageIndex < imageArray.length && 
+        imageArray[imageIndex]) {
+      cleanMapping[numericPanelId] = imageIndex;
+    }
+  });
+  
+  return cleanMapping;
+};
+
 export default function CollagePage() {
   const [selectedImages, setSelectedImages] = useState([]);
   const [panelImageMapping, setPanelImageMapping] = useState({});
@@ -76,22 +100,33 @@ export default function CollagePage() {
         const file = e.target.files[0];
         const imageUrl = URL.createObjectURL(file);
         
-        // Add the new image to selectedImages if it's not already there
-        const newImageIndex = selectedImages.length;
-        setSelectedImages([...selectedImages, imageUrl]);
+        // Find if there's already an image for this panel
+        const existingMappingIndex = panelImageMapping[panelId];
         
-        // Update the panel mapping
-        console.log(`Adding image to panel ${panelId} at index ${newImageIndex}`);
-        setPanelImageMapping({
-          ...panelImageMapping,
-          [panelId]: newImageIndex
-        });
+        // If this panel already has an image, replace it in the selectedImages array
+        if (existingMappingIndex !== undefined && selectedImages[existingMappingIndex]) {
+          // Create a new array with the replaced image
+          const newSelectedImages = [...selectedImages];
+          newSelectedImages[existingMappingIndex] = imageUrl;
+          setSelectedImages(newSelectedImages);
+        } else {
+          // Add the new image to selectedImages
+          const newImageIndex = selectedImages.length;
+          setSelectedImages([...selectedImages, imageUrl]);
+          
+          // Update the panel mapping
+          setPanelImageMapping({
+            ...panelImageMapping,
+            [panelId]: newImageIndex
+          });
+        }
+        
+        console.log(`Added/updated image for panel ${panelId}`);
+        console.log("Current panel mapping:", {...panelImageMapping, [panelId]: existingMappingIndex !== undefined ? existingMappingIndex : selectedImages.length});
         
         // Force a re-render by updating a dependent state value
-        // This ensures the preview is updated immediately with the new image
         if (selectedTemplate) {
           // This is a hack to force a re-render of the template
-          // We're creating a shallow copy of the template object
           setSelectedTemplate({...selectedTemplate});
         }
       }
@@ -171,6 +206,11 @@ export default function CollagePage() {
   const handleCreateCollage = () => {
     setIsCreatingCollage(true);
     
+    // Sanitize the panel mapping before proceeding
+    const cleanMapping = sanitizePanelImageMapping(panelImageMapping, selectedImages, panelCount);
+    console.log("Original mapping:", panelImageMapping);
+    console.log("Sanitized mapping:", cleanMapping);
+    
     // Create an offscreen canvas for collage generation
     const generateCollage = async () => {
       try {
@@ -222,12 +262,12 @@ export default function CollagePage() {
             setRenderedImage,
             borderThickness: borderThicknessValue,
             selectedImages,
-            panelImageMapping
+            panelImageMapping: cleanMapping
           });
         });
         
         console.log("Panel regions:", panelRegions);
-        console.log("Panel image mapping:", panelImageMapping);
+        console.log("Panel image mapping:", cleanMapping);
         
         // Load all selected images and draw them onto the canvas
         if (selectedImages.length > 0) {
@@ -235,20 +275,25 @@ export default function CollagePage() {
           const panelToImageUrl = {};
           
           // Use panelImageMapping if available, otherwise assign sequentially
-          if (panelImageMapping && Object.keys(panelImageMapping).length > 0) {
+          if (cleanMapping && Object.keys(cleanMapping).length > 0) {
             // Use the existing mapping - panel ID to image index
-            Object.entries(panelImageMapping).forEach(([panelId, imageIndex]) => {
+            Object.entries(cleanMapping).forEach(([panelId, imageIndex]) => {
               if (selectedImages[imageIndex]) {
                 panelToImageUrl[panelId] = selectedImages[imageIndex].url || selectedImages[imageIndex];
               }
             });
+            
+            // Log the mapping for debugging
+            console.log("Using panel-to-image mapping:", panelToImageUrl);
           } else {
             // Assign images sequentially to panels
             panelRegions.forEach((panel, index) => {
-              if (selectedImages[index]) {
+              if (index < selectedImages.length && selectedImages[index]) {
                 panelToImageUrl[panel.id] = selectedImages[index].url || selectedImages[index];
               }
             });
+            
+            console.log("Using sequential image assignment");
           }
           
           // Clear the canvas before drawing images
@@ -258,8 +303,14 @@ export default function CollagePage() {
           ctx.fillStyle = theme.palette.mode === 'dark' ? '#121212' : '#f5f5f5';
           ctx.fillRect(0, 0, width, height);
           
-          // Load and draw each image
+          // Draw each panel with its assigned image
           panelRegions.forEach(panel => {
+            // Ensure panel has a valid ID
+            if (!panel.id) {
+              console.warn("Panel missing ID:", panel);
+              return; // Skip panels without IDs
+            }
+            
             const imageUrl = panelToImageUrl[panel.id];
             
             if (imageUrl) {
