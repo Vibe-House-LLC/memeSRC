@@ -33,6 +33,13 @@ import { aspectRatioPresets, layoutTemplates, getLayoutsForPanelCount } from "..
 import CollageImagesStep from "../components/collage/steps/CollageImagesStep";
 import CollageSettingsStep from "../components/collage/steps/CollageSettingsStep";
 
+// Import new utilities for collage generation
+import { 
+  calculateCanvasDimensions, 
+  renderTemplateToCanvas, 
+  getAspectRatioValue
+} from "../components/collage/utils/CanvasLayoutRenderer";
+
 export default function CollagePage() {
   const [selectedImages, setSelectedImages] = useState([]);
   const [panelImageMapping, setPanelImageMapping] = useState({});
@@ -111,21 +118,151 @@ export default function CollagePage() {
   const handleCreateCollage = () => {
     setIsCreatingCollage(true);
     
-    // Simulate creating the collage (would be replaced with actual implementation)
-    setTimeout(() => {
-      // In a real implementation, this would be where we generate the final collage
-      console.log("Creating collage with:", {
-        images: selectedImages,
-        template: selectedTemplate,
-        aspectRatio: selectedAspectRatio,
-        panelCount,
-        panelImageMapping
-      });
-      
-      // Placeholder for setting the final image - would be replaced with actual image generation
-      setFinalImage("https://placeholder.com/collage.jpg");
-      setIsCreatingCollage(false);
-    }, 1500);
+    // Create an offscreen canvas for collage generation
+    const generateCollage = async () => {
+      try {
+        // Calculate canvas dimensions based on aspect ratio
+        const { width, height } = calculateCanvasDimensions(selectedAspectRatio);
+        
+        // Create a temporary canvas for rendering
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = width;
+        tempCanvas.height = height;
+        const ctx = tempCanvas.getContext('2d');
+        
+        if (!ctx) {
+          console.error('Failed to get canvas context');
+          setIsCreatingCollage(false);
+          return;
+        }
+        
+        // Collection of promises for loading images
+        const imageLoadPromises = [];
+        const panelRegions = [];
+        
+        // Call the renderTemplateToCanvas function manually
+        await new Promise(resolve => {
+          // Set up functions to receive rendering results
+          const setRenderedImage = () => {}; // We don't need this for final render
+          const setPanelRegions = (regions) => {
+            panelRegions.push(...regions);
+            resolve();
+          };
+          
+          // Render the template to our canvas
+          renderTemplateToCanvas({
+            selectedTemplate,
+            selectedAspectRatio,
+            panelCount,
+            theme,
+            canvasRef: { current: tempCanvas },
+            setPanelRegions,
+            setRenderedImage
+          });
+        });
+        
+        console.log("Panel regions:", panelRegions);
+        console.log("Panel image mapping:", panelImageMapping);
+        
+        // Load all selected images and draw them onto the canvas
+        if (selectedImages.length > 0) {
+          // Create a mapping from panel ID to image URL
+          const panelToImageUrl = {};
+          
+          // Use panelImageMapping if available, otherwise assign sequentially
+          if (panelImageMapping && Object.keys(panelImageMapping).length > 0) {
+            // Use the existing mapping
+            Object.entries(panelImageMapping).forEach(([panelId, imageIndex]) => {
+              if (selectedImages[imageIndex]) {
+                panelToImageUrl[panelId] = selectedImages[imageIndex].url || selectedImages[imageIndex];
+              }
+            });
+          } else {
+            // Assign images sequentially to panels
+            panelRegions.forEach((panel, index) => {
+              if (selectedImages[index]) {
+                panelToImageUrl[panel.id] = selectedImages[index].url || selectedImages[index];
+              }
+            });
+          }
+          
+          // Load and draw each image
+          panelRegions.forEach(panel => {
+            const imageUrl = panelToImageUrl[panel.id];
+            
+            if (imageUrl) {
+              const promise = new Promise((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => {
+                  // Draw the image within its panel region
+                  ctx.save();
+                  ctx.beginPath();
+                  ctx.rect(panel.x, panel.y, panel.width, panel.height);
+                  ctx.clip();
+                  
+                  // Calculate dimensions to maintain aspect ratio while filling the panel
+                  const imgAspect = img.width / img.height;
+                  const panelAspect = panel.width / panel.height;
+                  
+                  let drawWidth = 0;
+                  let drawHeight = 0;
+                  let drawX = 0;
+                  let drawY = 0;
+                  
+                  if (imgAspect > panelAspect) {
+                    // Image is wider than panel (proportionally)
+                    drawHeight = panel.height;
+                    drawWidth = drawHeight * imgAspect;
+                    drawX = panel.x + (panel.width - drawWidth) / 2;
+                    drawY = panel.y;
+                  } else {
+                    // Image is taller than panel (proportionally)
+                    drawWidth = panel.width;
+                    drawHeight = drawWidth / imgAspect;
+                    drawX = panel.x;
+                    drawY = panel.y + (panel.height - drawHeight) / 2;
+                  }
+                  
+                  ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
+                  ctx.restore();
+                  resolve();
+                };
+                
+                img.onerror = () => {
+                  console.error(`Failed to load image: ${imageUrl}`);
+                  // Draw placeholder for failed image
+                  ctx.save();
+                  ctx.fillStyle = '#FF6B6B';
+                  ctx.fillRect(panel.x, panel.y, panel.width, panel.height);
+                  ctx.restore();
+                  resolve(); // Still resolve so we don't block other images
+                };
+                
+                img.src = imageUrl;
+              });
+              
+              imageLoadPromises.push(promise);
+            }
+          });
+          
+          // Wait for all images to load and render
+          await Promise.all(imageLoadPromises);
+        }
+        
+        // Convert the canvas to a data URL and set it as the final image
+        const dataUrl = tempCanvas.toDataURL('image/png');
+        setFinalImage(dataUrl);
+        setIsCreatingCollage(false);
+        
+      } catch (error) {
+        console.error('Error generating collage:', error);
+        setIsCreatingCollage(false);
+      }
+    };
+    
+    // Start the collage generation process
+    generateCollage();
   };
 
   // Render the main page content as a single page

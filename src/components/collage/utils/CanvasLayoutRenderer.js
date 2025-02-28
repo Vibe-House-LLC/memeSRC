@@ -1,4 +1,5 @@
 import { aspectRatioPresets, getLayoutsForPanelCount } from "../config/CollageConfig";
+import { getAspectRatioCategory } from "../config/layouts/LayoutUtils";
 
 /**
  * Get the aspect ratio value from the presets
@@ -385,7 +386,7 @@ const createLayoutConfigFromId = (templateId, count) => {
  */
 const drawLayoutPanels = (ctx, layoutConfig, canvasWidth, canvasHeight, panelCount, setPanelRegions) => {
   console.log("Drawing layout with config:", layoutConfig);
-  const { gridTemplateColumns, gridTemplateRows, areas } = layoutConfig;
+  const { gridTemplateColumns, gridTemplateRows, areas, gridTemplateAreas, items } = layoutConfig;
   
   // Parse grid template columns and rows
   const columns = parseGridTemplate(gridTemplateColumns);
@@ -424,38 +425,161 @@ const drawLayoutPanels = (ctx, layoutConfig, canvasWidth, canvasHeight, panelCou
   // Store panel regions for click detection
   const newPanelRegions = [];
   
-  // If the layout uses areas, use those
-  // Otherwise draw a simple grid
-  if (areas && areas.length > 0) {
-    // Draw each area in the grid
-    areas.forEach((area, index) => {
-      const areaRow = Math.floor(index / columns.length);
-      const areaCol = index % columns.length;
-      
-      if (areaRow < rows.length && areaCol < columns.length) {
-        const x = colPositions[areaCol];
-        const y = rowPositions[areaRow];
-        const width = cellWidths[areaCol];
-        const height = cellHeights[areaRow];
+  // Parse gridTemplateAreas if available
+  let areaMapping = null;
+  if (gridTemplateAreas) {
+    areaMapping = {};
+    const gridRows = gridTemplateAreas.split('"').filter(s => s.trim()).map(s => s.trim().split(/\s+/));
+    
+    // Build a map of area names to their positions and spans
+    gridRows.forEach((rowAreas, rowIndex) => {
+      rowAreas.forEach((areaName, colIndex) => {
+        if (!areaMapping[areaName]) {
+          areaMapping[areaName] = {
+            startRow: rowIndex,
+            startCol: colIndex,
+            endRow: rowIndex,
+            endCol: colIndex
+          };
+        } else {
+          // Extend the area if this cell also belongs to it
+          areaMapping[areaName].endRow = Math.max(areaMapping[areaName].endRow, rowIndex);
+          areaMapping[areaName].endCol = Math.max(areaMapping[areaName].endCol, colIndex);
+        }
+      });
+    });
+    
+    console.log("Area mapping from gridTemplateAreas:", areaMapping);
+  }
+  
+  // If the layout uses areas with gridTemplateAreas, use that for precise placement
+  if (areas && areas.length > 0 && areaMapping) {
+    // Draw each area according to its actual position in the grid
+    areas.forEach((areaName, index) => {
+      if (areaMapping[areaName] && index < panelCount) {
+        const area = areaMapping[areaName];
+        const startX = colPositions[area.startCol];
+        const startY = rowPositions[area.startRow];
+        const endX = colPositions[area.endCol] + cellWidths[area.endCol];
+        const endY = rowPositions[area.endRow] + cellHeights[area.endRow];
+        const width = endX - startX;
+        const height = endY - startY;
         
         // Draw the panel with border
-        ctx.fillRect(x + borderWidth/2, y + borderWidth/2, 
+        ctx.fillRect(startX + borderWidth/2, startY + borderWidth/2, 
                      width - borderWidth, height - borderWidth);
-        ctx.strokeRect(x + borderWidth/2, y + borderWidth/2, 
+        ctx.strokeRect(startX + borderWidth/2, startY + borderWidth/2, 
                        width - borderWidth, height - borderWidth);
-                       
+        
         // Store the panel region for click detection
         newPanelRegions.push({
           id: index,
-          name: area || `panel-${index}`,
-          x: x + borderWidth/2,
-          y: y + borderWidth/2,
+          name: areaName,
+          x: startX + borderWidth/2,
+          y: startY + borderWidth/2,
           width: width - borderWidth,
           height: height - borderWidth
         });
       }
     });
-  } else {
+  }
+  // If the layout uses areas but without gridTemplateAreas, fall back to the old approach
+  else if (areas && areas.length > 0) {
+    // Draw each area in the grid
+    areas.forEach((area, index) => {
+      if (index < panelCount) {
+        const areaRow = Math.floor(index / columns.length);
+        const areaCol = index % columns.length;
+        
+        if (areaRow < rows.length && areaCol < columns.length) {
+          const x = colPositions[areaCol];
+          const y = rowPositions[areaRow];
+          const width = cellWidths[areaCol];
+          const height = cellHeights[areaRow];
+          
+          // Draw the panel with border
+          ctx.fillRect(x + borderWidth/2, y + borderWidth/2, 
+                       width - borderWidth, height - borderWidth);
+          ctx.strokeRect(x + borderWidth/2, y + borderWidth/2, 
+                         width - borderWidth, height - borderWidth);
+                         
+          // Store the panel region for click detection
+          newPanelRegions.push({
+            id: index,
+            name: area || `panel-${index}`,
+            x: x + borderWidth/2,
+            y: y + borderWidth/2,
+            width: width - borderWidth,
+            height: height - borderWidth
+          });
+        }
+      }
+    });
+  } 
+  // Use items if provided
+  else if (items && items.length > 0) {
+    // Draw each item with its style
+    items.forEach((item, index) => {
+      if (index < panelCount) {
+        // For items with gridArea, try to use area mapping
+        if (item.gridArea && areaMapping && areaMapping[item.gridArea]) {
+          const area = areaMapping[item.gridArea];
+          const startX = colPositions[area.startCol];
+          const startY = rowPositions[area.startRow];
+          const endX = colPositions[area.endCol] + cellWidths[area.endCol];
+          const endY = rowPositions[area.endRow] + cellHeights[area.endRow];
+          const width = endX - startX;
+          const height = endY - startY;
+          
+          // Draw the panel with border
+          ctx.fillRect(startX + borderWidth/2, startY + borderWidth/2, 
+                       width - borderWidth, height - borderWidth);
+          ctx.strokeRect(startX + borderWidth/2, startY + borderWidth/2, 
+                         width - borderWidth, height - borderWidth);
+          
+          // Store the panel region for click detection
+          newPanelRegions.push({
+            id: index,
+            name: item.gridArea || `panel-${index}`,
+            x: startX + borderWidth/2,
+            y: startY + borderWidth/2,
+            width: width - borderWidth,
+            height: height - borderWidth
+          });
+        } 
+        // Fall back to default grid layout for items without specific positioning
+        else {
+          const itemRow = Math.floor(index / columns.length);
+          const itemCol = index % columns.length;
+          
+          if (itemRow < rows.length && itemCol < columns.length) {
+            const x = colPositions[itemCol];
+            const y = rowPositions[itemRow];
+            const width = cellWidths[itemCol];
+            const height = cellHeights[itemRow];
+            
+            // Draw the panel with border
+            ctx.fillRect(x + borderWidth/2, y + borderWidth/2, 
+                         width - borderWidth, height - borderWidth);
+            ctx.strokeRect(x + borderWidth/2, y + borderWidth/2, 
+                           width - borderWidth, height - borderWidth);
+            
+            // Store the panel region for click detection
+            newPanelRegions.push({
+              id: index,
+              name: `panel-${index}`,
+              x: x + borderWidth/2,
+              y: y + borderWidth/2,
+              width: width - borderWidth,
+              height: height - borderWidth
+            });
+          }
+        }
+      }
+    });
+  }
+  // Fall back to simple grid layout
+  else {
     // Draw a simple grid layout
     let panelIndex = 0;
     for (let row = 0; row < rows.length; row += 1) {
@@ -550,65 +674,63 @@ export const renderTemplateToCanvas = ({
   console.log("Template ID:", selectedTemplate.id);
   console.log("Template name:", selectedTemplate.name);
   console.log("Template arrangement:", selectedTemplate.arrangement);
-  console.log("Has getLayoutConfig:", typeof selectedTemplate.getLayoutConfig === 'function');
   
-  // First try to use the selected template's built-in getLayoutConfig
-  if (selectedTemplate.getLayoutConfig) {
-    // Use the selected template's layout config directly
-    console.log("Using template's built-in layout config");
-    layoutConfig = selectedTemplate.getLayoutConfig();
-  } else {
-    // Get all compatible layouts
-    const aspectRatioId = selectedAspectRatio || 'square';
-    const layouts = getLayoutsForPanelCount(panelCount, aspectRatioId);
-    console.log("Compatible layouts:", layouts);
-    console.log("Layout IDs:", layouts.map(l => l.id));
-    console.log("Looking for layout with ID:", selectedTemplate.id);
-    
-    // Try to find the exact selected template in the layouts by ID
-    const matchingLayout = layouts.find(layout => layout.id === selectedTemplate.id);
-    
-    // Always use our template ID to create layout first if we have a specific one
-    if (selectedTemplate.id && selectedTemplate.id !== 'autoLayout' && 
-        selectedTemplate.id !== 'dynamic-2-panel' && 
-        selectedTemplate.id !== 'dynamic-3-panel' &&
-        selectedTemplate.id !== 'dynamic-4-panel' &&
-        selectedTemplate.id !== 'dynamic-5-panel') {
-      console.log("Creating layout directly from template ID:", selectedTemplate.id);
-      layoutConfig = createLayoutConfigFromId(selectedTemplate.id, panelCount);
-    }
-    // If still no layout config but we have a matching layout with getLayoutConfig, use it
-    else if (matchingLayout && matchingLayout.getLayoutConfig) {
-      console.log("Found exact matching layout by ID with getLayoutConfig:", matchingLayout.id);
-      layoutConfig = matchingLayout.getLayoutConfig();
-    }
-    // Special case for auto/dynamic layouts - need to use an appropriate layout for this panel count
-    else if (selectedTemplate.arrangement === 'auto' || selectedTemplate.arrangement === 'dynamic') {
-      // For auto layouts, try to find a recommended layout for this panel count
-      const recommendedLayouts = layouts.filter(layout => layout.recommended);
-      
-      if (recommendedLayouts.length > 0) {
-        console.log("Using recommended layout:", recommendedLayouts[0].id);
-        if (recommendedLayouts[0].getLayoutConfig) {
-          layoutConfig = recommendedLayouts[0].getLayoutConfig();
-        } else {
-          layoutConfig = createLayoutConfigFromId(recommendedLayouts[0].id, panelCount);
-        }
-      } else if (layouts.length > 0) {
-        console.log("Using first compatible layout:", layouts[0].id);
-        if (layouts[0].getLayoutConfig) {
-          layoutConfig = layouts[0].getLayoutConfig();
-        } else {
-          layoutConfig = createLayoutConfigFromId(layouts[0].id, panelCount);
-        }
+  // IMPROVED APPROACH: First get all compatible layouts for the current panel count and aspect ratio
+  const aspectRatioId = selectedAspectRatio || 'square';
+  const layouts = typeof getLayoutsForPanelCount === 'function' 
+    ? getLayoutsForPanelCount(panelCount, aspectRatioId)
+    : [];
+  
+  console.log("Compatible layouts:", layouts);
+  
+  // Try to find the exact selected template in the layouts by ID
+  const matchingLayout = layouts.find(layout => layout.id === selectedTemplate.id);
+  
+  // APPROACH ALIGNED WITH PREVIEW RENDERING:
+  // Handle different layout types consistently with how previews render them
+  if (selectedTemplate.arrangement === 'auto') {
+    // For auto layouts, create a suitable grid layout that matches what the preview would use
+    console.log("Creating auto layout configuration");
+    layoutConfig = createLayoutConfigFromAutoLayout(
+      panelCount, 
+      getAspectRatioValue(selectedAspectRatio)
+    );
+  } 
+  // For dynamic layouts, ensure we're using the exact same layout as the preview
+  else if (selectedTemplate.arrangement === 'dynamic') {
+    console.log("Processing dynamic layout");
+    // Find the first compatible layout (like the preview does)
+    if (layouts.length > 0) {
+      if (layouts[0].getLayoutConfig) {
+        layoutConfig = layouts[0].getLayoutConfig();
       } else {
-        console.log("Creating default grid layout (no compatible layouts found)");
-        layoutConfig = createDefaultGridLayout(panelCount, selectedAspectRatio);
+        layoutConfig = createLayoutConfigFromId(layouts[0].id, panelCount);
       }
     } else {
-      console.log("Creating default grid layout (no layout found)");
       layoutConfig = createDefaultGridLayout(panelCount, selectedAspectRatio);
     }
+  } 
+  // For specific layouts, ensure we use the exact template configuration
+  else if (matchingLayout) {
+    console.log("Found exact matching layout by ID:", matchingLayout.id);
+    if (matchingLayout.getLayoutConfig) {
+      layoutConfig = matchingLayout.getLayoutConfig();
+    } else {
+      layoutConfig = createLayoutConfigFromId(matchingLayout.id, panelCount);
+    }
+  }
+  // Fallback to original template if it has layout config
+  else if (selectedTemplate.getLayoutConfig) {
+    console.log("Using template's built-in layout config");
+    layoutConfig = selectedTemplate.getLayoutConfig();
+  }
+  // As a last resort, create a layout from ID or default
+  else if (selectedTemplate.id) {
+    console.log("Creating layout from template ID:", selectedTemplate.id);
+    layoutConfig = createLayoutConfigFromId(selectedTemplate.id, panelCount);
+  } else {
+    console.log("Creating default grid layout (no layout found)");
+    layoutConfig = createDefaultGridLayout(panelCount, selectedAspectRatio);
   }
   
   if (!layoutConfig) {
@@ -634,4 +756,47 @@ export const renderTemplateToCanvas = ({
     // If using regular canvas, get data URL directly
     setRenderedImage(canvas.toDataURL('image/png'));
   }
+};
+
+/**
+ * Create layout config using the same approach as auto layout preview
+ * This ensures consistency between preview and final render
+ * @param {number} imageCount - Number of images
+ * @param {number} aspectRatio - Aspect ratio value
+ * @returns {Object} Layout configuration
+ */
+const createLayoutConfigFromAutoLayout = (imageCount, aspectRatio) => {
+  // Find closest aspect ratio preset
+  const closestAspectRatio = aspectRatioPresets.find(preset => preset.value === aspectRatio) || 
+                            aspectRatioPresets.find(preset => preset.id === 'square');
+  const aspectRatioId = closestAspectRatio?.id || 'square';
+  const category = getAspectRatioCategory(aspectRatioId);
+  
+  // Check if we have layout definitions available from getLayoutsForPanelCount
+  if (imageCount >= 2 && imageCount <= 5 && typeof getLayoutsForPanelCount === 'function') {
+    const layouts = getLayoutsForPanelCount(imageCount, aspectRatioId);
+    
+    if (layouts && layouts.length > 0) {
+      const bestLayout = layouts[0];
+      
+      if (bestLayout.getLayoutConfig) {
+        return bestLayout.getLayoutConfig();
+      }
+      
+      if (bestLayout.id) {
+        return createLayoutConfigFromId(bestLayout.id, imageCount);
+      }
+    }
+  }
+  
+  // Fallback to basic grid
+  const columns = Math.ceil(Math.sqrt(imageCount));
+  const rows = Math.ceil(imageCount / columns);
+  
+  return {
+    gridTemplateColumns: `repeat(${columns}, 1fr)`,
+    gridTemplateRows: `repeat(${rows}, 1fr)`,
+    gridTemplateAreas: null,
+    items: Array(imageCount).fill({ gridArea: null })
+  };
 }; 
