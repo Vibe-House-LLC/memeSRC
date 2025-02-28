@@ -541,7 +541,7 @@ const CollageLayoutSettings = ({
             fontSize: '1.3rem' 
           }} />
           <Typography variant="h5" fontWeight={600} sx={{ color: '#fff' }}>
-            Number of Panels
+            Panel Count
           </Typography>
         </StepSectionHeading>
         
@@ -736,7 +736,7 @@ const CollageLayoutSettings = ({
       </Box>
       
       {/* Layout Section - shows compatible layouts based on panel count */}
-      <Box sx={{ mb: isMobile ? 2 : 3 }}>
+      <Box sx={{ mb: isMobile ? 1 : 2 }}>
         <StepSectionHeading>
           <GridView sx={{ 
             mr: 1.5, 
@@ -744,7 +744,7 @@ const CollageLayoutSettings = ({
             fontSize: '1.3rem' 
           }} />
           <Typography variant="h5" fontWeight={600} sx={{ color: '#fff' }}>
-            Choose Layout
+            Layout
           </Typography>
         </StepSectionHeading>
         
@@ -912,7 +912,7 @@ const CollageLayoutSettings = ({
         <StepSectionHeading>
           <Settings sx={{ mr: 1.5, color: '#fff', fontSize: '1.3rem' }} />
           <Typography variant="h5" fontWeight={600} sx={{ color: '#fff' }}>
-            Border Thickness
+            Borders
           </Typography>
         </StepSectionHeading>
 

@@ -84,10 +84,10 @@ export default function CollagePage() {
 
   const borderThicknessOptions = [
     { label: 'None', value: 0 },
-    { label: 'Thin', value: 2 },
-    { label: 'Medium', value: 4 },
-    { label: 'Thick', value: 8 },
-    { label: 'Extra Thicc', value: 12 }
+    { label: 'Thin', value: 12 },
+    { label: 'Medium', value: 24 },
+    { label: 'Thick', value: 40 },
+    { label: 'Extra Thicc', value: 60 }
   ];
 
   // Add this new function to CollagePage.js
