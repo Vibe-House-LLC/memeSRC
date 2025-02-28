@@ -66,6 +66,47 @@ export default function CollagePage() {
     { label: 'Extra Thicc', value: 12 }
   ];
 
+  // Add this new function to CollagePage.js
+  const handlePanelClick = (panelId) => {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    fileInput.onchange = async (e) => {
+      if (e.target.files && e.target.files[0]) {
+        const file = e.target.files[0];
+        const imageUrl = URL.createObjectURL(file);
+        // Add the new image to selectedImages
+        const newImageIndex = selectedImages.length;
+        setSelectedImages([...selectedImages, imageUrl]);
+        // Update the panel mapping
+        setPanelImageMapping({
+          ...panelImageMapping,
+          [panelId]: newImageIndex
+        });
+        
+        // Force a re-render by updating a dependent state value
+        // This ensures the preview is updated immediately with the new image
+        if (selectedTemplate) {
+          // This is a hack to force a re-render of the template
+          // We're creating a shallow copy of the template object
+          setSelectedTemplate({...selectedTemplate});
+        }
+      }
+    };
+    fileInput.click();
+  };
+
+  // Clean up ObjectURLs when component unmounts or when images are replaced
+  useEffect(() => {
+    return () => {
+      selectedImages.forEach(url => {
+        if (url && typeof url === 'string' && url.startsWith('blob:')) {
+          URL.revokeObjectURL(url);
+        }
+      });
+    };
+  }, []);
+
   // Enhanced function to get compatible templates based on panel count and aspect ratio
   const getCompatibleTemplates = () => {
     // Use getLayoutsForPanelCount which handles prioritization based on aspect ratio
@@ -176,7 +217,9 @@ export default function CollagePage() {
             canvasRef: { current: tempCanvas },
             setPanelRegions,
             setRenderedImage,
-            borderThickness: borderThicknessValue // Pass numeric value here
+            borderThickness: borderThicknessValue,
+            selectedImages,
+            panelImageMapping
           });
         });
         
@@ -413,45 +456,10 @@ export default function CollagePage() {
                     setPanelImageMapping={setPanelImageMapping}
                     borderThickness={borderThickness}
                     borderThicknessOptions={borderThicknessOptions}
+                    onPanelClick={handlePanelClick}
                   />
                 
                   <Divider sx={{ my: 1 }} />
-                  
-                  <Box sx={{ 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    alignItems: 'center', 
-                    mt: 1
-                  }}>
-                    <Button
-                      variant="contained"
-                      color="primary"
-                      size="large"
-                      startIcon={<Save />}
-                      onClick={handleCreateCollage}
-                      disabled={!selectedTemplate || selectedImages.length === 0 || isCreatingCollage}
-                      sx={{ 
-                        py: 1.5, 
-                        px: 4, 
-                        borderRadius: 2,
-                        fontWeight: '500',
-                      }}
-                    >
-                      {isCreatingCollage ? "Creating..." : "Create Collage"}
-                    </Button>
-                    
-                    {!selectedTemplate && (
-                      <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
-                        Please select a layout template first.
-                      </Typography>
-                    )}
-                    
-                    {selectedTemplate && selectedImages.length === 0 && (
-                      <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
-                        Please add at least one image.
-                      </Typography>
-                    )}
-                  </Box>
                 </Box>
               </>
             ) : (
@@ -549,45 +557,10 @@ export default function CollagePage() {
                         setPanelImageMapping={setPanelImageMapping}
                         borderThickness={borderThickness}
                         borderThicknessOptions={borderThicknessOptions}
+                        onPanelClick={handlePanelClick}
                       />
                       
                       <Divider sx={{ my: 2 }} />
-                      
-                      <Box sx={{ 
-                        display: 'flex', 
-                        flexDirection: 'column', 
-                        alignItems: 'center', 
-                        mt: 2
-                      }}>
-                        <Button
-                          variant="contained"
-                          color="primary"
-                          size="large"
-                          startIcon={<Save />}
-                          onClick={handleCreateCollage}
-                          disabled={!selectedTemplate || selectedImages.length === 0 || isCreatingCollage}
-                          sx={{ 
-                            py: 1.5, 
-                            px: 4, 
-                            borderRadius: 2,
-                            fontWeight: '500',
-                          }}
-                        >
-                          {isCreatingCollage ? "Creating..." : "Create Collage"}
-                        </Button>
-                        
-                        {!selectedTemplate && (
-                          <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
-                            Please select a layout template first.
-                          </Typography>
-                        )}
-                        
-                        {selectedTemplate && selectedImages.length === 0 && (
-                          <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
-                            Please add at least one image.
-                          </Typography>
-                        )}
-                      </Box>
                     </Paper>
                   </Grid>
                 </Grid>

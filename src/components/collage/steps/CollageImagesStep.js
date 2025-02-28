@@ -37,7 +37,10 @@ const CollageImagesStep = ({
   selectedTemplate,
   selectedAspectRatio,
   borderThickness,
-  borderThicknessOptions
+  borderThicknessOptions,
+  panelImageMapping,
+  setPanelImageMapping,
+  onPanelClick
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -55,14 +58,39 @@ const CollageImagesStep = ({
   
   // Function to handle click events on the preview image
   const handlePreviewClick = (event) => {
-    // Use the utility function from PanelManager
-    handlePreviewClickUtil(event, {
-      panelRegions,
-      setSelectedPanel,
-      handlePanelImageSelection,
-      calculateCanvasDimensions,
-      selectedAspectRatio
-    });
+    // Get the click coordinates relative to the image
+    const image = event.currentTarget;
+    const rect = image.getBoundingClientRect();
+    
+    // Calculate click position as percentage of image dimensions
+    const clickX = (event.clientX - rect.left) / rect.width;
+    const clickY = (event.clientY - rect.top) / rect.height;
+    
+    // Convert to canvas coordinates
+    const { width, height } = calculateCanvasDimensions(selectedAspectRatio);
+    const canvasX = clickX * width;
+    const canvasY = clickY * height;
+    
+    // Find which panel was clicked
+    const clickedPanel = panelRegions.find(panel => 
+      canvasX >= panel.x && 
+      canvasX <= panel.x + panel.width && 
+      canvasY >= panel.y && 
+      canvasY <= panel.y + panel.height
+    );
+    
+    if (clickedPanel) {
+      console.log(`Clicked on panel ${clickedPanel.id}: ${clickedPanel.name}`);
+      setSelectedPanel(clickedPanel);
+      
+      // Use the onPanelClick prop if it's provided
+      if (onPanelClick) {
+        onPanelClick(clickedPanel.id);
+      } else {
+        // Fall back to the old behavior if onPanelClick is not provided
+        handlePanelImageSelection(clickedPanel);
+      }
+    }
   };
   
   // Function to handle image selection for a specific panel
@@ -125,10 +153,12 @@ const CollageImagesStep = ({
         canvasRef,
         setPanelRegions,
         setRenderedImage,
-        borderThickness: borderThicknessValue
+        borderThickness: borderThicknessValue,
+        selectedImages,
+        panelImageMapping
       });
     }
-  }, [selectedTemplate, selectedAspectRatio, panelCount, theme.palette.mode, borderThickness, borderThicknessOptions]);
+  }, [selectedTemplate, selectedAspectRatio, panelCount, theme.palette.mode, borderThickness, borderThicknessOptions, selectedImages, panelImageMapping]);
   
   // Add a dedicated effect just for border thickness changes to ensure it triggers a redraw
   useEffect(() => {
@@ -156,10 +186,12 @@ const CollageImagesStep = ({
         canvasRef,
         setPanelRegions,
         setRenderedImage,
-        borderThickness: borderThicknessValue
+        borderThickness: borderThicknessValue,
+        selectedImages,
+        panelImageMapping
       });
     }
-  }, [borderThickness]); // Only run when border thickness changes
+  }, [borderThickness, selectedTemplate, selectedAspectRatio, panelCount, theme.palette.mode, borderThicknessOptions, selectedImages, panelImageMapping]);
   
   // Add additional useEffect for debugging:
   // Log relevant information about the selected template

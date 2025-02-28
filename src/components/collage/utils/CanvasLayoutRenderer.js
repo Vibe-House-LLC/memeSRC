@@ -461,8 +461,12 @@ const createLayoutConfigFromId = (templateId, count) => {
  * @param {number} panelCount - The panel count
  * @param {function} setPanelRegions - Function to set panel regions
  * @param {number} borderThickness - The border thickness
+ * @param {Array} selectedImages - Array of selected images
+ * @param {Object} panelImageMapping - Object mapping panels to images
+ * @param {HTMLCanvasElement} canvas - The canvas element
+ * @param {function} setRenderedImage - Function to set rendered image
  */
-const drawLayoutPanels = (ctx, layoutConfig, canvasWidth, canvasHeight, panelCount, setPanelRegions, borderThickness = 4) => {
+const drawLayoutPanels = (ctx, layoutConfig, canvasWidth, canvasHeight, panelCount, setPanelRegions, borderThickness = 4, selectedImages = [], panelImageMapping = {}, canvas, setRenderedImage) => {
   console.log("Drawing layout with config:", layoutConfig);
   console.log("Using border thickness:", borderThickness);
   const { gridTemplateColumns, gridTemplateRows, areas, gridTemplateAreas, items } = layoutConfig;
@@ -497,57 +501,72 @@ const drawLayoutPanels = (ctx, layoutConfig, canvasWidth, canvasHeight, panelCou
     const adjustedWidth = width;
     const adjustedHeight = height;
     
-    // Always draw the panel fill first (covering the entire panel area)
-    ctx.fillRect(adjustedX, adjustedY, adjustedWidth, adjustedHeight);
+    // Check if this panel has an associated image
+    const imageIndex = panelImageMapping[id];
+    const hasImage = typeof imageIndex === 'number' && imageIndex >= 0 && imageIndex < selectedImages.length;
     
-    // Only draw stroke if border thickness > 0
-    if (shouldDrawBorder) {
-      // Check if any edge is at the canvas boundary
-      const isLeftEdge = Math.abs(x) < 0.1;
-      const isTopEdge = Math.abs(y) < 0.1;
-      const isRightEdge = Math.abs(x + width - canvasWidth) < 0.1;
-      const isBottomEdge = Math.abs(y + height - canvasHeight) < 0.1;
+    if (hasImage) {
+      // Draw the image with auto-scaling
+      const imageUrl = selectedImages[imageIndex];
       
-      // Draw each border edge separately
-      ctx.beginPath();
+      // Draw a placeholder until the image loads
+      ctx.fillRect(adjustedX, adjustedY, adjustedWidth, adjustedHeight);
       
-      // Left edge - inset if at canvas boundary
-      if (isLeftEdge) {
-        ctx.moveTo(x + borderThickness/2, y);
-        ctx.lineTo(x + borderThickness/2, y + height);
-      } else {
-        ctx.moveTo(x, y);
-        ctx.lineTo(x, y + height);
+      // Create an image object for drawing
+      const img = new Image();
+      img.onload = () => {
+        // Redraw the background (in case we need to clear previous drawings)
+        ctx.fillRect(adjustedX, adjustedY, adjustedWidth, adjustedHeight);
+        
+        // Calculate scaling to maintain aspect ratio while filling the panel
+        const imgAspect = img.width / img.height;
+        const panelAspect = adjustedWidth / adjustedHeight;
+        
+        let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
+        
+        if (imgAspect > panelAspect) {
+          // Image is wider than panel (relative to height)
+          drawHeight = adjustedHeight;
+          drawWidth = adjustedHeight * imgAspect;
+          offsetX = (adjustedWidth - drawWidth) / 2;
+        } else {
+          // Image is taller than panel (relative to width)
+          drawWidth = adjustedWidth;
+          drawHeight = adjustedWidth / imgAspect;
+          offsetY = (adjustedHeight - drawHeight) / 2;
+        }
+        
+        // Draw the image centered in the panel
+        ctx.drawImage(img, adjustedX + offsetX, adjustedY + offsetY, drawWidth, drawHeight);
+        
+        // Apply the border on top if needed
+        if (shouldDrawBorder) {
+          drawPanelBorder(adjustedX, adjustedY, adjustedWidth, adjustedHeight);
+        }
+        
+        // Convert the canvas to an image and update it
+        if (canvas instanceof OffscreenCanvas) {
+          canvas.convertToBlob({ type: 'image/png' })
+            .then(blob => {
+              const url = URL.createObjectURL(blob);
+              setRenderedImage(url);
+            })
+            .catch(err => {
+              console.error('Error converting canvas to blob:', err);
+            });
+        } else {
+          setRenderedImage(canvas.toDataURL('image/png'));
+        }
+      };
+      img.src = imageUrl;
+    } else {
+      // No image assigned, draw the placeholder
+      ctx.fillRect(adjustedX, adjustedY, adjustedWidth, adjustedHeight);
+      
+      // Draw border if needed
+      if (shouldDrawBorder) {
+        drawPanelBorder(adjustedX, adjustedY, adjustedWidth, adjustedHeight);
       }
-      
-      // Bottom edge - inset if at canvas boundary
-      if (isBottomEdge) {
-        ctx.moveTo(x, y + height - borderThickness/2);
-        ctx.lineTo(x + width, y + height - borderThickness/2);
-      } else {
-        ctx.moveTo(x, y + height);
-        ctx.lineTo(x + width, y + height);
-      }
-      
-      // Right edge - inset if at canvas boundary
-      if (isRightEdge) {
-        ctx.moveTo(x + width - borderThickness/2, y + height);
-        ctx.lineTo(x + width - borderThickness/2, y);
-      } else {
-        ctx.moveTo(x + width, y + height);
-        ctx.lineTo(x + width, y);
-      }
-      
-      // Top edge - inset if at canvas boundary
-      if (isTopEdge) {
-        ctx.moveTo(x + width, y + borderThickness/2);
-        ctx.lineTo(x, y + borderThickness/2);
-      } else {
-        ctx.moveTo(x + width, y);
-        ctx.lineTo(x, y);
-      }
-      
-      ctx.stroke();
     }
     
     // Store region with appropriate dimensions
@@ -559,6 +578,56 @@ const drawLayoutPanels = (ctx, layoutConfig, canvasWidth, canvasHeight, panelCou
       width: adjustedWidth,
       height: adjustedHeight
     });
+  };
+
+  // Helper function to draw panel borders
+  const drawPanelBorder = (x, y, width, height) => {
+    // Check if any edge is at the canvas boundary
+    const isLeftEdge = Math.abs(x) < 0.1;
+    const isTopEdge = Math.abs(y) < 0.1;
+    const isRightEdge = Math.abs(x + width - canvasWidth) < 0.1;
+    const isBottomEdge = Math.abs(y + height - canvasHeight) < 0.1;
+    
+    // Draw each border edge separately
+    ctx.beginPath();
+    
+    // Left edge - inset if at canvas boundary
+    if (isLeftEdge) {
+      ctx.moveTo(x + borderThickness/2, y);
+      ctx.lineTo(x + borderThickness/2, y + height);
+    } else {
+      ctx.moveTo(x, y);
+      ctx.lineTo(x, y + height);
+    }
+    
+    // Bottom edge - inset if at canvas boundary
+    if (isBottomEdge) {
+      ctx.moveTo(x, y + height - borderThickness/2);
+      ctx.lineTo(x + width, y + height - borderThickness/2);
+    } else {
+      ctx.moveTo(x, y + height);
+      ctx.lineTo(x + width, y + height);
+    }
+    
+    // Right edge - inset if at canvas boundary
+    if (isRightEdge) {
+      ctx.moveTo(x + width - borderThickness/2, y + height);
+      ctx.lineTo(x + width - borderThickness/2, y);
+    } else {
+      ctx.moveTo(x + width, y + height);
+      ctx.lineTo(x + width, y);
+    }
+    
+    // Top edge - inset if at canvas boundary
+    if (isTopEdge) {
+      ctx.moveTo(x + width, y + borderThickness/2);
+      ctx.lineTo(x, y + borderThickness/2);
+    } else {
+      ctx.moveTo(x + width, y);
+      ctx.lineTo(x, y);
+    }
+    
+    ctx.stroke();
   };
 
   // Calculate grid positions
@@ -717,6 +786,8 @@ const drawLayoutPanels = (ctx, layoutConfig, canvasWidth, canvasHeight, panelCou
  * @param {function} params.setPanelRegions - Function to set panel regions
  * @param {function} params.setRenderedImage - Function to set rendered image
  * @param {number} params.borderThickness - The border thickness
+ * @param {Array} params.selectedImages - Array of selected images
+ * @param {Object} params.panelImageMapping - Object mapping panels to images
  */
 export const renderTemplateToCanvas = ({
   selectedTemplate,
@@ -726,7 +797,9 @@ export const renderTemplateToCanvas = ({
   canvasRef,
   setPanelRegions,
   setRenderedImage,
-  borderThickness = 4
+  borderThickness = 4,
+  selectedImages = [],
+  panelImageMapping = {}
 }) => {
   console.log("renderTemplateToCanvas called with border thickness:", borderThickness);
   
@@ -780,8 +853,32 @@ export const renderTemplateToCanvas = ({
   
   console.log("Compatible layouts:", layouts);
   
+  // For complex layouts, let's log more details to understand what's happening
+  if (selectedTemplate && selectedTemplate.id) {
+    console.log("Template details:", {
+      id: selectedTemplate.id,
+      name: selectedTemplate.name,
+      arrangement: selectedTemplate.arrangement,
+      minImages: selectedTemplate.minImages,
+      maxImages: selectedTemplate.maxImages,
+      style: selectedTemplate.style || 'not-specified'
+    });
+  }
+  
   // Try to find the exact selected template in the layouts by ID
-  const matchingLayout = layouts.find(layout => layout.id === selectedTemplate.id);
+  let matchingLayout = layouts.find(layout => layout.id === selectedTemplate.id);
+  
+  if (!matchingLayout && layouts.length > 0) {
+    console.log("Could not find exact template match, using first compatible layout");
+    console.log("Available layouts:", layouts.map(l => l.id));
+    matchingLayout = layouts[0];
+  }
+  
+  if (matchingLayout) {
+    console.log("Using layout:", matchingLayout.id);
+  } else {
+    console.log("No matching layout found");
+  }
   
   // APPROACH ALIGNED WITH PREVIEW RENDERING:
   // Handle different layout types consistently with how previews render them
@@ -809,15 +906,17 @@ export const renderTemplateToCanvas = ({
   } 
   // For specific layouts, ensure we use the exact template configuration
   else if (matchingLayout) {
-    console.log("Found exact matching layout by ID:", matchingLayout.id);
-    if (matchingLayout.getLayoutConfig) {
+    console.log("Found matching layout by ID:", matchingLayout.id);
+    if (matchingLayout.getLayoutConfig && typeof matchingLayout.getLayoutConfig === 'function') {
+      console.log("Using getLayoutConfig function from matching layout");
       layoutConfig = matchingLayout.getLayoutConfig();
     } else {
+      console.log("Creating layout from ID:", matchingLayout.id);
       layoutConfig = createLayoutConfigFromId(matchingLayout.id, panelCount);
     }
   }
   // Fallback to original template if it has layout config
-  else if (selectedTemplate.getLayoutConfig) {
+  else if (selectedTemplate.getLayoutConfig && typeof selectedTemplate.getLayoutConfig === 'function') {
     console.log("Using template's built-in layout config");
     layoutConfig = selectedTemplate.getLayoutConfig();
   }
@@ -841,9 +940,23 @@ export const renderTemplateToCanvas = ({
               "Will draw borders:", borderThickness > 0);
   
   // Draw the layout panels
-  drawLayoutPanels(ctx, layoutConfig, width, height, panelCount, setPanelRegions, borderThickness);
+  drawLayoutPanels(
+    ctx, 
+    layoutConfig, 
+    width, 
+    height, 
+    panelCount, 
+    setPanelRegions, 
+    borderThickness, 
+    selectedImages, 
+    panelImageMapping,
+    canvas, 
+    setRenderedImage
+  );
   
-  // Convert the canvas to an image
+  // Initial conversion of the canvas to an image (for the placeholder display)
+  // Note: When images are loaded asynchronously, this will be overridden 
+  // by the image onload handler in drawPanel
   if (canvas instanceof OffscreenCanvas) {
     // If using OffscreenCanvas, convert to ImageBitmap first
     canvas.convertToBlob({ type: 'image/png' })
