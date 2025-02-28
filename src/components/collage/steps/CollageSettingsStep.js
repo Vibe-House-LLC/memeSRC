@@ -219,7 +219,6 @@ const StepSectionHeading = styled(Box)(({ theme }) => ({
 // Helper function to convert aspect ratio value to a friendly format
 const getFriendlyAspectRatio = (value) => {
   if (value === 1) return '1:1';
-  if (value === 'custom') return 'Custom';
   
   // Common aspect ratios with friendly names
   if (Math.abs(value - 0.8) < 0.01) return '4:5';      // Portrait
@@ -466,30 +465,6 @@ const CollageLayoutSettings = ({
   // Render aspect ratio preview
   const renderAspectRatioPreview = (preset) => {
     const { value, name } = preset;
-    // For custom value, show a different preview
-    if (value === 'custom') {
-      return (
-        <Box sx={{ 
-          display: 'flex',
-          flexDirection: 'column',
-          width: '100%',
-          height: '100%',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-          <Box sx={{ 
-            width: '65%', 
-            height: '65%', 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center',
-            border: theme => `1px dashed ${theme.palette.divider}`,
-            borderRadius: 1,
-            background: theme => alpha(theme.palette.action.selected, 0.1)
-          }} />
-        </Box>
-      );
-    }
     
     // Calculate dimensions based on the aspect ratio value
     const friendlyRatio = getFriendlyAspectRatio(value);
@@ -707,7 +682,7 @@ const CollageLayoutSettings = ({
                 )}
                 
                 <Chip
-                  label={preset.value === 'custom' ? 'Custom' : getFriendlyAspectRatio(preset.value)}
+                  label={getFriendlyAspectRatio(preset.value)}
                   size="small"
                   variant="filled"
                   sx={{

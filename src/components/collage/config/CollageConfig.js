@@ -13,8 +13,7 @@ export const aspectRatioPresets = [
   { id: 'portrait', name: 'Portrait', value: 0.8 },
   { id: 'story', name: 'Instagram Story', value: 0.5625 },
   { id: 'classic', name: 'Classic', value: 1.33 },
-  { id: 'landscape', name: 'Landscape', value: 1.78 },
-  { id: 'custom', name: 'Custom', value: 'custom' }
+  { id: 'landscape', name: 'Landscape', value: 1.78 }
 ];
 
 // Simple Panel component
