@@ -491,19 +491,63 @@ const drawLayoutPanels = (ctx, layoutConfig, canvasWidth, canvasHeight, panelCou
 
   // Draw panels function with border handling
   const drawPanel = (x, y, width, height, id, name) => {
-    // For panel regions, adjust dimensions based on border presence
-    const adjustedX = shouldDrawBorder ? x + borderThickness/2 : x;
-    const adjustedY = shouldDrawBorder ? y + borderThickness/2 : y;
-    const adjustedWidth = shouldDrawBorder ? width - borderThickness : width;
-    const adjustedHeight = shouldDrawBorder ? height - borderThickness : height;
+    // For panel regions, use the full panel dimensions
+    const adjustedX = x;
+    const adjustedY = y;
+    const adjustedWidth = width;
+    const adjustedHeight = height;
     
-    // Always draw the panel fill
+    // Always draw the panel fill first (covering the entire panel area)
     ctx.fillRect(adjustedX, adjustedY, adjustedWidth, adjustedHeight);
     
     // Only draw stroke if border thickness > 0
     if (shouldDrawBorder) {
-      ctx.strokeRect(x + borderThickness/2, y + borderThickness/2, 
-                    width - borderThickness, height - borderThickness);
+      // Check if any edge is at the canvas boundary
+      const isLeftEdge = Math.abs(x) < 0.1;
+      const isTopEdge = Math.abs(y) < 0.1;
+      const isRightEdge = Math.abs(x + width - canvasWidth) < 0.1;
+      const isBottomEdge = Math.abs(y + height - canvasHeight) < 0.1;
+      
+      // Draw each border edge separately
+      ctx.beginPath();
+      
+      // Left edge - inset if at canvas boundary
+      if (isLeftEdge) {
+        ctx.moveTo(x + borderThickness/2, y);
+        ctx.lineTo(x + borderThickness/2, y + height);
+      } else {
+        ctx.moveTo(x, y);
+        ctx.lineTo(x, y + height);
+      }
+      
+      // Bottom edge - inset if at canvas boundary
+      if (isBottomEdge) {
+        ctx.moveTo(x, y + height - borderThickness/2);
+        ctx.lineTo(x + width, y + height - borderThickness/2);
+      } else {
+        ctx.moveTo(x, y + height);
+        ctx.lineTo(x + width, y + height);
+      }
+      
+      // Right edge - inset if at canvas boundary
+      if (isRightEdge) {
+        ctx.moveTo(x + width - borderThickness/2, y + height);
+        ctx.lineTo(x + width - borderThickness/2, y);
+      } else {
+        ctx.moveTo(x + width, y + height);
+        ctx.lineTo(x + width, y);
+      }
+      
+      // Top edge - inset if at canvas boundary
+      if (isTopEdge) {
+        ctx.moveTo(x + width, y + borderThickness/2);
+        ctx.lineTo(x, y + borderThickness/2);
+      } else {
+        ctx.moveTo(x + width, y);
+        ctx.lineTo(x, y);
+      }
+      
+      ctx.stroke();
     }
     
     // Store region with appropriate dimensions
