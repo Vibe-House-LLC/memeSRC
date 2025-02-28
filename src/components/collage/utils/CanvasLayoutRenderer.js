@@ -460,9 +460,11 @@ const createLayoutConfigFromId = (templateId, count) => {
  * @param {number} canvasHeight - The canvas height
  * @param {number} panelCount - The panel count
  * @param {function} setPanelRegions - Function to set panel regions
+ * @param {number} borderThickness - The border thickness
  */
-const drawLayoutPanels = (ctx, layoutConfig, canvasWidth, canvasHeight, panelCount, setPanelRegions) => {
+const drawLayoutPanels = (ctx, layoutConfig, canvasWidth, canvasHeight, panelCount, setPanelRegions, borderThickness = 4) => {
   console.log("Drawing layout with config:", layoutConfig);
+  console.log("Using border thickness:", borderThickness);
   const { gridTemplateColumns, gridTemplateRows, areas, gridTemplateAreas, items } = layoutConfig;
   
   // Parse grid template columns and rows
@@ -478,12 +480,43 @@ const drawLayoutPanels = (ctx, layoutConfig, canvasWidth, canvasHeight, panelCou
   const cellWidths = columns.map(fr => (fr / totalColumnFr) * canvasWidth);
   const cellHeights = rows.map(fr => (fr / totalRowFr) * canvasHeight);
   
-  // Set styles as specified
-  const borderWidth = 2;
-  ctx.strokeStyle = 'white'; // 2px white border
-  ctx.lineWidth = borderWidth;
+  // Set styles for the border
+  ctx.strokeStyle = 'white'; // White border
+  ctx.lineWidth = borderThickness;
   ctx.fillStyle = '#808080'; // Grey placeholder for panels
   
+  // Determine if we should draw borders - explicitly check if thickness is exactly 0
+  const shouldDrawBorder = borderThickness > 0;
+  console.log("Should draw border:", shouldDrawBorder, "Border thickness:", borderThickness);
+
+  // Draw panels function with border handling
+  const drawPanel = (x, y, width, height, id, name) => {
+    // For panel regions, adjust dimensions based on border presence
+    const adjustedX = shouldDrawBorder ? x + borderThickness/2 : x;
+    const adjustedY = shouldDrawBorder ? y + borderThickness/2 : y;
+    const adjustedWidth = shouldDrawBorder ? width - borderThickness : width;
+    const adjustedHeight = shouldDrawBorder ? height - borderThickness : height;
+    
+    // Always draw the panel fill
+    ctx.fillRect(adjustedX, adjustedY, adjustedWidth, adjustedHeight);
+    
+    // Only draw stroke if border thickness > 0
+    if (shouldDrawBorder) {
+      ctx.strokeRect(x + borderThickness/2, y + borderThickness/2, 
+                    width - borderThickness, height - borderThickness);
+    }
+    
+    // Store region with appropriate dimensions
+    newPanelRegions.push({
+      id,
+      name,
+      x: adjustedX,
+      y: adjustedY,
+      width: adjustedWidth,
+      height: adjustedHeight
+    });
+  };
+
   // Calculate grid positions
   const rowPositions = [];
   let currentY = 0;
@@ -542,21 +575,8 @@ const drawLayoutPanels = (ctx, layoutConfig, canvasWidth, canvasHeight, panelCou
         const width = endX - startX;
         const height = endY - startY;
         
-        // Draw the panel with border
-        ctx.fillRect(startX + borderWidth/2, startY + borderWidth/2, 
-                     width - borderWidth, height - borderWidth);
-        ctx.strokeRect(startX + borderWidth/2, startY + borderWidth/2, 
-                       width - borderWidth, height - borderWidth);
-        
-        // Store the panel region for click detection
-        newPanelRegions.push({
-          id: index,
-          name: areaName,
-          x: startX + borderWidth/2,
-          y: startY + borderWidth/2,
-          width: width - borderWidth,
-          height: height - borderWidth
-        });
+        // Draw using our helper function
+        drawPanel(startX, startY, width, height, index, areaName);
       }
     });
   }
@@ -574,21 +594,8 @@ const drawLayoutPanels = (ctx, layoutConfig, canvasWidth, canvasHeight, panelCou
           const width = cellWidths[areaCol];
           const height = cellHeights[areaRow];
           
-          // Draw the panel with border
-          ctx.fillRect(x + borderWidth/2, y + borderWidth/2, 
-                       width - borderWidth, height - borderWidth);
-          ctx.strokeRect(x + borderWidth/2, y + borderWidth/2, 
-                         width - borderWidth, height - borderWidth);
-                         
-          // Store the panel region for click detection
-          newPanelRegions.push({
-            id: index,
-            name: area || `panel-${index}`,
-            x: x + borderWidth/2,
-            y: y + borderWidth/2,
-            width: width - borderWidth,
-            height: height - borderWidth
-          });
+          // Draw using our helper function
+          drawPanel(x, y, width, height, index, area || `panel-${index}`);
         }
       }
     });
@@ -608,21 +615,8 @@ const drawLayoutPanels = (ctx, layoutConfig, canvasWidth, canvasHeight, panelCou
           const width = endX - startX;
           const height = endY - startY;
           
-          // Draw the panel with border
-          ctx.fillRect(startX + borderWidth/2, startY + borderWidth/2, 
-                       width - borderWidth, height - borderWidth);
-          ctx.strokeRect(startX + borderWidth/2, startY + borderWidth/2, 
-                         width - borderWidth, height - borderWidth);
-          
-          // Store the panel region for click detection
-          newPanelRegions.push({
-            id: index,
-            name: item.gridArea || `panel-${index}`,
-            x: startX + borderWidth/2,
-            y: startY + borderWidth/2,
-            width: width - borderWidth,
-            height: height - borderWidth
-          });
+          // Draw using our helper function
+          drawPanel(startX, startY, width, height, index, item.gridArea || `panel-${index}`);
         } 
         // Fall back to default grid layout for items without specific positioning
         else {
@@ -635,21 +629,8 @@ const drawLayoutPanels = (ctx, layoutConfig, canvasWidth, canvasHeight, panelCou
             const width = cellWidths[itemCol];
             const height = cellHeights[itemRow];
             
-            // Draw the panel with border
-            ctx.fillRect(x + borderWidth/2, y + borderWidth/2, 
-                         width - borderWidth, height - borderWidth);
-            ctx.strokeRect(x + borderWidth/2, y + borderWidth/2, 
-                           width - borderWidth, height - borderWidth);
-            
-            // Store the panel region for click detection
-            newPanelRegions.push({
-              id: index,
-              name: `panel-${index}`,
-              x: x + borderWidth/2,
-              y: y + borderWidth/2,
-              width: width - borderWidth,
-              height: height - borderWidth
-            });
+            // Draw using our helper function
+            drawPanel(x, y, width, height, index, `panel-${index}`);
           }
         }
       }
@@ -668,21 +649,8 @@ const drawLayoutPanels = (ctx, layoutConfig, canvasWidth, canvasHeight, panelCou
           const width = cellWidths[col];
           const height = cellHeights[row];
           
-          // Draw the panel with border
-          ctx.fillRect(x + borderWidth/2, y + borderWidth/2, 
-                       width - borderWidth, height - borderWidth);
-          ctx.strokeRect(x + borderWidth/2, y + borderWidth/2, 
-                         width - borderWidth, height - borderWidth);
-          
-          // Store the panel region for click detection
-          newPanelRegions.push({
-            id: panelIndex,
-            name: `panel-${panelIndex}`,
-            x: x + borderWidth/2,
-            y: y + borderWidth/2,
-            width: width - borderWidth,
-            height: height - borderWidth
-          });
+          // Draw using our helper function
+          drawPanel(x, y, width, height, panelIndex, `panel-${panelIndex}`);
           
           panelIndex += 1;
         }
@@ -704,6 +672,7 @@ const drawLayoutPanels = (ctx, layoutConfig, canvasWidth, canvasHeight, panelCou
  * @param {React.RefObject} params.canvasRef - The canvas reference
  * @param {function} params.setPanelRegions - Function to set panel regions
  * @param {function} params.setRenderedImage - Function to set rendered image
+ * @param {number} params.borderThickness - The border thickness
  */
 export const renderTemplateToCanvas = ({
   selectedTemplate,
@@ -712,9 +681,16 @@ export const renderTemplateToCanvas = ({
   theme,
   canvasRef,
   setPanelRegions,
-  setRenderedImage
+  setRenderedImage,
+  borderThickness = 4
 }) => {
-  if (!selectedTemplate) return;
+  console.log("renderTemplateToCanvas called with border thickness:", borderThickness);
+  
+  // Check if we have a valid template
+  if (!selectedTemplate) {
+    console.error('No template selected for rendering');
+    return;
+  }
   
   const { width, height } = calculateCanvasDimensions(selectedAspectRatio);
   
@@ -815,8 +791,13 @@ export const renderTemplateToCanvas = ({
     return;
   }
   
+  // Explicitly log the border thickness that will be used for drawing
+  console.log("About to draw layout with border thickness:", borderThickness, 
+              "Type:", typeof borderThickness, 
+              "Will draw borders:", borderThickness > 0);
+  
   // Draw the layout panels
-  drawLayoutPanels(ctx, layoutConfig, width, height, panelCount, setPanelRegions);
+  drawLayoutPanels(ctx, layoutConfig, width, height, panelCount, setPanelRegions, borderThickness);
   
   // Convert the canvas to an image
   if (canvas instanceof OffscreenCanvas) {

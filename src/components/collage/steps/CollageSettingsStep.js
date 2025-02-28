@@ -246,7 +246,10 @@ const CollageLayoutSettings = ({
   setPanelCount,
   handleNext,
   aspectRatioPresets,
-  layoutTemplates 
+  layoutTemplates,
+  borderThickness,
+  setBorderThickness,
+  borderThicknessOptions
 }) => {
   // State for scroll indicators
   const [aspectLeftScroll, setAspectLeftScroll] = useState(false);
@@ -726,6 +729,29 @@ const CollageLayoutSettings = ({
             visible={aspectRightScroll}
           />
         </Box>
+      </Box>
+      
+      {/* Border Thickness UI with Horizontal Scroller */}
+      <Box sx={{ mb: isMobile ? 1 : 2 }}>
+        <StepSectionHeading>
+          <Settings sx={{ mr: 1.5, color: '#fff', fontSize: '1.3rem' }} />
+          <Typography variant="h5" fontWeight={600} sx={{ color: '#fff' }}>
+            Border Thickness
+          </Typography>
+        </StepSectionHeading>
+
+        <HorizontalScroller sx={{ mt: 1 }}>
+          {borderThicknessOptions.map(option => (
+            <Chip
+              key={option.label}
+              label={option.label}
+              clickable
+              color={borderThickness === option.label.toLowerCase() ? 'primary' : 'default'}
+              onClick={() => setBorderThickness(option.label.toLowerCase())}
+              sx={{ fontWeight: borderThickness === option.label.toLowerCase() ? 'bold' : 'normal' }}
+            />
+          ))}
+        </HorizontalScroller>
       </Box>
       
       {/* Layout Section - shows compatible layouts based on panel count */}

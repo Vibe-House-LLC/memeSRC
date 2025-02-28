@@ -35,7 +35,9 @@ const CollageImagesStep = ({
   handleBack, 
   handleNext,
   selectedTemplate,
-  selectedAspectRatio
+  selectedAspectRatio,
+  borderThickness,
+  borderThicknessOptions
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -100,6 +102,20 @@ const CollageImagesStep = ({
   // Render the template when template or aspect ratio changes
   useEffect(() => {
     if (selectedTemplate) {
+      // Get the numeric border thickness value if provided
+      let borderThicknessValue = 4; // Default to medium (4px)
+      
+      if (borderThickness && borderThicknessOptions) {
+        const option = borderThicknessOptions.find(
+          opt => opt.label.toLowerCase() === borderThickness.toLowerCase()
+        );
+        if (option) {
+          borderThicknessValue = option.value;
+        }
+      }
+      
+      console.log("Preview rendering with border thickness:", borderThicknessValue);
+      
       // Call the imported renderTemplateToCanvas function
       renderTemplateToCanvas({
         selectedTemplate,
@@ -108,10 +124,42 @@ const CollageImagesStep = ({
         theme,
         canvasRef,
         setPanelRegions,
-        setRenderedImage
+        setRenderedImage,
+        borderThickness: borderThicknessValue
       });
     }
-  }, [selectedTemplate, selectedAspectRatio, panelCount, theme.palette.mode]);
+  }, [selectedTemplate, selectedAspectRatio, panelCount, theme.palette.mode, borderThickness, borderThicknessOptions]);
+  
+  // Add a dedicated effect just for border thickness changes to ensure it triggers a redraw
+  useEffect(() => {
+    if (selectedTemplate && borderThickness) {
+      console.log("Border thickness changed to:", borderThickness);
+      
+      // Get the numeric value for the border thickness
+      let borderThicknessValue = 4; // Default to medium (4px)
+      if (borderThicknessOptions) {
+        const option = borderThicknessOptions.find(
+          opt => opt.label.toLowerCase() === borderThickness.toLowerCase()
+        );
+        if (option) {
+          borderThicknessValue = option.value;
+          console.log("Found numeric border thickness value:", borderThicknessValue);
+        }
+      }
+      
+      // Force a redraw with the new border thickness
+      renderTemplateToCanvas({
+        selectedTemplate,
+        selectedAspectRatio,
+        panelCount,
+        theme,
+        canvasRef,
+        setPanelRegions,
+        setRenderedImage,
+        borderThickness: borderThicknessValue
+      });
+    }
+  }, [borderThickness]); // Only run when border thickness changes
   
   // Add additional useEffect for debugging:
   // Log relevant information about the selected template

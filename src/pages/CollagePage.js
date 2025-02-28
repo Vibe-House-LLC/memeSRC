@@ -48,6 +48,7 @@ export default function CollagePage() {
   const [panelCount, setPanelCount] = useState(2); // Default panel count of 2
   const [finalImage, setFinalImage] = useState(null);
   const [isCreatingCollage, setIsCreatingCollage] = useState(false);
+  const [borderThickness, setBorderThickness] = useState('medium'); // Default border thickness
   
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -56,6 +57,14 @@ export default function CollagePage() {
   const { openSubscriptionDialog } = useSubscribeDialog();
 
   const authorized = (user?.userDetails?.magicSubscription === "true" || user?.['cognito:groups']?.includes('admins'));
+
+  const borderThicknessOptions = [
+    { label: 'None', value: 0 },
+    { label: 'Thin', value: 2 },
+    { label: 'Medium', value: 4 },
+    { label: 'Thick', value: 8 },
+    { label: 'Extra Thicc', value: 12 }
+  ];
 
   // Enhanced function to get compatible templates based on panel count and aspect ratio
   const getCompatibleTemplates = () => {
@@ -140,6 +149,15 @@ export default function CollagePage() {
         const imageLoadPromises = [];
         const panelRegions = [];
         
+        // Get the numeric border thickness value
+        const borderThicknessValue = borderThicknessOptions.find(
+          option => option.label.toLowerCase() === borderThickness.toLowerCase()
+        )?.value ?? 4; // Use nullish coalescing to default to 4 if not found
+        
+        console.log("Border thickness selection:", borderThickness);
+        console.log("Found border thickness value:", borderThicknessValue);
+        console.log("All border thickness options:", borderThicknessOptions.map(o => `${o.label}: ${o.value}`).join(', '));
+        
         // Call the renderTemplateToCanvas function manually
         await new Promise(resolve => {
           // Set up functions to receive rendering results
@@ -157,7 +175,8 @@ export default function CollagePage() {
             theme,
             canvasRef: { current: tempCanvas },
             setPanelRegions,
-            setRenderedImage
+            setRenderedImage,
+            borderThickness: borderThicknessValue // Pass numeric value here
           });
         });
         
@@ -352,6 +371,9 @@ export default function CollagePage() {
                       setPanelCount={setPanelCount}
                       aspectRatioPresets={aspectRatioPresets}
                       layoutTemplates={layoutTemplates}
+                      borderThickness={borderThickness}
+                      setBorderThickness={setBorderThickness}
+                      borderThicknessOptions={borderThicknessOptions}
                     />
                   </Box>
                 </Box>
@@ -389,6 +411,8 @@ export default function CollagePage() {
                     selectedAspectRatio={selectedAspectRatio}
                     panelImageMapping={panelImageMapping}
                     setPanelImageMapping={setPanelImageMapping}
+                    borderThickness={borderThickness}
+                    borderThicknessOptions={borderThicknessOptions}
                   />
                 
                   <Divider sx={{ my: 1 }} />
@@ -482,6 +506,9 @@ export default function CollagePage() {
                           setPanelCount={setPanelCount}
                           aspectRatioPresets={aspectRatioPresets}
                           layoutTemplates={layoutTemplates}
+                          borderThickness={borderThickness}
+                          setBorderThickness={setBorderThickness}
+                          borderThicknessOptions={borderThicknessOptions}
                         />
                       </Box>
                     </Paper>
@@ -520,6 +547,8 @@ export default function CollagePage() {
                         selectedAspectRatio={selectedAspectRatio}
                         panelImageMapping={panelImageMapping}
                         setPanelImageMapping={setPanelImageMapping}
+                        borderThickness={borderThickness}
+                        borderThicknessOptions={borderThicknessOptions}
                       />
                       
                       <Divider sx={{ my: 2 }} />
