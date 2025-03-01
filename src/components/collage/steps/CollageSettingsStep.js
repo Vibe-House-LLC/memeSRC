@@ -113,7 +113,7 @@ const HorizontalScroller = styled(Box)(({ theme }) => ({
   '&::-webkit-scrollbar': {
     display: 'none',  // Chrome, Safari, Opera
   },
-  '-ms-overflow-style': 'none',  // IE, Edge
+  msOverflowStyle: 'none',  // IE, Edge
   gap: theme.spacing(2),
   padding: theme.spacing(1, 0, 1.25, 0), // Added more bottom padding to accommodate hanging chips
   position: 'relative',
