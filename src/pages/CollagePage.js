@@ -39,6 +39,9 @@ import { sanitizePanelImageMapping } from "../components/collage/utils/PanelMapp
 // Import state management custom hook
 import { useCollageState } from "../components/collage/hooks/useCollageState";
 
+// Debug flag - only enable in development mode
+const DEBUG_MODE = process.env.NODE_ENV === 'development';
+
 // Collage page component - provides UI for creating collages
 export default function CollagePage() {
   // Access theme for responsiveness and custom styling
@@ -190,10 +193,12 @@ export default function CollagePage() {
 
   // Log the panel mapping for debugging
   useEffect(() => {
-    console.log("CollagePage panel mapping updated:", {
-      mappingKeys: Object.keys(panelImageMapping),
-      imageCount: selectedImages.length
-    });
+    if (DEBUG_MODE) {
+      console.log("CollagePage panel mapping updated:", {
+        mappingKeys: Object.keys(panelImageMapping),
+        imageCount: selectedImages.length
+      });
+    }
   }, [panelImageMapping, selectedImages.length]);
 
   return (

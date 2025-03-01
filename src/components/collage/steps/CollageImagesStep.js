@@ -24,8 +24,8 @@ import {
   clearPanelImage as clearPanelImageUtil
 } from "../utils/PanelManager";
 
-// Debug flag - set to false in production
-const DEBUG_MODE = false;
+// Debug flag - only enable in development mode
+const DEBUG_MODE = process.env.NODE_ENV === 'development';
 
 // Helper debug logger function that only logs when DEBUG_MODE is true
 const debugLog = (...args) => {
@@ -136,37 +136,46 @@ const CollageImagesStep = ({
         reader.onload = (event) => {
           // This base64 string won't expire like Blob URLs
           const base64Image = event.target.result;
-          console.log(`Converted image for panel ${panel.id} to base64 (first 30 chars): ${base64Image.substring(0, 30)}...`);
+          
+          if (DEBUG_MODE) {
+            console.log(`Converted image for panel ${panel.id} to base64 (first 30 chars): ${base64Image.substring(0, 30)}...`);
+          }
           
           // Find if there's already an image for this panel
           const existingMappingIndex = panelImageMapping[panel.id];
           
-          console.log(`Processing image for panel ${panel.id}`, {
-            existingIndex: existingMappingIndex,
-            currentMappings: JSON.parse(JSON.stringify(panelImageMapping)),
-            selectedImageCount: selectedImages.length
-          });
+          if (DEBUG_MODE) {
+            console.log(`Processing image for panel ${panel.id}`, {
+              existingIndex: existingMappingIndex,
+              currentMappings: JSON.parse(JSON.stringify(panelImageMapping)),
+              selectedImageCount: selectedImages.length
+            });
+          }
           
           // Handle updating the image and mapping
           if (existingMappingIndex !== undefined && selectedImages[existingMappingIndex]) {
-            console.log(`Updating existing image at index ${existingMappingIndex}`);
-            // No need to revoke anything since we're using base64
-            
+            if (DEBUG_MODE) {
+              console.log(`Updating existing image at index ${existingMappingIndex}`);
+            }
             // Update the existing image immediately
             updateImage(existingMappingIndex, base64Image);
             // No need to update mapping as we're replacing an existing image
           } else {
-            console.log(`Adding new image at index ${selectedImages.length}`);
+            if (DEBUG_MODE) {
+              console.log(`Adding new image at index ${selectedImages.length}`);
+            }
             
-            // First add the new image
+            // First add the new image - store the current length which will be the new image's index
+            const newIndex = selectedImages.length;
             addImage(base64Image);
             
             // Create a new mapping entry for this panel
             const newMapping = { ...panelImageMapping };
-            // The index will be the current length (after addImage it will have this index)
-            const newIndex = selectedImages.length; 
             newMapping[panel.id] = newIndex;
-            console.log(`New mapping will be: panel ${panel.id} -> image ${newIndex}`);
+            
+            if (DEBUG_MODE) {
+              console.log(`New mapping: panel ${panel.id} -> image ${newIndex}`);
+            }
             
             // Update the mapping
             updatePanelImageMapping(newMapping);
@@ -186,6 +195,10 @@ const CollageImagesStep = ({
     const imageIndex = panelImageMapping[panelId];
     
     if (imageIndex !== undefined) {
+      if (DEBUG_MODE) {
+        console.log(`Clearing image for panel ${panelId} (image index: ${imageIndex})`);
+      }
+      
       // Create a new mapping without this panel
       const newMapping = { ...panelImageMapping };
       delete newMapping[panelId];
@@ -197,6 +210,9 @@ const CollageImagesStep = ({
       const isImageUsedElsewhere = Object.values(newMapping).includes(imageIndex);
       
       if (!isImageUsedElsewhere) {
+        if (DEBUG_MODE) {
+          console.log(`Removing image at index ${imageIndex} as it's not used elsewhere`);
+        }
         // Remove the image if it's not used elsewhere
         removeImage(imageIndex);
       }
@@ -206,7 +222,9 @@ const CollageImagesStep = ({
   // Keep local panel mapping in sync with parent component
   useEffect(() => {
     // Update our local panel mapping from the parent component
-    console.log("Syncing panel image mapping:", panelImageMapping);
+    if (DEBUG_MODE) {
+      console.log("Syncing panel image mapping:", panelImageMapping);
+    }
     setPanelToImageMap(panelImageMapping);
   }, [panelImageMapping]);
 
@@ -214,21 +232,25 @@ const CollageImagesStep = ({
   useEffect(() => {
     // Initialize the panel-to-image map from props
     if (Object.keys(panelToImageMap).length === 0 && Object.keys(panelImageMapping).length > 0) {
-      console.log("Initializing panel-to-image map from props");
+      if (DEBUG_MODE) {
+        console.log("Initializing panel-to-image map from props");
+      }
       setPanelToImageMap(panelImageMapping);
     }
   }, []);
 
   // Render the template when template or aspect ratio changes
   useEffect(() => {
-    console.log("Template render effect triggered:", { 
-      selectedTemplate, 
-      selectedAspectRatio,
-      panelCount,
-      borderThickness,
-      hasImages: selectedImages.length > 0,
-      mappingKeys: Object.keys(panelImageMapping).length
-    });
+    if (DEBUG_MODE) {
+      console.log("Template render effect triggered:", { 
+        selectedTemplate, 
+        selectedAspectRatio,
+        panelCount,
+        borderThickness,
+        hasImages: selectedImages.length > 0,
+        mappingKeys: Object.keys(panelImageMapping).length
+      });
+    }
     
     if (selectedTemplate && selectedAspectRatio) {
       // Get the numeric border thickness value if provided
@@ -242,15 +264,17 @@ const CollageImagesStep = ({
         }
       }
       
-      console.log("Attempting to render preview with:", {
-        templateId: selectedTemplate.id,
-        aspectRatio: selectedAspectRatio,
-        panels: panelCount,
-        thickness: borderThicknessValue,
-        theme: theme.palette.mode,
-        imageCount: selectedImages.length,
-        mappings: JSON.stringify(panelImageMapping)
-      });
+      if (DEBUG_MODE) {
+        console.log("Attempting to render preview with:", {
+          templateId: selectedTemplate.id,
+          aspectRatio: selectedAspectRatio,
+          panels: panelCount,
+          thickness: borderThicknessValue,
+          theme: theme.palette.mode,
+          imageCount: selectedImages.length,
+          mappings: JSON.stringify(panelImageMapping)
+        });
+      }
       
       // Add a small delay to ensure blob URLs are ready
       const renderTimer = setTimeout(() => {
@@ -276,7 +300,7 @@ const CollageImagesStep = ({
       return () => clearTimeout(renderTimer);
     }
     
-    console.warn("Missing required props for template rendering:", {
+    debugWarn("Missing required props for template rendering:", {
       hasTemplate: !!selectedTemplate,
       hasAspectRatio: !!selectedAspectRatio
     });
@@ -342,15 +366,19 @@ const CollageImagesStep = ({
   
   // Add an initial rendering effect to ensure preview is generated immediately
   useEffect(() => {
-    console.log("Initial render check:", {
-      hasTemplate: !!selectedTemplate,
-      hasAspectRatio: !!selectedAspectRatio,
-      hasRenderedImage: !!renderedImage
-    });
+    if (DEBUG_MODE) {
+      console.log("Initial render check:", {
+        hasTemplate: !!selectedTemplate,
+        hasAspectRatio: !!selectedAspectRatio,
+        hasRenderedImage: !!renderedImage
+      });
+    }
     
     // Force initial render if selectedTemplate exists
     if (selectedTemplate && selectedAspectRatio && !renderedImage) {
-      console.log("Forcing initial preview render");
+      if (DEBUG_MODE) {
+        console.log("Forcing initial preview render");
+      }
       
       // Get the numeric border thickness value
       let borderThicknessValue = 4; // Default
@@ -361,12 +389,14 @@ const CollageImagesStep = ({
         }
       }
       
-      console.log("Initial render with:", {
-        templateId: selectedTemplate.id,
-        aspectRatio: selectedAspectRatio,
-        panels: panelCount,
-        thickness: borderThicknessValue
-      });
+      if (DEBUG_MODE) {
+        console.log("Initial render with:", {
+          templateId: selectedTemplate.id,
+          aspectRatio: selectedAspectRatio,
+          panels: panelCount,
+          thickness: borderThicknessValue
+        });
+      }
       
       // Render the template
       renderTemplateToCanvas({

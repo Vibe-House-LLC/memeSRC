@@ -2,6 +2,9 @@
  * Utility functions for handling panel-to-image mapping
  */
 
+// Debug flag - only enable in development mode
+const DEBUG_MODE = process.env.NODE_ENV === 'development';
+
 /**
  * Ensures panel mapping is valid
  * @param {Object} mapping - Object mapping panel IDs to image indices 
@@ -11,16 +14,20 @@
  */
 export const sanitizePanelImageMapping = (mapping, imageArray, panelCount) => {
   if (!mapping || typeof mapping !== 'object') {
-    console.log("Panel mapping is invalid or missing:", mapping);
+    if (DEBUG_MODE) {
+      console.log("Panel mapping is invalid or missing:", mapping);
+    }
     return {};
   }
   
   // Debug info about current mapping state
-  console.log("Panel mapping before sanitization:", {
-    mappingKeys: Object.keys(mapping),
-    imageArrayLength: imageArray?.length || 0,
-    panelCount
-  });
+  if (DEBUG_MODE) {
+    console.log("Panel mapping before sanitization:", {
+      mappingKeys: Object.keys(mapping),
+      imageArrayLength: imageArray?.length || 0,
+      panelCount
+    });
+  }
   
   // Create a clean mapping object with only valid entries
   const cleanMapping = {};
@@ -37,7 +44,7 @@ export const sanitizePanelImageMapping = (mapping, imageArray, panelCount) => {
     
     if (isValid) {
       cleanMapping[numericPanelId] = imageIndex;
-    } else {
+    } else if (DEBUG_MODE) {
       console.log(`Invalid panel mapping: panel ${panelId} -> image ${imageIndex}`, {
         reason: !imageIndex && imageIndex !== 0 ? "No image index" : 
                 imageIndex < 0 ? "Negative index" :
@@ -47,7 +54,9 @@ export const sanitizePanelImageMapping = (mapping, imageArray, panelCount) => {
     }
   });
   
-  console.log("Sanitized panel mapping:", cleanMapping);
+  if (DEBUG_MODE) {
+    console.log("Sanitized panel mapping:", cleanMapping);
+  }
   return cleanMapping;
 };
 
@@ -63,8 +72,10 @@ export const preserveMappingOnImageUpdate = (currentMapping, updatedImageIndex, 
     return currentMapping;
   }
   
-  console.log("Preserving mapping for updated image at index:", updatedImageIndex, 
-    "Current mapping:", currentMapping);
+  if (DEBUG_MODE) {
+    console.log("Preserving mapping for updated image at index:", updatedImageIndex, 
+      "Current mapping:", currentMapping);
+  }
   
   // Create a deep copy of the mapping to avoid mutation issues
   const newMapping = JSON.parse(JSON.stringify(currentMapping));
@@ -84,11 +95,13 @@ export const createPanelToImageUrlMapping = (cleanMapping, selectedImages, panel
   const panelToImageUrl = {};
   
   // Add debug logging
-  console.log("Creating image URL mapping from:", {
-    mappingEntries: Object.entries(cleanMapping || {}),
-    imageCount: selectedImages?.length || 0,
-    panelCount: panelRegions?.length || 0
-  });
+  if (DEBUG_MODE) {
+    console.log("Creating image URL mapping from:", {
+      mappingEntries: Object.entries(cleanMapping || {}),
+      imageCount: selectedImages?.length || 0,
+      panelCount: panelRegions?.length || 0
+    });
+  }
   
   try {
     // Use the existing mapping if available
@@ -102,18 +115,22 @@ export const createPanelToImageUrlMapping = (cleanMapping, selectedImages, panel
             : imageItem;
           
           if (imageUrl) {
-            console.log(`Mapping panel ${panelId} to image ${imageIndex} with URL: ${typeof imageUrl === 'string' ? `${imageUrl.substring(0, 30)}...` : '[object]'}`);
+            if (DEBUG_MODE) {
+              console.log(`Mapping panel ${panelId} to image ${imageIndex} with URL: ${typeof imageUrl === 'string' ? `${imageUrl.substring(0, 30)}...` : '[object]'}`);
+            }
             panelToImageUrl[panelId] = imageUrl;
-          } else {
+          } else if (DEBUG_MODE) {
             console.log(`Warning: No valid URL for image at index ${imageIndex} for panel ${panelId}`);
           }
-        } else {
+        } else if (DEBUG_MODE) {
           console.log(`Warning: No image found at index ${imageIndex} for panel ${panelId}`);
         }
       });
     } else if (panelRegions && panelRegions.length > 0 && selectedImages && selectedImages.length > 0) {
       // Assign images sequentially to panels
-      console.log("No mapping provided, creating sequential mapping");
+      if (DEBUG_MODE) {
+        console.log("No mapping provided, creating sequential mapping");
+      }
       panelRegions.forEach((panel, index) => {
         if (index < selectedImages.length && selectedImages[index]) {
           const imageItem = selectedImages[index];
@@ -122,12 +139,14 @@ export const createPanelToImageUrlMapping = (cleanMapping, selectedImages, panel
             : imageItem;
           
           if (imageUrl) {
-            console.log(`Sequential mapping: panel ${panel.id} to image ${index}`);
+            if (DEBUG_MODE) {
+              console.log(`Sequential mapping: panel ${panel.id} to image ${index}`);
+            }
             panelToImageUrl[panel.id] = imageUrl;
           }
         }
       });
-    } else {
+    } else if (DEBUG_MODE) {
       console.log("Insufficient data to create panel-to-image mapping");
     }
   } catch (error) {

@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { getLayoutsForPanelCount } from '../config/CollageConfig';
 
+// Debug flag - only enable in development mode
+const DEBUG_MODE = process.env.NODE_ENV === 'development';
+
 /**
  * Custom hook to manage collage state
  */
@@ -16,20 +19,26 @@ export const useCollageState = () => {
 
   // Initialize template on mount
   useEffect(() => {
-    console.log("useCollageState initializing...");
+    if (DEBUG_MODE) {
+      console.log("useCollageState initializing...");
+    }
     
     // Get compatible templates for initial panel count and aspect ratio
     const initialTemplates = getLayoutsForPanelCount(panelCount, selectedAspectRatio);
     
-    console.log("Initial templates:", {
-      count: initialTemplates.length,
-      panelCount,
-      aspectRatio: selectedAspectRatio
-    });
+    if (DEBUG_MODE) {
+      console.log("Initial templates:", {
+        count: initialTemplates.length,
+        panelCount,
+        aspectRatio: selectedAspectRatio
+      });
+    }
     
     // Set the initial template if available
     if (initialTemplates.length > 0) {
-      console.log("Setting initial template:", initialTemplates[0].id);
+      if (DEBUG_MODE) {
+        console.log("Setting initial template:", initialTemplates[0].id);
+      }
       setSelectedTemplate(initialTemplates[0]);
     } else {
       console.warn("No initial templates found!");
@@ -147,13 +156,15 @@ export const useCollageState = () => {
    * @param {Object} newMapping - The new panel-to-image mapping
    */
   const updatePanelImageMapping = (newMapping) => {
-    console.log("Updating panel image mapping:", {
-      previous: Object.keys(panelImageMapping),
-      new: Object.keys(newMapping),
-      changes: Object.keys(newMapping).filter(key => 
-        panelImageMapping[key] !== newMapping[key]
-      )
-    });
+    if (DEBUG_MODE) {
+      console.log("Updating panel image mapping:", {
+        previous: Object.keys(panelImageMapping),
+        new: Object.keys(newMapping),
+        changes: Object.keys(newMapping).filter(key => 
+          panelImageMapping[key] !== newMapping[key]
+        )
+      });
+    }
     
     setPanelImageMapping(newMapping);
   };
