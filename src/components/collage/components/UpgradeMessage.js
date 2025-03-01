@@ -85,31 +85,46 @@ const UpgradeMessage = ({
             variant="h4" 
             component="h1" 
             sx={{ 
-              display: 'inline-flex', 
+              display: 'flex', 
               alignItems: 'center',
               justifyContent: 'center',
-              flexWrap: isMobile ? 'wrap' : 'nowrap',
+              flexDirection: isMobile ? 'column' : 'row',
               fontWeight: '600',
               color: theme.palette.mode === 'dark' ? '#fff' : '#333',
-              fontSize: isMobile ? '1.75rem' : '2.125rem'
+              fontSize: isMobile ? '1.75rem' : '2.125rem',
+              gap: isMobile ? 1 : 1.5
             }}
           >
-            <Dashboard sx={{ 
-              mr: 1.5, 
-              color: theme.palette.primary.main,
-              fontSize: isMobile ? '1.75rem' : '2.125rem'
-            }} /> 
-            {featureName}
+            <Box sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.5
+            }}>
+              <Dashboard sx={{ 
+                color: theme.palette.primary.main,
+                fontSize: isMobile ? '1.75rem' : '2.125rem'
+              }} /> 
+              <Box component="span">{featureName}</Box>
+            </Box>
             <Chip 
-              icon={<Stars sx={{ fontSize: '0.9rem' }} />}
+              icon={<Stars sx={{ fontSize: '0.85rem' }} />}
               label="Early Access" 
               color="secondary" 
               size="small"
               sx={{ 
-                ml: isMobile ? 0 : 2,
-                mt: isMobile ? 1 : 0,
+                height: 'auto',
+                py: 0.5,
+                alignSelf: 'center',
                 fontWeight: 'bold',
-                '& .MuiChip-icon': { color: 'inherit' }
+                mt: isMobile ? 0.5 : 0,
+                '& .MuiChip-icon': { 
+                  color: 'inherit',
+                  marginRight: '4px',
+                  marginLeft: '4px'
+                },
+                '& .MuiChip-label': {
+                  padding: '0 8px 0 4px'
+                }
               }} 
             />
           </Typography>
