@@ -191,14 +191,16 @@ const ScrollButton = styled(IconButton)(({ theme, direction }) => ({
 }));
 
 // Improved ScrollIndicator with subtle gradient
-const ScrollIndicator = styled(Box)(({ theme, direction, visible }) => ({
+const ScrollIndicator = styled(Box, {
+  shouldForwardProp: (prop) => prop !== 'isVisible'
+})(({ theme, direction, isVisible }) => ({
   position: 'absolute',
   top: 0,
   bottom: 0,
   width: 40, // Slightly narrower for subtlety
   pointerEvents: 'none',
   zIndex: 2,
-  opacity: visible ? 1 : 0,
+  opacity: isVisible ? 1 : 0,
   transition: 'opacity 0.3s ease',
   background: direction === 'left'
     ? `linear-gradient(90deg, ${theme.palette.mode === 'dark' 
@@ -725,12 +727,12 @@ const CollageLayoutSettings = ({
           {/* Visual indicators for scrolling - simplified with no icons */}
           <ScrollIndicator 
             direction="left" 
-            visible={aspectLeftScroll}
+            isVisible={aspectLeftScroll}
           />
           
           <ScrollIndicator 
             direction="right" 
-            visible={aspectRightScroll}
+            isVisible={aspectRightScroll}
           />
         </Box>
       </Box>
@@ -896,12 +898,12 @@ const CollageLayoutSettings = ({
             {/* Visual indicators for scrolling - simplified with no icons */}
             <ScrollIndicator 
               direction="left" 
-              visible={layoutLeftScroll}
+              isVisible={layoutLeftScroll}
             />
             
             <ScrollIndicator 
               direction="right" 
-              visible={layoutRightScroll}
+              isVisible={layoutRightScroll}
             />
           </Box>
         )}
