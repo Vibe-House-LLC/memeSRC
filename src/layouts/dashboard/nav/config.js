@@ -27,7 +27,7 @@ const navConfig = [
         title: 'Favorites',
         path: '/favorites',
         externalLink: false,
-        chipText: 'Pro',
+        // chipText: 'Pro',
         chipColor: 'info',
         icon: <Star />
       },

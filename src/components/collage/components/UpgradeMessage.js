@@ -35,8 +35,8 @@ const UpgradeMessage = ({
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const isMedium = useMediaQuery(theme.breakpoints.down('md'));
-
+  const isSmall = useMediaQuery(theme.breakpoints.down('md'));
+  
   // Approximate height of the app's top navigation bar
   const appBarHeight = 64; // in pixels
 
@@ -67,13 +67,15 @@ const UpgradeMessage = ({
           pb: { xs: 12, sm: 8 }
         }}
       >
-        <Box textAlign="center" mb={isMobile ? 2 : 3}>
+        <Box textAlign="center" mb={isMobile ? 3 : 4}>
           <Typography 
             variant="h4" 
             component="h1" 
             sx={{ 
               display: 'inline-flex', 
               alignItems: 'center',
+              justifyContent: 'center',
+              flexWrap: isMobile ? 'wrap' : 'nowrap',
               fontWeight: '600',
               color: theme.palette.mode === 'dark' ? '#fff' : '#333',
               fontSize: isMobile ? '1.75rem' : '2.125rem'
@@ -91,7 +93,8 @@ const UpgradeMessage = ({
               color="secondary" 
               size="small"
               sx={{ 
-                ml: 2, 
+                ml: isMobile ? 0 : 2,
+                mt: isMobile ? 1 : 0,
                 fontWeight: 'bold',
                 '& .MuiChip-icon': { color: 'inherit' }
               }} 
@@ -101,13 +104,13 @@ const UpgradeMessage = ({
         
         <Grid 
           container 
-          spacing={isMobile ? 2 : 4} 
+          spacing={isMobile ? 3 : 4} 
           justifyContent="center" 
           alignItems="center"
         >
           {/* Mobile layout: image on top, text below */}
           {isMobile && (
-            <Grid item xs={12} sx={{ mb: 1 }}>
+            <Grid item xs={12} sx={{ mb: 2 }}>
               <Box sx={{ display: 'flex', justifyContent: 'center' }}>
                 <Paper 
                   elevation={8} 
@@ -141,7 +144,7 @@ const UpgradeMessage = ({
                     alt={`${featureName} Preview`} 
                     style={{ 
                       width: '100%', 
-                      height: '100%',
+                      height: 'auto',
                       display: 'block',
                       objectFit: 'cover',
                     }}
@@ -152,10 +155,10 @@ const UpgradeMessage = ({
           )}
 
           {/* Pro Message */}
-          <Grid item xs={12} md={6} lg={5} sx={{ 
+          <Grid item xs={12} sm={isSmall ? 12 : 6} lg={5} sx={{ 
             display: 'flex', 
             justifyContent: 'center',
-            order: { xs: 2, md: 1 }
+            order: { xs: 2, sm: isSmall ? 2 : 1 }
           }}>
             <Paper 
               elevation={3} 
@@ -166,7 +169,7 @@ const UpgradeMessage = ({
                 background: theme.palette.mode === 'dark' 
                   ? 'linear-gradient(145deg, rgba(35,35,45,1) 0%, rgba(25,25,35,1) 100%)' 
                   : 'linear-gradient(145deg, #ffffff 0%, #f5f5f5 100%)',
-                maxWidth: 450,
+                maxWidth: isSmall ? 500 : 450,
                 width: '100%',
                 border: `1px solid ${theme.palette.primary.main}20`,
                 boxShadow: `0 10px 30px ${theme.palette.mode === 'dark' ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.1)'}`
@@ -275,18 +278,19 @@ const UpgradeMessage = ({
             </Paper>
           </Grid>
           
-          {/* Feature Preview Image - Desktop only */}
-          <Grid item md={6} lg={6} sx={{ 
-            display: { xs: 'none', md: 'flex' }, 
+          {/* Feature Preview Image - Tablet and Desktop */}
+          <Grid item sm={isSmall ? 12 : 6} md={6} lg={6} sx={{ 
+            display: { xs: 'none', sm: 'flex' }, 
             justifyContent: 'center',
-            order: { xs: 1, md: 2 }
+            order: { xs: 1, sm: isSmall ? 1 : 2 },
+            mb: isSmall ? 3 : 0
           }}>
             <Paper 
               elevation={8} 
               sx={{ 
                 p: 0,
                 borderRadius: 3,
-                maxWidth: 480,
+                maxWidth: isSmall ? 420 : 480,
                 width: '90%',
                 backgroundColor: 'rgba(0,0,0,0.75)',
                 border: `1px solid ${theme.palette.common.white}30`,
@@ -317,7 +321,7 @@ const UpgradeMessage = ({
                 alt={`${featureName} Preview`} 
                 style={{ 
                   width: '100%', 
-                  height: '100%',
+                  height: 'auto',
                   display: 'block',
                   objectFit: 'cover',
                 }}
@@ -326,7 +330,7 @@ const UpgradeMessage = ({
           </Grid>
         </Grid>
 
-        {/* Coming Soon Badge - Desktop only */}
+        {/* Coming Soon Badge - Tablet and Desktop only */}
         {!isMobile && (
           <Box sx={{ 
             mt: 4, 
