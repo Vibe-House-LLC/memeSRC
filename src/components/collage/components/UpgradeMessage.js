@@ -9,8 +9,7 @@ import {
   Button, 
   Container, 
   useMediaQuery,
-  Chip,
-  Divider
+  Chip
 } from "@mui/material";
 import { 
   Dashboard,
@@ -38,28 +37,53 @@ const UpgradeMessage = ({
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isMedium = useMediaQuery(theme.breakpoints.down('md'));
 
+  // Approximate height of the app's top navigation bar
+  const appBarHeight = 64; // in pixels
+
   return (
-    <Box component="main" sx={{ 
-      flexGrow: 1,
-      pb: isMobile ? 4 : 6,
-      width: '100%',
-      overflowX: 'hidden',
-      background: theme.palette.mode === 'dark' 
-        ? 'linear-gradient(135deg, rgba(25,25,35,1) 0%, rgba(15,15,25,1) 100%)' 
-        : 'linear-gradient(135deg, #f8f8f8 0%, #eaeaea 100%)',
-    }}>
-      <Container maxWidth="lg" sx={{
-        pt: isMobile ? 3 : 4,
-        width: '100%'
-      }}>
+    <Box 
+      sx={{ 
+        position: 'fixed',
+        top: `${appBarHeight}px`,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 1000,
+        background: theme.palette.mode === 'dark' 
+          ? 'linear-gradient(135deg, rgba(25,25,35,1) 0%, rgba(15,15,25,1) 100%)' 
+          : 'linear-gradient(135deg, #f8f8f8 0%, #eaeaea 100%)',
+        display: 'flex',
+        alignItems: 'flex-start',
+        justifyContent: 'center',
+        overflowY: 'auto',
+        pt: { xs: 4, sm: 5 },
+        pb: { xs: 10, sm: 8 }
+      }}
+    >
+      <Container 
+        maxWidth="lg" 
+        sx={{ 
+          pt: { xs: 3, sm: 5 },
+          pb: { xs: 12, sm: 8 }
+        }}
+      >
         <Box textAlign="center" mb={isMobile ? 2 : 3}>
-          <Typography variant="h4" component="h1" sx={{ 
-            display: 'inline-flex', 
-            alignItems: 'center',
-            fontWeight: '600',
-            color: theme.palette.mode === 'dark' ? '#fff' : '#333'
-          }}>
-            <Dashboard sx={{ mr: 1.5, color: theme.palette.primary.main }} /> 
+          <Typography 
+            variant="h4" 
+            component="h1" 
+            sx={{ 
+              display: 'inline-flex', 
+              alignItems: 'center',
+              fontWeight: '600',
+              color: theme.palette.mode === 'dark' ? '#fff' : '#333',
+              fontSize: isMobile ? '1.75rem' : '2.125rem'
+            }}
+          >
+            <Dashboard sx={{ 
+              mr: 1.5, 
+              color: theme.palette.primary.main,
+              fontSize: isMobile ? '1.75rem' : '2.125rem'
+            }} /> 
             {featureName}
             <Chip 
               icon={<Stars sx={{ fontSize: '0.9rem' }} />}
@@ -75,7 +99,12 @@ const UpgradeMessage = ({
           </Typography>
         </Box>
         
-        <Grid container spacing={isMobile ? 2 : 4} justifyContent="center" alignItems="center">
+        <Grid 
+          container 
+          spacing={isMobile ? 2 : 4} 
+          justifyContent="center" 
+          alignItems="center"
+        >
           {/* Mobile layout: image on top, text below */}
           {isMobile && (
             <Grid item xs={12} sx={{ mb: 1 }}>
@@ -86,7 +115,7 @@ const UpgradeMessage = ({
                     p: 0,
                     borderRadius: 3,
                     maxWidth: 340,
-                    width: '90%',
+                    width: '100%',
                     backgroundColor: 'rgba(0,0,0,0.75)',
                     border: `1px solid ${theme.palette.common.white}30`,
                     overflow: 'hidden',
