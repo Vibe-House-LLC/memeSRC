@@ -102,7 +102,7 @@ export const createPanelToImageUrlMapping = (cleanMapping, selectedImages, panel
             : imageItem;
           
           if (imageUrl) {
-            console.log(`Mapping panel ${panelId} to image ${imageIndex} with URL: ${typeof imageUrl === 'string' ? imageUrl.substring(0, 30) + '...' : '[object]'}`);
+            console.log(`Mapping panel ${panelId} to image ${imageIndex} with URL: ${typeof imageUrl === 'string' ? `${imageUrl.substring(0, 30)}...` : '[object]'}`);
             panelToImageUrl[panelId] = imageUrl;
           } else {
             console.log(`Warning: No valid URL for image at index ${imageIndex} for panel ${panelId}`);

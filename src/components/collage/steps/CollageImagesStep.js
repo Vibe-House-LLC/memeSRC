@@ -235,10 +235,11 @@ const CollageImagesStep = ({
       let borderThicknessValue = 4; // Default to medium (4px)
       
       if (borderThicknessOptions && borderThickness) {
-        const option = borderThicknessOptions.find(
-          opt => opt.label.toLowerCase() === borderThickness.toLowerCase()
-        );
-        borderThicknessValue = option ? option.value : 4;
+        const option = borderThicknessOptions.find(opt => opt.label.toLowerCase() === borderThickness.toLowerCase());
+        if (option) {
+          borderThicknessValue = option.value;
+          debugLog("Found numeric border thickness value:", borderThicknessValue);
+        }
       }
       
       console.log("Attempting to render preview with:", {
@@ -273,12 +274,15 @@ const CollageImagesStep = ({
       }, 50);
       
       return () => clearTimeout(renderTimer);
-    } else {
-      console.warn("Missing required props for template rendering:", {
-        hasTemplate: !!selectedTemplate,
-        hasAspectRatio: !!selectedAspectRatio
-      });
     }
+    
+    console.warn("Missing required props for template rendering:", {
+      hasTemplate: !!selectedTemplate,
+      hasAspectRatio: !!selectedAspectRatio
+    });
+    
+    // Add an empty return for the case when the condition is false
+    return undefined;
   }, [selectedTemplate, selectedAspectRatio, panelCount, theme.palette.mode, borderThickness, borderThicknessOptions, selectedImages, panelImageMapping]);
   
   // Add a dedicated effect just for border thickness changes to ensure it triggers a redraw
@@ -289,9 +293,7 @@ const CollageImagesStep = ({
       // Get the numeric value for the border thickness
       let borderThicknessValue = 4; // Default to medium (4px)
       if (borderThicknessOptions) {
-        const option = borderThicknessOptions.find(
-          opt => opt.label.toLowerCase() === borderThickness.toLowerCase()
-        );
+        const option = borderThicknessOptions.find(opt => opt.label.toLowerCase() === borderThickness.toLowerCase());
         if (option) {
           borderThicknessValue = option.value;
           debugLog("Found numeric border thickness value:", borderThicknessValue);
@@ -353,10 +355,10 @@ const CollageImagesStep = ({
       // Get the numeric border thickness value
       let borderThicknessValue = 4; // Default
       if (borderThicknessOptions && borderThickness) {
-        const option = borderThicknessOptions.find(
-          opt => opt.label.toLowerCase() === borderThickness.toLowerCase()
-        );
-        borderThicknessValue = option ? option.value : 4;
+        const option = borderThicknessOptions.find(opt => opt.label.toLowerCase() === borderThickness.toLowerCase());
+        if (option) {
+          borderThicknessValue = option.value;
+        }
       }
       
       console.log("Initial render with:", {

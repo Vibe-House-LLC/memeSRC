@@ -536,7 +536,20 @@ const drawLayoutPanels = (ctx, layoutConfig, canvasWidth, canvasHeight, panelCou
   const finalizeCanvas = () => {
     try {
       if (canvas && setRenderedImage) {
-        setRenderedImage(canvas.toDataURL('image/png'));
+        // Check if this is an OffscreenCanvas (which doesn't have toDataURL)
+        if (canvas instanceof OffscreenCanvas) {
+          canvas.convertToBlob({ type: 'image/png' })
+            .then(blob => {
+              const url = URL.createObjectURL(blob);
+              setRenderedImage(url);
+            })
+            .catch(err => {
+              logError('Error converting canvas to blob:', err);
+            });
+        } else {
+          // Regular canvas
+          setRenderedImage(canvas.toDataURL('image/png'));
+        }
       }
     } catch (error) {
       logError('Error finalizing canvas:', error);
@@ -668,11 +681,9 @@ const drawLayoutPanels = (ctx, layoutConfig, canvasWidth, canvasHeight, panelCou
           drawPanelBorder(adjustedX, adjustedY, adjustedWidth, adjustedHeight);
         }
       }
-    } else {
+    } else if (shouldDrawBorder) {
       // No image assigned, just draw the placeholder with border
-      if (shouldDrawBorder) {
-        drawPanelBorder(adjustedX, adjustedY, adjustedWidth, adjustedHeight);
-      }
+      drawPanelBorder(adjustedX, adjustedY, adjustedWidth, adjustedHeight);
     }
     
     // Store region with appropriate dimensions
