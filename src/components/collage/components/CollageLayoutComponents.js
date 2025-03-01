@@ -3,9 +3,7 @@ import { useTheme } from "@mui/material/styles";
 import {
   Box,
   Grid,
-  Paper,
   Typography,
-  Divider,
   Container,
   Button
 } from "@mui/material";
@@ -13,26 +11,7 @@ import { Settings, PhotoLibrary } from "@mui/icons-material";
 
 import CollageSettingsStep from "../steps/CollageSettingsStep";
 import CollageImagesStep from "../steps/CollageImagesStep";
-import { SectionHeading, SectionPaper } from './CollageUIComponents';
-
-// Common styles for consistent containers
-const commonContainerStyles = {
-  width: '100%',
-  overflowX: 'auto'
-};
-
-// Common settings step container styles
-const settingsContainerStyle = theme => ({
-  width: '100%', 
-  overflowX: 'auto',
-  position: 'relative',
-  mx: -1,
-  px: 1,
-  [theme.breakpoints.up('sm')]: {
-    mx: -1.5,
-    px: 1.5
-  }
-});
+import { SectionHeading } from './CollageUIComponents';
 
 /**
  * Main container for the collage page content
@@ -64,107 +43,48 @@ export const MainContainer = ({ children, isMobile, isMediumScreen }) => {
  * Paper container for the main content
  */
 export const ContentPaper = ({ children, isMobile, sx = {} }) => {
-  const theme = useTheme();
-  
   return (
-    <Paper 
-      elevation={isMobile ? 0 : 1} 
-      sx={{ 
-        p: isMobile ? 0 : 2,
-        pb: isMobile ? 0 : 2,
-        borderRadius: isMobile ? 0 : 2,
-        backgroundColor: theme.palette.background.default,
-        border: isMobile ? 'none' : undefined,
-        width: '100%',
-        maxWidth: '100%',
-        boxSizing: 'border-box',
-        ...sx
-      }}
-    >
+    <Box sx={{ 
+      width: '100%',
+      ...sx
+    }}>
       {children}
-    </Paper>
+    </Box>
   );
 };
 
 /**
- * Mobile layout for the collage tool
+ * Unified layout for the collage tool that adapts to all screen sizes
  */
-export const MobileLayout = ({ settingsStepProps, imagesStepProps, theme }) => {
+export const CollageLayout = ({ settingsStepProps, imagesStepProps, isMobile }) => {
   return (
-    <>
-      {/* Settings */}
-      <Box sx={{ 
-        px: 1, 
-        pb: 1,
-        maxWidth: '100vw',
-        ...commonContainerStyles
-      }}>
-        <Typography variant="body2" color="text.secondary" sx={{ 
-          mb: 1.5,
-          px: 0.5
-        }}>
-          Merge images together to create multi-panel memes
-        </Typography>
-        
-        <CollageSettingsStep 
-          {...settingsStepProps}
-          containerSx={settingsContainerStyle(theme)}
-        />
-      </Box>
-
-      {/* Images */}
-      <Box sx={{ 
-        px: 1, 
-        pb: 2,
-        maxWidth: '100vw',
-        ...commonContainerStyles
-      }}>
-        <SectionHeading icon={PhotoLibrary} title="Images" />
-        
-        <CollageImagesStep {...imagesStepProps} />
-      
-        <Divider sx={{ my: 1 }} />
-      </Box>
-    </>
-  );
-};
-
-/**
- * Desktop layout for the collage tool
- */
-export const DesktopLayout = ({ settingsStepProps, imagesStepProps, theme }) => {
-  return (
-    <Grid container spacing={3} sx={{ width: '100%', margin: 0 }}>
+    <Grid container spacing={isMobile ? 2 : 3} sx={{ width: '100%', margin: 0 }}>
       {/* Settings Section */}
-      <Grid item xs={12} md={6} lg={6}>
-        <SectionPaper>
-          <Typography variant="h6" gutterBottom sx={{ 
+      <Grid item xs={12} md={6}>
+        <Box sx={{ mb: isMobile ? 2 : 0 }}>
+          <Typography variant="h6" sx={{ 
             display: 'flex', 
             alignItems: 'center',
             mb: 1
           }}>
-            <Settings sx={{ mr: 1, color: 'text.secondary' }} /> Settings
+            <Settings sx={{ mr: 1 }} /> Settings
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 0 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             Merge images together to create multi-panel memes
           </Typography>
           
           <CollageSettingsStep 
             {...settingsStepProps}
-            containerSx={settingsContainerStyle(theme)}
           />
-        </SectionPaper>
+        </Box>
       </Grid>
       
       {/* Images Section */}
-      <Grid item xs={12} md={6} lg={6}>
-        <SectionPaper>
+      <Grid item xs={12} md={6}>
+        <Box>
           <SectionHeading icon={PhotoLibrary} title="Images" />
-          
           <CollageImagesStep {...imagesStepProps} />
-          
-          <Divider sx={{ my: 2 }} />
-        </SectionPaper>
+        </Box>
       </Grid>
     </Grid>
   );
@@ -176,83 +96,53 @@ export const DesktopLayout = ({ settingsStepProps, imagesStepProps, theme }) => 
 export const CollageResult = ({ finalImage, setFinalImage, isMobile, isMediumScreen, isLoading = false }) => {
   const theme = useTheme();
   
-  const resultTitleStyle = {
-    px: 3, 
-    py: 1, 
-    borderRadius: 5,
-    backgroundColor: theme.palette.success.main,
-    color: '#fff'
-  };
-  
-  const resultPaperStyle = {
-    p: isMobile ? 2 : 3, 
-    maxWidth: isMediumScreen ? '900px' : '700px',
-    mx: 'auto', 
-    bgcolor: theme.palette.background.paper,
-    borderRadius: 2,
-    border: `1px solid ${theme.palette.success.main}`,
-    boxShadow: `0 0 20px ${theme.palette.mode === 'dark' ? 'rgba(0,200,83,0.2)' : 'rgba(0,200,83,0.1)'}`
-  };
-  
-  const buttonContainerStyle = {
-    mt: 2, 
-    display: 'flex', 
-    justifyContent: 'center', 
-    gap: 2,
-    flexWrap: 'wrap'
-  };
-  
   return (
     <Box sx={{ 
-      mt: 2,
-      pb: 3,
+      mt: 3,
       width: '100%',
-      overflowX: 'hidden'
+      backgroundColor: theme.palette.common.black,
+      borderRadius: 2,
+      border: '1px solid rgba(255, 255, 255, 0.2)',
+      overflow: 'hidden',
+      boxShadow: '0 4px 20px rgba(0,0,0,0.2)'
     }}>
-      <Divider sx={{ mb: 3 }}>
-        <Paper
-          elevation={3}
-          sx={resultTitleStyle}
-        >
-          <Typography variant="h6" sx={{ fontWeight: 500 }}>
-            {isLoading ? 'Creating Your Collage...' : 'Your Collage Is Ready!'}
-          </Typography>
-        </Paper>
-      </Divider>
+      {/* Image container - No extra wrappers */}
+      <img 
+        src={finalImage} 
+        alt="Final Collage" 
+        style={{ 
+          width: '100%', 
+          display: 'block',
+          opacity: isLoading ? 0.7 : 1
+        }} 
+      />
       
-      <Paper 
-        elevation={isMobile ? 1 : 3}
-        sx={resultPaperStyle}
-      >
-        <img 
-          src={finalImage} 
-          alt="Final Collage" 
-          style={{ 
-            width: '100%', 
-            borderRadius: theme.shape.borderRadius, 
-            marginBottom: 16,
-            opacity: isLoading ? 0.7 : 1
-          }} 
-        />
-        <Box sx={buttonContainerStyle}>
-          <Button 
-            variant="contained" 
-            color="primary"
-            startIcon={<Box component="span" sx={{ fontSize: 18 }}>📥</Box>}
-            disabled={isLoading}
-          >
-            Download Collage
-          </Button>
-          <Button 
-            variant="outlined" 
-            color="primary" 
-            onClick={() => setFinalImage(null)}
-            disabled={isLoading}
-          >
-            Create New Collage
-          </Button>
-        </Box>
-      </Paper>
+      {/* Button container - Simplified */}
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center',
+        gap: 2,
+        p: 2,
+        borderTop: '1px solid rgba(255, 255, 255, 0.15)',
+        backgroundColor: 'rgba(0, 0, 0, 0.8)'
+      }}>
+        <Button 
+          variant="contained" 
+          color="primary"
+          startIcon={<Box component="span" sx={{ fontSize: 18 }}>📥</Box>}
+          disabled={isLoading}
+        >
+          Download Collage
+        </Button>
+        <Button 
+          variant="outlined" 
+          color="primary" 
+          onClick={() => setFinalImage(null)}
+          disabled={isLoading}
+        >
+          Create New Collage
+        </Button>
+      </Box>
     </Box>
   );
 }; 

@@ -20,8 +20,7 @@ import { PageHeader } from "../components/collage/components/CollageUIComponents
 import { 
   MainContainer, 
   ContentPaper, 
-  MobileLayout, 
-  DesktopLayout,
+  CollageLayout,
   CollageResult 
 } from "../components/collage/components/CollageLayoutComponents";
 
@@ -427,10 +426,11 @@ export default function CollagePage() {
           <PageHeader icon={Dashboard} title="Collage Tool" isMobile={isMobile} />
           
           <ContentPaper isMobile={isMobile}>
-            {isMobile 
-              ? <MobileLayout settingsStepProps={settingsStepProps} imagesStepProps={imagesStepProps} theme={theme} />
-              : <DesktopLayout settingsStepProps={settingsStepProps} imagesStepProps={imagesStepProps} theme={theme} />
-            }
+            <CollageLayout 
+              settingsStepProps={settingsStepProps} 
+              imagesStepProps={imagesStepProps} 
+              isMobile={isMobile}
+            />
 
             {finalImage && (
               <CollageResult 
