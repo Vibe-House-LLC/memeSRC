@@ -55,7 +55,10 @@ const logError = (...args) => {
  */
 const CollageImagesStep = ({ 
   selectedImages, 
-  setSelectedImages,
+  addImage,
+  removeImage,
+  updateImage,
+  clearImages,
   panelCount,
   handleBack, 
   handleNext,
@@ -64,8 +67,7 @@ const CollageImagesStep = ({
   borderThickness,
   borderThicknessOptions,
   panelImageMapping,
-  setPanelImageMapping,
-  onPanelClick
+  updatePanelImageMapping
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -76,9 +78,7 @@ const CollageImagesStep = ({
   const [panelRegions, setPanelRegions] = useState([]);
   // Track which panel was last clicked
   const [selectedPanel, setSelectedPanel] = useState(null);
-  // Track panel-to-image mapping
-  const [panelImageMap, setPanelImageMap] = useState({});
-  // Store selected images per panel
+  // Store selected images per panel - synced with parent component's panelImageMapping
   const [panelToImageMap, setPanelToImageMap] = useState({});
   
   // Enhance the handlePreviewClick function
@@ -115,13 +115,8 @@ const CollageImagesStep = ({
       debugLog(`Clicked on panel ${clickedPanel.id}`);
       setSelectedPanel(clickedPanel);
       
-      // Use the new onPanelClick handler from props
-      if (typeof onPanelClick === 'function') {
-        debugLog("Calling onPanelClick with id:", clickedPanel.id);
-        onPanelClick(clickedPanel.id);
-      } else {
-        debugWarn("onPanelClick is not a function", onPanelClick);
-      }
+      // Handle the panel selection directly
+      handlePanelImageSelection(clickedPanel);
     } else {
       debugLog("No panel was clicked");
     }
@@ -129,75 +124,159 @@ const CollageImagesStep = ({
   
   // Function to handle image selection for a specific panel
   const handlePanelImageSelection = (panel) => {
-    // Use the utility function from PanelManager
-    handlePanelImageSelectionUtil(panel, {
-      panelToImageMap,
-      setPanelToImageMap,
-      selectedImages,
-      panelCount
-    });
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    fileInput.onchange = (e) => {
+      if (e.target.files && e.target.files[0]) {
+        const file = e.target.files[0];
+        
+        // Convert to base64 instead of using Blob URLs which can become invalid
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          // This base64 string won't expire like Blob URLs
+          const base64Image = event.target.result;
+          console.log(`Converted image for panel ${panel.id} to base64 (first 30 chars): ${base64Image.substring(0, 30)}...`);
+          
+          // Find if there's already an image for this panel
+          const existingMappingIndex = panelImageMapping[panel.id];
+          
+          console.log(`Processing image for panel ${panel.id}`, {
+            existingIndex: existingMappingIndex,
+            currentMappings: JSON.parse(JSON.stringify(panelImageMapping)),
+            selectedImageCount: selectedImages.length
+          });
+          
+          // Handle updating the image and mapping
+          if (existingMappingIndex !== undefined && selectedImages[existingMappingIndex]) {
+            console.log(`Updating existing image at index ${existingMappingIndex}`);
+            // No need to revoke anything since we're using base64
+            
+            // Update the existing image immediately
+            updateImage(existingMappingIndex, base64Image);
+            // No need to update mapping as we're replacing an existing image
+          } else {
+            console.log(`Adding new image at index ${selectedImages.length}`);
+            
+            // First add the new image
+            addImage(base64Image);
+            
+            // Create a new mapping entry for this panel
+            const newMapping = { ...panelImageMapping };
+            // The index will be the current length (after addImage it will have this index)
+            const newIndex = selectedImages.length; 
+            newMapping[panel.id] = newIndex;
+            console.log(`New mapping will be: panel ${panel.id} -> image ${newIndex}`);
+            
+            // Update the mapping
+            updatePanelImageMapping(newMapping);
+          }
+          
+          // Update the selected panel state
+          setSelectedPanel(panel);
+        };
+        reader.readAsDataURL(file);
+      }
+    };
+    fileInput.click();
   };
   
   // Function to clear image assignment for a panel
   const clearPanelImage = (panelId) => {
-    // Use the utility function from PanelManager
-    clearPanelImageUtil(panelId, setPanelToImageMap);
+    const imageIndex = panelImageMapping[panelId];
+    
+    if (imageIndex !== undefined) {
+      // Create a new mapping without this panel
+      const newMapping = { ...panelImageMapping };
+      delete newMapping[panelId];
+      
+      // Update the mapping
+      updatePanelImageMapping(newMapping);
+      
+      // If this image is not used in any other panel, remove it
+      const isImageUsedElsewhere = Object.values(newMapping).includes(imageIndex);
+      
+      if (!isImageUsedElsewhere) {
+        // Remove the image if it's not used elsewhere
+        removeImage(imageIndex);
+      }
+    }
   };
   
-  // Keep selectedImages state in sync with parent component
+  // Keep local panel mapping in sync with parent component
   useEffect(() => {
-    // Update the effective selected images based on panel mapping
-    const effectiveSelectedImages = Object.entries(panelToImageMap).map(
-      ([panelId, imageIndex]) => ({
-        panel: parseInt(panelId, 10),
-        image: selectedImages[imageIndex],
-        imageIndex
-      })
-    );
-    
-    debugLog("Effective selected images:", effectiveSelectedImages);
-    
-    // If you need to update the parent component's selectedImages state,
-    // you would do so here
-  }, [panelToImageMap, selectedImages]);
+    // Update our local panel mapping from the parent component
+    console.log("Syncing panel image mapping:", panelImageMapping);
+    setPanelToImageMap(panelImageMapping);
+  }, [panelImageMapping]);
+
+  // Initial setup
+  useEffect(() => {
+    // Initialize the panel-to-image map from props
+    if (Object.keys(panelToImageMap).length === 0 && Object.keys(panelImageMapping).length > 0) {
+      console.log("Initializing panel-to-image map from props");
+      setPanelToImageMap(panelImageMapping);
+    }
+  }, []);
 
   // Render the template when template or aspect ratio changes
   useEffect(() => {
-    if (selectedTemplate) {
+    console.log("Template render effect triggered:", { 
+      selectedTemplate, 
+      selectedAspectRatio,
+      panelCount,
+      borderThickness,
+      hasImages: selectedImages.length > 0,
+      mappingKeys: Object.keys(panelImageMapping).length
+    });
+    
+    if (selectedTemplate && selectedAspectRatio) {
       // Get the numeric border thickness value if provided
       let borderThicknessValue = 4; // Default to medium (4px)
       
-      if (borderThickness && borderThicknessOptions) {
+      if (borderThicknessOptions && borderThickness) {
         const option = borderThicknessOptions.find(
           opt => opt.label.toLowerCase() === borderThickness.toLowerCase()
         );
-        if (option) {
-          borderThicknessValue = option.value;
-        }
+        borderThicknessValue = option ? option.value : 4;
       }
       
-      debugLog("Preview rendering with border thickness:", borderThicknessValue);
-      
-      // Create a mapping from panel IDs to image indices
-      const mapping = {};
-      selectedImages.forEach((img, index) => {
-        if (img && img.panelId !== undefined) {
-          mapping[img.panelId] = index;
-        }
+      console.log("Attempting to render preview with:", {
+        templateId: selectedTemplate.id,
+        aspectRatio: selectedAspectRatio,
+        panels: panelCount,
+        thickness: borderThicknessValue,
+        theme: theme.palette.mode,
+        imageCount: selectedImages.length,
+        mappings: JSON.stringify(panelImageMapping)
       });
       
-      // Call the imported renderTemplateToCanvas function
-      renderTemplateToCanvas({
-        selectedTemplate,
-        selectedAspectRatio,
-        panelCount,
-        theme,
-        canvasRef,
-        setPanelRegions,
-        setRenderedImage,
-        borderThickness: borderThicknessValue,
-        selectedImages,
-        panelImageMapping: mapping
+      // Add a small delay to ensure blob URLs are ready
+      const renderTimer = setTimeout(() => {
+        try {
+          // Call the imported renderTemplateToCanvas function
+          renderTemplateToCanvas({
+            selectedTemplate,
+            selectedAspectRatio,
+            panelCount,
+            theme,
+            canvasRef,
+            setPanelRegions,
+            setRenderedImage,
+            borderThickness: borderThicknessValue,
+            selectedImages,
+            panelImageMapping
+          });
+        } catch (error) {
+          console.error("Error rendering template:", error);
+        }
+      }, 50);
+      
+      return () => clearTimeout(renderTimer);
+    } else {
+      console.warn("Missing required props for template rendering:", {
+        hasTemplate: !!selectedTemplate,
+        hasAspectRatio: !!selectedAspectRatio
       });
     }
   }, [selectedTemplate, selectedAspectRatio, panelCount, theme.palette.mode, borderThickness, borderThicknessOptions, selectedImages, panelImageMapping]);
@@ -259,6 +338,50 @@ const CollageImagesStep = ({
     }
   }, [selectedTemplate, selectedAspectRatio, panelCount]);
   
+  // Add an initial rendering effect to ensure preview is generated immediately
+  useEffect(() => {
+    console.log("Initial render check:", {
+      hasTemplate: !!selectedTemplate,
+      hasAspectRatio: !!selectedAspectRatio,
+      hasRenderedImage: !!renderedImage
+    });
+    
+    // Force initial render if selectedTemplate exists
+    if (selectedTemplate && selectedAspectRatio && !renderedImage) {
+      console.log("Forcing initial preview render");
+      
+      // Get the numeric border thickness value
+      let borderThicknessValue = 4; // Default
+      if (borderThicknessOptions && borderThickness) {
+        const option = borderThicknessOptions.find(
+          opt => opt.label.toLowerCase() === borderThickness.toLowerCase()
+        );
+        borderThicknessValue = option ? option.value : 4;
+      }
+      
+      console.log("Initial render with:", {
+        templateId: selectedTemplate.id,
+        aspectRatio: selectedAspectRatio,
+        panels: panelCount,
+        thickness: borderThicknessValue
+      });
+      
+      // Render the template
+      renderTemplateToCanvas({
+        selectedTemplate,
+        selectedAspectRatio,
+        panelCount,
+        theme,
+        canvasRef,
+        setPanelRegions,
+        setRenderedImage,
+        borderThickness: borderThicknessValue,
+        selectedImages,
+        panelImageMapping
+      });
+    }
+  }, [selectedTemplate, selectedAspectRatio, panelCount, theme, borderThickness, borderThicknessOptions, selectedImages, panelImageMapping, renderedImage]);
+
   // Clean up resources when component unmounts
   useEffect(() => {
     return () => {
@@ -404,3 +527,18 @@ const CollageImagesStep = ({
 };
 
 export default CollageImagesStep;
+
+// Add defaultProps to ensure the component has fallback values
+CollageImagesStep.defaultProps = {
+  selectedImages: [],
+  panelCount: 2,
+  selectedAspectRatio: 'portrait',
+  borderThickness: 'medium',
+  borderThicknessOptions: [
+    { label: "None", value: 0 },
+    { label: "Thin", value: 2 },
+    { label: "Medium", value: 4 },
+    { label: "Thick", value: 8 }
+  ],
+  panelImageMapping: {},
+};

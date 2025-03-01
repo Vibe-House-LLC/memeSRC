@@ -26,6 +26,9 @@ const logError = (...args) => {
   console.error(...args);
 };
 
+// Add a basic cache to avoid reloading the same images repeatedly
+const imageCache = new Map();
+
 /**
  * Get the aspect ratio value from the presets
  * @param {string} selectedAspectRatio - The ID of the selected aspect ratio
@@ -497,6 +500,11 @@ const drawLayoutPanels = (ctx, layoutConfig, canvasWidth, canvasHeight, panelCou
   debugLog("Selected images:", selectedImages);
   debugLog("Panel image mapping:", panelImageMapping);
   
+  // Clear cache if it gets too large
+  if (imageCache.size > 50) {
+    imageCache.clear();
+  }
+  
   const { gridTemplateColumns, gridTemplateRows, areas, gridTemplateAreas, items } = layoutConfig;
   
   // Parse grid template columns and rows
@@ -523,6 +531,67 @@ const drawLayoutPanels = (ctx, layoutConfig, canvasWidth, canvasHeight, panelCou
 
   // Create an array to collect panel regions
   const newPanelRegions = [];
+  
+  // Function to finalize the canvas by creating an image from it
+  const finalizeCanvas = () => {
+    try {
+      if (canvas && setRenderedImage) {
+        setRenderedImage(canvas.toDataURL('image/png'));
+      }
+    } catch (error) {
+      logError('Error finalizing canvas:', error);
+    }
+  };
+
+  // Helper function for drawing panel borders
+  const drawPanelBorder = (x, y, width, height) => {
+    ctx.strokeRect(x, y, width, height);
+  };
+  
+  // Helper to draw an image to a panel preserving aspect ratio
+  function drawImageToPanel(img, x, y, width, height) {
+    try {
+      // Calculate scaling to maintain aspect ratio while filling the panel
+      const imgAspect = img.width / img.height;
+      const panelAspect = width / height;
+      
+      let drawWidth;
+      let drawHeight;
+      let offsetX = 0;
+      let offsetY = 0;
+      
+      if (imgAspect > panelAspect) {
+        // Image is wider than panel (relative to height)
+        drawHeight = height;
+        drawWidth = height * imgAspect;
+        offsetX = (width - drawWidth) / 2;
+      } else {
+        // Image is taller than panel (relative to width)
+        drawWidth = width;
+        drawHeight = width / imgAspect;
+        offsetY = (height - drawHeight) / 2;
+      }
+      
+      // Draw the image centered in the panel
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(x, y, width, height);
+      ctx.clip();
+      ctx.drawImage(img, x + offsetX, y + offsetY, drawWidth, drawHeight);
+      ctx.restore();
+      
+      // Apply the border on top if needed
+      if (shouldDrawBorder) {
+        drawPanelBorder(x, y, width, height);
+      }
+    } catch (drawError) {
+      logError(`Error drawing image:`, drawError);
+      // Already in the panel placeholder state, just add border
+      if (shouldDrawBorder) {
+        drawPanelBorder(x, y, width, height);
+      }
+    }
+  }
 
   // Draw panels function with border handling
   const drawPanel = (x, y, width, height, id, name) => {
@@ -541,83 +610,66 @@ const drawLayoutPanels = (ctx, layoutConfig, canvasWidth, canvasHeight, panelCou
     
     const hasImage = typeof imageIndex === 'number' && imageIndex >= 0 && imageIndex < selectedImages.length;
     
+    // Draw the base placeholder first
+    ctx.fillRect(adjustedX, adjustedY, adjustedWidth, adjustedHeight);
+    
+    // Store the original fill style
+    const prevFillStyle = ctx.fillStyle;
+    
     if (hasImage) {
-      // Get the image URL - handle both direct URLs and objects with imageUrl property
+      // Get the image URL - handle both direct URLs/base64 and objects with imageUrl property
       const imageItem = selectedImages[imageIndex];
       const imageUrl = typeof imageItem === 'object' && imageItem !== null 
-        ? imageItem.imageUrl 
+        ? (imageItem.url || imageItem.imageUrl || imageItem) 
         : imageItem;
       
-      debugLog(`Drawing image ${imageIndex} (${imageUrl}) in panel ${id}`);
+      debugLog(`Drawing image ${imageIndex} in panel ${id}`);
       
-      // Draw a placeholder until the image loads
-      ctx.fillRect(adjustedX, adjustedY, adjustedWidth, adjustedHeight);
-      
-      // Create an image object for drawing
-      const img = new Image();
-      img.onload = () => {
-        // Redraw the background (in case we need to clear previous drawings)
-        ctx.fillRect(adjustedX, adjustedY, adjustedWidth, adjustedHeight);
-        
-        // Calculate scaling to maintain aspect ratio while filling the panel
-        const imgAspect = img.width / img.height;
-        const panelAspect = adjustedWidth / adjustedHeight;
-        
-        let drawWidth;
-        let drawHeight;
-        let offsetX = 0;
-        let offsetY = 0;
-        
-        if (imgAspect > panelAspect) {
-          // Image is wider than panel (relative to height)
-          drawHeight = adjustedHeight;
-          drawWidth = adjustedHeight * imgAspect;
-          offsetX = (adjustedWidth - drawWidth) / 2;
+      try {
+        // Use the cached image if available, otherwise create a new one
+        let img;
+        if (imageCache.has(imageUrl)) {
+          img = imageCache.get(imageUrl);
+          drawImageToPanel(img, adjustedX, adjustedY, adjustedWidth, adjustedHeight);
         } else {
-          // Image is taller than panel (relative to width)
-          drawWidth = adjustedWidth;
-          drawHeight = adjustedWidth / imgAspect;
-          offsetY = (adjustedHeight - drawHeight) / 2;
+          img = new Image();
+          img.onload = () => {
+            imageCache.set(imageUrl, img);
+            drawImageToPanel(img, adjustedX, adjustedY, adjustedWidth, adjustedHeight);
+            finalizeCanvas(); // Update canvas after image loads
+          };
+          
+          img.onerror = () => {
+            logError(`Error loading image for panel ${id}`);
+            // Draw error placeholder
+            ctx.fillStyle = '#ff000033'; // Semi-transparent red
+            ctx.fillRect(adjustedX, adjustedY, adjustedWidth, adjustedHeight);
+            ctx.fillStyle = prevFillStyle; // Restore fill
+            
+            // Draw border if needed
+            if (shouldDrawBorder) {
+              drawPanelBorder(adjustedX, adjustedY, adjustedWidth, adjustedHeight);
+            }
+            
+            finalizeCanvas(); // Still update canvas with error placeholder
+          };
+          
+          img.src = imageUrl;
         }
+      } catch (error) {
+        logError(`Error setting up image for panel ${id}:`, error);
+        // Draw error placeholder
+        ctx.fillStyle = '#ff000033'; // Semi-transparent red
+        ctx.fillRect(adjustedX, adjustedY, adjustedWidth, adjustedHeight);
+        ctx.fillStyle = prevFillStyle; // Restore fill
         
-        // Draw the image centered in the panel
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(adjustedX, adjustedY, adjustedWidth, adjustedHeight);
-        ctx.clip();
-        ctx.drawImage(img, adjustedX + offsetX, adjustedY + offsetY, drawWidth, drawHeight);
-        ctx.restore();
-        
-        // Apply the border on top if needed
+        // Draw border if needed
         if (shouldDrawBorder) {
           drawPanelBorder(adjustedX, adjustedY, adjustedWidth, adjustedHeight);
         }
-        
-        // Convert the canvas to an image and update it
-        if (canvas instanceof OffscreenCanvas) {
-          canvas.convertToBlob({ type: 'image/png' })
-            .then(blob => {
-              const url = URL.createObjectURL(blob);
-              setRenderedImage(url);
-            })
-            .catch(err => {
-              logError('Error converting canvas to blob:', err);
-            });
-        } else {
-          setRenderedImage(canvas.toDataURL('image/png'));
-        }
-      };
-      img.crossOrigin = 'anonymous'; // Handle CORS issues
-      img.onerror = (err) => {
-        logError('Error loading image for panel', id, err);
-        // Just show the placeholder on error
-      };
-      img.src = imageUrl;
+      }
     } else {
-      // No image assigned, draw the placeholder
-      ctx.fillRect(adjustedX, adjustedY, adjustedWidth, adjustedHeight);
-      
-      // Draw border if needed
+      // No image assigned, just draw the placeholder with border
       if (shouldDrawBorder) {
         drawPanelBorder(adjustedX, adjustedY, adjustedWidth, adjustedHeight);
       }
@@ -633,57 +685,7 @@ const drawLayoutPanels = (ctx, layoutConfig, canvasWidth, canvasHeight, panelCou
       height: adjustedHeight
     });
   };
-
-  // Helper function to draw panel borders
-  const drawPanelBorder = (x, y, width, height) => {
-    // Check if any edge is at the canvas boundary
-    const isLeftEdge = Math.abs(x) < 0.1;
-    const isTopEdge = Math.abs(y) < 0.1;
-    const isRightEdge = Math.abs(x + width - canvasWidth) < 0.1;
-    const isBottomEdge = Math.abs(y + height - canvasHeight) < 0.1;
-    
-    // Draw each border edge separately
-    ctx.beginPath();
-    
-    // Left edge - inset if at canvas boundary
-    if (isLeftEdge) {
-      ctx.moveTo(x + borderThickness/2, y);
-      ctx.lineTo(x + borderThickness/2, y + height);
-    } else {
-      ctx.moveTo(x, y);
-      ctx.lineTo(x, y + height);
-    }
-    
-    // Bottom edge - inset if at canvas boundary
-    if (isBottomEdge) {
-      ctx.moveTo(x, y + height - borderThickness/2);
-      ctx.lineTo(x + width, y + height - borderThickness/2);
-    } else {
-      ctx.moveTo(x, y + height);
-      ctx.lineTo(x + width, y + height);
-    }
-    
-    // Right edge - inset if at canvas boundary
-    if (isRightEdge) {
-      ctx.moveTo(x + width - borderThickness/2, y + height);
-      ctx.lineTo(x + width - borderThickness/2, y);
-    } else {
-      ctx.moveTo(x + width, y + height);
-      ctx.lineTo(x + width, y);
-    }
-    
-    // Top edge - inset if at canvas boundary
-    if (isTopEdge) {
-      ctx.moveTo(x + width, y + borderThickness/2);
-      ctx.lineTo(x, y + borderThickness/2);
-    } else {
-      ctx.moveTo(x + width, y);
-      ctx.lineTo(x, y);
-    }
-    
-    ctx.stroke();
-  };
-
+  
   // Calculate grid positions
   const rowPositions = [];
   let currentY = 0;
@@ -800,7 +802,7 @@ const drawLayoutPanels = (ctx, layoutConfig, canvasWidth, canvasHeight, panelCou
       }
     });
   }
-  // Fall back to simple grid layout
+  // Fallback to simple grid layout
   else {
     // Draw a simple grid layout
     let panelIndex = 0;
@@ -824,6 +826,9 @@ const drawLayoutPanels = (ctx, layoutConfig, canvasWidth, canvasHeight, panelCou
   
   // Update panel regions state
   setPanelRegions(newPanelRegions);
+  
+  // Generate the final image
+  finalizeCanvas();
 };
 
 /**
@@ -891,99 +896,88 @@ export const renderTemplateToCanvas = ({
   // Get layout configuration based on the template
   let layoutConfig;
   
-  // For debugging
-  debugLog("Selected template:", selectedTemplate);
-  debugLog("Template ID:", selectedTemplate.id);
-  debugLog("Template name:", selectedTemplate.name);
-  debugLog("Template arrangement:", selectedTemplate.arrangement);
-  
-  // IMPROVED APPROACH: First get all compatible layouts for the current panel count and aspect ratio
-  const aspectRatioId = selectedAspectRatio || 'square';
-  const layouts = typeof getLayoutsForPanelCount === 'function' 
-    ? getLayoutsForPanelCount(panelCount, aspectRatioId)
-    : [];
-  
-  debugLog("Compatible layouts:", layouts);
-  
-  // For complex layouts, let's log more details to understand what's happening
-  if (selectedTemplate && selectedTemplate.id) {
-    debugLog("Template details:", {
-      id: selectedTemplate.id,
-      name: selectedTemplate.name,
-      arrangement: selectedTemplate.arrangement,
-      minImages: selectedTemplate.minImages,
-      maxImages: selectedTemplate.maxImages,
-      style: selectedTemplate.style || 'not-specified'
-    });
-  }
-  
-  // Try to find the exact selected template in the layouts by ID
-  let matchingLayout = layouts.find(layout => layout.id === selectedTemplate.id);
-  
-  if (!matchingLayout && layouts.length > 0) {
-    debugLog("Could not find exact template match, using first compatible layout");
-    debugLog("Available layouts:", layouts.map(l => l.id));
-    matchingLayout = layouts[0];
-  }
-  
-  if (matchingLayout) {
-    debugLog("Using layout:", matchingLayout.id);
-  } else {
-    debugLog("No matching layout found");
-  }
-  
-  // APPROACH ALIGNED WITH PREVIEW RENDERING:
-  // Handle different layout types consistently with how previews render them
-  if (selectedTemplate.arrangement === 'auto') {
-    // For auto layouts, create a suitable grid layout that matches what the preview would use
-    debugLog("Creating auto layout configuration");
-    layoutConfig = createLayoutConfigFromAutoLayout(
-      panelCount, 
-      getAspectRatioValue(selectedAspectRatio)
-    );
-  } 
-  // For dynamic layouts, ensure we're using the exact same layout as the preview
-  else if (selectedTemplate.arrangement === 'dynamic') {
-    debugLog("Processing dynamic layout");
-    // Find the first compatible layout (like the preview does)
-    if (layouts.length > 0) {
-      if (layouts[0].getLayoutConfig) {
-        layoutConfig = layouts[0].getLayoutConfig();
+  try {
+    // For debugging
+    debugLog("Selected template:", selectedTemplate);
+    debugLog("Template ID:", selectedTemplate.id);
+    debugLog("Template name:", selectedTemplate.name);
+    debugLog("Template arrangement:", selectedTemplate.arrangement);
+    
+    // IMPROVED APPROACH: First get all compatible layouts for the current panel count and aspect ratio
+    const aspectRatioId = selectedAspectRatio || 'square';
+    const layouts = typeof getLayoutsForPanelCount === 'function' 
+      ? getLayoutsForPanelCount(panelCount, aspectRatioId)
+      : [];
+    
+    debugLog("Compatible layouts:", layouts);
+    
+    // Try to find the exact selected template in the layouts by ID
+    let matchingLayout = layouts.find(layout => layout.id === selectedTemplate.id);
+    
+    if (!matchingLayout && layouts.length > 0) {
+      debugLog("Could not find exact template match, using first compatible layout");
+      debugLog("Available layouts:", layouts.map(l => l.id));
+      matchingLayout = layouts[0];
+    }
+    
+    // APPROACH ALIGNED WITH PREVIEW RENDERING:
+    // Handle different layout types consistently with how previews render them
+    if (selectedTemplate.arrangement === 'auto') {
+      // For auto layouts, create a suitable grid layout that matches what the preview would use
+      debugLog("Creating auto layout configuration");
+      layoutConfig = createLayoutConfigFromAutoLayout(
+        panelCount, 
+        getAspectRatioValue(selectedAspectRatio)
+      );
+    } 
+    // For dynamic layouts, ensure we're using the exact same layout as the preview
+    else if (selectedTemplate.arrangement === 'dynamic') {
+      debugLog("Processing dynamic layout");
+      // Find the first compatible layout (like the preview does)
+      if (layouts.length > 0) {
+        if (layouts[0].getLayoutConfig) {
+          layoutConfig = layouts[0].getLayoutConfig();
+        } else {
+          layoutConfig = createLayoutConfigFromId(layouts[0].id, panelCount);
+        }
       } else {
-        layoutConfig = createLayoutConfigFromId(layouts[0].id, panelCount);
+        layoutConfig = createDefaultGridLayout(panelCount, selectedAspectRatio);
       }
+    } 
+    // For specific layouts, ensure we use the exact template configuration
+    else if (matchingLayout) {
+      debugLog("Found matching layout by ID:", matchingLayout.id);
+      if (matchingLayout.getLayoutConfig && typeof matchingLayout.getLayoutConfig === 'function') {
+        debugLog("Using getLayoutConfig function from matching layout");
+        layoutConfig = matchingLayout.getLayoutConfig();
+      } else {
+        debugLog("Creating layout from ID:", matchingLayout.id);
+        layoutConfig = createLayoutConfigFromId(matchingLayout.id, panelCount);
+      }
+    }
+    // Fallback to original template if it has layout config
+    else if (selectedTemplate.getLayoutConfig && typeof selectedTemplate.getLayoutConfig === 'function') {
+      debugLog("Using template's built-in layout config");
+      layoutConfig = selectedTemplate.getLayoutConfig();
+    }
+    // As a last resort, create a layout from ID or default
+    else if (selectedTemplate.id) {
+      debugLog("Creating layout from template ID:", selectedTemplate.id);
+      layoutConfig = createLayoutConfigFromId(selectedTemplate.id, panelCount);
     } else {
+      debugLog("Creating default grid layout (no layout found)");
       layoutConfig = createDefaultGridLayout(panelCount, selectedAspectRatio);
     }
-  } 
-  // For specific layouts, ensure we use the exact template configuration
-  else if (matchingLayout) {
-    debugLog("Found matching layout by ID:", matchingLayout.id);
-    if (matchingLayout.getLayoutConfig && typeof matchingLayout.getLayoutConfig === 'function') {
-      debugLog("Using getLayoutConfig function from matching layout");
-      layoutConfig = matchingLayout.getLayoutConfig();
-    } else {
-      debugLog("Creating layout from ID:", matchingLayout.id);
-      layoutConfig = createLayoutConfigFromId(matchingLayout.id, panelCount);
-    }
-  }
-  // Fallback to original template if it has layout config
-  else if (selectedTemplate.getLayoutConfig && typeof selectedTemplate.getLayoutConfig === 'function') {
-    debugLog("Using template's built-in layout config");
-    layoutConfig = selectedTemplate.getLayoutConfig();
-  }
-  // As a last resort, create a layout from ID or default
-  else if (selectedTemplate.id) {
-    debugLog("Creating layout from template ID:", selectedTemplate.id);
-    layoutConfig = createLayoutConfigFromId(selectedTemplate.id, panelCount);
-  } else {
-    debugLog("Creating default grid layout (no layout found)");
+  } catch (error) {
+    logError('Error determining layout configuration:', error);
+    // Create a simple default layout as fallback
     layoutConfig = createDefaultGridLayout(panelCount, selectedAspectRatio);
   }
   
   if (!layoutConfig) {
     logError('No layout configuration found for the selected template');
-    return;
+    // Use default grid as absolute fallback
+    layoutConfig = createDefaultGridLayout(panelCount, selectedAspectRatio);
   }
   
   // Explicitly log the border thickness that will be used for drawing
@@ -991,35 +985,67 @@ export const renderTemplateToCanvas = ({
               "Type:", typeof borderThickness, 
               "Will draw borders:", borderThickness > 0);
   
-  // Drawing the layout panels
-  drawLayoutPanels(
-    ctx, 
-    layoutConfig, 
-    width, 
-    height, 
-    panelCount, 
-    setPanelRegions, 
-    borderThickness, 
-    selectedImages, 
-    panelImageMapping,
-    canvas, 
-    setRenderedImage
-  );
-  
-  // Initial conversion of the canvas to an image (for the placeholder display)
-  if (canvas instanceof OffscreenCanvas) {
-    // If using OffscreenCanvas, convert to ImageBitmap first
-    canvas.convertToBlob({ type: 'image/png' })
-      .then(blob => {
-        const url = URL.createObjectURL(blob);
-        setRenderedImage(url);
-      })
-      .catch(err => {
-        logError('Error converting canvas to blob:', err);
-      });
-  } else {
-    // If using regular canvas, get data URL directly
-    setRenderedImage(canvas.toDataURL('image/png'));
+  try {
+    // Drawing the layout panels
+    drawLayoutPanels(
+      ctx, 
+      layoutConfig, 
+      width, 
+      height, 
+      panelCount, 
+      setPanelRegions, 
+      borderThickness, 
+      selectedImages, 
+      panelImageMapping,
+      canvas, 
+      setRenderedImage
+    );
+    
+    // Generate an initial rendering immediately
+    if (canvas instanceof OffscreenCanvas) {
+      canvas.convertToBlob({ type: 'image/png' })
+        .then(blob => {
+          const url = URL.createObjectURL(blob);
+          setRenderedImage(url);
+        })
+        .catch(err => {
+          logError('Error converting canvas to blob:', err);
+          // Fallback for browsers where OffscreenCanvas.convertToBlob might not be supported
+          if (canvasRef.current) {
+            setRenderedImage(canvasRef.current.toDataURL('image/png'));
+          }
+        });
+    } else if (canvas) {
+      try {
+        setRenderedImage(canvas.toDataURL('image/png'));
+      } catch (err) {
+        logError('Error converting canvas to data URL:', err);
+      }
+    }
+  } catch (error) {
+    logError('Error drawing layout panels:', error);
+    // Create a very basic fallback to show something rather than nothing
+    if (canvas) {
+      ctx.fillStyle = theme.palette.mode === 'dark' ? '#333' : '#ddd';
+      ctx.fillRect(0, 0, width, height);
+      ctx.fillStyle = theme.palette.mode === 'dark' ? '#555' : '#aaa';
+      ctx.font = '20px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('Layout Preview', width/2, height/2);
+      
+      if (canvas instanceof OffscreenCanvas) {
+        canvas.convertToBlob({ type: 'image/png' })
+          .then(blob => {
+            const url = URL.createObjectURL(blob);
+            setRenderedImage(url);
+          })
+          .catch(err => {
+            logError('Error converting fallback canvas to blob:', err);
+          });
+      } else {
+        setRenderedImage(canvas.toDataURL('image/png'));
+      }
+    }
   }
 };
 

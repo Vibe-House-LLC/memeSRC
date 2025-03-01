@@ -57,6 +57,22 @@ export const ContentPaper = ({ children, isMobile, sx = {} }) => {
  * Unified layout for the collage tool that adapts to all screen sizes
  */
 export const CollageLayout = ({ settingsStepProps, imagesStepProps, isMobile }) => {
+  // Added console logging for debugging
+  console.log("CollageLayout received props:", {
+    settingsStepProps: {
+      hasTemplate: !!settingsStepProps.selectedTemplate,
+      hasAspectRatio: !!settingsStepProps.selectedAspectRatio,
+      panelCount: settingsStepProps.panelCount,
+      borderThickness: settingsStepProps.borderThickness
+    },
+    imagesStepProps: {
+      hasTemplate: !!imagesStepProps.selectedTemplate,
+      hasAspectRatio: !!imagesStepProps.selectedAspectRatio,
+      imageCount: imagesStepProps.selectedImages.length,
+      panelCount: imagesStepProps.panelCount
+    }
+  });
+  
   return (
     <Grid container spacing={isMobile ? 2 : 3} sx={{ width: '100%', margin: 0 }}>
       {/* Settings Section */}
