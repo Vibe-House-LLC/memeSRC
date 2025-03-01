@@ -20,7 +20,7 @@ const navConfig = [
         path: '/collage',
         externalLink: false,
         icon: <PhotoLibrary />,
-        chipText: 'Pro',
+        chipText: 'UPDATED',
         chipColor: 'info',
       },
       {

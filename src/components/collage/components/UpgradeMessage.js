@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { useTheme } from "@mui/material/styles";
 import { 
   Box, 
@@ -36,6 +36,19 @@ const UpgradeMessage = ({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isSmall = useMediaQuery(theme.breakpoints.down('md'));
+  
+  // Add ref for the PRO EARLY ACCESS card
+  const proCardRef = useRef(null);
+  
+  // Function to scroll to the PRO EARLY ACCESS card
+  const scrollToProCard = () => {
+    if (proCardRef.current) {
+      proCardRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center'
+      });
+    }
+  };
   
   // Approximate height of the app's top navigation bar
   const appBarHeight = 64; // in pixels
@@ -126,6 +139,7 @@ const UpgradeMessage = ({
                     transform: 'perspective(1000px) rotateX(5deg) scale(0.9)',
                     transformOrigin: 'center top',
                     position: 'relative',
+                    cursor: 'pointer',
                     '&::after': {
                       content: '""',
                       position: 'absolute',
@@ -138,6 +152,7 @@ const UpgradeMessage = ({
                       zIndex: 1
                     }
                   }}
+                  onClick={scrollToProCard}
                 >
                   <img 
                     src={previewImage} 
@@ -161,6 +176,7 @@ const UpgradeMessage = ({
             order: { xs: 2, sm: isSmall ? 2 : 1 }
           }}>
             <Paper 
+              ref={proCardRef}
               elevation={3} 
               sx={{ 
                 p: isMobile ? 3 : 4, 
@@ -202,7 +218,13 @@ const UpgradeMessage = ({
                 </Box>
                 
                 <Box>
-                  <Typography variant="h5" fontWeight="600" color="primary" gutterBottom>
+                  <Typography 
+                    id="pro-upgrade-section" 
+                    variant="h5" 
+                    fontWeight="600" 
+                    color="primary" 
+                    gutterBottom
+                  >
                     PRO EARLY ACCESS
                   </Typography>
                   
@@ -299,6 +321,7 @@ const UpgradeMessage = ({
                 transform: 'perspective(1200px) rotateX(5deg) rotateY(-2deg) scale(0.9)',
                 transformOrigin: 'center center',
                 transition: 'transform 0.3s ease',
+                cursor: 'pointer',
                 '&:hover': {
                   transform: 'perspective(1200px) rotateX(2deg) rotateY(-1deg) scale(0.92)',
                 },
@@ -315,6 +338,7 @@ const UpgradeMessage = ({
                   zIndex: 1
                 }
               }}
+              onClick={scrollToProCard}
             >
               <img 
                 src={previewImage} 
@@ -365,4 +389,4 @@ const UpgradeMessage = ({
   );
 };
 
-export default UpgradeMessage; 
+export default UpgradeMessage;
