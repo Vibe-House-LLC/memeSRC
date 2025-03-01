@@ -32,6 +32,7 @@ import { aspectRatioPresets, layoutTemplates, getLayoutsForPanelCount } from "..
 // Import components from steps
 import CollageImagesStep from "../components/collage/steps/CollageImagesStep";
 import CollageSettingsStep from "../components/collage/steps/CollageSettingsStep";
+import UpgradeMessage from "../components/collage/components/UpgradeMessage";
 
 // Import new utilities for collage generation
 import { 
@@ -703,91 +704,20 @@ export default function CollagePage() {
     );
   };
 
-  // Render subscription page with a cleaner design
-  const renderSubscriptionPage = () => {
-    return (
-      <Box component="main" sx={{ 
-        flexGrow: 1,
-        pb: isMobile ? 6 : 8,
-        width: '100%',
-        overflowX: 'hidden' // Prevent horizontal scrolling
-      }}>
-        <Container maxWidth="lg" sx={{
-          pt: isMobile ? 3 : 4,
-          width: '100%'
-        }}>
-          <Typography variant="h4" gutterBottom sx={{ 
-            display: 'flex', 
-            alignItems: 'center',
-            fontWeight: '500', 
-            mb: isMobile ? 1.5 : 2,
-            pl: isMobile ? 1 : 0,
-            justifyContent: 'center'
-          }}>
-            <Dashboard sx={{ mr: 1.5, color: 'text.primary' }} /> Collage Tool
-          </Typography>
-          
-          <Grid container height="100%" justifyContent="center" alignItems="center" mt={isMobile ? 2 : 3}>
-            <Grid item xs={12} sm={10} md={8} lg={5}>
-              <Paper 
-                elevation={1} 
-                sx={{ 
-                  p: isMobile ? 3 : 4, 
-                  borderRadius: 2, 
-                  textAlign: 'center',
-                  background: theme.palette.mode === 'dark' 
-                    ? 'linear-gradient(145deg, rgba(30,30,35,1) 0%, rgba(20,20,25,1) 100%)' 
-                    : 'linear-gradient(145deg, #ffffff 0%, #f5f5f5 100%)'
-                }}
-              >
-                <Stack spacing={isMobile ? 2 : 3} justifyContent="center">
-                  <img
-                    src="/assets/memeSRC-white.svg"
-                    alt="memeSRC logo"
-                    style={{ height: 48, margin: '0 auto' }}
-                  />
-                  <Typography variant="h6" textAlign="center" fontWeight="500">
-                    Pro Feature
-                  </Typography>
-                  <Typography 
-                    variant="body1" 
-                    textAlign="center" 
-                    color="text.secondary"
-                    sx={{ maxWidth: '400px', mx: 'auto' }}
-                  >
-                    The Collage Tool is available exclusively for memeSRC Pro subscribers.
-                  </Typography>
-                  <Button
-                    onClick={openSubscriptionDialog}
-                    variant="contained"
-                    size="large"
-                    sx={{ 
-                      mt: 2, 
-                      fontSize: 16, 
-                      maxWidth: 200, 
-                      mx: 'auto',
-                      py: 1.2,
-                      borderRadius: 2
-                    }}
-                  >
-                    Upgrade to Pro
-                  </Button>
-                </Stack>
-              </Paper>
-            </Grid>
-          </Grid>
-        </Container>
-      </Box>
-    );
-  };
-
   return (
     <>
       <Helmet>
         <title>Collage Tool - Editor - memeSRC</title>
       </Helmet>
 
-      {!authorized ? renderSubscriptionPage() : renderSinglePageCollageCreator()}
+      {!authorized ? (
+        <UpgradeMessage 
+          openSubscriptionDialog={openSubscriptionDialog} 
+          previewImage="/assets/images/products/collage-tool.png"
+        />
+      ) : (
+        renderSinglePageCollageCreator()
+      )}
     </>
   );
 }
