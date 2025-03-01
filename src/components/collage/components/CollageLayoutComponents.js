@@ -133,7 +133,7 @@ export const CollageResult = ({ finalImage, setFinalImage, isMobile, isMediumScr
         }} 
       />
       
-      {/* Button container - Simplified */}
+      {/* Button container - Only "Create New" option */}
       <Box sx={{ 
         display: 'flex', 
         justifyContent: 'center',
@@ -142,14 +142,6 @@ export const CollageResult = ({ finalImage, setFinalImage, isMobile, isMediumScr
         borderTop: '1px solid rgba(255, 255, 255, 0.15)',
         backgroundColor: 'rgba(0, 0, 0, 0.8)'
       }}>
-        <Button 
-          variant="contained" 
-          color="primary"
-          startIcon={<Box component="span" sx={{ fontSize: 18 }}>📥</Box>}
-          disabled={isLoading}
-        >
-          Download Collage
-        </Button>
         <Button 
           variant="outlined" 
           color="primary" 

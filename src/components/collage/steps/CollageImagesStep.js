@@ -406,7 +406,8 @@ const CollageImagesStep = ({
           textAlign: 'center',
           display: 'flex',
           flexDirection: 'column',
-          alignItems: 'center'
+          alignItems: 'center',
+          position: 'relative'
         }}
       >
         {!isMobile && (
@@ -450,77 +451,7 @@ const CollageImagesStep = ({
             </Typography>
           </Box>
         )}
-        
-        {/* Display information about clicked panel if any */}
-        {selectedPanel && (
-          <Box sx={{ mt: 1.5, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <Typography variant="body2" color="primary">
-              Panel #{selectedPanel.id + 1}
-              {panelToImageMap[selectedPanel.id] !== undefined && 
-                ` - Image ${panelToImageMap[selectedPanel.id] + 1} assigned`}
-            </Typography>
-            
-            {panelToImageMap[selectedPanel.id] !== undefined && (
-              <Button 
-                variant="text" 
-                color="error" 
-                size="small"
-                onClick={() => clearPanelImage(selectedPanel.id)}
-                sx={{ mt: 0.5 }}
-              >
-                Remove Image
-              </Button>
-            )}
-          </Box>
-        )}
       </Paper>
-      
-      {/* Panel-to-Image Mapping Summary */}
-      {Object.keys(panelToImageMap).length > 0 && (
-        <Paper
-          elevation={1}
-          sx={{
-            p: isMobile ? 1.5 : 2,
-            mb: isMobile ? 1 : 2,
-            backgroundColor: theme.palette.background.paper,
-            borderRadius: 2
-          }}
-        >
-          {!isMobile && (
-            <Typography variant="subtitle2" color="text.secondary" gutterBottom sx={{ mb: 1 }}>
-              Image Assignments
-            </Typography>
-          )}
-          
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
-            {Object.entries(panelToImageMap).map(([panelId, imageIndex]) => (
-              <Box 
-                key={panelId}
-                sx={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  p: isMobile ? 0.75 : 1,
-                  borderRadius: 1,
-                  bgcolor: theme.palette.action.hover
-                }}
-              >
-                <Typography variant="body2">
-                  Panel {parseInt(panelId, 10) + 1} ➔ Image {imageIndex + 1}
-                </Typography>
-                <Button 
-                  variant="text" 
-                  color="error" 
-                  size="small"
-                  onClick={() => clearPanelImage(parseInt(panelId, 10))}
-                >
-                  {isMobile ? "✕" : "Remove"}
-                </Button>
-              </Box>
-            ))}
-          </Box>
-        </Paper>
-      )}
       
       {/* Hidden canvas fallback for browsers without OffscreenCanvas support */}
       <canvas ref={canvasRef} style={{ display: "none" }} />
