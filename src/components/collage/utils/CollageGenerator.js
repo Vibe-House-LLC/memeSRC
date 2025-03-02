@@ -23,6 +23,7 @@ export const generateCollage = async ({
   selectedImages,
   panelImageMapping,
   borderThickness,
+  borderColor = '#FFFFFF', // Default to white if not provided
   borderThicknessOptions,
   theme
 }) => {
@@ -61,6 +62,7 @@ export const generateCollage = async ({
       selectedImages, 
       cleanMapping,
       borderThicknessValue,
+      borderColor,
       theme
     });
     
@@ -125,6 +127,7 @@ const drawImagesToCanvas = async ({
   selectedImages,
   cleanMapping,
   borderThicknessValue,
+  borderColor = '#FFFFFF', // Default to white if not provided
   theme
 }) => {
   if (selectedImages.length === 0) return;
@@ -189,7 +192,7 @@ const drawImagesToCanvas = async ({
           
           // Draw panel border if needed
           if (borderThicknessValue > 0) {
-            ctx.strokeStyle = 'white';
+            ctx.strokeStyle = borderColor;
             ctx.lineWidth = borderThicknessValue;
             ctx.strokeRect(panel.x, panel.y, panel.width, panel.height);
           }
@@ -218,7 +221,7 @@ const drawImagesToCanvas = async ({
       
       // Draw panel border if needed
       if (borderThicknessValue > 0) {
-        ctx.strokeStyle = 'white';
+        ctx.strokeStyle = borderColor;
         ctx.lineWidth = borderThicknessValue;
         ctx.strokeRect(panel.x, panel.y, panel.width, panel.height);
       }

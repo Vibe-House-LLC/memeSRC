@@ -16,6 +16,7 @@ export const useCollageState = () => {
   const [finalImage, setFinalImage] = useState(null);
   const [isCreatingCollage, setIsCreatingCollage] = useState(false);
   const [borderThickness, setBorderThickness] = useState('medium'); // Default border thickness
+  const [borderColor, setBorderColor] = useState('#FFFFFF'); // Default white border color
 
   // Initialize template on mount
   useEffect(() => {
@@ -185,6 +186,8 @@ export const useCollageState = () => {
     setIsCreatingCollage,
     borderThickness,
     setBorderThickness,
+    borderColor,
+    setBorderColor,
     
     // Operations
     addImage,

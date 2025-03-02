@@ -9,7 +9,8 @@ import {
   Alert,
   Chip,
   IconButton,
-  useMediaQuery
+  useMediaQuery,
+  Tooltip
 } from "@mui/material";
 import {
   KeyboardArrowLeft,
@@ -23,7 +24,8 @@ import {
   Remove,
   Settings,
   Tag,
-  LinearScale
+  BorderAll,
+  Palette
 } from "@mui/icons-material";
 
 // Import styled components
@@ -31,6 +33,16 @@ import { TemplateCard } from "../styled/CollageStyled";
 
 // Import layout configuration
 import { aspectRatioPresets, layoutTemplates, getLayoutsForPanelCount } from "../config/CollageConfig";
+
+// Color presets for border colors
+const COLOR_PRESETS = [
+  { color: '#FFFFFF', name: 'White' },
+  { color: '#000000', name: 'Black' },
+  { color: '#FF0000', name: 'Red' },
+  { color: '#0000FF', name: 'Blue' },
+  { color: '#FFFF00', name: 'Yellow' },
+  { color: '#00FF00', name: 'Green' }
+];
 
 // Create a new styled component for aspect ratio cards
 const AspectRatioCard = styled(Paper)(({ theme, selected }) => ({
@@ -240,6 +252,57 @@ const getFriendlyAspectRatio = (value) => {
   return `1:${Math.round(1/value)}`;
 };
 
+// Create a color swatch component for border color selection
+const ColorSwatch = styled(Box)(({ theme, selected }) => ({
+  width: 40,
+  height: 40,
+  borderRadius: '50%',
+  cursor: 'pointer',
+  boxSizing: 'border-box',
+  border: selected ? `3px solid ${theme.palette.primary.main}` : '2px solid #ffffff',
+  boxShadow: selected 
+    ? `0 0 0 2px ${theme.palette.primary.main}` 
+    : '0 0 0 1px rgba(0,0,0,0.1)',
+  transition: theme.transitions.create(
+    ['transform', 'box-shadow'],
+    { duration: theme.transitions.duration.shorter }
+  ),
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  flexShrink: 0,
+  '&:hover': {
+    transform: 'scale(1.15)',
+    boxShadow: '0 4px 10px rgba(0,0,0,0.15)'
+  },
+  '&:active': {
+    transform: 'scale(0.95)',
+  }
+}));
+
+// Custom color picker input - hidden but accessible
+const ColorPickerInput = styled('input')(({ theme }) => ({
+  opacity: 0,
+  position: 'absolute',
+  pointerEvents: 'none',
+  height: 0,
+  width: 0,
+}));
+
+// Helper function to determine if a color is dark (for contrast)
+const isDarkColor = (hexColor) => {
+  // Convert hex to RGB
+  const r = parseInt(hexColor.substr(1, 2), 16);
+  const g = parseInt(hexColor.substr(3, 2), 16);
+  const b = parseInt(hexColor.substr(5, 2), 16);
+  
+  // Calculate brightness (YIQ formula)
+  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+  
+  // Return true if color is dark
+  return brightness < 128;
+};
+
 // Renamed component to CollageLayoutSettings
 const CollageLayoutSettings = ({ 
   selectedImages, 
@@ -254,6 +317,8 @@ const CollageLayoutSettings = ({
   layoutTemplates,
   borderThickness,
   setBorderThickness,
+  borderColor,
+  setBorderColor,
   borderThicknessOptions
 }) => {
   // State for scroll indicators
@@ -263,11 +328,15 @@ const CollageLayoutSettings = ({
   const [layoutRightScroll, setLayoutRightScroll] = useState(false);
   const [borderLeftScroll, setBorderLeftScroll] = useState(false);
   const [borderRightScroll, setBorderRightScroll] = useState(false);
+  const [colorLeftScroll, setColorLeftScroll] = useState(false);
+  const [colorRightScroll, setColorRightScroll] = useState(false);
   
   // Refs for scrollable containers
   const aspectRatioRef = useRef(null);
   const layoutsRef = useRef(null);
   const borderThicknessRef = useRef(null);
+  const borderColorRef = useRef(null);
+  const colorPickerRef = useRef(null);
   
   // Theme and responsive helpers
   const theme = useTheme();
@@ -372,6 +441,8 @@ const CollageLayoutSettings = ({
           handleLayoutScroll();
         } else if (ref === borderThicknessRef) {
           handleBorderScroll();
+        } else if (ref === borderColorRef) {
+          handleColorScroll();
         }
       }, 350); // Slightly longer timeout to ensure scroll completes
     }
@@ -391,6 +462,8 @@ const CollageLayoutSettings = ({
           handleLayoutScroll();
         } else if (ref === borderThicknessRef) {
           handleBorderScroll();
+        } else if (ref === borderColorRef) {
+          handleColorScroll();
         }
       }, 350); // Slightly longer timeout to ensure scroll completes
     }
@@ -422,24 +495,37 @@ const CollageLayoutSettings = ({
     checkScrollPosition(borderThicknessRef, setBorderLeftScroll, setBorderRightScroll);
   };
   
+  // Handle scrolling for color options
+  const handleColorScroll = () => {
+    checkScrollPosition(borderColorRef, setColorLeftScroll, setColorRightScroll);
+  };
+  
+  // Handle custom color selection
+  const handleCustomColorChange = (e) => {
+    setBorderColor(e.target.value);
+  };
+  
   // Check scroll positions on initial render and window resize
   useEffect(() => {
     // Initial check of scroll positions
     handleAspectScroll();
     handleLayoutScroll();
     handleBorderScroll();
+    handleColorScroll();
     
     // Add resize listener to update scroll indicators
     const handleResize = () => {
       handleAspectScroll();
       handleLayoutScroll();
       handleBorderScroll();
+      handleColorScroll();
     };
     
     // Add scroll event listeners to both containers
     const aspectRatioElement = aspectRatioRef.current;
     const layoutsElement = layoutsRef.current;
     const borderThicknessElement = borderThicknessRef.current;
+    const borderColorElement = borderColorRef.current;
     
     if (aspectRatioElement) {
       aspectRatioElement.addEventListener('scroll', handleAspectScroll);
@@ -451,6 +537,10 @@ const CollageLayoutSettings = ({
     
     if (borderThicknessElement) {
       borderThicknessElement.addEventListener('scroll', handleBorderScroll);
+    }
+    
+    if (borderColorElement) {
+      borderColorElement.addEventListener('scroll', handleColorScroll);
     }
     
     window.addEventListener('resize', handleResize);
@@ -467,6 +557,10 @@ const CollageLayoutSettings = ({
       
       if (borderThicknessElement) {
         borderThicknessElement.removeEventListener('scroll', handleBorderScroll);
+      }
+      
+      if (borderColorElement) {
+        borderColorElement.removeEventListener('scroll', handleColorScroll);
       }
       
       window.removeEventListener('resize', handleResize);
@@ -502,6 +596,16 @@ const CollageLayoutSettings = ({
       handleBorderScroll();
     }, 100);
   }, [borderThickness, borderThicknessOptions]);
+  
+  // Update border color scroll indicators
+  useEffect(() => {
+    handleColorScroll();
+    
+    // Small delay to ensure layout has updated
+    setTimeout(() => {
+      handleColorScroll();
+    }, 100);
+  }, [borderColor]);
   
   // Render aspect ratio preview
   const renderAspectRatioPreview = (preset) => {
@@ -946,9 +1050,9 @@ const CollageLayoutSettings = ({
       {/* Border Thickness UI with Horizontal Scroller - Moved below Choose Layout */}
       <Box sx={{ mb: isMobile ? 1 : 2, position: 'relative' }}>
         <StepSectionHeading>
-          <LinearScale sx={{ mr: 1.5, color: '#fff', fontSize: '1.3rem' }} />
+          <BorderAll sx={{ mr: 1.5, color: '#fff', fontSize: '1.3rem' }} />
           <Typography variant="h5" fontWeight={600} sx={{ color: '#fff' }}>
-            Borders
+            Border Width
           </Typography>
         </StepSectionHeading>
 
@@ -1044,6 +1148,146 @@ const CollageLayoutSettings = ({
           <ScrollIndicator 
             direction="right" 
             isVisible={borderRightScroll}
+          />
+        </Box>
+      </Box>
+      
+      {/* Border Color UI with Horizontal Scroller */}
+      <Box sx={{ mb: isMobile ? 0 : 1, position: 'relative', mt: 2 }}>
+        <StepSectionHeading>
+          <Palette sx={{ mr: 1.5, color: '#fff', fontSize: '1.3rem' }} />
+          <Typography variant="h5" fontWeight={600} sx={{ color: '#fff' }}>
+            Border Color
+          </Typography>
+        </StepSectionHeading>
+
+        <Box sx={{ 
+          position: 'relative', 
+          width: '100%',
+          // Consistent padding for container
+          mt: 1,
+          pt: 0.5, 
+          pb: 0.5,
+          // Consistent styling across devices
+          [theme.breakpoints.up('sm')]: {
+            width: '100%', // Full width container
+            mt: 1, // Consistent margin
+            pt: 0.5,
+            pb: 0.5
+          }
+        }}>
+          <ScrollButton 
+            direction="left" 
+            onClick={() => scrollLeft(borderColorRef)} 
+            size="small"
+            aria-label="Scroll left"
+            sx={{ 
+              display: 'flex',
+              visibility: colorLeftScroll ? 'visible' : 'hidden',
+              opacity: colorLeftScroll ? 1 : 0,
+              top: '50%',
+              transform: 'translateY(-50%)',
+            }}
+          >
+            <ChevronLeft fontSize="small" />
+          </ScrollButton>
+          
+          <ScrollButton 
+            direction="right" 
+            onClick={() => scrollRight(borderColorRef)} 
+            size="small"
+            aria-label="Scroll right"
+            sx={{ 
+              display: 'flex',
+              visibility: colorRightScroll ? 'visible' : 'hidden',
+              opacity: colorRightScroll ? 1 : 0,
+              top: '50%',
+              transform: 'translateY(-50%)',
+            }}
+          >
+            <ChevronRight fontSize="small" />
+          </ScrollButton>
+
+          {/* Use same HorizontalScroller for border colors as other sections */}
+          <HorizontalScroller 
+            ref={borderColorRef}
+            onScroll={handleColorScroll}
+            sx={{ 
+              pt: 0, 
+              mt: 0, 
+              pb: 0.5, 
+              pr: 2 // Add right padding to the scroller
+            }}
+          >
+            {/* Preset colors */}
+            {COLOR_PRESETS.map((colorOption) => (
+              <Tooltip key={colorOption.color} title={colorOption.name} arrow>
+                <ColorSwatch
+                  onClick={() => setBorderColor(colorOption.color)}
+                  selected={borderColor === colorOption.color}
+                  sx={{ backgroundColor: colorOption.color }}
+                />
+              </Tooltip>
+            ))}
+            
+            {/* Custom color picker - moved the separator inside to eliminate gap */}
+            <Tooltip title="Custom Color" arrow>
+              <Box sx={{ 
+                position: 'relative', 
+                display: 'flex', 
+                alignItems: 'center',
+                ml: 1.5, // Add margin to the left of the custom color picker
+                pl: 1.5, // Add padding to the left for the separator
+                borderLeft: theme => `1px solid ${alpha(theme.palette.divider, 0.5)}`, // Add separator as border
+                height: '60%' // Match the height of the color swatches
+              }}>
+                <ColorSwatch
+                  onClick={() => colorPickerRef.current && colorPickerRef.current.click()}
+                  selected={!COLOR_PRESETS.some(c => c.color === borderColor)}
+                  sx={{ 
+                    position: 'relative',
+                    backgroundColor: borderColor,
+                    backgroundImage: !COLOR_PRESETS.some(c => c.color === borderColor) ? 'none' : 
+                      'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)',
+                    backgroundSize: '8px 8px',
+                    backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px',
+                  }}
+                >
+                  {!COLOR_PRESETS.some(c => c.color === borderColor) && (
+                    <Palette fontSize="small" sx={{ color: isDarkColor(borderColor) ? '#fff' : '#000' }} />
+                  )}
+                </ColorSwatch>
+                <input
+                  type="color"
+                  value={borderColor}
+                  onChange={handleCustomColorChange}
+                  ref={colorPickerRef}
+                  style={{ 
+                    position: 'absolute',
+                    opacity: 0,
+                    width: '100%',
+                    height: '100%',
+                    cursor: 'pointer'
+                  }}
+                />
+              </Box>
+            </Tooltip>
+            
+            {/* Removed separate separator since it's now part of the custom color picker */}
+            
+            {/* Spacer to ensure last items can be centered when scrolled fully */}
+            <Box sx={{ minWidth: 4, flexShrink: 0 }} />
+          </HorizontalScroller>
+          
+          {/* Visual indicators for scrolling */}
+          <ScrollIndicator 
+            direction="left" 
+            isVisible={colorLeftScroll}
+          />
+          
+          <ScrollIndicator 
+            direction="right" 
+            isVisible={colorRightScroll}
           />
         </Box>
       </Box>

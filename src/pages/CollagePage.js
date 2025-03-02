@@ -72,6 +72,8 @@ export default function CollagePage() {
     setIsCreatingCollage,
     borderThickness,
     setBorderThickness,
+    borderColor,
+    setBorderColor,
     addImage,
     removeImage,
     updateImage,
@@ -147,6 +149,7 @@ export default function CollagePage() {
         selectedImages,
         panelImageMapping,
         borderThickness,
+        borderColor,
         borderThicknessOptions,
         theme
       });
@@ -173,6 +176,8 @@ export default function CollagePage() {
     layoutTemplates,
     borderThickness,
     setBorderThickness,
+    borderColor,
+    setBorderColor,
     borderThicknessOptions
   };
   
@@ -189,6 +194,7 @@ export default function CollagePage() {
     selectedTemplate,
     selectedAspectRatio,
     borderThickness,
+    borderColor,
     borderThicknessOptions,
     handleNext: handleCreateCollage
   };
