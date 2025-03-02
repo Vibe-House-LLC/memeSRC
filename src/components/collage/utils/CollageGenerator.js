@@ -23,7 +23,7 @@ const getBorderThicknessValue = (borderThickness, borderThicknessOptions, panelC
     rawThickness = borderThickness;
   }
   // If it's a string that can be parsed as a number, return the parsed value
-  else if (typeof borderThickness === 'string' && !isNaN(parseFloat(borderThickness))) {
+  else if (typeof borderThickness === 'string' && !Number.isNaN(parseFloat(borderThickness))) {
     rawThickness = parseFloat(borderThickness);
     console.log(`[DEBUG] borderThickness parsed from string: ${rawThickness}`);
   }
@@ -215,7 +215,7 @@ const renderCollage = async ({
       setPanelRegions,
       setRenderedImage,
       borderThickness: adjustedBorderThickness,
-      borderColor: borderColor // Pass border color to rendering function
+      borderColor
     });
   });
   
