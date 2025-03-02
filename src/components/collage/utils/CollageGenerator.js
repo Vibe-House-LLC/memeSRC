@@ -6,6 +6,65 @@ import { sanitizePanelImageMapping, createPanelToImageUrlMapping } from './Panel
  */
 
 /**
+ * Draw an upload icon in the center of an empty panel
+ * @param {CanvasRenderingContext2D} ctx - Canvas context
+ * @param {Object} panel - Panel region
+ * @param {string} color - Color of the icon (used only for the plus sign)
+ */
+const drawUploadIcon = (ctx, panel, color = '#FFFFFF') => {
+  const { x, y, width, height } = panel;
+  const centerX = x + width / 2;
+  const centerY = y + height / 2;
+  
+  // Save the current state
+  ctx.save();
+  
+  // Size the icon proportionally to the panel, but cap the maximum size
+  // to 10% of the largest panel dimension (reduced from 12%)
+  const maxSize = Math.max(width, height) * 0.10;
+  const calculatedSize = Math.min(width, height) * 0.18; // Also reduced from 0.20
+  const iconSize = Math.min(calculatedSize, maxSize);
+  
+  // Draw a solid blue circle
+  ctx.fillStyle = '#3b82f6'; // Bright blue color
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, iconSize, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Add white border around the circle
+  ctx.strokeStyle = '#FFFFFF';
+  ctx.lineWidth = Math.max(2, iconSize * 0.08); // Proportional white border
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, iconSize, 0, Math.PI * 2);
+  ctx.stroke();
+  
+  // Set style for the plus sign
+  ctx.strokeStyle = '#FFFFFF'; // Always white plus sign for good contrast
+  
+  // Draw a heavy plus sign (smaller than before)
+  const plusSize = iconSize * 0.45; // Smaller plus (was 0.6)
+  const lineWidth = Math.max(2, iconSize * 0.12); // Thicker line for better visibility
+  
+  ctx.lineWidth = lineWidth;
+  ctx.lineCap = 'round'; // Rounded ends for better appearance
+  
+  // Horizontal line of plus
+  ctx.beginPath();
+  ctx.moveTo(centerX - plusSize, centerY);
+  ctx.lineTo(centerX + plusSize, centerY);
+  ctx.stroke();
+  
+  // Vertical line of plus
+  ctx.beginPath();
+  ctx.moveTo(centerX, centerY - plusSize);
+  ctx.lineTo(centerX, centerY + plusSize);
+  ctx.stroke();
+  
+  // Restore the canvas state
+  ctx.restore();
+};
+
+/**
  * Get the border thickness value, adjusted for panel count
  * @param {string|number} borderThickness - The border thickness label or value
  * @param {Array} borderThicknessOptions - Options for border thickness
@@ -267,6 +326,16 @@ const drawImagesToCanvas = async ({
     // Draw grey placeholder for all panels
     ctx.fillStyle = '#808080';
     ctx.fillRect(panel.x, panel.y, panel.width, panel.height);
+    
+    // Check if this panel has an image assigned in the mapping
+    const hasImage = panelToImageUrl[panel.id] !== undefined;
+    
+    // Draw upload icon if panel is empty
+    if (!hasImage) {
+      // Use either white or dark gray based on theme to ensure visibility
+      const iconColor = theme.palette.mode === 'dark' ? '#FFFFFF' : '#555555';
+      drawUploadIcon(ctx, panel, iconColor);
+    }
   });
   
   // We'll skip the initial border pass and only draw borders once at the end

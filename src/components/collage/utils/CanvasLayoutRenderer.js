@@ -478,6 +478,65 @@ const createLayoutConfigFromId = (templateId, count) => {
 };
 
 /**
+ * Draw an upload icon in the center of an empty panel
+ * @param {CanvasRenderingContext2D} ctx - Canvas context
+ * @param {Object} panel - Panel region
+ * @param {string} color - Color of the icon (used only for the plus sign)
+ */
+const drawUploadIcon = (ctx, panel, color = '#FFFFFF') => {
+  const { x, y, width, height } = panel;
+  const centerX = x + width / 2;
+  const centerY = y + height / 2;
+  
+  // Save the current state
+  ctx.save();
+  
+  // Size the icon proportionally to the panel, but cap the maximum size
+  // to 10% of the largest panel dimension (reduced from 12%)
+  const maxSize = Math.max(width, height) * 0.10;
+  const calculatedSize = Math.min(width, height) * 0.18; // Also reduced from 0.20
+  const iconSize = Math.min(calculatedSize, maxSize);
+  
+  // Draw a solid blue circle
+  ctx.fillStyle = '#3b82f6'; // Bright blue color
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, iconSize, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Add white border around the circle
+  ctx.strokeStyle = '#FFFFFF';
+  ctx.lineWidth = Math.max(2, iconSize * 0.08); // Proportional white border
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, iconSize, 0, Math.PI * 2);
+  ctx.stroke();
+  
+  // Set style for the plus sign
+  ctx.strokeStyle = '#FFFFFF'; // Always white plus sign for good contrast
+  
+  // Draw a heavy plus sign (smaller than before)
+  const plusSize = iconSize * 0.45; // Smaller plus (was 0.6)
+  const lineWidth = Math.max(2, iconSize * 0.12); // Thicker line for better visibility
+  
+  ctx.lineWidth = lineWidth;
+  ctx.lineCap = 'round'; // Rounded ends for better appearance
+  
+  // Horizontal line of plus
+  ctx.beginPath();
+  ctx.moveTo(centerX - plusSize, centerY);
+  ctx.lineTo(centerX + plusSize, centerY);
+  ctx.stroke();
+  
+  // Vertical line of plus
+  ctx.beginPath();
+  ctx.moveTo(centerX, centerY - plusSize);
+  ctx.lineTo(centerX, centerY + plusSize);
+  ctx.stroke();
+  
+  // Restore the canvas state
+  ctx.restore();
+};
+
+/**
  * Render the template to a canvas (either offscreen or regular)
  * @param {Object} params - The parameters
  * @param {Object} params.selectedTemplate - The selected template
@@ -615,14 +674,28 @@ export const renderTemplateToCanvas = ({
         ctx.fillRect(x, y, width, height);
         
         // Store panel region
-        newPanelRegions.push({
+        const panel = {
           id: panelIndex,
           name: `panel-${panelIndex}`,
           x,
           y,
           width,
           height
-        });
+        };
+        
+        newPanelRegions.push(panel);
+        
+        // Check if this panel has an image assigned
+        const hasImage = panelImageMapping && 
+                         Object.prototype.hasOwnProperty.call(panelImageMapping, panelIndex) && 
+                         typeof panelImageMapping[panelIndex] === 'number';
+        
+        // Draw upload icon if panel is empty
+        if (!hasImage) {
+          // Use either white or dark gray based on theme to ensure visibility
+          const iconColor = theme.palette.mode === 'dark' ? '#FFFFFF' : '#555555';
+          drawUploadIcon(ctx, panel, iconColor);
+        }
         
         panelIndex += 1;
       }
