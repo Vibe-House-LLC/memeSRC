@@ -229,7 +229,7 @@ const ScrollIndicator = styled(Box, {
 const StepSectionHeading = styled(Box)(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
-  marginBottom: theme.spacing(1.25),
+  marginBottom: theme.spacing(0.75),
   paddingLeft: theme.spacing(0.5),
   paddingRight: theme.spacing(0.5),
 }));
@@ -257,8 +257,8 @@ const getFriendlyAspectRatio = (value) => {
 
 // Create a color swatch component for border color selection
 const ColorSwatch = styled(Box)(({ theme, selected }) => ({
-  width: 40,
-  height: 40,
+  width: 36,
+  height: 36,
   borderRadius: '50%',
   cursor: 'pointer',
   boxSizing: 'border-box',
@@ -1075,252 +1075,227 @@ const CollageLayoutSettings = ({
       </Box>
       
       {/* Border Thickness UI with Horizontal Scroller - Moved below Choose Layout */}
-      <Box sx={{ mb: isMobile ? 1 : 2, position: 'relative' }}>
-        <StepSectionHeading>
-          <BorderAll sx={{ mr: 1.5, color: '#fff', fontSize: '1.3rem' }} />
+      <Box sx={{ mb: isMobile ? 0.25 : 0.5, position: 'relative' }}>
+        <StepSectionHeading sx={{ mb: 0.5 }}>
+          <BorderAll sx={{ mr: 1, color: '#fff', fontSize: '1.3rem' }} />
           <Typography variant="h5" fontWeight={600} sx={{ color: '#fff' }}>
-            Border Width
+            Borders
           </Typography>
         </StepSectionHeading>
 
         <Box sx={{ 
           position: 'relative', 
           width: '100%',
-          // Consistent padding for container
-          mt: 1,
-          pt: 0.5, 
-          pb: 0.5,
-          // Consistent styling across devices
+          mt: 0.5,
+          pt: 0, 
+          pb: 0,
           [theme.breakpoints.up('sm')]: {
-            width: '100%', // Full width container
-            mt: 1, // Consistent margin
-            pt: 0.5,
-            pb: 0.5
+            width: '100%',
+            mt: 0.5,
+            pt: 0,
+            pb: 0
           }
         }}>
-          <ScrollButton 
-            direction="left" 
-            onClick={() => scrollLeft(borderThicknessRef)} 
-            size="small"
-            aria-label="Scroll left"
-            sx={{ 
-              // Always display buttons for consistency, just disable them
-              display: 'flex',
-              visibility: borderLeftScroll ? 'visible' : 'hidden',
-              opacity: borderLeftScroll ? 1 : 0,
-              top: '50%', // Ensure perfect vertical centering
-              transform: 'translateY(-50%)',
-            }}
-          >
-            <ChevronLeft fontSize="small" />
-          </ScrollButton>
-          
-          <ScrollButton 
-            direction="right" 
-            onClick={() => scrollRight(borderThicknessRef)} 
-            size="small"
-            aria-label="Scroll right"
-            sx={{ 
-              // Always display buttons for consistency, just disable them
-              display: 'flex',
-              visibility: borderRightScroll ? 'visible' : 'hidden',
-              opacity: borderRightScroll ? 1 : 0,
-              top: '50%', // Ensure perfect vertical centering
-              transform: 'translateY(-50%)',
-            }}
-          >
-            <ChevronRight fontSize="small" />
-          </ScrollButton>
+          {/* Border Width Scroller */}
+          <Box sx={{ position: 'relative', mb: 0 }}>
+            <ScrollButton 
+              direction="left" 
+              onClick={() => scrollLeft(borderThicknessRef)} 
+              size="small"
+              aria-label="Scroll left"
+              sx={{ 
+                display: 'flex',
+                visibility: borderLeftScroll ? 'visible' : 'hidden',
+                opacity: borderLeftScroll ? 1 : 0,
+                top: '50%',
+                transform: 'translateY(-50%)',
+              }}
+            >
+              <ChevronLeft fontSize="small" />
+            </ScrollButton>
+            
+            <ScrollButton 
+              direction="right" 
+              onClick={() => scrollRight(borderThicknessRef)} 
+              size="small"
+              aria-label="Scroll right"
+              sx={{ 
+                display: 'flex',
+                visibility: borderRightScroll ? 'visible' : 'hidden',
+                opacity: borderRightScroll ? 1 : 0,
+                top: '50%',
+                transform: 'translateY(-50%)',
+              }}
+            >
+              <ChevronRight fontSize="small" />
+            </ScrollButton>
 
-          {/* Modified HorizontalScroller with reduced vertical space */}
-          <Box 
-            ref={borderThicknessRef}
-            onScroll={handleBorderScroll}
-            sx={{ 
-              display: 'flex',
-              overflowX: 'auto',
-              scrollbarWidth: 'none',
-              '&::-webkit-scrollbar': { display: 'none' },
-              gap: theme.spacing(1),
-              py: 0.75, // Further reduced vertical padding
-              mt: 0.5
-            }}
-          >
-            {borderThicknessOptions.map((option, index) => {
-              // Calculate the font weight based on the option
-              const fontWeight = option.label === "None" ? 400 : 400 + (index * 100);
-              
-              return (
-                <Chip
-                  key={option.label}
-                  label={option.label}
-                  clickable
-                  color={borderThickness === option.label.toLowerCase() ? 'primary' : 'default'}
-                  onClick={() => setBorderThickness(option.label.toLowerCase())}
-                  sx={{ 
-                    fontWeight: borderThickness === option.label.toLowerCase() ? 
-                      fontWeight + 100 : fontWeight 
-                  }}
-                />
-              );
-            })}
+            <Box 
+              ref={borderThicknessRef}
+              onScroll={handleBorderScroll}
+              sx={{ 
+                display: 'flex',
+                overflowX: 'auto',
+                scrollbarWidth: 'none',
+                '&::-webkit-scrollbar': { display: 'none' },
+                gap: theme.spacing(1),
+                py: 0.25,
+                mt: 0,
+                minHeight: 40
+              }}
+            >
+              {borderThicknessOptions.map((option, index) => {
+                const fontWeight = option.label === "None" ? 400 : 400 + (index * 100);
+                
+                return (
+                  <Chip
+                    key={option.label}
+                    label={option.label}
+                    clickable
+                    color={borderThickness === option.label.toLowerCase() ? 'primary' : 'default'}
+                    onClick={() => setBorderThickness(option.label.toLowerCase())}
+                    sx={{ 
+                      fontWeight: borderThickness === option.label.toLowerCase() ? 
+                        fontWeight + 100 : fontWeight 
+                    }}
+                  />
+                );
+              })}
+            </Box>
+            
+            <ScrollIndicator 
+              direction="left" 
+              isVisible={borderLeftScroll}
+            />
+            
+            <ScrollIndicator 
+              direction="right" 
+              isVisible={borderRightScroll}
+            />
           </Box>
-          
-          {/* Visual indicators for scrolling */}
-          <ScrollIndicator 
-            direction="left" 
-            isVisible={borderLeftScroll}
-          />
-          
-          <ScrollIndicator 
-            direction="right" 
-            isVisible={borderRightScroll}
-          />
-        </Box>
-      </Box>
-      
-      {/* Border Color UI with Horizontal Scroller */}
-      <Box sx={{ mb: isMobile ? 0 : 1, position: 'relative', mt: 2 }}>
-        <StepSectionHeading>
-          <Palette sx={{ mr: 1.5, color: '#fff', fontSize: '1.3rem' }} />
-          <Typography variant="h5" fontWeight={600} sx={{ color: '#fff' }}>
-            Border Color
-          </Typography>
-        </StepSectionHeading>
 
-        <Box sx={{ 
-          position: 'relative', 
-          width: '100%',
-          // Consistent padding for container
-          mt: 1,
-          pt: 0.5, 
-          pb: 0.5,
-          // Consistent styling across devices
-          [theme.breakpoints.up('sm')]: {
-            width: '100%', // Full width container
-            mt: 1, // Consistent margin
-            pt: 0.5,
-            pb: 0.5
-          }
-        }}>
-          <ScrollButton 
-            direction="left" 
-            onClick={() => scrollLeft(borderColorRef)} 
-            size="small"
-            aria-label="Scroll left"
-            sx={{ 
-              display: 'flex',
-              visibility: colorLeftScroll ? 'visible' : 'hidden',
-              opacity: colorLeftScroll ? 1 : 0,
-              top: '50%',
-              transform: 'translateY(-50%)',
-            }}
-          >
-            <ChevronLeft fontSize="small" />
-          </ScrollButton>
-          
-          <ScrollButton 
-            direction="right" 
-            onClick={() => scrollRight(borderColorRef)} 
-            size="small"
-            aria-label="Scroll right"
-            sx={{ 
-              display: 'flex',
-              visibility: colorRightScroll ? 'visible' : 'hidden',
-              opacity: colorRightScroll ? 1 : 0,
-              top: '50%',
-              transform: 'translateY(-50%)',
-            }}
-          >
-            <ChevronRight fontSize="small" />
-          </ScrollButton>
+          {/* Border Color Scroller */}
+          <Box sx={{ position: 'relative' }}>
+            <ScrollButton 
+              direction="left" 
+              onClick={() => scrollLeft(borderColorRef)} 
+              size="small"
+              aria-label="Scroll left"
+              sx={{ 
+                display: 'flex',
+                visibility: colorLeftScroll ? 'visible' : 'hidden',
+                opacity: colorLeftScroll ? 1 : 0,
+                top: '50%',
+                transform: 'translateY(-50%)',
+              }}
+            >
+              <ChevronLeft fontSize="small" />
+            </ScrollButton>
+            
+            <ScrollButton 
+              direction="right" 
+              onClick={() => scrollRight(borderColorRef)} 
+              size="small"
+              aria-label="Scroll right"
+              sx={{ 
+                display: 'flex',
+                visibility: colorRightScroll ? 'visible' : 'hidden',
+                opacity: colorRightScroll ? 1 : 0,
+                top: '50%',
+                transform: 'translateY(-50%)',
+              }}
+            >
+              <ChevronRight fontSize="small" />
+            </ScrollButton>
 
-          {/* Use same HorizontalScroller for border colors as other sections */}
-          <HorizontalScroller 
-            ref={borderColorRef}
-            onScroll={handleColorScroll}
-            sx={{ 
-              pt: 0, 
-              mt: 0, 
-              pb: 0.5, 
-              pr: 2 // Add right padding to the scroller
-            }}
-          >
-            {/* Custom color picker - as first option, always using saved custom color */}
-            <Tooltip title="Pick Custom Color" arrow>
-              <Box sx={{ 
-                position: 'relative', 
-                display: 'flex', 
-                alignItems: 'center',
-                height: '60%' // Match the height of the color swatches
-              }}>
-                <ColorSwatch
-                  onClick={() => colorPickerRef.current && colorPickerRef.current.click()}
-                  selected={false} // Never show this as selected
-                  sx={{ 
-                    position: 'relative',
-                    // Always use the saved custom color from localStorage as background
-                    backgroundColor: savedCustomColor,
-                    // Add subtle checkerboard pattern for the color picker
-                    backgroundImage: 'linear-gradient(45deg, rgba(200,200,200,0.2) 25%, transparent 25%), linear-gradient(-45deg, rgba(200,200,200,0.2) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(200,200,200,0.2) 75%), linear-gradient(-45deg, transparent 75%, rgba(200,200,200,0.2) 75%)',
-                    backgroundSize: '8px 8px',
-                    backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px',
-                  }}
-                >
-                  <Colorize fontSize="small" sx={{ color: isDarkColor(savedCustomColor) ? '#fff' : '#000' }} />
-                </ColorSwatch>
-                <input
-                  type="color"
-                  value={savedCustomColor}
-                  onChange={handleCustomColorChange}
-                  ref={colorPickerRef}
-                  style={{ 
-                    position: 'absolute',
-                    opacity: 0,
-                    width: '100%',
-                    height: '100%',
-                    cursor: 'pointer'
-                  }}
-                />
-              </Box>
-            </Tooltip>
-            
-            {/* Show the saved custom color as second option if it exists and is different from presets */}
-            {hasSavedCustomColor && (
-              <Tooltip title="Custom Color" arrow>
-                <ColorSwatch
-                  onClick={() => setBorderColor(savedCustomColor)}
-                  selected={borderColor === savedCustomColor}
-                  sx={{ backgroundColor: savedCustomColor }}
-                />
+            <HorizontalScroller 
+              ref={borderColorRef}
+              onScroll={handleColorScroll}
+              sx={{ 
+                pt: 0, 
+                mt: 0, 
+                pb: 0, 
+                pr: 2,
+                minHeight: 50,
+                gap: theme.spacing(1)
+              }}
+            >
+              {/* Custom color picker - as first option, always using saved custom color */}
+              <Tooltip title="Pick Custom Color" arrow>
+                <Box sx={{ 
+                  position: 'relative', 
+                  display: 'flex', 
+                  alignItems: 'center',
+                  height: '60%' // Match the height of the color swatches
+                }}>
+                  <ColorSwatch
+                    onClick={() => colorPickerRef.current && colorPickerRef.current.click()}
+                    selected={false} // Never show this as selected
+                    sx={{ 
+                      position: 'relative',
+                      // Always use the saved custom color from localStorage as background
+                      backgroundColor: savedCustomColor,
+                      // Add subtle checkerboard pattern for the color picker
+                      backgroundImage: 'linear-gradient(45deg, rgba(200,200,200,0.2) 25%, transparent 25%), linear-gradient(-45deg, rgba(200,200,200,0.2) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(200,200,200,0.2) 75%), linear-gradient(-45deg, transparent 75%, rgba(200,200,200,0.2) 75%)',
+                      backgroundSize: '8px 8px',
+                      backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px',
+                    }}
+                  >
+                    <Colorize fontSize="small" sx={{ color: isDarkColor(savedCustomColor) ? '#fff' : '#000' }} />
+                  </ColorSwatch>
+                  <input
+                    type="color"
+                    value={savedCustomColor}
+                    onChange={handleCustomColorChange}
+                    ref={colorPickerRef}
+                    style={{ 
+                      position: 'absolute',
+                      opacity: 0,
+                      width: '100%',
+                      height: '100%',
+                      cursor: 'pointer'
+                    }}
+                  />
+                </Box>
               </Tooltip>
-            )}
+              
+              {/* Show the saved custom color as second option if it exists and is different from presets */}
+              {hasSavedCustomColor && (
+                <Tooltip title="Custom Color" arrow>
+                  <ColorSwatch
+                    onClick={() => setBorderColor(savedCustomColor)}
+                    selected={borderColor === savedCustomColor}
+                    sx={{ backgroundColor: savedCustomColor }}
+                  />
+                </Tooltip>
+              )}
+              
+              {/* Preset colors */}
+              {COLOR_PRESETS.map((colorOption) => (
+                <Tooltip key={colorOption.color} title={colorOption.name} arrow>
+                  <ColorSwatch
+                    onClick={() => setBorderColor(colorOption.color)}
+                    selected={borderColor === colorOption.color}
+                    sx={{ backgroundColor: colorOption.color }}
+                  />
+                </Tooltip>
+              ))}
+              
+              {/* Spacer to ensure last items can be centered when scrolled fully */}
+              <Box sx={{ minWidth: 4, flexShrink: 0 }} />
+            </HorizontalScroller>
             
-            {/* Preset colors */}
-            {COLOR_PRESETS.map((colorOption) => (
-              <Tooltip key={colorOption.color} title={colorOption.name} arrow>
-                <ColorSwatch
-                  onClick={() => setBorderColor(colorOption.color)}
-                  selected={borderColor === colorOption.color}
-                  sx={{ backgroundColor: colorOption.color }}
-                />
-              </Tooltip>
-            ))}
+            {/* Visual indicators for scrolling */}
+            <ScrollIndicator 
+              direction="left" 
+              isVisible={colorLeftScroll}
+            />
             
-            {/* Spacer to ensure last items can be centered when scrolled fully */}
-            <Box sx={{ minWidth: 4, flexShrink: 0 }} />
-          </HorizontalScroller>
-          
-          {/* Visual indicators for scrolling */}
-          <ScrollIndicator 
-            direction="left" 
-            isVisible={colorLeftScroll}
-          />
-          
-          <ScrollIndicator 
-            direction="right" 
-            isVisible={colorRightScroll}
-          />
+            <ScrollIndicator 
+              direction="right" 
+              isVisible={colorRightScroll}
+            />
+          </Box>
         </Box>
       </Box>
     </Box>
