@@ -82,9 +82,11 @@ export default function CollagePage() {
   // Define border thickness options
   const borderThicknessOptions = [
     { label: "None", value: 0 },
-    { label: "Thin", value: 2 },
-    { label: "Medium", value: 4 },
-    { label: "Thick", value: 8 }
+    { label: "Thin", value: 20 },
+    { label: "Medium", value: 50 },
+    { label: "Thicc", value: 90 },
+    { label: "Thiccer", value: 140 },
+    { label: "XTRA THICC", value: 200 }
   ];
 
   // Get layouts compatible with the current panel count and aspect ratio

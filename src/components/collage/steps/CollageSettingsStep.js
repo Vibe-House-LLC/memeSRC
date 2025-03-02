@@ -22,7 +22,8 @@ import {
   Add,
   Remove,
   Settings,
-  Tag
+  Tag,
+  LinearScale
 } from "@mui/icons-material";
 
 // Import styled components
@@ -260,10 +261,13 @@ const CollageLayoutSettings = ({
   const [aspectRightScroll, setAspectRightScroll] = useState(false);
   const [layoutLeftScroll, setLayoutLeftScroll] = useState(false);
   const [layoutRightScroll, setLayoutRightScroll] = useState(false);
+  const [borderLeftScroll, setBorderLeftScroll] = useState(false);
+  const [borderRightScroll, setBorderRightScroll] = useState(false);
   
   // Refs for scrollable containers
   const aspectRatioRef = useRef(null);
   const layoutsRef = useRef(null);
+  const borderThicknessRef = useRef(null);
   
   // Theme and responsive helpers
   const theme = useTheme();
@@ -366,6 +370,8 @@ const CollageLayoutSettings = ({
           handleAspectScroll();
         } else if (ref === layoutsRef) {
           handleLayoutScroll();
+        } else if (ref === borderThicknessRef) {
+          handleBorderScroll();
         }
       }, 350); // Slightly longer timeout to ensure scroll completes
     }
@@ -383,6 +389,8 @@ const CollageLayoutSettings = ({
           handleAspectScroll();
         } else if (ref === layoutsRef) {
           handleLayoutScroll();
+        } else if (ref === borderThicknessRef) {
+          handleBorderScroll();
         }
       }, 350); // Slightly longer timeout to ensure scroll completes
     }
@@ -409,21 +417,29 @@ const CollageLayoutSettings = ({
     checkScrollPosition(layoutsRef, setLayoutLeftScroll, setLayoutRightScroll);
   };
 
+  // Handle border thickness change
+  const handleBorderScroll = () => {
+    checkScrollPosition(borderThicknessRef, setBorderLeftScroll, setBorderRightScroll);
+  };
+  
   // Check scroll positions on initial render and window resize
   useEffect(() => {
     // Initial check of scroll positions
     handleAspectScroll();
     handleLayoutScroll();
+    handleBorderScroll();
     
     // Add resize listener to update scroll indicators
     const handleResize = () => {
       handleAspectScroll();
       handleLayoutScroll();
+      handleBorderScroll();
     };
     
     // Add scroll event listeners to both containers
     const aspectRatioElement = aspectRatioRef.current;
     const layoutsElement = layoutsRef.current;
+    const borderThicknessElement = borderThicknessRef.current;
     
     if (aspectRatioElement) {
       aspectRatioElement.addEventListener('scroll', handleAspectScroll);
@@ -431,6 +447,10 @@ const CollageLayoutSettings = ({
     
     if (layoutsElement) {
       layoutsElement.addEventListener('scroll', handleLayoutScroll);
+    }
+    
+    if (borderThicknessElement) {
+      borderThicknessElement.addEventListener('scroll', handleBorderScroll);
     }
     
     window.addEventListener('resize', handleResize);
@@ -443,6 +463,10 @@ const CollageLayoutSettings = ({
       
       if (layoutsElement) {
         layoutsElement.removeEventListener('scroll', handleLayoutScroll);
+      }
+      
+      if (borderThicknessElement) {
+        borderThicknessElement.removeEventListener('scroll', handleBorderScroll);
       }
       
       window.removeEventListener('resize', handleResize);
@@ -467,7 +491,17 @@ const CollageLayoutSettings = ({
     setTimeout(() => {
       handleLayoutScroll();
     }, 100);
-  }, [panelCount, selectedAspectRatio, selectedTemplate]);
+  }, [selectedTemplate, panelCount]);
+  
+  // Update border thickness scroll indicators when options change
+  useEffect(() => {
+    handleBorderScroll();
+    
+    // Small delay to ensure layout has updated
+    setTimeout(() => {
+      handleBorderScroll();
+    }, 100);
+  }, [borderThickness, borderThicknessOptions]);
   
   // Render aspect ratio preview
   const renderAspectRatioPreview = (preset) => {
@@ -910,34 +944,107 @@ const CollageLayoutSettings = ({
       </Box>
       
       {/* Border Thickness UI with Horizontal Scroller - Moved below Choose Layout */}
-      <Box sx={{ mb: isMobile ? 1 : 2 }}>
+      <Box sx={{ mb: isMobile ? 1 : 2, position: 'relative' }}>
         <StepSectionHeading>
-          <Settings sx={{ mr: 1.5, color: '#fff', fontSize: '1.3rem' }} />
+          <LinearScale sx={{ mr: 1.5, color: '#fff', fontSize: '1.3rem' }} />
           <Typography variant="h5" fontWeight={600} sx={{ color: '#fff' }}>
             Borders
           </Typography>
         </StepSectionHeading>
 
-        {/* Modified HorizontalScroller with reduced vertical space */}
         <Box sx={{ 
-          display: 'flex',
-          overflowX: 'auto',
-          scrollbarWidth: 'none',
-          '&::-webkit-scrollbar': { display: 'none' },
-          gap: theme.spacing(1),
-          py: 0.75, // Further reduced vertical padding
-          mt: 0.5
+          position: 'relative', 
+          width: '100%',
+          // Consistent padding for container
+          mt: 1,
+          pt: 0.5, 
+          pb: 0.5,
+          // Consistent styling across devices
+          [theme.breakpoints.up('sm')]: {
+            width: '100%', // Full width container
+            mt: 1, // Consistent margin
+            pt: 0.5,
+            pb: 0.5
+          }
         }}>
-          {borderThicknessOptions.map(option => (
-            <Chip
-              key={option.label}
-              label={option.label}
-              clickable
-              color={borderThickness === option.label.toLowerCase() ? 'primary' : 'default'}
-              onClick={() => setBorderThickness(option.label.toLowerCase())}
-              sx={{ fontWeight: borderThickness === option.label.toLowerCase() ? 'bold' : 'normal' }}
-            />
-          ))}
+          <ScrollButton 
+            direction="left" 
+            onClick={() => scrollLeft(borderThicknessRef)} 
+            size="small"
+            aria-label="Scroll left"
+            sx={{ 
+              // Always display buttons for consistency, just disable them
+              display: 'flex',
+              visibility: borderLeftScroll ? 'visible' : 'hidden',
+              opacity: borderLeftScroll ? 1 : 0,
+              top: '50%', // Ensure perfect vertical centering
+              transform: 'translateY(-50%)',
+            }}
+          >
+            <ChevronLeft fontSize="small" />
+          </ScrollButton>
+          
+          <ScrollButton 
+            direction="right" 
+            onClick={() => scrollRight(borderThicknessRef)} 
+            size="small"
+            aria-label="Scroll right"
+            sx={{ 
+              // Always display buttons for consistency, just disable them
+              display: 'flex',
+              visibility: borderRightScroll ? 'visible' : 'hidden',
+              opacity: borderRightScroll ? 1 : 0,
+              top: '50%', // Ensure perfect vertical centering
+              transform: 'translateY(-50%)',
+            }}
+          >
+            <ChevronRight fontSize="small" />
+          </ScrollButton>
+
+          {/* Modified HorizontalScroller with reduced vertical space */}
+          <Box 
+            ref={borderThicknessRef}
+            onScroll={handleBorderScroll}
+            sx={{ 
+              display: 'flex',
+              overflowX: 'auto',
+              scrollbarWidth: 'none',
+              '&::-webkit-scrollbar': { display: 'none' },
+              gap: theme.spacing(1),
+              py: 0.75, // Further reduced vertical padding
+              mt: 0.5
+            }}
+          >
+            {borderThicknessOptions.map((option, index) => {
+              // Calculate the font weight based on the option
+              const fontWeight = option.label === "None" ? 400 : 400 + (index * 100);
+              
+              return (
+                <Chip
+                  key={option.label}
+                  label={option.label}
+                  clickable
+                  color={borderThickness === option.label.toLowerCase() ? 'primary' : 'default'}
+                  onClick={() => setBorderThickness(option.label.toLowerCase())}
+                  sx={{ 
+                    fontWeight: borderThickness === option.label.toLowerCase() ? 
+                      fontWeight + 100 : fontWeight 
+                  }}
+                />
+              );
+            })}
+          </Box>
+          
+          {/* Visual indicators for scrolling */}
+          <ScrollIndicator 
+            direction="left" 
+            isVisible={borderLeftScroll}
+          />
+          
+          <ScrollIndicator 
+            direction="right" 
+            isVisible={borderRightScroll}
+          />
         </Box>
       </Box>
     </Box>
