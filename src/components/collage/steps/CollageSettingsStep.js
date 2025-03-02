@@ -25,7 +25,8 @@ import {
   Settings,
   Tag,
   BorderAll,
-  Palette
+  Palette,
+  Colorize
 } from "@mui/icons-material";
 
 // Import styled components
@@ -502,7 +503,10 @@ const CollageLayoutSettings = ({
   
   // Handle custom color selection
   const handleCustomColorChange = (e) => {
-    setBorderColor(e.target.value);
+    const newColor = e.target.value;
+    setBorderColor(newColor);
+    setSavedCustomColor(newColor);
+    localStorage.setItem('memeCollageBorderCustomColor', newColor);
   };
   
   // Check scroll positions on initial render and window resize
@@ -669,6 +673,27 @@ const CollageLayoutSettings = ({
 
   const compatibleTemplates = getCompatibleTemplates();
   const selectedAspectRatioObj = aspectRatioPresets.find(p => p.id === selectedAspectRatio);
+  
+  // Clean up all the duplicate state variables and use a single savedCustomColor state
+  const [savedCustomColor, setSavedCustomColor] = useState(() => {
+    // Initialize from localStorage or use white as default
+    const storedColor = localStorage.getItem('memeCollageBorderCustomColor');
+    return storedColor || '#FFFFFF';
+  });
+  
+  // Check if current color is a custom color (not in the preset colors)
+  const isCustomColor = !COLOR_PRESETS.some(c => c.color === borderColor);
+  
+  // Check if there's a saved custom color that's different from preset colors
+  const hasSavedCustomColor = savedCustomColor && !COLOR_PRESETS.some(c => c.color === savedCustomColor);
+  
+  // Effect to update localStorage when custom color changes
+  useEffect(() => {
+    if (isCustomColor) {
+      setSavedCustomColor(borderColor);
+      localStorage.setItem('memeCollageBorderCustomColor', borderColor);
+    }
+  }, [borderColor, isCustomColor]);
   
   return (
     <Box sx={{ pt: isMobile ? 3 : 4 }}>
@@ -1219,47 +1244,32 @@ const CollageLayoutSettings = ({
               pr: 2 // Add right padding to the scroller
             }}
           >
-            {/* Preset colors */}
-            {COLOR_PRESETS.map((colorOption) => (
-              <Tooltip key={colorOption.color} title={colorOption.name} arrow>
-                <ColorSwatch
-                  onClick={() => setBorderColor(colorOption.color)}
-                  selected={borderColor === colorOption.color}
-                  sx={{ backgroundColor: colorOption.color }}
-                />
-              </Tooltip>
-            ))}
-            
-            {/* Custom color picker - moved the separator inside to eliminate gap */}
-            <Tooltip title="Custom Color" arrow>
+            {/* Custom color picker - as first option, always using saved custom color */}
+            <Tooltip title="Pick Custom Color" arrow>
               <Box sx={{ 
                 position: 'relative', 
                 display: 'flex', 
                 alignItems: 'center',
-                ml: 1.5, // Add margin to the left of the custom color picker
-                pl: 1.5, // Add padding to the left for the separator
-                borderLeft: theme => `1px solid ${alpha(theme.palette.divider, 0.5)}`, // Add separator as border
                 height: '60%' // Match the height of the color swatches
               }}>
                 <ColorSwatch
                   onClick={() => colorPickerRef.current && colorPickerRef.current.click()}
-                  selected={!COLOR_PRESETS.some(c => c.color === borderColor)}
+                  selected={false} // Never show this as selected
                   sx={{ 
                     position: 'relative',
-                    backgroundColor: borderColor,
-                    backgroundImage: !COLOR_PRESETS.some(c => c.color === borderColor) ? 'none' : 
-                      'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)',
+                    // Always use the saved custom color from localStorage as background
+                    backgroundColor: savedCustomColor,
+                    // Add subtle checkerboard pattern for the color picker
+                    backgroundImage: 'linear-gradient(45deg, rgba(200,200,200,0.2) 25%, transparent 25%), linear-gradient(-45deg, rgba(200,200,200,0.2) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(200,200,200,0.2) 75%), linear-gradient(-45deg, transparent 75%, rgba(200,200,200,0.2) 75%)',
                     backgroundSize: '8px 8px',
                     backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px',
                   }}
                 >
-                  {!COLOR_PRESETS.some(c => c.color === borderColor) && (
-                    <Palette fontSize="small" sx={{ color: isDarkColor(borderColor) ? '#fff' : '#000' }} />
-                  )}
+                  <Colorize fontSize="small" sx={{ color: isDarkColor(savedCustomColor) ? '#fff' : '#000' }} />
                 </ColorSwatch>
                 <input
                   type="color"
-                  value={borderColor}
+                  value={savedCustomColor}
                   onChange={handleCustomColorChange}
                   ref={colorPickerRef}
                   style={{ 
@@ -1273,7 +1283,27 @@ const CollageLayoutSettings = ({
               </Box>
             </Tooltip>
             
-            {/* Removed separate separator since it's now part of the custom color picker */}
+            {/* Show the saved custom color as second option if it exists and is different from presets */}
+            {hasSavedCustomColor && (
+              <Tooltip title="Custom Color" arrow>
+                <ColorSwatch
+                  onClick={() => setBorderColor(savedCustomColor)}
+                  selected={borderColor === savedCustomColor}
+                  sx={{ backgroundColor: savedCustomColor }}
+                />
+              </Tooltip>
+            )}
+            
+            {/* Preset colors */}
+            {COLOR_PRESETS.map((colorOption) => (
+              <Tooltip key={colorOption.color} title={colorOption.name} arrow>
+                <ColorSwatch
+                  onClick={() => setBorderColor(colorOption.color)}
+                  selected={borderColor === colorOption.color}
+                  sx={{ backgroundColor: colorOption.color }}
+                />
+              </Tooltip>
+            ))}
             
             {/* Spacer to ensure last items can be centered when scrolled fully */}
             <Box sx={{ minWidth: 4, flexShrink: 0 }} />

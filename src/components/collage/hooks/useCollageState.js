@@ -16,7 +16,17 @@ export const useCollageState = () => {
   const [finalImage, setFinalImage] = useState(null);
   const [isCreatingCollage, setIsCreatingCollage] = useState(false);
   const [borderThickness, setBorderThickness] = useState('medium'); // Default border thickness
-  const [borderColor, setBorderColor] = useState('#FFFFFF'); // Default white border color
+  
+  // Get the saved custom color from localStorage if available, otherwise use white
+  const [borderColor, setBorderColor] = useState(() => {
+    const savedCustomColor = localStorage.getItem('meme-src-collage-custom-color');
+    return savedCustomColor || '#FFFFFF'; // Default white border color
+  });
+
+  // Save the custom color to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem('meme-src-collage-custom-color', borderColor);
+  }, [borderColor]);
 
   // Initialize template on mount
   useEffect(() => {
