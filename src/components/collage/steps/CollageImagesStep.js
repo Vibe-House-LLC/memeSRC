@@ -152,8 +152,8 @@ const CollageImagesStep = ({
           const isReuploadToSamePanel = existingMappingIndex !== undefined;
           
           // Create direct copies of the data for immediate rendering
-          let updatedImages = [...selectedImages];
-          let updatedMapping = {...panelImageMapping};
+          const updatedImages = [...selectedImages];
+          const updatedMapping = {...panelImageMapping};
           
           if (isReuploadToSamePanel) {
             // Update existing image
@@ -244,7 +244,9 @@ const CollageImagesStep = ({
   }, []);
 
   // Single useEffect to handle all rendering scenarios
+  /* eslint-disable consistent-return */
   useEffect(() => {
+    // Early return if missing required props
     if (!selectedTemplate || !selectedAspectRatio) {
       return;
     }
@@ -295,9 +297,11 @@ const CollageImagesStep = ({
     panelImageMapping,
     hasInitialRender
   ]);
+  /* eslint-enable consistent-return */
 
   // Clean up resources when component unmounts
   useEffect(() => {
+    // Cleanup function
     return () => {
       if (renderedImage && renderedImage.startsWith('blob:')) {
         URL.revokeObjectURL(renderedImage);

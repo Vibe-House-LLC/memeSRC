@@ -601,8 +601,8 @@ export const renderTemplateToCanvas = ({
     
     // Simple grid renderer - draw each panel in order
     let panelIndex = 0;
-    for (let row = 0; row < rows.length && panelIndex < panelCount; row++) {
-      for (let col = 0; col < columns.length && panelIndex < panelCount; col++) {
+    for (let row = 0; row < rows.length && panelIndex < panelCount; row += 1) {
+      for (let col = 0; col < columns.length && panelIndex < panelCount; col += 1) {
         const x = colPositions[col];
         const y = rowPositions[row];
         const width = cellWidths[col];
@@ -645,7 +645,10 @@ export const renderTemplateToCanvas = ({
             const imgAspect = img.width / img.height;
             const panelAspect = width / height;
             
-            let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
+            let drawWidth;
+            let drawHeight;
+            let offsetX = 0; 
+            let offsetY = 0;
             
             if (imgAspect > panelAspect) {
               // Image is wider
@@ -695,39 +698,43 @@ export const renderTemplateToCanvas = ({
           };
           
           // Handle image loading errors
-          img.onerror = () => {
-            logError(`Failed to load image for panel ${panelIndex}`);
-            
-            // Redraw with error indicator
-            ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';  // Red with opacity
-            ctx.fillRect(x, y, width, height);
-            ctx.fillStyle = '#808080';  // Reset fill color
-            
-            // Add border if needed
-            if (shouldDrawBorder) {
-              ctx.strokeRect(x, y, width, height);
-            }
-            
-            // Update the rendered image with error state
-            if (canvas instanceof OffscreenCanvas) {
-              canvas.convertToBlob({ type: 'image/png' })
-                .then(blob => {
-                  const url = URL.createObjectURL(blob);
-                  setRenderedImage(url);
-                })
-                .catch(() => {
-                  if (canvasRef && canvasRef.current) {
-                    setRenderedImage(canvasRef.current.toDataURL('image/png'));
-                  }
-                });
-            } else {
-              try {
-                setRenderedImage(canvas.toDataURL('image/png'));
-              } catch (err) {
-                logError('Error converting canvas to data URL:', err);
+          const setupErrorHandler = (currentPanelIndex, panelX, panelY, panelWidth, panelHeight) => {
+            return () => {
+              logError(`Failed to load image for panel ${currentPanelIndex}`);
+              
+              // Redraw with error indicator
+              ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';  // Red with opacity
+              ctx.fillRect(panelX, panelY, panelWidth, panelHeight);
+              ctx.fillStyle = '#808080';  // Reset fill color
+              
+              // Add border if needed
+              if (shouldDrawBorder) {
+                ctx.strokeRect(panelX, panelY, panelWidth, panelHeight);
               }
-            }
+              
+              // Update the rendered image with error state
+              if (canvas instanceof OffscreenCanvas) {
+                canvas.convertToBlob({ type: 'image/png' })
+                  .then(blob => {
+                    const url = URL.createObjectURL(blob);
+                    setRenderedImage(url);
+                  })
+                  .catch(() => {
+                    if (canvasRef && canvasRef.current) {
+                      setRenderedImage(canvasRef.current.toDataURL('image/png'));
+                    }
+                  });
+              } else {
+                try {
+                  setRenderedImage(canvas.toDataURL('image/png'));
+                } catch (err) {
+                  logError('Error converting canvas to data URL:', err);
+                }
+              }
+            };
           };
+          
+          img.onerror = setupErrorHandler(panelIndex, x, y, width, height);
           
           // Set image source - with special handling for base64
           if (imageUrl && imageUrl.startsWith('data:image')) {
@@ -741,7 +748,7 @@ export const renderTemplateToCanvas = ({
           }
         }
         
-        panelIndex++;
+        panelIndex += 1;
       }
     }
     
