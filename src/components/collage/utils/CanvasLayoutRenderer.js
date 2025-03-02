@@ -484,18 +484,25 @@ const createLayoutConfigFromId = (templateId, count) => {
  * @param {string} color - Color of the icon (used only for the plus sign)
  */
 const drawUploadIcon = (ctx, panel, color = '#FFFFFF') => {
-  const { x, y, width, height } = panel;
+  const { x, y, width, height, consistentIconSize } = panel;
   const centerX = x + width / 2;
   const centerY = y + height / 2;
   
   // Save the current state
   ctx.save();
   
-  // Size the icon proportionally to the panel, but cap the maximum size
-  // to 10% of the largest panel dimension (reduced from 12%)
-  const maxSize = Math.max(width, height) * 0.10;
-  const calculatedSize = Math.min(width, height) * 0.18; // Also reduced from 0.20
-  const iconSize = Math.min(calculatedSize, maxSize);
+  // Use the consistent icon size if provided, otherwise calculate it based on the panel
+  let iconSize;
+  
+  if (consistentIconSize !== undefined) {
+    iconSize = consistentIconSize;
+  } else {
+    // Size the icon proportionally to the panel, but cap the maximum size
+    // to 8% of the largest panel dimension (reduced from 10%)
+    const maxSize = Math.max(width, height) * 0.08;
+    const calculatedSize = Math.min(width, height) * 0.15; // Reduced from 0.18
+    iconSize = Math.min(calculatedSize, maxSize);
+  }
   
   // Draw a solid blue circle
   ctx.fillStyle = '#3b82f6'; // Bright blue color
@@ -534,6 +541,28 @@ const drawUploadIcon = (ctx, panel, color = '#FFFFFF') => {
   
   // Restore the canvas state
   ctx.restore();
+};
+
+/**
+ * Finds the dimensions of the smallest panel in the layout
+ * @param {Array} panelRegions - Array of panel region objects
+ * @returns {Object} - Object containing the minimum width and height
+ */
+const findSmallestPanelDimensions = (panelRegions) => {
+  if (!panelRegions || panelRegions.length === 0) {
+    return { minWidth: 100, minHeight: 100 }; // Default fallback
+  }
+  
+  // Find the smallest panel dimensions
+  let minWidth = Infinity;
+  let minHeight = Infinity;
+  
+  panelRegions.forEach(panel => {
+    if (panel.width < minWidth) minWidth = panel.width;
+    if (panel.height < minHeight) minHeight = panel.height;
+  });
+  
+  return { minWidth, minHeight };
 };
 
 /**
@@ -685,19 +714,38 @@ export const renderTemplateToCanvas = ({
         
         newPanelRegions.push(panel);
         
-        // Check if this panel has an image assigned
-        const hasImage = panelImageMapping && 
-                         Object.prototype.hasOwnProperty.call(panelImageMapping, panelIndex) && 
-                         typeof panelImageMapping[panelIndex] === 'number';
-        
-        // Draw upload icon if panel is empty
-        if (!hasImage) {
-          // Use either white or dark gray based on theme to ensure visibility
-          const iconColor = theme.palette.mode === 'dark' ? '#FFFFFF' : '#555555';
-          drawUploadIcon(ctx, panel, iconColor);
-        }
-        
         panelIndex += 1;
+      }
+    }
+    
+    // Find the smallest panel dimensions after all panels are created
+    const { minWidth, minHeight } = findSmallestPanelDimensions(newPanelRegions);
+    
+    // Draw upload icons after determining consistent size based on smallest panel
+    for (const panel of newPanelRegions) {
+      // Check if this panel has an image assigned
+      const hasImage = panelImageMapping && 
+                       Object.prototype.hasOwnProperty.call(panelImageMapping, panel.id) && 
+                       typeof panelImageMapping[panel.id] === 'number';
+      
+      // Draw upload icon if panel is empty
+      if (!hasImage) {
+        // Use either white or dark gray based on theme to ensure visibility
+        const iconColor = theme.palette.mode === 'dark' ? '#FFFFFF' : '#555555';
+        
+        // Calculate consistent icon size based on the smallest panel dimensions
+        const maxConsistentSize = Math.max(minWidth, minHeight) * 0.08;
+        const calculatedConsistentSize = Math.min(minWidth, minHeight) * 0.15;
+        const consistentIconSize = Math.min(calculatedConsistentSize, maxConsistentSize);
+        
+        // Keep original panel position but use consistent size
+        drawUploadIcon(ctx, {
+          x: panel.x, 
+          y: panel.y,
+          width: panel.width,
+          height: panel.height,
+          consistentIconSize: consistentIconSize // Pass the consistent size as a property
+        }, iconColor);
       }
     }
     
