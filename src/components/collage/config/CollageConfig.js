@@ -11,8 +11,10 @@ import {
 export const aspectRatioPresets = [
   { id: 'square', name: 'Square', value: 1 },
   { id: 'portrait', name: 'Portrait', value: 0.8 },
+  { id: 'ratio-2-3', name: '2:3', value: 2/3 },
   { id: 'story', name: 'Instagram Story', value: 0.5625 },
   { id: 'classic', name: 'Classic', value: 1.33 },
+  { id: 'ratio-3-2', name: '3:2', value: 1.5 },
   { id: 'landscape', name: 'Landscape', value: 1.78 }
 ];
 

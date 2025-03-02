@@ -240,8 +240,10 @@ const getFriendlyAspectRatio = (value) => {
   
   // Common aspect ratios with friendly names
   if (Math.abs(value - 0.8) < 0.01) return '4:5';      // Portrait
+  if (Math.abs(value - 2/3) < 0.01) return '2:3';      // Added 2:3 ratio
   if (Math.abs(value - 0.5625) < 0.01) return '9:16';  // Instagram Story
   if (Math.abs(value - 1.33) < 0.01) return '4:3';     // Classic
+  if (Math.abs(value - 1.5) < 0.01) return '3:2';      // Added 3:2 ratio
   if (Math.abs(value - 1.78) < 0.01) return '16:9';    // Landscape
   
   // For other values, find the closest simple fraction

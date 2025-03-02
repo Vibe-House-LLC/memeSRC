@@ -61,8 +61,8 @@ export const renderLayoutGrid = (layoutConfig, theme, imageCount) => {
  */
 export const getAspectRatioCategory = (aspectRatioId) => {
   // Group aspect ratios into three categories
-  const wideAspects = ['landscape', 'classic'];
-  const tallAspects = ['portrait', 'story'];
+  const wideAspects = ['landscape', 'classic', 'ratio-3-2'];
+  const tallAspects = ['portrait', 'story', 'ratio-2-3'];
   const squareAspects = ['square', 'custom'];
   
   if (wideAspects.includes(aspectRatioId)) return 'wide';
