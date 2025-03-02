@@ -78,6 +78,8 @@ const CollageImagesStep = ({
   const [panelRegions, setPanelRegions] = useState([]);
   // Track which panel was last clicked
   const [selectedPanel, setSelectedPanel] = useState(null);
+  // Track initial load state
+  const [hasInitialRender, setHasInitialRender] = useState(false);
   // Store selected images per panel - synced with parent component's panelImageMapping
   const [panelToImageMap, setPanelToImageMap] = useState({});
   
@@ -131,55 +133,57 @@ const CollageImagesStep = ({
       if (e.target.files && e.target.files[0]) {
         const file = e.target.files[0];
         
-        // Convert to base64 instead of using Blob URLs which can become invalid
+        // Convert to base64
         const reader = new FileReader();
         reader.onload = (event) => {
-          // This base64 string won't expire like Blob URLs
           const base64Image = event.target.result;
           
-          if (DEBUG_MODE) {
-            console.log(`Converted image for panel ${panel.id} to base64 (first 30 chars): ${base64Image.substring(0, 30)}...`);
+          // Get border thickness value
+          let borderThicknessValue = 4;
+          if (borderThicknessOptions && borderThickness) {
+            const option = borderThicknessOptions.find(opt => opt.label.toLowerCase() === borderThickness.toLowerCase());
+            if (option) {
+              borderThicknessValue = option.value;
+            }
           }
           
-          // Find if there's already an image for this panel
+          // Check if this is updating an existing image or adding a new one
           const existingMappingIndex = panelImageMapping[panel.id];
+          const isReuploadToSamePanel = existingMappingIndex !== undefined;
           
-          if (DEBUG_MODE) {
-            console.log(`Processing image for panel ${panel.id}`, {
-              existingIndex: existingMappingIndex,
-              currentMappings: JSON.parse(JSON.stringify(panelImageMapping)),
-              selectedImageCount: selectedImages.length
-            });
-          }
+          // Create direct copies of the data for immediate rendering
+          let updatedImages = [...selectedImages];
+          let updatedMapping = {...panelImageMapping};
           
-          // Handle updating the image and mapping
-          if (existingMappingIndex !== undefined && selectedImages[existingMappingIndex]) {
-            if (DEBUG_MODE) {
-              console.log(`Updating existing image at index ${existingMappingIndex}`);
-            }
-            // Update the existing image immediately
+          if (isReuploadToSamePanel) {
+            // Update existing image
+            updatedImages[existingMappingIndex] = base64Image;
+            // Update the state
             updateImage(existingMappingIndex, base64Image);
-            // No need to update mapping as we're replacing an existing image
           } else {
-            if (DEBUG_MODE) {
-              console.log(`Adding new image at index ${selectedImages.length}`);
-            }
-            
-            // First add the new image - store the current length which will be the new image's index
+            // Add new image
             const newIndex = selectedImages.length;
+            updatedImages.push(base64Image);
+            updatedMapping[panel.id] = newIndex;
+            
+            // Update the state
+            updatePanelImageMapping(updatedMapping);
             addImage(base64Image);
-            
-            // Create a new mapping entry for this panel
-            const newMapping = { ...panelImageMapping };
-            newMapping[panel.id] = newIndex;
-            
-            if (DEBUG_MODE) {
-              console.log(`New mapping: panel ${panel.id} -> image ${newIndex}`);
-            }
-            
-            // Update the mapping
-            updatePanelImageMapping(newMapping);
           }
+          
+          // DIRECTLY render with the complete data - don't wait for React state updates
+          renderTemplateToCanvas({
+            selectedTemplate,
+            selectedAspectRatio,
+            panelCount,
+            theme,
+            canvasRef,
+            setPanelRegions,
+            setRenderedImage,
+            borderThickness: borderThicknessValue,
+            selectedImages: updatedImages,
+            panelImageMapping: updatedMapping
+          });
           
           // Update the selected panel state
           setSelectedPanel(panel);
@@ -239,185 +243,63 @@ const CollageImagesStep = ({
     }
   }, []);
 
-  // Render the template when template or aspect ratio changes
+  // Single useEffect to handle all rendering scenarios
   useEffect(() => {
-    if (DEBUG_MODE) {
-      console.log("Template render effect triggered:", { 
-        selectedTemplate, 
-        selectedAspectRatio,
-        panelCount,
-        borderThickness,
-        hasImages: selectedImages.length > 0,
-        mappingKeys: Object.keys(panelImageMapping).length
-      });
+    if (!selectedTemplate || !selectedAspectRatio) {
+      return;
     }
-    
-    if (selectedTemplate && selectedAspectRatio) {
-      // Get the numeric border thickness value if provided
-      let borderThicknessValue = 4; // Default to medium (4px)
-      
-      if (borderThicknessOptions && borderThickness) {
-        const option = borderThicknessOptions.find(opt => opt.label.toLowerCase() === borderThickness.toLowerCase());
-        if (option) {
-          borderThicknessValue = option.value;
-          debugLog("Found numeric border thickness value:", borderThicknessValue);
-        }
+
+    // Get border thickness value
+    let borderThicknessValue = 4; // Default
+    if (borderThicknessOptions && borderThickness) {
+      const option = borderThicknessOptions.find(opt => opt.label.toLowerCase() === borderThickness.toLowerCase());
+      if (option) {
+        borderThicknessValue = option.value;
       }
-      
-      if (DEBUG_MODE) {
-        console.log("Attempting to render preview with:", {
-          templateId: selectedTemplate.id,
-          aspectRatio: selectedAspectRatio,
-          panels: panelCount,
-          thickness: borderThicknessValue,
-          theme: theme.palette.mode,
-          imageCount: selectedImages.length,
-          mappings: JSON.stringify(panelImageMapping)
+    }
+
+    // Add short delay for the initial render only
+    const initialDelay = hasInitialRender ? 0 : 50;
+    
+    const timer = setTimeout(() => {
+      try {
+        renderTemplateToCanvas({
+          selectedTemplate,
+          selectedAspectRatio,
+          panelCount,
+          theme,
+          canvasRef,
+          setPanelRegions,
+          setRenderedImage,
+          borderThickness: borderThicknessValue,
+          selectedImages,
+          panelImageMapping
         });
-      }
-      
-      // Add a small delay to ensure blob URLs are ready
-      const renderTimer = setTimeout(() => {
-        try {
-          // Call the imported renderTemplateToCanvas function
-          renderTemplateToCanvas({
-            selectedTemplate,
-            selectedAspectRatio,
-            panelCount,
-            theme,
-            canvasRef,
-            setPanelRegions,
-            setRenderedImage,
-            borderThickness: borderThicknessValue,
-            selectedImages,
-            panelImageMapping
-          });
-        } catch (error) {
-          console.error("Error rendering template:", error);
+        
+        if (!hasInitialRender) {
+          setHasInitialRender(true);
         }
-      }, 50);
-      
-      return () => clearTimeout(renderTimer);
-    }
+      } catch (error) {
+        console.error("Error rendering template:", error);
+      }
+    }, initialDelay);
     
-    debugWarn("Missing required props for template rendering:", {
-      hasTemplate: !!selectedTemplate,
-      hasAspectRatio: !!selectedAspectRatio
-    });
-    
-    // Add an empty return for the case when the condition is false
-    return undefined;
-  }, [selectedTemplate, selectedAspectRatio, panelCount, theme.palette.mode, borderThickness, borderThicknessOptions, selectedImages, panelImageMapping]);
-  
-  // Add a dedicated effect just for border thickness changes to ensure it triggers a redraw
-  useEffect(() => {
-    if (selectedTemplate && borderThickness) {
-      debugLog("Border thickness changed to:", borderThickness);
-      
-      // Get the numeric value for the border thickness
-      let borderThicknessValue = 4; // Default to medium (4px)
-      if (borderThicknessOptions) {
-        const option = borderThicknessOptions.find(opt => opt.label.toLowerCase() === borderThickness.toLowerCase());
-        if (option) {
-          borderThicknessValue = option.value;
-          debugLog("Found numeric border thickness value:", borderThicknessValue);
-        }
-      }
-      
-      // Force a redraw with the new border thickness
-      renderTemplateToCanvas({
-        selectedTemplate,
-        selectedAspectRatio,
-        panelCount,
-        theme,
-        canvasRef,
-        setPanelRegions,
-        setRenderedImage,
-        borderThickness: borderThicknessValue,
-        selectedImages,
-        panelImageMapping
-      });
-    }
-  }, [borderThickness, selectedTemplate, selectedAspectRatio, panelCount, theme.palette.mode, borderThicknessOptions, selectedImages, panelImageMapping]);
-  
-  // Add additional useEffect for debugging:
-  // Log relevant information about the selected template
-  useEffect(() => {
-    if (DEBUG_MODE && selectedTemplate) {
-      debugLog("Selected Template Details:");
-      debugLog("- ID:", selectedTemplate.id);
-      debugLog("- Name:", selectedTemplate.name);
-      debugLog("- Arrangement:", selectedTemplate.arrangement);
-      debugLog("- Panel Count:", selectedTemplate.panels);
-      debugLog("- Min/Max Images:", selectedTemplate.minImages, "/", selectedTemplate.maxImages);
-      debugLog("- Style:", selectedTemplate.style);
-      debugLog("- Has getLayoutConfig:", typeof selectedTemplate.getLayoutConfig === 'function');
-      
-      // Get layouts that should be compatible with this template
-      const layouts = getLayoutsForPanelCount(panelCount, selectedAspectRatio);
-      const matchingLayout = layouts.find(layout => layout.id === selectedTemplate.id);
-      debugLog("Direct match in layouts array:", matchingLayout ? "Yes" : "No");
-      
-      if (matchingLayout) {
-        debugLog("Matching layout has getLayoutConfig:", typeof matchingLayout.getLayoutConfig === 'function');
-      }
-    }
-  }, [selectedTemplate, selectedAspectRatio, panelCount]);
-  
-  // Add an initial rendering effect to ensure preview is generated immediately
-  useEffect(() => {
-    if (DEBUG_MODE) {
-      console.log("Initial render check:", {
-        hasTemplate: !!selectedTemplate,
-        hasAspectRatio: !!selectedAspectRatio,
-        hasRenderedImage: !!renderedImage
-      });
-    }
-    
-    // Force initial render if selectedTemplate exists
-    if (selectedTemplate && selectedAspectRatio && !renderedImage) {
-      if (DEBUG_MODE) {
-        console.log("Forcing initial preview render");
-      }
-      
-      // Get the numeric border thickness value
-      let borderThicknessValue = 4; // Default
-      if (borderThicknessOptions && borderThickness) {
-        const option = borderThicknessOptions.find(opt => opt.label.toLowerCase() === borderThickness.toLowerCase());
-        if (option) {
-          borderThicknessValue = option.value;
-        }
-      }
-      
-      if (DEBUG_MODE) {
-        console.log("Initial render with:", {
-          templateId: selectedTemplate.id,
-          aspectRatio: selectedAspectRatio,
-          panels: panelCount,
-          thickness: borderThicknessValue
-        });
-      }
-      
-      // Render the template
-      renderTemplateToCanvas({
-        selectedTemplate,
-        selectedAspectRatio,
-        panelCount,
-        theme,
-        canvasRef,
-        setPanelRegions,
-        setRenderedImage,
-        borderThickness: borderThicknessValue,
-        selectedImages,
-        panelImageMapping
-      });
-    }
-  }, [selectedTemplate, selectedAspectRatio, panelCount, theme, borderThickness, borderThicknessOptions, selectedImages, panelImageMapping, renderedImage]);
+    return () => clearTimeout(timer);
+  }, [
+    selectedTemplate, 
+    selectedAspectRatio, 
+    panelCount, 
+    theme.palette.mode, 
+    borderThickness, 
+    selectedImages, 
+    panelImageMapping,
+    hasInitialRender
+  ]);
 
   // Clean up resources when component unmounts
   useEffect(() => {
     return () => {
-      if (renderedImage) {
+      if (renderedImage && renderedImage.startsWith('blob:')) {
         URL.revokeObjectURL(renderedImage);
       }
     };
