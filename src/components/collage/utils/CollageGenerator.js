@@ -378,7 +378,7 @@ const drawImagesToCanvas = async ({
         y: panel.y,
         width: panel.width,
         height: panel.height,
-        consistentIconSize: consistentIconSize // Pass the consistent size as a property
+        consistentIconSize
       }, iconColor);
     }
   });

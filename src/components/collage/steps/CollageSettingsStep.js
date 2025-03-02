@@ -698,7 +698,7 @@ const CollageLayoutSettings = ({
   }, [borderColor, isCustomColor]);
   
   return (
-    <Box sx={{ pt: isMobile ? 3 : 4 }}>
+    <Box sx={{ pt: 0 }}>
       {/* Panel Count Selector - Moved to the top */}
       <Box sx={{ mb: isMobile ? 0 : 1 }}>
         <StepSectionHeading>

@@ -77,22 +77,9 @@ export const CollageLayout = ({ settingsStepProps, imagesStepProps, isMobile }) 
     <Grid container spacing={isMobile ? 2 : 3} sx={{ width: '100%', margin: 0 }}>
       {/* Settings Section */}
       <Grid item xs={12} md={6}>
-        <Box sx={{ mb: isMobile ? 2 : 0 }}>
-          <Typography variant="h6" sx={{ 
-            display: 'flex', 
-            alignItems: 'center',
-            mb: 1
-          }}>
-            <Settings sx={{ mr: 1 }} /> Settings
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Merge images together to create multi-panel memes
-          </Typography>
-          
-          <CollageSettingsStep 
-            {...settingsStepProps}
-          />
-        </Box>
+        <CollageSettingsStep 
+          {...settingsStepProps}
+        />
       </Grid>
       
       {/* Images Section */}

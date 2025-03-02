@@ -10,18 +10,28 @@ import {
  */
 export const PageHeader = ({ icon: Icon, title, isMobile }) => {
   return (
-    <Typography variant="h3" gutterBottom sx={{ 
-      display: 'flex', 
-      alignItems: 'center',
-      fontWeight: '700', 
-      mb: isMobile ? 1.5 : 2.5,
-      pl: isMobile ? 1 : 0,
-      color: '#fff',
-      fontSize: isMobile ? '2.2rem' : '2.5rem',
-      textShadow: '0px 2px 4px rgba(0,0,0,0.15)'
-    }}>
-      <Icon sx={{ mr: 2, color: 'inherit', fontSize: 40 }} /> {title}
-    </Typography>
+    <Box>
+      <Typography variant="h3" gutterBottom sx={{ 
+        display: 'flex', 
+        alignItems: 'center',
+        fontWeight: '700', 
+        mb: isMobile ? 0.75 : 1.5,
+        pl: isMobile ? 1 : 0,
+        color: '#fff',
+        fontSize: isMobile ? '2.2rem' : '2.5rem',
+        textShadow: '0px 2px 4px rgba(0,0,0,0.15)'
+      }}>
+        <Icon sx={{ mr: 2, color: 'inherit', fontSize: 40 }} /> {title}
+      </Typography>
+      <Typography variant="subtitle1" sx={{ 
+        color: 'text.secondary',
+        mb: isMobile ? 2 : 2.5,
+        pl: isMobile ? 1 : 5,
+        maxWidth: '85%'
+      }}>
+        Merge images together to create multi-panel memes
+      </Typography>
+    </Box>
   );
 };
 

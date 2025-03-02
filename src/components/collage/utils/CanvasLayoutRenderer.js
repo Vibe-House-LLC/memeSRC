@@ -722,7 +722,7 @@ export const renderTemplateToCanvas = ({
     const { minWidth, minHeight } = findSmallestPanelDimensions(newPanelRegions);
     
     // Draw upload icons after determining consistent size based on smallest panel
-    for (const panel of newPanelRegions) {
+    newPanelRegions.forEach(panel => {
       // Check if this panel has an image assigned
       const hasImage = panelImageMapping && 
                        Object.prototype.hasOwnProperty.call(panelImageMapping, panel.id) && 
@@ -744,10 +744,10 @@ export const renderTemplateToCanvas = ({
           y: panel.y,
           width: panel.width,
           height: panel.height,
-          consistentIconSize: consistentIconSize // Pass the consistent size as a property
+          consistentIconSize
         }, iconColor);
       }
-    }
+    });
     
     // Set styles for the border - we'll only draw borders once after all images are loaded
     if (shouldDrawBorder) {
