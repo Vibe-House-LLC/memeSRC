@@ -242,7 +242,7 @@ const drawImagesToCanvas = async ({
   theme,
   panelCount
 }) => {
-  console.log(`[DEBUG] drawImagesToCanvas - borderThicknessValue: ${borderThicknessValue}, panelCount: ${panelCount}`);
+  console.log(`[DEBUG] drawImagesToCanvas - borderThicknessValue: ${borderThicknessValue}, borderColor: ${borderColor}, panelCount: ${panelCount}`);
   
   if (selectedImages.length === 0) return;
   
@@ -269,71 +269,7 @@ const drawImagesToCanvas = async ({
     ctx.fillRect(panel.x, panel.y, panel.width, panel.height);
   });
   
-  // Draw initial borders - this ensures borders are visible even if images fail to load
-  if (adjustedBorderThickness > 0) {
-    console.log(`[DEBUG] Drawing initial borders with thickness: ${adjustedBorderThickness}`);
-    ctx.strokeStyle = borderColor;
-    ctx.lineWidth = adjustedBorderThickness;
-    
-    // Calculate the unique grid lines (rows and columns) from panel positions
-    const horizontalLines = new Set();
-    const verticalLines = new Set();
-    
-    // Find all unique grid lines from panel positions
-    panelRegions.forEach(panel => {
-      if (!panel.id) return;
-      
-      // Top and bottom edges
-      horizontalLines.add(panel.y);
-      horizontalLines.add(panel.y + panel.height);
-      
-      // Left and right edges
-      verticalLines.add(panel.x);
-      verticalLines.add(panel.x + panel.width);
-    });
-    
-    // Convert sets to sorted arrays
-    const hLines = Array.from(horizontalLines).sort((a, b) => a - b);
-    const vLines = Array.from(verticalLines).sort((a, b) => a - b);
-    
-    // Draw all horizontal grid lines with proper alignment
-    hLines.forEach(y => {
-      let drawY = y;
-      
-      // Adjust position to ensure consistent visual thickness
-      if (y === hLines[0]) {
-        // Top edge: move inward by half border thickness
-        drawY = y + adjustedBorderThickness / 2;
-      } else if (y === hLines[hLines.length - 1]) {
-        // Bottom edge: move inward by half border thickness
-        drawY = y - adjustedBorderThickness / 2;
-      }
-      
-      ctx.beginPath();
-      ctx.moveTo(vLines[0], drawY);
-      ctx.lineTo(vLines[vLines.length - 1], drawY);
-      ctx.stroke();
-    });
-    
-    // Draw all vertical grid lines with proper alignment
-    vLines.forEach(x => {
-      let drawX = x;
-      
-      // Adjust position to ensure consistent visual thickness
-      if (x === vLines[0]) {
-        // Left edge: move inward by half border thickness
-        drawX = x + adjustedBorderThickness / 2;
-      } else if (x === vLines[vLines.length - 1]) {
-        // Right edge: move inward by half border thickness
-        drawX = x - adjustedBorderThickness / 2;
-      }
-      
-      ctx.beginPath();
-      ctx.moveTo(drawX, hLines[0]);
-      ctx.lineTo(drawX, hLines[hLines.length - 1]);
-      ctx.stroke();
-    });
-  }
+  // We'll skip the initial border pass and only draw borders once at the end
   
   // Collection of promises for loading images
   const imageLoadPromises = [];
@@ -408,7 +344,7 @@ const drawImagesToCanvas = async ({
   
   // Final border pass to ensure borders are on top of all images
   if (adjustedBorderThickness > 0) {
-    console.log(`[DEBUG] Drawing final borders with thickness: ${adjustedBorderThickness}`);
+    console.log(`[DEBUG] Drawing final borders with thickness: ${adjustedBorderThickness}, color: ${borderColor}`);
     ctx.strokeStyle = borderColor;
     ctx.lineWidth = adjustedBorderThickness;
     

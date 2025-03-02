@@ -142,7 +142,7 @@ export default function CollagePage() {
     
     try {
       // Use the collage generator service
-      console.log(`[PAGE DEBUG] Creating collage with panelCount: ${panelCount}, borderThickness: ${borderThickness}`);
+      console.log(`[PAGE DEBUG] Creating collage with panelCount: ${panelCount}, borderThickness: ${borderThickness}, borderColor: ${borderColor}`);
       console.log(`[PAGE DEBUG] borderThicknessOptions:`, borderThicknessOptions);
       
       const dataUrl = await generateCollage({
@@ -164,6 +164,11 @@ export default function CollagePage() {
       setIsCreatingCollage(false);
     }
   };
+
+  // Log changes to border color
+  useEffect(() => {
+    console.log(`[PAGE DEBUG] Border color changed to: ${borderColor}`);
+  }, [borderColor]);
 
   // Props for the settings step component
   const settingsStepProps = {

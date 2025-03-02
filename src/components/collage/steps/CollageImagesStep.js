@@ -99,6 +99,7 @@ const CollageImagesStep = ({
   selectedTemplate,
   selectedAspectRatio,
   borderThickness,
+  borderColor,
   borderThicknessOptions,
   panelImageMapping,
   updatePanelImageMapping
@@ -219,6 +220,7 @@ const CollageImagesStep = ({
             setPanelRegions,
             setRenderedImage,
             borderThickness: adjustedBorderThickness,
+            borderColor,
             selectedImages: updatedImages,
             panelImageMapping: updatedMapping
           });
@@ -289,7 +291,7 @@ const CollageImagesStep = ({
       return;
     }
 
-    console.log(`[STEP DEBUG] CollageImagesStep rendering with panelCount: ${panelCount}, borderThickness: ${borderThickness}`);
+    console.log(`[STEP DEBUG] CollageImagesStep rendering with panelCount: ${panelCount}, borderThickness: ${borderThickness}, borderColor: ${borderColor}`);
     
     // Get border thickness value
     let borderThicknessValue = 4; // Default
@@ -314,7 +316,7 @@ const CollageImagesStep = ({
     
     const timer = setTimeout(() => {
       try {
-        console.log(`[STEP DEBUG] Calling renderTemplateToCanvas with borderThickness: ${adjustedBorderThickness}, panelCount: ${panelCount}`);
+        console.log(`[STEP DEBUG] Calling renderTemplateToCanvas with borderThickness: ${adjustedBorderThickness}, panelCount: ${panelCount}, borderColor: ${borderColor}`);
         renderTemplateToCanvas({
           selectedTemplate,
           selectedAspectRatio,
@@ -324,6 +326,7 @@ const CollageImagesStep = ({
           setPanelRegions,
           setRenderedImage,
           borderThickness: adjustedBorderThickness,
+          borderColor,
           selectedImages,
           panelImageMapping
         });
@@ -342,7 +345,8 @@ const CollageImagesStep = ({
     selectedAspectRatio, 
     panelCount, 
     theme.palette.mode, 
-    borderThickness, 
+    borderThickness,
+    borderColor,
     selectedImages, 
     panelImageMapping,
     hasInitialRender

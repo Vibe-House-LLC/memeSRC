@@ -505,8 +505,9 @@ export const renderTemplateToCanvas = ({
   selectedImages = [],
   panelImageMapping = {}
 }) => {
-  console.log(`[RENDERER DEBUG] renderTemplateToCanvas received borderThickness: ${borderThickness}, panelCount: ${panelCount}`);
+  console.log(`[RENDERER DEBUG] renderTemplateToCanvas received borderThickness: ${borderThickness}, panelCount: ${panelCount}, borderColor: ${borderColor}`);
   debugLog("renderTemplateToCanvas called with border thickness:", borderThickness);
+  debugLog("renderTemplateToCanvas called with border color:", borderColor);
   debugLog("Panel image mapping:", panelImageMapping);
   
   // Check if we have a valid template
@@ -580,13 +581,9 @@ export const renderTemplateToCanvas = ({
     const cellWidths = columns.map(fr => (fr / totalColumnFr) * width);
     const cellHeights = rows.map(fr => (fr / totalRowFr) * height);
     
-    // Set styles for the border
-    ctx.strokeStyle = borderColor || 'white';
-    ctx.lineWidth = borderThickness;
-    console.log(`[RENDERER DEBUG] Setting ctx.lineWidth to borderThickness: ${borderThickness}`);
-    ctx.fillStyle = '#808080'; // Grey placeholder for panels
-    
+    // Save the border settings for later
     const shouldDrawBorder = borderThickness > 0;
+    ctx.fillStyle = '#808080'; // Grey placeholder for panels
     
     // Calculate grid positions
     const rowPositions = [];
@@ -631,69 +628,11 @@ export const renderTemplateToCanvas = ({
       }
     }
     
-    // Step 2: Draw grid lines directly (not panel borders) to avoid doubling inner borders
-    if (shouldDrawBorder && borderThickness > 0) {
-      console.log(`[RENDERER DEBUG] Drawing borders with thickness: ${borderThickness}`);
-      // Calculate all grid line positions
-      const horizontalLines = new Set();
-      const verticalLines = new Set();
-      
-      // Add outer canvas border positions
-      horizontalLines.add(0); // Top edge
-      horizontalLines.add(height); // Bottom edge
-      verticalLines.add(0); // Left edge
-      verticalLines.add(width); // Right edge
-      
-      // Add interior grid lines from row and column positions
-      rowPositions.forEach((pos, index) => {
-        if (index > 0) horizontalLines.add(pos);
-      });
-      
-      colPositions.forEach((pos, index) => {
-        if (index > 0) verticalLines.add(pos);
-      });
-      
-      // Convert to sorted arrays
-      const sortedHLines = Array.from(horizontalLines).sort((a, b) => a - b);
-      const sortedVLines = Array.from(verticalLines).sort((a, b) => a - b);
-      
-      // Draw all horizontal grid lines with proper alignment
-      sortedHLines.forEach(y => {
-        let drawY = y;
-        
-        // Adjust the position to ensure equal visual thickness
-        if (y === 0) {
-          // Top edge: move inward by half border thickness
-          drawY = borderThickness / 2;
-        } else if (y === height) {
-          // Bottom edge: move inward by half border thickness
-          drawY = height - borderThickness / 2;
-        }
-        
-        ctx.beginPath();
-        ctx.moveTo(0, drawY);
-        ctx.lineTo(width, drawY);
-        ctx.stroke();
-      });
-      
-      // Draw all vertical grid lines with proper alignment
-      sortedVLines.forEach(x => {
-        let drawX = x;
-        
-        // Adjust the position to ensure equal visual thickness
-        if (x === 0) {
-          // Left edge: move inward by half border thickness
-          drawX = borderThickness / 2;
-        } else if (x === width) {
-          // Right edge: move inward by half border thickness
-          drawX = width - borderThickness / 2;
-        }
-        
-        ctx.beginPath();
-        ctx.moveTo(drawX, 0);
-        ctx.lineTo(drawX, height);
-        ctx.stroke();
-      });
+    // Set styles for the border - we'll only draw borders once after all images are loaded
+    if (shouldDrawBorder) {
+      console.log(`[RENDERER DEBUG] Setting border properties: color=${borderColor}, thickness=${borderThickness}`);
+      ctx.strokeStyle = borderColor;
+      ctx.lineWidth = borderThickness;
     }
     
     // Generate initial canvas image without waiting for images to load
@@ -804,8 +743,9 @@ export const renderTemplateToCanvas = ({
     Promise.all(imageLoadPromises).then(() => {
       // Final border pass after all images are drawn
       if (shouldDrawBorder && borderThickness > 0) {
-        console.log(`[RENDERER DEBUG] Drawing final borders with thickness: ${borderThickness}`);
-        ctx.strokeStyle = borderColor || 'white';
+        console.log(`[RENDERER DEBUG] Drawing final borders with thickness: ${borderThickness}, color: ${borderColor}`);
+        // Ensure we use the correct border color
+        ctx.strokeStyle = borderColor;
         ctx.lineWidth = borderThickness;
         
         // Calculate all grid line positions
