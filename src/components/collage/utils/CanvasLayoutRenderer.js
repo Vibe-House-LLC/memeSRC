@@ -488,6 +488,7 @@ const createLayoutConfigFromId = (templateId, count) => {
  * @param {function} params.setPanelRegions - Function to set panel regions
  * @param {function} params.setRenderedImage - Function to set rendered image
  * @param {number} params.borderThickness - The border thickness
+ * @param {string} params.borderColor - The border color
  * @param {Array} params.selectedImages - Array of selected images
  * @param {Object} params.panelImageMapping - Object mapping panels to images
  */
@@ -500,6 +501,7 @@ export const renderTemplateToCanvas = ({
   setPanelRegions,
   setRenderedImage,
   borderThickness = 4,
+  borderColor = '#FFFFFF', // Add default border color
   selectedImages = [],
   panelImageMapping = {}
 }) => {
@@ -578,7 +580,7 @@ export const renderTemplateToCanvas = ({
     const cellHeights = rows.map(fr => (fr / totalRowFr) * height);
     
     // Set styles for the border
-    ctx.strokeStyle = 'white'; // White border
+    ctx.strokeStyle = borderColor || 'white'; // Use provided border color or default to white
     ctx.lineWidth = borderThickness;
     ctx.fillStyle = '#808080'; // Grey placeholder for panels
     
@@ -601,6 +603,8 @@ export const renderTemplateToCanvas = ({
     
     // Simple grid renderer - draw each panel in order
     let panelIndex = 0;
+    
+    // Step 1: Draw all panels without borders first
     for (let row = 0; row < rows.length && panelIndex < panelCount; row += 1) {
       for (let col = 0; col < columns.length && panelIndex < panelCount; col += 1) {
         const x = colPositions[col];
@@ -610,11 +614,6 @@ export const renderTemplateToCanvas = ({
         
         // Draw panel placeholder
         ctx.fillRect(x, y, width, height);
-        
-        // Add border if needed
-        if (shouldDrawBorder) {
-          ctx.strokeRect(x, y, width, height);
-        }
         
         // Store panel region
         newPanelRegions.push({
@@ -626,134 +625,73 @@ export const renderTemplateToCanvas = ({
           height
         });
         
-        // Check if this panel has an image
-        const imageIndex = panelImageMapping[panelIndex];
-        if (typeof imageIndex === 'number' && 
-            imageIndex >= 0 && 
-            imageIndex < selectedImages.length) {
-          
-          // Get image URL
-          const imageItem = selectedImages[imageIndex];
-          const imageUrl = typeof imageItem === 'object' && imageItem !== null 
-            ? (imageItem.url || imageItem.imageUrl || imageItem) 
-            : imageItem;
-            
-          // Load the image
-          const img = new Image();
-          img.onload = () => {
-            // Calculate scaling to fit panel
-            const imgAspect = img.width / img.height;
-            const panelAspect = width / height;
-            
-            let drawWidth;
-            let drawHeight;
-            let offsetX = 0; 
-            let offsetY = 0;
-            
-            if (imgAspect > panelAspect) {
-              // Image is wider
-              drawHeight = height;
-              drawWidth = height * imgAspect;
-              offsetX = (width - drawWidth) / 2;
-            } else {
-              // Image is taller
-              drawWidth = width;
-              drawHeight = width / imgAspect;
-              offsetY = (height - drawHeight) / 2;
-            }
-            
-            // Draw the image
-            ctx.save();
-            ctx.beginPath();
-            ctx.rect(x, y, width, height);
-            ctx.clip();
-            ctx.drawImage(img, x + offsetX, y + offsetY, drawWidth, drawHeight);
-            ctx.restore();
-            
-            // Add border on top if needed
-            if (shouldDrawBorder) {
-              ctx.strokeRect(x, y, width, height);
-            }
-            
-            // Update the rendered image
-            if (canvas instanceof OffscreenCanvas) {
-              canvas.convertToBlob({ type: 'image/png' })
-                .then(blob => {
-                  const url = URL.createObjectURL(blob);
-                  setRenderedImage(url);
-                })
-                .catch(err => {
-                  logError('Error converting canvas to blob:', err);
-                  if (canvasRef && canvasRef.current) {
-                    setRenderedImage(canvasRef.current.toDataURL('image/png'));
-                  }
-                });
-            } else {
-              try {
-                setRenderedImage(canvas.toDataURL('image/png'));
-              } catch (err) {
-                logError('Error converting canvas to data URL:', err);
-              }
-            }
-          };
-          
-          // Handle image loading errors
-          const setupErrorHandler = (currentPanelIndex, panelX, panelY, panelWidth, panelHeight) => {
-            return () => {
-              logError(`Failed to load image for panel ${currentPanelIndex}`);
-              
-              // Redraw with error indicator
-              ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';  // Red with opacity
-              ctx.fillRect(panelX, panelY, panelWidth, panelHeight);
-              ctx.fillStyle = '#808080';  // Reset fill color
-              
-              // Add border if needed
-              if (shouldDrawBorder) {
-                ctx.strokeRect(panelX, panelY, panelWidth, panelHeight);
-              }
-              
-              // Update the rendered image with error state
-              if (canvas instanceof OffscreenCanvas) {
-                canvas.convertToBlob({ type: 'image/png' })
-                  .then(blob => {
-                    const url = URL.createObjectURL(blob);
-                    setRenderedImage(url);
-                  })
-                  .catch(() => {
-                    if (canvasRef && canvasRef.current) {
-                      setRenderedImage(canvasRef.current.toDataURL('image/png'));
-                    }
-                  });
-              } else {
-                try {
-                  setRenderedImage(canvas.toDataURL('image/png'));
-                } catch (err) {
-                  logError('Error converting canvas to data URL:', err);
-                }
-              }
-            };
-          };
-          
-          img.onerror = setupErrorHandler(panelIndex, x, y, width, height);
-          
-          // Set image source - with special handling for base64
-          if (imageUrl && imageUrl.startsWith('data:image')) {
-            img.src = imageUrl;
-          } else if (imageUrl) {
-            // Add cache busting for regular URLs
-            img.src = imageUrl.includes('?') ? imageUrl : `${imageUrl}?t=${Date.now()}`;
-            if (!imageUrl.startsWith('blob:')) {
-              img.crossOrigin = 'anonymous';
-            }
-          }
-        }
-        
         panelIndex += 1;
       }
     }
     
-    // Update panel regions state
-    setPanelRegions(newPanelRegions);
+    // Step 2: Draw grid lines directly (not panel borders) to avoid doubling inner borders
+    if (shouldDrawBorder && borderThickness > 0) {
+      // Calculate all grid line positions
+      const horizontalLines = new Set();
+      const verticalLines = new Set();
+      
+      // Add outer canvas border positions
+      horizontalLines.add(0); // Top edge
+      horizontalLines.add(height); // Bottom edge
+      verticalLines.add(0); // Left edge
+      verticalLines.add(width); // Right edge
+      
+      // Add interior grid lines from row and column positions
+      rowPositions.forEach((pos, index) => {
+        if (index > 0) horizontalLines.add(pos);
+      });
+      
+      colPositions.forEach((pos, index) => {
+        if (index > 0) verticalLines.add(pos);
+      });
+      
+      // Convert to sorted arrays
+      const sortedHLines = Array.from(horizontalLines).sort((a, b) => a - b);
+      const sortedVLines = Array.from(verticalLines).sort((a, b) => a - b);
+      
+      // Draw all horizontal grid lines with proper alignment
+      sortedHLines.forEach(y => {
+        let drawY = y;
+        
+        // Adjust the position to ensure equal visual thickness
+        if (y === 0) {
+          // Top edge: move inward by half border thickness
+          drawY = borderThickness / 2;
+        } else if (y === height) {
+          // Bottom edge: move inward by half border thickness
+          drawY = height - borderThickness / 2;
+        }
+        
+        ctx.beginPath();
+        ctx.moveTo(0, drawY);
+        ctx.lineTo(width, drawY);
+        ctx.stroke();
+      });
+      
+      // Draw all vertical grid lines with proper alignment
+      sortedVLines.forEach(x => {
+        let drawX = x;
+        
+        // Adjust the position to ensure equal visual thickness
+        if (x === 0) {
+          // Left edge: move inward by half border thickness
+          drawX = borderThickness / 2;
+        } else if (x === width) {
+          // Right edge: move inward by half border thickness
+          drawX = width - borderThickness / 2;
+        }
+        
+        ctx.beginPath();
+        ctx.moveTo(drawX, 0);
+        ctx.lineTo(drawX, height);
+        ctx.stroke();
+      });
+    }
     
     // Generate initial canvas image without waiting for images to load
     if (canvas instanceof OffscreenCanvas) {
@@ -775,6 +713,183 @@ export const renderTemplateToCanvas = ({
         logError('Error converting canvas to data URL:', err);
       }
     }
+    
+    // Step 3: Now load and draw images
+    const imageLoadPromises = [];
+    
+    newPanelRegions.forEach(panel => {
+      const panelId = panel.id;
+      const imageIndex = panelImageMapping[panelId];
+      
+      if (typeof imageIndex === 'number' && 
+          imageIndex >= 0 && 
+          imageIndex < selectedImages.length) {
+        
+        // Get image URL
+        const imageItem = selectedImages[imageIndex];
+        const imageUrl = typeof imageItem === 'object' && imageItem !== null 
+          ? (imageItem.url || imageItem.imageUrl || imageItem) 
+          : imageItem;
+          
+        // Load the image
+        const imgPromise = new Promise((resolve) => {
+          const img = new Image();
+          img.onload = () => {
+            // Calculate scaling to fit panel
+            const imgAspect = img.width / img.height;
+            const panelAspect = panel.width / panel.height;
+            
+            let drawWidth;
+            let drawHeight;
+            let offsetX = 0; 
+            let offsetY = 0;
+            
+            if (imgAspect > panelAspect) {
+              // Image is wider
+              drawHeight = panel.height;
+              drawWidth = panel.height * imgAspect;
+              offsetX = (panel.width - drawWidth) / 2;
+            } else {
+              // Image is taller
+              drawWidth = panel.width;
+              drawHeight = panel.width / imgAspect;
+              offsetY = (panel.height - drawHeight) / 2;
+            }
+            
+            // Draw the image
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(panel.x, panel.y, panel.width, panel.height);
+            ctx.clip();
+            ctx.drawImage(img, panel.x + offsetX, panel.y + offsetY, drawWidth, drawHeight);
+            ctx.restore();
+            
+            resolve();
+          };
+          
+          // Handle image loading errors
+          img.onerror = () => {
+            logError(`Failed to load image for panel ${panelId}`);
+            
+            // Redraw with error indicator
+            ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';  // Red with opacity
+            ctx.fillRect(panel.x, panel.y, panel.width, panel.height);
+            ctx.fillStyle = '#808080';  // Reset fill color
+            
+            resolve();
+          };
+          
+          // Set image source - with special handling for base64
+          if (imageUrl && imageUrl.startsWith('data:image')) {
+            img.src = imageUrl;
+          } else if (imageUrl) {
+            // Add cache busting for regular URLs
+            img.src = imageUrl.includes('?') ? imageUrl : `${imageUrl}?t=${Date.now()}`;
+            if (!imageUrl.startsWith('blob:')) {
+              img.crossOrigin = 'anonymous';
+            }
+          } else {
+            resolve(); // No valid URL, just resolve
+          }
+        });
+        
+        imageLoadPromises.push(imgPromise);
+      }
+    });
+    
+    // After all images are loaded, draw final borders
+    Promise.all(imageLoadPromises).then(() => {
+      // Final border pass after all images are drawn
+      if (shouldDrawBorder && borderThickness > 0) {
+        ctx.strokeStyle = borderColor || 'white';
+        ctx.lineWidth = borderThickness;
+        
+        // Calculate all grid line positions
+        const horizontalLines = new Set();
+        const verticalLines = new Set();
+        
+        // Add outer canvas border positions
+        horizontalLines.add(0); // Top edge
+        horizontalLines.add(height); // Bottom edge
+        verticalLines.add(0); // Left edge
+        verticalLines.add(width); // Right edge
+        
+        // Add interior grid lines from row and column positions
+        rowPositions.forEach((pos, index) => {
+          if (index > 0) horizontalLines.add(pos);
+        });
+        
+        colPositions.forEach((pos, index) => {
+          if (index > 0) verticalLines.add(pos);
+        });
+        
+        // Convert to sorted arrays
+        const sortedHLines = Array.from(horizontalLines).sort((a, b) => a - b);
+        const sortedVLines = Array.from(verticalLines).sort((a, b) => a - b);
+        
+        // Draw all horizontal grid lines with proper alignment
+        sortedHLines.forEach(y => {
+          let drawY = y;
+          
+          // Adjust the position to ensure equal visual thickness
+          if (y === 0) {
+            // Top edge: move inward by half border thickness
+            drawY = borderThickness / 2;
+          } else if (y === height) {
+            // Bottom edge: move inward by half border thickness
+            drawY = height - borderThickness / 2;
+          }
+          
+          ctx.beginPath();
+          ctx.moveTo(0, drawY);
+          ctx.lineTo(width, drawY);
+          ctx.stroke();
+        });
+        
+        // Draw all vertical grid lines with proper alignment
+        sortedVLines.forEach(x => {
+          let drawX = x;
+          
+          // Adjust the position to ensure equal visual thickness
+          if (x === 0) {
+            // Left edge: move inward by half border thickness
+            drawX = borderThickness / 2;
+          } else if (x === width) {
+            // Right edge: move inward by half border thickness
+            drawX = width - borderThickness / 2;
+          }
+          
+          ctx.beginPath();
+          ctx.moveTo(drawX, 0);
+          ctx.lineTo(drawX, height);
+          ctx.stroke();
+        });
+      }
+      
+      // Update the final image
+      if (canvas instanceof OffscreenCanvas) {
+        canvas.convertToBlob({ type: 'image/png' })
+          .then(blob => {
+            const url = URL.createObjectURL(blob);
+            setRenderedImage(url);
+          })
+          .catch(err => {
+            logError('Error converting canvas to blob:', err);
+            if (canvasRef && canvasRef.current) {
+              setRenderedImage(canvasRef.current.toDataURL('image/png'));
+            }
+          });
+      } else {
+        try {
+          setRenderedImage(canvas.toDataURL('image/png'));
+        } catch (err) {
+          logError('Error converting canvas to data URL:', err);
+        }
+      }
+    });
+    
+    // Update panel regions state
+    setPanelRegions(newPanelRegions);
   } catch (error) {
     logError('Error during template rendering:', error);
     
