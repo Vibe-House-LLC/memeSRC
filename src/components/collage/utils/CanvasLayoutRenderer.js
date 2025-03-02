@@ -505,6 +505,7 @@ export const renderTemplateToCanvas = ({
   selectedImages = [],
   panelImageMapping = {}
 }) => {
+  console.log(`[RENDERER DEBUG] renderTemplateToCanvas received borderThickness: ${borderThickness}, panelCount: ${panelCount}`);
   debugLog("renderTemplateToCanvas called with border thickness:", borderThickness);
   debugLog("Panel image mapping:", panelImageMapping);
   
@@ -580,8 +581,9 @@ export const renderTemplateToCanvas = ({
     const cellHeights = rows.map(fr => (fr / totalRowFr) * height);
     
     // Set styles for the border
-    ctx.strokeStyle = borderColor || 'white'; // Use provided border color or default to white
+    ctx.strokeStyle = borderColor || 'white';
     ctx.lineWidth = borderThickness;
+    console.log(`[RENDERER DEBUG] Setting ctx.lineWidth to borderThickness: ${borderThickness}`);
     ctx.fillStyle = '#808080'; // Grey placeholder for panels
     
     const shouldDrawBorder = borderThickness > 0;
@@ -631,6 +633,7 @@ export const renderTemplateToCanvas = ({
     
     // Step 2: Draw grid lines directly (not panel borders) to avoid doubling inner borders
     if (shouldDrawBorder && borderThickness > 0) {
+      console.log(`[RENDERER DEBUG] Drawing borders with thickness: ${borderThickness}`);
       // Calculate all grid line positions
       const horizontalLines = new Set();
       const verticalLines = new Set();
@@ -801,6 +804,7 @@ export const renderTemplateToCanvas = ({
     Promise.all(imageLoadPromises).then(() => {
       // Final border pass after all images are drawn
       if (shouldDrawBorder && borderThickness > 0) {
+        console.log(`[RENDERER DEBUG] Drawing final borders with thickness: ${borderThickness}`);
         ctx.strokeStyle = borderColor || 'white';
         ctx.lineWidth = borderThickness;
         

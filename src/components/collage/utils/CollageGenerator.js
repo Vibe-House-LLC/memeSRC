@@ -5,39 +5,106 @@ import { sanitizePanelImageMapping, createPanelToImageUrlMapping } from './Panel
  * Service for collage generation
  */
 
-const getBorderThicknessValue = (borderThickness, borderThicknessOptions) => {
+/**
+ * Get the border thickness value, adjusted for panel count
+ * @param {string|number} borderThickness - The border thickness label or value
+ * @param {Array} borderThicknessOptions - Options for border thickness
+ * @param {number} panelCount - Number of panels in the collage
+ * @returns {number} - The adjusted border thickness value
+ */
+const getBorderThicknessValue = (borderThickness, borderThicknessOptions, panelCount = 2) => {
+  console.log(`[DEBUG] getBorderThicknessValue - Initial borderThickness: ${borderThickness}, panelCount: ${panelCount}`);
+  
+  let rawThickness;
+  
   // If borderThickness is already a number, return it directly
   if (typeof borderThickness === 'number') {
-    return borderThickness;
+    console.log(`[DEBUG] borderThickness is a number: ${borderThickness}`);
+    rawThickness = borderThickness;
   }
-  
   // If it's a string that can be parsed as a number, return the parsed value
-  if (typeof borderThickness === 'string' && !isNaN(parseFloat(borderThickness))) {
-    return parseFloat(borderThickness);
+  else if (typeof borderThickness === 'string' && !isNaN(parseFloat(borderThickness))) {
+    rawThickness = parseFloat(borderThickness);
+    console.log(`[DEBUG] borderThickness parsed from string: ${rawThickness}`);
   }
-  
   // Try to find by label in the options
-  const matchingOption = borderThicknessOptions.find(
-    option => option.label.toLowerCase() === borderThickness.toLowerCase()
-  );
-  
-  if (matchingOption) {
-    return matchingOption.value;
+  else {
+    // Log the available options for debugging
+    console.log(`[DEBUG] Available borderThicknessOptions:`, 
+      borderThicknessOptions.map(opt => `${opt.label}: ${opt.value}`).join(', '));
+    
+    const matchingOption = borderThicknessOptions.find(
+      option => option.label.toLowerCase() === borderThickness.toLowerCase()
+    );
+    
+    if (matchingOption) {
+      rawThickness = matchingOption.value;
+      console.log(`[DEBUG] Found matching option: ${matchingOption.label} = ${rawThickness}`);
+    }
+    // If no match found, try to find 'medium' as fallback
+    else {
+      const mediumOption = borderThicknessOptions.find(
+        option => option.label.toLowerCase() === 'medium'
+      );
+      
+      if (mediumOption) {
+        console.log(`[DEBUG] Border thickness '${borderThickness}' not found, using 'medium' instead`);
+        rawThickness = mediumOption.value;
+      }
+      else {
+        // Absolute fallback
+        console.log(`[DEBUG] No matching border thickness found for '${borderThickness}', using default`);
+        rawThickness = 30; // Default to a sensible medium value if all else fails
+      }
+    }
   }
   
-  // If no match found, try to find 'medium' as fallback
-  const mediumOption = borderThicknessOptions.find(
-    option => option.label.toLowerCase() === 'medium'
-  );
+  // Get adjusted thickness
+  const adjustedThickness = adjustForPanelCount(rawThickness, panelCount);
+  console.log(`[DEBUG] Raw thickness: ${rawThickness}, After panel count adjustment: ${adjustedThickness} (panelCount: ${panelCount})`);
   
-  if (mediumOption) {
-    console.log(`Border thickness '${borderThickness}' not found, using 'medium' instead`);
-    return mediumOption.value;
+  return adjustedThickness;
+};
+
+/**
+ * Adjust border thickness based on panel count
+ * Scales down thickness significantly as panel count increases
+ * @param {number} thickness - Original thickness value
+ * @param {number} panelCount - Number of panels in the collage
+ * @returns {number} - Adjusted thickness value
+ */
+const adjustForPanelCount = (thickness, panelCount) => {
+  console.log(`[DEBUG] adjustForPanelCount - Original thickness: ${thickness}, panelCount: ${panelCount}`);
+  
+  if (panelCount <= 2) {
+    console.log(`[DEBUG] No adjustment needed for panel count ${panelCount}`);
+    return thickness; // No adjustment for 1-2 panels
   }
   
-  // Absolute fallback
-  console.log(`No matching border thickness found for '${borderThickness}', using default`);
-  return 50; // Default to a sensible medium value if all else fails
+  // Apply a more aggressive scaling for more panels to ensure borders don't overwhelm the design
+  let scaleFactor;
+  
+  switch (panelCount) {
+    case 3:
+      scaleFactor = 0.7; // 70% of original thickness for 3 panels
+      break;
+    case 4:
+      scaleFactor = 0.6; // 60% of original thickness for 4 panels
+      break;
+    case 5:
+      scaleFactor = 0.5; // 50% of original thickness for 5 panels
+      break;
+    default:
+      scaleFactor = 0.4; // 40% of original thickness for 6+ panels (very aggressive reduction)
+      break;
+  }
+  
+  console.log(`[DEBUG] Using scale factor: ${scaleFactor} for panel count: ${panelCount}`);
+  
+  // Ensure minimum thickness of 1 pixel
+  const adjusted = Math.max(1, Math.round(thickness * scaleFactor));
+  console.log(`[DEBUG] Final adjusted thickness: ${adjusted} (original: ${thickness}, scale: ${scaleFactor})`);
+  return adjusted;
 };
 
 /**
@@ -56,12 +123,16 @@ export const generateCollage = async ({
   borderThicknessOptions,
   theme
 }) => {
+  console.log(`[DEBUG] generateCollage - panelCount: ${panelCount}, borderThickness: ${borderThickness}`);
+  console.log(`[DEBUG] borderThicknessOptions:`, borderThicknessOptions);
+  
   try {
     // Sanitize the panel mapping
     const cleanMapping = sanitizePanelImageMapping(panelImageMapping, selectedImages, panelCount);
     
     // Get the numeric border thickness value
-    const borderThicknessValue = getBorderThicknessValue(borderThickness, borderThicknessOptions);
+    const borderThicknessValue = getBorderThicknessValue(borderThickness, borderThicknessOptions, panelCount);
+    console.log(`[DEBUG] After getBorderThicknessValue - borderThicknessValue: ${borderThicknessValue}`);
     
     // Call the canvas renderer to create the collage
     const { width, height, canvasRef, dataUrl, panelRegions } = await renderCollage({
@@ -93,7 +164,8 @@ export const generateCollage = async ({
       cleanMapping,
       borderThicknessValue,
       borderColor,
-      theme
+      theme,
+      panelCount
     });
     
     // Return the data URL
@@ -115,9 +187,15 @@ const renderCollage = async ({
   panelCount,
   theme
 }) => {
+  console.log(`[DEBUG] renderCollage - borderThicknessValue: ${borderThicknessValue}, panelCount: ${panelCount}`);
+  
   // Create canvas regions for the collage
   const panelRegions = [];
   const canvasRef = { current: document.createElement('canvas') };
+  
+  // Adjust border thickness based on panel count
+  const adjustedBorderThickness = adjustForPanelCount(borderThicknessValue, panelCount);
+  console.log(`[DEBUG] renderCollage - adjustedBorderThickness: ${adjustedBorderThickness} (original: ${borderThicknessValue})`);
   
   // Promise to capture panel regions
   await new Promise(resolve => {
@@ -127,6 +205,7 @@ const renderCollage = async ({
       resolve();
     };
     
+    console.log(`[DEBUG] About to call renderTemplateToCanvas with borderThickness: ${adjustedBorderThickness}`);
     renderTemplateToCanvas({
       selectedTemplate,
       selectedAspectRatio,
@@ -135,7 +214,7 @@ const renderCollage = async ({
       canvasRef,
       setPanelRegions,
       setRenderedImage,
-      borderThickness: borderThicknessValue,
+      borderThickness: adjustedBorderThickness,
       borderColor: borderColor // Pass border color to rendering function
     });
   });
@@ -160,9 +239,16 @@ const drawImagesToCanvas = async ({
   cleanMapping,
   borderThicknessValue,
   borderColor = '#FFFFFF', // Default to white if not provided
-  theme
+  theme,
+  panelCount
 }) => {
+  console.log(`[DEBUG] drawImagesToCanvas - borderThicknessValue: ${borderThicknessValue}, panelCount: ${panelCount}`);
+  
   if (selectedImages.length === 0) return;
+  
+  // Ensure border thickness is properly adjusted for panel count
+  const adjustedBorderThickness = adjustForPanelCount(borderThicknessValue, panelCount);
+  console.log(`[DEBUG] drawImagesToCanvas - adjustedBorderThickness: ${adjustedBorderThickness} (original: ${borderThicknessValue})`);
   
   // Create a mapping from panel ID to image URL
   const panelToImageUrl = createPanelToImageUrlMapping(cleanMapping, selectedImages, panelRegions);
@@ -184,9 +270,10 @@ const drawImagesToCanvas = async ({
   });
   
   // Draw initial borders - this ensures borders are visible even if images fail to load
-  if (borderThicknessValue > 0) {
+  if (adjustedBorderThickness > 0) {
+    console.log(`[DEBUG] Drawing initial borders with thickness: ${adjustedBorderThickness}`);
     ctx.strokeStyle = borderColor;
-    ctx.lineWidth = borderThicknessValue;
+    ctx.lineWidth = adjustedBorderThickness;
     
     // Calculate the unique grid lines (rows and columns) from panel positions
     const horizontalLines = new Set();
@@ -216,10 +303,10 @@ const drawImagesToCanvas = async ({
       // Adjust position to ensure consistent visual thickness
       if (y === hLines[0]) {
         // Top edge: move inward by half border thickness
-        drawY = y + borderThicknessValue / 2;
+        drawY = y + adjustedBorderThickness / 2;
       } else if (y === hLines[hLines.length - 1]) {
         // Bottom edge: move inward by half border thickness
-        drawY = y - borderThicknessValue / 2;
+        drawY = y - adjustedBorderThickness / 2;
       }
       
       ctx.beginPath();
@@ -235,10 +322,10 @@ const drawImagesToCanvas = async ({
       // Adjust position to ensure consistent visual thickness
       if (x === vLines[0]) {
         // Left edge: move inward by half border thickness
-        drawX = x + borderThicknessValue / 2;
+        drawX = x + adjustedBorderThickness / 2;
       } else if (x === vLines[vLines.length - 1]) {
         // Right edge: move inward by half border thickness
-        drawX = x - borderThicknessValue / 2;
+        drawX = x - adjustedBorderThickness / 2;
       }
       
       ctx.beginPath();
@@ -320,9 +407,10 @@ const drawImagesToCanvas = async ({
   await Promise.all(imageLoadPromises);
   
   // Final border pass to ensure borders are on top of all images
-  if (borderThicknessValue > 0) {
+  if (adjustedBorderThickness > 0) {
+    console.log(`[DEBUG] Drawing final borders with thickness: ${adjustedBorderThickness}`);
     ctx.strokeStyle = borderColor;
-    ctx.lineWidth = borderThicknessValue;
+    ctx.lineWidth = adjustedBorderThickness;
     
     // Calculate the unique grid lines (rows and columns) from panel positions
     const horizontalLines = new Set();
@@ -352,10 +440,10 @@ const drawImagesToCanvas = async ({
       // Adjust position to ensure consistent visual thickness
       if (y === hLines[0]) {
         // Top edge: move inward by half border thickness
-        drawY = y + borderThicknessValue / 2;
+        drawY = y + adjustedBorderThickness / 2;
       } else if (y === hLines[hLines.length - 1]) {
         // Bottom edge: move inward by half border thickness
-        drawY = y - borderThicknessValue / 2;
+        drawY = y - adjustedBorderThickness / 2;
       }
       
       ctx.beginPath();
@@ -371,10 +459,10 @@ const drawImagesToCanvas = async ({
       // Adjust position to ensure consistent visual thickness
       if (x === vLines[0]) {
         // Left edge: move inward by half border thickness
-        drawX = x + borderThicknessValue / 2;
+        drawX = x + adjustedBorderThickness / 2;
       } else if (x === vLines[vLines.length - 1]) {
         // Right edge: move inward by half border thickness
-        drawX = x - borderThicknessValue / 2;
+        drawX = x - adjustedBorderThickness / 2;
       }
       
       ctx.beginPath();

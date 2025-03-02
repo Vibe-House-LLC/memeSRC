@@ -24,6 +24,40 @@ import {
   clearPanelImage as clearPanelImageUtil
 } from "../utils/PanelManager";
 
+/**
+ * Adjust border thickness based on panel count
+ * Scales down thickness significantly as panel count increases
+ * @param {number} thickness - Original thickness value
+ * @param {number} panelCount - Number of panels in the collage
+ * @returns {number} - Adjusted thickness value
+ */
+const adjustForPanelCount = (thickness, panelCount) => {
+  if (panelCount <= 2) {
+    return thickness; // No adjustment for 1-2 panels
+  }
+  
+  // Apply a more aggressive scaling for more panels
+  let scaleFactor;
+  
+  switch (panelCount) {
+    case 3:
+      scaleFactor = 0.7; // 70% of original thickness for 3 panels
+      break;
+    case 4:
+      scaleFactor = 0.6; // 60% of original thickness for 4 panels
+      break;
+    case 5:
+      scaleFactor = 0.5; // 50% of original thickness for 5 panels
+      break;
+    default:
+      scaleFactor = 0.4; // 40% of original thickness for 6+ panels (very aggressive reduction)
+      break;
+  }
+  
+  // Ensure minimum thickness of 1 pixel
+  return Math.max(1, Math.round(thickness * scaleFactor));
+};
+
 // Debug flag - only enable in development mode
 const DEBUG_MODE = process.env.NODE_ENV === 'development';
 
@@ -147,6 +181,10 @@ const CollageImagesStep = ({
             }
           }
           
+          // Adjust border thickness based on panel count
+          const adjustedBorderThickness = adjustForPanelCount(borderThicknessValue, panelCount);
+          console.log(`[STEP DEBUG] Image selection: Adjusted border thickness for panelCount ${panelCount}: ${adjustedBorderThickness} (original: ${borderThicknessValue})`);
+          
           // Check if this is updating an existing image or adding a new one
           const existingMappingIndex = panelImageMapping[panel.id];
           const isReuploadToSamePanel = existingMappingIndex !== undefined;
@@ -180,7 +218,7 @@ const CollageImagesStep = ({
             canvasRef,
             setPanelRegions,
             setRenderedImage,
-            borderThickness: borderThicknessValue,
+            borderThickness: adjustedBorderThickness,
             selectedImages: updatedImages,
             panelImageMapping: updatedMapping
           });
@@ -251,20 +289,32 @@ const CollageImagesStep = ({
       return;
     }
 
+    console.log(`[STEP DEBUG] CollageImagesStep rendering with panelCount: ${panelCount}, borderThickness: ${borderThickness}`);
+    
     // Get border thickness value
     let borderThicknessValue = 4; // Default
     if (borderThicknessOptions && borderThickness) {
       const option = borderThicknessOptions.find(opt => opt.label.toLowerCase() === borderThickness.toLowerCase());
       if (option) {
         borderThicknessValue = option.value;
+        console.log(`[STEP DEBUG] Found matching borderThickness option: ${option.label} = ${borderThicknessValue}`);
+      } else {
+        console.log(`[STEP DEBUG] No matching option found for borderThickness: ${borderThickness}`);
       }
+    } else {
+      console.log(`[STEP DEBUG] Using default borderThicknessValue: ${borderThicknessValue}`);
     }
+    
+    // Adjust border thickness based on panel count
+    const adjustedBorderThickness = adjustForPanelCount(borderThicknessValue, panelCount);
+    console.log(`[STEP DEBUG] Adjusted border thickness for panelCount ${panelCount}: ${adjustedBorderThickness} (original: ${borderThicknessValue})`);
 
     // Add short delay for the initial render only
     const initialDelay = hasInitialRender ? 0 : 50;
     
     const timer = setTimeout(() => {
       try {
+        console.log(`[STEP DEBUG] Calling renderTemplateToCanvas with borderThickness: ${adjustedBorderThickness}, panelCount: ${panelCount}`);
         renderTemplateToCanvas({
           selectedTemplate,
           selectedAspectRatio,
@@ -273,7 +323,7 @@ const CollageImagesStep = ({
           canvasRef,
           setPanelRegions,
           setRenderedImage,
-          borderThickness: borderThicknessValue,
+          borderThickness: adjustedBorderThickness,
           selectedImages,
           panelImageMapping
         });
@@ -385,9 +435,8 @@ CollageImagesStep.defaultProps = {
   borderThickness: 'medium',
   borderThicknessOptions: [
     { label: "None", value: 0 },
-    { label: "Thin", value: 2 },
-    { label: "Medium", value: 4 },
-    { label: "Thick", value: 8 }
+    { label: "Thin", value: 0.6 },
+    { label: "Medium", value: 1.5 },
   ],
   panelImageMapping: {},
 };

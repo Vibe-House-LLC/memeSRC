@@ -84,12 +84,11 @@ export default function CollagePage() {
   // Define border thickness options
   const borderThicknessOptions = [
     { label: "None", value: 0 },
-    { label: "Thin", value: 20 },
-    { label: "Medium", value: 50 },
-    { label: "Thick", value: 90 },
-    { label: "Thicc", value: 140 },
-    { label: "Thiccer", value: 200 },
-    { label: "XTRA THICC", value: 260 }
+    { label: "Thin", value: 6 },
+    { label: "Medium", value: 16 },
+    { label: "Thicc", value: 40 },
+    { label: "Thiccer", value: 80 },
+    { label: "XTRA THICC", value: 120 }
   ];
 
   // Get layouts compatible with the current panel count and aspect ratio
@@ -143,6 +142,9 @@ export default function CollagePage() {
     
     try {
       // Use the collage generator service
+      console.log(`[PAGE DEBUG] Creating collage with panelCount: ${panelCount}, borderThickness: ${borderThickness}`);
+      console.log(`[PAGE DEBUG] borderThicknessOptions:`, borderThicknessOptions);
+      
       const dataUrl = await generateCollage({
         selectedTemplate,
         selectedAspectRatio,
