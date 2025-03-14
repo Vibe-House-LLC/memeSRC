@@ -42,6 +42,28 @@ import { useCollageState } from "../components/collage/hooks/useCollageState";
 // Debug flag - only enable in development mode
 const DEBUG_MODE = process.env.NODE_ENV === 'development';
 
+// Helper debug logger function that only logs when DEBUG_MODE is true
+const debugLog = (...args) => {
+  if (DEBUG_MODE) {
+    console.log(...args);
+  }
+};
+
+// Helper for warnings that should still show in production
+const debugWarn = (...args) => {
+  if (DEBUG_MODE) {
+    console.warn(...args);
+  } else if (args[0] && args[0].includes('critical')) {
+    // Allow critical warnings to show even in production
+    console.warn(...args);
+  }
+};
+
+// Helper for errors that should always show
+const logError = (...args) => {
+  console.error(...args);
+};
+
 // Collage page component - provides UI for creating collages
 export default function CollagePage() {
   // Access theme for responsiveness and custom styling
@@ -142,8 +164,8 @@ export default function CollagePage() {
     
     try {
       // Use the collage generator service
-      console.log(`[PAGE DEBUG] Creating collage with panelCount: ${panelCount}, borderThickness: ${borderThickness}, borderColor: ${borderColor}`);
-      console.log(`[PAGE DEBUG] borderThicknessOptions:`, borderThicknessOptions);
+      debugLog(`[PAGE DEBUG] Creating collage with panelCount: ${panelCount}, borderThickness: ${borderThickness}, borderColor: ${borderColor}`);
+      debugLog(`[PAGE DEBUG] borderThicknessOptions:`, borderThicknessOptions);
       
       const dataUrl = await generateCollage({
         selectedTemplate,
@@ -159,7 +181,7 @@ export default function CollagePage() {
       
       setFinalImage(dataUrl);
     } catch (error) {
-      console.error('Error generating collage:', error);
+      logError('Error generating collage:', error);
     } finally {
       setIsCreatingCollage(false);
     }
@@ -167,7 +189,7 @@ export default function CollagePage() {
 
   // Log changes to border color
   useEffect(() => {
-    console.log(`[PAGE DEBUG] Border color changed to: ${borderColor}`);
+    debugLog(`[PAGE DEBUG] Border color changed to: ${borderColor}`);
   }, [borderColor]);
 
   // Props for the settings step component
@@ -210,7 +232,7 @@ export default function CollagePage() {
   // Log the panel mapping for debugging
   useEffect(() => {
     if (DEBUG_MODE) {
-      console.log("CollagePage panel mapping updated:", {
+      debugLog("CollagePage panel mapping updated:", {
         mappingKeys: Object.keys(panelImageMapping),
         imageCount: selectedImages.length
       });
