@@ -93,17 +93,6 @@ const fourPanelLayouts = {
         gridTemplateAreas: '"main main main" "left middle right"',
         areas: ['main', 'left', 'middle', 'right']
       })
-    },
-    {
-      id: 'split-bottom-feature-tall',
-      name: 'Two Top + Feature Bottom',
-      panels: 4,
-      getLayoutConfig: () => ({
-        gridTemplateColumns: '1fr 1fr',
-        gridTemplateRows: '1fr 1fr 2fr',
-        gridTemplateAreas: '"top-left top-right" "bottom-left bottom-right" "bottom bottom"',
-        areas: ['top-left', 'top-right', 'bottom-left', 'bottom-right']
-      })
     }
   ],
   square: [
