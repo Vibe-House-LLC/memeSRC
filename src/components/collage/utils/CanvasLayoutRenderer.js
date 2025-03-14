@@ -688,33 +688,291 @@ export const renderTemplateToCanvas = ({
       currentX += cellWidths[index];
     });
     
-    // Simple grid renderer - draw each panel in order
+    // Create panel regions based on the layout configuration
     let panelIndex = 0;
     
-    // Step 1: Draw all panels without borders first
-    for (let row = 0; row < rows.length && panelIndex < panelCount; row += 1) {
-      for (let col = 0; col < columns.length && panelIndex < panelCount; col += 1) {
-        const x = colPositions[col];
-        const y = rowPositions[row];
-        const width = cellWidths[col];
-        const height = cellHeights[row];
+    // Check if we have grid template areas defined for complex layouts
+    if (layoutConfig.gridTemplateAreas && layoutConfig.areas && layoutConfig.areas.length > 0) {
+      debugLog("Using grid template areas for complex layout", layoutConfig.gridTemplateAreas);
+      
+      // Parse the grid template areas - handle different string formats
+      let gridAreasMatrix = [];
+      const areasString = layoutConfig.gridTemplateAreas.trim();
+      
+      // Reset matrix for fresh parsing
+      console.log("Original grid template areas string:", areasString);
+      
+      // Enhanced parsing of grid template areas with better format handling
+      try {
+        // Fix the parsing of grid template areas formatted as quoted strings
+        if (areasString.includes('"')) {
+          // Extract each quoted group using regex to properly split multi-row templates
+          const matches = areasString.match(/"([^"]+)"/g) || [];
+          
+          if (matches.length > 0) {
+            gridAreasMatrix = matches.map(quotedRow => {
+              // Remove quotes and split by whitespace
+              return quotedRow
+                .replace(/"/g, '')
+                .trim()
+                .split(/\s+/)
+                .filter(Boolean);
+            });
+            
+            console.log("Parsed grid areas matrix from quotes:", gridAreasMatrix);
+          } else {
+            // Fallback if regex failed
+            gridAreasMatrix = [areasString.replace(/"/g, '').trim().split(/\s+/).filter(Boolean)];
+          }
+        } else if (areasString.includes('\n')) {
+          // Format with newlines only
+          gridAreasMatrix = areasString
+            .split('\n')
+            .map(row => row.trim().split(/\s+/).filter(Boolean))
+            .filter(row => row.length > 0);
+        } else {
+          // Single line format without quotes
+          gridAreasMatrix = [areasString.trim().split(/\s+/).filter(Boolean)];
+        }
         
-        // Draw panel placeholder
-        ctx.fillRect(x, y, width, height);
+        // Add validation to ensure we have a valid matrix
+        if (gridAreasMatrix.length === 0 || gridAreasMatrix.some(row => row.length === 0)) {
+          console.warn('Empty grid areas matrix after parsing, falling back to simple format');
+          // Fallback to simplest parsing
+          gridAreasMatrix = [areasString.replace(/"/g, '').trim().split(/\s+/)];
+        }
+      } catch (error) {
+        console.error('Error parsing grid template areas:', error);
+        // Fallback to simpler parsing as a last resort
+        gridAreasMatrix = [areasString.replace(/["\n]/g, ' ').trim().split(/\s+/).filter(Boolean)];
+      }
+      
+      console.log("Grid areas matrix after parsing:", JSON.stringify(gridAreasMatrix));
+      
+      // Validate that the grid areas matrix has the expected structure
+      const rowCount = gridAreasMatrix.length;
+      const colCount = Math.max(...gridAreasMatrix.map(row => row.length));
+      
+      console.log(`Grid dimensions: ${rowCount} rows × ${colCount} columns`);
+      
+      // Create a map of area name to panel region
+      const areaToRegionMap = {};
+      const allAreas = new Set(); // Track all unique areas found in the matrix
+
+      // First pass: determine the boundaries of each named area
+      gridAreasMatrix.forEach((row, rowIndex) => {
+        row.forEach((areaName, colIndex) => {
+          if (areaName !== '.' && areaName !== '') { // Skip empty cells
+            allAreas.add(areaName); // Add to set of all areas
+            
+            if (!areaToRegionMap[areaName]) {
+              areaToRegionMap[areaName] = {
+                minRow: rowIndex,
+                maxRow: rowIndex,
+                minCol: colIndex,
+                maxCol: colIndex
+              };
+            } else {
+              // Update boundaries for this area
+              areaToRegionMap[areaName].minRow = Math.min(areaToRegionMap[areaName].minRow, rowIndex);
+              areaToRegionMap[areaName].maxRow = Math.max(areaToRegionMap[areaName].maxRow, rowIndex);
+              areaToRegionMap[areaName].minCol = Math.min(areaToRegionMap[areaName].minCol, colIndex);
+              areaToRegionMap[areaName].maxCol = Math.max(areaToRegionMap[areaName].maxCol, colIndex);
+            }
+          }
+        });
+      });
+      
+      debugLog("Area to region map:", areaToRegionMap);
+      debugLog("All areas found in matrix:", [...allAreas]);
+
+      // Check if we have areas in the grid template that aren't in the areas array
+      // This might indicate a mismatch in the template definition
+      const missingAreas = [];
+      allAreas.forEach(area => {
+        if (!layoutConfig.areas.includes(area)) {
+          missingAreas.push(area);
+        }
+      });
+      
+      if (missingAreas.length > 0) {
+        debugWarn(`Found areas in grid template that aren't in the areas array: ${missingAreas.join(', ')}`);
+        // If we have extra areas in the template, add them to the areas array to ensure we create all needed panels
+        // Only do this if the total doesn't exceed panelCount
+        if (layoutConfig.areas.length + missingAreas.length <= panelCount) {
+          debugLog(`Adding missing areas to the areas array: ${missingAreas.join(', ')}`);
+          layoutConfig.areas = [...layoutConfig.areas, ...missingAreas];
+        }
+      }
+      
+      // Create a special fallback order if needed - use all areas from the matrix
+      // in case the areas array is missing or incomplete
+      const fallbackOrder = [...allAreas];
+      
+      // Second pass: create panel regions using either template areas or fallback
+      // Important: Process areas in the same order they're specified in the template's areas array
+      // This ensures image mappings work correctly
+      const createdPanels = new Set();
+      
+      // Use areas specified in the template, or fall back to all areas found in the matrix
+      const areasToProcess = layoutConfig.areas.length > 0 ? layoutConfig.areas : fallbackOrder;
+      
+      areasToProcess.forEach((areaName, index) => {
+        if (index >= panelCount) return; // Don't create more panels than needed
         
-        // Store panel region
-        const panel = {
-          id: panelIndex,
-          name: `panel-${panelIndex}`,
-          x,
-          y,
-          width,
-          height
-        };
+        const region = areaToRegionMap[areaName];
+        if (!region) {
+          debugWarn(`Area '${areaName}' not found in grid template areas`);
+          return;
+        }
         
-        newPanelRegions.push(panel);
-        
-        panelIndex += 1;
+        try {
+          // Calculate the panel's dimensions and position
+          const x = colPositions[region.minCol];
+          const y = rowPositions[region.minRow];
+          
+          // Debug the positions and ranges for this panel
+          console.log(`Panel '${areaName}' grid position:`, {
+            rowRange: [region.minRow, region.maxRow],
+            colRange: [region.minCol, region.maxCol],
+            rowPos: rowPositions.slice(region.minRow, region.maxRow + 1),
+            colPos: colPositions.slice(region.minCol, region.maxCol + 1),
+            cellWidths: cellWidths.slice(region.minCol, region.maxCol + 1),
+            cellHeights: cellHeights.slice(region.minRow, region.maxRow + 1)
+          });
+          
+          // If any positions or dimensions are missing, use safe fallbacks
+          const fallbackX = typeof colPositions[0] === 'number' ? colPositions[0] : 0;
+          const fallbackY = typeof rowPositions[0] === 'number' ? rowPositions[0] : 0;
+          const fixedX = typeof x === 'number' ? x : fallbackX;
+          const fixedY = typeof y === 'number' ? y : fallbackY;
+          
+          // Log a warning if we had to use fallbacks
+          if (x === undefined || y === undefined) {
+            console.warn(`Position undefined for panel '${areaName}', using fallback position x=${fixedX}, y=${fixedY}`);
+          }
+          
+          // Calculate width differently - first ensure we have valid column positions
+          let panelWidth = 0;
+          if (region.minCol < colPositions.length && region.maxCol < colPositions.length) {
+            if (region.maxCol > region.minCol) {
+              // Start with the position difference
+              panelWidth = colPositions[region.maxCol] - colPositions[region.minCol];
+              // Add the width of the last cell
+              panelWidth += cellWidths[region.maxCol];
+            } else {
+              // Just use the width of a single cell
+              panelWidth = cellWidths[region.minCol];
+            }
+          } else {
+            // Fallback: use a percentage of the total width
+            panelWidth = width / colCount;
+          }
+          
+          // Calculate height similarly
+          let panelHeight = 0;
+          if (region.minRow < rowPositions.length && region.maxRow < rowPositions.length) {
+            if (region.maxRow > region.minRow) {
+              // Start with the position difference
+              panelHeight = rowPositions[region.maxRow] - rowPositions[region.minRow];
+              // Add the height of the last cell
+              panelHeight += cellHeights[region.maxRow];
+            } else {
+              // Just use the height of a single cell
+              panelHeight = cellHeights[region.minRow];
+            }
+          } else {
+            // Fallback: use a percentage of the total height
+            panelHeight = height / rowCount;
+          }
+          
+          // Ensure the panel has valid dimensions
+          if (!isFinite(fixedX) || !isFinite(fixedY) || !isFinite(panelWidth) || !isFinite(panelHeight) || 
+              panelWidth <= 0 || panelHeight <= 0) {
+            debugWarn(`Invalid panel dimensions for area '${areaName}':`, 
+              { x: fixedX, y: fixedY, width: panelWidth, height: panelHeight });
+            return;
+          }
+          
+          // Draw panel placeholder - Make sure to use grey color for all panels
+          ctx.fillStyle = '#808080'; // Ensure consistent grey color for placeholders
+          ctx.fillRect(fixedX, fixedY, panelWidth, panelHeight);
+          
+          // Use consistent panel IDs based on index in the areas array
+          // This ensures that panel IDs match what the template and UI expect
+          const panelId = index;
+          
+          // Store panel region
+          newPanelRegions.push({
+            id: panelId,
+            name: areaName,
+            x: fixedX,
+            y: fixedY,
+            width: panelWidth,
+            height: panelHeight
+          });
+          
+          createdPanels.add(areaName);
+          panelIndex = Math.max(panelIndex, index + 1);
+        } catch (error) {
+          console.error(`Error creating panel for area '${areaName}':`, error);
+        }
+      });
+      
+      // Diagnostic information
+      debugLog(`Created ${newPanelRegions.length} panels out of expected ${panelCount}`);
+      if (newPanelRegions.length < panelCount) {
+        debugWarn(`Missing ${panelCount - newPanelRegions.length} panels in the layout`);
+      }
+      
+      // Log warning if areas defined in the matrix weren't used
+      Object.keys(areaToRegionMap).forEach(areaName => {
+        if (!createdPanels.has(areaName) && areaName !== '.') {
+          debugWarn(`Area '${areaName}' defined in grid template but not used in panel creation`);
+        }
+      });
+    } else {
+      // Use simple grid layout for templates without grid areas
+      debugLog("Using simple grid layout with columns and rows");
+      
+      // Step 1: Draw all panels without borders first
+      for (let row = 0; row < rows.length && panelIndex < panelCount; row += 1) {
+        for (let col = 0; col < columns.length && panelIndex < panelCount; col += 1) {
+          try {
+            const x = colPositions[col];
+            const y = rowPositions[row];
+            const width = cellWidths[col];
+            const height = cellHeights[row];
+            
+            // Ensure the panel has valid dimensions
+            if (!isFinite(x) || !isFinite(y) || !isFinite(width) || !isFinite(height) || 
+                width <= 0 || height <= 0) {
+              debugWarn(`Invalid panel dimensions at grid position [${row}][${col}]:`, 
+                { x, y, width, height });
+              continue;
+            }
+            
+            // Draw panel placeholder with consistent color
+            ctx.fillStyle = '#808080'; // Ensure consistent grey color for placeholders
+            ctx.fillRect(x, y, width, height);
+            
+            // Store panel region
+            const panel = {
+              id: panelIndex,
+              name: `panel-${panelIndex}`,
+              x,
+              y,
+              width,
+              height
+            };
+            
+            newPanelRegions.push(panel);
+            
+            panelIndex += 1;
+          } catch (error) {
+            console.error(`Error creating panel at grid position [${row}][${col}]:`, error);
+          }
+        }
       }
     }
     
@@ -865,70 +1123,105 @@ export const renderTemplateToCanvas = ({
       // Final border pass after all images are drawn
       if (shouldDrawBorder && borderThickness > 0) {
         console.log(`[RENDERER DEBUG] Drawing final borders with thickness: ${borderThickness}, color: ${borderColor}`);
-        // Ensure we use the correct border color
+        
+        // NEW APPROACH: Draw borders around each panel directly instead of grid lines
+        // This ensures complex layouts with spanning areas are rendered correctly
+        
+        // Ensure we use the correct border color and thickness
         ctx.strokeStyle = borderColor;
         ctx.lineWidth = borderThickness;
+
+        // First identify all unique edges to avoid double-drawing borders
+        const edges = new Map(); // Map of edge key to edge object
         
-        // Calculate all grid line positions
-        const horizontalLines = new Set();
-        const verticalLines = new Set();
-        
-        // Add outer canvas border positions
-        horizontalLines.add(0); // Top edge
-        horizontalLines.add(height); // Bottom edge
-        verticalLines.add(0); // Left edge
-        verticalLines.add(width); // Right edge
-        
-        // Add interior grid lines from row and column positions
-        rowPositions.forEach((pos, index) => {
-          if (index > 0) horizontalLines.add(pos);
-        });
-        
-        colPositions.forEach((pos, index) => {
-          if (index > 0) verticalLines.add(pos);
-        });
-        
-        // Convert to sorted arrays
-        const sortedHLines = Array.from(horizontalLines).sort((a, b) => a - b);
-        const sortedVLines = Array.from(verticalLines).sort((a, b) => a - b);
-        
-        // Draw all horizontal grid lines with proper alignment
-        sortedHLines.forEach(y => {
-          let drawY = y;
-          
-          // Adjust the position to ensure equal visual thickness
-          if (y === 0) {
-            // Top edge: move inward by half border thickness
-            drawY = borderThickness / 2;
-          } else if (y === height) {
-            // Bottom edge: move inward by half border thickness
-            drawY = height - borderThickness / 2;
+        // Helper to create a unique key for an edge - with better error checking
+        const getEdgeKey = (x1, y1, x2, y2) => {
+          // Ensure all inputs are valid numbers
+          if (!isFinite(x1) || !isFinite(y1) || !isFinite(x2) || !isFinite(y2)) {
+            console.error('Invalid coordinates for edge key:', { x1, y1, x2, y2 });
+            return 'invalid-edge'; // Return a placeholder to avoid crashes
           }
           
-          ctx.beginPath();
-          ctx.moveTo(0, drawY);
-          ctx.lineTo(width, drawY);
-          ctx.stroke();
-        });
-        
-        // Draw all vertical grid lines with proper alignment
-        sortedVLines.forEach(x => {
-          let drawX = x;
+          // Normalize coordinates to ensure the same edge from either direction has the same key
+          const [minX, maxX] = x1 < x2 ? [x1, x2] : [x2, x1];
+          const [minY, maxY] = y1 < y2 ? [y1, y2] : [y2, y1];
           
-          // Adjust the position to ensure equal visual thickness
-          if (x === 0) {
-            // Left edge: move inward by half border thickness
-            drawX = borderThickness / 2;
-          } else if (x === width) {
-            // Right edge: move inward by half border thickness
-            drawX = width - borderThickness / 2;
+          return `${minX.toFixed(2)}-${minY.toFixed(2)}-${maxX.toFixed(2)}-${maxY.toFixed(2)}`;
+        };
+        
+        // Collect all panel edges
+        newPanelRegions.forEach(panel => {
+          // Ensure valid coordinates before creating edges
+          if (!panel || typeof panel.x !== 'number' || typeof panel.y !== 'number' || 
+              typeof panel.width !== 'number' || typeof panel.height !== 'number') {
+            console.error('Invalid panel region:', panel);
+            return; // Skip this panel
           }
           
-          ctx.beginPath();
-          ctx.moveTo(drawX, 0);
-          ctx.lineTo(drawX, height);
-          ctx.stroke();
+          // Use safe calculation and verify values
+          const x = panel.x;
+          const y = panel.y;
+          const right = x + panel.width;
+          const bottom = y + panel.height;
+          
+          // Add edges only if coordinates are valid (defensive programming)
+          if (isFinite(x) && isFinite(y) && isFinite(right) && isFinite(bottom)) {
+            try {
+              // Top edge
+              edges.set(getEdgeKey(x, y, right, y), { x1: x, y1: y, x2: right, y2: y });
+              // Right edge
+              edges.set(getEdgeKey(right, y, right, bottom), { x1: right, y1: y, x2: right, y2: bottom });
+              // Bottom edge
+              edges.set(getEdgeKey(x, bottom, right, bottom), { x1: x, y1: bottom, x2: right, y2: bottom });
+              // Left edge
+              edges.set(getEdgeKey(x, y, x, bottom), { x1: x, y1: y, x2: x, y2: bottom });
+            } catch (e) {
+              console.error('Error adding edge:', e, panel);
+            }
+          } else {
+            console.error('Invalid panel coordinates:', panel);
+          }
         });
+        
+        // Draw each unique edge once with proper offset
+        edges.forEach((edge, key) => {
+          if (key === 'invalid-edge' || !edge || 
+              !isFinite(edge.x1) || !isFinite(edge.y1) || 
+              !isFinite(edge.x2) || !isFinite(edge.y2)) {
+            return; // Skip invalid edges
+          }
+          
+          const offset = borderThickness / 2;
+          let { x1, y1, x2, y2 } = edge;
+          
+          // If it's an outer edge, adjust it inward
+          if (Math.abs(x1) < 0.01) x1 = offset;
+          if (Math.abs(y1) < 0.01) y1 = offset;
+          if (Math.abs(x2 - width) < 0.01) x2 = width - offset;
+          if (Math.abs(y2 - height) < 0.01) y2 = height - offset;
+          
+          try {
+            // Draw the line
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+          } catch (e) {
+            console.error('Error drawing edge:', e, edge);
+          }
+        });
+        
+        try {
+          // Draw the outer canvas border with proper thickness
+          ctx.strokeRect(
+            borderThickness / 2, 
+            borderThickness / 2, 
+            width - borderThickness, 
+            height - borderThickness
+          );
+        } catch (e) {
+          console.error('Error drawing outer border:', e);
+        }
       }
       
       // Update the final image
