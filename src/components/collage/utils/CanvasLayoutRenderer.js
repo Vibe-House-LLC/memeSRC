@@ -887,7 +887,7 @@ export const renderTemplateToCanvas = ({
           }
           
           // Ensure the panel has valid dimensions
-          if (!isFinite(fixedX) || !isFinite(fixedY) || !isFinite(panelWidth) || !isFinite(panelHeight) || 
+          if (!Number.isFinite(fixedX) || !Number.isFinite(fixedY) || !Number.isFinite(panelWidth) || !Number.isFinite(panelHeight) || 
               panelWidth <= 0 || panelHeight <= 0) {
             debugWarn(`Invalid panel dimensions for area '${areaName}':`, 
               { x: fixedX, y: fixedY, width: panelWidth, height: panelHeight });
@@ -945,11 +945,11 @@ export const renderTemplateToCanvas = ({
             const height = cellHeights[row];
             
             // Ensure the panel has valid dimensions
-            if (!isFinite(x) || !isFinite(y) || !isFinite(width) || !isFinite(height) || 
+            if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(width) || !Number.isFinite(height) || 
                 width <= 0 || height <= 0) {
               debugWarn(`Invalid panel dimensions at grid position [${row}][${col}]:`, 
                 { x, y, width, height });
-              continue;
+              return;
             }
             
             // Draw panel placeholder with consistent color
@@ -1137,7 +1137,7 @@ export const renderTemplateToCanvas = ({
         // Helper to create a unique key for an edge - with better error checking
         const getEdgeKey = (x1, y1, x2, y2) => {
           // Ensure all inputs are valid numbers
-          if (!isFinite(x1) || !isFinite(y1) || !isFinite(x2) || !isFinite(y2)) {
+          if (!Number.isFinite(x1) || !Number.isFinite(y1) || !Number.isFinite(x2) || !Number.isFinite(y2)) {
             console.error('Invalid coordinates for edge key:', { x1, y1, x2, y2 });
             return 'invalid-edge'; // Return a placeholder to avoid crashes
           }
@@ -1165,7 +1165,7 @@ export const renderTemplateToCanvas = ({
           const bottom = y + panel.height;
           
           // Add edges only if coordinates are valid (defensive programming)
-          if (isFinite(x) && isFinite(y) && isFinite(right) && isFinite(bottom)) {
+          if (Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(right) && Number.isFinite(bottom)) {
             try {
               // Top edge
               edges.set(getEdgeKey(x, y, right, y), { x1: x, y1: y, x2: right, y2: y });
@@ -1186,8 +1186,8 @@ export const renderTemplateToCanvas = ({
         // Draw each unique edge once with proper offset
         edges.forEach((edge, key) => {
           if (key === 'invalid-edge' || !edge || 
-              !isFinite(edge.x1) || !isFinite(edge.y1) || 
-              !isFinite(edge.x2) || !isFinite(edge.y2)) {
+              !Number.isFinite(edge.x1) || !Number.isFinite(edge.y1) || 
+              !Number.isFinite(edge.x2) || !Number.isFinite(edge.y2)) {
             return; // Skip invalid edges
           }
           
