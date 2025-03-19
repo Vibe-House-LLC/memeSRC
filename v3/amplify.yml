@@ -2,6 +2,10 @@ version: 1
 applications:
   - backend:
       phases:
+        preBuild:
+          commands:
+            - nvm install 20
+            - nvm use 20
         build:
           commands:
             - npm ci --cache .npm --prefer-offline
@@ -10,8 +14,6 @@ applications:
       phases:
         preBuild:
           commands:
-            - nvm install 20
-            - nvm use 20
             - npm ci --cache .npm --prefer-offline
         build:
           commands:
