@@ -9,7 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@aws-amplify/adapter-nextjs": "^1.2.14",
+    "@aws-amplify/adapter-nextjs": "^1.5.5",
     "@aws-amplify/ui-react": "^6.1.14",
     "@radix-ui/react-dialog": "^1.1.1",
     "@radix-ui/react-dropdown-menu": "^2.1.1",
@@ -32,12 +32,11 @@
     "react-markdown": "^9.0.1",
     "stripe": "^16.5.0",
     "tailwind-merge": "^2.5.2",
-    "tailwindcss-animate": "^1.0.7",
     "vaul": "^1.0.0"
   },
   "devDependencies": {
     "@aws-amplify/backend": "^1.1.1",
-    "@aws-amplify/backend-cli": "^1.2.4",
+    "@aws-amplify/backend-cli": "^1.5.0",
     "@types/aws-lambda": "^8.10.143",
     "@types/fabric": "^5.3.8",
     "@types/node": "^20",
@@ -49,6 +48,7 @@
     "eslint": "^9.9.0",
     "postcss": "^8.4.35",
     "tailwindcss": "^3.4.1",
+    "tailwindcss-animate": "^1.0.7",
     "typescript": "^5.5.4"
   }
 }
