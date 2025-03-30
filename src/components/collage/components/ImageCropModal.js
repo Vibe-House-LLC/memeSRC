@@ -87,6 +87,7 @@ export default function ImageCropModal({
   useEffect(() => {
     // Reset state when dialog opens or image changes
     if (open) {
+      console.log("ImageCropModal: Resetting state", { imageSrc });
       setCrop(undefined); // Reset crop area
       setCompletedCrop(null);
       setImgLoadError(false);
@@ -94,7 +95,17 @@ export default function ImageCropModal({
     }
   }, [open, imageSrc]);
 
+  // Add a new effect that will reset the image reference when imageSrc changes
+  // This ensures the component properly re-loads the image
+  useEffect(() => {
+    if (imgRef.current && imageSrc) {
+      // Force reload the image by setting src
+      imgRef.current.src = imageSrc;
+    }
+  }, [imageSrc]);
+
   const onImageLoad = (e) => {
+    console.log("ImageCropModal: Image loaded successfully");
     setImgLoadError(false);
     const { width, height } = e.currentTarget;
     // Set initial crop area centered with the correct aspect ratio
@@ -111,7 +122,7 @@ export default function ImageCropModal({
 
   const onImageError = () => {
     setImgLoadError(true);
-    console.error("Error loading image for cropping.");
+    console.error("Error loading image for cropping. Image source:", imageSrc);
   };
 
   const handleCrop = async () => {

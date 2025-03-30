@@ -78,8 +78,14 @@ const CollageImagesStep = ({
           if (isReplacingMappedImage) {
             // Replace existing image
             debugLog(`Replacing image for panel ${panelId}, index ${existingMappingIndex}`);
+            
+            // These functions should update both originalUrl and displayUrl
             replaceImage(existingMappingIndex, base64Image);
-            updateImage(existingMappingIndex, base64Image);
+            
+            // Ensure modal stays closed
+            setCropModalOpen(false);
+            setCurrentPanelToEdit(null);
+            setImageToCrop(null);
           } else {
             // Add new image
             const newIndex = selectedImages.length;
@@ -103,7 +109,7 @@ const CollageImagesStep = ({
       }
     };
     fileInput.click();
-  }, [panelImageMapping, replaceImage, updateImage, addImage, updatePanelImageMapping, selectedImages.length]);
+  }, [panelImageMapping, replaceImage, updateImage, addImage, updatePanelImageMapping, selectedImages.length, setCropModalOpen, setCurrentPanelToEdit, setImageToCrop]);
 
   // Define handlePanelClick first (before it's used in handlePreviewClick)
   const handlePanelClick = useCallback((canvasX, canvasY) => {
@@ -135,8 +141,15 @@ const CollageImagesStep = ({
 
         // Use the ORIGINAL URL for the cropper source
         if (imageItemObject && imageItemObject.originalUrl) {
-            setImageToCrop(imageItemObject.originalUrl);
-            setCropModalOpen(true);
+            // Force a new state value to ensure React sees the change and reloads the image
+            const timestamp = Date.now();
+            // Use an empty image first to force a reset
+            setImageToCrop(null);
+            // Use setTimeout to ensure the component gets a chance to reset
+            setTimeout(() => {
+                setImageToCrop(imageItemObject.originalUrl);
+                setCropModalOpen(true);
+            }, 50);
         } else {
             debugWarn(`Could not get valid ORIGINAL image URL for index ${imageIndex}. Triggering upload. ImageItem:`, imageItemObject);
             triggerImageUpload(clickedPanel); // Fallback to upload
@@ -199,6 +212,12 @@ const CollageImagesStep = ({
   // --- Handler for Replace Image request ---
   const handleReplaceRequest = useCallback(() => {
     if (currentPanelToEdit) {
+      // Close the modal before triggering upload
+      setCropModalOpen(false);
+      setImageToCrop(null);
+      setCurrentPanelToEdit(null);
+      
+      // Now trigger the upload
       triggerImageUpload(currentPanelToEdit);
     }
   }, [currentPanelToEdit, triggerImageUpload]);
@@ -226,8 +245,13 @@ const CollageImagesStep = ({
     delete updatedMapping[panelId];
     updatePanelImageMapping(updatedMapping);
     
+    // Close the modal and reset state
+    setCropModalOpen(false);
+    setCurrentPanelToEdit(null);
+    setImageToCrop(null);
+    
     debugLog(`Removed image at index ${imageIndex} from panel ${panelId}`);
-  }, [currentPanelToEdit, panelImageMapping, removeImage, updatePanelImageMapping]);
+  }, [currentPanelToEdit, panelImageMapping, removeImage, updatePanelImageMapping, setCropModalOpen, setCurrentPanelToEdit, setImageToCrop]);
 
   // --- useEffect for Rendering Preview ---
   /* eslint-disable consistent-return */
@@ -316,6 +340,7 @@ const CollageImagesStep = ({
       {/* --- Modals --- */}
       {/* Image Crop Modal with new Options */}
       <ImageCropModal
+          key={imageToCrop || 'no-image'}
           open={cropModalOpen}
           onClose={() => {
               setCropModalOpen(false);
