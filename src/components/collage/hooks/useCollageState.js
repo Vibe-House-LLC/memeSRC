@@ -162,8 +162,8 @@ export const useCollageState = () => {
       };
       setSelectedImages(newImages);
       if (DEBUG_MODE) console.log(`Updated display image for index ${index}`, { original: oldImageObj.originalUrl, display: croppedDataUrl });
-    } else {
-        if (DEBUG_MODE) console.warn(`Failed to update image display URL at index ${index}`);
+    } else if (DEBUG_MODE) {
+      console.warn(`Failed to update image display URL at index ${index}`);
     }
   }, [selectedImages, DEBUG_MODE]);
 
@@ -185,8 +185,8 @@ export const useCollageState = () => {
         newImages[index] = { originalUrl: newBase64Image, displayUrl: newBase64Image };
         setSelectedImages(newImages);
         if (DEBUG_MODE) console.log(`Replaced image at index ${index} with new file.`);
-    } else {
-         if (DEBUG_MODE) console.warn(`Failed to replace image at index ${index}`);
+    } else if (DEBUG_MODE) {
+      console.warn(`Failed to replace image at index ${index}`);
     }
   }, [selectedImages, DEBUG_MODE]);
 
