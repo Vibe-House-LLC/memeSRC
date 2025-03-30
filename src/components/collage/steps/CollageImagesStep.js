@@ -12,17 +12,22 @@ import { KeyboardArrowLeft, KeyboardArrowRight, Edit } from "@mui/icons-material
 // Import from the collage configuration
 import { aspectRatioPresets, getLayoutsForPanelCount } from "../config/CollageConfig";
 // Import new layout rendering utilities
-import { 
-  renderTemplateToCanvas, 
+import {
+  renderTemplateToCanvas,
   getAspectRatioValue,
   calculateCanvasDimensions
 } from "../utils/CanvasLayoutRenderer";
-// Import panel management utilities
-import {
-  handlePreviewClick as handlePreviewClickUtil,
-  handlePanelImageSelection as handlePanelImageSelectionUtil,
-  clearPanelImage as clearPanelImageUtil
-} from "../utils/PanelManager";
+
+// Import the components directly
+import UploadOrCropDialog from "../components/UploadOrCropDialog";
+import ImageCropModal from "../components/ImageCropModal";
+
+// --- ADD CONSOLE LOGS ---
+// Log right after imports to see what was actually imported
+console.log("Imported UploadOrCropDialogModule:", UploadOrCropDialog);
+console.log("Imported ImageCropModalModule:", ImageCropModal);
+
+// --- END OF MODIFICATIONS ---
 
 /**
  * Adjust border thickness based on panel count
@@ -35,10 +40,10 @@ const adjustForPanelCount = (thickness, panelCount) => {
   if (panelCount <= 2) {
     return thickness; // No adjustment for 1-2 panels
   }
-  
+
   // Apply a more aggressive scaling for more panels
   let scaleFactor;
-  
+
   switch (panelCount) {
     case 3:
       scaleFactor = 0.7; // 70% of original thickness for 3 panels
@@ -53,7 +58,7 @@ const adjustForPanelCount = (thickness, panelCount) => {
       scaleFactor = 0.4; // 40% of original thickness for 6+ panels (very aggressive reduction)
       break;
   }
-  
+
   // Ensure minimum thickness of 1 pixel
   return Math.max(1, Math.round(thickness * scaleFactor));
 };
@@ -87,15 +92,15 @@ const logError = (...args) => {
  * CollageImagesStep - The second step of the collage creation process
  * Renders a preview of the final collage layout using OffscreenCanvas
  */
-const CollageImagesStep = ({ 
-  selectedImages, 
+const CollageImagesStep = ({
+  selectedImages,
   addImage,
   removeImage,
   updateImage,
   clearImages,
   panelCount,
-  handleBack, 
-  handleNext,
+  handleBack, // Currently unused, but keep for potential future use
+  handleNext, // Used for the main 'Create Collage' action
   selectedTemplate,
   selectedAspectRatio,
   borderThickness,
@@ -111,209 +116,209 @@ const CollageImagesStep = ({
   const canvasRef = useRef(null);
   // Store panel regions for click detection
   const [panelRegions, setPanelRegions] = useState([]);
-  // Track which panel was last clicked
-  const [selectedPanel, setSelectedPanel] = useState(null);
   // Track initial load state
   const [hasInitialRender, setHasInitialRender] = useState(false);
-  // Store selected images per panel - synced with parent component's panelImageMapping
-  const [panelToImageMap, setPanelToImageMap] = useState({});
-  
-  // Enhance the handlePreviewClick function
+
+  // --- State for Modals ---
+  const [uploadOrCropDialogOpen, setUploadOrCropDialogOpen] = useState(false);
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [currentPanelToEdit, setCurrentPanelToEdit] = useState(null); // Stores the { id, x, y, width, height } of the panel being edited
+  const [imageToCrop, setImageToCrop] = useState(null); // Stores the base64 source for the cropper
+  const [panelAspectRatio, setPanelAspectRatio] = useState(1); // Aspect ratio for the cropping tool
+
+
+  // --- Modified Click Handler ---
   const handlePreviewClick = (event) => {
     debugLog("Preview image clicked");
-    
-    // Get the click coordinates relative to the image
+
     const image = event.currentTarget;
     const rect = image.getBoundingClientRect();
-    
-    // Calculate click position as percentage of image dimensions
     const clickX = (event.clientX - rect.left) / rect.width;
     const clickY = (event.clientY - rect.top) / rect.height;
-    
+
     debugLog("Click coordinates as percentage:", { clickX, clickY });
-    
-    // Convert to canvas coordinates
+
     const { width, height } = calculateCanvasDimensions(selectedAspectRatio);
     const canvasX = clickX * width;
     const canvasY = clickY * height;
-    
+
     debugLog("Canvas coordinates:", { canvasX, canvasY });
     debugLog("Available panel regions:", panelRegions);
-    
-    // Find which panel was clicked
-    const clickedPanel = panelRegions.find(panel => 
-      canvasX >= panel.x && 
-      canvasX <= panel.x + panel.width && 
-      canvasY >= panel.y && 
+
+    const clickedPanel = panelRegions.find(panel =>
+      canvasX >= panel.x &&
+      canvasX <= panel.x + panel.width &&
+      canvasY >= panel.y &&
       canvasY <= panel.y + panel.height
     );
-    
+
     if (clickedPanel) {
       debugLog(`Clicked on panel ${clickedPanel.id}`);
-      setSelectedPanel(clickedPanel);
-      
-      // Handle the panel selection directly
-      handlePanelImageSelection(clickedPanel);
+      setCurrentPanelToEdit(clickedPanel); // Store the clicked panel info
+
+      // Calculate the aspect ratio of the clicked panel
+      // Add a check for zero height to prevent division by zero -> default to aspect 1
+      const calculatedAspectRatio = (clickedPanel.height > 0) ? (clickedPanel.width / clickedPanel.height) : 1;
+      setPanelAspectRatio(calculatedAspectRatio);
+      debugLog(`Panel aspect ratio: ${calculatedAspectRatio}`);
+
+
+      // Check if the panel already has an image
+      const imageIndex = panelImageMapping[clickedPanel.id];
+      // Ensure selectedImages exists and is an array before accessing index
+      const hasExistingImage = imageIndex !== undefined && Array.isArray(selectedImages) && selectedImages[imageIndex];
+
+      if (hasExistingImage) {
+        // Panel has image -> Open Upload or Crop dialog
+        debugLog(`Panel ${clickedPanel.id} has image at index ${imageIndex}. Opening dialog.`);
+        const imageItem = selectedImages[imageIndex];
+        // Ensure we get the actual image data (could be string or object)
+        const imageUrl = typeof imageItem === 'object' && imageItem !== null
+          ? (imageItem.url || imageItem.imageUrl || imageItem)
+          : imageItem;
+
+        if (imageUrl && typeof imageUrl === 'string') { // Check if imageUrl is a non-empty string
+            setImageToCrop(imageUrl); // Set the image source for the cropper
+            setUploadOrCropDialogOpen(true);
+        } else {
+            debugWarn(`Could not get valid image URL for index ${imageIndex}. Triggering upload. ImageItem:`, imageItem);
+            triggerImageUpload(clickedPanel); // Fallback to upload if URL is bad
+        }
+      } else {
+        // Panel is empty -> Trigger upload directly
+        debugLog(`Panel ${clickedPanel.id} is empty. Triggering upload.`);
+        triggerImageUpload(clickedPanel);
+      }
     } else {
       debugLog("No panel was clicked");
     }
   };
-  
-  // Function to handle image selection for a specific panel
-  const handlePanelImageSelection = (panel) => {
+
+  // --- Function to trigger the actual file input ---
+  const triggerImageUpload = (panel) => {
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
     fileInput.accept = 'image/*';
     fileInput.onchange = (e) => {
       if (e.target.files && e.target.files[0]) {
         const file = e.target.files[0];
-        
-        // Convert to base64
         const reader = new FileReader();
         reader.onload = (event) => {
           const base64Image = event.target.result;
-          
-          // Get border thickness value
-          let borderThicknessValue = 4;
-          if (borderThicknessOptions && borderThickness) {
-            const option = borderThicknessOptions.find(opt => opt.label.toLowerCase() === borderThickness.toLowerCase());
-            if (option) {
-              borderThicknessValue = option.value;
-            }
-          }
-          
-          // Adjust border thickness based on panel count
-          const adjustedBorderThickness = adjustForPanelCount(borderThicknessValue, panelCount);
-          console.log(`[STEP DEBUG] Image selection: Adjusted border thickness for panelCount ${panelCount}: ${adjustedBorderThickness} (original: ${borderThicknessValue})`);
-          
-          // Check if this is updating an existing image or adding a new one
+
+          // Check if updating existing or adding new
           const existingMappingIndex = panelImageMapping[panel.id];
-          const isReuploadToSamePanel = existingMappingIndex !== undefined;
-          
-          // Create direct copies of the data for immediate rendering
-          const updatedImages = [...selectedImages];
+          const isReplacingImage = existingMappingIndex !== undefined;
+
           const updatedMapping = {...panelImageMapping};
-          
-          if (isReuploadToSamePanel) {
-            // Update existing image
-            updatedImages[existingMappingIndex] = base64Image;
-            // Update the state
+
+          if (isReplacingImage) {
+            // Update existing image using the updateImage prop function
             updateImage(existingMappingIndex, base64Image);
           } else {
-            // Add new image
-            const newIndex = selectedImages.length;
-            updatedImages.push(base64Image);
-            updatedMapping[panel.id] = newIndex;
-            
-            // Update the state
-            updatePanelImageMapping(updatedMapping);
-            addImage(base64Image);
+            // Add new image using addImage prop function
+            const newIndex = Array.isArray(selectedImages) ? selectedImages.length : 0; // Safely get length
+            addImage(base64Image); // Add to parent state
+            // Ensure panel.id is valid before updating mapping
+            if (panel.id !== undefined && panel.id !== null) {
+                updatePanelImageMapping({ ...updatedMapping, [panel.id]: newIndex }); // Update mapping in parent state
+            } else {
+                logError("Panel ID is undefined, cannot update mapping for new image.");
+            }
           }
-          
-          // DIRECTLY render with the complete data - don't wait for React state updates
-          renderTemplateToCanvas({
-            selectedTemplate,
-            selectedAspectRatio,
-            panelCount,
-            theme,
-            canvasRef,
-            setPanelRegions,
-            setRenderedImage,
-            borderThickness: adjustedBorderThickness,
-            borderColor,
-            selectedImages: updatedImages,
-            panelImageMapping: updatedMapping
-          });
-          
-          // Update the selected panel state
-          setSelectedPanel(panel);
         };
         reader.readAsDataURL(file);
       }
     };
     fileInput.click();
   };
-  
-  // Function to clear image assignment for a panel
-  const clearPanelImage = (panelId) => {
-    const imageIndex = panelImageMapping[panelId];
-    
-    if (imageIndex !== undefined) {
-      if (DEBUG_MODE) {
-        console.log(`Clearing image for panel ${panelId} (image index: ${imageIndex})`);
-      }
-      
-      // Create a new mapping without this panel
-      const newMapping = { ...panelImageMapping };
-      delete newMapping[panelId];
-      
-      // Update the mapping
-      updatePanelImageMapping(newMapping);
-      
-      // If this image is not used in any other panel, remove it
-      const isImageUsedElsewhere = Object.values(newMapping).includes(imageIndex);
-      
-      if (!isImageUsedElsewhere) {
-        if (DEBUG_MODE) {
-          console.log(`Removing image at index ${imageIndex} as it's not used elsewhere`);
-        }
-        // Remove the image if it's not used elsewhere
-        removeImage(imageIndex);
-      }
+
+  // --- Handlers for UploadOrCropDialog ---
+  const handleUploadNewRequest = () => {
+    if (currentPanelToEdit) {
+      triggerImageUpload(currentPanelToEdit);
     }
   };
-  
-  // Keep local panel mapping in sync with parent component
-  useEffect(() => {
-    // Update our local panel mapping from the parent component
-    if (DEBUG_MODE) {
-      console.log("Syncing panel image mapping:", panelImageMapping);
-    }
-    setPanelToImageMap(panelImageMapping);
-  }, [panelImageMapping]);
 
-  // Initial setup
-  useEffect(() => {
-    // Initialize the panel-to-image map from props
-    if (Object.keys(panelToImageMap).length === 0 && Object.keys(panelImageMapping).length > 0) {
-      if (DEBUG_MODE) {
-        console.log("Initializing panel-to-image map from props");
-      }
-      setPanelToImageMap(panelImageMapping);
+  const handleCropExistingRequest = () => {
+    if (currentPanelToEdit && imageToCrop) {
+      setCropModalOpen(true);
+    } else {
+        debugWarn("Cannot crop: Panel or image source missing.");
     }
-  }, []);
+  };
 
-  // Single useEffect to handle all rendering scenarios
-  /* eslint-disable consistent-return */
-  useEffect(() => {
-    // Early return if missing required props
-    if (!selectedTemplate || !selectedAspectRatio) {
+  // --- Handler for Crop Completion ---
+  const handleCropComplete = (croppedDataUrl) => {
+    if (!currentPanelToEdit) {
+      logError("Cannot complete crop: No panel selected.");
       return;
     }
 
-    console.log(`[STEP DEBUG] CollageImagesStep rendering with panelCount: ${panelCount}, borderThickness: ${borderThickness}, borderColor: ${borderColor}`);
-    
-    // Get border thickness value
+    const imageIndex = panelImageMapping[currentPanelToEdit.id];
+    if (imageIndex === undefined) {
+      logError("Cannot complete crop: Panel has no associated image index.");
+      return;
+    }
+
+    debugLog(`Cropping complete for panel ${currentPanelToEdit.id}. Updating image index ${imageIndex}.`);
+    updateImage(imageIndex, croppedDataUrl); // Update the image in the main state
+
+    // Close the modal
+    setCropModalOpen(false);
+    setCurrentPanelToEdit(null);
+    setImageToCrop(null);
+  };
+
+  // Function to clear image assignment for a panel (Keep this logic)
+  const clearPanelImage = (panelId) => {
+      const imageIndex = panelImageMapping[panelId];
+      if (imageIndex !== undefined) {
+          if (DEBUG_MODE) console.log(`Clearing image for panel ${panelId} (image index: ${imageIndex})`);
+          const newMapping = { ...panelImageMapping };
+          delete newMapping[panelId];
+          updatePanelImageMapping(newMapping);
+
+          const isImageUsedElsewhere = Object.values(newMapping).includes(imageIndex);
+          if (!isImageUsedElsewhere) {
+              if (DEBUG_MODE) console.log(`Removing image at index ${imageIndex} as it's not used elsewhere`);
+              removeImage(imageIndex);
+          }
+      }
+  };
+
+
+  // --- Updated useEffect for Rendering ---
+  /* eslint-disable consistent-return */
+  useEffect(() => {
+    // Add checks for required props
+    if (!selectedTemplate || !selectedAspectRatio || !borderThicknessOptions) {
+      debugWarn("Skipping render: Missing required props (template, aspect ratio, or border options)");
+      return;
+    }
+
+    console.log(`[STEP DEBUG] CollageImagesStep rendering triggered. Deps:`, {
+        templateId: selectedTemplate?.id, aspect: selectedAspectRatio, count: panelCount,
+        themeMode: theme.palette.mode, borderThickness, borderColor,
+        imageCount: Array.isArray(selectedImages) ? selectedImages.length : 0, // Safe length check
+        mappingKeys: Object.keys(panelImageMapping || {}), // Safe key check
+        hasInitialRender
+    });
+
     let borderThicknessValue = 4; // Default
     if (borderThicknessOptions && borderThickness) {
-      const option = borderThicknessOptions.find(opt => opt.label.toLowerCase() === borderThickness.toLowerCase());
-      if (option) {
-        borderThicknessValue = option.value;
-        console.log(`[STEP DEBUG] Found matching borderThickness option: ${option.label} = ${borderThicknessValue}`);
-      } else {
-        console.log(`[STEP DEBUG] No matching option found for borderThickness: ${borderThickness}`);
-      }
+        const option = borderThicknessOptions.find(opt => typeof opt.label === 'string' && opt.label.toLowerCase() === borderThickness.toLowerCase());
+        if (option) borderThicknessValue = option.value;
+        else console.log(`[STEP DEBUG] No matching option found for borderThickness: ${borderThickness}`);
     } else {
       console.log(`[STEP DEBUG] Using default borderThicknessValue: ${borderThicknessValue}`);
     }
-    
-    // Adjust border thickness based on panel count
+
     const adjustedBorderThickness = adjustForPanelCount(borderThicknessValue, panelCount);
     console.log(`[STEP DEBUG] Adjusted border thickness for panelCount ${panelCount}: ${adjustedBorderThickness} (original: ${borderThicknessValue})`);
 
-    // Add short delay for the initial render only
     const initialDelay = hasInitialRender ? 0 : 50;
-    
+
     const timer = setTimeout(() => {
       try {
         console.log(`[STEP DEBUG] Calling renderTemplateToCanvas with borderThickness: ${adjustedBorderThickness}, panelCount: ${panelCount}, borderColor: ${borderColor}`);
@@ -323,39 +328,42 @@ const CollageImagesStep = ({
           panelCount,
           theme,
           canvasRef,
-          setPanelRegions,
+          setPanelRegions, // This function receives the calculated regions
           setRenderedImage,
           borderThickness: adjustedBorderThickness,
           borderColor,
-          selectedImages,
-          panelImageMapping
+          selectedImages, // Pass the latest images from props
+          panelImageMapping // Pass the latest mapping from props
         });
-        
+
         if (!hasInitialRender) {
           setHasInitialRender(true);
         }
       } catch (error) {
         console.error("Error rendering template:", error);
+        // Optionally set an error state or display a message
       }
     }, initialDelay);
-    
+
     return () => clearTimeout(timer);
   }, [
-    selectedTemplate, 
-    selectedAspectRatio, 
-    panelCount, 
-    theme.palette.mode, 
+    selectedTemplate,
+    selectedAspectRatio,
+    panelCount,
+    theme.palette.mode,
     borderThickness,
     borderColor,
-    selectedImages, 
+    selectedImages,
     panelImageMapping,
-    hasInitialRender
+    hasInitialRender,
+    borderThicknessOptions,
+    // Added missing dependencies based on usage inside the effect
+    theme, setRenderedImage
   ]);
   /* eslint-enable consistent-return */
 
   // Clean up resources when component unmounts
   useEffect(() => {
-    // Cleanup function
     return () => {
       if (renderedImage && renderedImage.startsWith('blob:')) {
         URL.revokeObjectURL(renderedImage);
@@ -382,25 +390,26 @@ const CollageImagesStep = ({
       >
         {!isMobile && (
           <Typography variant="subtitle2" color="text.secondary" gutterBottom sx={{ mb: 1 }}>
-            Preview
+            Click a panel to upload or crop image
           </Typography>
         )}
-        
+
         {renderedImage ? (
           <>
             <Box
               component="img"
               src={renderedImage}
               alt="Collage Layout Preview"
-              onClick={handlePreviewClick}
+              onClick={handlePreviewClick} // Use the modified handler
               sx={{
                 maxWidth: '100%',
-                maxHeight: isMobile ? 300 : 350, // Slightly smaller on mobile
+                maxHeight: isMobile ? 300 : 350,
                 objectFit: 'contain',
                 borderRadius: 1,
                 cursor: 'pointer',
                 margin: '0 auto',
-                display: 'block'
+                display: 'block',
+                border: `1px solid ${theme.palette.divider}` // Add subtle border
               }}
             />
           </>
@@ -422,14 +431,39 @@ const CollageImagesStep = ({
           </Box>
         )}
       </Paper>
-      
-      {/* Hidden canvas fallback for browsers without OffscreenCanvas support */}
+
+      {/* Hidden canvas fallback */}
       <canvas ref={canvasRef} style={{ display: "none" }} />
+
+      {/* --- Modals --- */}
+      {typeof UploadOrCropDialog === 'function' ? (
+        <UploadOrCropDialog
+          open={uploadOrCropDialogOpen}
+          onClose={() => setUploadOrCropDialogOpen(false)}
+          onUploadNew={handleUploadNewRequest}
+          onCropExisting={handleCropExistingRequest}
+        />
+      ) : (
+         DEBUG_MODE && console.error("UploadOrCropDialog is not a function, import failed?")
+      )}
+
+      {typeof ImageCropModal === 'function' ? (
+        <ImageCropModal
+          open={cropModalOpen}
+          onClose={() => setCropModalOpen(false)}
+          imageSrc={imageToCrop}
+          aspectRatio={panelAspectRatio} // Use the calculated panel aspect ratio
+          onCropComplete={handleCropComplete}
+        />
+       ) : (
+         DEBUG_MODE && console.error("ImageCropModal is not a function, import failed?")
+       )}
     </Box>
   );
 };
 
 export default CollageImagesStep;
+
 
 // Add defaultProps to ensure the component has fallback values
 CollageImagesStep.defaultProps = {
@@ -439,8 +473,15 @@ CollageImagesStep.defaultProps = {
   borderThickness: 'medium',
   borderThicknessOptions: [
     { label: "None", value: 0 },
-    { label: "Thin", value: 0.6 },
-    { label: "Medium", value: 1.5 },
+    { label: "Thin", value: 6 },
+    { label: "Medium", value: 16 },
+    { label: "Thicc", value: 40 },
+    { label: "Thiccer", value: 80 },
+    { label: "XTRA THICC", value: 120 }
   ],
   panelImageMapping: {},
+  addImage: () => {},
+  removeImage: () => {},
+  updateImage: () => {},
+  updatePanelImageMapping: () => {},
 };
