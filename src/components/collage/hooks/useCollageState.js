@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react'; // Add useCallback
 import { getLayoutsForPanelCount } from '../config/CollageConfig';
 
 // Debug flag - only enable in development mode
@@ -8,7 +8,9 @@ const DEBUG_MODE = process.env.NODE_ENV === 'development';
  * Custom hook to manage collage state
  */
 export const useCollageState = () => {
+  // selectedImages now stores: { originalUrl: string, displayUrl: string }[]
   const [selectedImages, setSelectedImages] = useState([]);
+  // panelImageMapping still maps: { panelId: imageIndex }
   const [panelImageMapping, setPanelImageMapping] = useState({});
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [selectedAspectRatio, setSelectedAspectRatio] = useState('portrait');
@@ -16,174 +18,209 @@ export const useCollageState = () => {
   const [finalImage, setFinalImage] = useState(null);
   const [isCreatingCollage, setIsCreatingCollage] = useState(false);
   const [borderThickness, setBorderThickness] = useState('medium'); // Default border thickness
-  
-  // Get the saved custom color from localStorage if available, otherwise use white
+
   const [borderColor, setBorderColor] = useState(() => {
     const savedCustomColor = localStorage.getItem('meme-src-collage-custom-color');
     return savedCustomColor || '#FFFFFF'; // Default white border color
   });
 
-  // Save the custom color to localStorage when it changes
   useEffect(() => {
     localStorage.setItem('meme-src-collage-custom-color', borderColor);
   }, [borderColor]);
 
   // Initialize template on mount
   useEffect(() => {
-    if (DEBUG_MODE) {
-      console.log("useCollageState initializing...");
-    }
-    
-    // Get compatible templates for initial panel count and aspect ratio
+    if (DEBUG_MODE) console.log("useCollageState initializing...");
     const initialTemplates = getLayoutsForPanelCount(panelCount, selectedAspectRatio);
-    
-    if (DEBUG_MODE) {
-      console.log("Initial templates:", {
-        count: initialTemplates.length,
-        panelCount,
-        aspectRatio: selectedAspectRatio
-      });
-    }
-    
-    // Set the initial template if available
     if (initialTemplates.length > 0) {
-      if (DEBUG_MODE) {
-        console.log("Setting initial template:", initialTemplates[0].id);
-      }
+      if (DEBUG_MODE) console.log("Setting initial template:", initialTemplates[0].id);
       setSelectedTemplate(initialTemplates[0]);
     } else {
       console.warn("No initial templates found!");
     }
-  }, []); // Empty dependency array ensures this runs only once on mount
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run only once
 
   // Select the most suitable template when panel count or aspect ratio changes
   useEffect(() => {
     const compatibleTemplates = getLayoutsForPanelCount(panelCount, selectedAspectRatio);
-    
-    // If no template is selected or the current one isn't compatible, select the first one
-    if (!selectedTemplate || 
-        selectedTemplate.minImages > panelCount || 
-        selectedTemplate.maxImages < panelCount) {
-      
-      if (compatibleTemplates.length > 0) {
-        // Select the first (highest priority) compatible template
+    const currentTemplateIsCompatible = selectedTemplate &&
+         selectedTemplate.minImages <= panelCount &&
+         selectedTemplate.maxImages >= panelCount;
+
+    if (!currentTemplateIsCompatible && compatibleTemplates.length > 0) {
         setSelectedTemplate(compatibleTemplates[0]);
-      } else {
+    } else if (!selectedTemplate && compatibleTemplates.length > 0) {
+        setSelectedTemplate(compatibleTemplates[0]);
+    } else if (compatibleTemplates.length === 0) {
         setSelectedTemplate(null);
-      }
     }
+
+    // Also adjust panel mapping if template changes panel structure
+    if (selectedTemplate) {
+        const expectedPanelCount = selectedTemplate.layout?.panels?.length || panelCount;
+        const currentMapping = {...panelImageMapping};
+        let mappingChanged = false;
+        Object.keys(currentMapping).forEach(panelId => {
+            if (parseInt(panelId, 10) >= expectedPanelCount) {
+                delete currentMapping[panelId];
+                mappingChanged = true;
+            }
+        });
+        if (mappingChanged) {
+            if (DEBUG_MODE) console.log("Removing excess panel mappings due to template change");
+            setPanelImageMapping(currentMapping);
+        }
+    }
+
   }, [panelCount, selectedAspectRatio, selectedTemplate]);
 
-  // Clean up ObjectURLs when component unmounts or when images are replaced
+  // Clean up ObjectURLs when component unmounts or images change
   useEffect(() => {
     return () => {
-      selectedImages.forEach(url => {
-        if (url && typeof url === 'string' && url.startsWith('blob:')) {
-          URL.revokeObjectURL(url);
+      selectedImages.forEach(imgObj => {
+        if (imgObj.originalUrl && typeof imgObj.originalUrl === 'string' && imgObj.originalUrl.startsWith('blob:')) {
+          URL.revokeObjectURL(imgObj.originalUrl);
+        }
+        // Revoke displayUrl only if it's different from original and is a blob
+        if (imgObj.displayUrl && typeof imgObj.displayUrl === 'string' && imgObj.displayUrl.startsWith('blob:') && imgObj.displayUrl !== imgObj.originalUrl) {
+          URL.revokeObjectURL(imgObj.displayUrl);
         }
       });
     };
   }, [selectedImages]);
 
   /**
-   * Add a new image to the collection
-   * @param {string|Object} image - The image URL or object to add
+   * Add a new image to the collection.
+   * Stores the same URL for both original and display initially.
+   * @param {string} imageBase64Url - The image URL (usually base64) to add
    */
-  const addImage = (image) => {
-    setSelectedImages([...selectedImages, image]);
-  };
+  const addImage = useCallback((imageBase64Url) => {
+    if (!imageBase64Url) return;
+    const newImageObject = {
+        originalUrl: imageBase64Url,
+        displayUrl: imageBase64Url
+    };
+    setSelectedImages(prev => [...prev, newImageObject]);
+    if (DEBUG_MODE) console.log("Added image:", newImageObject);
+  }, [DEBUG_MODE]);
 
   /**
-   * Remove an image by index
-   * @param {number} index - The index of the image to remove
+   * Remove an image object by index and update panel mapping.
+   * @param {number} indexToRemove - The index of the image object to remove
    */
-  const removeImage = (index) => {
-    // Create a copy of the images array without the removed image
+  const removeImage = useCallback((indexToRemove) => {
+    if (indexToRemove < 0 || indexToRemove >= selectedImages.length) return;
+
     const newImages = [...selectedImages];
-    const removedImage = newImages.splice(index, 1)[0];
-    
-    // Clean up the object URL if it's a blob URL
-    if (removedImage && typeof removedImage === 'string' && removedImage.startsWith('blob:')) {
-      URL.revokeObjectURL(removedImage);
+    const removedImageObj = newImages.splice(indexToRemove, 1)[0];
+
+    // Clean up blobs
+    if (removedImageObj) {
+        if (removedImageObj.originalUrl && removedImageObj.originalUrl.startsWith('blob:')) URL.revokeObjectURL(removedImageObj.originalUrl);
+        if (removedImageObj.displayUrl && removedImageObj.displayUrl.startsWith('blob:') && removedImageObj.displayUrl !== removedImageObj.originalUrl) URL.revokeObjectURL(removedImageObj.displayUrl);
     }
-    
+
     setSelectedImages(newImages);
-    
-    // Also update panel mapping to remove references to this image
+
+    // Update panel mapping
     const newMapping = {};
     Object.entries(panelImageMapping).forEach(([panelId, mappedIndex]) => {
-      if (mappedIndex === index) {
-        // This panel was pointing to the removed image, so remove the mapping
-        // (do nothing, which will remove it from newMapping)
-      } else if (mappedIndex > index) {
-        // This panel was pointing to an image after the removed one, so adjust the index
+      if (mappedIndex === indexToRemove) {
+        // This panel pointed to the removed image, clear its mapping
+      } else if (mappedIndex > indexToRemove) {
+        // Adjust index for panels pointing after the removed one
         newMapping[panelId] = mappedIndex - 1;
       } else {
-        // This panel points to an image before the removed one, so keep it the same
+        // Keep index for panels pointing before the removed one
         newMapping[panelId] = mappedIndex;
       }
     });
-    
     setPanelImageMapping(newMapping);
-  };
+    if (DEBUG_MODE) console.log(`Removed image at index ${indexToRemove}, updated mapping`, newMapping);
+
+  }, [selectedImages, panelImageMapping, DEBUG_MODE]);
 
   /**
-   * Update an image at a specific index
-   * @param {number} index - The index of the image to update
-   * @param {string|Object} newImage - The new image URL or object
+   * Update only the displayUrl for an image at a specific index (after cropping).
+   * @param {number} index - The index of the image object to update
+   * @param {string} croppedDataUrl - The new display image URL (cropped)
    */
-  const updateImage = (index, newImage) => {
-    if (index >= 0 && index < selectedImages.length) {
-      const oldImage = selectedImages[index];
-      // Clean up the old image URL if it's a blob
-      if (oldImage && typeof oldImage === 'string' && oldImage.startsWith('blob:')) {
-        URL.revokeObjectURL(oldImage);
+  const updateImage = useCallback((index, croppedDataUrl) => {
+    if (index >= 0 && index < selectedImages.length && croppedDataUrl) {
+      const oldImageObj = selectedImages[index];
+
+      // Clean up the *old* displayUrl if it's a blob and different from original
+      if (oldImageObj.displayUrl && oldImageObj.displayUrl.startsWith('blob:') && oldImageObj.displayUrl !== oldImageObj.originalUrl) {
+        URL.revokeObjectURL(oldImageObj.displayUrl);
       }
-      
-      // Create a new array with the updated image
+
       const newImages = [...selectedImages];
-      newImages[index] = newImage;
+      newImages[index] = {
+        ...oldImageObj, // Keep originalUrl
+        displayUrl: croppedDataUrl // Update displayUrl
+      };
       setSelectedImages(newImages);
+      if (DEBUG_MODE) console.log(`Updated display image for index ${index}`, { original: oldImageObj.originalUrl, display: croppedDataUrl });
+    } else {
+        if (DEBUG_MODE) console.warn(`Failed to update image display URL at index ${index}`);
     }
-  };
+  }, [selectedImages, DEBUG_MODE]);
+
 
   /**
-   * Clear all selected images
+   * Replace an image object entirely at a specific index (for new uploads replacing existing).
+   * Updates both originalUrl and displayUrl.
+   * @param {number} index - The index of the image object to replace
+   * @param {string} newBase64Image - The new image URL (base64)
    */
-  const clearImages = () => {
-    // Clean up all blob URLs
-    selectedImages.forEach(image => {
-      if (image && typeof image === 'string' && image.startsWith('blob:')) {
-        URL.revokeObjectURL(image);
-      }
+  const replaceImage = useCallback((index, newBase64Image) => {
+    if (index >= 0 && index < selectedImages.length && newBase64Image) {
+        const oldImageObj = selectedImages[index];
+        // Clean up old blobs
+        if (oldImageObj.originalUrl && oldImageObj.originalUrl.startsWith('blob:')) URL.revokeObjectURL(oldImageObj.originalUrl);
+        if (oldImageObj.displayUrl && oldImageObj.displayUrl.startsWith('blob:') && oldImageObj.displayUrl !== oldImageObj.originalUrl) URL.revokeObjectURL(oldImageObj.displayUrl);
+
+        const newImages = [...selectedImages];
+        newImages[index] = { originalUrl: newBase64Image, displayUrl: newBase64Image };
+        setSelectedImages(newImages);
+        if (DEBUG_MODE) console.log(`Replaced image at index ${index} with new file.`);
+    } else {
+         if (DEBUG_MODE) console.warn(`Failed to replace image at index ${index}`);
+    }
+  }, [selectedImages, DEBUG_MODE]);
+
+
+  /**
+   * Clear all selected images and mappings.
+   */
+  const clearImages = useCallback(() => {
+    // Clean up all potential blob URLs first
+    selectedImages.forEach(imgObj => {
+      if (imgObj.originalUrl && imgObj.originalUrl.startsWith('blob:')) URL.revokeObjectURL(imgObj.originalUrl);
+      if (imgObj.displayUrl && imgObj.displayUrl.startsWith('blob:') && imgObj.displayUrl !== imgObj.originalUrl) URL.revokeObjectURL(imgObj.displayUrl);
     });
-    
+
     setSelectedImages([]);
     setPanelImageMapping({});
-  };
+    if (DEBUG_MODE) console.log("Cleared all images and mapping");
+  }, [selectedImages, DEBUG_MODE]);
 
   /**
-   * Update the mapping between panels and images
-   * @param {Object} newMapping - The new panel-to-image mapping
+   * Update the mapping between panels and image indices.
+   * @param {Object} newMapping - The new panel-to-image mapping { panelId: imageIndex }
    */
-  const updatePanelImageMapping = (newMapping) => {
+  const updatePanelImageMapping = useCallback((newMapping) => {
     if (DEBUG_MODE) {
-      console.log("Updating panel image mapping:", {
-        previous: Object.keys(panelImageMapping),
-        new: Object.keys(newMapping),
-        changes: Object.keys(newMapping).filter(key => 
-          panelImageMapping[key] !== newMapping[key]
-        )
-      });
+      console.log("Updating panel image mapping:", newMapping);
     }
-    
     setPanelImageMapping(newMapping);
-  };
+  }, [DEBUG_MODE]);
 
   return {
     // State
-    selectedImages,
-    panelImageMapping,
+    selectedImages, // Now [{ originalUrl, displayUrl }, ...]
+    panelImageMapping, // Still { panelId: imageIndex }
     selectedTemplate,
     setSelectedTemplate,
     selectedAspectRatio,
@@ -198,12 +235,13 @@ export const useCollageState = () => {
     setBorderThickness,
     borderColor,
     setBorderColor,
-    
+
     // Operations
-    addImage,
-    removeImage,
-    updateImage,
-    clearImages,
-    updatePanelImageMapping,
+    addImage, // Adds new object { original, display }
+    removeImage, // Removes object, updates mapping
+    updateImage, // Updates ONLY displayUrl (for crop result)
+    replaceImage, // Updates BOTH urls (for replacing upload)
+    clearImages, // Clears objects, mapping
+    updatePanelImageMapping, // Updates mapping directly
   };
-}; 
+};

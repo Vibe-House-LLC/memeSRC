@@ -577,10 +577,10 @@ const findSmallestPanelDimensions = (panelRegions) => {
  * @param {function} params.setRenderedImage - Function to set rendered image
  * @param {number} params.borderThickness - The border thickness
  * @param {string} params.borderColor - The border color
- * @param {Array} params.selectedImages - Array of selected images
+ * @param {Array} params.displayImageUrls - Array of display image URLs
  * @param {Object} params.panelImageMapping - Object mapping panels to images
  */
-export const renderTemplateToCanvas = ({
+export const renderTemplateToCanvas = async ({
   selectedTemplate,
   selectedAspectRatio,
   panelCount,
@@ -590,7 +590,7 @@ export const renderTemplateToCanvas = ({
   setRenderedImage,
   borderThickness = 4,
   borderColor = '#FFFFFF', // Add default border color
-  selectedImages = [],
+  displayImageUrls = [],
   panelImageMapping = {}
 }) => {
   console.log(`[RENDERER DEBUG] renderTemplateToCanvas received borderThickness: ${borderThickness}, panelCount: ${panelCount}, borderColor: ${borderColor}`);
@@ -1044,17 +1044,16 @@ export const renderTemplateToCanvas = ({
       
       if (typeof imageIndex === 'number' && 
           imageIndex >= 0 && 
-          imageIndex < selectedImages.length) {
+          imageIndex < displayImageUrls.length) {
         
         // Get image URL
-        const imageItem = selectedImages[imageIndex];
-        const imageUrl = typeof imageItem === 'object' && imageItem !== null 
-          ? (imageItem.url || imageItem.imageUrl || imageItem) 
-          : imageItem;
+        const imageUrl = displayImageUrls[imageIndex];
           
         // Load the image
         const imgPromise = new Promise((resolve) => {
           const img = new Image();
+          img.crossOrigin = 'anonymous'; // Allow loading from different origins
+          
           img.onload = () => {
             // Calculate scaling to fit panel
             const imgAspect = img.width / img.height;
@@ -1101,13 +1100,15 @@ export const renderTemplateToCanvas = ({
           };
           
           // Set image source - with special handling for base64
-          if (imageUrl && imageUrl.startsWith('data:image')) {
-            img.src = imageUrl;
-          } else if (imageUrl) {
-            // Add cache busting for regular URLs
-            img.src = imageUrl.includes('?') ? imageUrl : `${imageUrl}?t=${Date.now()}`;
-            if (!imageUrl.startsWith('blob:')) {
-              img.crossOrigin = 'anonymous';
+          if (imageUrl && typeof imageUrl === 'string') {
+            if (imageUrl.startsWith('data:image')) {
+              img.src = imageUrl;
+            } else {
+              // Add cache busting for regular URLs
+              img.src = imageUrl.includes('?') ? imageUrl : `${imageUrl}?t=${Date.now()}`;
+              if (!imageUrl.startsWith('blob:')) {
+                img.crossOrigin = 'anonymous';
+              }
             }
           } else {
             resolve(); // No valid URL, just resolve
@@ -1119,7 +1120,7 @@ export const renderTemplateToCanvas = ({
     });
     
     // After all images are loaded, draw final borders
-    Promise.all(imageLoadPromises).then(() => {
+    await Promise.all(imageLoadPromises).then(() => {
       // Final border pass after all images are drawn
       if (shouldDrawBorder && borderThickness > 0) {
         console.log(`[RENDERER DEBUG] Drawing final borders with thickness: ${borderThickness}, color: ${borderColor}`);

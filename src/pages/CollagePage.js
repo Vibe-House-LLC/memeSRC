@@ -1,3 +1,5 @@
+// ===== FILE: /Users/davis/Projects/Vibe-House-LLC/memeSRC/src/pages/CollagePage.js =====
+
 import { useContext, useState, useEffect } from "react";
 import { Helmet } from "react-helmet-async";
 import { useTheme } from "@mui/material/styles";
@@ -6,82 +8,32 @@ import { Dashboard } from "@mui/icons-material";
 
 import { UserContext } from "../UserContext";
 import { useSubscribeDialog } from "../contexts/useSubscribeDialog";
-
-// Import configuration
 import { aspectRatioPresets, layoutTemplates, getLayoutsForPanelCount } from "../components/collage/config/CollageConfig";
-
-// Import components from steps
 import CollageImagesStep from "../components/collage/steps/CollageImagesStep";
 import CollageSettingsStep from "../components/collage/steps/CollageSettingsStep";
 import UpgradeMessage from "../components/collage/components/UpgradeMessage";
-
-// Import UI components
 import { PageHeader } from "../components/collage/components/CollageUIComponents";
-import { 
-  MainContainer, 
-  ContentPaper, 
-  CollageLayout,
-  CollageResult 
-} from "../components/collage/components/CollageLayoutComponents";
-
-// Import utilities for collage generation
-import { 
-  calculateCanvasDimensions, 
-  getAspectRatioValue
-} from "../components/collage/utils/CanvasLayoutRenderer";
-
-// Import the new collage generation service
+import { MainContainer, ContentPaper, CollageLayout, CollageResult } from "../components/collage/components/CollageLayoutComponents";
+// Removed unused CanvasLayoutRenderer imports here
 import { generateCollage } from "../components/collage/utils/CollageGenerator";
-
-// Import the panel mapping utilities
-import { sanitizePanelImageMapping } from "../components/collage/utils/PanelMappingUtils";
-
-// Import state management custom hook
+// Removed unused PanelMappingUtils import
 import { useCollageState } from "../components/collage/hooks/useCollageState";
 
-// Debug flag - only enable in development mode
 const DEBUG_MODE = process.env.NODE_ENV === 'development';
+const debugLog = (...args) => { if (DEBUG_MODE) console.log(...args); };
+const logError = (...args) => { console.error(...args); };
 
-// Helper debug logger function that only logs when DEBUG_MODE is true
-const debugLog = (...args) => {
-  if (DEBUG_MODE) {
-    console.log(...args);
-  }
-};
-
-// Helper for warnings that should still show in production
-const debugWarn = (...args) => {
-  if (DEBUG_MODE) {
-    console.warn(...args);
-  } else if (args[0] && args[0].includes('critical')) {
-    // Allow critical warnings to show even in production
-    console.warn(...args);
-  }
-};
-
-// Helper for errors that should always show
-const logError = (...args) => {
-  console.error(...args);
-};
-
-// Collage page component - provides UI for creating collages
 export default function CollagePage() {
-  // Access theme for responsiveness and custom styling
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isMediumScreen = useMediaQuery(theme.breakpoints.down('md'));
-  
-  // User authentication and subscription context
   const { user } = useContext(UserContext);
   const { openSubscriptionDialog } = useSubscribeDialog();
-  
-  // Determine if user is authorized to use the collage tool
   const authorized = (user?.userDetails?.magicSubscription === "true" || user?.['cognito:groups']?.includes('admins'));
-  
-  // Use our custom hook to manage collage state
+
   const {
-    selectedImages,
-    panelImageMapping,
+    selectedImages, // Now [{ originalUrl, displayUrl }, ...]
+    panelImageMapping, // Still { panelId: imageIndex }
     selectedTemplate,
     setSelectedTemplate,
     selectedAspectRatio,
@@ -96,92 +48,50 @@ export default function CollagePage() {
     setBorderThickness,
     borderColor,
     setBorderColor,
-    addImage,
-    removeImage,
-    updateImage,
-    clearImages,
-    updatePanelImageMapping,
+    addImage, // Adds new object
+    removeImage, // Removes object
+    updateImage, // Updates ONLY displayUrl
+    replaceImage, // <-- NEW: Updates BOTH urls
+    clearImages, // Clears objects
+    updatePanelImageMapping, // Updates mapping
   } = useCollageState();
-  
-  // Define border thickness options
+
   const borderThicknessOptions = [
-    { label: "None", value: 0 },
-    { label: "Thin", value: 6 },
-    { label: "Medium", value: 16 },
-    { label: "Thicc", value: 40 },
-    { label: "Thiccer", value: 80 },
-    { label: "XTRA THICC", value: 120 }
+    { label: "None", value: 0 }, { label: "Thin", value: 6 }, { label: "Medium", value: 16 },
+    { label: "Thicc", value: 40 }, { label: "Thiccer", value: 80 }, { label: "XTRA THICC", value: 120 }
   ];
 
-  // Get layouts compatible with the current panel count and aspect ratio
-  const getCompatibleTemplates = () => {
-    // Get all templates for the current panel count
-    const panelTemplates = getLayoutsForPanelCount(panelCount);
-    
-    // Filter by aspect ratio compatibility
-    const aspectRatioCategory = getAspectRatioPreset(selectedAspectRatio)?.category || 'any';
-    
-    const compatibleTemplates = panelTemplates.filter(template => {
-      // Template is compatible if it has no aspect ratio constraint or matches the current one
-      return !template.aspectRatioCategory || template.aspectRatioCategory === aspectRatioCategory || template.aspectRatioCategory === 'any';
-    });
-    
-    // Sort by priority (lower number = higher priority)
-    return compatibleTemplates.sort((a, b) => {
-      if (a.priority !== undefined && b.priority !== undefined) {
-        return a.priority - b.priority;
-      }
-      return 0;
-    });
-  };
+  // Removed getCompatibleTemplates and related useEffect - logic is in useCollageState
 
-  // Helper function to get the aspect ratio preset from its ID
-  const getAspectRatioPreset = (id) => {
-    return aspectRatioPresets.find(preset => preset.id === id);
-  };
-
-  // Select the most suitable template when panel count or aspect ratio changes
-  useEffect(() => {
-    const compatibleTemplates = getCompatibleTemplates();
-    
-    // If no template is selected or the current one isn't compatible, select the first one
-    if (!selectedTemplate || 
-        selectedTemplate.minImages > panelCount || 
-        selectedTemplate.maxImages < panelCount) {
-      
-      if (compatibleTemplates.length > 0) {
-        // Select the first (highest priority) compatible template
-        setSelectedTemplate(compatibleTemplates[0]);
-      } else {
-        setSelectedTemplate(null);
-      }
-    }
-  }, [panelCount, selectedAspectRatio, selectedTemplate]);
-
-  // Submit the collage for creation
   const handleCreateCollage = async () => {
     setIsCreatingCollage(true);
-    
     try {
-      // Use the collage generator service
-      debugLog(`[PAGE DEBUG] Creating collage with panelCount: ${panelCount}, borderThickness: ${borderThickness}, borderColor: ${borderColor}`);
-      debugLog(`[PAGE DEBUG] borderThicknessOptions:`, borderThicknessOptions);
-      
+      debugLog(`[PAGE DEBUG] Creating collage...`);
+
+      if (!selectedTemplate || !selectedAspectRatio || !panelImageMapping) {
+        throw new Error("Missing required data for collage generation.");
+      }
+
+      // Extract display URLs for the generator
+      const displayImageUrls = selectedImages.map(imgObj => imgObj.displayUrl);
+
       const dataUrl = await generateCollage({
         selectedTemplate,
         selectedAspectRatio,
-        panelCount,
-        selectedImages,
-        panelImageMapping,
+        // panelCount is still useful for generator logic potentially
+        panelCount: selectedTemplate?.layout?.panels?.length || panelCount,
+        displayImageUrls, // <-- Pass only display URLs
+        panelImageMapping, // Pass the mapping { panelId: imageIndex }
         borderThickness,
         borderColor,
         borderThicknessOptions,
         theme
       });
-      
+
       setFinalImage(dataUrl);
     } catch (error) {
       logError('Error generating collage:', error);
+       // TODO: Show user-friendly error message
     } finally {
       setIsCreatingCollage(false);
     }
@@ -192,9 +102,10 @@ export default function CollagePage() {
     debugLog(`[PAGE DEBUG] Border color changed to: ${borderColor}`);
   }, [borderColor]);
 
-  // Props for the settings step component
+
+  // Props for settings step (selectedImages length might be useful for UI feedback)
   const settingsStepProps = {
-    selectedImages,
+    selectedImageCount: selectedImages.length, // Pass count instead of full array
     selectedTemplate,
     setSelectedTemplate,
     selectedAspectRatio,
@@ -210,14 +121,10 @@ export default function CollagePage() {
     setBorderColor,
     borderThicknessOptions
   };
-  
-  // Props for the images step component
+
+  // Props for images step (pass the correct state and actions)
   const imagesStepProps = {
-    selectedImages,
-    addImage,
-    removeImage,
-    updateImage,
-    clearImages,
+    selectedImages, // Pass the array of objects [{ originalUrl, displayUrl }, ...]
     panelImageMapping,
     updatePanelImageMapping,
     panelCount,
@@ -226,46 +133,49 @@ export default function CollagePage() {
     borderThickness,
     borderColor,
     borderThicknessOptions,
+    // Actions
+    addImage,
+    removeImage,
+    updateImage, // For crop result
+    replaceImage, // For upload replacement
+    clearImages,
+    // Other
     handleNext: handleCreateCollage
   };
 
-  // Log the panel mapping for debugging
+  // Log mapping changes for debugging
   useEffect(() => {
     if (DEBUG_MODE) {
-      debugLog("CollagePage panel mapping updated:", {
+      debugLog("CollagePage state update:", {
+        imageCount: selectedImages.length,
         mappingKeys: Object.keys(panelImageMapping),
-        imageCount: selectedImages.length
+        // Uncomment to log full data (can be large)
+        // selectedImagesData: selectedImages,
+        // panelMappingData: panelImageMapping,
       });
     }
-  }, [panelImageMapping, selectedImages.length]);
+  }, [panelImageMapping, selectedImages]);
 
   return (
     <>
-      <Helmet>
-        <title>Collage Tool - Editor - memeSRC</title>
-      </Helmet>
+      <Helmet><title>Collage Tool - Editor - memeSRC</title></Helmet>
 
       {!authorized ? (
-        <UpgradeMessage 
-          openSubscriptionDialog={openSubscriptionDialog} 
-          previewImage="/assets/images/products/collage-tool.png"
-        />
+        <UpgradeMessage openSubscriptionDialog={openSubscriptionDialog} previewImage="/assets/images/products/collage-tool.png" />
       ) : (
         <MainContainer isMobile={isMobile} isMediumScreen={isMediumScreen}>
           <PageHeader icon={Dashboard} title="Collage Tool" isMobile={isMobile} />
-          
           <ContentPaper isMobile={isMobile}>
-            <CollageLayout 
-              settingsStepProps={settingsStepProps} 
-              imagesStepProps={imagesStepProps} 
+            <CollageLayout
+              settingsStepProps={settingsStepProps}
+              imagesStepProps={imagesStepProps} // Pass updated props
               isMobile={isMobile}
             />
-
             {finalImage && (
-              <CollageResult 
-                finalImage={finalImage} 
-                setFinalImage={setFinalImage} 
-                isMobile={isMobile} 
+              <CollageResult
+                finalImage={finalImage}
+                setFinalImage={setFinalImage}
+                isMobile={isMobile}
                 isMediumScreen={isMediumScreen}
                 isLoading={isCreatingCollage}
               />
