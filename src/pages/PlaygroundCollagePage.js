@@ -7,307 +7,59 @@ import { Dashboard, AddPhotoAlternate, MoreVert, Add } from "@mui/icons-material
 import { aspectRatioPresets, getLayoutsForPanelCount } from "../components/collage/config/CollageConfig";
 import { MainContainer, ContentPaper } from "../components/collage/components/CollageLayoutComponents";
 import { PageHeader } from "../components/collage/components/CollageUIComponents";
+import { layoutDefinitions } from "../components/collage/config/layouts"; // Import the layout definitions directly
 
 // Helper function to create a layout config based on the template type
 const createLayoutConfig = (template, panelCount) => {
   if (!template) return null;
   
-  // Default grid layout as fallback
-  const defaultConfig = {
-    gridTemplateColumns: `repeat(${Math.ceil(Math.sqrt(panelCount))}, 1fr)`,
-    gridTemplateRows: `repeat(${Math.ceil(panelCount / Math.ceil(Math.sqrt(panelCount)))}, 1fr)`,
-    gridTemplateAreas: null,
-    items: Array(panelCount).fill({ gridArea: null })
-  };
-  
-  console.log("Creating layout config for:", template.id, "panel count:", panelCount);
+  console.log("Creating layout config for template:", template.id, "panel count:", panelCount);
   
   try {
-    // Based on layout id, create appropriate configuration
-    switch(template.id) {
-      // === 2-PANEL LAYOUTS ===
-      case 'split-horizontal':
-        return {
-          gridTemplateColumns: 'repeat(2, 1fr)',
-          gridTemplateRows: '1fr',
-          gridTemplateAreas: null,
-          items: Array(2).fill({ gridArea: null })
-        };
+    // Look up the original layout in the layout definitions
+    const panelCountKey = Math.max(2, Math.min(panelCount, 5)); // Ensure valid range
+    const categories = layoutDefinitions[panelCountKey];
+    
+    // Search for the layout in all categories (wide, tall, square)
+    if (categories) {
+      // Use find or some to iterate through category keys
+      const foundLayout = Object.keys(categories).reduce((result, category) => {
+        if (result) return result; // Already found a layout
         
-      case 'split-vertical':
-        return {
-          gridTemplateColumns: '1fr',
-          gridTemplateRows: 'repeat(2, 1fr)',
-          gridTemplateAreas: null,
-          items: Array(2).fill({ gridArea: null })
-        };
+        const layouts = categories[category];
+        const originalLayout = layouts.find(l => l.id === template.id);
         
-      case 'two-thirds-one-third-h':
-      case 'wide-left-narrow-right':
-        return {
-          gridTemplateColumns: '2fr 1fr',
-          gridTemplateRows: '1fr',
-          gridTemplateAreas: null,
-          items: Array(2).fill({ gridArea: null })
-        };
+        if (originalLayout && typeof originalLayout.getLayoutConfig === 'function') {
+          console.log(`Found original layout in ${category} category`);
+          return originalLayout;
+        }
         
-      case 'one-third-two-thirds-h':
-      case 'narrow-left-wide-right':
-        return {
-          gridTemplateColumns: '1fr 2fr',
-          gridTemplateRows: '1fr',
-          gridTemplateAreas: null,
-          items: Array(2).fill({ gridArea: null })
-        };
-
-      case 'two-thirds-one-third-v':
-      case 'top-tall-bottom-short':
-        return {
-          gridTemplateColumns: '1fr',
-          gridTemplateRows: '2fr 1fr',
-          gridTemplateAreas: null,
-          items: Array(2).fill({ gridArea: null })
-        };
-        
-      case 'one-third-two-thirds-v':
-      case 'top-short-bottom-tall':
-        return {
-          gridTemplateColumns: '1fr',
-          gridTemplateRows: '1fr 2fr',
-          gridTemplateAreas: null,
-          items: Array(2).fill({ gridArea: null })
-        };
-        
-      // === 3-PANEL LAYOUTS ===
-      case '3-columns':
-        return {
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          gridTemplateRows: '1fr',
-          gridTemplateAreas: null,
-          items: Array(3).fill({ gridArea: null })
-        };
-        
-      case '3-rows':
-        return {
-          gridTemplateColumns: '1fr',
-          gridTemplateRows: 'repeat(3, 1fr)',
-          gridTemplateAreas: null,
-          items: Array(3).fill({ gridArea: null })
-        };
-        
-      case 'main-with-two-bottom':
-      case 'featured-top-with-two-bottom':
-        return {
-          gridTemplateColumns: '1fr 1fr',
-          gridTemplateRows: '3fr 1fr',
-          gridTemplateAreas: '"main main" "left right"',
-          areas: ['main', 'left', 'right']
-        };
-        
-      case 'main-with-two-right':
-      case 'featured-left-with-two-right':
-        return {
-          gridTemplateColumns: '3fr 1fr',
-          gridTemplateRows: '1fr 1fr',
-          gridTemplateAreas: '"main top" "main bottom"',
-          areas: ['main', 'top', 'bottom']
-        };
-        
-      case 'center-feature-wide':
-        return {
-          gridTemplateColumns: '1fr 2fr 1fr',
-          gridTemplateRows: '1fr',
-          gridTemplateAreas: '"left main right"',
-          areas: ['left', 'main', 'right']
-        };
+        return null;
+      }, null);
       
-      case 'center-feature-tall':
-        return {
-          gridTemplateColumns: '1fr',
-          gridTemplateRows: '1fr 2fr 1fr',
-          gridTemplateAreas: '"top" "main" "bottom"',
-          areas: ['top', 'main', 'bottom']
-        };
-        
-      case 'side-stack-wide':
-        return {
-          gridTemplateColumns: '1fr 1fr',
-          gridTemplateRows: '1fr 1fr',
-          gridTemplateAreas: '"main top" "main bottom"',
-          areas: ['main', 'top', 'bottom']
-        };
-        
-      case 'two-and-one-tall':
-        return {
-          gridTemplateColumns: '1fr 1fr',
-          gridTemplateRows: '1fr 1fr',
-          gridTemplateAreas: '"left right" "bottom bottom"',
-          areas: ['left', 'right', 'bottom']
-        };
-        
-      case 'two-and-one-square':
-        return {
-          gridTemplateColumns: '1fr 1fr',
-          gridTemplateRows: '1fr 1fr',
-          gridTemplateAreas: '"left right" "bottom bottom"',
-          areas: ['left', 'right', 'bottom']
-        };
-        
-      case 'triptych':
-        return {
-          gridTemplateColumns: '1fr 2fr 1fr',
-          gridTemplateRows: '1fr',
-          gridTemplateAreas: '"left main right"',
-          areas: ['left', 'main', 'right']
-        };
-      
-      // === 4-PANEL LAYOUTS ===
-      case 'grid-2x2':
-        return {
-          gridTemplateColumns: 'repeat(2, 1fr)',
-          gridTemplateRows: 'repeat(2, 1fr)',
-          gridTemplateAreas: null,
-          items: Array(4).fill({ gridArea: null })
-        };
-      
-      case '4-columns':
-        return {
-          gridTemplateColumns: 'repeat(4, 1fr)',
-          gridTemplateRows: '1fr',
-          gridTemplateAreas: null,
-          items: Array(4).fill({ gridArea: null })
-        };
-      
-      case '4-rows':
-        return {
-          gridTemplateColumns: '1fr',
-          gridTemplateRows: 'repeat(4, 1fr)',
-          gridTemplateAreas: null,
-          items: Array(4).fill({ gridArea: null })
-        };
-        
-      case 'big-and-3-bottom':
-      case 'top-feature-with-3-bottom':
-        return {
-          gridTemplateColumns: '1fr 1fr 1fr',
-          gridTemplateRows: '3fr 1fr',
-          gridTemplateAreas: '"main main main" "left middle right"',
-          areas: ['main', 'left', 'middle', 'right']
-        };
-        
-      case 'big-and-3-right':
-      case 'left-feature-with-3-right':
-        return {
-          gridTemplateColumns: '3fr 1fr',
-          gridTemplateRows: '1fr 1fr 1fr',
-          gridTemplateAreas: '"main top" "main middle" "main bottom"',
-          areas: ['main', 'top', 'middle', 'bottom']
-        };
-        
-      case 'panoramic-strips':
-        return {
-          gridTemplateColumns: 'repeat(4, 1fr)',
-          gridTemplateRows: 'repeat(2, 1fr)',
-          gridTemplateAreas: '"top1 top2 top3 top4" "bottom1 bottom2 bottom3 bottom4"',
-          areas: ['top1', 'top2', 'top3', 'top4']
-        };
-        
-      case 'split-bottom-feature-tall':
-        return {
-          gridTemplateColumns: '1fr 1fr',
-          gridTemplateRows: '1fr 2fr',
-          gridTemplateAreas: '"left right" "bottom bottom"',
-          areas: ['left', 'right', 'bottom']
-        };
-      
-      // === 5-PANEL LAYOUTS ===
-      case '5-rows':
-        return {
-          gridTemplateColumns: '1fr',
-          gridTemplateRows: 'repeat(5, 1fr)',
-          gridTemplateAreas: null,
-          items: Array(5).fill({ gridArea: null })
-        };
-        
-      case '5-columns':
-        return {
-          gridTemplateColumns: 'repeat(5, 1fr)',
-          gridTemplateRows: '1fr',
-          gridTemplateAreas: null,
-          items: Array(5).fill({ gridArea: null })
-        };
-        
-      case 'featured-top-with-4-below':
-        return {
-          gridTemplateColumns: 'repeat(4, 1fr)',
-          gridTemplateRows: '3fr 1fr',
-          gridTemplateAreas: '"main main main main" "one two three four"',
-          areas: ['main', 'one', 'two', 'three', 'four']
-        };
-        
-      case 'featured-left-with-4-right':
-        return {
-          gridTemplateColumns: '2fr 1fr 1fr',
-          gridTemplateRows: '1fr 1fr',
-          gridTemplateAreas: '"main top-left top-right" "main bottom-left bottom-right"',
-          areas: ['main', 'top-left', 'top-right', 'bottom-left', 'bottom-right']
-        };
-        
-      case 'asymmetric-5':
-        return {
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          gridTemplateRows: 'repeat(2, 1fr)',
-          gridTemplateAreas: '"top-left top-right top-right" "bottom-left bottom-center bottom-right"',
-          areas: ['top-left', 'top-right', 'bottom-left', 'bottom-center', 'bottom-right']
-        };
-        
-      case 'featured-left-with-grid':
-        return {
-          gridTemplateColumns: '3fr 1fr 1fr',
-          gridTemplateRows: '1fr 1fr',
-          gridTemplateAreas: '"main top-right top-far-right" "main bottom-right bottom-far-right"',
-          areas: ['main', 'top-right', 'top-far-right', 'bottom-right', 'bottom-far-right']
-        };
-        
-      case 'vertical-asymmetric-5':
-        return {
-          gridTemplateColumns: 'repeat(2, 1fr)',
-          gridTemplateRows: 'repeat(3, 1fr)',
-          gridTemplateAreas: '"top-left top-right" "middle-left middle-right" "bottom bottom"',
-          areas: ['top-left', 'top-right', 'middle-left', 'middle-right', 'bottom']
-        };
-        
-      case 'wide-mosaic':
-        return {
-          gridTemplateColumns: 'repeat(4, 1fr)',
-          gridTemplateRows: 'repeat(2, 1fr)',
-          gridTemplateAreas: '"top-left top-left top-right top-far-right" "bottom-left bottom-center bottom-center bottom-right"',
-          areas: ['top-left', 'top-right', 'top-far-right', 'bottom-left', 'bottom-center', 'bottom-right']
-        };
-        
-      case 'tall-mosaic':
-        return {
-          gridTemplateColumns: 'repeat(2, 1fr)',
-          gridTemplateRows: 'repeat(3, 1fr)',
-          gridTemplateAreas: '"top-left top-right" "middle-left middle-right" "bottom-left bottom-right"',
-          areas: ['top-left', 'top-right', 'middle-left', 'middle-right', 'bottom-left', 'bottom-right']
-        };
-        
-      case 'featured-bottom-with-4-top':
-        return {
-          gridTemplateColumns: 'repeat(4, 1fr)',
-          gridTemplateRows: '1fr 3fr',
-          gridTemplateAreas: '"one two three four" "main main main main"',
-          areas: ['one', 'two', 'three', 'four', 'main']
-        };
-
-      default:
-        console.warn(`No specific layout config for "${template.id}", using default grid`);
-        return defaultConfig;
+      if (foundLayout) {
+        const config = foundLayout.getLayoutConfig();
+        return config;
+      }
     }
+    
+    console.warn(`Couldn't find original layout definition for ${template.id}, falling back to default grid`);
+    // Fallback to a basic grid layout in case of error
+    return {
+      gridTemplateColumns: `repeat(${Math.ceil(Math.sqrt(panelCount))}, 1fr)`,
+      gridTemplateRows: `repeat(${Math.ceil(panelCount / Math.ceil(Math.sqrt(panelCount)))}, 1fr)`,
+      gridTemplateAreas: null,
+      items: Array(panelCount).fill({ gridArea: null })
+    };
   } catch (error) {
     console.error("Error creating layout config:", error, template);
-    return defaultConfig;
+    // Fallback to a basic grid layout in case of error
+    return {
+      gridTemplateColumns: `repeat(${Math.ceil(Math.sqrt(panelCount))}, 1fr)`,
+      gridTemplateRows: `repeat(${Math.ceil(panelCount / Math.ceil(Math.sqrt(panelCount)))}, 1fr)`,
+      gridTemplateAreas: null,
+      items: Array(panelCount).fill({ gridArea: null })
+    };
   }
 };
 
@@ -334,6 +86,18 @@ export default function PlaygroundCollagePage() {
     console.log("Getting layouts for", panelCount, selectedAspectRatio);
     const layouts = getLayoutsForPanelCount(panelCount, selectedAspectRatio);
     console.log("Available layouts:", layouts);
+    
+    // Log the structure of the first layout to help debug
+    if (layouts.length > 0) {
+      console.log("First layout structure:", {
+        id: layouts[0].id,
+        name: layouts[0].name,
+        hasGetLayoutConfig: typeof layouts[0].getLayoutConfig === 'function',
+        methods: Object.getOwnPropertyNames(layouts[0]).filter(prop => typeof layouts[0][prop] === 'function'),
+        properties: Object.getOwnPropertyNames(layouts[0]).filter(prop => typeof layouts[0][prop] !== 'function')
+      });
+    }
+    
     return layouts;
   }, [panelCount, selectedAspectRatio]);
 
@@ -506,21 +270,31 @@ export default function PlaygroundCollagePage() {
 
   // Get grid configuration - safely handle layout config
   const getGridConfig = () => {
+    // Default fallback grid configuration
     const defaultConfig = {
       gridTemplateColumns: `repeat(${Math.ceil(Math.sqrt(panelCount))}, 1fr)`,
       gridTemplateRows: `repeat(${Math.ceil(panelCount / Math.ceil(Math.sqrt(panelCount)))}, 1fr)`,
       gridTemplateAreas: null
     };
 
-    if (!layoutConfig) return defaultConfig;
+    // If no layout config exists, return the default
+    if (!layoutConfig) {
+      console.log("No layoutConfig, using default grid");
+      return defaultConfig;
+    }
     
+    // Extract the relevant grid properties
     const gridConfig = {
       gridTemplateColumns: layoutConfig.gridTemplateColumns || defaultConfig.gridTemplateColumns,
-      gridTemplateRows: layoutConfig.gridTemplateRows || defaultConfig.gridTemplateRows,
-      gridTemplateAreas: layoutConfig.gridTemplateAreas || defaultConfig.gridTemplateAreas
+      gridTemplateRows: layoutConfig.gridTemplateRows || defaultConfig.gridTemplateRows
     };
     
-    console.log("Using grid config:", gridConfig);
+    // Only add gridTemplateAreas if it exists in the layout config
+    if (layoutConfig.gridTemplateAreas) {
+      gridConfig.gridTemplateAreas = layoutConfig.gridTemplateAreas;
+    }
+    
+    console.log("Final grid config:", gridConfig);
     return gridConfig;
   };
 
@@ -695,14 +469,39 @@ export default function PlaygroundCollagePage() {
                     ...getGridConfig()
                   }}
                 >
-                  {/* Check if areas-based layout and we have enough areas for the panel count */}
+                  {/* Check if areas-based layout */}
                   {layoutConfig.areas && layoutConfig.areas.length > 0 ? (
-                    // Limit rendering to the number of panels or areas, whichever is smaller
-                    Array.from({ length: Math.min(panelCount, layoutConfig.areas.length) }).map((_, index) => (
+                    // Render using grid areas
+                    layoutConfig.areas.slice(0, panelCount).map((area, index) => (
                       <Box
                         key={`panel-area-${index}`}
                         sx={{
-                          gridArea: layoutConfig.areas[index],
+                          gridArea: area,
+                          backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                          border: `1px dashed ${theme.palette.divider}`,
+                          borderRadius: 1,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          overflow: 'hidden',
+                          position: 'relative',
+                          '&:hover': {
+                            backgroundColor: theme.palette.action.hover,
+                          },
+                        }}
+                        onClick={() => handlePanelClick(index)}
+                      >
+                        {images[index] ? <RenderImage index={index} /> : <RenderAddButton index={index} />}
+                      </Box>
+                    ))
+                  ) : layoutConfig.items && layoutConfig.items.length > 0 ? (
+                    // Render using items with potential gridArea properties
+                    layoutConfig.items.slice(0, panelCount).map((item, index) => (
+                      <Box
+                        key={`panel-item-${index}`}
+                        sx={{
+                          ...(item.gridArea ? { gridArea: item.gridArea } : {}),
                           backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
                           border: `1px dashed ${theme.palette.divider}`,
                           borderRadius: 1,
@@ -722,7 +521,7 @@ export default function PlaygroundCollagePage() {
                       </Box>
                     ))
                   ) : (
-                    // Render using implicit grid
+                    // Fallback to simple grid
                     Array.from({ length: panelCount }).map((_, index) => (
                       <Box
                         key={`panel-${index}`}
