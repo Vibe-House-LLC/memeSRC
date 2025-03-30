@@ -15,128 +15,299 @@ const createLayoutConfig = (template, panelCount) => {
   // Default grid layout as fallback
   const defaultConfig = {
     gridTemplateColumns: `repeat(${Math.ceil(Math.sqrt(panelCount))}, 1fr)`,
-    gridTemplateRows: `repeat(${Math.ceil(Math.sqrt(panelCount))}, 1fr)`,
+    gridTemplateRows: `repeat(${Math.ceil(panelCount / Math.ceil(Math.sqrt(panelCount)))}, 1fr)`,
     gridTemplateAreas: null,
     items: Array(panelCount).fill({ gridArea: null })
   };
   
-  // Based on layout id, create appropriate configuration
-  switch(template.id) {
-    // Grid layouts
-    case 'grid-2x2':
-      return {
-        gridTemplateColumns: 'repeat(2, 1fr)',
-        gridTemplateRows: 'repeat(2, 1fr)',
-        gridTemplateAreas: null,
-        items: Array(4).fill({ gridArea: null })
-      };
-    
-    // Column layouts
-    case '4-columns':
-      return {
-        gridTemplateColumns: 'repeat(4, 1fr)',
-        gridTemplateRows: '1fr',
-        gridTemplateAreas: null,
-        items: Array(4).fill({ gridArea: null })
-      };
-    
-    // Row layouts
-    case '4-rows':
-      return {
-        gridTemplateColumns: '1fr',
-        gridTemplateRows: 'repeat(4, 1fr)',
-        gridTemplateAreas: null,
-        items: Array(4).fill({ gridArea: null })
-      };
+  console.log("Creating layout config for:", template.id, "panel count:", panelCount);
+  
+  try {
+    // Based on layout id, create appropriate configuration
+    switch(template.id) {
+      // === 2-PANEL LAYOUTS ===
+      case 'split-horizontal':
+        return {
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gridTemplateRows: '1fr',
+          gridTemplateAreas: null,
+          items: Array(2).fill({ gridArea: null })
+        };
+        
+      case 'split-vertical':
+        return {
+          gridTemplateColumns: '1fr',
+          gridTemplateRows: 'repeat(2, 1fr)',
+          gridTemplateAreas: null,
+          items: Array(2).fill({ gridArea: null })
+        };
+        
+      case 'two-thirds-one-third-h':
+      case 'wide-left-narrow-right':
+        return {
+          gridTemplateColumns: '2fr 1fr',
+          gridTemplateRows: '1fr',
+          gridTemplateAreas: null,
+          items: Array(2).fill({ gridArea: null })
+        };
+        
+      case 'one-third-two-thirds-h':
+      case 'narrow-left-wide-right':
+        return {
+          gridTemplateColumns: '1fr 2fr',
+          gridTemplateRows: '1fr',
+          gridTemplateAreas: null,
+          items: Array(2).fill({ gridArea: null })
+        };
+
+      case 'two-thirds-one-third-v':
+      case 'top-tall-bottom-short':
+        return {
+          gridTemplateColumns: '1fr',
+          gridTemplateRows: '2fr 1fr',
+          gridTemplateAreas: null,
+          items: Array(2).fill({ gridArea: null })
+        };
+        
+      case 'one-third-two-thirds-v':
+      case 'top-short-bottom-tall':
+        return {
+          gridTemplateColumns: '1fr',
+          gridTemplateRows: '1fr 2fr',
+          gridTemplateAreas: null,
+          items: Array(2).fill({ gridArea: null })
+        };
+        
+      // === 3-PANEL LAYOUTS ===
+      case '3-columns':
+        return {
+          gridTemplateColumns: 'repeat(3, 1fr)',
+          gridTemplateRows: '1fr',
+          gridTemplateAreas: null,
+          items: Array(3).fill({ gridArea: null })
+        };
+        
+      case '3-rows':
+        return {
+          gridTemplateColumns: '1fr',
+          gridTemplateRows: 'repeat(3, 1fr)',
+          gridTemplateAreas: null,
+          items: Array(3).fill({ gridArea: null })
+        };
+        
+      case 'main-with-two-bottom':
+      case 'featured-top-with-two-bottom':
+        return {
+          gridTemplateColumns: '1fr 1fr',
+          gridTemplateRows: '2fr 1fr',
+          gridTemplateAreas: '"main main" "left right"',
+          areas: ['main', 'left', 'right']
+        };
+        
+      case 'main-with-two-right':
+      case 'featured-left-with-two-right':
+        return {
+          gridTemplateColumns: '2fr 1fr',
+          gridTemplateRows: '1fr 1fr',
+          gridTemplateAreas: '"main top" "main bottom"',
+          areas: ['main', 'top', 'bottom']
+        };
+        
+      case 'center-feature-wide':
+        return {
+          gridTemplateColumns: 'repeat(3, 1fr)',
+          gridTemplateRows: '1fr',
+          gridTemplateAreas: '"left main right"',
+          areas: ['left', 'main', 'right']
+        };
       
-    // Feature layouts
-    case 'big-and-3-bottom':
-    case 'top-feature-with-3-bottom':
-      return {
-        gridTemplateColumns: '1fr 1fr 1fr',
-        gridTemplateRows: '2fr 1fr',
-        gridTemplateAreas: '"main main main" "left middle right"',
-        areas: ['main', 'left', 'middle', 'right']
-      };
+      case 'center-feature-tall':
+        return {
+          gridTemplateColumns: '1fr',
+          gridTemplateRows: 'repeat(3, 1fr)',
+          gridTemplateAreas: '"top" "main" "bottom"',
+          areas: ['top', 'main', 'bottom']
+        };
+        
+      case 'side-stack-wide':
+        return {
+          gridTemplateColumns: '1fr 1fr',
+          gridTemplateRows: '1fr 1fr',
+          gridTemplateAreas: '"main top" "main bottom"',
+          areas: ['main', 'top', 'bottom']
+        };
+        
+      case 'two-and-one-tall':
+        return {
+          gridTemplateColumns: '1fr 1fr',
+          gridTemplateRows: '1fr 1fr',
+          gridTemplateAreas: '"left right" "bottom bottom"',
+          areas: ['left', 'right', 'bottom']
+        };
+        
+      case 'two-and-one-square':
+        return {
+          gridTemplateColumns: '1fr 1fr',
+          gridTemplateRows: '1fr 1fr',
+          gridTemplateAreas: '"left right" "bottom bottom"',
+          areas: ['left', 'right', 'bottom']
+        };
+        
+      case 'triptych':
+        return {
+          gridTemplateColumns: '1fr 1fr 1fr',
+          gridTemplateRows: '1fr',
+          gridTemplateAreas: '"left main right"',
+          areas: ['left', 'main', 'right']
+        };
       
-    case 'big-and-3-right':
-    case 'left-feature-with-3-right':
-      return {
-        gridTemplateColumns: '2fr 1fr',
-        gridTemplateRows: '1fr 1fr 1fr',
-        gridTemplateAreas: '"main top" "main middle" "main bottom"',
-        areas: ['main', 'top', 'middle', 'bottom']
-      };
+      // === 4-PANEL LAYOUTS ===
+      case 'grid-2x2':
+        return {
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gridTemplateRows: 'repeat(2, 1fr)',
+          gridTemplateAreas: null,
+          items: Array(4).fill({ gridArea: null })
+        };
       
-    // 3-panel layouts
-    case '3-columns':
-      return {
-        gridTemplateColumns: 'repeat(3, 1fr)',
-        gridTemplateRows: '1fr',
-        gridTemplateAreas: null,
-        items: Array(3).fill({ gridArea: null })
-      };
+      case '4-columns':
+        return {
+          gridTemplateColumns: 'repeat(4, 1fr)',
+          gridTemplateRows: '1fr',
+          gridTemplateAreas: null,
+          items: Array(4).fill({ gridArea: null })
+        };
       
-    case '3-rows':
-      return {
-        gridTemplateColumns: '1fr',
-        gridTemplateRows: 'repeat(3, 1fr)',
-        gridTemplateAreas: null,
-        items: Array(3).fill({ gridArea: null })
-      };
+      case '4-rows':
+        return {
+          gridTemplateColumns: '1fr',
+          gridTemplateRows: 'repeat(4, 1fr)',
+          gridTemplateAreas: null,
+          items: Array(4).fill({ gridArea: null })
+        };
+        
+      case 'big-and-3-bottom':
+      case 'top-feature-with-3-bottom':
+        return {
+          gridTemplateColumns: '1fr 1fr 1fr',
+          gridTemplateRows: '2fr 1fr',
+          gridTemplateAreas: '"main main main" "left middle right"',
+          areas: ['main', 'left', 'middle', 'right']
+        };
+        
+      case 'big-and-3-right':
+      case 'left-feature-with-3-right':
+        return {
+          gridTemplateColumns: '2fr 1fr',
+          gridTemplateRows: '1fr 1fr 1fr',
+          gridTemplateAreas: '"main top" "main middle" "main bottom"',
+          areas: ['main', 'top', 'middle', 'bottom']
+        };
+        
+      case 'panoramic-strips':
+        return {
+          gridTemplateColumns: 'repeat(4, 1fr)',
+          gridTemplateRows: 'repeat(2, 1fr)',
+          gridTemplateAreas: '"top1 top2 top3 top4" "bottom1 bottom2 bottom3 bottom4"',
+          areas: ['top1', 'top2', 'top3', 'top4']
+        };
+        
+      case 'split-bottom-feature-tall':
+        return {
+          gridTemplateColumns: '1fr 1fr',
+          gridTemplateRows: '1fr 2fr',
+          gridTemplateAreas: '"left right" "bottom bottom"',
+          areas: ['left', 'right', 'bottom']
+        };
       
-    case 'main-with-two-bottom':
-      return {
-        gridTemplateColumns: '1fr 1fr',
-        gridTemplateRows: '2fr 1fr',
-        gridTemplateAreas: '"main main" "left right"',
-        areas: ['main', 'left', 'right']
-      };
-      
-    // 2-panel layouts  
-    case 'split-horizontal':
-      return {
-        gridTemplateColumns: 'repeat(2, 1fr)',
-        gridTemplateRows: '1fr',
-        gridTemplateAreas: null,
-        items: Array(2).fill({ gridArea: null })
-      };
-      
-    case 'split-vertical':
-      return {
-        gridTemplateColumns: '1fr',
-        gridTemplateRows: 'repeat(2, 1fr)',
-        gridTemplateAreas: null,
-        items: Array(2).fill({ gridArea: null })
-      };
-      
-    // 5-panel layouts 
-    case '5-rows':
-      return {
-        gridTemplateColumns: '1fr',
-        gridTemplateRows: 'repeat(5, 1fr)',
-        gridTemplateAreas: null,
-        items: Array(5).fill({ gridArea: null })
-      };
-      
-    case '5-columns':
-      return {
-        gridTemplateColumns: 'repeat(5, 1fr)',
-        gridTemplateRows: '1fr',
-        gridTemplateAreas: null,
-        items: Array(5).fill({ gridArea: null })
-      };
-      
-    case 'featured-top-with-4-below':
-      return {
-        gridTemplateColumns: 'repeat(4, 1fr)',
-        gridTemplateRows: '2fr 1fr',
-        gridTemplateAreas: '"main main main main" "one two three four"',
-        areas: ['main', 'one', 'two', 'three', 'four']
-      };
-      
-    default:
-      return defaultConfig;
+      // === 5-PANEL LAYOUTS ===
+      case '5-rows':
+        return {
+          gridTemplateColumns: '1fr',
+          gridTemplateRows: 'repeat(5, 1fr)',
+          gridTemplateAreas: null,
+          items: Array(5).fill({ gridArea: null })
+        };
+        
+      case '5-columns':
+        return {
+          gridTemplateColumns: 'repeat(5, 1fr)',
+          gridTemplateRows: '1fr',
+          gridTemplateAreas: null,
+          items: Array(5).fill({ gridArea: null })
+        };
+        
+      case 'featured-top-with-4-below':
+        return {
+          gridTemplateColumns: 'repeat(4, 1fr)',
+          gridTemplateRows: '2fr 1fr',
+          gridTemplateAreas: '"main main main main" "one two three four"',
+          areas: ['main', 'one', 'two', 'three', 'four']
+        };
+        
+      case 'featured-left-with-4-right':
+        return {
+          gridTemplateColumns: '2fr 1fr 1fr',
+          gridTemplateRows: '1fr 1fr',
+          gridTemplateAreas: '"main top-left top-right" "main bottom-left bottom-right"',
+          areas: ['main', 'top-left', 'top-right', 'bottom-left', 'bottom-right']
+        };
+        
+      case 'asymmetric-5':
+        return {
+          gridTemplateColumns: 'repeat(3, 1fr)',
+          gridTemplateRows: 'repeat(2, 1fr)',
+          gridTemplateAreas: '"top-left top-right top-right" "bottom-left bottom-center bottom-right"',
+          areas: ['top-left', 'top-right', 'bottom-left', 'bottom-center', 'bottom-right']
+        };
+        
+      case 'featured-left-with-grid':
+        return {
+          gridTemplateColumns: '2fr 1fr 1fr',
+          gridTemplateRows: '1fr 1fr',
+          gridTemplateAreas: '"main top-right top-far-right" "main bottom-right bottom-far-right"',
+          areas: ['main', 'top-right', 'top-far-right', 'bottom-right', 'bottom-far-right']
+        };
+        
+      case 'vertical-asymmetric-5':
+        return {
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gridTemplateRows: 'repeat(3, 1fr)',
+          gridTemplateAreas: '"top-left top-right" "middle-left middle-right" "bottom bottom"',
+          areas: ['top-left', 'top-right', 'middle-left', 'middle-right', 'bottom']
+        };
+        
+      case 'wide-mosaic':
+        return {
+          gridTemplateColumns: 'repeat(4, 1fr)',
+          gridTemplateRows: 'repeat(2, 1fr)',
+          gridTemplateAreas: '"top-left top-left top-right top-far-right" "bottom-left bottom-center bottom-center bottom-right"',
+          areas: ['top-left', 'top-right', 'top-far-right', 'bottom-left', 'bottom-center', 'bottom-right']
+        };
+        
+      case 'tall-mosaic':
+        return {
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gridTemplateRows: 'repeat(3, 1fr)',
+          gridTemplateAreas: '"top-left top-right" "middle-left middle-right" "bottom-left bottom-right"',
+          areas: ['top-left', 'top-right', 'middle-left', 'middle-right', 'bottom-left', 'bottom-right']
+        };
+        
+      case 'featured-bottom-with-4-top':
+        return {
+          gridTemplateColumns: 'repeat(4, 1fr)',
+          gridTemplateRows: '1fr 2fr',
+          gridTemplateAreas: '"one two three four" "main main main main"',
+          areas: ['one', 'two', 'three', 'four', 'main']
+        };
+
+      default:
+        console.warn(`No specific layout config for "${template.id}", using default grid`);
+        return defaultConfig;
+    }
+  } catch (error) {
+    console.error("Error creating layout config:", error, template);
+    return defaultConfig;
   }
 };
 
@@ -177,6 +348,10 @@ export default function PlaygroundCollagePage() {
       // Generate layout config from template
       const config = createLayoutConfig(newTemplate, panelCount);
       setLayoutConfig(config);
+    } else if (availableLayouts.length === 0) {
+      console.log("No available layouts, clearing template and config.");
+      setSelectedTemplate(null);
+      setLayoutConfig(null);
     }
   }, [availableLayouts, selectedTemplate, panelCount]);
 
@@ -184,6 +359,7 @@ export default function PlaygroundCollagePage() {
   useEffect(() => {
     if (selectedTemplate) {
       // Generate layout config from template
+      console.log("Generating config for template:", selectedTemplate);
       const config = createLayoutConfig(selectedTemplate, panelCount);
       console.log("Generated config:", config);
       setLayoutConfig(config);
@@ -332,18 +508,70 @@ export default function PlaygroundCollagePage() {
   const getGridConfig = () => {
     const defaultConfig = {
       gridTemplateColumns: `repeat(${Math.ceil(Math.sqrt(panelCount))}, 1fr)`,
-      gridTemplateRows: `repeat(${Math.ceil(Math.sqrt(panelCount))}, 1fr)`,
+      gridTemplateRows: `repeat(${Math.ceil(panelCount / Math.ceil(Math.sqrt(panelCount)))}, 1fr)`,
       gridTemplateAreas: null
     };
 
     if (!layoutConfig) return defaultConfig;
-
-    return {
+    
+    const gridConfig = {
       gridTemplateColumns: layoutConfig.gridTemplateColumns || defaultConfig.gridTemplateColumns,
       gridTemplateRows: layoutConfig.gridTemplateRows || defaultConfig.gridTemplateRows,
       gridTemplateAreas: layoutConfig.gridTemplateAreas || defaultConfig.gridTemplateAreas
     };
+    
+    console.log("Using grid config:", gridConfig);
+    return gridConfig;
   };
+
+  // Helper components for rendering images/add buttons
+  const RenderImage = ({ index }) => (
+    <>
+      <img
+        src={images[index]} 
+        alt={`Panel ${index + 1}`} 
+        style={{ 
+          width: '100%', 
+          height: '100%', 
+          objectFit: 'cover' 
+        }} 
+      />
+            
+      {/* FAB Menu Button (only shown when image exists) */}
+      <IconButton 
+        size="small" 
+        sx={{ 
+          position: 'absolute', 
+          top: 5, 
+          right: 5,
+          backgroundColor: theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.7)' : 'rgba(33, 150, 243, 0.7)',
+          color: '#ffffff',
+          '&:hover': {
+            backgroundColor: theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.9)' : 'rgba(33, 150, 243, 0.9)',
+          },
+        }}
+        onClick={(e) => handleMenuOpen(e, index)}
+      >
+        <MoreVert fontSize="small" />
+      </IconButton>
+    </>
+  );
+
+  const RenderAddButton = ({ index }) => (
+    <>
+      <IconButton
+        sx={{
+          backgroundColor: theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.7)' : 'rgba(33, 150, 243, 0.7)',
+          color: '#ffffff',
+          '&:hover': {
+            backgroundColor: theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.9)' : 'rgba(33, 150, 243, 0.9)',
+          },
+        }}
+      >
+        <Add />
+      </IconButton>
+    </>
+  );
 
   return (
     <>
@@ -440,7 +668,7 @@ export default function PlaygroundCollagePage() {
             />
             
             {/* Collage Preview */}
-            {selectedTemplate && (
+            {selectedTemplate && layoutConfig && (
               <Box
                 sx={{
                   position: 'relative',
@@ -467,13 +695,14 @@ export default function PlaygroundCollagePage() {
                     ...getGridConfig()
                   }}
                 >
-                  {layoutConfig && layoutConfig.areas ? (
-                    // Render using grid areas
-                    layoutConfig.areas.map((area, index) => (
+                  {/* Check if areas-based layout and we have enough areas for the panel count */}
+                  {layoutConfig.areas && layoutConfig.areas.length > 0 ? (
+                    // Limit rendering to the number of panels or areas, whichever is smaller
+                    Array.from({ length: Math.min(panelCount, layoutConfig.areas.length) }).map((_, index) => (
                       <Box
-                        key={`panel-${area}-${index}`}
+                        key={`panel-area-${index}`}
                         sx={{
-                          gridArea: area,
+                          gridArea: layoutConfig.areas[index],
                           backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
                           border: `1px dashed ${theme.palette.divider}`,
                           borderRadius: 1,
@@ -489,51 +718,7 @@ export default function PlaygroundCollagePage() {
                         }}
                         onClick={() => handlePanelClick(index)}
                       >
-                        {images[index] ? (
-                          <>
-                            <img 
-                              src={images[index]} 
-                              alt={`Panel ${index + 1}`} 
-                              style={{ 
-                                width: '100%', 
-                                height: '100%', 
-                                objectFit: 'cover' 
-                              }} 
-                            />
-                            
-                            {/* FAB Menu Button (only shown when image exists) */}
-                            <IconButton 
-                              size="small" 
-                              sx={{ 
-                                position: 'absolute', 
-                                top: 5, 
-                                right: 5,
-                                backgroundColor: theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.7)' : 'rgba(33, 150, 243, 0.7)',
-                                color: '#ffffff',
-                                '&:hover': {
-                                  backgroundColor: theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.9)' : 'rgba(33, 150, 243, 0.9)',
-                                },
-                              }}
-                              onClick={(e) => handleMenuOpen(e, index)}
-                            >
-                              <MoreVert fontSize="small" />
-                            </IconButton>
-                          </>
-                        ) : (
-                          <>
-                            <IconButton
-                              sx={{
-                                backgroundColor: theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.7)' : 'rgba(33, 150, 243, 0.7)',
-                                color: '#ffffff',
-                                '&:hover': {
-                                  backgroundColor: theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.9)' : 'rgba(33, 150, 243, 0.9)',
-                                },
-                              }}
-                            >
-                              <Add />
-                            </IconButton>
-                          </>
-                        )}
+                        {images[index] ? <RenderImage index={index} /> : <RenderAddButton index={index} />}
                       </Box>
                     ))
                   ) : (
@@ -557,51 +742,7 @@ export default function PlaygroundCollagePage() {
                         }}
                         onClick={() => handlePanelClick(index)}
                       >
-                        {images[index] ? (
-                          <>
-                            <img 
-                              src={images[index]} 
-                              alt={`Panel ${index + 1}`} 
-                              style={{ 
-                                width: '100%', 
-                                height: '100%', 
-                                objectFit: 'cover' 
-                              }} 
-                            />
-                            
-                            {/* FAB Menu Button (only shown when image exists) */}
-                            <IconButton 
-                              size="small" 
-                              sx={{ 
-                                position: 'absolute', 
-                                top: 5, 
-                                right: 5,
-                                backgroundColor: theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.7)' : 'rgba(33, 150, 243, 0.7)',
-                                color: '#ffffff',
-                                '&:hover': {
-                                  backgroundColor: theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.9)' : 'rgba(33, 150, 243, 0.9)',
-                                },
-                              }}
-                              onClick={(e) => handleMenuOpen(e, index)}
-                            >
-                              <MoreVert fontSize="small" />
-                            </IconButton>
-                          </>
-                        ) : (
-                          <>
-                            <IconButton
-                              sx={{
-                                backgroundColor: theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.7)' : 'rgba(33, 150, 243, 0.7)',
-                                color: '#ffffff',
-                                '&:hover': {
-                                  backgroundColor: theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.9)' : 'rgba(33, 150, 243, 0.9)',
-                                },
-                              }}
-                            >
-                              <Add />
-                            </IconButton>
-                          </>
-                        )}
+                        {images[index] ? <RenderImage index={index} /> : <RenderAddButton index={index} />}
                       </Box>
                     ))
                   )}
