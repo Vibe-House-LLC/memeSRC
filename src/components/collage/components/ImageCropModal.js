@@ -9,62 +9,24 @@ import {
   CircularProgress,
   Typography,
   useMediaQuery,
-  Fab,
   IconButton,
   AppBar,
   Toolbar,
   Tooltip,
   Stack,
-  Paper
+  Paper,
+  Slider
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { 
   ArrowBack,
-  Close, 
   DeleteOutline, 
   UploadFile,
-  Check,
-  Done
+  Done,
+  ZoomIn,
+  ZoomOut
 } from '@mui/icons-material';
-import ReactCrop, {
-  centerCrop,
-  makeAspectCrop,
-  convertToPixelCrop,
-} from 'react-image-crop';
-import 'react-image-crop/dist/ReactCrop.css';
 import '../styles/CropStyles.css'; // Import custom crop styles
-
-// Helper to get initial crop based on aspect ratio
-function centerAspectCrop(mediaWidth, mediaHeight, aspect) {
-  // Calculate maximum possible crop size that fits within the image while maintaining aspect ratio
-  let cropWidth;
-  let cropHeight;
-  
-  if (mediaWidth / mediaHeight > aspect) {
-    // Image is wider than the target aspect ratio, so height is the constraint
-    cropHeight = 100; // Use 100% of height
-    cropWidth = (cropHeight * aspect * mediaHeight) / mediaWidth; // Calculate width percentage
-  } else {
-    // Image is taller than the target aspect ratio, so width is the constraint
-    cropWidth = 100; // Use 100% of width
-    cropHeight = (cropWidth / aspect * mediaWidth) / mediaHeight; // Calculate height percentage
-  }
-  
-  return centerCrop(
-    makeAspectCrop(
-      {
-        unit: '%',
-        width: cropWidth,
-        height: cropHeight,
-      },
-      aspect,
-      mediaWidth,
-      mediaHeight,
-    ),
-    mediaWidth,
-    mediaHeight,
-  );
-}
 
 export default function ImageCropModal({
   open,
@@ -77,26 +39,35 @@ export default function ImageCropModal({
 }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const [crop, setCrop] = useState();
-  const [completedCrop, setCompletedCrop] = useState(null);
+  const [zoom, setZoom] = useState(1); // Zoom level
+  const [position, setPosition] = useState({ x: 0, y: 0 }); // Image position
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [imgLoadError, setImgLoadError] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [imgDimensions, setImgDimensions] = useState({ width: 0, height: 0 });
   const imgRef = useRef(null);
-  const previewCanvasRef = useRef(null); // For showing a preview, if desired
+  const cropContainerRef = useRef(null);
+  const cropFrameRef = useRef(null);
+
+  // Calculate fixed crop frame dimensions based on aspect ratio
+  const frameWidth = isMobile ? 280 : 350;
+  const frameHeight = aspectRatio ? frameWidth / aspectRatio : frameWidth;
+  
+  // Mobile bottom bar height - use this for layout calculations
+  const mobileBottomBarHeight = 72;
 
   useEffect(() => {
     // Reset state when dialog opens or image changes
     if (open) {
-      console.log("ImageCropModal: Resetting state", { imageSrc });
-      setCrop(undefined); // Reset crop area
-      setCompletedCrop(null);
+      setZoom(1);
+      setPosition({ x: 0, y: 0 });
       setImgLoadError(false);
       setIsProcessing(false);
     }
   }, [open, imageSrc]);
 
   // Add a new effect that will reset the image reference when imageSrc changes
-  // This ensures the component properly re-loads the image
   useEffect(() => {
     if (imgRef.current && imageSrc) {
       // Force reload the image by setting src
@@ -105,19 +76,37 @@ export default function ImageCropModal({
   }, [imageSrc]);
 
   const onImageLoad = (e) => {
-    console.log("ImageCropModal: Image loaded successfully");
     setImgLoadError(false);
-    const { width, height } = e.currentTarget;
-    // Set initial crop area centered with the correct aspect ratio
-    if (aspectRatio) {
-        setCrop(centerAspectCrop(width, height, aspectRatio));
-        // Also set completed crop initially to enable cropping immediately
-        setCompletedCrop(convertToPixelCrop(
-            centerAspectCrop(width, height, aspectRatio),
-            width,
-            height
-        ));
+    const { naturalWidth, naturalHeight } = e.currentTarget;
+    setImgDimensions({ width: naturalWidth, height: naturalHeight });
+    
+    // Center the image initially
+    centerImage(naturalWidth, naturalHeight);
+  };
+
+  const centerImage = (imgWidth, imgHeight) => {
+    if (!cropContainerRef.current) return;
+    
+    const containerRect = cropContainerRef.current.getBoundingClientRect();
+    
+    // Scale the image to fit within the container while maintaining aspect ratio
+    let scale = 1;
+    if (imgWidth > containerRect.width || imgHeight > containerRect.height) {
+      const widthRatio = containerRect.width / imgWidth;
+      const heightRatio = containerRect.height / imgHeight;
+      scale = Math.min(widthRatio, heightRatio) * 0.9; // Scale to 90% of container
     }
+    
+    setZoom(scale);
+    
+    // Center the image
+    const scaledWidth = imgWidth * scale;
+    const scaledHeight = imgHeight * scale;
+    
+    setPosition({
+      x: (containerRect.width - scaledWidth) / 2,
+      y: (containerRect.height - scaledHeight) / 2
+    });
   };
 
   const onImageError = () => {
@@ -125,69 +114,142 @@ export default function ImageCropModal({
     console.error("Error loading image for cropping. Image source:", imageSrc);
   };
 
+  const handleMouseDown = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+    setDragStart({
+      x: e.clientX - position.x,
+      y: e.clientY - position.y
+    });
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isDragging) return;
+    
+    const newX = e.clientX - dragStart.x;
+    const newY = e.clientY - dragStart.y;
+    
+    setPosition({
+      x: newX,
+      y: newY
+    });
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleTouchStart = (e) => {
+    if (e.touches.length === 1) {
+      const touch = e.touches[0];
+      setIsDragging(true);
+      setDragStart({
+        x: touch.clientX - position.x,
+        y: touch.clientY - position.y
+      });
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    if (!isDragging || e.touches.length !== 1) return;
+    
+    const touch = e.touches[0];
+    setPosition({
+      x: touch.clientX - dragStart.x,
+      y: touch.clientY - dragStart.y
+    });
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+  };
+
+  const handleZoomChange = (_, newValue) => {
+    if (!cropContainerRef.current || !cropFrameRef.current) return;
+    
+    const containerRect = cropContainerRef.current.getBoundingClientRect();
+    const frameRect = cropFrameRef.current.getBoundingClientRect();
+    
+    // Get crop frame center relative to container
+    const frameCenterX = frameRect.left - containerRect.left + frameRect.width / 2;
+    const frameCenterY = frameRect.top - containerRect.top + frameRect.height / 2;
+    
+    // Calculate where this point is on the image at current zoom
+    const imageX = (frameCenterX - position.x) / zoom;
+    const imageY = (frameCenterY - position.y) / zoom;
+    
+    // Apply new zoom value
+    const zoomRatio = newValue / zoom;
+    setZoom(newValue);
+    
+    // Calculate new position
+    setPosition({
+      x: frameCenterX - imageX * newValue,
+      y: frameCenterY - imageY * newValue
+    });
+  };
+
   const handleCrop = async () => {
-    if (!completedCrop || !imgRef.current || isProcessing) {
-      console.warn('Crop data or image ref missing, or already processing.');
+    if (!imgRef.current || !cropFrameRef.current || isProcessing) {
+      console.warn('Image ref or crop frame missing, or already processing.');
       return;
     }
 
     setIsProcessing(true);
-    const image = imgRef.current;
-    const canvas = document.createElement('canvas'); // Use an offscreen canvas
-    const scaleX = image.naturalWidth / image.width;
-    const scaleY = image.naturalHeight / image.height;
-
-    canvas.width = Math.floor(completedCrop.width * scaleX);
-    canvas.height = Math.floor(completedCrop.height * scaleY);
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) {
-      throw new Error('No 2d context');
-    }
-
-    const pixelRatio = window.devicePixelRatio || 1;
-
-    ctx.scale(pixelRatio, pixelRatio);
-    ctx.imageSmoothingQuality = 'high';
-
-    const cropX = completedCrop.x * scaleX;
-    const cropY = completedCrop.y * scaleY;
-
-    // Move canvas origin to the center of the canvas to rotate/scale around center.
-    ctx.translate(canvas.width / 2 / pixelRatio, canvas.height / 2 / pixelRatio);
-    // Uncomment below if rotation/scale is needed
-    // ctx.rotate(rotate * Math.PI / 180)
-    // ctx.scale(scale, scale)
-    ctx.translate(-canvas.width / 2 / pixelRatio, -canvas.height / 2 / pixelRatio);
-
-    ctx.drawImage(
-      image,
-      cropX,
-      cropY,
-      completedCrop.width * scaleX,
-      completedCrop.height * scaleY,
-      0,
-      0,
-      canvas.width / pixelRatio,
-      canvas.height / pixelRatio,
-    );
-
-    // Convert canvas to base64
-    canvas.toBlob((blob) => {
+    
+    try {
+      const image = imgRef.current;
+      const canvas = document.createElement('canvas');
+      const frameRect = cropFrameRef.current.getBoundingClientRect();
+      const imgRect = imgRef.current.getBoundingClientRect();
+      
+      // Calculate the portion of the image visible in the crop frame
+      const visibleLeft = (frameRect.left - imgRect.left) / zoom;
+      const visibleTop = (frameRect.top - imgRect.top) / zoom;
+      
+      // Set canvas dimensions to match the crop frame size
+      canvas.width = frameWidth;
+      canvas.height = frameHeight;
+      
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        throw new Error('No 2d context');
+      }
+      
+      ctx.drawImage(
+        image,
+        visibleLeft,
+        visibleTop,
+        frameWidth / zoom,
+        frameHeight / zoom,
+        0,
+        0,
+        frameWidth,
+        frameHeight
+      );
+      
+      // Convert canvas to blob
+      canvas.toBlob((blob) => {
         if (!blob) {
-            console.error('Canvas is empty');
-            setIsProcessing(false);
-            return;
-          }
+          console.error('Canvas is empty');
+          setIsProcessing(false);
+          return;
+        }
+        
         const reader = new FileReader();
         reader.onloadend = () => {
-            const base64data = reader.result;
-            onCropComplete(base64data);
-            setIsProcessing(false);
-            onClose(); // Close modal after successful crop
+          const base64data = reader.result;
+          onCropComplete(base64data);
+          setIsProcessing(false);
+          onClose();
         };
         reader.readAsDataURL(blob);
-    }, 'image/png');
+      }, 'image/png');
+    } catch (error) {
+      console.error('Error during image crop:', error);
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -217,7 +279,7 @@ export default function ImageCropModal({
               <ArrowBack />
             </IconButton>
             <Typography sx={{ ml: 2, flex: 1 }} variant="h6" component="div">
-              Crop Image
+              Adjust Image
             </Typography>
             <Tooltip title="Remove Image">
               <IconButton
@@ -233,7 +295,7 @@ export default function ImageCropModal({
         </AppBar>
       ) : (
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Typography variant="h6">Crop Image</Typography>
+          <Typography variant="h6">Adjust Image</Typography>
           <Tooltip title="Remove Image">
             <IconButton
               color="error"
@@ -252,9 +314,9 @@ export default function ImageCropModal({
         sx={{ 
           display: 'flex', 
           flexDirection: 'column', 
-          p: isMobile ? 0 : 2,
-          pb: isMobile ? 0 : 2, // Remove bottom padding on mobile for control bar
-          position: 'relative'
+          p: 0,
+          position: 'relative',
+          overflow: 'hidden'
         }}
       >
         {imgLoadError && (
@@ -262,36 +324,122 @@ export default function ImageCropModal({
             Failed to load image. Please try a different one.
           </Typography>
         )}
+        
         {!imgLoadError && imageSrc && (
           <Box sx={{ 
             flexGrow: 1, 
             display: 'flex', 
+            flexDirection: 'column',
             justifyContent: 'center', 
             alignItems: 'center', 
-            overflow: 'hidden', 
-            background: theme.palette.mode === 'dark' ? '#333' : '#eee',
-            height: '100%' 
+            background: 'black',
+            height: '100%',
+            width: '100%',
+            position: 'relative',
           }}>
-            <ReactCrop
-              crop={crop}
-              onChange={(_, percentCrop) => setCrop(percentCrop)}
-              onComplete={(c) => setCompletedCrop(c)}
-              aspect={aspectRatio}
-              className={theme.palette.mode === 'dark' ? 'dark-crop-theme' : ''}
+            {/* Crop area container */}
+            <Box 
+              ref={cropContainerRef}
+              sx={{
+                position: 'relative',
+                width: '100%',
+                height: isMobile ? `calc(100vh - 220px - ${mobileBottomBarHeight}px)` : 'calc(90vh - 200px)',
+                overflow: 'hidden',
+                userSelect: 'none',
+                touchAction: 'none'
+              }}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
             >
+              {/* Image with zoom and position */}
               <img
                 ref={imgRef}
-                alt="Crop me"
+                alt="Crop"
                 src={imageSrc}
                 style={{ 
-                  maxHeight: isMobile ? 'calc(100vh - 160px)' : '70vh', 
-                  maxWidth: '100%', 
-                  objectFit: 'contain' 
+                  position: 'absolute',
+                  transformOrigin: '0 0',
+                  transform: `translate(${position.x}px, ${position.y}px) scale(${zoom})`,
+                  maxWidth: 'none',
+                  cursor: isDragging ? 'grabbing' : 'grab'
                 }}
                 onLoad={onImageLoad}
                 onError={onImageError}
+                draggable={false}
               />
-            </ReactCrop>
+              
+              {/* Fixed crop frame with overlay */}
+              <Box
+                ref={cropFrameRef}
+                sx={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  width: `${frameWidth}px`,
+                  height: `${frameHeight}px`,
+                  border: '1px solid rgba(255, 255, 255, 0.8)',
+                  boxShadow: '0 0 0 2000px rgba(0, 0, 0, 0.5)',
+                  pointerEvents: 'none',
+                  zIndex: 10
+                }}
+              />
+            </Box>
+            
+            {/* Zoom slider control */}
+            <Box sx={{ 
+              position: 'relative',
+              width: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              zIndex: 20,
+              py: 1.5,
+              bgcolor: 'background.paper',
+              borderTop: '1px solid',
+              borderColor: 'divider',
+              mb: isMobile ? `${mobileBottomBarHeight}px` : 0, // Add bottom margin on mobile to avoid overlap
+            }}>
+              <Box sx={{ 
+                width: '90%', 
+                maxWidth: '400px',
+                display: 'flex',
+                alignItems: 'center',
+              }}>
+                <ZoomOut color="primary" sx={{ mr: 1 }} />
+                <Slider
+                  value={zoom}
+                  onChange={handleZoomChange}
+                  min={0.1}
+                  max={5}
+                  step={0.01}
+                  color="primary"
+                  aria-label="Zoom"
+                  sx={{ 
+                    '& .MuiSlider-thumb': {
+                      width: 16,
+                      height: 16
+                    },
+                    '& .MuiSlider-track': {
+                      height: 6
+                    },
+                    '& .MuiSlider-rail': {
+                      height: 6
+                    }
+                  }}
+                />
+                <ZoomIn color="primary" sx={{ ml: 1 }} />
+              </Box>
+              
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+                Drag to position image
+              </Typography>
+            </Box>
           </Box>
         )}
         
@@ -304,7 +452,7 @@ export default function ImageCropModal({
               bottom: 0,
               left: 0,
               right: 0,
-              zIndex: 1,
+              zIndex: 30, // Increase z-index to ensure it's on top
               borderRadius: 0,
               bgcolor: theme.palette.mode === 'dark' ? 'background.paper' : undefined
             }}
@@ -313,7 +461,7 @@ export default function ImageCropModal({
               direction="row" 
               sx={{
                 width: '100%',
-                height: '72px',
+                height: `${mobileBottomBarHeight}px`,
                 justifyContent: 'space-around',
                 alignItems: 'center',
                 px: 2
@@ -350,7 +498,7 @@ export default function ImageCropModal({
                 color="primary"
                 variant="contained"
                 onClick={handleCrop}
-                disabled={!completedCrop || imgLoadError || isProcessing}
+                disabled={imgLoadError || isProcessing}
                 startIcon={isProcessing ? <CircularProgress size={20} color="inherit" /> : <Done />}
                 sx={{ 
                   height: '48px',
@@ -407,7 +555,7 @@ export default function ImageCropModal({
               onClick={handleCrop}
               color="primary"
               variant="contained"
-              disabled={!completedCrop || imgLoadError || isProcessing}
+              disabled={imgLoadError || isProcessing}
               startIcon={isProcessing ? <CircularProgress size={20} color="inherit" /> : <Done />}
               sx={{ 
                 minWidth: '100px',
