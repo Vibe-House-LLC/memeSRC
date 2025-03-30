@@ -37,7 +37,8 @@ import '../styles/CropStyles.css'; // Import custom crop styles
 // Helper to get initial crop based on aspect ratio
 function centerAspectCrop(mediaWidth, mediaHeight, aspect) {
   // Calculate maximum possible crop size that fits within the image while maintaining aspect ratio
-  let cropWidth, cropHeight;
+  let cropWidth;
+  let cropHeight;
   
   if (mediaWidth / mediaHeight > aspect) {
     // Image is wider than the target aspect ratio, so height is the constraint
