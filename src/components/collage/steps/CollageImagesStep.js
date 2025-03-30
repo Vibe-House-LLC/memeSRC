@@ -65,36 +65,45 @@ const CollageImagesStep = ({
           const base64Image = event.target.result;
           const panelId = panel.id; // Get panel ID
           
-          // Store current panel data for cropping
-          setCurrentPanelToEdit(panel);
-          
-          // Set up for cropping
-          setImageToCrop(base64Image);
+          // Store current panel data temporarily
+          const currentPanel = panel;
           
           // Set aspect ratio for the panel
           const calculatedAspectRatio = (panel.height > 0) ? (panel.width / panel.height) : 1;
-          setPanelAspectRatio(calculatedAspectRatio);
           
-          // Store the upload data for handling after crop
+          // Check if this panel already has an image
           const existingMappingIndex = panelImageMapping[panelId];
           const isReplacingMappedImage = existingMappingIndex !== undefined && existingMappingIndex !== null;
           
-          // Save the state for later use in handleCropComplete
-          panel._uploadData = {
-            base64Image,
-            isReplacing: isReplacingMappedImage,
-            existingIndex: existingMappingIndex
-          };
-          
-          // Open the crop dialog immediately with the new image
-          setCropModalOpen(true);
+          if (isReplacingMappedImage) {
+            // Replace existing image
+            debugLog(`Replacing image for panel ${panelId}, index ${existingMappingIndex}`);
+            replaceImage(existingMappingIndex, base64Image);
+            updateImage(existingMappingIndex, base64Image);
+          } else {
+            // Add new image
+            const newIndex = selectedImages.length;
+            debugLog(`Adding new image for panel ${panelId}, new index ${newIndex}`);
+            
+            // Add the image with original URL
+            addImage(base64Image);
+            
+            // Use the same URL for display (no crop applied)
+            updateImage(newIndex, base64Image);
+            
+            // Update mapping to point the panel to the new index
+            if (panelId !== undefined && panelId !== null) {
+              const updatedMapping = { ...panelImageMapping, [panelId]: newIndex };
+              updatePanelImageMapping(updatedMapping);
+            }
+          }
         };
         reader.onerror = (error) => logError("Error reading file:", error);
         reader.readAsDataURL(file);
       }
     };
     fileInput.click();
-  }, [panelImageMapping]);
+  }, [panelImageMapping, replaceImage, updateImage, addImage, updatePanelImageMapping, selectedImages.length]);
 
   // Define handlePanelClick first (before it's used in handlePreviewClick)
   const handlePanelClick = useCallback((canvasX, canvasY) => {
@@ -168,56 +177,24 @@ const CollageImagesStep = ({
     }
     
     const panelId = currentPanelToEdit.id;
-    const uploadData = currentPanelToEdit._uploadData;
     
-    if (uploadData) {
-      // This is a new upload that needs processing
-      const { base64Image, isReplacing, existingIndex } = uploadData;
-      
-      if (isReplacing) {
-        // Use replaceImage to update both urls, but with the cropped version as displayUrl
-        debugLog(`Cropping complete for new upload. Replacing image at index ${existingIndex}`);
-        replaceImage(existingIndex, base64Image); // Set originalUrl
-        updateImage(existingIndex, croppedDataUrl); // Then update displayUrl with crop
-      } else {
-        // Add new image object
-        const newIndex = selectedImages.length;
-        debugLog(`Cropping complete for new panel ${panelId}, new index ${newIndex}`);
-        
-        // First add the image with original URL
-        addImage(base64Image);
-        
-        // Then update the display URL with the cropped version
-        updateImage(newIndex, croppedDataUrl);
-        
-        // Update mapping to point the panel to the new index
-        if (panelId !== undefined && panelId !== null) {
-          const updatedMapping = { ...panelImageMapping, [panelId]: newIndex };
-          updatePanelImageMapping(updatedMapping);
-        }
-      }
-      
-      // Clear the temporary data
-      delete currentPanelToEdit._uploadData;
-    } else {
-      // Normal crop of existing image
-      const imageIndex = panelImageMapping[panelId];
-      
-      if (imageIndex === undefined || imageIndex === null) {
-        logError("Cannot complete crop: Panel has no associated image index.");
-        return;
-      }
-      
-      debugLog(`Cropping complete for panel ${panelId}. Updating DISPLAY image index ${imageIndex}.`);
-      // Use 'updateImage' which now only updates the displayUrl
-      updateImage(imageIndex, croppedDataUrl);
+    // Normal crop of existing image
+    const imageIndex = panelImageMapping[panelId];
+    
+    if (imageIndex === undefined || imageIndex === null) {
+      logError("Cannot complete crop: Panel has no associated image index.");
+      return;
     }
+    
+    debugLog(`Cropping complete for panel ${panelId}. Updating DISPLAY image index ${imageIndex}.`);
+    // Use 'updateImage' which only updates the displayUrl
+    updateImage(imageIndex, croppedDataUrl);
 
     // Close the modal and reset state
     setCropModalOpen(false);
     setCurrentPanelToEdit(null);
     setImageToCrop(null);
-  }, [currentPanelToEdit, panelImageMapping, updateImage, replaceImage, addImage, updatePanelImageMapping, selectedImages.length]);
+  }, [currentPanelToEdit, panelImageMapping, updateImage]);
 
   // --- Handler for Replace Image request ---
   const handleReplaceRequest = useCallback(() => {
@@ -320,7 +297,7 @@ const CollageImagesStep = ({
       {/* Layout Preview */}
       <Paper elevation={1} sx={{ p: isMobile ? 1 : 2, mb: isMobile ? 1 : 2, borderRadius: 2, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', backgroundColor: theme.palette.background.paper }}>
         <Typography variant="subtitle2" color="text.secondary" gutterBottom sx={{ mb: 1 }}>
-          Click a panel to add or edit its image
+          Click a panel to add an image or edit existing image
         </Typography>
         {renderedImage ? (
           <Box component="img" src={renderedImage} alt="Collage Layout Preview" onClick={handlePreviewClick} sx={{ maxWidth: '100%', maxHeight: isMobile ? 350 : 450, objectFit: 'contain', borderRadius: 1, cursor: 'pointer', display: 'block', margin: '0 auto', border: `1px solid ${theme.palette.divider}`, backgroundColor: theme.palette.action.hover }} />
