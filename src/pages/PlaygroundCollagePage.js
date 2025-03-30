@@ -99,7 +99,7 @@ const createLayoutConfig = (template, panelCount) => {
       case 'featured-top-with-two-bottom':
         return {
           gridTemplateColumns: '1fr 1fr',
-          gridTemplateRows: '2fr 1fr',
+          gridTemplateRows: '3fr 1fr',
           gridTemplateAreas: '"main main" "left right"',
           areas: ['main', 'left', 'right']
         };
@@ -107,7 +107,7 @@ const createLayoutConfig = (template, panelCount) => {
       case 'main-with-two-right':
       case 'featured-left-with-two-right':
         return {
-          gridTemplateColumns: '2fr 1fr',
+          gridTemplateColumns: '3fr 1fr',
           gridTemplateRows: '1fr 1fr',
           gridTemplateAreas: '"main top" "main bottom"',
           areas: ['main', 'top', 'bottom']
@@ -115,7 +115,7 @@ const createLayoutConfig = (template, panelCount) => {
         
       case 'center-feature-wide':
         return {
-          gridTemplateColumns: 'repeat(3, 1fr)',
+          gridTemplateColumns: '1fr 2fr 1fr',
           gridTemplateRows: '1fr',
           gridTemplateAreas: '"left main right"',
           areas: ['left', 'main', 'right']
@@ -124,7 +124,7 @@ const createLayoutConfig = (template, panelCount) => {
       case 'center-feature-tall':
         return {
           gridTemplateColumns: '1fr',
-          gridTemplateRows: 'repeat(3, 1fr)',
+          gridTemplateRows: '1fr 2fr 1fr',
           gridTemplateAreas: '"top" "main" "bottom"',
           areas: ['top', 'main', 'bottom']
         };
@@ -155,7 +155,7 @@ const createLayoutConfig = (template, panelCount) => {
         
       case 'triptych':
         return {
-          gridTemplateColumns: '1fr 1fr 1fr',
+          gridTemplateColumns: '1fr 2fr 1fr',
           gridTemplateRows: '1fr',
           gridTemplateAreas: '"left main right"',
           areas: ['left', 'main', 'right']
@@ -190,7 +190,7 @@ const createLayoutConfig = (template, panelCount) => {
       case 'top-feature-with-3-bottom':
         return {
           gridTemplateColumns: '1fr 1fr 1fr',
-          gridTemplateRows: '2fr 1fr',
+          gridTemplateRows: '3fr 1fr',
           gridTemplateAreas: '"main main main" "left middle right"',
           areas: ['main', 'left', 'middle', 'right']
         };
@@ -198,7 +198,7 @@ const createLayoutConfig = (template, panelCount) => {
       case 'big-and-3-right':
       case 'left-feature-with-3-right':
         return {
-          gridTemplateColumns: '2fr 1fr',
+          gridTemplateColumns: '3fr 1fr',
           gridTemplateRows: '1fr 1fr 1fr',
           gridTemplateAreas: '"main top" "main middle" "main bottom"',
           areas: ['main', 'top', 'middle', 'bottom']
@@ -240,7 +240,7 @@ const createLayoutConfig = (template, panelCount) => {
       case 'featured-top-with-4-below':
         return {
           gridTemplateColumns: 'repeat(4, 1fr)',
-          gridTemplateRows: '2fr 1fr',
+          gridTemplateRows: '3fr 1fr',
           gridTemplateAreas: '"main main main main" "one two three four"',
           areas: ['main', 'one', 'two', 'three', 'four']
         };
@@ -263,7 +263,7 @@ const createLayoutConfig = (template, panelCount) => {
         
       case 'featured-left-with-grid':
         return {
-          gridTemplateColumns: '2fr 1fr 1fr',
+          gridTemplateColumns: '3fr 1fr 1fr',
           gridTemplateRows: '1fr 1fr',
           gridTemplateAreas: '"main top-right top-far-right" "main bottom-right bottom-far-right"',
           areas: ['main', 'top-right', 'top-far-right', 'bottom-right', 'bottom-far-right']
@@ -296,7 +296,7 @@ const createLayoutConfig = (template, panelCount) => {
       case 'featured-bottom-with-4-top':
         return {
           gridTemplateColumns: 'repeat(4, 1fr)',
-          gridTemplateRows: '1fr 2fr',
+          gridTemplateRows: '1fr 3fr',
           gridTemplateAreas: '"one two three four" "main main main main"',
           areas: ['one', 'two', 'three', 'four', 'main']
         };
