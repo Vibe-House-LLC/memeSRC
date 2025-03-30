@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
 import { useTheme } from "@mui/material/styles";
-import { useMediaQuery, Box, Typography, Select, MenuItem, FormControl, InputLabel, Button, Grid, Paper } from "@mui/material";
-import { Dashboard, AddPhotoAlternate } from "@mui/icons-material";
+import { useMediaQuery, Box, Typography, Select, MenuItem, FormControl, InputLabel, Button, Grid, Paper, IconButton, Menu } from "@mui/material";
+import { Dashboard, AddPhotoAlternate, MoreVert, Add } from "@mui/icons-material";
 
 import { aspectRatioPresets, getLayoutsForPanelCount } from "../components/collage/config/CollageConfig";
 import { MainContainer, ContentPaper } from "../components/collage/components/CollageLayoutComponents";
@@ -153,6 +153,8 @@ export default function PlaygroundCollagePage() {
   const [layoutConfig, setLayoutConfig] = useState(null);
   const [images, setImages] = useState([]);
   const [activePanelIndex, setActivePanelIndex] = useState(null);
+  const [menuAnchorEl, setMenuAnchorEl] = useState(null);
+  const [activeMenuPanelIndex, setActiveMenuPanelIndex] = useState(null);
   const fileInputRef = React.createRef();
   const multiFileInputRef = React.createRef();
 
@@ -192,13 +194,77 @@ export default function PlaygroundCollagePage() {
 
   // Initialize images array when panel count changes
   useEffect(() => {
-    setImages(Array(panelCount).fill(null));
+    // Only initialize the images array if it's empty or the panel count increased
+    setImages(prevImages => {
+      // If we have no images yet or resizing to larger panel count
+      if (prevImages.length === 0 || panelCount > prevImages.length) {
+        // Keep existing images and add nulls for new panels
+        const newImages = [...prevImages];
+        while (newImages.length < panelCount) {
+          newImages.push(null);
+        }
+        return newImages;
+      }
+      // For panel count decrease, don't change anything here
+      // (handleRemoveFrame already handles this)
+      return prevImages;
+    });
   }, [panelCount]);
 
   // Handle panel click to trigger file upload
   const handlePanelClick = (index) => {
     setActivePanelIndex(index);
     fileInputRef.current?.click();
+  };
+
+  // Open menu for a panel
+  const handleMenuOpen = (event, index) => {
+    event.stopPropagation(); // Prevent panel click
+    setMenuAnchorEl(event.currentTarget);
+    setActiveMenuPanelIndex(index);
+  };
+
+  // Close menu
+  const handleMenuClose = () => {
+    setMenuAnchorEl(null);
+    setActiveMenuPanelIndex(null);
+  };
+
+  // Handle replace image from menu
+  const handleReplaceImage = () => {
+    setActivePanelIndex(activeMenuPanelIndex);
+    handleMenuClose();
+    fileInputRef.current?.click();
+  };
+
+  // Handle clear image from menu (renamed from delete image)
+  const handleClearImage = () => {
+    if (activeMenuPanelIndex !== null) {
+      setImages(prevImages => {
+        const newImages = [...prevImages];
+        newImages[activeMenuPanelIndex] = null;
+        return newImages;
+      });
+    }
+    handleMenuClose();
+  };
+
+  // Handle remove frame from collage
+  const handleRemoveFrame = () => {
+    if (activeMenuPanelIndex !== null && panelCount > 2) {
+      // Reduce panel count
+      setPanelCount(prevCount => prevCount - 1);
+      
+      // Remove image at the active index and shift subsequent images
+      setImages(prevImages => {
+        const newImages = [...prevImages];
+        newImages.splice(activeMenuPanelIndex, 1);
+        // Add null at the end to maintain the array length
+        newImages.push(null);
+        return newImages;
+      });
+    }
+    handleMenuClose();
   };
 
   // Handle file selection for a single panel
@@ -416,6 +482,7 @@ export default function PlaygroundCollagePage() {
                           justifyContent: 'center',
                           cursor: 'pointer',
                           overflow: 'hidden',
+                          position: 'relative',
                           '&:hover': {
                             backgroundColor: theme.palette.action.hover,
                           },
@@ -423,17 +490,49 @@ export default function PlaygroundCollagePage() {
                         onClick={() => handlePanelClick(index)}
                       >
                         {images[index] ? (
-                          <img 
-                            src={images[index]} 
-                            alt={`Panel ${index + 1}`} 
-                            style={{ 
-                              width: '100%', 
-                              height: '100%', 
-                              objectFit: 'cover' 
-                            }} 
-                          />
+                          <>
+                            <img 
+                              src={images[index]} 
+                              alt={`Panel ${index + 1}`} 
+                              style={{ 
+                                width: '100%', 
+                                height: '100%', 
+                                objectFit: 'cover' 
+                              }} 
+                            />
+                            
+                            {/* FAB Menu Button (only shown when image exists) */}
+                            <IconButton 
+                              size="small" 
+                              sx={{ 
+                                position: 'absolute', 
+                                top: 5, 
+                                right: 5,
+                                backgroundColor: theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.7)' : 'rgba(33, 150, 243, 0.7)',
+                                color: '#ffffff',
+                                '&:hover': {
+                                  backgroundColor: theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.9)' : 'rgba(33, 150, 243, 0.9)',
+                                },
+                              }}
+                              onClick={(e) => handleMenuOpen(e, index)}
+                            >
+                              <MoreVert fontSize="small" />
+                            </IconButton>
+                          </>
                         ) : (
-                          <Typography>Click to add image</Typography>
+                          <>
+                            <IconButton
+                              sx={{
+                                backgroundColor: theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.7)' : 'rgba(33, 150, 243, 0.7)',
+                                color: '#ffffff',
+                                '&:hover': {
+                                  backgroundColor: theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.9)' : 'rgba(33, 150, 243, 0.9)',
+                                },
+                              }}
+                            >
+                              <Add />
+                            </IconButton>
+                          </>
                         )}
                       </Box>
                     ))
@@ -451,6 +550,7 @@ export default function PlaygroundCollagePage() {
                           justifyContent: 'center',
                           cursor: 'pointer',
                           overflow: 'hidden',
+                          position: 'relative',
                           '&:hover': {
                             backgroundColor: theme.palette.action.hover,
                           },
@@ -458,17 +558,49 @@ export default function PlaygroundCollagePage() {
                         onClick={() => handlePanelClick(index)}
                       >
                         {images[index] ? (
-                          <img 
-                            src={images[index]} 
-                            alt={`Panel ${index + 1}`} 
-                            style={{ 
-                              width: '100%', 
-                              height: '100%', 
-                              objectFit: 'cover' 
-                            }} 
-                          />
+                          <>
+                            <img 
+                              src={images[index]} 
+                              alt={`Panel ${index + 1}`} 
+                              style={{ 
+                                width: '100%', 
+                                height: '100%', 
+                                objectFit: 'cover' 
+                              }} 
+                            />
+                            
+                            {/* FAB Menu Button (only shown when image exists) */}
+                            <IconButton 
+                              size="small" 
+                              sx={{ 
+                                position: 'absolute', 
+                                top: 5, 
+                                right: 5,
+                                backgroundColor: theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.7)' : 'rgba(33, 150, 243, 0.7)',
+                                color: '#ffffff',
+                                '&:hover': {
+                                  backgroundColor: theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.9)' : 'rgba(33, 150, 243, 0.9)',
+                                },
+                              }}
+                              onClick={(e) => handleMenuOpen(e, index)}
+                            >
+                              <MoreVert fontSize="small" />
+                            </IconButton>
+                          </>
                         ) : (
-                          <Typography>Click to add image</Typography>
+                          <>
+                            <IconButton
+                              sx={{
+                                backgroundColor: theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.7)' : 'rgba(33, 150, 243, 0.7)',
+                                color: '#ffffff',
+                                '&:hover': {
+                                  backgroundColor: theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.9)' : 'rgba(33, 150, 243, 0.9)',
+                                },
+                              }}
+                            >
+                              <Add />
+                            </IconButton>
+                          </>
                         )}
                       </Box>
                     ))
@@ -476,6 +608,22 @@ export default function PlaygroundCollagePage() {
                 </Box>
               </Box>
             )}
+            
+            {/* Panel options menu */}
+            <Menu
+              anchorEl={menuAnchorEl}
+              open={Boolean(menuAnchorEl)}
+              onClose={handleMenuClose}
+            >
+              <MenuItem onClick={handleReplaceImage}>Replace image</MenuItem>
+              <MenuItem onClick={handleClearImage}>Clear image</MenuItem>
+              <MenuItem 
+                onClick={handleRemoveFrame} 
+                disabled={panelCount <= 2}
+              >
+                Remove frame
+              </MenuItem>
+            </Menu>
             
             <Box sx={{ mt: 2, textAlign: 'center' }}>
               <Typography variant="body2" color="text.secondary">
