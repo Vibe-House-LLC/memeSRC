@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
 import { useTheme } from "@mui/material/styles";
 import { useMediaQuery, Box, Typography, Select, MenuItem, FormControl, InputLabel, Button, Grid, Paper } from "@mui/material";
-import { Dashboard } from "@mui/icons-material";
+import { Dashboard, AddPhotoAlternate } from "@mui/icons-material";
 
 import { aspectRatioPresets, getLayoutsForPanelCount } from "../components/collage/config/CollageConfig";
 import { MainContainer, ContentPaper } from "../components/collage/components/CollageLayoutComponents";
@@ -154,6 +154,7 @@ export default function PlaygroundCollagePage() {
   const [images, setImages] = useState([]);
   const [activePanelIndex, setActivePanelIndex] = useState(null);
   const fileInputRef = React.createRef();
+  const multiFileInputRef = React.createRef();
 
   // Get available layouts based on selected panel count and aspect ratio
   const availableLayouts = useMemo(() => {
@@ -200,7 +201,7 @@ export default function PlaygroundCollagePage() {
     fileInputRef.current?.click();
   };
 
-  // Handle file selection
+  // Handle file selection for a single panel
   const handleFileChange = (event) => {
     const file = event.target.files?.[0];
     if (file && activePanelIndex !== null) {
@@ -215,6 +216,40 @@ export default function PlaygroundCollagePage() {
       };
       reader.readAsDataURL(file);
     }
+    // Reset file input
+    if (event.target) {
+      event.target.value = null;
+    }
+  };
+
+  // Handle multi-file selection
+  const handleMultiFileChange = (event) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    
+    // Update panel count based on number of selected files
+    const newPanelCount = Math.min(files.length, 5); // Limit to max 5 panels
+    if (newPanelCount !== panelCount) {
+      setPanelCount(newPanelCount);
+    }
+    
+    // Create an array to store loaded images
+    const newImages = Array(newPanelCount).fill(null);
+    
+    // Process each file
+    Array.from(files).slice(0, newPanelCount).forEach((file, index) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const imageUrl = e.target?.result;
+        setImages(prevImages => {
+          const updatedImages = [...prevImages];
+          updatedImages[index] = imageUrl;
+          return updatedImages;
+        });
+      };
+      reader.readAsDataURL(file);
+    });
+    
     // Reset file input
     if (event.target) {
       event.target.value = null;
@@ -308,15 +343,34 @@ export default function PlaygroundCollagePage() {
                   </Select>
                 </FormControl>
               </Grid>
+
+              <Grid item xs={12}>
+                <Button 
+                  variant="contained" 
+                  startIcon={<AddPhotoAlternate />}
+                  onClick={() => multiFileInputRef.current?.click()}
+                  sx={{ mt: 1 }}
+                >
+                  Select Multiple Images
+                </Button>
+              </Grid>
             </Grid>
             
-            {/* Hidden file input */}
+            {/* Hidden file inputs */}
             <input
               type="file"
               ref={fileInputRef}
               style={{ display: 'none' }}
               accept="image/*"
               onChange={handleFileChange}
+            />
+            <input
+              type="file"
+              multiple
+              ref={multiFileInputRef}
+              style={{ display: 'none' }}
+              accept="image/*"
+              onChange={handleMultiFileChange}
             />
             
             {/* Collage Preview */}
@@ -425,7 +479,7 @@ export default function PlaygroundCollagePage() {
             
             <Box sx={{ mt: 2, textAlign: 'center' }}>
               <Typography variant="body2" color="text.secondary">
-                Click on any panel to upload an image. Test different layouts and aspect ratios.
+                Click on "Select Multiple Images" to load several images at once, or click on any individual panel to upload a specific image.
               </Typography>
             </Box>
           </Box>
