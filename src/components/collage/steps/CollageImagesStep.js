@@ -1,20 +1,14 @@
-import { useState, useEffect, useRef, useCallback } from "react"; // Add useCallback
-import { useTheme } from "@mui/material/styles";
-import { Box, Button, Typography, Paper, useMediaQuery } from "@mui/material";
-// Removed unused icons
+import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { Box, Typography, Paper, useMediaQuery } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 
 // Import config and utils
 import { aspectRatioPresets, getLayoutsForPanelCount } from "../config/CollageConfig";
 import { renderTemplateToCanvas, calculateCanvasDimensions } from "../utils/CanvasLayoutRenderer";
-
-// Import the dialogs/modals
-import UploadOrCropDialog from "../components/UploadOrCropDialog";
 import ImageCropModal from "../components/ImageCropModal";
 
-// Remove old console logs
-// console.log("Imported UploadOrCropDialogModule:", UploadOrCropDialog);
-// console.log("Imported ImageCropModalModule:", ImageCropModal);
-
+// Debugging utils
+const DEBUG_MODE = false; // Set to true to enable console logs
 
 const adjustForPanelCount = (thickness, panelCount) => {
   // (Keep this function as is)
@@ -24,7 +18,6 @@ const adjustForPanelCount = (thickness, panelCount) => {
   return Math.max(1, Math.round(thickness * scaleFactor));
 };
 
-const DEBUG_MODE = process.env.NODE_ENV === 'development';
 const debugLog = (...args) => { if (DEBUG_MODE) console.log(...args); };
 const debugWarn = (...args) => { if (DEBUG_MODE) console.warn(...args); };
 const logError = (...args) => { console.error(...args); };
@@ -54,28 +47,61 @@ const CollageImagesStep = ({
   const [hasInitialRender, setHasInitialRender] = useState(false);
 
   // --- State for Modals ---
-  const [uploadOrCropDialogOpen, setUploadOrCropDialogOpen] = useState(false);
   const [cropModalOpen, setCropModalOpen] = useState(false);
   const [currentPanelToEdit, setCurrentPanelToEdit] = useState(null); // { id, x, y, width, height }
   const [imageToCrop, setImageToCrop] = useState(null); // Stores ORIGINAL URL for the cropper
   const [panelAspectRatio, setPanelAspectRatio] = useState(1); // Aspect ratio for cropping tool
 
+  // --- Function to trigger the actual file input ---
+  const triggerImageUpload = useCallback((panel) => {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    fileInput.onchange = (e) => {
+      if (e.target.files && e.target.files[0]) {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const base64Image = event.target.result;
+          const panelId = panel.id; // Get panel ID
+          
+          // Store current panel data for cropping
+          setCurrentPanelToEdit(panel);
+          
+          // Set up for cropping
+          setImageToCrop(base64Image);
+          
+          // Set aspect ratio for the panel
+          const calculatedAspectRatio = (panel.height > 0) ? (panel.width / panel.height) : 1;
+          setPanelAspectRatio(calculatedAspectRatio);
+          
+          // Store the upload data for handling after crop
+          const existingMappingIndex = panelImageMapping[panelId];
+          const isReplacingMappedImage = existingMappingIndex !== undefined && existingMappingIndex !== null;
+          
+          // Save the state for later use in handleCropComplete
+          panel._uploadData = {
+            base64Image,
+            isReplacing: isReplacingMappedImage,
+            existingIndex: existingMappingIndex
+          };
+          
+          // Open the crop dialog immediately with the new image
+          setCropModalOpen(true);
+        };
+        reader.onerror = (error) => logError("Error reading file:", error);
+        reader.readAsDataURL(file);
+      }
+    };
+    fileInput.click();
+  }, [panelImageMapping]);
 
-  // --- Click Handler for Preview ---
-  const handlePreviewClick = useCallback((event) => {
-    debugLog("Preview image clicked");
-    const imageElement = event.currentTarget;
-    const rect = imageElement.getBoundingClientRect();
-    const clickX = (event.clientX - rect.left) / rect.width;
-    const clickY = (event.clientY - rect.top) / rect.height;
+  // Define handlePanelClick first (before it's used in handlePreviewClick)
+  const handlePanelClick = useCallback((canvasX, canvasY) => {
+    // User clicked on the preview image
+    debugLog(`Canvas clicked at x:${canvasX} y:${canvasY}`);
 
-    const { width: previewCanvasWidth, height: previewCanvasHeight } = calculateCanvasDimensions(selectedAspectRatio);
-    const canvasX = clickX * previewCanvasWidth;
-    const canvasY = clickY * previewCanvasHeight;
-
-    debugLog("Canvas coords:", { canvasX, canvasY });
-    debugLog("Available panel regions:", panelRegions);
-
+    // Find which panel was clicked by point-in-box testing
     const clickedPanel = panelRegions.find(panel =>
       canvasX >= panel.x && canvasX <= panel.x + panel.width &&
       canvasY >= panel.y && canvasY <= panel.y + panel.height
@@ -94,14 +120,14 @@ const CollageImagesStep = ({
       const hasExistingImage = imageIndex !== undefined && imageIndex !== null && selectedImages[imageIndex];
 
       if (hasExistingImage) {
-        // Panel has image -> Open Upload or Crop dialog
+        // Panel has image -> Open crop modal directly
         const imageItemObject = selectedImages[imageIndex];
-        debugLog(`Panel ${clickedPanel.id} has image at index ${imageIndex}. Opening dialog.`);
+        debugLog(`Panel ${clickedPanel.id} has image at index ${imageIndex}. Opening crop modal.`);
 
         // Use the ORIGINAL URL for the cropper source
         if (imageItemObject && imageItemObject.originalUrl) {
             setImageToCrop(imageItemObject.originalUrl);
-            setUploadOrCropDialogOpen(true);
+            setCropModalOpen(true);
         } else {
             debugWarn(`Could not get valid ORIGINAL image URL for index ${imageIndex}. Triggering upload. ImageItem:`, imageItemObject);
             triggerImageUpload(clickedPanel); // Fallback to upload
@@ -114,69 +140,25 @@ const CollageImagesStep = ({
     } else {
       debugLog("No panel was clicked");
     }
-  }, [panelRegions, selectedImages, panelImageMapping, selectedAspectRatio, /* triggerImageUpload */]); // Removed triggerImageUpload to avoid loop if defined inline
+  }, [panelRegions, selectedImages, panelImageMapping, triggerImageUpload]);
+  
+  // --- Click Handler for Preview (now after handlePanelClick is defined) ---
+  const handlePreviewClick = useCallback((event) => {
+    debugLog("Preview image clicked");
+    const imageElement = event.currentTarget;
+    const rect = imageElement.getBoundingClientRect();
+    const clickX = (event.clientX - rect.left) / rect.width;
+    const clickY = (event.clientY - rect.top) / rect.height;
 
-  // --- Function to trigger the actual file input ---
-  const triggerImageUpload = useCallback((panel) => {
-    const fileInput = document.createElement('input');
-    fileInput.type = 'file';
-    fileInput.accept = 'image/*';
-    fileInput.onchange = (e) => {
-      if (e.target.files && e.target.files[0]) {
-        const file = e.target.files[0];
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          const base64Image = event.target.result;
-          const panelId = panel.id; // Get panel ID
+    const { width: previewCanvasWidth, height: previewCanvasHeight } = calculateCanvasDimensions(selectedAspectRatio);
+    const canvasX = clickX * previewCanvasWidth;
+    const canvasY = clickY * previewCanvasHeight;
 
-          // Check if updating existing or adding new
-          const existingMappingIndex = panelImageMapping[panelId];
-          const isReplacingMappedImage = existingMappingIndex !== undefined && existingMappingIndex !== null;
-
-          if (isReplacingMappedImage) {
-            // Use the new 'replaceImage' function to update both original and display URLs
-            debugLog(`Uploading new file to replace image at index ${existingMappingIndex} for panel ${panelId}`);
-            replaceImage(existingMappingIndex, base64Image);
-            // Mapping doesn't need to change here, just the image content at the index
-          } else {
-            // Add new image object using addImage
-            const newIndex = selectedImages.length; // Index will be the current length
-            debugLog(`Uploading new file for empty panel ${panelId}, new index ${newIndex}`);
-            addImage(base64Image); // Adds { originalUrl: base64, displayUrl: base64 }
-
-            // Update mapping to point the panel to the new index
-            if (panelId !== undefined && panelId !== null) {
-                const updatedMapping = { ...panelImageMapping, [panelId]: newIndex };
-                updatePanelImageMapping(updatedMapping);
-            } else {
-                logError("Panel ID is undefined, cannot update mapping for new image.");
-            }
-          }
-        };
-        reader.onerror = (error) => logError("Error reading file:", error);
-        reader.readAsDataURL(file);
-      }
-    };
-    fileInput.click();
-  }, [panelImageMapping, addImage, replaceImage, updatePanelImageMapping, selectedImages.length]); // Dependencies
-
-  // --- Handlers for UploadOrCropDialog ---
-  const handleUploadNewRequest = useCallback(() => {
-    if (currentPanelToEdit) {
-      triggerImageUpload(currentPanelToEdit);
-    }
-    setUploadOrCropDialogOpen(false); // Close dialog
-  }, [currentPanelToEdit, triggerImageUpload]);
-
-  const handleCropExistingRequest = useCallback(() => {
-    if (currentPanelToEdit && imageToCrop) {
-      setCropModalOpen(true); // Open the crop modal
-    } else {
-      debugWarn("Cannot crop: Panel or image source missing.");
-    }
-    setUploadOrCropDialogOpen(false); // Close dialog
-  }, [currentPanelToEdit, imageToCrop]);
-
+    debugLog("Canvas coords:", { canvasX, canvasY });
+    
+    // Use our new panel click handler for consistent behavior
+    handlePanelClick(canvasX, canvasY);
+  }, [handlePanelClick, selectedAspectRatio]);
 
   // --- Handler for Crop Completion ---
   const handleCropComplete = useCallback((croppedDataUrl) => {
@@ -184,24 +166,91 @@ const CollageImagesStep = ({
       logError("Cannot complete crop: No panel selected.");
       return;
     }
+    
     const panelId = currentPanelToEdit.id;
-    const imageIndex = panelImageMapping[panelId];
-
-    if (imageIndex === undefined || imageIndex === null) {
-      logError("Cannot complete crop: Panel has no associated image index.");
-      return;
+    const uploadData = currentPanelToEdit._uploadData;
+    
+    if (uploadData) {
+      // This is a new upload that needs processing
+      const { base64Image, isReplacing, existingIndex } = uploadData;
+      
+      if (isReplacing) {
+        // Use replaceImage to update both urls, but with the cropped version as displayUrl
+        debugLog(`Cropping complete for new upload. Replacing image at index ${existingIndex}`);
+        replaceImage(existingIndex, base64Image); // Set originalUrl
+        updateImage(existingIndex, croppedDataUrl); // Then update displayUrl with crop
+      } else {
+        // Add new image object
+        const newIndex = selectedImages.length;
+        debugLog(`Cropping complete for new panel ${panelId}, new index ${newIndex}`);
+        
+        // First add the image with original URL
+        addImage(base64Image);
+        
+        // Then update the display URL with the cropped version
+        updateImage(newIndex, croppedDataUrl);
+        
+        // Update mapping to point the panel to the new index
+        if (panelId !== undefined && panelId !== null) {
+          const updatedMapping = { ...panelImageMapping, [panelId]: newIndex };
+          updatePanelImageMapping(updatedMapping);
+        }
+      }
+      
+      // Clear the temporary data
+      delete currentPanelToEdit._uploadData;
+    } else {
+      // Normal crop of existing image
+      const imageIndex = panelImageMapping[panelId];
+      
+      if (imageIndex === undefined || imageIndex === null) {
+        logError("Cannot complete crop: Panel has no associated image index.");
+        return;
+      }
+      
+      debugLog(`Cropping complete for panel ${panelId}. Updating DISPLAY image index ${imageIndex}.`);
+      // Use 'updateImage' which now only updates the displayUrl
+      updateImage(imageIndex, croppedDataUrl);
     }
-
-    debugLog(`Cropping complete for panel ${panelId}. Updating DISPLAY image index ${imageIndex}.`);
-    // Use 'updateImage' which now only updates the displayUrl
-    updateImage(imageIndex, croppedDataUrl);
 
     // Close the modal and reset state
     setCropModalOpen(false);
     setCurrentPanelToEdit(null);
     setImageToCrop(null);
-  }, [currentPanelToEdit, panelImageMapping, updateImage]);
+  }, [currentPanelToEdit, panelImageMapping, updateImage, replaceImage, addImage, updatePanelImageMapping, selectedImages.length]);
 
+  // --- Handler for Replace Image request ---
+  const handleReplaceRequest = useCallback(() => {
+    if (currentPanelToEdit) {
+      triggerImageUpload(currentPanelToEdit);
+    }
+  }, [currentPanelToEdit, triggerImageUpload]);
+
+  // --- Handler for Remove Image request ---
+  const handleRemoveRequest = useCallback(() => {
+    if (!currentPanelToEdit) {
+      logError("Cannot remove: No panel selected.");
+      return;
+    }
+    
+    const panelId = currentPanelToEdit.id;
+    const imageIndex = panelImageMapping[panelId];
+    
+    if (imageIndex === undefined || imageIndex === null) {
+      logError("Cannot remove: Panel has no associated image index.");
+      return;
+    }
+    
+    // Remove the image
+    removeImage(imageIndex);
+    
+    // Update the mapping to remove this panel's association
+    const updatedMapping = { ...panelImageMapping };
+    delete updatedMapping[panelId];
+    updatePanelImageMapping(updatedMapping);
+    
+    debugLog(`Removed image at index ${imageIndex} from panel ${panelId}`);
+  }, [currentPanelToEdit, panelImageMapping, removeImage, updatePanelImageMapping]);
 
   // --- useEffect for Rendering Preview ---
   /* eslint-disable consistent-return */
@@ -288,15 +337,7 @@ const CollageImagesStep = ({
       <canvas ref={canvasRef} style={{ display: "none" }} />
 
       {/* --- Modals --- */}
-      {/* Upload or Crop Dialog (for existing images) */}
-      <UploadOrCropDialog
-          open={uploadOrCropDialogOpen}
-          onClose={() => setUploadOrCropDialogOpen(false)}
-          onUploadNew={handleUploadNewRequest}
-          onCropExisting={handleCropExistingRequest}
-      />
-
-      {/* Image Crop Modal */}
+      {/* Image Crop Modal with new Options */}
       <ImageCropModal
           open={cropModalOpen}
           onClose={() => {
@@ -307,6 +348,8 @@ const CollageImagesStep = ({
           imageSrc={imageToCrop} // Will be the originalUrl
           aspectRatio={panelAspectRatio}
           onCropComplete={handleCropComplete} // Calls updateImage to set displayUrl
+          onReplaceRequest={handleReplaceRequest}
+          onRemoveRequest={handleRemoveRequest}
       />
     </Box>
   );
