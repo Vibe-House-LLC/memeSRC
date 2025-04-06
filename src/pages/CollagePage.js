@@ -1,27 +1,37 @@
-// ===== FILE: /Users/davis/Projects/Vibe-House-LLC/memeSRC/src/pages/CollagePage.js =====
-
-import { useContext, useState, useEffect } from "react";
+import { useContext, useEffect } from "react";
 import { Helmet } from "react-helmet-async";
 import { useTheme } from "@mui/material/styles";
 import { useMediaQuery } from "@mui/material";
 import { Dashboard } from "@mui/icons-material";
-
 import { UserContext } from "../UserContext";
 import { useSubscribeDialog } from "../contexts/useSubscribeDialog";
-import { aspectRatioPresets, layoutTemplates, getLayoutsForPanelCount } from "../components/collage/config/CollageConfig";
-import CollageImagesStep from "../components/collage/steps/CollageImagesStep";
-import CollageSettingsStep from "../components/collage/steps/CollageSettingsStep";
+import { aspectRatioPresets, layoutTemplates } from "../components/collage/config/CollageConfig";
 import UpgradeMessage from "../components/collage/components/UpgradeMessage";
 import { PageHeader } from "../components/collage/components/CollageUIComponents";
-import { MainContainer, ContentPaper, CollageLayout, CollageResult } from "../components/collage/components/CollageLayoutComponents";
-// Removed unused CanvasLayoutRenderer imports here
-import { generateCollage } from "../components/collage/utils/CollageGenerator";
-// Removed unused PanelMappingUtils import
+import { MainContainer, ContentPaper, CollageLayout } from "../components/collage/components/CollageLayoutComponents";
 import { useCollageState } from "../components/collage/hooks/useCollageState";
 
 const DEBUG_MODE = process.env.NODE_ENV === 'development';
 const debugLog = (...args) => { if (DEBUG_MODE) console.log(...args); };
-const logError = (...args) => { console.error(...args); };
+
+/**
+ * Helper function to get numeric border thickness value from string/option
+ */
+const getBorderThicknessValue = (borderThickness, options) => {
+  // If it's already a number, return it
+  if (typeof borderThickness === 'number') {
+    return borderThickness;
+  }
+  
+  // Find matching option by label (case insensitive)
+  const normalizedLabel = String(borderThickness).toLowerCase();
+  const option = options.find(opt => 
+    String(opt.label).toLowerCase() === normalizedLabel
+  );
+  
+  // Return the value if found, otherwise default to 16 (medium)
+  return option ? option.value : 16;
+};
 
 export default function CollagePage() {
   const theme = useTheme();
@@ -32,8 +42,8 @@ export default function CollagePage() {
   const authorized = (user?.userDetails?.magicSubscription === "true" || user?.['cognito:groups']?.includes('admins'));
 
   const {
-    selectedImages, // Now [{ originalUrl, displayUrl }, ...]
-    panelImageMapping, // Still { panelId: imageIndex }
+    selectedImages, 
+    panelImageMapping,
     selectedTemplate,
     setSelectedTemplate,
     selectedAspectRatio,
@@ -48,12 +58,12 @@ export default function CollagePage() {
     setBorderThickness,
     borderColor,
     setBorderColor,
-    addImage, // Adds new object
-    removeImage, // Removes object
-    updateImage, // Updates ONLY displayUrl
-    replaceImage, // <-- NEW: Updates BOTH urls
-    clearImages, // Clears objects
-    updatePanelImageMapping, // Updates mapping
+    addImage,
+    removeImage,
+    updateImage,
+    replaceImage,
+    clearImages,
+    updatePanelImageMapping,
   } = useCollageState();
 
   const borderThicknessOptions = [
@@ -61,46 +71,13 @@ export default function CollagePage() {
     { label: "Thicc", value: 40 }, { label: "Thiccer", value: 80 }, { label: "XTRA THICC", value: 120 }
   ];
 
-  // Removed getCompatibleTemplates and related useEffect - logic is in useCollageState
+  // Get numeric border thickness value
+  const borderThicknessValue = getBorderThicknessValue(borderThickness, borderThicknessOptions);
 
-  const handleCreateCollage = async () => {
-    setIsCreatingCollage(true);
-    try {
-      debugLog(`[PAGE DEBUG] Creating collage...`);
-
-      if (!selectedTemplate || !selectedAspectRatio || !panelImageMapping) {
-        throw new Error("Missing required data for collage generation.");
-      }
-
-      // Extract display URLs for the generator
-      const displayImageUrls = selectedImages.map(imgObj => imgObj.displayUrl);
-
-      const dataUrl = await generateCollage({
-        selectedTemplate,
-        selectedAspectRatio,
-        // panelCount is still useful for generator logic potentially
-        panelCount: selectedTemplate?.layout?.panels?.length || panelCount,
-        displayImageUrls, // <-- Pass only display URLs
-        panelImageMapping, // Pass the mapping { panelId: imageIndex }
-        borderThickness,
-        borderColor,
-        borderThicknessOptions,
-        theme
-      });
-
-      setFinalImage(dataUrl);
-    } catch (error) {
-      logError('Error generating collage:', error);
-       // TODO: Show user-friendly error message
-    } finally {
-      setIsCreatingCollage(false);
-    }
-  };
-
-  // Log changes to border color
+  // Log changes to border color and thickness
   useEffect(() => {
-    debugLog(`[PAGE DEBUG] Border color changed to: ${borderColor}`);
-  }, [borderColor]);
+    debugLog(`[PAGE DEBUG] Border settings: color=${borderColor}, thickness=${borderThickness} (${borderThicknessValue}px)`);
+  }, [borderColor, borderThickness, borderThicknessValue]);
 
 
   // Props for settings step (selectedImages length might be useful for UI feedback)
@@ -112,7 +89,6 @@ export default function CollagePage() {
     setSelectedAspectRatio,
     panelCount,
     setPanelCount,
-    handleNext: handleCreateCollage,
     aspectRatioPresets,
     layoutTemplates,
     borderThickness,
@@ -130,17 +106,15 @@ export default function CollagePage() {
     panelCount,
     selectedTemplate,
     selectedAspectRatio,
-    borderThickness,
+    borderThickness: borderThicknessValue, // Pass the numeric value
     borderColor,
     borderThicknessOptions,
     // Actions
     addImage,
     removeImage,
-    updateImage, // For crop result
-    replaceImage, // For upload replacement
+    updateImage,
+    replaceImage,
     clearImages,
-    // Other
-    handleNext: handleCreateCollage
   };
 
   // Log mapping changes for debugging
@@ -149,12 +123,13 @@ export default function CollagePage() {
       debugLog("CollagePage state update:", {
         imageCount: selectedImages.length,
         mappingKeys: Object.keys(panelImageMapping),
-        // Uncomment to log full data (can be large)
-        // selectedImagesData: selectedImages,
-        // panelMappingData: panelImageMapping,
+        borderThickness,
+        borderThicknessValue,
+        borderColor,
+        aspectRatio: selectedAspectRatio,
       });
     }
-  }, [panelImageMapping, selectedImages]);
+  }, [panelImageMapping, selectedImages, borderThickness, borderThicknessValue, borderColor, selectedAspectRatio]);
 
   return (
     <>
@@ -171,15 +146,6 @@ export default function CollagePage() {
               imagesStepProps={imagesStepProps} // Pass updated props
               isMobile={isMobile}
             />
-            {finalImage && (
-              <CollageResult
-                finalImage={finalImage}
-                setFinalImage={setFinalImage}
-                isMobile={isMobile}
-                isMediumScreen={isMediumScreen}
-                isLoading={isCreatingCollage}
-              />
-            )}
           </ContentPaper>
         </MainContainer>
       )}

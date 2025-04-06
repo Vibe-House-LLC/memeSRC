@@ -1,23 +1,14 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Box, Typography, Paper, useMediaQuery } from '@mui/material';
+import { Box, Typography, Paper, useMediaQuery, Button } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
+import { PhotoCamera, Save } from '@mui/icons-material';
 
-// Import config and utils
-import { aspectRatioPresets, getLayoutsForPanelCount } from "../config/CollageConfig";
-import { renderTemplateToCanvas, calculateCanvasDimensions } from "../utils/CanvasLayoutRenderer";
-import ImageCropModal from "../components/ImageCropModal";
+// Import our new dynamic CollagePreview component
+import CollagePreview from '../components/CollagePreview';
+
 
 // Debugging utils
-const DEBUG_MODE = false; // Set to true to enable console logs
-
-const adjustForPanelCount = (thickness, panelCount) => {
-  // (Keep this function as is)
-  if (panelCount <= 2) return thickness;
-  let scaleFactor;
-  switch (panelCount) { case 3: scaleFactor = 0.7; break; case 4: scaleFactor = 0.6; break; case 5: scaleFactor = 0.5; break; default: scaleFactor = 0.4; break; }
-  return Math.max(1, Math.round(thickness * scaleFactor));
-};
-
+const DEBUG_MODE = true; // Set to true to enable console logs
 const debugLog = (...args) => { if (DEBUG_MODE) console.log(...args); };
 const debugWarn = (...args) => { if (DEBUG_MODE) console.warn(...args); };
 const logError = (...args) => { console.error(...args); };
@@ -41,146 +32,22 @@ const CollageImagesStep = ({
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const [renderedImage, setRenderedImage] = useState(null); // Preview blob URL
-  const canvasRef = useRef(null); // Hidden canvas for rendering preview
-  const [panelRegions, setPanelRegions] = useState([]);
-  const [hasInitialRender, setHasInitialRender] = useState(false);
+
+  // Debug the props we're receiving
+  console.log("CollageImagesStep props:", {
+    hasTemplate: !!selectedTemplate,
+    templateId: selectedTemplate?.id,
+    hasImages: selectedImages.length > 0,
+    aspectRatio: selectedAspectRatio,
+    panelCount,
+    borderThickness
+  });
 
   // --- State for Modals ---
   const [cropModalOpen, setCropModalOpen] = useState(false);
   const [currentPanelToEdit, setCurrentPanelToEdit] = useState(null); // { id, x, y, width, height }
   const [imageToCrop, setImageToCrop] = useState(null); // Stores ORIGINAL URL for the cropper
   const [panelAspectRatio, setPanelAspectRatio] = useState(1); // Aspect ratio for cropping tool
-
-  // --- Function to trigger the actual file input ---
-  const triggerImageUpload = useCallback((panel) => {
-    const fileInput = document.createElement('input');
-    fileInput.type = 'file';
-    fileInput.accept = 'image/*';
-    fileInput.onchange = (e) => {
-      if (e.target.files && e.target.files[0]) {
-        const file = e.target.files[0];
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          const base64Image = event.target.result;
-          const panelId = panel.id; // Get panel ID
-          
-          // Store current panel data temporarily
-          const currentPanel = panel;
-          
-          // Set aspect ratio for the panel
-          const calculatedAspectRatio = (panel.height > 0) ? (panel.width / panel.height) : 1;
-          
-          // Check if this panel already has an image
-          const existingMappingIndex = panelImageMapping[panelId];
-          const isReplacingMappedImage = existingMappingIndex !== undefined && existingMappingIndex !== null;
-          
-          if (isReplacingMappedImage) {
-            // Replace existing image
-            debugLog(`Replacing image for panel ${panelId}, index ${existingMappingIndex}`);
-            
-            // These functions should update both originalUrl and displayUrl
-            replaceImage(existingMappingIndex, base64Image);
-            
-            // Ensure modal stays closed
-            setCropModalOpen(false);
-            setCurrentPanelToEdit(null);
-            setImageToCrop(null);
-          } else {
-            // Add new image
-            const newIndex = selectedImages.length;
-            debugLog(`Adding new image for panel ${panelId}, new index ${newIndex}`);
-            
-            // Add the image with original URL
-            addImage(base64Image);
-            
-            // Use the same URL for display (no crop applied)
-            updateImage(newIndex, base64Image);
-            
-            // Update mapping to point the panel to the new index
-            if (panelId !== undefined && panelId !== null) {
-              const updatedMapping = { ...panelImageMapping, [panelId]: newIndex };
-              updatePanelImageMapping(updatedMapping);
-            }
-          }
-        };
-        reader.onerror = (error) => logError("Error reading file:", error);
-        reader.readAsDataURL(file);
-      }
-    };
-    fileInput.click();
-  }, [panelImageMapping, replaceImage, updateImage, addImage, updatePanelImageMapping, selectedImages.length, setCropModalOpen, setCurrentPanelToEdit, setImageToCrop]);
-
-  // Define handlePanelClick first (before it's used in handlePreviewClick)
-  const handlePanelClick = useCallback((canvasX, canvasY) => {
-    // User clicked on the preview image
-    debugLog(`Canvas clicked at x:${canvasX} y:${canvasY}`);
-
-    // Find which panel was clicked by point-in-box testing
-    const clickedPanel = panelRegions.find(panel =>
-      canvasX >= panel.x && canvasX <= panel.x + panel.width &&
-      canvasY >= panel.y && canvasY <= panel.y + panel.height
-    );
-
-    if (clickedPanel) {
-      debugLog(`Clicked on panel ${clickedPanel.id}`);
-      setCurrentPanelToEdit(clickedPanel); // Store panel info
-
-      const calculatedAspectRatio = (clickedPanel.height > 0) ? (clickedPanel.width / clickedPanel.height) : 1;
-      setPanelAspectRatio(calculatedAspectRatio); // Set aspect for cropper
-      debugLog(`Panel aspect ratio: ${calculatedAspectRatio}`);
-
-      // Check if the panel has an assigned image index
-      const imageIndex = panelImageMapping[clickedPanel.id];
-      const hasExistingImage = imageIndex !== undefined && imageIndex !== null && selectedImages[imageIndex];
-
-      if (hasExistingImage) {
-        // Panel has image -> Open crop modal directly
-        const imageItemObject = selectedImages[imageIndex];
-        debugLog(`Panel ${clickedPanel.id} has image at index ${imageIndex}. Opening crop modal.`);
-
-        // Use the ORIGINAL URL for the cropper source
-        if (imageItemObject && imageItemObject.originalUrl) {
-            // Force a new state value to ensure React sees the change and reloads the image
-            const timestamp = Date.now();
-            // Use an empty image first to force a reset
-            setImageToCrop(null);
-            // Use setTimeout to ensure the component gets a chance to reset
-            setTimeout(() => {
-                setImageToCrop(imageItemObject.originalUrl);
-                setCropModalOpen(true);
-            }, 50);
-        } else {
-            debugWarn(`Could not get valid ORIGINAL image URL for index ${imageIndex}. Triggering upload. ImageItem:`, imageItemObject);
-            triggerImageUpload(clickedPanel); // Fallback to upload
-        }
-      } else {
-        // Panel is empty -> Trigger upload directly
-        debugLog(`Panel ${clickedPanel.id} is empty. Triggering upload.`);
-        triggerImageUpload(clickedPanel);
-      }
-    } else {
-      debugLog("No panel was clicked");
-    }
-  }, [panelRegions, selectedImages, panelImageMapping, triggerImageUpload]);
-  
-  // --- Click Handler for Preview (now after handlePanelClick is defined) ---
-  const handlePreviewClick = useCallback((event) => {
-    debugLog("Preview image clicked");
-    const imageElement = event.currentTarget;
-    const rect = imageElement.getBoundingClientRect();
-    const clickX = (event.clientX - rect.left) / rect.width;
-    const clickY = (event.clientY - rect.top) / rect.height;
-
-    const { width: previewCanvasWidth, height: previewCanvasHeight } = calculateCanvasDimensions(selectedAspectRatio);
-    const canvasX = clickX * previewCanvasWidth;
-    const canvasY = clickY * previewCanvasHeight;
-
-    debugLog("Canvas coords:", { canvasX, canvasY });
-    
-    // Use our new panel click handler for consistent behavior
-    handlePanelClick(canvasX, canvasY);
-  }, [handlePanelClick, selectedAspectRatio]);
 
   // --- Handler for Crop Completion ---
   const handleCropComplete = useCallback((croppedDataUrl) => {
@@ -209,18 +76,36 @@ const CollageImagesStep = ({
     setImageToCrop(null);
   }, [currentPanelToEdit, panelImageMapping, updateImage]);
 
+  // --- Handler for opening crop modal for a specific image ---
+  const handleOpenCropModal = useCallback((panelId, imageIndex) => {
+    // Set the panel and image information
+    if (selectedImages[imageIndex]?.originalUrl) {
+      // Calculate aspect ratio if we have the template
+      let calculatedAspectRatio = 1; // Default to square
+      
+      if (selectedTemplate && selectedTemplate.layout && selectedTemplate.layout.panels) {
+        // Find the panel in the template
+        const panel = selectedTemplate.layout.panels.find(p => p.id === panelId);
+        if (panel) {
+          calculatedAspectRatio = panel.width / panel.height;
+        }
+      }
+      
+      // Update state for the crop modal
+      setCurrentPanelToEdit({ id: panelId });
+      setPanelAspectRatio(calculatedAspectRatio);
+      setImageToCrop(selectedImages[imageIndex].originalUrl);
+      setCropModalOpen(true);
+    }
+  }, [selectedImages, selectedTemplate]);
+
   // --- Handler for Replace Image request ---
   const handleReplaceRequest = useCallback(() => {
-    if (currentPanelToEdit) {
-      // Close the modal before triggering upload
-      setCropModalOpen(false);
-      setImageToCrop(null);
-      setCurrentPanelToEdit(null);
-      
-      // Now trigger the upload
-      triggerImageUpload(currentPanelToEdit);
-    }
-  }, [currentPanelToEdit, triggerImageUpload]);
+    // Just close the modal, the panel click handler in CollagePreview will handle the upload
+    setCropModalOpen(false);
+    setImageToCrop(null);
+    setCurrentPanelToEdit(null);
+  }, []);
 
   // --- Handler for Remove Image request ---
   const handleRemoveRequest = useCallback(() => {
@@ -251,70 +136,7 @@ const CollageImagesStep = ({
     setImageToCrop(null);
     
     debugLog(`Removed image at index ${imageIndex} from panel ${panelId}`);
-  }, [currentPanelToEdit, panelImageMapping, removeImage, updatePanelImageMapping, setCropModalOpen, setCurrentPanelToEdit, setImageToCrop]);
-
-  // --- useEffect for Rendering Preview ---
-  /* eslint-disable consistent-return */
-  useEffect(() => {
-    if (!selectedTemplate || !selectedAspectRatio || !borderThicknessOptions) {
-      debugWarn("Skipping preview render: Missing required props");
-      return;
-    }
-    debugLog(`[STEP DEBUG] Preview rendering triggered.`);
-
-    let borderThicknessValue = 4;
-    if (borderThicknessOptions && borderThickness) {
-      const option = borderThicknessOptions.find(opt => typeof opt.label === 'string' && opt.label.toLowerCase() === borderThickness.toLowerCase());
-      if (option) borderThicknessValue = option.value;
-    }
-    const adjustedBorderThickness = adjustForPanelCount(borderThicknessValue, panelCount);
-
-    const initialDelay = hasInitialRender ? 0 : 50;
-
-    // Extract just the display URLs for the renderer
-    const displayImageUrls = selectedImages.map(imgObj => imgObj.displayUrl);
-
-    const timer = setTimeout(() => {
-      try {
-        debugLog(`[STEP DEBUG] Calling renderTemplateToCanvas`);
-        renderTemplateToCanvas({
-          selectedTemplate,
-          selectedAspectRatio,
-          panelCount,
-          theme,
-          canvasRef,
-          setPanelRegions,
-          setRenderedImage,
-          borderThickness: adjustedBorderThickness,
-          borderColor,
-          // Pass only the display URLs to the renderer
-          displayImageUrls, // <-- CHANGED
-          panelImageMapping // Pass the mapping { panelId: imageIndex }
-        });
-        if (!hasInitialRender) setHasInitialRender(true);
-      } catch (error) {
-        logError("Error rendering template preview:", error);
-      }
-    }, initialDelay);
-
-    return () => clearTimeout(timer);
-  }, [
-    selectedTemplate, selectedAspectRatio, panelCount, theme.palette.mode,
-    borderThickness, borderColor, selectedImages, panelImageMapping, // Keep selectedImages as dep
-    hasInitialRender, borderThicknessOptions, theme, setRenderedImage
-    // Removed displayImageUrls as it's derived inside effect
-  ]);
-  /* eslint-enable consistent-return */
-
-  // Clean up preview blob URL
-  useEffect(() => {
-    return () => {
-      if (renderedImage && renderedImage.startsWith('blob:')) {
-        URL.revokeObjectURL(renderedImage);
-        debugLog("Revoked preview blob URL:", renderedImage);
-      }
-    };
-  }, [renderedImage]);
+  }, [currentPanelToEdit, panelImageMapping, removeImage, updatePanelImageMapping]);
 
   return (
     <Box sx={{ my: isMobile ? 0 : 0.5 }}>
@@ -323,38 +145,157 @@ const CollageImagesStep = ({
         <Typography variant="subtitle2" color="text.secondary" gutterBottom sx={{ mb: 1 }}>
           Click a panel to add an image or edit existing image
         </Typography>
-        {renderedImage ? (
-          <Box component="img" src={renderedImage} alt="Collage Layout Preview" onClick={handlePreviewClick} sx={{ maxWidth: '100%', maxHeight: isMobile ? 350 : 450, objectFit: 'contain', borderRadius: 1, cursor: 'pointer', display: 'block', margin: '0 auto', border: `1px solid ${theme.palette.divider}`, backgroundColor: theme.palette.action.hover }} />
-        ) : (
-          <Box sx={{ height: isMobile ? 200 : 250, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: theme.palette.action.hover, borderRadius: 1 }}>
-            <Typography variant="body2" color="text.secondary">
-              {selectedTemplate ? 'Generating layout preview...' : 'Select template settings...'}
-            </Typography>
-          </Box>
+        
+        {/* Always render the preview, let it handle null templates */}
+        <Box sx={{ width: '100%', maxWidth: '600px', margin: '0 auto' }} id="collage-preview-container">
+          <CollagePreview 
+            selectedTemplate={selectedTemplate}
+            selectedAspectRatio={selectedAspectRatio}
+            panelCount={panelCount || 2} /* Ensure we always have a fallback */
+            selectedImages={selectedImages || []}
+            addImage={addImage}
+            removeImage={removeImage}
+            updateImage={updateImage}
+            replaceImage={replaceImage}
+            updatePanelImageMapping={updatePanelImageMapping}
+            panelImageMapping={panelImageMapping || {}}
+            onCropRequest={handleOpenCropModal}
+            borderThickness={borderThickness}
+            borderColor={borderColor}
+          />
+        </Box>
+        
+        {/* Save Button - only show if we have images */}
+        {selectedImages.length > 0 && (
+          <Button 
+            variant="contained" 
+            color="primary" 
+            startIcon={<Save />}
+            onClick={saveCollageAsImage}
+            sx={{ mt: 2 }}
+          >
+            Save as Image
+          </Button>
         )}
       </Paper>
-
-      {/* Hidden canvas used by renderTemplateToCanvas */}
-      <canvas ref={canvasRef} style={{ display: "none" }} />
-
-      {/* --- Modals --- */}
-      {/* Image Crop Modal with new Options */}
-      <ImageCropModal
-          key={imageToCrop || 'no-image'}
-          open={cropModalOpen}
-          onClose={() => {
-              setCropModalOpen(false);
-              setCurrentPanelToEdit(null); // Reset panel on close
-              setImageToCrop(null);
-          }}
-          imageSrc={imageToCrop} // Will be the originalUrl
-          aspectRatio={panelAspectRatio}
-          onCropComplete={handleCropComplete} // Calls updateImage to set displayUrl
-          onReplaceRequest={handleReplaceRequest}
-          onRemoveRequest={handleRemoveRequest}
-      />
     </Box>
   );
+
+  // Function to save the collage as an image
+  function saveCollageAsImage() {
+    try {
+      debugLog('Saving collage as image...');
+      
+      // Get the collage container
+      const collageContainer = document.getElementById('collage-preview-container');
+      
+      if (!collageContainer) {
+        logError('Collage container not found');
+        return;
+      }
+      
+      // Find and temporarily hide all menu buttons (MoreVert icons) and other UI elements we don't want in the image
+      // First, try to find buttons with MoreVert icons
+      const menuButtons = collageContainer.querySelectorAll('button');
+      const hiddenElements = [];
+      
+      // Hide all buttons - they're likely UI controls
+      menuButtons.forEach(button => {
+        if (button.style.display !== 'none') {
+          hiddenElements.push({
+            element: button,
+            display: button.style.display
+          });
+          // Hide the button
+          button.style.display = 'none';
+        }
+      });
+      
+      // Also look for any elements with the MoreVert icon 
+      const moreVertIcons = collageContainer.querySelectorAll('[data-testid="MoreVertIcon"], svg[class*="MuiSvgIcon"]');
+      moreVertIcons.forEach(icon => {
+        // Find the parent button or clickable element
+        let parent = icon.parentElement;
+        while (parent && parent !== collageContainer) {
+          if (parent.tagName === 'BUTTON' || parent.onclick || parent.role === 'button') {
+            if (parent.style.display !== 'none') {
+              hiddenElements.push({
+                element: parent,
+                display: parent.style.display
+              });
+              parent.style.display = 'none';
+            }
+            break;
+          }
+          parent = parent.parentElement;
+        }
+      });
+      
+      // Use html2canvas to capture the DOM element as an image
+      import('html2canvas').then(html2canvasModule => {
+        const html2canvas = html2canvasModule.default;
+        
+        html2canvas(collageContainer, {
+          backgroundColor: null,
+          useCORS: true, // Enable CORS for loading images from different origins
+          scale: 2, // Improve quality
+          logging: false
+        }).then(canvas => {
+          // Restore visibility of the buttons
+          hiddenElements.forEach(item => {
+            item.element.style.display = item.display;
+          });
+          
+          // Resize canvas to ensure longest side is at most 1500px
+          const maxSize = 1500;
+          let scaledCanvas = canvas;
+          
+          if (canvas.width > maxSize || canvas.height > maxSize) {
+            // Create a new canvas for scaling
+            scaledCanvas = document.createElement('canvas');
+            const ctx = scaledCanvas.getContext('2d');
+            
+            // Calculate the scaling factor based on the longest dimension
+            const scaleFactor = maxSize / Math.max(canvas.width, canvas.height);
+            
+            // Set the dimensions of the new canvas
+            scaledCanvas.width = canvas.width * scaleFactor;
+            scaledCanvas.height = canvas.height * scaleFactor;
+            
+            // Draw the original canvas onto the new canvas, scaled down
+            ctx.drawImage(canvas, 0, 0, scaledCanvas.width, scaledCanvas.height);
+            
+            debugLog(`Resized image from ${canvas.width}x${canvas.height} to ${scaledCanvas.width}x${scaledCanvas.height}`);
+          }
+          
+          // Convert canvas to data URL
+          const dataUrl = scaledCanvas.toDataURL('image/png');
+          
+          // Create a download link and trigger click
+          const link = document.createElement('a');
+          link.download = `memeSRC-collage-${new Date().getTime()}.png`;
+          link.href = dataUrl;
+          link.click();
+          
+          debugLog('Collage saved as image');
+        }).catch(err => {
+          // Restore visibility even if there was an error
+          hiddenElements.forEach(item => {
+            item.element.style.display = item.display;
+          });
+          logError('Error capturing collage:', err);
+        });
+      }).catch(err => {
+        // Restore visibility even if there was an error loading the library
+        hiddenElements.forEach(item => {
+          item.element.style.display = item.display;
+        });
+        logError('Error loading html2canvas:', err);
+      });
+    } catch (err) {
+      logError('Error in saveCollageAsImage:', err);
+    }
+  }
 };
 
 // Add defaultProps (ensure new replaceImage prop has default)

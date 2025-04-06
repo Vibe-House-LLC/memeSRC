@@ -58,7 +58,6 @@ const InvoiceListPage = lazy(() => import('./pages/InvoicesListPage'));
 const AccountPage = lazy(() => import('./pages/AccountPage'));
 const FacebookAuthDemo = lazy(() => import('./pages/FacebookAuthDemo'));
 const CollagePage = lazy(() => import('./pages/CollagePage'));
-const PlaygroundCollagePage = lazy(() => import('./pages/PlaygroundCollagePage'));
 const SubtitleViewerPage = lazy(() => import('./pages/SubtitleViewerPage'));
 
 const DonationRedirect = () => {
@@ -81,7 +80,6 @@ export default function Router() {
         { path: 'search', element: <SiteWideMaintenance><Navigate to='/' /></SiteWideMaintenance> },
         { path: 'edit', element: <SiteWideMaintenance><EditorNewProjectPage /></SiteWideMaintenance> },
         { path: 'collage', element: <SiteWideMaintenance><CollagePage /></SiteWideMaintenance> },
-        { path: 'playground-collage', element: <SiteWideMaintenance><PlaygroundCollagePage /></SiteWideMaintenance> },
         { path: 'manageSubscription', element: <SiteWideMaintenance><InvoiceListPage /></SiteWideMaintenance> },
         { path: 'account', element: <SiteWideMaintenance><AccountPage /></SiteWideMaintenance> },
         { path: 'editor/projects', element: <SiteWideMaintenance><EditorProjectsPage /></SiteWideMaintenance> },

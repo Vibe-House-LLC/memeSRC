@@ -1,5 +1,5 @@
 import { styled } from "@mui/material/styles";
-import { Box, Paper, Card, alpha } from "@mui/material";
+import { Box, Paper, alpha } from "@mui/material";
 
 // Container for the page
 export const PageContainer = styled(Box)(({ theme }) => ({
@@ -142,16 +142,6 @@ export const PreviewContainer = styled(Box)(({ theme }) => ({
   overflow: 'hidden',
   backgroundColor: theme.palette.mode === 'dark' ? alpha('#fff', 0.04) : '#fff',
   boxShadow: theme.shadows[2]
-}));
-
-// Step card component for mobile view
-export const StepCard = styled(Card)(({ theme }) => ({
-  marginBottom: theme.spacing(3),
-  borderRadius: theme.shape.borderRadius * 1.5,
-  boxShadow: theme.shadows[1],
-  overflow: 'hidden',
-  border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-  borderLeft: `4px solid ${theme.palette.primary.main}`,
 }));
 
 // SVG Template Preview Component with dynamic aspect ratio

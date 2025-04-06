@@ -110,9 +110,34 @@ export const createPanelToImageUrlMapping = (cleanMapping, selectedImages, panel
       Object.entries(cleanMapping).forEach(([panelId, imageIndex]) => {
         if (selectedImages[imageIndex]) {
           const imageItem = selectedImages[imageIndex];
-          const imageUrl = typeof imageItem === 'object' && imageItem !== null 
-            ? (imageItem.url || imageItem.imageUrl || imageItem) 
-            : imageItem;
+          let imageUrl = null;
+          
+          // Handle string images
+          if (typeof imageItem === 'string') {
+            imageUrl = imageItem;
+          } 
+          // Handle object images with correct properties
+          else if (typeof imageItem === 'object' && imageItem !== null) {
+            // Try to get displayUrl (preferred for rendering)
+            if (typeof imageItem.displayUrl === 'string') {
+              imageUrl = imageItem.displayUrl;
+            } 
+            // Handle incorrect nesting
+            else if (imageItem.displayUrl && typeof imageItem.displayUrl === 'object' && imageItem.displayUrl.displayUrl) {
+              imageUrl = imageItem.displayUrl.displayUrl;
+            }
+            // Fall back to originalUrl if no displayUrl
+            else if (typeof imageItem.originalUrl === 'string') {
+              imageUrl = imageItem.originalUrl;
+            }
+            // Handle other legacy formats
+            else if (imageItem.url) {
+              imageUrl = imageItem.url;
+            }
+            else if (imageItem.imageUrl) {
+              imageUrl = imageItem.imageUrl;
+            }
+          }
           
           if (imageUrl) {
             if (DEBUG_MODE) {
@@ -120,7 +145,7 @@ export const createPanelToImageUrlMapping = (cleanMapping, selectedImages, panel
             }
             panelToImageUrl[panelId] = imageUrl;
           } else if (DEBUG_MODE) {
-            console.log(`Warning: No valid URL for image at index ${imageIndex} for panel ${panelId}`);
+            console.log(`Warning: No valid URL for image at index ${imageIndex} for panel ${panelId}`, imageItem);
           }
         } else if (DEBUG_MODE) {
           console.log(`Warning: No image found at index ${imageIndex} for panel ${panelId}`);
@@ -134,9 +159,34 @@ export const createPanelToImageUrlMapping = (cleanMapping, selectedImages, panel
       panelRegions.forEach((panel, index) => {
         if (index < selectedImages.length && selectedImages[index]) {
           const imageItem = selectedImages[index];
-          const imageUrl = typeof imageItem === 'object' && imageItem !== null 
-            ? (imageItem.url || imageItem.imageUrl || imageItem) 
-            : imageItem;
+          let imageUrl = null;
+          
+          // Handle string images
+          if (typeof imageItem === 'string') {
+            imageUrl = imageItem;
+          } 
+          // Handle object images with correct properties
+          else if (typeof imageItem === 'object' && imageItem !== null) {
+            // Try to get displayUrl (preferred for rendering)
+            if (typeof imageItem.displayUrl === 'string') {
+              imageUrl = imageItem.displayUrl;
+            } 
+            // Handle incorrect nesting
+            else if (imageItem.displayUrl && typeof imageItem.displayUrl === 'object' && imageItem.displayUrl.displayUrl) {
+              imageUrl = imageItem.displayUrl.displayUrl;
+            }
+            // Fall back to originalUrl if no displayUrl
+            else if (typeof imageItem.originalUrl === 'string') {
+              imageUrl = imageItem.originalUrl;
+            }
+            // Handle other legacy formats
+            else if (imageItem.url) {
+              imageUrl = imageItem.url;
+            }
+            else if (imageItem.imageUrl) {
+              imageUrl = imageItem.imageUrl;
+            }
+          }
           
           if (imageUrl) {
             if (DEBUG_MODE) {

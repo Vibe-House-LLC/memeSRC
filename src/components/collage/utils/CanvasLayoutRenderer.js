@@ -895,7 +895,7 @@ export const renderTemplateToCanvas = async ({
           }
           
           // Draw panel placeholder - Make sure to use grey color for all panels
-          ctx.fillStyle = '#808080'; // Ensure consistent grey color for placeholders
+          ctx.fillStyle = 'rgba(0,0,0,0.3)';
           ctx.fillRect(fixedX, fixedY, panelWidth, panelHeight);
           
           // Use consistent panel IDs based on index in the areas array
@@ -953,7 +953,7 @@ export const renderTemplateToCanvas = async ({
             }
             
             // Draw panel placeholder with consistent color
-            ctx.fillStyle = '#808080'; // Ensure consistent grey color for placeholders
+            ctx.fillStyle = 'rgba(0,0,0,0.3)'; // Ensure consistent slightly transparent black for placeholders
             ctx.fillRect(x, y, width, height);
             
             // Store panel region

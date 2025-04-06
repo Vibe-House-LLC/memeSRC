@@ -151,7 +151,9 @@ export const useCollageState = () => {
       const oldImageObj = selectedImages[index];
 
       // Clean up the *old* displayUrl if it's a blob and different from original
-      if (oldImageObj.displayUrl && oldImageObj.displayUrl.startsWith('blob:') && oldImageObj.displayUrl !== oldImageObj.originalUrl) {
+      if (oldImageObj.displayUrl && typeof oldImageObj.displayUrl === 'string' && 
+          oldImageObj.displayUrl.startsWith('blob:') && 
+          oldImageObj.displayUrl !== oldImageObj.originalUrl) {
         URL.revokeObjectURL(oldImageObj.displayUrl);
       }
 
@@ -178,8 +180,15 @@ export const useCollageState = () => {
     if (index >= 0 && index < selectedImages.length && newBase64Image) {
         const oldImageObj = selectedImages[index];
         // Clean up old blobs
-        if (oldImageObj.originalUrl && oldImageObj.originalUrl.startsWith('blob:')) URL.revokeObjectURL(oldImageObj.originalUrl);
-        if (oldImageObj.displayUrl && oldImageObj.displayUrl.startsWith('blob:') && oldImageObj.displayUrl !== oldImageObj.originalUrl) URL.revokeObjectURL(oldImageObj.displayUrl);
+        if (oldImageObj.originalUrl && typeof oldImageObj.originalUrl === 'string' && 
+            oldImageObj.originalUrl.startsWith('blob:')) {
+          URL.revokeObjectURL(oldImageObj.originalUrl);
+        }
+        if (oldImageObj.displayUrl && typeof oldImageObj.displayUrl === 'string' && 
+            oldImageObj.displayUrl.startsWith('blob:') && 
+            oldImageObj.displayUrl !== oldImageObj.originalUrl) {
+          URL.revokeObjectURL(oldImageObj.displayUrl);
+        }
 
         const newImages = [...selectedImages];
         newImages[index] = { originalUrl: newBase64Image, displayUrl: newBase64Image };

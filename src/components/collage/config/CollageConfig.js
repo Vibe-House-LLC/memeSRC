@@ -47,33 +47,6 @@ const getBaseGridStyle = (theme) => ({
   boxSizing: 'border-box',
 });
 
-// Shared render function for all layouts
-const renderLayoutGrid = (layoutConfig, theme, imageCount) => {
-  return (
-    <div
-      style={{
-        ...getBaseGridStyle(theme),
-        gridTemplateColumns: layoutConfig.gridTemplateColumns,
-        gridTemplateRows: layoutConfig.gridTemplateRows,
-        gridTemplateAreas: layoutConfig.gridTemplateAreas,
-      }}
-    >
-      {layoutConfig.areas 
-        ? layoutConfig.areas.map((area, index) => (
-            <div key={index} style={{ gridArea: area }}>
-              <SimplePanel theme={theme} filled={imageCount > index} />
-            </div>
-          ))
-        : layoutConfig.items.map((item, index) => (
-            <div key={index} style={item}>
-              <SimplePanel theme={theme} filled={imageCount > index} />
-            </div>
-          ))
-      }
-    </div>
-  );
-};
-
 /**
  * Main exported layoutTemplates array with Auto Layout and dynamic templates for 2-5 panels
  */

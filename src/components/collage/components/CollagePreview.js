@@ -1,0 +1,199 @@
+import React, { useState, useRef } from 'react';
+import { Menu, MenuItem, Box } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
+import { aspectRatioPresets } from '../config/CollageConfig';
+import DynamicCollagePreview from './DynamicCollagePreview';
+
+/**
+ * Get the aspect ratio value from the presets
+ * @param {string} selectedAspectRatio - The ID of the selected aspect ratio
+ * @returns {number} The aspect ratio value
+ */
+const getAspectRatioValue = (selectedAspectRatio) => {
+  const aspectRatioPreset = aspectRatioPresets.find(preset => preset.id === selectedAspectRatio);
+  return aspectRatioPreset ? aspectRatioPreset.value : 1; // Default to 1 (square) if not found
+};
+
+/**
+ * CollagePreview - A component for previewing and interacting with a collage
+ * Wraps DynamicCollagePreview and adds panel interaction functionality
+ */
+const CollagePreview = ({
+  selectedTemplate,
+  selectedAspectRatio,
+  panelCount,
+  selectedImages,
+  addImage,
+  removeImage,
+  updateImage,
+  replaceImage,
+  updatePanelImageMapping,
+  panelImageMapping,
+  onCropRequest,
+  borderThickness = 0,
+  borderColor = '#000000',
+}) => {
+  const theme = useTheme();
+  const fileInputRef = useRef(null);
+  
+  // State for menu
+  const [menuPosition, setMenuPosition] = useState(null);
+  const [activePanelIndex, setActivePanelIndex] = useState(null);
+
+  // Get the aspect ratio value
+  const aspectRatioValue = getAspectRatioValue(selectedAspectRatio);
+
+  // Handle panel click to trigger file upload
+  const handlePanelClick = (index) => {
+    console.log(`Panel clicked: ${index}`); // Debug log
+    setActivePanelIndex(index);
+    fileInputRef.current?.click();
+  };
+
+  // Open menu for a panel
+  const handleMenuOpen = (event, index) => {
+    event.stopPropagation(); // Prevent panel click
+    
+    // Store the mouse position instead of the element reference
+    setMenuPosition({
+      left: event.clientX - 2,
+      top: event.clientY - 4,
+    });
+    
+    setActivePanelIndex(index);
+  };
+
+  // Close menu
+  const handleMenuClose = () => {
+    setMenuPosition(null);
+  };
+
+  // Handle file selection for a panel
+  const handleFileChange = (event) => {
+    const file = event.target.files?.[0];
+    if (file && activePanelIndex !== null) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const imageUrl = e.target?.result;
+        
+        // Debug selected template and active panel
+        console.log("File upload for panel:", {
+          activePanelIndex,
+          template: selectedTemplate,
+          hasLayout: selectedTemplate && !!selectedTemplate.layout,
+          hasPanels: selectedTemplate && selectedTemplate.layout && !!selectedTemplate.layout.panels,
+          currentMapping: panelImageMapping
+        });
+        
+        // Determine panel ID from template structure (same for both menu and direct clicks)
+        let clickedPanelId;
+        
+        // Try to get panel ID from template structure
+        try {
+          // Check in layout.panels first (preferred path)
+          const layoutPanel = selectedTemplate?.layout?.panels?.[activePanelIndex];
+          // Then check in template.panels as fallback
+          const templatePanel = selectedTemplate?.panels?.[activePanelIndex];
+          
+          // Use the first valid panel ID found or fallback to generated ID
+          clickedPanelId = layoutPanel?.id || templatePanel?.id || `panel-${activePanelIndex + 1}`;
+          console.log(`Using panel ID: ${clickedPanelId} for activePanelIndex: ${activePanelIndex}`);
+        } catch (error) {
+          console.error("Error getting panel ID:", error);
+          clickedPanelId = `panel-${activePanelIndex + 1}`;
+        }
+        
+        // Check if this is a replacement operation (either from menu or direct click)
+        const existingImageIndex = panelImageMapping[clickedPanelId];
+        console.log(`Panel ${clickedPanelId}: existingImageIndex=${existingImageIndex}`);
+        
+        if (existingImageIndex !== undefined) {
+          // If this panel already has an image, replace it
+          console.log(`Replacing image at index ${existingImageIndex} for panel ${clickedPanelId}`);
+          replaceImage(existingImageIndex, imageUrl);
+        } else {
+          // Otherwise, add a new image and then update the mapping
+          const currentLength = selectedImages.length;
+          console.log(`Adding new image at index ${currentLength} for panel ${clickedPanelId}`);
+          
+          // Add the image first
+          addImage(imageUrl);
+          
+          // Now update the mapping with the index where we just added the image
+          const newMapping = {
+            ...panelImageMapping,
+            [clickedPanelId]: currentLength
+          };
+          console.log("Updated mapping:", newMapping);
+          updatePanelImageMapping(newMapping);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+    
+    // Reset file input
+    if (event.target) {
+      event.target.value = null;
+    }
+  };
+
+  // Determine if the active panel has an image (for menu options)
+  const hasActiveImage = () => {
+    if (activePanelIndex === null) return false;
+    
+    // Get panel ID from template structure
+    let panelId;
+    try {
+      const layoutPanel = selectedTemplate?.layout?.panels?.[activePanelIndex];
+      const templatePanel = selectedTemplate?.panels?.[activePanelIndex];
+      panelId = layoutPanel?.id || templatePanel?.id || `panel-${activePanelIndex + 1}`;
+    } catch (error) {
+      panelId = `panel-${activePanelIndex + 1}`;
+    }
+    
+    // Check if this panel ID has an image mapping
+    return panelImageMapping[panelId] !== undefined;
+  };
+
+  return (
+    <Box sx={{ position: 'relative' }}>
+      <DynamicCollagePreview
+        selectedTemplate={selectedTemplate}
+        selectedAspectRatio={selectedAspectRatio}
+        panelCount={panelCount}
+        images={selectedImages}
+        onPanelClick={handlePanelClick}
+        onMenuOpen={handleMenuOpen}
+        aspectRatioValue={aspectRatioValue}
+        panelImageMapping={panelImageMapping}
+        borderThickness={borderThickness}
+        borderColor={borderColor}
+      />
+      
+      {/* Hidden file input */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        style={{ display: 'none' }}
+        accept="image/*"
+        onChange={handleFileChange}
+      />
+      
+      {/* Panel options menu */}
+      <Menu
+        open={Boolean(menuPosition)}
+        onClose={handleMenuClose}
+        anchorReference="anchorPosition"
+        anchorPosition={menuPosition || undefined}
+      >
+        <MenuItem onClick={() => alert("TODO: Replace Image")}>Replace image</MenuItem>
+        {hasActiveImage() && onCropRequest && (
+          <MenuItem onClick={() => alert("TODO: Crop Image")}>Crop image</MenuItem>
+        )}
+        <MenuItem onClick={() => alert("TODO: Clear Frame")}>Clear frame</MenuItem>
+      </Menu>
+    </Box>
+  );
+};
+
+export default CollagePreview; 
