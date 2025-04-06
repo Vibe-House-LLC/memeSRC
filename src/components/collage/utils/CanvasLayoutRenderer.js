@@ -579,6 +579,7 @@ const findSmallestPanelDimensions = (panelRegions) => {
  * @param {string} params.borderColor - The border color
  * @param {Array} params.displayImageUrls - Array of display image URLs
  * @param {Object} params.panelImageMapping - Object mapping panels to images
+ * @param {Object} params.panelTransforms - Object mapping panel IDs to transforms { scale, positionX, positionY }
  */
 export const renderTemplateToCanvas = async ({
   selectedTemplate,
@@ -591,7 +592,8 @@ export const renderTemplateToCanvas = async ({
   borderThickness = 4,
   borderColor = '#FFFFFF', // Add default border color
   displayImageUrls = [],
-  panelImageMapping = {}
+  panelImageMapping = {},
+  panelTransforms = {} // <-- Add panelTransforms prop
 }) => {
   console.log(`[RENDERER DEBUG] renderTemplateToCanvas received borderThickness: ${borderThickness}, panelCount: ${panelCount}, borderColor: ${borderColor}`);
   debugLog("renderTemplateToCanvas called with border thickness:", borderThickness);
@@ -1034,7 +1036,7 @@ export const renderTemplateToCanvas = async ({
           img.crossOrigin = 'anonymous'; // Allow loading from different origins
           
           img.onload = () => {
-            // --- START REPLACEMENT ---
+            // --- START REPLACEMENT WITH TRANSFORM LOGIC ---
             const imgWidth = img.width;
             const imgHeight = img.height;
             const panelX = panel.x;
@@ -1042,22 +1044,65 @@ export const renderTemplateToCanvas = async ({
             const panelWidth = panel.width;
             const panelHeight = panel.height;
 
-            // Draw the *entire* source image with its *original dimensions* at the panel's top-left corner
-            // NO SCALING OR ASPECT RATIO CORRECTION - FOR DEBUGGING
-            ctx.save(); 
+            // Get transform for this panel, default if not found
+            const transform = panelTransforms[panel.id] || { scale: 1, positionX: 0, positionY: 0 };
+            debugLog(`Panel ${panel.id} transform:`, transform);
+
+            ctx.save(); // Save context state before clipping and transforming
+            
+            // 1. Clip to panel bounds
             ctx.beginPath();
-            // Clip to the panel bounds to prevent drawing outside the designated area
             ctx.rect(panelX, panelY, panelWidth, panelHeight);
             ctx.clip();
+            
+            // 2. Apply transformations (translate then scale)
+            // Translate origin to panel corner + transform offset
+            ctx.translate(panelX + transform.positionX, panelY + transform.positionY);
+            // Scale around the new (translated) origin 
+            ctx.scale(transform.scale, transform.scale);
+
+            // 3. Calculate 'cover' dimensions within the transformed space
+            const imgRatio = imgWidth / imgHeight;
+            // Use the *original* panel dimensions for ratio calculation
+            const panelRatio = panelWidth / panelHeight; 
+
+            let sourceX = 0;
+            let sourceY = 0;
+            let sourceWidth = imgWidth;
+            let sourceHeight = imgHeight;
+            const drawWidth = panelWidth / transform.scale; // Target width before scaling
+            const drawHeight = panelHeight / transform.scale; // Target height before scaling
+
+            if (imgRatio > panelRatio) { 
+              // Image is wider than panel ratio (needs cropping left/right)
+              sourceHeight = imgHeight;
+              sourceWidth = imgHeight * panelRatio;
+              sourceX = (imgWidth - sourceWidth) / 2;
+              sourceY = 0;
+            } else { 
+              // Image is taller than or same as panel ratio (needs cropping top/bottom)
+              sourceWidth = imgWidth;
+              sourceHeight = imgWidth / panelRatio;
+              sourceX = 0;
+              sourceY = (imgHeight - sourceHeight) / 2;
+            }
+            
+            // 4. Draw the image using calculated dimensions
+            // The destination (dx, dy) is (0, 0) because we've already translated the context
             ctx.drawImage(
-              img,         // Source image
-              0, 0,        // Top-left corner of source rectangle (entire image)
-              imgWidth, imgHeight, // Dimensions of source rectangle (entire image)
-              panelX, panelY,  // Top-left corner of destination rectangle (panel origin)
-              imgWidth, imgHeight  // Dimensions of destination rectangle (original image size)
+              img,        // Source image
+              sourceX,    // Source x 
+              sourceY,    // Source y
+              sourceWidth,// Source width
+              sourceHeight,// Source height
+              0,          // Destination x (relative to transformed origin)
+              0,          // Destination y (relative to transformed origin)
+              drawWidth,  // Destination width (scaled to fill panel)
+              drawHeight  // Destination height (scaled to fill panel)
             );
-            ctx.restore();
-            // --- END REPLACEMENT ---
+            
+            ctx.restore(); // Restore context state (removes clip and transforms)
+            // --- END REPLACEMENT --- 
             
             resolve();
           };

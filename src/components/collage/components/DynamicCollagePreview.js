@@ -252,7 +252,7 @@ const DynamicCollagePreview = ({
           }}
           minScale={0.5} // Allow zooming out a bit
           maxScale={5}  // Allow zooming in quite a bit
-          limitToBounds={true} // Keep image within the panel bounds
+          limitToBounds // Keep image within the panel bounds
           doubleClick={{ disabled: true }} // Disable double-click zoom
           wheel={{ step: 0.2 }} // Adjust wheel zoom sensitivity
           pinch={{ step: 5 }} // Adjust pinch zoom sensitivity

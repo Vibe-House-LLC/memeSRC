@@ -6,7 +6,6 @@ import { PhotoCamera, Save } from '@mui/icons-material';
 // Import our new dynamic CollagePreview component
 import CollagePreview from '../components/CollagePreview';
 
-
 // Debugging utils
 const DEBUG_MODE = true; // Set to true to enable console logs
 const debugLog = (...args) => { if (DEBUG_MODE) console.log(...args); };
@@ -200,26 +199,23 @@ const CollageImagesStep = ({
       const html2canvasModule = await import('html2canvas');
       const html2canvas = html2canvasModule.default;
 
-      // Generate the canvas using await
-      const canvas = await html2canvas(collagePreviewElement, {
-        backgroundColor: null, // Preserve transparency
-        useCORS: true,       // For external images
-        scale: 2,            // Better quality
-        logging: false       // Keep console clean
-      });
-
-      // Convert canvas directly to data URL
-      const dataUrl = canvas.toDataURL('image/png');
-
-      // Create download link
-      const link = document.createElement('a');
-      link.download = `memeSRC-collage-${new Date().toISOString().split('T')[0]}.png`;
-      link.href = dataUrl;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      debugLog('Collage saved successfully as image (exact preview).');
+      // --- NEW: Prepare data for canvas rendering ---
+      const canvasData = {
+        selectedTemplate,
+        selectedAspectRatio,
+        panelCount,
+        theme, // Pass theme for consistency
+        borderThickness, // Pass numeric value
+        borderColor,
+        // Pass only display URLs, ensuring it's an array of strings
+        displayImageUrls: selectedImages.map(img => img.displayUrl).filter(url => typeof url === 'string'),
+        panelImageMapping,
+        panelTransforms // Pass the transform state
+      };
+      
+      debugLog("Data being sent to Canvas Renderer:", canvasData);
+      
+      // TODO: Implement the canvas renderer logic here
 
     } catch (err) {
       // Consolidated error handling
