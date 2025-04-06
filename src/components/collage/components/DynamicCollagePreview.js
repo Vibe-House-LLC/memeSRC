@@ -290,6 +290,7 @@ const DynamicCollagePreview = ({
 
   return (
     <Box
+      data-testid="dynamic-collage-preview-root"
       sx={{
         position: 'relative',
         width: '100%',

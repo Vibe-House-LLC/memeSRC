@@ -184,116 +184,52 @@ const CollageImagesStep = ({
   // Function to save the collage as an image
   function saveCollageAsImage() {
     try {
-      debugLog('Saving collage as image...');
+      debugLog('Saving collage as image (exact preview)...');
+      // Target the specific preview component root using the data-testid
+      const collagePreviewElement = document.querySelector('[data-testid="dynamic-collage-preview-root"]');
       
-      // Get the collage container
-      const collageContainer = document.getElementById('collage-preview-container');
-      
-      if (!collageContainer) {
-        logError('Collage container not found');
+      if (!collagePreviewElement) {
+        logError('Collage preview element not found. Ensure DynamicCollagePreview has data-testid="dynamic-collage-preview-root".');
         return;
       }
       
-      // Find and temporarily hide all menu buttons (MoreVert icons) and other UI elements we don't want in the image
-      // First, try to find buttons with MoreVert icons
-      const menuButtons = collageContainer.querySelectorAll('button');
-      const hiddenElements = [];
+      // No longer hiding any elements - capture exactly what is visible
       
-      // Hide all buttons - they're likely UI controls
-      menuButtons.forEach(button => {
-        if (button.style.display !== 'none') {
-          hiddenElements.push({
-            element: button,
-            display: button.style.display
-          });
-          // Hide the button
-          button.style.display = 'none';
-        }
-      });
-      
-      // Also look for any elements with the MoreVert icon 
-      const moreVertIcons = collageContainer.querySelectorAll('[data-testid="MoreVertIcon"], svg[class*="MuiSvgIcon"]');
-      moreVertIcons.forEach(icon => {
-        // Find the parent button or clickable element
-        let parent = icon.parentElement;
-        while (parent && parent !== collageContainer) {
-          if (parent.tagName === 'BUTTON' || parent.onclick || parent.role === 'button') {
-            if (parent.style.display !== 'none') {
-              hiddenElements.push({
-                element: parent,
-                display: parent.style.display
-              });
-              parent.style.display = 'none';
-            }
-            break;
-          }
-          parent = parent.parentElement;
-        }
-      });
-      
-      // Use html2canvas to capture the DOM element as an image
+      // Use html2canvas to capture the specific preview element
       import('html2canvas').then(html2canvasModule => {
         const html2canvas = html2canvasModule.default;
         
-        html2canvas(collageContainer, {
-          backgroundColor: null,
-          useCORS: true, // Enable CORS for loading images from different origins
-          scale: 2, // Improve quality
-          logging: false
+        html2canvas(collagePreviewElement, { // Capture the targeted element
+          backgroundColor: null, // Preserve transparency
+          useCORS: true,       // For external images
+          scale: 2,            // Better quality
+          logging: false       // Keep console clean
         }).then(canvas => {
-          // Restore visibility of the buttons
-          hiddenElements.forEach(item => {
-            item.element.style.display = item.display;
-          });
+          // No elements were hidden, so no restoration needed
           
-          // Resize canvas to ensure longest side is at most 1500px
-          const maxSize = 1500;
-          let scaledCanvas = canvas;
+          // Convert canvas directly to data URL
+          const dataUrl = canvas.toDataURL('image/png');
           
-          if (canvas.width > maxSize || canvas.height > maxSize) {
-            // Create a new canvas for scaling
-            scaledCanvas = document.createElement('canvas');
-            const ctx = scaledCanvas.getContext('2d');
-            
-            // Calculate the scaling factor based on the longest dimension
-            const scaleFactor = maxSize / Math.max(canvas.width, canvas.height);
-            
-            // Set the dimensions of the new canvas
-            scaledCanvas.width = canvas.width * scaleFactor;
-            scaledCanvas.height = canvas.height * scaleFactor;
-            
-            // Draw the original canvas onto the new canvas, scaled down
-            ctx.drawImage(canvas, 0, 0, scaledCanvas.width, scaledCanvas.height);
-            
-            debugLog(`Resized image from ${canvas.width}x${canvas.height} to ${scaledCanvas.width}x${scaledCanvas.height}`);
-          }
-          
-          // Convert canvas to data URL
-          const dataUrl = scaledCanvas.toDataURL('image/png');
-          
-          // Create a download link and trigger click
+          // Create download link
           const link = document.createElement('a');
-          link.download = `memeSRC-collage-${new Date().getTime()}.png`;
+          link.download = `memeSRC-collage-${new Date().toISOString().split('T')[0]}.png`;
           link.href = dataUrl;
+          document.body.appendChild(link); 
           link.click();
+          document.body.removeChild(link); 
           
-          debugLog('Collage saved as image');
+          debugLog('Collage saved as image (exact preview) from preview element.');
+          
         }).catch(err => {
-          // Restore visibility even if there was an error
-          hiddenElements.forEach(item => {
-            item.element.style.display = item.display;
-          });
-          logError('Error capturing collage:', err);
+          // No elements were hidden, so no restoration needed here either
+          logError('Error capturing collage with html2canvas:', err);
         });
       }).catch(err => {
-        // Restore visibility even if there was an error loading the library
-        hiddenElements.forEach(item => {
-          item.element.style.display = item.display;
-        });
+        // No elements to restore here either
         logError('Error loading html2canvas:', err);
       });
     } catch (err) {
-      logError('Error in saveCollageAsImage:', err);
+      logError('Error in saveCollageAsImage setup:', err);
     }
   }
 };
