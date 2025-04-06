@@ -61,9 +61,7 @@ export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, 
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
 
   const handleOpenExportDialog = () => {
-    if (finalImage) {
-      setIsExportDialogOpen(true);
-    }
+    setIsExportDialogOpen(true);
   };
 
   const handleCloseExportDialog = () => {
@@ -103,17 +101,8 @@ export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, 
             <CollageImagesStep 
               {...imagesStepProps} 
               setFinalImage={setFinalImage}
+              handleOpenExportDialog={handleOpenExportDialog}
             />
-            <Box sx={{ mt: 2, textAlign: 'right' }}> 
-              <Button 
-                variant="contained" 
-                startIcon={<ExportIcon />} 
-                onClick={handleOpenExportDialog}
-                disabled={!finalImage}
-              >
-                Export Preview
-              </Button>
-            </Box>
           </Box>
         </Grid>
       </Grid>

@@ -30,7 +30,8 @@ const CollageImagesStep = ({
   updatePanelImageMapping, // Updates mapping directly
   panelTransforms, // Receive new state
   updatePanelTransform, // Receive new function
-  setFinalImage // <<< Add setFinalImage prop
+  setFinalImage, // <<< Keep this
+  handleOpenExportDialog // <<< Add handleOpenExportDialog prop
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -177,29 +178,29 @@ const CollageImagesStep = ({
             startIcon={<Save />}
             onClick={saveCollageAsImage}
             sx={{ mt: 2 }}
+            aria-label="Generate collage and open preview dialog"
           >
-            Save as Image
+            Generate & Preview
           </Button>
         )}
       </Paper>
     </Box>
   );
 
-  // Function to save the collage as an image
+  // Function to save the collage as an image AND open dialog
   async function saveCollageAsImage() {
-    debugLog('Saving collage as image (exact preview)...');
+    debugLog('Generating collage and opening preview...');
     const collagePreviewElement = document.querySelector('[data-testid="dynamic-collage-preview-root"]');
 
     if (!collagePreviewElement) {
-      logError('Collage preview element not found. Ensure DynamicCollagePreview has data-testid="dynamic-collage-preview-root".');
+      logError('Collage preview element not found.');
       return;
     }
 
     try {
-      // Dynamically import html2canvas using await
       const html2canvasModule = await import('html2canvas');
       const html2canvas = html2canvasModule.default;
-
+      
       // --- NEW: Prepare data for canvas rendering ---
       const canvasData = {
         selectedTemplate,
@@ -213,30 +214,34 @@ const CollageImagesStep = ({
         panelTransforms // Pass the transform state
       };
       
-      debugLog("Data being sent to Canvas Renderer (for debug, html2canvas uses the DOM element):", canvasData);
+      debugLog("Data being used by html2canvas (for debug):", canvasData);
       
-      // <<< Render the DOM element using html2canvas >>>
       const canvas = await html2canvas(collagePreviewElement, {
-        useCORS: true, // Important for external images if any
-        allowTaint: true, // May be needed depending on image sources
-        logging: DEBUG_MODE, // Enable html2canvas logs in dev mode
-        scale: window.devicePixelRatio * 2 // Increase scale for better resolution
+        useCORS: true, 
+        allowTaint: true, 
+        logging: DEBUG_MODE, 
+        scale: window.devicePixelRatio * 2 
       });
       
-      const dataUrl = canvas.toDataURL('image/png'); // Get image as base64 data URL
+      const dataUrl = canvas.toDataURL('image/png');
       
-      // <<< Call setFinalImage to update the state in CollagePage >>>
       if (setFinalImage) {
         setFinalImage(dataUrl);
-        debugLog("Final image state updated with data URL.");
+        debugLog("Final image state updated.");
+        
+        if (handleOpenExportDialog) {
+          handleOpenExportDialog(); 
+          debugLog("Export dialog triggered.");
+        } else {
+          debugWarn("handleOpenExportDialog function not provided to CollageImagesStep.");
+        }
+
       } else {
         debugWarn("setFinalImage function not provided to CollageImagesStep.");
       }
 
     } catch (err) {
-      // Consolidated error handling
-      logError('Error saving collage image:', err);
-      // Potentially show a user-facing error message here
+      logError('Error generating collage image:', err);
     }
   }
 };
@@ -256,6 +261,8 @@ CollageImagesStep.defaultProps = {
   clearImages: () => { console.warn("clearImages default prop called"); },
   updatePanelImageMapping: () => { console.warn("updatePanelImageMapping default prop called"); },
   handleNext: () => {},
+  setFinalImage: () => { console.warn("setFinalImage default prop called"); }, // Add default
+  handleOpenExportDialog: () => { console.warn("handleOpenExportDialog default prop called"); }, // Add default
 };
 
 export default CollageImagesStep;
