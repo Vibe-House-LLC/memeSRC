@@ -29,7 +29,8 @@ const CollageImagesStep = ({
   panelImageMapping, // Still { panelId: imageIndex }
   updatePanelImageMapping, // Updates mapping directly
   panelTransforms, // Receive new state
-  updatePanelTransform // Receive new function
+  updatePanelTransform, // Receive new function
+  setFinalImage // <<< Add setFinalImage prop
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -207,15 +208,30 @@ const CollageImagesStep = ({
         theme, // Pass theme for consistency
         borderThickness, // Pass numeric value
         borderColor,
-        // Pass only display URLs, ensuring it's an array of strings
         displayImageUrls: selectedImages.map(img => img.displayUrl).filter(url => typeof url === 'string'),
         panelImageMapping,
         panelTransforms // Pass the transform state
       };
       
-      debugLog("Data being sent to Canvas Renderer:", canvasData);
+      debugLog("Data being sent to Canvas Renderer (for debug, html2canvas uses the DOM element):", canvasData);
       
-      // TODO: Implement the canvas renderer logic here
+      // <<< Render the DOM element using html2canvas >>>
+      const canvas = await html2canvas(collagePreviewElement, {
+        useCORS: true, // Important for external images if any
+        allowTaint: true, // May be needed depending on image sources
+        logging: DEBUG_MODE, // Enable html2canvas logs in dev mode
+        scale: window.devicePixelRatio * 2 // Increase scale for better resolution
+      });
+      
+      const dataUrl = canvas.toDataURL('image/png'); // Get image as base64 data URL
+      
+      // <<< Call setFinalImage to update the state in CollagePage >>>
+      if (setFinalImage) {
+        setFinalImage(dataUrl);
+        debugLog("Final image state updated with data URL.");
+      } else {
+        debugWarn("setFinalImage function not provided to CollageImagesStep.");
+      }
 
     } catch (err) {
       // Consolidated error handling

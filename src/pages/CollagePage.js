@@ -149,6 +149,8 @@ export default function CollagePage() {
             <CollageLayout
               settingsStepProps={settingsStepProps}
               imagesStepProps={imagesStepProps} // Pass updated props
+              finalImage={finalImage}
+              setFinalImage={setFinalImage}
               isMobile={isMobile}
             />
           </ContentPaper>

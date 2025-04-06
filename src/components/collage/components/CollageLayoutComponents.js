@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTheme } from "@mui/material/styles";
 import {
   Box,
@@ -7,11 +7,12 @@ import {
   Container,
   Button
 } from "@mui/material";
-import { Settings, PhotoLibrary } from "@mui/icons-material";
+import { Settings, PhotoLibrary, Launch as ExportIcon } from "@mui/icons-material";
 
 import CollageSettingsStep from "../steps/CollageSettingsStep";
 import CollageImagesStep from "../steps/CollageImagesStep";
 import { SectionHeading } from './CollageUIComponents';
+import ExportDialog from './ExportDialog';
 
 /**
  * Main container for the collage page content
@@ -56,8 +57,19 @@ export const ContentPaper = ({ children, isMobile, sx = {} }) => {
 /**
  * Unified layout for the collage tool that adapts to all screen sizes
  */
-export const CollageLayout = ({ settingsStepProps, imagesStepProps, isMobile }) => {
-  // Added console logging for debugging
+export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, setFinalImage, isMobile }) => {
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+
+  const handleOpenExportDialog = () => {
+    if (finalImage) {
+      setIsExportDialogOpen(true);
+    }
+  };
+
+  const handleCloseExportDialog = () => {
+    setIsExportDialogOpen(false);
+  };
+
   console.log("CollageLayout received props:", {
     settingsStepProps: {
       hasTemplate: !!settingsStepProps.selectedTemplate,
@@ -70,25 +82,47 @@ export const CollageLayout = ({ settingsStepProps, imagesStepProps, isMobile }) 
       hasAspectRatio: !!imagesStepProps.selectedAspectRatio,
       imageCount: imagesStepProps.selectedImages.length,
       panelCount: imagesStepProps.panelCount
-    }
+    },
+    hasFinalImage: !!finalImage
   });
   
   return (
-    <Grid container spacing={isMobile ? 2 : 3} sx={{ width: '100%', margin: 0 }}>
-      {/* Settings Section */}
-      <Grid item xs={12} md={6}>
-        <CollageSettingsStep 
-          {...settingsStepProps}
-        />
+    <>
+      <Grid container spacing={isMobile ? 2 : 3} sx={{ width: '100%', margin: 0 }}>
+        {/* Settings Section */}
+        <Grid item xs={12} md={6}>
+          <CollageSettingsStep 
+            {...settingsStepProps}
+          />
+        </Grid>
+        
+        {/* Images Section */}
+        <Grid item xs={12} md={6}>
+          <Box>
+            <SectionHeading icon={PhotoLibrary} title="Images" />
+            <CollageImagesStep 
+              {...imagesStepProps} 
+              setFinalImage={setFinalImage}
+            />
+            <Box sx={{ mt: 2, textAlign: 'right' }}> 
+              <Button 
+                variant="contained" 
+                startIcon={<ExportIcon />} 
+                onClick={handleOpenExportDialog}
+                disabled={!finalImage}
+              >
+                Export Preview
+              </Button>
+            </Box>
+          </Box>
+        </Grid>
       </Grid>
-      
-      {/* Images Section */}
-      <Grid item xs={12} md={6}>
-        <Box>
-          <SectionHeading icon={PhotoLibrary} title="Images" />
-          <CollageImagesStep {...imagesStepProps} />
-        </Box>
-      </Grid>
-    </Grid>
+
+      <ExportDialog 
+        open={isExportDialogOpen} 
+        onClose={handleCloseExportDialog} 
+        finalImage={finalImage} 
+      />
+    </>
   );
 };
