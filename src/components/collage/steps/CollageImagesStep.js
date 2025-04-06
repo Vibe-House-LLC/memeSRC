@@ -182,54 +182,45 @@ const CollageImagesStep = ({
   );
 
   // Function to save the collage as an image
-  function saveCollageAsImage() {
+  async function saveCollageAsImage() {
+    debugLog('Saving collage as image (exact preview)...');
+    const collagePreviewElement = document.querySelector('[data-testid="dynamic-collage-preview-root"]');
+
+    if (!collagePreviewElement) {
+      logError('Collage preview element not found. Ensure DynamicCollagePreview has data-testid="dynamic-collage-preview-root".');
+      return;
+    }
+
     try {
-      debugLog('Saving collage as image (exact preview)...');
-      // Target the specific preview component root using the data-testid
-      const collagePreviewElement = document.querySelector('[data-testid="dynamic-collage-preview-root"]');
-      
-      if (!collagePreviewElement) {
-        logError('Collage preview element not found. Ensure DynamicCollagePreview has data-testid="dynamic-collage-preview-root".');
-        return;
-      }
-      
-      // No longer hiding any elements - capture exactly what is visible
-      
-      // Use html2canvas to capture the specific preview element
-      import('html2canvas').then(html2canvasModule => {
-        const html2canvas = html2canvasModule.default;
-        
-        html2canvas(collagePreviewElement, { // Capture the targeted element
-          backgroundColor: null, // Preserve transparency
-          useCORS: true,       // For external images
-          scale: 2,            // Better quality
-          logging: false       // Keep console clean
-        }).then(canvas => {
-          // No elements were hidden, so no restoration needed
-          
-          // Convert canvas directly to data URL
-          const dataUrl = canvas.toDataURL('image/png');
-          
-          // Create download link
-          const link = document.createElement('a');
-          link.download = `memeSRC-collage-${new Date().toISOString().split('T')[0]}.png`;
-          link.href = dataUrl;
-          document.body.appendChild(link); 
-          link.click();
-          document.body.removeChild(link); 
-          
-          debugLog('Collage saved as image (exact preview) from preview element.');
-          
-        }).catch(err => {
-          // No elements were hidden, so no restoration needed here either
-          logError('Error capturing collage with html2canvas:', err);
-        });
-      }).catch(err => {
-        // No elements to restore here either
-        logError('Error loading html2canvas:', err);
+      // Dynamically import html2canvas using await
+      const html2canvasModule = await import('html2canvas');
+      const html2canvas = html2canvasModule.default;
+
+      // Generate the canvas using await
+      const canvas = await html2canvas(collagePreviewElement, {
+        backgroundColor: null, // Preserve transparency
+        useCORS: true,       // For external images
+        scale: 2,            // Better quality
+        logging: false       // Keep console clean
       });
+
+      // Convert canvas directly to data URL
+      const dataUrl = canvas.toDataURL('image/png');
+
+      // Create download link
+      const link = document.createElement('a');
+      link.download = `memeSRC-collage-${new Date().toISOString().split('T')[0]}.png`;
+      link.href = dataUrl;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      debugLog('Collage saved successfully as image (exact preview).');
+
     } catch (err) {
-      logError('Error in saveCollageAsImage setup:', err);
+      // Consolidated error handling
+      logError('Error saving collage image:', err);
+      // Potentially show a user-facing error message here
     }
   }
 };
