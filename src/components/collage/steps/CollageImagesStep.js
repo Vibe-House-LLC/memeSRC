@@ -28,7 +28,9 @@ const CollageImagesStep = ({
   borderColor,
   borderThicknessOptions,
   panelImageMapping, // Still { panelId: imageIndex }
-  updatePanelImageMapping // Updates mapping directly
+  updatePanelImageMapping, // Updates mapping directly
+  panelTransforms, // Receive new state
+  updatePanelTransform // Receive new function
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -159,6 +161,8 @@ const CollageImagesStep = ({
             replaceImage={replaceImage}
             updatePanelImageMapping={updatePanelImageMapping}
             panelImageMapping={panelImageMapping || {}}
+            panelTransforms={panelTransforms || {}}
+            updatePanelTransform={updatePanelTransform}
             onCropRequest={handleOpenCropModal}
             borderThickness={borderThickness}
             borderColor={borderColor}

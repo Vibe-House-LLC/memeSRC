@@ -12,6 +12,8 @@ export const useCollageState = () => {
   const [selectedImages, setSelectedImages] = useState([]);
   // panelImageMapping still maps: { panelId: imageIndex }
   const [panelImageMapping, setPanelImageMapping] = useState({});
+  // panelTransforms maps: { panelId: { scale: number, positionX: number, positionY: number } }
+  const [panelTransforms, setPanelTransforms] = useState({});
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [selectedAspectRatio, setSelectedAspectRatio] = useState('portrait');
   const [panelCount, setPanelCount] = useState(2); // Default panel count of 2
@@ -123,6 +125,11 @@ export const useCollageState = () => {
 
     setSelectedImages(newImages);
 
+    // Find the panelId(s) that used this image index
+    const panelsToRemoveTransform = Object.entries(panelImageMapping)
+        .filter(([_, mappedIndex]) => mappedIndex === indexToRemove)
+        .map(([panelId]) => panelId);
+
     // Update panel mapping
     const newMapping = {};
     Object.entries(panelImageMapping).forEach(([panelId, mappedIndex]) => {
@@ -137,6 +144,19 @@ export const useCollageState = () => {
       }
     });
     setPanelImageMapping(newMapping);
+
+    // Remove transforms for the affected panels
+    if (panelsToRemoveTransform.length > 0) {
+      setPanelTransforms(prevTransforms => {
+        const newTransforms = { ...prevTransforms };
+        panelsToRemoveTransform.forEach(panelId => {
+          delete newTransforms[panelId];
+        });
+        if (DEBUG_MODE) console.log(`Removed transforms for panels: ${panelsToRemoveTransform.join(', ')}`);
+        return newTransforms;
+      });
+    }
+
     if (DEBUG_MODE) console.log(`Removed image at index ${indexToRemove}, updated mapping`, newMapping);
 
   }, [selectedImages, panelImageMapping, DEBUG_MODE]);
@@ -212,7 +232,8 @@ export const useCollageState = () => {
 
     setSelectedImages([]);
     setPanelImageMapping({});
-    if (DEBUG_MODE) console.log("Cleared all images and mapping");
+    setPanelTransforms({}); // Clear transforms as well
+    if (DEBUG_MODE) console.log("Cleared all images, mapping, and transforms");
   }, [selectedImages, DEBUG_MODE]);
 
   /**
@@ -226,10 +247,29 @@ export const useCollageState = () => {
     setPanelImageMapping(newMapping);
   }, [DEBUG_MODE]);
 
+  /**
+   * Update the transform state for a specific panel.
+   * @param {string} panelId - The ID of the panel to update.
+   * @param {object} transformState - The new transform state { scale, positionX, positionY }.
+   */
+  const updatePanelTransform = useCallback((panelId, transformState) => {
+    setPanelTransforms(prevTransforms => {
+      const newTransforms = {
+        ...prevTransforms,
+        [panelId]: transformState,
+      };
+      if (DEBUG_MODE) {
+        console.log(`Updating transform for panel ${panelId}:`, newTransforms[panelId]);
+      }
+      return newTransforms;
+    });
+  }, [DEBUG_MODE]);
+
   return {
     // State
     selectedImages, // Now [{ originalUrl, displayUrl }, ...]
     panelImageMapping, // Still { panelId: imageIndex }
+    panelTransforms, // New: { panelId: { scale, positionX, positionY } }
     selectedTemplate,
     setSelectedTemplate,
     selectedAspectRatio,
@@ -247,10 +287,11 @@ export const useCollageState = () => {
 
     // Operations
     addImage, // Adds new object { original, display }
-    removeImage, // Removes object, updates mapping
-    updateImage, // Updates ONLY displayUrl (for crop result)
-    replaceImage, // Updates BOTH urls (for replacing upload)
-    clearImages, // Clears objects, mapping
-    updatePanelImageMapping, // Updates mapping directly
+    removeImage, // Removes object, updates mapping & transform
+    updateImage, // Updates displayUrl
+    replaceImage, // Replaces image object
+    clearImages, // Clears images, mapping & transforms
+    updatePanelImageMapping,
+    updatePanelTransform, // New: Updates transform for a panel
   };
 };

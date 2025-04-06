@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { useTheme } from "@mui/material/styles";
 import { Box, IconButton, Typography } from "@mui/material";
 import { MoreVert, Add } from "@mui/icons-material";
+import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 
 import { layoutDefinitions } from "../config/layouts";
 
@@ -99,6 +100,8 @@ const DynamicCollagePreview = ({
   panelImageMapping = {}, // Added parameter to access the mapping
   borderThickness = 0, // Added parameter for border thickness
   borderColor = '#000000', // Added parameter for border color
+  panelTransforms = {}, // Receive transform state { panelId: { scale, positionX, positionY } }
+  updatePanelTransform, // Function to update transform state
 }) => {
   const theme = useTheme();
   
@@ -217,21 +220,66 @@ const DynamicCollagePreview = ({
     
     if (!imageUrl) {
       console.error(`No valid image URL found for index ${imageIndex}`, imageData);
-      return <RenderAddButton />;
+      return <RenderAddButton index={index} panelId={panelId} />;
     }
       
+    // Get initial transform state for this panel
+    const initialTransform = panelTransforms[panelId] || { scale: 1, positionX: 0, positionY: 0 };
+    
     return (
       <>
-        <Box
-          sx={{
-            width: '100%',
-            height: '100%',
-            backgroundImage: `url(${JSON.stringify(imageUrl)})`, // Ensure URL is correctly formatted
-            backgroundSize: 'cover',         // Equivalent to object-fit: cover
-            backgroundPosition: 'center center', // Center the image within the box
-            backgroundRepeat: 'no-repeat',   // Prevent tiling
+        <TransformWrapper
+          initialScale={initialTransform.scale}
+          initialPositionX={initialTransform.positionX}
+          initialPositionY={initialTransform.positionY}
+          onZoomStop={(ref) => {
+            if (updatePanelTransform) {
+              updatePanelTransform(panelId, { 
+                scale: ref.state.scale,
+                positionX: ref.state.positionX,
+                positionY: ref.state.positionY,
+              });
+            }
           }}
-        />
+          onPanningStop={(ref) => {
+            if (updatePanelTransform) {
+              updatePanelTransform(panelId, { 
+                scale: ref.state.scale,
+                positionX: ref.state.positionX,
+                positionY: ref.state.positionY,
+              });
+            }
+          }}
+          minScale={0.5} // Allow zooming out a bit
+          maxScale={5}  // Allow zooming in quite a bit
+          limitToBounds={true} // Keep image within the panel bounds
+          doubleClick={{ disabled: true }} // Disable double-click zoom
+          wheel={{ step: 0.2 }} // Adjust wheel zoom sensitivity
+          pinch={{ step: 5 }} // Adjust pinch zoom sensitivity
+          wrapperStyle={{ width: '100%', height: '100%' }}
+          contentStyle={{ width: '100%', height: '100%' }}
+        >
+          <TransformComponent
+             wrapperStyle={{ width: '100%', height: '100%' }} // Ensure wrapper fills space
+             contentStyle={{ width: '100%', height: '100%' }} // Ensure content fills space
+          >
+            <Box
+              component="img"
+              src={imageUrl} // Use img tag for better control with react-zoom-pan-pinch
+              alt={`Collage panel ${index + 1}`}
+              sx={{
+                display: 'block', // Prevent extra space below image
+                width: '100%', // Let the transform scale it
+                height: '100%', // Let the transform scale it
+                objectFit: 'cover', // Start with cover, transform adjusts
+                cursor: 'grab', // Indicate draggable
+                // No background properties needed when using img
+              }}
+              onMouseDown={(e) => e.stopPropagation()} // Prevent grid drag issues if any
+              onTouchStart={(e) => e.stopPropagation()} // Prevent grid drag issues on touch
+            />
+          </TransformComponent>
+        </TransformWrapper>
               
         {/* Menu Button (only shown when image exists) */}
         {onMenuOpen && (
@@ -256,20 +304,19 @@ const DynamicCollagePreview = ({
     );
   };
 
-  const RenderAddButton = () => (
-    <>
-      <IconButton
-        sx={{
-          backgroundColor: theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.7)' : 'rgba(33, 150, 243, 0.7)',
-          color: '#ffffff',
-          '&:hover': {
-            backgroundColor: theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.9)' : 'rgba(33, 150, 243, 0.9)',
-          },
-        }}
-      >
-        <Add />
-      </IconButton>
-    </>
+  const RenderAddButton = ({ index, panelId }) => (
+    <IconButton
+      onClick={() => onPanelClick && onPanelClick(index, panelId)} // Pass BOTH index and panelId
+      sx={{
+        backgroundColor: theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.7)' : 'rgba(33, 150, 243, 0.7)',
+        color: '#ffffff',
+        '&:hover': {
+          backgroundColor: theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.9)' : 'rgba(33, 150, 243, 0.9)',
+        },
+      }}
+    >
+      <Add />
+    </IconButton>
   );
 
   // Don't render anything if we don't have a template or layout config
@@ -337,16 +384,16 @@ const DynamicCollagePreview = ({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  cursor: onPanelClick ? 'pointer' : 'default',
+                  cursor: !hasImage && onPanelClick ? 'pointer' : 'default', // Keep cursor logic based on !hasImage
                   overflow: 'hidden',
                   position: 'relative',
                   '&:hover': {
                     backgroundColor: hasImage ? theme.palette.action.hover : 'rgba(0,0,0,0.4)',
                   },
                 }}
-                onClick={() => onPanelClick && onPanelClick(index)}
+                onClick={() => !hasImage && onPanelClick && onPanelClick(index, panelId)} // Pass BOTH index and panelId
               >
-                {hasImage ? <RenderImage index={index} panelId={panelId} /> : <RenderAddButton />}
+                {hasImage ? <RenderImage index={index} panelId={panelId} /> : <RenderAddButton index={index} panelId={panelId} />}
               </Box>
             );
           })
@@ -368,16 +415,16 @@ const DynamicCollagePreview = ({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  cursor: onPanelClick ? 'pointer' : 'default',
+                  cursor: !hasImage && onPanelClick ? 'pointer' : 'default',
                   overflow: 'hidden',
                   position: 'relative',
                   '&:hover': {
                     backgroundColor: hasImage ? theme.palette.action.hover : 'rgba(0,0,0,0.4)',
                   },
                 }}
-                onClick={() => onPanelClick && onPanelClick(index)}
+                onClick={() => !hasImage && onPanelClick && onPanelClick(index, panelId)} // Pass BOTH index and panelId
               >
-                {hasImage ? <RenderImage index={index} panelId={panelId} /> : <RenderAddButton />}
+                {hasImage ? <RenderImage index={index} panelId={panelId} /> : <RenderAddButton index={index} panelId={panelId} />}
               </Box>
             );
           })
@@ -398,16 +445,16 @@ const DynamicCollagePreview = ({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  cursor: onPanelClick ? 'pointer' : 'default',
+                  cursor: !hasImage && onPanelClick ? 'pointer' : 'default',
                   overflow: 'hidden',
                   position: 'relative',
                   '&:hover': {
                     backgroundColor: hasImage ? theme.palette.action.hover : 'rgba(0,0,0,0.4)',
                   },
                 }}
-                onClick={() => onPanelClick && onPanelClick(index)}
+                onClick={() => !hasImage && onPanelClick && onPanelClick(index, panelId)} // Pass BOTH index and panelId
               >
-                {hasImage ? <RenderImage index={index} panelId={panelId} /> : <RenderAddButton />}
+                {hasImage ? <RenderImage index={index} panelId={panelId} /> : <RenderAddButton index={index} panelId={panelId} />}
               </Box>
             );
           })

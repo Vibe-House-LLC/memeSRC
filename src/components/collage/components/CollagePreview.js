@@ -32,6 +32,8 @@ const CollagePreview = ({
   onCropRequest,
   borderThickness = 0,
   borderColor = '#000000',
+  panelTransforms,
+  updatePanelTransform,
 }) => {
   const theme = useTheme();
   const fileInputRef = useRef(null);
@@ -39,14 +41,16 @@ const CollagePreview = ({
   // State for menu
   const [menuPosition, setMenuPosition] = useState(null);
   const [activePanelIndex, setActivePanelIndex] = useState(null);
+  const [activePanelId, setActivePanelId] = useState(null);
 
   // Get the aspect ratio value
   const aspectRatioValue = getAspectRatioValue(selectedAspectRatio);
 
   // Handle panel click to trigger file upload
-  const handlePanelClick = (index) => {
-    console.log(`Panel clicked: ${index}`); // Debug log
+  const handlePanelClick = (index, panelId) => {
+    console.log(`Panel clicked: index=${index}, panelId=${panelId}`); // Debug log
     setActivePanelIndex(index);
+    setActivePanelId(panelId);
     fileInputRef.current?.click();
   };
 
@@ -88,19 +92,23 @@ const CollagePreview = ({
         // Determine panel ID from template structure (same for both menu and direct clicks)
         let clickedPanelId;
         
-        // Try to get panel ID from template structure
-        try {
-          // Check in layout.panels first (preferred path)
-          const layoutPanel = selectedTemplate?.layout?.panels?.[activePanelIndex];
-          // Then check in template.panels as fallback
-          const templatePanel = selectedTemplate?.panels?.[activePanelIndex];
-          
-          // Use the first valid panel ID found or fallback to generated ID
-          clickedPanelId = layoutPanel?.id || templatePanel?.id || `panel-${activePanelIndex + 1}`;
-          console.log(`Using panel ID: ${clickedPanelId} for activePanelIndex: ${activePanelIndex}`);
-        } catch (error) {
-          console.error("Error getting panel ID:", error);
-          clickedPanelId = `panel-${activePanelIndex + 1}`;
+        // Use the stored activePanelId if available
+        if (activePanelId) {
+          clickedPanelId = activePanelId;
+          console.log(`Using stored activePanelId: ${clickedPanelId}`);
+        } else {
+          // Fallback: Try to get panel ID from template structure using activePanelIndex
+          // (This fallback might be less reliable but kept for safety)
+          console.warn("activePanelId not set, falling back to index-based lookup");
+          try {
+            const layoutPanel = selectedTemplate?.layout?.panels?.[activePanelIndex];
+            const templatePanel = selectedTemplate?.panels?.[activePanelIndex];
+            clickedPanelId = layoutPanel?.id || templatePanel?.id || `panel-${activePanelIndex + 1}`;
+            console.log(`Using fallback panel ID: ${clickedPanelId} for activePanelIndex: ${activePanelIndex}`);
+          } catch (error) {
+            console.error("Error getting fallback panel ID:", error);
+            clickedPanelId = `panel-${activePanelIndex + 1}`;
+          }
         }
         
         // Check if this is a replacement operation (either from menu or direct click)
@@ -131,7 +139,9 @@ const CollagePreview = ({
       reader.readAsDataURL(file);
     }
     
-    // Reset file input
+    // Reset file input and active panel state
+    setActivePanelIndex(null);
+    setActivePanelId(null);
     if (event.target) {
       event.target.value = null;
     }
@@ -168,6 +178,8 @@ const CollagePreview = ({
         panelImageMapping={panelImageMapping}
         borderThickness={borderThickness}
         borderColor={borderColor}
+        panelTransforms={panelTransforms}
+        updatePanelTransform={updatePanelTransform}
       />
       
       {/* Hidden file input */}

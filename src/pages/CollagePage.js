@@ -44,6 +44,7 @@ export default function CollagePage() {
   const {
     selectedImages, 
     panelImageMapping,
+    panelTransforms,
     selectedTemplate,
     setSelectedTemplate,
     selectedAspectRatio,
@@ -64,6 +65,7 @@ export default function CollagePage() {
     replaceImage,
     clearImages,
     updatePanelImageMapping,
+    updatePanelTransform,
   } = useCollageState();
 
   const borderThicknessOptions = [
@@ -102,7 +104,9 @@ export default function CollagePage() {
   const imagesStepProps = {
     selectedImages, // Pass the array of objects [{ originalUrl, displayUrl }, ...]
     panelImageMapping,
+    panelTransforms,
     updatePanelImageMapping,
+    updatePanelTransform,
     panelCount,
     selectedTemplate,
     selectedAspectRatio,
@@ -123,13 +127,14 @@ export default function CollagePage() {
       debugLog("CollagePage state update:", {
         imageCount: selectedImages.length,
         mappingKeys: Object.keys(panelImageMapping),
+        transformKeys: Object.keys(panelTransforms),
         borderThickness,
         borderThicknessValue,
         borderColor,
         aspectRatio: selectedAspectRatio,
       });
     }
-  }, [panelImageMapping, selectedImages, borderThickness, borderThicknessValue, borderColor, selectedAspectRatio]);
+  }, [panelImageMapping, selectedImages, borderThickness, borderThicknessValue, borderColor, selectedAspectRatio, panelTransforms]);
 
   return (
     <>
