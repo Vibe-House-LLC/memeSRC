@@ -1014,27 +1014,6 @@ export const renderTemplateToCanvas = async ({
       ctx.lineWidth = borderThickness;
     }
     
-    // Generate initial canvas image without waiting for images to load
-    if (canvas instanceof OffscreenCanvas) {
-      canvas.convertToBlob({ type: 'image/png' })
-        .then(blob => {
-          const url = URL.createObjectURL(blob);
-          setRenderedImage(url);
-        })
-        .catch(err => {
-          logError('Error converting canvas to blob:', err);
-          if (canvasRef && canvasRef.current) {
-            setRenderedImage(canvasRef.current.toDataURL('image/png'));
-          }
-        });
-    } else {
-      try {
-        setRenderedImage(canvas.toDataURL('image/png'));
-      } catch (err) {
-        logError('Error converting canvas to data URL:', err);
-      }
-    }
-    
     // Step 3: Now load and draw images
     const imageLoadPromises = [];
     
@@ -1055,34 +1034,30 @@ export const renderTemplateToCanvas = async ({
           img.crossOrigin = 'anonymous'; // Allow loading from different origins
           
           img.onload = () => {
-            // Calculate scaling to fit panel
-            const imgAspect = img.width / img.height;
-            const panelAspect = panel.width / panel.height;
-            
-            let drawWidth;
-            let drawHeight;
-            let offsetX = 0; 
-            let offsetY = 0;
-            
-            if (imgAspect > panelAspect) {
-              // Image is wider
-              drawHeight = panel.height;
-              drawWidth = panel.height * imgAspect;
-              offsetX = (panel.width - drawWidth) / 2;
-            } else {
-              // Image is taller
-              drawWidth = panel.width;
-              drawHeight = panel.width / imgAspect;
-              offsetY = (panel.height - drawHeight) / 2;
-            }
-            
-            // Draw the image
-            ctx.save();
+            // --- START REPLACEMENT ---
+            const imgWidth = img.width;
+            const imgHeight = img.height;
+            const panelX = panel.x;
+            const panelY = panel.y;
+            const panelWidth = panel.width;
+            const panelHeight = panel.height;
+
+            // Draw the *entire* source image with its *original dimensions* at the panel's top-left corner
+            // NO SCALING OR ASPECT RATIO CORRECTION - FOR DEBUGGING
+            ctx.save(); 
             ctx.beginPath();
-            ctx.rect(panel.x, panel.y, panel.width, panel.height);
+            // Clip to the panel bounds to prevent drawing outside the designated area
+            ctx.rect(panelX, panelY, panelWidth, panelHeight);
             ctx.clip();
-            ctx.drawImage(img, panel.x + offsetX, panel.y + offsetY, drawWidth, drawHeight);
+            ctx.drawImage(
+              img,         // Source image
+              0, 0,        // Top-left corner of source rectangle (entire image)
+              imgWidth, imgHeight, // Dimensions of source rectangle (entire image)
+              panelX, panelY,  // Top-left corner of destination rectangle (panel origin)
+              imgWidth, imgHeight  // Dimensions of destination rectangle (original image size)
+            );
             ctx.restore();
+            // --- END REPLACEMENT ---
             
             resolve();
           };

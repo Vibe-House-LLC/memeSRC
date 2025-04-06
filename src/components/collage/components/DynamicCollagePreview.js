@@ -222,14 +222,15 @@ const DynamicCollagePreview = ({
       
     return (
       <>
-        <img
-          src={imageUrl} 
-          alt={`Panel ${index + 1}`} 
-          style={{ 
-            width: '100%', 
-            height: '100%', 
-            objectFit: 'cover' 
-          }} 
+        <Box
+          sx={{
+            width: '100%',
+            height: '100%',
+            backgroundImage: `url(${JSON.stringify(imageUrl)})`, // Ensure URL is correctly formatted
+            backgroundSize: 'cover',         // Equivalent to object-fit: cover
+            backgroundPosition: 'center center', // Center the image within the box
+            backgroundRepeat: 'no-repeat',   // Prevent tiling
+          }}
         />
               
         {/* Menu Button (only shown when image exists) */}
