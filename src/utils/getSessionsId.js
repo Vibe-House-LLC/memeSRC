@@ -1,4 +1,4 @@
-import { API } from "aws-amplify";
+import { API } from 'aws-amplify/api';
 
 const getSessionID = async () => {
     let sessionID;
@@ -6,7 +6,10 @@ const getSessionID = async () => {
       sessionID = sessionStorage.getItem('sessionID');
       return Promise.resolve(sessionID);
     }
-    return API.get('publicapi', '/uuid')
+    return get({
+      apiName: 'publicapi',
+      path: '/uuid'
+    })
       .then((generatedSessionID) => {
         sessionStorage.setItem('sessionID', generatedSessionID);
         return generatedSessionID;

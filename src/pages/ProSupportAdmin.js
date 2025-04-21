@@ -1,5 +1,7 @@
+import { generateClient } from 'aws-amplify/api';
+const client = generateClient();
 import React, { useEffect, useState } from 'react';
-import { API, graphqlOperation } from 'aws-amplify';
+import { API, graphqlOperation } from 'aws-amplify/api';
 import {
   Typography,
   Container,
@@ -28,12 +30,16 @@ export default function ProSupportAdmin() {
 
   const fetchSubmissions = async () => {
     try {
-      const response = await API.graphql(
-        graphqlOperation(listProSupportMessages, {
+      const response = await client.graphql({
+        query: listProSupportMessages,
+
+        variables: {
           limit: 10,
           nextToken,
-        })
-      );
+        },
+
+        authMode: 'awsIam'
+      });
       const newSubmissions = response.data.listProSupportMessages.items;
       const submissionsWithUserDetails = await Promise.all(
         newSubmissions.map(async (submission) => {
@@ -51,7 +57,11 @@ export default function ProSupportAdmin() {
 
   const fetchUserDetails = async (userId) => {
     try {
-      const response = await API.graphql(graphqlOperation(getUserDetails, { id: userId }));
+      const response = await client.graphql({
+        query: getUserDetails,
+        variables: { id: userId },
+        authMode: 'awsIam'
+      });
       return response.data.getUserDetails;
     } catch (error) {
       console.log(error);

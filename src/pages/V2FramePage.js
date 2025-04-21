@@ -4,7 +4,7 @@
 import { Helmet } from 'react-helmet-async';
 import { Navigate, Link as RouterLink, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useCallback, useEffect, useRef, useState, useContext, memo } from 'react';
-import { API } from 'aws-amplify';
+import { API } from 'aws-amplify/api';
 import { styled } from '@mui/material/styles';
 import { useTheme } from '@emotion/react';
 import {
@@ -866,7 +866,6 @@ useEffect(() => {
       <Helmet>
         <title> Frame Details | memeSRC 2.0 </title>
       </Helmet>
-
       <Container maxWidth="xl" sx={{ pt: 0 }}>
         {user?.userDetails?.subscriptionStatus !== 'active' && (
           <Grid item xs={12} mb={3}>
@@ -1463,7 +1462,7 @@ useEffect(() => {
                 <Grid item xs={4} sm={4} md={12 / 9} key={`surrounding-frame-${index}`}>
                   {surroundingFrame !== 'loading' ? (
                     // Render the actual content if the surrounding frame data is available
-                    <a style={{ textDecoration: 'none' }}>
+                    (<a style={{ textDecoration: 'none' }}>
                       <StyledCard
                         sx={{
                           ...((parseInt(frame, 10) === surroundingFrame.frame) && { border: '3px solid orange' }),
@@ -1490,10 +1489,10 @@ useEffect(() => {
                           <Skeleton variant='rounded' sx={{ width: '100%', height: 0, paddingTop: '56.25%' }} />
                         )}
                       </StyledCard>
-                    </a>
+                    </a>)
                   ) : (
                     // Render a skeleton if the data is not yet available (loading)
-                    <Skeleton variant='rounded' sx={{ width: '100%', height: 0, paddingTop: '56.25%' }} />
+                    (<Skeleton variant='rounded' sx={{ width: '100%', height: 0, paddingTop: '56.25%' }} />)
                   )}
                 </Grid>
               ))}

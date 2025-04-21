@@ -1,4 +1,4 @@
-import { Storage } from "aws-amplify";
+import { Storage } from 'aws-amplify/storage';
 import { V2SearchContext } from "../contexts/v2-search-context";
 import getV2Metadata from "./getV2Metadata";
 
@@ -11,7 +11,10 @@ export default async function loadV2Csv(show) {
             // const response = await fetch(url);
             // const text = await response.text();
 
-            const response = (await Storage.get(`src/${cid}/_docs.csv`, { level: 'public', download: true, customPrefix: { public: 'protected/' } })).Body
+            const response = (await downloadData({
+                key: `src/${cid}/_docs.csv`,
+                options: { level: 'public', download: true, customPrefix: { public: 'protected/' } }
+            })).Body
             const text = await response.text();
 
             const lines = text.split("\n");

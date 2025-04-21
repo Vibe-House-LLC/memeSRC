@@ -1,8 +1,10 @@
+import { generateClient } from 'aws-amplify/api';
+const client = generateClient();
 import { useContext, useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Typography, Container, Grid, Stack, FormControl, InputLabel, Select, MenuItem, } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
-import { API, graphqlOperation } from 'aws-amplify';
+import { API, graphqlOperation } from 'aws-amplify/api';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactMarkdown } from 'react-markdown/lib/react-markdown';
 import UploadToSeriesPage from '../sections/@dashboard/series/UploadToSeriesPage';
@@ -86,7 +88,10 @@ export default function ContributorRequest() {
   const becomeContributor = () => {
     if (user) {
       setloadingContributorStatus(true)
-      API.get('publicapi', '/user/update/contributorStatus').then(response => {
+      get({
+        apiName: 'publicapi',
+        path: '/user/update/contributorStatus'
+      }).then(response => {
         setMessage(response.message)
         setSeverity('success')
         setOpen(true)

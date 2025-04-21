@@ -1,9 +1,10 @@
+import { generateClient } from 'aws-amplify/api';
+const client = generateClient();
 // React
 import { Helmet } from 'react-helmet-async';
 import { useState, useEffect } from 'react';
 
-// Amplify
-import { API, graphqlOperation } from 'aws-amplify';
+import { API, graphqlOperation } from 'aws-amplify/api';
 
 // MUI Components
 import { 
@@ -77,13 +78,17 @@ const ExpandMore = styled((props) => {
 
 // Function to pull the homepage sections from graphql
 async function fetchHomepageSections(items = [], nextToken = null) {
-  const result = await API.graphql(
-    graphqlOperation(listHomepageSections, {
+  const result = await client.graphql({
+    query: listHomepageSections,
+
+    variables: {
       filter: {},
       limit: 10,
       nextToken
-    })
-  );
+    },
+
+    authMode: 'awsIam'
+  });
   const sortedSections = result.data.listHomepageSections.items.sort((a, b) => {
     if (a.index < b.index) return -1;
     if (a.index > b.index) return 1;
@@ -188,7 +193,11 @@ export default function HomepageSectionPage() {
       }
     };
 
-    const result = await API.graphql(graphqlOperation(createHomepageSection, newHomepageSection));
+    const result = await client.graphql({
+      query: createHomepageSection,
+      variables: newHomepageSection,
+      authMode: 'awsIam'
+    });
     setSections([...sections, result.data.createHomepageSection])
     clearForm();
     return result.data.createHomepageSection;
@@ -244,7 +253,11 @@ export default function HomepageSectionPage() {
       }
     };
     try {
-      const result = await API.graphql(graphqlOperation(deleteHomepageSection, deletedHomepageSection));
+      const result = await client.graphql({
+        query: deleteHomepageSection,
+        variables: deletedHomepageSection,
+        authMode: 'awsIam'
+      });
       console.log(result);
 
       // Update the sections state by filtering out the deleted item

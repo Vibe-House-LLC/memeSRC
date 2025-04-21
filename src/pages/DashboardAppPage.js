@@ -1,10 +1,11 @@
+import { generateClient } from 'aws-amplify/api';
+const client = generateClient();
 import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 // @mui
 import { useTheme } from '@mui/material/styles';
 import { Grid, Container, Typography } from '@mui/material';
-// Amplify
-import { API, graphqlOperation } from 'aws-amplify';
+import { API, graphqlOperation } from 'aws-amplify/api';
 import { listHomepageSections, getAnalyticsMetrics } from '../graphql/queries';
 // components
 // import { API, graphqlOperation } from 'aws-amplify';
@@ -29,13 +30,17 @@ import {
 
 // Function to pull the homepage sections from graphql
 async function fetchHomepageSections(items = [], nextToken = null) {
-  const result = await API.graphql(
-    graphqlOperation(listHomepageSections, {
+  const result = await client.graphql({
+    query: listHomepageSections,
+
+    variables: {
       filter: {},
       limit: 10,
       nextToken
-    })
-  );
+    },
+
+    authMode: 'awsIam'
+  });
   const sortedSections = result.data.listHomepageSections.items.sort((a, b) => {
     if (a.index < b.index) return -1;
     if (a.index > b.index) return 1;
@@ -58,55 +63,75 @@ export default function DashboardAppPage() {
   const [popularShows, setPopularShows] = useState([])
 
   const fetchAnalyticsFrameViews = async () => {
-    const result = await API.graphql(
-      graphqlOperation(getAnalyticsMetrics, {
+    const result = await client.graphql({
+      query: getAnalyticsMetrics,
+
+      variables: {
         id: 'totalFrameViews'
-      })
-    )
+      },
+
+      authMode: 'awsIam'
+    })
     console.log(result)
     const cleaned = JSON.parse(result.data.getAnalyticsMetrics.value)[1][0]
     setFrameViewsDaily(cleaned)
   }
 
   const fetchAnalyticsRandoms = async () => {
-    const result = await API.graphql(
-      graphqlOperation(getAnalyticsMetrics, {
+    const result = await client.graphql({
+      query: getAnalyticsMetrics,
+
+      variables: {
         id: 'totalRandoms'
-      })
-    )
+      },
+
+      authMode: 'awsIam'
+    })
     console.log(result)
     const cleaned = JSON.parse(result.data.getAnalyticsMetrics.value)[1][0]
     setRandomsDaily(cleaned)
   }
 
   const fetchAnalyticsSearches = async () => {
-    const result = await API.graphql(
-      graphqlOperation(getAnalyticsMetrics, {
+    const result = await client.graphql({
+      query: getAnalyticsMetrics,
+
+      variables: {
         id: 'totalSearches'
-      })
-    )
+      },
+
+      authMode: 'awsIam'
+    })
     console.log(result)
     const cleaned = JSON.parse(result.data.getAnalyticsMetrics.value)[1][0]
     setSearchesDaily(cleaned)
   }
 
   const fetchAnalyticsSessions = async () => {
-    const result = await API.graphql(
-      graphqlOperation(getAnalyticsMetrics, {
+    const result = await client.graphql({
+      query: getAnalyticsMetrics,
+
+      variables: {
         id: 'totalSessions'
-      })
-    )
+      },
+
+      authMode: 'awsIam'
+    })
     console.log(result)
     const cleaned = JSON.parse(result.data.getAnalyticsMetrics.value)[1][0]
     setSessionsDaily(cleaned)
   }
 
   const fetchAnalyticsPopularShows = async () => {
-    const result = await API.graphql(
-      graphqlOperation(getAnalyticsMetrics, {
+    const result = await client.graphql({
+      query: getAnalyticsMetrics,
+
+      variables: {
         id: 'popularShows'
-      })
-    )
+      },
+
+      authMode: 'awsIam'
+    })
     console.log(result)
     console.log(`POPULAR SHOWS: ${result.data.getAnalyticsMetrics.value}`)
     const cleaned = JSON.parse(result.data.getAnalyticsMetrics.value).slice(1).map(row => {

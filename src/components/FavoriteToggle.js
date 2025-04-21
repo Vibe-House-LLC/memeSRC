@@ -1,5 +1,5 @@
 import React, { useState, useContext, useEffect } from 'react';
-import { API } from 'aws-amplify';
+import { API } from 'aws-amplify/api';
 import { IconButton, CircularProgress } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
@@ -48,10 +48,15 @@ const FavoriteToggle = ({ indexId, initialIsFavorite }) => {
 
     setIsSaving(true);
     try {
-      const result = await API.post('publicapi', '/user/update/updateFavorites', {
-        body: {
-          favoriteId: indexId,
-          removeFavorite: isFavorite
+      const result = await post({
+        apiName: 'publicapi',
+        path: '/user/update/updateFavorites',
+
+        options: {
+          body: {
+            favoriteId: indexId,
+            removeFavorite: isFavorite
+          }
         }
       });
       handleUpdateUserDetails(result?.updatedUserDetails);

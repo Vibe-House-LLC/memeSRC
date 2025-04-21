@@ -1,6 +1,6 @@
 import { Close, Search } from "@mui/icons-material";
 import { Autocomplete, CircularProgress, Container, Grid, IconButton, Paper, Popover, Popper, TextField, Typography, styled } from "@mui/material";
-import { API } from "aws-amplify";
+import { API } from 'aws-amplify/api';
 import { useRef, useState } from "react";
 
 const StyledList = styled('li')``
@@ -21,10 +21,15 @@ export default function TvdbSearch({ onSelect = () => { }, onClear = () => { }, 
         }
         setOpen(true)
         setLoading(true)
-        const searchResults = await API.get("publicapi", "/tvdb/search", {
-            queryStringParameters: {
-                query: searchTerm,
-            },
+        const searchResults = await get({
+            apiName: "publicapi",
+            path: "/tvdb/search",
+
+            options: {
+                queryStringParameters: {
+                    query: searchTerm,
+                },
+            }
         });
         if (searchResults?.length > 0) {
             let filteredResults = searchResults;

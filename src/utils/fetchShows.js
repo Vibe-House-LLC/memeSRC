@@ -1,6 +1,8 @@
-// fetchShows.js
-
-import { API, graphqlOperation, Auth } from "aws-amplify";
+import { generateClient } from 'aws-amplify/api';
+const client = generateClient();
+import { getCurrentUser } from 'aws-amplify/auth';
+import { Auth } from 'aws-amplify/auth';
+import { API, graphqlOperation } from 'aws-amplify/api';
 import { listFavorites } from '../graphql/queries';
 
 const listAliasesQuery = /* GraphQL */ `
@@ -41,7 +43,7 @@ const CACHE_EXPIRATION_MINUTES = 1; // Define cache expiration minutes
 
 async function getCacheKey() {
   try {
-    const currentUser = await Auth.currentAuthenticatedUser();
+    const currentUser = await getCurrentUser();
     return `showsCache-${currentUser.username}-${APP_VERSION}`;
   } catch {
     return `showsCache-${APP_VERSION}`;
@@ -73,7 +75,7 @@ async function fetchShowsFromAPI() {
 }
 
 async function fetchFavorites() {
-  const currentUser = await Auth.currentAuthenticatedUser();
+  const currentUser = await getCurrentUser();
 
   let nextToken = null;
   let allFavorites = [];
@@ -81,10 +83,16 @@ async function fetchFavorites() {
   do {
     // Disable ESLint check for await-in-loop
     // eslint-disable-next-line no-await-in-loop
-    const result = await API.graphql(graphqlOperation(listFavorites, {
-      limit: 10,
-      nextToken,
-    }));
+    const result = await client.graphql({
+      query: listFavorites,
+
+      variables: {
+        limit: 10,
+        nextToken,
+      },
+
+      authMode: 'awsIam'
+    });
 
     allFavorites = allFavorites.concat(result.data.listFavorites.items);
     nextToken = result.data.listFavorites.nextToken;
@@ -96,7 +104,7 @@ async function fetchFavorites() {
 
 async function updateCacheAndReturnData(data, cacheKey) {
   try {
-    const currentUser = await Auth.currentAuthenticatedUser();
+    const currentUser = await getCurrentUser();
     const favorites = await fetchFavorites();
     const favoriteShowIds = new Set(favorites.map(favorite => favorite.cid));
 

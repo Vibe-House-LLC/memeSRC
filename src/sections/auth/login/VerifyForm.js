@@ -1,8 +1,10 @@
+import { confirmSignUp } from 'aws-amplify/auth';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 // @mui
 import { Backdrop, CircularProgress, Link, Stack, TextField, Typography } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
-import { API, Auth } from 'aws-amplify';
+import { Auth } from 'aws-amplify/auth';
+import { API } from 'aws-amplify/api';
 import { useContext, useState } from 'react';
 import { UserContext } from '../../../UserContext';
 import { SnackbarContext } from '../../../SnackbarContext';
@@ -38,7 +40,10 @@ export default function VerifyForm(props) {
   const confirmSignUp = () => {
     if (checkForm()) {
       setLoading(true)
-      Auth.confirmSignUp(username, code).then(response => {
+      confirmSignUp({
+        username: username,
+        code: code
+      }).then(response => {
         setSeverity('success');
         setMessage(`Account verified! Please log in.`);
         setOpen(true)
@@ -113,11 +118,9 @@ export default function VerifyForm(props) {
       <Typography variant="h4" gutterBottom>
         Check your email
       </Typography>
-
       <Typography variant="body1" gutterBottom marginBottom={3}>
         We sent a verification code to your email
       </Typography>
-
       <Stack spacing={3} marginBottom={3}>
         <TextField
           name="text"
@@ -189,18 +192,12 @@ export default function VerifyForm(props) {
         />
 
       </Stack>
-
-
-
       <LoadingButton loading={loading} fullWidth size="large" type="submit" variant="contained" onClick={confirmSignUp}>
         Verify
       </LoadingButton>
-
-
       <Typography variant='caption' gutterBottom marginY={2} textAlign="center" sx={{ opacity: 0.8 }}>
         Never got it? <Link sx={{ cursor: 'pointer' }} onClick={handleResendVerification}>Resend</Link>
       </Typography>
-
       <Backdrop
         sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }}
         open={backdropOpen}

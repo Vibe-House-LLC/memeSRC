@@ -3,7 +3,7 @@ import { Helmet } from 'react-helmet-async';
 import { styled } from '@mui/material/styles';
 import { Button, Typography, Container, Slider, Box } from '@mui/material';
 import { fabric } from 'fabric';
-import { API } from 'aws-amplify';
+import { API } from 'aws-amplify/api';
 
 const StyledContent = styled('div')(({ theme }) => ({
   margin: 'auto',
@@ -168,8 +168,13 @@ export default function InpaintingPage() {
       }, 1000);
 
       try {
-        const response = await API.post('publicapi', '/inpaint', {
-          body: data
+        const response = await post({
+          apiName: 'publicapi',
+          path: '/inpaint',
+
+          options: {
+            body: data
+          }
         });
         setImageSrc(response.imageData);
       } catch (error) {

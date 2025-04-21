@@ -1,10 +1,11 @@
+import { signIn } from 'aws-amplify/auth';
 import { useContext, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 // @mui
 import { Link, Stack, IconButton, InputAdornment, TextField, Checkbox, FormControlLabel, Typography, styled } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
-// components
-import { API, Auth } from 'aws-amplify';
+import { Auth } from 'aws-amplify/auth';
+import { API } from 'aws-amplify/api';
 import Iconify from '../../../components/iconify';
 import { UserContext } from '../../../UserContext';
 import { SnackbarContext } from '../../../SnackbarContext';
@@ -66,8 +67,14 @@ export default function LoginForm() {
 
 
     if (username && password) {
-      Auth.signIn(username, password).then((x) => {
-        API.post('publicapi', '/user/update/status').then(response => {
+      signIn({
+        username: username,
+        password: password
+      }).then((x) => {
+        post({
+          apiName: 'publicapi',
+          path: '/user/update/status'
+        }).then(response => {
           getShowsWithFavorites().then(loadedShows => {
             setShows(loadedShows)
             window.localStorage.setItem('memeSRCShows', JSON.stringify(loadedShows))

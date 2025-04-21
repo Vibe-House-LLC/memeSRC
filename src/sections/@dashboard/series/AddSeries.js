@@ -1,5 +1,7 @@
+import { generateClient } from 'aws-amplify/api';
+const client = generateClient();
 import { Autocomplete, Button, CircularProgress, Grid, TextField, Typography } from "@mui/material";
-import { API, graphqlOperation } from "aws-amplify";
+import { API, graphqlOperation } from 'aws-amplify/api';
 import { useEffect, useState } from "react";
 import { LoadingButton } from "@mui/lab";
 import { useNavigate } from "react-router-dom";
@@ -36,9 +38,11 @@ export default function AddSeries() {
             statusText
         }
 
-        API.graphql(
-            graphqlOperation(createSeries, { input: seriesData })
-        ).then((result) => {
+        client.graphql({
+            query: createSeries,
+            variables: { input: seriesData },
+            authMode: 'awsIam'
+        }).then((result) => {
             navigate('/dashboard/series');
         }).catch((error) => {
             console.log(error);
@@ -48,9 +52,14 @@ export default function AddSeries() {
 
     const searchTvdb = async () => {
         setTvdbResultsLoading(true);
-        await API.get('publicapi', '/tvdb/search', {
-            'queryStringParameters': {
-                'query': tvdbSearchQuery
+        await get({
+            apiName: 'publicapi',
+            path: '/tvdb/search',
+
+            options: {
+                'queryStringParameters': {
+                    'query': tvdbSearchQuery
+                }
             }
         }).then(results => {
             console.log(results)
@@ -65,7 +74,10 @@ export default function AddSeries() {
     }
 
     const getTvdbSeasons = async () => {
-        await API.get('publicapi', `/tvdb/series/${tvdbid}/extended`)
+        await get({
+            apiName: 'publicapi',
+            path: `/tvdb/series/${tvdbid}/extended`
+        })
             .then(results => {
                 setSeriesSeasons(results.seasons);
                 console.log(results.seasons)

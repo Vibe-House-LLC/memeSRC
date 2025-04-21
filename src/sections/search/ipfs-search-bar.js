@@ -3,7 +3,7 @@
 import styled from "@emotion/styled";
 import { Link, Fab, FormControl, Grid, InputBase, MenuItem, Select, Typography, Divider, Box, Stack, Container, ListSubheader } from "@mui/material";
 import { ArrowBack, Close, Favorite, MapsUgc, Search, Shuffle } from "@mui/icons-material";
-import { API } from 'aws-amplify';
+import { API } from 'aws-amplify/api';
 import { Children, cloneElement, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { LoadingButton } from "@mui/lab";
 import { Link as RouterLink, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -171,7 +171,10 @@ export default function IpfsSearchBar(props) {
       sessionID = sessionStorage.getItem("sessionID");
       return Promise.resolve(sessionID);
     }
-    return API.get('publicapi', '/uuid')
+    return get({
+      apiName: 'publicapi',
+      path: '/uuid'
+    })
       .then(generatedSessionID => {
         sessionStorage.setItem("sessionID", generatedSessionID);
         return generatedSessionID;
@@ -304,7 +307,6 @@ export default function IpfsSearchBar(props) {
         </Grid>
       </StyledHeader>
       <Divider sx={{ mb: 2.5 }} />
-
       {pathname.startsWith("/frame") &&
         <Container maxWidth='xl' disableGutters sx={{ px: 1 }}>
           <Box
@@ -378,14 +380,12 @@ export default function IpfsSearchBar(props) {
       <StyledRightFooter className="bottomBtn" hasAd={showAd}>
         <StyledButton onClick={() => { loadRandomFrame(cid) }} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
       </StyledRightFooter>
-
       {showAd && (
         <StyledAdFooter>
           <FixedMobileBannerAd />
         </StyledAdFooter>
       )}
-      
       <AddCidPopup open={addNewCidOpen} setOpen={setAddNewCidOpen} />
     </>
-  )
+  );
 }

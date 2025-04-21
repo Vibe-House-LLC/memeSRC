@@ -1,5 +1,7 @@
+import { generateClient } from 'aws-amplify/api';
+const client = generateClient();
 import { Container, Divider, IconButton, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from "@mui/material";
-import { API, graphqlOperation } from "aws-amplify";
+import { API, graphqlOperation } from 'aws-amplify/api';
 import { useEffect, useState } from "react";
 import { Add } from "@mui/icons-material";
 import { listV2ContentMetadata } from "../graphql/queries";
@@ -9,9 +11,11 @@ import AliasTableRow from "../components/alias-table-row/AliasTableRow";
 
 const getAllMetadataObjects = (nextToken = null) => {
   return new Promise((resolve, reject) => {
-    API.graphql(
-      graphqlOperation(listV2ContentMetadata, { nextToken })
-    ).then(response => {
+    client.graphql({
+      query: listV2ContentMetadata,
+      variables: { nextToken },
+      authMode: 'awsIam'
+    }).then(response => {
       const newNextToken = response?.data?.listV2ContentMetadata?.nextToken;
       const items = response?.data?.listV2ContentMetadata?.items;
       resolve({

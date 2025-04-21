@@ -51,7 +51,7 @@
 
 
 import { useContext, useState } from 'react';
-import { API } from "aws-amplify";
+import { API } from 'aws-amplify/api';
 import { useNavigate } from 'react-router-dom';
 import getSessionID from "./getSessionsId";
 import fetchShows from "./fetchShows";
@@ -106,7 +106,11 @@ function useLoadRandomFrame() {
                     },
                 };
 
-                const response = await API.get(apiName, path, myInit);
+                const response = await get({
+                    apiName: apiName,
+                    path: path,
+                    options: myInit
+                });
                 const fid = response.frame_id;
                 navigate(`/frame/${fid}`)
                 setLoadingRandom(false)

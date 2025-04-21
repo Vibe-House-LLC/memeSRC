@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Divider, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography, Button, TextField, CircularProgress, Pagination, Stack, Skeleton } from "@mui/material";
-import { Storage } from 'aws-amplify';
+import { Storage } from 'aws-amplify/storage';
 import { Buffer } from 'buffer';
 import sanitizeHtml from 'sanitize-html';
 import { useNavigate } from 'react-router-dom';
@@ -60,14 +60,15 @@ const SubtitleViewerPage = () => {
   const fetchSubtitles = async () => {
     setLoading(true);
     try {
-      const subtitlesDownload = await Storage.get(
-        `src/${formValues.showId}/${formValues.season}/${formValues.episode}/_docs.csv`,
-        { 
+      const subtitlesDownload = await downloadData({
+        key: `src/${formValues.showId}/${formValues.season}/${formValues.episode}/_docs.csv`,
+
+        options: { 
           level: 'public',
           download: true,
           customPrefix: { public: 'protected/' }
         }
-      );
+      });
 
       const subtitlesCsv = await subtitlesDownload.Body.text();
       const parsedSubtitles = subtitlesCsv.split('\n').slice(1).map(line => {

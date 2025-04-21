@@ -1,4 +1,6 @@
-import { API, graphqlOperation } from "aws-amplify";
+import { generateClient } from 'aws-amplify/api';
+const client = generateClient();
+import { API, graphqlOperation } from 'aws-amplify/api';
 import { getFrameSubtitle } from "../graphql/queries"; // assuming queries.js is in the same directory
 
 const ERROR_SUBTITLE = "ERROR: AWAITING DDB CACHE";
@@ -99,7 +101,11 @@ const getFrame = async (fid) => {
     console.warn("Failed to fetch frame data from DynamoDB. Falling back to REST API:", error);
     
     try {
-      const restApiData = await API.get('publicapi', '/frame', { queryStringParameters: { fid } });
+      const restApiData = await get({
+        apiName: 'publicapi',
+        path: '/frame',
+        options: { queryStringParameters: { fid } }
+      });
       if (restApiData) {
         return restApiData; // Return the data directly from the REST API
       }

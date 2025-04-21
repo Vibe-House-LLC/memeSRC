@@ -1,6 +1,10 @@
+import { generateClient } from 'aws-amplify/api';
+const client = generateClient();
+import { getCurrentUser } from 'aws-amplify/auth';
 // ShowContext.js
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import { API, graphqlOperation, Auth } from 'aws-amplify';
+import { Auth } from 'aws-amplify/auth';
+import { API, graphqlOperation } from 'aws-amplify/api';
 import { listFavorites } from '../graphql/queries';
 import { UserContext } from '../UserContext';
 
@@ -53,7 +57,7 @@ export const ShowProvider = ({ children }) => {
 
     async function getCacheKey() {
         try {
-            const currentUser = await Auth.currentAuthenticatedUser();
+            const currentUser = await getCurrentUser();
             return `showsCache-${currentUser.username}-${APP_VERSION}`;
         } catch {
             return `showsCache-${APP_VERSION}`;
@@ -91,10 +95,16 @@ export const ShowProvider = ({ children }) => {
         do {
             // Disable ESLint check for await-in-loop
             // eslint-disable-next-line no-await-in-loop
-            const result = await API.graphql(graphqlOperation(listFavorites, {
-                limit: 10,
-                nextToken,
-            }));
+            const result = await client.graphql({
+                query: listFavorites,
+
+                variables: {
+                    limit: 10,
+                    nextToken,
+                },
+
+                authMode: 'awsIam'
+            });
 
             allFavorites = allFavorites.concat(result.data.listFavorites.items);
             nextToken = result.data.listFavorites.nextToken;
@@ -106,7 +116,7 @@ export const ShowProvider = ({ children }) => {
 
     async function updateCacheAndReturnData(data, cacheKey) {
         try {
-            await Auth.currentAuthenticatedUser();
+            await getCurrentUser();
             const favorites = await fetchFavorites()
             const favoriteShowIds = new Set(favorites.map(favorite => favorite.cid));
 

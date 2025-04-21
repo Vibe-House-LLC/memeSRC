@@ -1,9 +1,15 @@
-import { API, graphqlOperation } from "aws-amplify";
+import { generateClient } from 'aws-amplify/api';
+const client = generateClient();
+import { API, graphqlOperation } from 'aws-amplify/api';
 import { listSeries } from "../graphql/queries";
 import { updateSeries } from "../graphql/mutations";
 
 async function getAllSeries(nextToken = null, series = []) {
-    const result = await API.graphql(graphqlOperation(listSeries, { nextToken }));
+    const result = await client.graphql({
+        query: listSeries,
+        variables: { nextToken },
+        authMode: 'awsIam'
+    });
     series.push(...result.data.listSeries.items);
 
     if (result.data.listSeries.nextToken) {
@@ -17,7 +23,11 @@ export async function updateSeriesData(series) {
         await promise; // Wait for the previous promise to resolve
 
         const updatedItem = { id: item.id, tvdbid: item.tvdbid };
-        const response = await API.graphql(graphqlOperation(updateSeries, { input: updatedItem }));
+        const response = await client.graphql({
+            query: updateSeries,
+            variables: { input: updatedItem },
+            authMode: 'awsIam'
+        });
         console.log(response);
     }, Promise.resolve()); // Initial promise
 }

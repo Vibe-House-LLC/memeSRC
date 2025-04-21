@@ -1,4 +1,4 @@
-import { API } from 'aws-amplify';
+import { API } from 'aws-amplify/api';
 import React, { useState, useCallback, useEffect, useContext, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -8,7 +8,10 @@ import { UserContext } from '../UserContext';
 
 const prepSessionID = async () => {
   if (!("sessionID" in sessionStorage)) {
-    API.get('publicapi', '/uuid')
+    get({
+      apiName: 'publicapi',
+      path: '/uuid'
+    })
       .then(generatedSessionID => {
         sessionStorage.setItem("sessionID", generatedSessionID);
         return generatedSessionID;
@@ -30,8 +33,16 @@ export default function SearchPage({ metadata }) {
 
   useEffect(() => {
     // Make sure API functions are warm
-    API.get('publicapi', '/search', { queryStringParameters: { warmup: true } })
-    API.get('publicapi', '/random', { queryStringParameters: { warmup: true } })
+    get({
+      apiName: 'publicapi',
+      path: '/search',
+      options: { queryStringParameters: { warmup: true } }
+    })
+    get({
+      apiName: 'publicapi',
+      path: '/random',
+      options: { queryStringParameters: { warmup: true } }
+    })
     // Prep sessionID for future use
     prepSessionID()
   }, [])

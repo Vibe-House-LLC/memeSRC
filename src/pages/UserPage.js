@@ -1,3 +1,5 @@
+import { generateClient } from 'aws-amplify/api';
+const client = generateClient();
 import { Helmet } from 'react-helmet-async';
 import { filter } from 'lodash';
 import { sentenceCase } from 'change-case';
@@ -28,7 +30,8 @@ import {
   TextField,
   CircularProgress,
 } from '@mui/material';
-import { Auth, API, graphqlOperation } from 'aws-amplify';
+import { Auth } from 'aws-amplify/auth';
+import { API, graphqlOperation } from 'aws-amplify/api';
 // components
 import { AutoFixHighRounded, Check, Delete, Edit, Message, Upload } from '@mui/icons-material';
 import Label from '../components/label';
@@ -133,7 +136,11 @@ async function disableUser(username) {
       Authorization: `${(await Auth.currentSession()).getAccessToken().getJwtToken()}`
     }
   }
-  return API.post(apiName, path, myInit);
+  return post({
+    apiName: apiName,
+    path: path,
+    options: myInit
+  });
 }
 
 async function updateUserCredits(id, username, credits) {
@@ -204,9 +211,11 @@ export default function UserPage() {
     }
 
     console.log(notificationData)
-    API.graphql(
-      graphqlOperation(createUserNotification, { input: notificationData })
-    ).then(response => {
+    client.graphql({
+      query: createUserNotification,
+      variables: { input: notificationData },
+      authMode: 'awsIam'
+    }).then(response => {
       console.log(response)
       setSendingNotification(false)
       setNotificationSent(true);
@@ -334,10 +343,16 @@ export default function UserPage() {
       }
     }
     try {
-      await API.post(apiName, path, myInit);
-      await API.graphql(
-        graphqlOperation(updateUserDetails, { input: { id: userObj.id, contributorAccessStatus: 'approved' } })
-      )
+      await post({
+        apiName: apiName,
+        path: path,
+        options: myInit
+      });
+      await client.graphql({
+        query: updateUserDetails,
+        variables: { input: { id: userObj.id, contributorAccessStatus: 'approved' } },
+        authMode: 'awsIam'
+      })
       setMessage(`${userObj.username} has been made a contributor!`)
       setSeverity('success');
       setOpen(true)
@@ -354,9 +369,11 @@ export default function UserPage() {
   const giveEarlyAccessInvite = async (userObj) => {
     handleCloseMenu();
     try {
-      await API.graphql(
-        graphqlOperation(updateUserDetails, { input: { id: userObj.id, earlyAccessStatus: 'invited' } })
-      )
+      await client.graphql({
+        query: updateUserDetails,
+        variables: { input: { id: userObj.id, earlyAccessStatus: 'invited' } },
+        authMode: 'awsIam'
+      })
       setMessage(`${userObj.username} has been invited to early access!`)
       setSeverity('success');
       setOpen(true)

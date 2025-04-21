@@ -3,7 +3,7 @@ import { Stack } from '@mui/system';
 import PropTypes from 'prop-types';
 import { useContext, useState } from 'react';
 import { LoadingButton } from '@mui/lab';
-import { API } from 'aws-amplify';
+import { API } from 'aws-amplify/api';
 import { useNavigate } from 'react-router-dom';
 import useSearchDetailsV2 from '../../hooks/useSearchDetailsV2';
 import { UserContext } from '../../UserContext';
@@ -23,7 +23,11 @@ export default function AddCidPopup({ open = false, setOpen = () => { } }) {
 
     const handleSaveCid = () => {
         setSaving(true)
-        API.post('publicapi', '/user/update/saveMetadata', { body: { cid } }).then(response => {
+        post({
+            apiName: 'publicapi',
+            path: '/user/update/saveMetadata',
+            options: { body: { cid } }
+        }).then(response => {
             console.log('SAVED METADATA', response)
             setSavedCids([
                 ...savedCids,

@@ -1,10 +1,12 @@
+import { generateClient } from 'aws-amplify/api';
+const client = generateClient();
 import { Helmet } from 'react-helmet-async';
 import { useContext, useEffect, useState } from 'react';
 import { styled } from '@mui/material/styles';
 import { Container, Typography } from '@mui/material';
 import PropTypes from 'prop-types';
 import { Link } from 'react-router-dom';
-import { API, graphqlOperation } from 'aws-amplify';
+import { API, graphqlOperation } from 'aws-amplify/api';
 import Logo from '../components/logo';
 import VerifyForm from '../sections/auth/login/VerifyForm';
 import SignupForm from '../sections/auth/login/SignupForm';

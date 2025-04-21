@@ -1,7 +1,7 @@
 import { useState, useEffect, useContext } from 'react';
 import { Box, Typography, Button, Container, LinearProgress, Chip, Card, Divider, Grid, Skeleton } from '@mui/material';
 import { DataGrid, GridOverlay } from '@mui/x-data-grid';
-import { API } from 'aws-amplify';
+import { API } from 'aws-amplify/api';
 import { Receipt } from '@mui/icons-material';
 import { LoadingButton } from '@mui/lab';
 import { UserContext } from '../UserContext';
@@ -18,9 +18,14 @@ const InvoiceListPage = () => {
 
   const logIntoCustomerPortal = () => {
     setLoadingSubscriptionUrl(true)
-    API.post('publicapi', '/user/update/getPortalLink', {
-      body: {
-        currentUrl: window.location.href
+    post({
+      apiName: 'publicapi',
+      path: '/user/update/getPortalLink',
+
+      options: {
+        body: {
+          currentUrl: window.location.href
+        }
       }
     }).then(results => {
       console.log(results)
@@ -40,8 +45,13 @@ const InvoiceListPage = () => {
     try {
       setLoading(true);
       const lastInvoiceId = invoices.length > 0 ? invoices[invoices.length - 1].id : null;
-      const response = await API.get('publicapi', '/user/update/listInvoices', {
-        ...(hasMore && { body: { lastInvoice: lastInvoiceId } }),
+      const response = await get({
+        apiName: 'publicapi',
+        path: '/user/update/listInvoices',
+
+        options: {
+          ...(hasMore && { body: { lastInvoice: lastInvoiceId } }),
+        }
       });
       console.log(response);
       setInvoices((prevInvoices) => [...prevInvoices, ...response.data]);

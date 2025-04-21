@@ -1,6 +1,8 @@
+import { getCurrentUser } from 'aws-amplify/auth';
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { API, Auth } from 'aws-amplify';
+import { Auth } from 'aws-amplify/auth';
+import { API } from 'aws-amplify/api';
 import { PropTypes } from "prop-types";
 import { UserContext } from '../../../UserContext';
 
@@ -44,8 +46,11 @@ export default function CheckAuth(props) {
         setUser(localStorageUser)
       }
       // Set up the user context
-      Auth.currentAuthenticatedUser().then((x) => {
-        API.get('publicapi', '/user/get').then(userDetails => {
+      getCurrentUser().then((x) => {
+        get({
+          apiName: 'publicapi',
+          path: '/user/get'
+        }).then(userDetails => {
           setUser({ ...x, ...x.signInUserSession.accessToken.payload, userDetails: userDetails?.data?.getUserDetails })  // if an authenticated user is found, set it into the context
           window.localStorage.setItem('memeSRCUserDetails', JSON.stringify({ ...x.signInUserSession.accessToken.payload, userDetails: userDetails?.data?.getUserDetails }))
           console.log(x)

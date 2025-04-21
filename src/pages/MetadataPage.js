@@ -1,3 +1,5 @@
+import { generateClient } from 'aws-amplify/api';
+const client = generateClient();
 import { Helmet } from 'react-helmet-async';
 // @mui
 import { Dialog, DialogTitle, DialogContent, FormControl, InputLabel, Select, MenuItem, DialogActions, TextField, List, CardHeader, Avatar, ListItem, ListItemText, Button, Container, Grid, Stack, Typography, Card, CardContent, CircularProgress, IconButton, Collapse } from '@mui/material';
@@ -11,7 +13,7 @@ import CardActions from '@mui/material/CardActions';
 import { styled } from '@mui/material/styles';
 // components
 import { useState, useEffect } from 'react';
-import { API, graphqlOperation } from 'aws-amplify';
+import { API, graphqlOperation } from 'aws-amplify/api';
 import Iconify from '../components/iconify';
 import { createContentMetadata, updateContentMetadata, deleteContentMetadata } from '../graphql/mutations';
 import { listContentMetadata } from '../graphql/queries';
@@ -35,13 +37,17 @@ const ExpandMore = styled((props) => {
 }));
 
 async function fetchMetadata(items = [], nextToken = null) {
-  const result = await API.graphql(
-    graphqlOperation(listContentMetadata, {
+  const result = await client.graphql({
+    query: listContentMetadata,
+
+    variables: {
       filter: {},
       limit: 10,
       nextToken
-    })
-  );
+    },
+
+    authMode: 'awsIam'
+  });
   const sortedMetadata = result.data.listContentMetadata.items.sort((a, b) => {
     if (a.title < b.title) return -1;
     if (a.title > b.title) return 1;
@@ -123,7 +129,11 @@ export default function MetadataPage() {
       }
     };
 
-    const result = await API.graphql(graphqlOperation(createContentMetadata, newMetadataItem));
+    const result = await client.graphql({
+      query: createContentMetadata,
+      variables: newMetadataItem,
+      authMode: 'awsIam'
+    });
 
     console.log(result)
 
@@ -182,7 +192,11 @@ export default function MetadataPage() {
     };
 
     try {
-      const result = await API.graphql(graphqlOperation(deleteContentMetadata, deletedMetadataItem));
+      const result = await client.graphql({
+        query: deleteContentMetadata,
+        variables: deletedMetadataItem,
+        authMode: 'awsIam'
+      });
       console.log(result);
 
       // Update the metadata state by filtering out the deleted item

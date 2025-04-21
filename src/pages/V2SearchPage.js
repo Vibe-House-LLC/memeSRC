@@ -1,9 +1,11 @@
+import { generateClient } from 'aws-amplify/api';
+const client = generateClient();
 // V2SearchPage.js
 
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { Grid, CircularProgress, Card, Chip, Typography, Button, IconButton, Dialog, DialogContent, DialogActions, Box, CardContent, TextField } from '@mui/material';
 import styled from '@emotion/styled';
-import { API, graphqlOperation } from 'aws-amplify';
+import { API, graphqlOperation } from 'aws-amplify/api';
 import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import InfiniteScroll from 'react-infinite-scroll-component';
 import useMediaQuery from '@mui/material/useMediaQuery';

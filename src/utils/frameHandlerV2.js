@@ -1,5 +1,5 @@
 import { Buffer } from "buffer";
-import { Storage } from "aws-amplify";
+import { Storage } from 'aws-amplify/storage';
 import sanitizeHtml from 'sanitize-html';
 import { extractVideoFrames } from './videoFrameExtractor';
 
@@ -50,7 +50,10 @@ const fetchFrameSubtitleAndImage = async (cid, season, episode, frame) => {
   episode = parseInt(episode, 10);
   frame = parseInt(frame, 10);
 
-  const csvDownload = (await Storage.get(`src/${cid}/${season}/${episode}/_docs.csv`, { level: 'public', download: true, customPrefix: { public: 'protected/' } })).Body
+  const csvDownload = (await downloadData({
+    key: `src/${cid}/${season}/${episode}/_docs.csv`,
+    options: { level: 'public', download: true, customPrefix: { public: 'protected/' } }
+  })).Body
   const csvData = await csvDownload.text().split('\n').map((row) => row.split(','));
 
   const { subtitle } = findSubtitleForFrame(csvData, season, episode, frame);
@@ -107,13 +110,19 @@ const fetchFrameInfo = async (cid, season, episode, frame, options = {}) => {
     frame = parseInt(frame, 10);
   
 
-    const metadataDownload = (await Storage.get(`src/${cid}/00_metadata.json`, { level: 'public', download: true, customPrefix: { public: 'protected/' } })).Body
+    const metadataDownload = (await downloadData({
+      key: `src/${cid}/00_metadata.json`,
+      options: { level: 'public', download: true, customPrefix: { public: 'protected/' } }
+    })).Body
 
     const metadata = JSON.parse((await metadataDownload.text()))
 
     const seriesName = metadata.index_name;
 
-    const csvDownload = (await Storage.get(`src/${cid}/${season}/${episode}/_docs.csv`, { level: 'public', download: true, customPrefix: { public: 'protected/' } })).Body
+    const csvDownload = (await downloadData({
+      key: `src/${cid}/${season}/${episode}/_docs.csv`,
+      options: { level: 'public', download: true, customPrefix: { public: 'protected/' } }
+    })).Body
     const csvData = (await csvDownload.text()).split('\n').map((row) => row.split(','));
   
 

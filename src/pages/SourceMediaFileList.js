@@ -1,3 +1,5 @@
+import { generateClient } from 'aws-amplify/api';
+const client = generateClient();
 import { Helmet } from 'react-helmet-async';
 import { filter } from 'lodash';
 import { sentenceCase } from 'change-case';
@@ -21,7 +23,9 @@ import {
   TableContainer,
   TablePagination,
 } from '@mui/material';
-import { Auth, API, Storage } from 'aws-amplify';
+import { Auth } from 'aws-amplify/auth';
+import { API } from 'aws-amplify/api';
+import { Storage } from 'aws-amplify/storage';
 import { useNavigate, useParams } from 'react-router-dom';
 // components
 import Label from '../components/label';
@@ -314,11 +318,15 @@ const generateDownloadLink = async (key) => {
 
   const s3Object = parseKey(key);
   console.log(s3Object)
-  Storage.get(s3Object.key, {
-    validateObjectExistence: true,
-    level: s3Object.level,
-    identityId: s3Object.identityId,
-    download: true
+  downloadData({
+    key: s3Object.key,
+
+    options: {
+      validateObjectExistence: true,
+      level: s3Object.level,
+      identityId: s3Object.identityId,
+      download: true
+    }
   }).then(downloadLink => {
     downloadBlob(downloadLink.Body, s3Object.fileName)
   }).catch(error => console.log(error))

@@ -1,6 +1,8 @@
+import { getCurrentUser } from 'aws-amplify/auth';
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { API, Auth } from 'aws-amplify';
+import { Auth } from 'aws-amplify/auth';
+import { API } from 'aws-amplify/api';
 import { PropTypes } from "prop-types";
 import { UserContext } from '../../../UserContext';
 import { getShowsWithFavorites } from "../../../utils/fetchShowsRevised";
@@ -102,8 +104,11 @@ export default function GuestAuth(props) {
 
       // Set up the user context
       // console.log(user)
-      Auth.currentAuthenticatedUser().then((x) => {
-        API.get('publicapi', '/user/get').then(userDetails => {
+      getCurrentUser().then((x) => {
+        get({
+          apiName: 'publicapi',
+          path: '/user/get'
+        }).then(userDetails => {
           getShowsWithFavorites(userDetails?.data?.getUserDetails?.favorites ? JSON.parse(userDetails?.data?.getUserDetails?.favorites) : []).then(loadedShows => {
             if (!shows?.some(show => show.isFavorite)) {
               setDefaultShow('_universal')

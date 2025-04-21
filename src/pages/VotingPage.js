@@ -1,6 +1,9 @@
+import { generateClient } from 'aws-amplify/api';
+const client = generateClient();
 import React, { useContext, useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import PropTypes from 'prop-types';
-import { API, graphqlOperation, Auth } from 'aws-amplify';
+import { Auth } from 'aws-amplify/auth';
+import { API, graphqlOperation } from 'aws-amplify/api';
 import {
   Container,
   Grid,
@@ -103,7 +106,7 @@ const MagicVoteWrapper = styled('div')(({ theme, magicEnabled }) => ({
       },
     },
   }),
-})); 
+}));
 
 const StyledImg = styled('img')``;
 
@@ -310,10 +313,15 @@ export default function VotingPage() {
       }
 
       try {
-        const response = await API.get('publicapi', '/votes/search', {
-          queryStringParameters: {
-            prefix: searchValue
-          },
+        const response = await get({
+          apiName: 'publicapi',
+          path: '/votes/search',
+
+          options: {
+            queryStringParameters: {
+              prefix: searchValue
+            },
+          }
         });
         
         const hits = response.hits || [];
@@ -569,7 +577,10 @@ export default function VotingPage() {
             ? '/vote/new/top/battleground'
             : '/vote/new/top/upvotes';
 
-        const topVotesResponse = await API.get('publicapi', apiEndpoint);
+        const topVotesResponse = await get({
+          apiName: 'publicapi',
+          path: apiEndpoint
+        });
         const topVotesData = JSON.parse(topVotesResponse);
 
         const newVoteData = {};
@@ -591,8 +602,13 @@ export default function VotingPage() {
         const visibleSeriesIds = seriesIds.slice(0, INITIAL_ITEMS + ITEMS_PER_LOAD);
 
         try {
-          const votesResponse = await API.post('publicapi', '/vote/new/count', {
-            body: { seriesIds: visibleSeriesIds }
+          const votesResponse = await post({
+            apiName: 'publicapi',
+            path: '/vote/new/count',
+
+            options: {
+              body: { seriesIds: visibleSeriesIds }
+            }
           });
           const votesData = JSON.parse(votesResponse);
 
@@ -718,10 +734,15 @@ export default function VotingPage() {
     if (debouncedSearchText) {
       const fetchSearchResults = async () => {
         try {
-          const response = await API.get('publicapi', '/votes/search', {
-            queryStringParameters: {
-              prefix: debouncedSearchText
-            },
+          const response = await get({
+            apiName: 'publicapi',
+            path: '/votes/search',
+
+            options: {
+              queryStringParameters: {
+                prefix: debouncedSearchText
+              },
+            }
           });
 
           const hits = response.hits;
@@ -855,11 +876,16 @@ export default function VotingPage() {
       setVotingStatus((prevStatus) => ({ ...prevStatus, [seriesId]: boost }));
 
       try {
-        await API.post('publicapi', '/vote', {
-          body: {
-            seriesId,
-            boost,
-          },
+        await post({
+          apiName: 'publicapi',
+          path: '/vote',
+
+          options: {
+            body: {
+              seriesId,
+              boost,
+            },
+          }
         });
 
         // Update voteData in state
@@ -908,11 +934,16 @@ export default function VotingPage() {
     setMagicVoteDialogOpen(false);
 
     try {
-      await API.post('publicapi', '/vote', {
-        body: {
-          seriesId,
-          boost,
-        },
+      await post({
+        apiName: 'publicapi',
+        path: '/vote',
+
+        options: {
+          body: {
+            seriesId,
+            boost,
+          },
+        }
       });
 
       // Calculate credit cost based on multiplier to match UI
@@ -1045,8 +1076,13 @@ export default function VotingPage() {
 
   const submitRequest = () => {
     setSubmittingRequest(true);
-    API.post('publicapi', '/requests/add', {
-      body: selectedRequest,
+    post({
+      apiName: 'publicapi',
+      path: '/requests/add',
+
+      options: {
+        body: selectedRequest,
+      }
     })
       .then((response) => {
         setOpenAddRequest(false);
@@ -1130,8 +1166,13 @@ export default function VotingPage() {
   const fetchVoteDataForSeries = useCallback(
     async (seriesIds) => {
       try {
-        const votesResponse = await API.post('publicapi', '/vote/new/count', {
-          body: { seriesIds },
+        const votesResponse = await post({
+          apiName: 'publicapi',
+          path: '/vote/new/count',
+
+          options: {
+            body: { seriesIds },
+          }
         });
 
         // Check if votesResponse is a string and parse it
@@ -1200,7 +1241,10 @@ export default function VotingPage() {
     
     try {
       // Make the actual API call to refresh votes
-      await API.post('publicapi', '/votes/refresh');
+      await post({
+        apiName: 'publicapi',
+        path: '/votes/refresh'
+      });
       
       // After successful refresh, fetch the updated data
       await fetchVoteData(rankMethod);

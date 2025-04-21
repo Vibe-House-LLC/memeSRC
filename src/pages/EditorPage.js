@@ -1,3 +1,5 @@
+import { generateClient } from 'aws-amplify/api';
+const client = generateClient();
 import { Fragment, forwardRef, memo, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { fabric } from 'fabric';
 import { FabricJSCanvas, useFabricJSEditor } from 'fabricjs-react'
@@ -7,7 +9,8 @@ import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
 import { Accordion, AccordionDetails, AccordionSummary, Backdrop, Button, ButtonGroup, Card, CircularProgress, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, Tab, Tabs, TextField, ToggleButton, ToggleButtonGroup, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { AccessTime, Add, AddCircleOutline, AddPhotoAlternate, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ClosedCaption, ContentCopy, FolderOpen, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, History, HistoryToggleOffRounded, IosShare, Menu, MoreTime, Redo, Save, Share, Timelapse, Timeline, Undo, Update, ZoomIn, ZoomOut } from '@mui/icons-material';
-import { API, Storage, graphqlOperation } from 'aws-amplify';
+import { API, graphqlOperation } from 'aws-amplify/api';
+import { Storage } from 'aws-amplify/storage';
 import { Box } from '@mui/system';
 import { Helmet } from 'react-helmet-async';
 import TextEditorControls from '../components/TextEditorControls';
@@ -230,7 +233,11 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
   // Warm up the UUID function for faster save dialog response
   useEffect(() => {
-    API.get('publicapi', '/uuid', { queryStringParameters: { warmup: true } })
+    get({
+      apiName: 'publicapi',
+      path: '/uuid',
+      options: { queryStringParameters: { warmup: true } }
+    })
   }, [])
 
   useEffect(() => {
@@ -252,7 +259,10 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       sessionID = sessionStorage.getItem("sessionID");
       return Promise.resolve(sessionID);
     }
-    return API.get('publicapi', '/uuid')
+    return get({
+      apiName: 'publicapi',
+      path: '/uuid'
+    })
       .then(generatedSessionID => {
         sessionStorage.setItem("sessionID", generatedSessionID);
         return generatedSessionID;
@@ -383,7 +393,10 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         const fileName = `projects/${editorProjectId}.json`;
 
         // Fetch the serialized canvas state from S3 under the user's protected folder
-        const serializedCanvas = await Storage.get(fileName, { level: 'protected' });
+        const serializedCanvas = await getUrl({
+          key: fileName,
+          options: { level: 'protected' }
+        });
 
         if (serializedCanvas) {
           // Fetch the actual content from S3. 
@@ -592,26 +605,36 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       .then(blob => {
         setImageBlob(blob);
 
-        API.get('publicapi', '/uuid').then(uuid => {
+        get({
+          apiName: 'publicapi',
+          path: '/uuid'
+        }).then(uuid => {
           const filename = `${uuid}.jpg`;
           setGeneratedImageFilename(filename);
 
           // Save public version of the image
-          Storage.put(`${uuid}.jpg`, blob, {
-            resumable: true,
-            contentType: "image/jpeg",
-            completeCallback: (event) => {
-              Storage.get(event.key).then(() => {
-                const file = new File([blob], filename, { type: 'image/jpeg' });
-                setShareImageFile(file);
-                setImageUploading(false);
-              });
-            },
-            progressCallback: (progress) => {
-              console.log(`Uploaded: ${progress.loaded}/${progress.total}`);
-            },
-            errorCallback: (err) => {
-              console.error('Unexpected error while uploading', err);
+          uploadData({
+            key: `${uuid}.jpg`,
+            data: blob,
+
+            options: {
+              resumable: true,
+              contentType: "image/jpeg",
+              completeCallback: (event) => {
+                getUrl({
+                  key: event.key
+                }).then(() => {
+                  const file = new File([blob], filename, { type: 'image/jpeg' });
+                  setShareImageFile(file);
+                  setImageUploading(false);
+                });
+              },
+              progressCallback: (progress) => {
+                console.log(`Uploaded: ${progress.loaded}/${progress.total}`);
+              },
+              errorCallback: (err) => {
+                console.error('Unexpected error while uploading', err);
+              }
             }
           });
 
@@ -766,11 +789,15 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
   async function checkMagicResult(id) {
     try {
-      const result = await API.graphql(graphqlOperation(`query MyQuery {
-            getMagicResult(id: "${id}") {
-              results
-            }
-          }`));
+      const result = await client.graphql({
+        query: `query MyQuery {
+              getMagicResult(id: "${id}") {
+                results
+              }
+            }`,
+
+        authMode: 'awsIam'
+      });
       return result.data.getMagicResult?.results;
     } catch (error) {
       console.error("Error fetching magic result:", error);
@@ -911,8 +938,13 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       //   }, 1000);
 
       try {
-        const response = await API.post('publicapi', '/inpaint', {
-          body: data
+        const response = await post({
+          apiName: 'publicapi',
+          path: '/inpaint',
+
+          options: {
+            body: data
+          }
         });
 
         const magicResultId = response.magicResultId;
@@ -2119,9 +2151,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
           Copied to clipboard!
         </Alert>
       </Snackbar>
-
       <LoadingBackdrop open={loadingInpaintingResult} />
-
       <Dialog
         open={openSelectResult}
         aria-labelledby="alert-dialog-title"

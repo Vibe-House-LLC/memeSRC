@@ -1,8 +1,11 @@
+import { generateClient } from 'aws-amplify/api';
+const client = generateClient();
 import { useEffect, useState } from 'react';
 import { Container, Typography, ImageList, ImageListItem, Button } from '@mui/material';
 import { Add } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { API, Storage, graphqlOperation } from 'aws-amplify';
+import { API, graphqlOperation } from 'aws-amplify/api';
+import { Storage } from 'aws-amplify/storage';
 import BasePage from './BasePage';
 import { listEditorProjects } from '../graphql/queries';
 
@@ -13,7 +16,10 @@ export default function EditorProjectsPage() {
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        const projectsData = await API.graphql(graphqlOperation(listEditorProjects));
+        const projectsData = await client.graphql({
+          query: listEditorProjects,
+          authMode: 'awsIam'
+        });
         const projectsList = projectsData.data.listEditorProjects.items;
         
         const mappedProjectsPromises = projectsList.map(async project => {
@@ -21,7 +27,10 @@ export default function EditorProjectsPage() {
           const key = `projects/${project.id}-preview.jpg`;
   
           try {
-            imageUrl = await Storage.get(key, { level: 'protected' });
+            imageUrl = await getUrl({
+              key: key,
+              options: { level: 'protected' }
+            });
           } catch (error) {
             console.error(`Error fetching image for project ${project.id}:`, error);
             imageUrl = 'https://picsum.photos/id/237/200/267'; // Fallback image

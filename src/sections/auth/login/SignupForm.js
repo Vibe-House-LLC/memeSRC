@@ -1,9 +1,11 @@
+import { signUp } from 'aws-amplify/auth';
 import { useContext, useEffect, useState } from 'react';
 // import { useNavigate } from 'react-router-dom';
 // @mui
 import { Link, Stack, IconButton, InputAdornment, TextField, Checkbox, Typography, styled, FormControlLabel, FormGroup } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
-import { API, Auth } from 'aws-amplify';
+import { Auth } from 'aws-amplify/auth';
+import { API } from 'aws-amplify/api';
 // utils
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import PropTypes from 'prop-types';
@@ -110,23 +112,28 @@ export default function SignupForm(props) {
         'text': 'Signing Up...'
       })
 
-      Auth.signUp({
-        username,
-        password,
-        attributes: {
-          email,          // optional
-          // other custom attributes
-        },
-        autoSignIn: { // optional - enables auto sign in after user is confirmed
-          enabled: false,
+      signUp({
+        username: username,
+        password: password,
+
+        options: {
+          userAttributes: {
+            email,          // optional
+            // other custom attributes
+          }
         }
       }).then((result) => {
         console.log(result);
-        API.post('publicapi', '/user/new', {
-          body: {
-            username,
-            email,
-            sub: result.userSub
+        post({
+          apiName: 'publicapi',
+          path: '/user/new',
+
+          options: {
+            body: {
+              username,
+              email,
+              sub: result.userSub
+            }
           }
         }).then(apiResponse => {
           setSignupStatus({
@@ -332,19 +339,15 @@ export default function SignupForm(props) {
           </LoadingButton>
         </Stack>
       </form>
-
-
       {/* <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ my: 2 }}>
         <Checkbox name="remember" label="Remember me" />
         <Link variant="subtitle2" underline="hover">
           Forgot password?
         </Link>
       </Stack> */}
-
-
     </>
   );
-};
+}
 
 SignupForm.propTypes = {
   setUser: PropTypes.func.isRequired,

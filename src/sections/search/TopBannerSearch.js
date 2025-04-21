@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { Link, Fab, FormControl, Grid, InputBase, MenuItem, Select, Typography, Divider } from "@mui/material";
 import { Close, Favorite, MapsUgc, Search, Shuffle } from "@mui/icons-material";
-import { API, graphqlOperation } from 'aws-amplify';
+import { API, graphqlOperation } from 'aws-amplify/api';
 import { useCallback, useContext, useEffect, useState } from "react";
 import { LoadingButton } from "@mui/lab";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
@@ -122,7 +122,10 @@ export default function TopBannerSearch(props) {
       sessionID = sessionStorage.getItem("sessionID");
       return Promise.resolve(sessionID);
     }
-    return API.get('publicapi', '/uuid')
+    return get({
+      apiName: 'publicapi',
+      path: '/uuid'
+    })
       .then(generatedSessionID => {
         sessionStorage.setItem("sessionID", generatedSessionID);
         return generatedSessionID;
@@ -256,5 +259,5 @@ export default function TopBannerSearch(props) {
       </StyledRightFooter>
       <AddCidPopup open={addNewCidOpen} setOpen={setAddNewCidOpen} />
     </>
-  )
+  );
 }

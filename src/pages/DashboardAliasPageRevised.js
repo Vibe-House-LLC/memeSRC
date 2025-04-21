@@ -1,6 +1,9 @@
+import { generateClient } from 'aws-amplify/api';
+const client = generateClient();
 import React, { useContext, useEffect, useState } from 'react';
 import { Container, Divider, IconButton, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography, Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField, CircularProgress } from "@mui/material";
-import { API, Storage, graphqlOperation } from 'aws-amplify';
+import { API, graphqlOperation } from 'aws-amplify/api';
+import { Storage } from 'aws-amplify/storage';
 import { Add, Edit, Delete, Refresh } from "@mui/icons-material";
 import { getV2ContentMetadata, listAliases } from '../graphql/queries';
 import { createAlias, updateAlias, deleteAlias, createV2ContentMetadata, updateV2ContentMetadata } from '../graphql/mutations';
@@ -10,7 +13,10 @@ import { SnackbarContext } from '../SnackbarContext';
 
 const fetchAliases = async () => {
   try {
-    const response = await API.graphql(graphqlOperation(listAliases));
+    const response = await client.graphql({
+      query: listAliases,
+      authMode: 'awsIam'
+    });
     return response.data.listAliases.items;
   } catch (error) {
     console.error("Error fetching aliases:", error);
@@ -41,7 +47,7 @@ const AliasFormDialog = ({ open, onClose, onSubmit, initialValues }) => {
       <DialogTitle>{initialValues.id ? 'Update Alias' : 'Create Alias'}</DialogTitle>
       <DialogContent>
         {!initialValues.id && ( // Show this field only when creating a new alias
-          <TextField
+          (<TextField
             autoFocus
             margin="dense"
             name="id"
@@ -51,7 +57,7 @@ const AliasFormDialog = ({ open, onClose, onSubmit, initialValues }) => {
             variant="outlined"
             value={formValues.id || ''}
             onChange={handleChange}
-          />
+          />)
         )}
         <TextField
           margin="dense"
@@ -138,7 +144,11 @@ const AliasManagementPageRevised = () => {
   const handleDeleteAlias = async () => {
     try {
       const input = { id: currentAlias.id };
-      await API.graphql(graphqlOperation(deleteAlias, { input }));
+      await client.graphql({
+        query: deleteAlias,
+        variables: { input },
+        authMode: 'awsIam'
+      });
       refreshAliases();
     } catch (error) {
       console.error("Error deleting alias:", error);
@@ -158,7 +168,10 @@ const AliasManagementPageRevised = () => {
   const refreshMetadata = (metadataId) => {
     setRefreshingMetadata(metadataId)
     console.log(metadataId)
-    Storage.get(`src/${metadataId}/00_metadata.json`, { level: 'public', download: true, customPrefix: { public: 'protected/' } }).then(response => {
+    downloadData({
+      key: `src/${metadataId}/00_metadata.json`,
+      options: { level: 'public', download: true, customPrefix: { public: 'protected/' } }
+    }).then(response => {
       response.Body.text().then(async resultString => {
         console.log(resultString)
         const result = JSON.parse(resultString)
@@ -177,7 +190,11 @@ const AliasManagementPageRevised = () => {
         }
 
         try {
-          await API.graphql(graphqlOperation(updateV2ContentMetadata, { input }));
+          await client.graphql({
+            query: updateV2ContentMetadata,
+            variables: { input },
+            authMode: 'awsIam'
+          });
           setMessage(`${result.title}'s metadata has been refreshed.`)
           setSeverity('success')
           setSnackbarOpen(true)
@@ -217,12 +234,19 @@ const AliasManagementPageRevised = () => {
 
       let newMetadataCreated;
 
-      const doesMetadataExist = await API.graphql(graphqlOperation(getV2ContentMetadata, { id: aliasData.aliasV2ContentMetadataId }))
+      const doesMetadataExist = await client.graphql({
+        query: getV2ContentMetadata,
+        variables: { id: aliasData.aliasV2ContentMetadataId },
+        authMode: 'awsIam'
+      })
       // If the metadata doesn't exist, try to fetch it and add it.
       // If the metadata cannot be loaded, the enitire function will stop before any damage is done.
       if (!doesMetadataExist?.data?.getV2ContentMetadata?.id) {
         // Get the metadata
-        Storage.get(`src/${aliasData.aliasV2ContentMetadataId}/00_metadata.json`, { level: 'public', download: true, customPrefix: { public: 'protected/' } }).then(response => {
+        downloadData({
+          key: `src/${aliasData.aliasV2ContentMetadataId}/00_metadata.json`,
+          options: { level: 'public', download: true, customPrefix: { public: 'protected/' } }
+        }).then(response => {
           response.Body.text().then(async resultString => {
             console.log(resultString)
             const result = JSON.parse(resultString)
@@ -240,7 +264,11 @@ const AliasManagementPageRevised = () => {
               fontFamily: result?.fontFamily || null
             }
 
-            newMetadataCreated = await API.graphql(graphqlOperation(createV2ContentMetadata, { input: { ...newMetadataDetails } }))
+            newMetadataCreated = await client.graphql({
+              query: createV2ContentMetadata,
+              variables: { input: { ...newMetadataDetails } },
+              authMode: 'awsIam'
+            })
             console.log(newMetadataCreated)
           })
         }).catch(error => {
@@ -249,12 +277,20 @@ const AliasManagementPageRevised = () => {
       }
 
       if (isEditing) {
-        await API.graphql(graphqlOperation(updateAlias, { input }));
+        await client.graphql({
+          query: updateAlias,
+          variables: { input },
+          authMode: 'awsIam'
+        });
         setMessage(`${newMetadataCreated ? 'Metadata has been created and the ' : 'The '}alias has been updated!`)
         setSeverity('success')
         setSnackbarOpen(true)
       } else {
-        await API.graphql(graphqlOperation(createAlias, { input }));
+        await client.graphql({
+          query: createAlias,
+          variables: { input },
+          authMode: 'awsIam'
+        });
         setMessage(`The alias ${newMetadataCreated ? 'and metadata have' : 'has'} been created!`)
         setSeverity('success')
         setSnackbarOpen(true)

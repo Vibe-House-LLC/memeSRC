@@ -1,3 +1,5 @@
+import { generateClient } from 'aws-amplify/api';
+const client = generateClient();
 import { Helmet } from 'react-helmet-async';
 // @mui
 import { Dialog, DialogTitle, DialogContent, FormControl, InputLabel, Select, MenuItem, DialogActions, TextField, List, CardHeader, Avatar, ListItem, ListItemText, Button, Container, Grid, Stack, Typography, Card, CardContent, CircularProgress, IconButton, Collapse, Backdrop, Divider, LinearProgress } from '@mui/material';
@@ -11,7 +13,8 @@ import CardActions from '@mui/material/CardActions';
 import { styled } from '@mui/material/styles';
 // components
 import { useState, useEffect, useRef, useContext, Fragment } from 'react';
-import { API, Storage, graphqlOperation } from 'aws-amplify';
+import { API, graphqlOperation } from 'aws-amplify/api';
+import { Storage } from 'aws-amplify/storage';
 import { useParams } from 'react-router-dom';
 import { UploadFile } from '@mui/icons-material';
 import Dropzone from 'react-dropzone';
@@ -59,7 +62,11 @@ export default function AddToSeriesPage() {
         status: 'uploaded',
         userDetailsSourceMediaId: user.sub,
       };
-      const sourceMedia = await API.graphql(graphqlOperation(createSourceMedia, { input: sourceMediaInput }));
+      const sourceMedia = await client.graphql({
+        query: createSourceMedia,
+        variables: { input: sourceMediaInput },
+        authMode: 'awsIam'
+      });
       const sourceMediaId = sourceMedia.data.createSourceMedia.id;
 
       // Calculate total data size
@@ -79,10 +86,15 @@ export default function AddToSeriesPage() {
           setUploadedData(uploadProgresses.reduce((a, b) => a + b, 0)); // Sum all progresses
         };
 
-        await Storage.put(`${sourceMediaId}/${file.name}`, file, {
-          contentType: file.type,
-          level: 'protected',
-          progressCallback,
+        await uploadData({
+          key: `${sourceMediaId}/${file.name}`,
+          data: file,
+
+          options: {
+            contentType: file.type,
+            level: 'protected',
+            progressCallback,
+          }
         });
         console.log(`${file.name} uploaded!`);
 
@@ -106,9 +118,11 @@ export default function AddToSeriesPage() {
 
   useEffect(() => {
     if (!series) {
-      API.graphql(
-        graphqlOperation(getSeries, { id: seriesId })
-      ).then(response => {
+      client.graphql({
+        query: getSeries,
+        variables: { id: seriesId },
+        authMode: 'awsIam'
+      }).then(response => {
         setSeries(response.data.getSeries);
       }).catch(err => console.log(err))
     }

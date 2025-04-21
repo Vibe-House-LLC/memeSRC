@@ -1,8 +1,10 @@
+import { signOut } from 'aws-amplify/auth';
 import React, { useState, useEffect, useContext } from 'react';
 import { Box, Typography, Button, Container, Divider, Grid, Card, List, ListItem, ListItemIcon, ListItemText, IconButton, Chip, Skeleton, LinearProgress, CircularProgress } from '@mui/material';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { Receipt, Download, Block, SupportAgent, Bolt, AutoFixHighRounded, CreditCard, LockOpen, ContentCopy, CheckCircle } from '@mui/icons-material';
-import { API, Auth } from 'aws-amplify';
+import { Auth } from 'aws-amplify/auth';
+import { API } from 'aws-amplify/api';
 import { UserContext } from '../UserContext';
 import { useSubscribeDialog } from '../contexts/useSubscribeDialog';
 import { getShowsWithFavorites } from '../utils/fetchShowsRevised';
@@ -31,8 +33,13 @@ const AccountPage = () => {
     try {
       setLoadingInvoices(true);
       const lastInvoiceId = invoices.length > 0 ? invoices[invoices.length - 1].id : null;
-      const response = await API.get('publicapi', '/user/update/listInvoices', {
-        ...(hasMore && { body: { lastInvoice: lastInvoiceId } }),
+      const response = await get({
+        apiName: 'publicapi',
+        path: '/user/update/listInvoices',
+
+        options: {
+          ...(hasMore && { body: { lastInvoice: lastInvoiceId } }),
+        }
       });
       console.log(response);
       setInvoices((prevInvoices) => [...prevInvoices, ...response.data]);
@@ -85,9 +92,14 @@ const AccountPage = () => {
       setLoadingPortalUrl(true);
     }
     
-    API.post('publicapi', '/user/update/getPortalLink', {
-      body: {
-        currentUrl: window.location.href
+    post({
+      apiName: 'publicapi',
+      path: '/user/update/getPortalLink',
+
+      options: {
+        body: {
+          currentUrl: window.location.href
+        }
       }
     }).then(results => {
       console.log(results);
@@ -108,7 +120,7 @@ const AccountPage = () => {
   };
 
   const handleLogout = () => {
-    Auth.signOut().then(() => {
+    signOut().then(() => {
       userDetails?.setUser(null);
       window.localStorage.removeItem('memeSRCUserDetails')
       userDetails?.setDefaultShow('_universal')

@@ -1,6 +1,8 @@
+import { generateClient } from 'aws-amplify/api';
+const client = generateClient();
 import { AutoFixHighRounded, Block, Close, Favorite, Star, SupportAgent, ExpandMore, Clear, Check, Bolt, Share, ThumbUp, Feedback, ArrowBack, Settings } from '@mui/icons-material';
 import { Box, Button, Card, Checkbox, Chip, CircularProgress, Collapse, Dialog, DialogContent, DialogTitle, Divider, Fade, Grid, IconButton, LinearProgress, Typography, useMediaQuery, FormControlLabel, Fab, Stack } from '@mui/material';
-import { API, graphqlOperation } from 'aws-amplify';
+import { API, graphqlOperation } from 'aws-amplify/api';
 import { createContext, useState, useRef, useEffect, useContext } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { LoadingButton } from '@mui/lab';
@@ -104,10 +106,15 @@ export const DialogProvider = ({ children }) => {
   const buySubscription = () => {
     // console.log(selectedPlan)
     setLoading(true)
-    API.post('publicapi', '/user/update/getCheckoutSession', {
-      body: {
-        currentUrl: window.location.href.replace('pro', ''),
-        priceKey: selectedPlan
+    post({
+      apiName: 'publicapi',
+      path: '/user/update/getCheckoutSession',
+
+      options: {
+        body: {
+          currentUrl: window.location.href.replace('pro', ''),
+          priceKey: selectedPlan
+        }
       }
     }).then(results => {
       // console.log(results)
@@ -206,9 +213,11 @@ export const DialogProvider = ({ children }) => {
 
   useEffect(() => {
     if (countryCode !== 'US' && countryCode !== 'AU' && countryCode !== 'CA' && checkoutLink) {
-      API.graphql(
-        graphqlOperation(createLocationLeads, { input: { countryCode } })
-      ).then().catch(error => {
+      client.graphql({
+        query: createLocationLeads,
+        variables: { input: { countryCode } },
+        authMode: 'awsIam'
+      }).then().catch(error => {
         console.log(error)
       })
     }

@@ -1,4 +1,6 @@
-import { API } from "aws-amplify"
+import { generateClient } from 'aws-amplify/api';
+const client = generateClient();
+import { API } from 'aws-amplify/api';
 import { getAlias, getV2ContentMetadata } from "../graphql/queries"
 
 export default function getV2Metadata(seriesId) {

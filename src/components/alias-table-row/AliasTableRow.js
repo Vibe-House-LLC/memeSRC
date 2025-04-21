@@ -1,6 +1,8 @@
+import { generateClient } from 'aws-amplify/api';
+const client = generateClient();
 import { Add } from "@mui/icons-material";
 import { Button, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, TableCell, TableRow, TextField, Typography } from "@mui/material";
-import { API, graphqlOperation } from "aws-amplify";
+import { API, graphqlOperation } from 'aws-amplify/api';
 import { useContext, useState } from "react";
 import { LoadingButton } from "@mui/lab";
 import { getAlias } from "../../graphql/queries";
@@ -10,18 +12,30 @@ import { SnackbarContext } from "../../SnackbarContext";
 
 const saveCidToAlias = async (cid, alias) => {
     try {
-        const doesAliasExist = await API.graphql(graphqlOperation(getAlias, { id: alias }))
+        const doesAliasExist = await client.graphql({
+            query: getAlias,
+            variables: { id: alias },
+            authMode: 'awsIam'
+        })
 
         if (doesAliasExist?.data?.getAlias?.id) {
             // The alias exists.
-            const updatedAlias = await API.graphql(graphqlOperation(updateAlias, { input: { id: alias, aliasV2ContentMetadataId: cid } }))
+            const updatedAlias = await client.graphql({
+                query: updateAlias,
+                variables: { input: { id: alias, aliasV2ContentMetadataId: cid } },
+                authMode: 'awsIam'
+            })
             console.log(updatedAlias)
             return {
                 message: 'Alias has been updated!'
             }
         }
         // The alias does not exists.
-        const createdAlias = await API.graphql(graphqlOperation(createAlias, { input: { id: alias, aliasV2ContentMetadataId: cid } }))
+        const createdAlias = await client.graphql({
+            query: createAlias,
+            variables: { input: { id: alias, aliasV2ContentMetadataId: cid } },
+            authMode: 'awsIam'
+        })
         console.log(createdAlias)
         return {
             message: 'Alias has been created!'

@@ -1,7 +1,11 @@
+import { generateClient } from 'aws-amplify/api';
+const client = generateClient();
+import { getCurrentUser } from 'aws-amplify/auth';
 // FavoritesPage.js
 
 import React, { useState, useEffect, useContext } from 'react';
-import { API, graphqlOperation, Auth } from 'aws-amplify';
+import { Auth } from 'aws-amplify/auth';
+import { API, graphqlOperation } from 'aws-amplify/api';
 import { Typography, Grid, Card, CardContent, Button, Collapse, Stack } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import Container from '@mui/material/Container';
@@ -108,7 +112,7 @@ const APP_VERSION = process.env.REACT_APP_VERSION || 'defaultVersion';
 
 async function getCacheKey() {
   try {
-    const currentUser = await Auth.currentAuthenticatedUser();
+    const currentUser = await getCurrentUser();
     return `showsCache-${currentUser.username}-${APP_VERSION}`;
   } catch {
     return `showsCache-${APP_VERSION}`;
@@ -167,17 +171,23 @@ const FavoritesPage = () => {
 
   const fetchFavorites = async () => {
     try {
-      const currentUser = await Auth.currentAuthenticatedUser();
+      const currentUser = await getCurrentUser();
 
       let nextToken = null;
       let allFavorites = [];
 
       do {
         // eslint-disable-next-line no-await-in-loop
-        const result = await API.graphql(graphqlOperation(listFavorites, {
-          limit: 10,
-          nextToken,
-        }));
+        const result = await client.graphql({
+          query: listFavorites,
+
+          variables: {
+            limit: 10,
+            nextToken,
+          },
+
+          authMode: 'awsIam'
+        });
 
         allFavorites = allFavorites.concat(result.data.listFavorites.items);
         nextToken = result.data.listFavorites.nextToken;

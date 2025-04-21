@@ -1,7 +1,10 @@
+import { getCurrentUser } from 'aws-amplify/auth';
 import { useState, useEffect, useContext } from 'react';
 import { Box, Typography, Button, Container, Divider, Grid, Card, TextField, List, ListItem, ListItemIcon, ListItemText, IconButton, Avatar, Chip, Skeleton, LinearProgress, CircularProgress } from '@mui/material';
 import { Receipt, Download, Edit, Save, Cancel, Block, SupportAgent, Bolt, AutoFixHighRounded } from '@mui/icons-material';
-import { API, Auth, Storage } from 'aws-amplify';
+import { Auth } from 'aws-amplify/auth';
+import { API } from 'aws-amplify/api';
+import { Storage } from 'aws-amplify/storage';
 import { LoadingButton } from '@mui/lab';
 import { UserContext } from '../UserContext';
 import { useSubscribeDialog } from '../contexts/useSubscribeDialog';
@@ -54,8 +57,13 @@ const AccountPage = () => {
     try {
       setLoadingInvoices(true);
       const lastInvoiceId = invoices.length > 0 ? invoices[invoices.length - 1].id : null;
-      const response = await API.get('publicapi', '/user/update/listInvoices', {
-        ...(hasMore && { body: { lastInvoice: lastInvoiceId } }),
+      const response = await get({
+        apiName: 'publicapi',
+        path: '/user/update/listInvoices',
+
+        options: {
+          ...(hasMore && { body: { lastInvoice: lastInvoiceId } }),
+        }
       });
       console.log(response);
       setInvoices((prevInvoices) => [...prevInvoices, ...response.data]);
@@ -91,7 +99,7 @@ const AccountPage = () => {
   const handleUpdateEmail = async () => {
     try {
       setUpdatingEmail(true);
-      const user = await Auth.currentAuthenticatedUser();
+      const user = await getCurrentUser();
       await Auth.updateUserAttributes(user, { email });
       setEditingEmail(false);
       setIsVerifyingEmail(true);
@@ -134,7 +142,7 @@ const AccountPage = () => {
 
     try {
       setUpdatingPassword(true);
-      const user = await Auth.currentAuthenticatedUser();
+      const user = await getCurrentUser();
       await Auth.changePassword(user, currentPassword, newPassword);
       setCurrentPassword('');
       setNewPassword('');
@@ -161,19 +169,26 @@ const AccountPage = () => {
       const file = event.target.files[0];
       try {
         // Upload the profile photo to Storage
-        const response = await Storage.put(`profilePictures/${userDetails?.user?.sub}`, file, {
-          contentType: file.type, // contentType is optional
+        const response = await uploadData({
+          key: `profilePictures/${userDetails?.user?.sub}`,
+          data: file,
+
+          options: {
+            contentType: file.type, // contentType is optional
+          }
         });
 
         // Get the current authenticated user
-        const userObj = await Auth.currentAuthenticatedUser();
+        const userObj = await getCurrentUser();
 
         // Update the user's profile with the uploaded photo key
         const updatePictureResponse = await Auth.updateUserAttributes(userObj, {
           picture: response.key
         });
 
-        const newProfilePicture = await Storage.get(response.key)
+        const newProfilePicture = await getUrl({
+          key: response.key
+        })
         userDetails?.setUser({
           ...userDetails.user,
           profilePhoto: newProfilePicture

@@ -5,7 +5,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { CircularProgress, Container, Typography, Card, CardMedia, CardContent, Button, Grid, useMediaQuery, Box, List, ListItem, ListItemAvatar, Avatar, ListItemText, Skeleton } from '@mui/material';
 import PropTypes from 'prop-types';
-import { Storage } from "aws-amplify";
+import { Storage } from 'aws-amplify/storage';
 import sanitizeHtml from 'sanitize-html';
 import { extractVideoFrames } from '../utils/videoFrameExtractor';
 import { UserContext } from '../UserContext';
@@ -59,7 +59,10 @@ export default function V2EpisodePage({ setSeriesTitle }) {
         // const subtitlesResponse = await fetch(subtitlesUrl);
         // const subtitlesCsv = await subtitlesResponse.text();
 
-        const subtitlesDownload = (await Storage.get(`src/${confirmedCid}/${season}/${episode}/_docs.csv`, { level: 'public', download: true, customPrefix: { public: 'protected/' } })).Body
+        const subtitlesDownload = (await downloadData({
+          key: `src/${confirmedCid}/${season}/${episode}/_docs.csv`,
+          options: { level: 'public', download: true, customPrefix: { public: 'protected/' } }
+        })).Body
         const subtitlesCsv = await subtitlesDownload.text();
 
         const parsedSubtitles = subtitlesCsv.split('\n').slice(1).map(line => {

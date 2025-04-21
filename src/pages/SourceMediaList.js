@@ -1,3 +1,5 @@
+import { generateClient } from 'aws-amplify/api';
+const client = generateClient();
 import { Helmet } from 'react-helmet-async';
 import { filter } from 'lodash';
 import { sentenceCase } from 'change-case';
@@ -21,7 +23,8 @@ import {
   TableContainer,
   TablePagination,
 } from '@mui/material';
-import { Auth, API } from 'aws-amplify';
+import { Auth } from 'aws-amplify/auth';
+import { API } from 'aws-amplify/api';
 import { useNavigate } from 'react-router-dom';
 // components
 import Label from '../components/label';

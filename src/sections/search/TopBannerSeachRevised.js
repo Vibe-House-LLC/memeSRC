@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { Box, Button, Container, Divider, Fab, FormControl, Grid, InputBase, Link, MenuItem, Select, Stack, Typography, useMediaQuery } from "@mui/material";
 import { ArrowBack, Close, Favorite, MapsUgc, Search, Shuffle } from "@mui/icons-material";
-import { API, graphqlOperation } from 'aws-amplify';
+import { API, graphqlOperation } from 'aws-amplify/api';
 import { cloneElement, useCallback, useContext, useEffect, useState } from "react";
 import { LoadingButton } from "@mui/lab";
 import { Link as RouterLink, useLocation, useNavigate, useParams } from "react-router-dom";
@@ -143,7 +143,10 @@ export default function TopBannerSearchRevised(props) {
       sessionID = sessionStorage.getItem("sessionID");
       return Promise.resolve(sessionID);
     }
-    return API.get('publicapi', '/uuid')
+    return get({
+      apiName: 'publicapi',
+      path: '/uuid'
+    })
       .then(generatedSessionID => {
         sessionStorage.setItem("sessionID", generatedSessionID);
         return generatedSessionID;
@@ -274,7 +277,6 @@ export default function TopBannerSearchRevised(props) {
           </StyledRightFooter>
         </>
       }
-
       {pathname.startsWith("/frame") &&
         <>
           <Container maxWidth disableGutters sx={{ mt: isMobile ? 2 : 0 }}>
@@ -397,7 +399,6 @@ export default function TopBannerSearchRevised(props) {
           </Container>
         </>
       }
-
       {pathname.startsWith("/editor") &&
         <>
           <Container maxWidth disableGutters sx={{ mt: isMobile ? 2 : 0 }}>
@@ -506,7 +507,6 @@ export default function TopBannerSearchRevised(props) {
           </Container>
         </>
       }
-
       {pathname.startsWith("/vote") &&
         <>
           <Container maxWidth disableGutters sx={{ mt: isMobile ? 2 : 0 }}>
@@ -607,7 +607,6 @@ export default function TopBannerSearchRevised(props) {
           </Container>
         </>
       }
-
       {pathname.startsWith("/episode") &&
         <>
           <Container maxWidth disableGutters sx={{ mt: isMobile ? 8 : 8 }}>
@@ -710,5 +709,5 @@ export default function TopBannerSearchRevised(props) {
       }
       <AddCidPopup open={addNewCidOpen} setOpen={setAddNewCidOpen} />
     </>
-  )
+  );
 }

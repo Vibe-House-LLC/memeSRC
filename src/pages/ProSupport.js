@@ -1,5 +1,5 @@
 import { useContext, useEffect, useState } from 'react';
-import { API } from 'aws-amplify';
+import { API } from 'aws-amplify/api';
 import { Helmet } from 'react-helmet-async';
 import { Typography, Container, Grid, Stack, TextField, Box, Button, Paper, Divider, FormControl, FormLabel, Card, CardContent, List, ListItem, ListItemText, IconButton, Checkbox, FormControlLabel, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
@@ -50,10 +50,15 @@ export default function ProSupport() {
     if (validateForm()) {
       setLoadingSubmitStatus(true);
       try {
-        const response = await API.post('publicapi', '/user/update/proSupportMessage', {
-          body: {
-            message: messageInput,
-          },
+        const response = await post({
+          apiName: 'publicapi',
+          path: '/user/update/proSupportMessage',
+
+          options: {
+            body: {
+              message: messageInput,
+            },
+          }
         });
   
         if (response.success) {

@@ -1,3 +1,5 @@
+import { generateClient } from 'aws-amplify/api';
+const client = generateClient();
 import { Helmet } from 'react-helmet-async';
 // @mui
 import { Dialog, DialogTitle, DialogContent, FormControl, InputLabel, Select, MenuItem, DialogActions, TextField, List, CardHeader, Avatar, ListItem, ListItemText, Button, Container, Grid, Stack, Typography, Card, CardContent, CircularProgress, IconButton, Collapse, Autocomplete, LinearProgress, Tabs, Tab, Box, Menu, Backdrop } from '@mui/material';
@@ -11,7 +13,9 @@ import CardActions from '@mui/material/CardActions';
 import { styled } from '@mui/material/styles';
 // components
 import { useState, useEffect, Fragment, useContext } from 'react';
-import { API, Auth, graphqlOperation, Storage } from 'aws-amplify';
+import { Auth } from 'aws-amplify/auth';
+import { API, graphqlOperation } from 'aws-amplify/api';
+import { Storage } from 'aws-amplify/storage';
 import { LoadingButton } from '@mui/lab';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -85,13 +89,17 @@ const ExpandMore = styled((props) => {
 }));
 
 async function fetchMetadata(items = [], nextToken = null) {
-  const result = await API.graphql(
-    graphqlOperation(listSeriesAndSeasons, {
+  const result = await client.graphql({
+    query: listSeriesAndSeasons,
+
+    variables: {
       filter: {},
       limit: 100, // Changed from 10 to 5
       nextToken
-    })
-  );
+    },
+
+    authMode: 'awsIam'
+  });
   const sortedMetadata = result.data.listSeries.items.sort((a, b) => {
     if (a?.name < b?.name) return -1;
     if (a?.name > b?.name) return 1;
@@ -194,7 +202,11 @@ export default function DashboardSeriesPage() {
 
   async function createNewSeries(seriesData) {
     console.log(seriesData);
-    API.graphql(graphqlOperation(createSeries, { input: seriesData }))
+    client.graphql({
+      query: createSeries,
+      variables: { input: seriesData },
+      authMode: 'awsIam'
+    })
       .then((result) => {
         console.log(result)
 
@@ -214,7 +226,11 @@ export default function DashboardSeriesPage() {
 
     console.log(seriesData);
     try {
-      const result = await API.graphql(graphqlOperation(updateSeries, { input: seriesData }));
+      const result = await client.graphql({
+        query: updateSeries,
+        variables: { input: seriesData },
+        authMode: 'awsIam'
+      });
       console.log(result);
       const updatedMetadata = result.data.updateSeries;
       setMetadata((prevMetadata) =>
@@ -236,7 +252,11 @@ export default function DashboardSeriesPage() {
     };
 
     try {
-      const result = await API.graphql(graphqlOperation(deleteSeries, deletedMetadataItem));
+      const result = await client.graphql({
+        query: deleteSeries,
+        variables: deletedMetadataItem,
+        authMode: 'awsIam'
+      });
       console.log(result);
 
       // Update the metadata state by filtering out the deleted item
@@ -315,11 +335,15 @@ export default function DashboardSeriesPage() {
 
     // Set the form to edit mode
     setMode(FormMode.EDIT);
-    sub = API.graphql(
-      graphqlOperation(onUpdateSeries, {
+    sub = client.graphql({
+      query: onUpdateSeries,
+
+      variables: {
         filter: { id: { eq: seriesData.id } }
-      })
-    ).subscribe({
+      },
+
+      authMode: 'awsIam'
+    }).subscribe({
       next: (element) => {
         console.log(element)
         setStatusText(element.value.data.onUpdateSeries.statusText)
@@ -398,9 +422,14 @@ export default function DashboardSeriesPage() {
 
   const searchTvdb = async () => {
     setTvdbResultsLoading(true);
-    await API.get('publicapi', '/tvdb/search', {
-      'queryStringParameters': {
-        'query': tvdbSearchQuery
+    await get({
+      apiName: 'publicapi',
+      path: '/tvdb/search',
+
+      options: {
+        'queryStringParameters': {
+          'query': tvdbSearchQuery
+        }
       }
     }).then(results => {
       console.log(results)
@@ -418,7 +447,10 @@ export default function DashboardSeriesPage() {
   }
 
   const getTvdbSeasons = async () => {
-    await API.get('publicapi', `/tvdb/series/${tvdbid}/extended`)
+    await get({
+      apiName: 'publicapi',
+      path: `/tvdb/series/${tvdbid}/extended`
+    })
       .then(results => {
         setSeriesSeasons(results.seasons);
         console.log(results.seasons)
@@ -428,24 +460,29 @@ export default function DashboardSeriesPage() {
 
   const handleUpload = (files) => {
     setUploading(true);
-    Storage.put(files[0].name, files[0], {
-      resumable: true,
-      level: "protected",
-      completeCallback: (event) => {
-        setUploading(false);
-        console.log('Upload Complete!');
-        Auth.currentUserCredentials().then((creds) => {
+    uploadData({
+      key: files[0].name,
+      data: files[0],
+
+      options: {
+        resumable: true,
+        level: "protected",
+        completeCallback: (event) => {
           setUploading(false);
-          console.log(`protected/${creds.identityId}/${event.key}`);
-          setFileLocation(`protected/${creds.identityId}/${event.key}`);
-        });
-      },
-      progressCallback: (progress) => {
-        setUploadProgress(progress.loaded / progress.total * 100);
-        console.log(`Uploaded: ${progress.loaded}/${progress.total}`);
-      },
-      errorCallback: (err) => {
-        console.error('Unexpected error while uploading', err);
+          console.log('Upload Complete!');
+          Auth.currentUserCredentials().then((creds) => {
+            setUploading(false);
+            console.log(`protected/${creds.identityId}/${event.key}`);
+            setFileLocation(`protected/${creds.identityId}/${event.key}`);
+          });
+        },
+        progressCallback: (progress) => {
+          setUploadProgress(progress.loaded / progress.total * 100);
+          console.log(`Uploaded: ${progress.loaded}/${progress.total}`);
+        },
+        errorCallback: (err) => {
+          console.error('Unexpected error while uploading', err);
+        }
       }
     })
   }
@@ -497,14 +534,18 @@ export default function DashboardSeriesPage() {
 
       const updateSeriesStatus = async (seriesData) => {
         try {
-          const result = await API.graphql(
-            graphqlOperation(updateSeries, {
+          const result = await client.graphql({
+            query: updateSeries,
+
+            variables: {
               input: {
                 id: seriesData.id,
                 statusText: newBulkStatus
               }
-            })
-          );
+            },
+
+            authMode: 'awsIam'
+          });
           return result;
         } catch (error) {
           console.warn(`Error updating series with ID ${seriesData.id}:`, error);

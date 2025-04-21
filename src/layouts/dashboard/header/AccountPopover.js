@@ -1,3 +1,4 @@
+import { signOut } from 'aws-amplify/auth';
 import { useState, useContext, useEffect } from 'react';
 // @mui
 import { alpha } from '@mui/material/styles';
@@ -5,7 +6,8 @@ import { Box, Divider, Typography, Stack, MenuItem, Avatar, IconButton, Popover,
 import { AutoFixHigh, Person } from '@mui/icons-material';
 // mocks_
 import { useNavigate } from 'react-router-dom';
-import { API, Auth } from 'aws-amplify';
+import { Auth } from 'aws-amplify/auth';
+import { API } from 'aws-amplify/api';
 import { UserContext } from '../../../UserContext';
 import account from '../../../_mock/account';
 import { useSubscribeDialog } from '../../../contexts/useSubscribeDialog';
@@ -51,9 +53,14 @@ export default function AccountPopover() {
 
   const logIntoCustomerPortal = () => {
     setLoadingCustomerPortal(true)
-    API.post('publicapi', '/user/update/getPortalLink', {
-      body: {
-        currentUrl: window.location.href
+    post({
+      apiName: 'publicapi',
+      path: '/user/update/getPortalLink',
+
+      options: {
+        body: {
+          currentUrl: window.location.href
+        }
       }
     }).then(results => {
       console.log(results)
@@ -65,7 +72,7 @@ export default function AccountPopover() {
   }
 
   const logout = () => {
-    Auth.signOut().then(() => {
+    signOut().then(() => {
       userDetails?.setUser(null);
       window.localStorage.removeItem('memeSRCUserDetails')
       console.log('USER GONE')

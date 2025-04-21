@@ -19,9 +19,7 @@ import {
   ListItemAvatar,
   ListItemButton,
 } from '@mui/material';
-// utils
-// import { API, graphqlOperation } from 'aws-amplify';
-import { API } from 'aws-amplify';
+import { API } from 'aws-amplify/api';
 import { useNavigate } from 'react-router-dom';
 import { fToNow } from '../../../utils/formatTime';
 // components
@@ -116,9 +114,14 @@ export default function NotificationsPopover() {
         setOpen(false)
       }
 
-      API.post('publicapi', '/user/update/notification/read', {
-        body: {
-          notificationId: notification.id
+      post({
+        apiName: 'publicapi',
+        path: '/user/update/notification/read',
+
+        options: {
+          body: {
+            notificationId: notification.id
+          }
         }
       }).then((response) => console.log(response)).catch(error => {
         console.log(error);
@@ -164,9 +167,14 @@ export default function NotificationsPopover() {
         },
       })
 
-      API.post('publicapi', '/user/update/notification/unread', {
-        body: {
-          notificationId: notification.id
+      post({
+        apiName: 'publicapi',
+        path: '/user/update/notification/unread',
+
+        options: {
+          body: {
+            notificationId: notification.id
+          }
         }
       }).then((response) => console.log(response)).catch(error => {
         console.log(error);
