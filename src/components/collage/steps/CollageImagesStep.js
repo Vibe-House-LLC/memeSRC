@@ -216,11 +216,68 @@ const CollageImagesStep = ({
       
       debugLog("Data being used by html2canvas (for debug):", canvasData);
       
+      // NOTE: html2canvas currently does not fully respect the CSS
+      // `object-fit` property that we are using on the <img> tags inside
+      // each panel. This ends up stretching the captured images even though
+      // they look correct in the live preview. As a workaround we convert
+      // each <img> that relies on `object-fit: cover` into a DIV with a
+      // `background-image` set to the same source in the *cloned* document
+      // that html2canvas uses for rendering.  Using a background-image with
+      // `background-size: cover` is properly supported by html2canvas and
+      // produces a faithful render while leaving the on‑screen preview and
+      // all zoom / pan interactions untouched.
+
       const canvas = await html2canvas(collagePreviewElement, {
-        useCORS: true, 
-        allowTaint: true, 
-        logging: DEBUG_MODE, 
-        scale: window.devicePixelRatio * 2 
+        useCORS: true,
+        allowTaint: true,
+        logging: DEBUG_MODE,
+        scale: window.devicePixelRatio * 2,
+        onclone: (clonedDoc) => {
+          try {
+            // Limit the query to the collage root to avoid touching other
+            // images which might exist elsewhere in the DOM.
+            const root = clonedDoc.querySelector('[data-testid="dynamic-collage-preview-root"]');
+            if (!root) return;
+
+            root.querySelectorAll('img').forEach((img) => {
+              const computed = clonedDoc.defaultView.getComputedStyle(img);
+
+              // Only patch images that were using object-fit: cover (the ones
+              // inside the panels).  Other images (e.g. icons) should be left
+              // alone.
+              if (computed.getPropertyValue('object-fit') !== 'cover') return;
+
+              const src = img.getAttribute('src');
+              if (!src) return;
+
+              const replacement = clonedDoc.createElement('div');
+
+              // Preserve size – the parent element already defines the box so
+              // we can simply make the DIV take 100% of the available space.
+              replacement.style.width = '100%';
+              replacement.style.height = '100%';
+
+              replacement.style.backgroundImage = `url('${src}')`;
+              replacement.style.backgroundSize = 'cover';
+              replacement.style.backgroundPosition = 'center center';
+              replacement.style.backgroundRepeat = 'no-repeat';
+
+              // Copy over any transforms that were applied by react‑zoom‑pan‑pinch
+              // so that cropping/zooming is captured correctly in the render.
+              const transform = computed.getPropertyValue('transform');
+              if (transform && transform !== 'none') {
+                replacement.style.transform = transform;
+              }
+
+              // html2canvas reads the *computed* style, so inline styles on the
+              // replacement div are sufficient.
+
+              img.parentNode.replaceChild(replacement, img);
+            });
+          } catch (cloneErr) {
+            console.error('onclone processing failed', cloneErr);
+          }
+        },
       });
       
       const dataUrl = canvas.toDataURL('image/png');
