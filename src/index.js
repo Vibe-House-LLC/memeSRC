@@ -2,33 +2,47 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { Amplify } from 'aws-amplify';
-import awsExports from './aws-exports';
 import App from './App';
 import * as serviceWorker from './serviceWorker';
 import reportWebVitals from './reportWebVitals';
 import './global.css';
 
-// Define a function to replace default exports with custom api domains
-const replaceEndpoints = (arr, dict) => arr.map(obj => {
-    if (obj.name in dict) {
-      return {...obj, endpoint: dict[obj.name]};
+// Get user branch from environment
+const userBranch = process.env.REACT_APP_USER_BRANCH || '';
+
+// Create a minimal configuration with all required services
+try {
+  // Configure Amplify with a complete config
+  Amplify.configure({
+    // General configuration
+    region: 'us-east-1',
+    
+    // API configuration
+    API: {
+      REST: {
+        publicapi: {
+          endpoint: `https://api.memesrc.com/${userBranch}/public`,
+          region: 'us-east-1'
+        },
+        AdminQueries: {
+          endpoint: `https://api.memesrc.com/${userBranch}/admin`,
+          region: 'us-east-1'
+        }
+      }
+    },
+    
+    // Basic Auth config - include to prevent errors
+    Auth: {
+      Cognito: {
+        region: 'us-east-1'
+      }
     }
-    return obj;
   });
-
-// Define the custom domain mappings for apis
-const mappings = {
-  'publicapi': `https://api.memesrc.com/${process.env.REACT_APP_USER_BRANCH}/public`,
-  'AdminQueries': `https://api.memesrc.com/${process.env.REACT_APP_USER_BRANCH}/admin`
+  
+  console.log('Amplify configured successfully');
+} catch (error) {
+  console.error('Error configuring Amplify:', error);
 }
-
-// Replace the default domains with custom ones
-awsExports.aws_cloud_logic_custom = replaceEndpoints(
-  awsExports.aws_cloud_logic_custom,
-  mappings
-)
-
-Amplify.configure(awsExports);
 
 // // Use the API Key by default
 // Amplify.configure({

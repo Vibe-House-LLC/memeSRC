@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect, useContext, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { get } from 'aws-amplify/api';
 import FullScreenSearch from '../sections/search/FullScreenSearch';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
 import { UserContext } from '../UserContext';

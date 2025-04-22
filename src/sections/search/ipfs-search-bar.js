@@ -6,6 +6,7 @@ import { ArrowBack, Close, Favorite, MapsUgc, Search, Shuffle } from "@mui/icons
 import { Children, cloneElement, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { LoadingButton } from "@mui/lab";
 import { Link as RouterLink, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { get } from 'aws-amplify/api';
 import { searchPropTypes } from "./SearchPropTypes";
 import useSearchDetailsV2 from "../../hooks/useSearchDetailsV2";
 import AddCidPopup from "../../components/ipfs/add-cid-popup";
