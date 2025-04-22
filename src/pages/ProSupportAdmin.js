@@ -1,7 +1,5 @@
-import { generateClient } from 'aws-amplify/api';
-const client = generateClient();
+import { generateClient , graphqlOperation } from 'aws-amplify/api';
 import React, { useEffect, useState } from 'react';
-import { graphqlOperation } from 'aws-amplify/api';
 import {
   Typography,
   Container,
@@ -16,6 +14,8 @@ import {
   Button,
 } from '@mui/material';
 import { listProSupportMessages, getUserDetails } from '../graphql/queries';
+
+const client = generateClient();
 
 export default function ProSupportAdmin() {
   const [submissions, setSubmissions] = useState([]);

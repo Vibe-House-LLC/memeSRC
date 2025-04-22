@@ -1,10 +1,7 @@
-import { generateClient } from 'aws-amplify/api';
-const client = generateClient();
-// React
 import { Helmet } from 'react-helmet-async';
 import { useState, useEffect } from 'react';
-
-import { graphqlOperation } from 'aws-amplify/api';
+import { generateClient } from 'aws-amplify/api';
+import DOMPurify from 'dompurify';
 
 // MUI Components
 import { 
@@ -41,9 +38,6 @@ import ShareIcon from '@mui/icons-material/Share';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 
-// DOMPurify
-import DOMPurify from 'dompurify';
-
 // Iconify Icons
 import Iconify from '../components/iconify';
 
@@ -56,15 +50,16 @@ import ButtonsForm from '../components/homepage-section-forms/ButtonsForm';
 import BottomImageForm from '../components/homepage-section-forms/BottomImageForm';
 import ButtonSubtextForm from '../components/homepage-section-forms/ButtonSubtextForm';
 
+// Initialize API client
+const client = generateClient();
+
 // ----------------------------------------------------------------------
 
-// Enum for form mode state
 const FormMode = {
   CREATE: 'create',
   EDIT: 'edit',
 };
 
-// Style for item detail expansion
 const ExpandMore = styled((props) => {
   const { ...other } = props;
   return <IconButton {...other} />;
@@ -76,22 +71,20 @@ const ExpandMore = styled((props) => {
   }),
 }));
 
-// Function to pull the homepage sections from graphql
 async function fetchHomepageSections(items = [], nextToken = null) {
   const result = await client.graphql({
     query: listHomepageSections,
-
     variables: {
       filter: {},
       limit: 10,
       nextToken
     },
-
     authMode: 'awsIam'
   });
+  // Extract and sort homepage sections
   const sortedSections = result.data.listHomepageSections.items.sort((a, b) => {
-    if (a.index < b.index) return -1;
-    if (a.index > b.index) return 1;
+    if (a.order < b.order) return -1;
+    if (a.order > b.order) return 1;
     return 0;
   });
   const allItems = [...items, ...sortedSections];
@@ -102,94 +95,81 @@ async function fetchHomepageSections(items = [], nextToken = null) {
   return allItems;
 }
 
-// The HomepageSectionPage component
+
 export default function HomepageSectionPage() {
-  // Loading state
-  const [loading, setLoading] = useState(true);
-
-  // Form states
-  const [showForm, setShowForm] = useState(false);
-  const [mode, setMode] = useState(FormMode.CREATE);
-  const [selectedIndex, setSelectedIndex] = useState(null)
-
-  // Data states
   const [sections, setSections] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
   const [id, setId] = useState('');
-  const [index, setIndex] = useState('');
   const [title, setTitle] = useState('');
   const [subtitle, setSubtitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [order, setOrder] = useState('');
+  const [backgroundImage, setBackgroundImage] = useState('');
+  const [bottomImage, setBottomImage] = useState('');
   const [buttons, setButtons] = useState([]);
-  const [bottomImage, setBottomImage] = useState({});
-  const [buttonSubtext, setButtonSubtext] = useState({});
-  const [backgroundColor, setBackgroundColor] = useState('');
-  const [textColor, setTextColor] = useState('');
+  const [mode, setMode] = useState(FormMode.CREATE);
 
-  // Expand details state
   const [expanded, setExpanded] = useState(false);
-
-  // Popover state (for edit and delete)
   const [anchorEl, setAnchorEl] = useState(null);
 
-  // Handle detail expansion
+  const [selectedIndex, setSelectedIndex] = useState(null);
+
   const handleExpandClick = () => {
     setExpanded(!expanded);
   };
 
-  // Handle show options (edit or delete)
   const handleMoreVertClick = (event, itemIndex) => {
     setSelectedIndex(itemIndex);
     setAnchorEl(event.currentTarget);
   };
 
-  // Handle hide options (edit or delete)
   const handleClose = () => {
     setSelectedIndex(null);
     setAnchorEl(null);
   };
 
-  // Helpers for options display (edit or delete)
-  const open = Boolean(anchorEl);
-  const popoverId = open ? 'simple-popover' : undefined;
-
-  // Handle showing the main form
-  const handleShowForm = () => {
-    setShowForm(true);
-  };
-
-  // Handle closing the main form
   const handleCloseForm = () => {
-    clearForm();
     setShowForm(false);
   };
 
-  // Function to clear the form inputs
+  const open = Boolean(anchorEl);
+  const popoverId = open ? 'simple-popover' : undefined;
+
   const clearForm = () => {
     setId('');
-    setIndex('');
     setTitle('');
     setSubtitle('');
+    setDescription('');
+    setOrder('');
+    setBackgroundImage('');
+    setBottomImage('');
     setButtons([]);
-    setBottomImage({});
-    setButtonSubtext({});
-    setBackgroundColor('');
-    setTextColor('');
   };
 
   // ----------------------------------------------------------------------
 
   // Function to create new homepage sections
-  async function createNewHomepageSection(id, index, title, subtitle, buttons, bottomImage, buttonSubtext, backgroundColor, textColor) {
+  async function createNewHomepageSection(
+    id,
+    title,
+    subtitle,
+    description,
+    order,
+    backgroundImage,
+    bottomImage,
+    buttons
+  ) {
     const newHomepageSection = {
       input: {
         id,
-        index,
         title,
         subtitle,
-        buttons: JSON.stringify(buttons),
-        bottomImage: JSON.stringify(bottomImage),
-        buttonSubtext: JSON.stringify(buttonSubtext),
-        backgroundColor,
-        textColor
+        description,
+        order,
+        backgroundImage,
+        bottomImage,
+        buttons
       }
     };
 
@@ -198,33 +178,36 @@ export default function HomepageSectionPage() {
       variables: newHomepageSection,
       authMode: 'awsIam'
     });
-    setSections([...sections, result.data.createHomepageSection])
+
+    console.log(result);
+
+    setSections([...sections, result.data.createHomepageSection]);
+
     clearForm();
+
     return result.data.createHomepageSection;
   }
 
   // Function to update existing homepage sections
   async function updateExistingHomepageSection(
     id,
-    index,
     title,
     subtitle,
-    buttons,
+    description,
+    order,
+    backgroundImage,
     bottomImage,
-    buttonSubtext,
-    backgroundColor,
-    textColor
+    buttons
   ) {
     const input = {
       id,
-      index,
       title,
       subtitle,
-      buttons: JSON.stringify(buttons),
-      bottomImage: JSON.stringify(bottomImage),
-      buttonSubtext: JSON.stringify(buttonSubtext),
-      backgroundColor,
-      textColor
+      description,
+      order,
+      backgroundImage,
+      bottomImage,
+      buttons
     };
 
     const variables = {
@@ -232,7 +215,11 @@ export default function HomepageSectionPage() {
     };
 
     try {
-      const result = await API.graphql({ query: updateHomepageSection, variables });
+      const result = await client.graphql({
+        query: updateHomepageSection,
+        variables,
+        authMode: 'awsIam'
+      });
       console.log(result);
       const updatedHomepageSection = result.data.updateHomepageSection;
       setSections((prevMetadata) =>
@@ -270,34 +257,57 @@ export default function HomepageSectionPage() {
     }
   }
 
-  // Function to handle submissions of the form
+  // ----------------------------------------------------------------------
+
+  const toggleForm = () => {
+    setShowForm(!showForm);
+  };
+
   const handleSubmit = (event) => {
     event.preventDefault();
+    console.log("Button data to be submitted:", buttons);
+
     if (mode === FormMode.CREATE) {
-      createNewHomepageSection(id, index, title, subtitle, buttons, bottomImage, buttonSubtext, backgroundColor, textColor);
+      createNewHomepageSection(
+        id,
+        title,
+        subtitle,
+        description,
+        parseFloat(order),
+        backgroundImage,
+        bottomImage,
+        buttons
+      );
     } else {
-      updateExistingHomepageSection(id, index, title, subtitle, buttons, bottomImage, buttonSubtext, backgroundColor, textColor);
+      updateExistingHomepageSection(
+        id,
+        title,
+        subtitle,
+        description,
+        parseFloat(order),
+        backgroundImage,
+        bottomImage,
+        buttons
+      );
     }
     clearForm();
     setShowForm(false);
     handleClose();
   };
 
-  // Prepare the editing flow
   const handleEdit = () => {
     // Set the form fields to the values of the item being edited
     const item = sections[selectedIndex];
-    console.log(selectedIndex)
-    console.log(item)
+    console.log(selectedIndex);
+    console.log(item);
     setId(item.id);
-    setIndex(item.index);
     setTitle(item.title);
     setSubtitle(item.subtitle);
-    setButtons(JSON.parse(item.buttons));
-    setBottomImage(JSON.parse(item.bottomImage));
-    setButtonSubtext(JSON.parse(item.buttonSubtext));
-    setBackgroundColor(item.backgroundColor);
-    setTextColor(item.textColor);
+    setDescription(item.description);
+    setOrder(String(item.order));
+    setBackgroundImage(item.backgroundImage);
+    setBottomImage(item.bottomImage);
+    setButtons(item.buttons || []);
 
     // Set the form to edit mode
     setMode(FormMode.EDIT);
@@ -306,14 +316,12 @@ export default function HomepageSectionPage() {
     setShowForm(true);
   };
 
-  // Handle deletions of homepage sections
   const handleDelete = () => {
     const item = sections[selectedIndex];
-    deleteExistingHomepageSection(item.id)
+    deleteExistingHomepageSection(item.id);
     handleClose();
-  }
+  };
 
-  // Pull the homepage sections from GraphQL when the component loads
   useEffect(() => {
     async function getData() {
       const data = await fetchHomepageSections();
@@ -323,7 +331,6 @@ export default function HomepageSectionPage() {
     getData();
   }, []);
 
-  // Return the contents for the page
   return (
     <>
       <Helmet>
@@ -334,107 +341,107 @@ export default function HomepageSectionPage() {
           <Typography variant="h4" gutterBottom>
             Homepage Sections {loading ? <CircularProgress size={25} /> : `(${sections.length})`}
           </Typography>
-          <Button variant="contained" startIcon={<Iconify icon="eva:plus-fill" />} onClick={handleShowForm}>
+          <Button variant="contained" startIcon={<Iconify icon="eva:plus-fill" />} onClick={toggleForm}>
             New Section
           </Button>
         </Stack>
         <Container>
           <Grid container spacing={2}>
-            {(loading) ? "Loading" : sections.map((sectionItem, index) => (
-              <Grid item xs={12} sm={6} md={4} key={sectionItem.id}>
-                <Card sx={{ maxWidth: 345, '& a': { color: 'white' } }}>
-                  <CardHeader
-                    avatar={
-                      <Avatar sx={{ bgcolor: sectionItem.backgroundColor }} aria-label="recipe">
-                        <img alt="bottom" src={JSON.parse(sectionItem.bottomImage).src} />
-                      </Avatar>
-                    }
-                    action={
-                      <>
-                        <IconButton aria-label="settings" onClick={(event) => handleMoreVertClick(event, index)}>
-                          <MoreVertIcon />
-                        </IconButton>
-                      </>
-                    }
-                    style={{ height: "100px", top: "0" }}
-                    title={sectionItem.title}
-                    subheader={
-                      <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(sectionItem.subtitle ) }} /> // eslint-disable-line react/no-danger
-                    }
-                  />
-                  <Popover
-                    id={popoverId}
-                    open={open}
-                    anchorEl={anchorEl}
-                    onClose={handleClose}
-                    anchorOrigin={{
-                      vertical: 'top',
-                      horizontal: 'right',
-                    }}
-                    transformOrigin={{
-                      vertical: 'top',
-                      horizontal: 'right',
-                    }}
-                  >
-                    <List>
-                      <ListItem button onClick={handleEdit} key="edit">
-                        <ListItemText primary="Edit" />
-                      </ListItem>
-                      <ListItem button onClick={handleDelete} key="delete">
-                        <ListItemText primary="Delete" />
-                      </ListItem>
-                    </List>
-                  </Popover>
-                  <CardActions disableSpacing>
-                    <IconButton aria-label="add to favorites">
-                      <FavoriteIcon />
-                    </IconButton>
-                    <IconButton aria-label="share">
-                      <ShareIcon />
-                    </IconButton>
-                    <ExpandMore
-                      expand={expanded.toString()}
-                      onClick={handleExpandClick}
-                      aria-expanded={expanded}
-                      aria-label="show more"
+            {loading ? (
+              "Loading"
+            ) : (
+              sections.map((section, index) => (
+                <Grid item xs={12} key={section.id}>
+                  <Card>
+                    <CardHeader
+                      avatar={
+                        <Avatar aria-label="order">
+                          {section.order}
+                        </Avatar>
+                      }
+                      action={
+                        <>
+                          <IconButton aria-label="settings" onClick={(event) => handleMoreVertClick(event, index)}>
+                            <MoreVertIcon />
+                          </IconButton>
+                        </>
+                      }
+                      title={section.title}
+                      subheader={section.subtitle}
+                    />
+                    <Popover
+                      id={popoverId}
+                      open={open}
+                      anchorEl={anchorEl}
+                      onClose={handleClose}
+                      anchorOrigin={{
+                        vertical: 'top',
+                        horizontal: 'right',
+                      }}
+                      transformOrigin={{
+                        vertical: 'top',
+                        horizontal: 'right',
+                      }}
                     >
-                      <ExpandMoreIcon />
-                    </ExpandMore>
-                  </CardActions>
-                  <Collapse in={expanded} timeout="auto" unmountOnExit>
-                    <CardContent>
-                      <Typography>{sectionItem.subtitle}</Typography>
-                      <Typography>Index: {sectionItem.index}</Typography>
-                      <Typography>Buttons: {sectionItem.buttons}</Typography>
-                      <Typography>Bottom Image: {sectionItem.bottomImage}</Typography>
-                      <Typography>Buttons Subtext: {sectionItem.buttonSubtext}</Typography>
-                    </CardContent>
-                  </Collapse>
-                </Card>
-              </Grid>
-            ))}
+                      <List>
+                        <ListItem button onClick={handleEdit} key="edit">
+                          <ListItemText primary="Edit" />
+                        </ListItem>
+                        <ListItem button onClick={handleDelete} key="delete">
+                          <ListItemText primary="Delete" />
+                        </ListItem>
+                      </List>
+                    </Popover>
+                    <CardActions disableSpacing>
+                      <ExpandMore
+                        expand={expanded}
+                        onClick={handleExpandClick}
+                        aria-expanded={expanded}
+                        aria-label="show more"
+                      >
+                        <ExpandMoreIcon />
+                      </ExpandMore>
+                    </CardActions>
+                    <Collapse in={expanded} timeout="auto" unmountOnExit>
+                      <CardContent>
+                        <Typography paragraph>Description:</Typography>
+                        <Typography paragraph>
+                          <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(section.description) }} />
+                        </Typography>
+                        <Typography>Background Image: {section.backgroundImage}</Typography>
+                        <Typography>Bottom Image: {section.bottomImage}</Typography>
+                        {section.buttons && section.buttons.length > 0 && (
+                          <>
+                            <Typography paragraph>Buttons:</Typography>
+                            {section.buttons.map((button, idx) => (
+                              <Typography key={idx} paragraph>
+                                Text: {button.text}, Link: {button.link}{button.subtext && `, Subtext: ${button.subtext}`}
+                              </Typography>
+                            ))}
+                          </>
+                        )}
+                      </CardContent>
+                    </Collapse>
+                  </Card>
+                </Grid>
+              ))
+            )}
           </Grid>
         </Container>
       </Container>
-      <Dialog open={showForm} onClose={handleClose}>
-        <DialogTitle>Create Homepage Section</DialogTitle>
+
+      <Dialog open={showForm} onClose={handleCloseForm} maxWidth="md" fullWidth>
+        <DialogTitle>{mode === FormMode.CREATE ? 'Create New Homepage Section' : 'Edit Homepage Section'}</DialogTitle>
         <DialogContent>
           <form onSubmit={handleSubmit}>
-            <Grid container spacing={2}>
+            <Grid container spacing={2} sx={{ mt: 1 }}>
               <Grid item xs={12}>
                 <TextField
                   label="ID"
                   fullWidth
                   value={id}
                   onChange={(event) => setId(event.target.value)}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  label="Index"
-                  fullWidth
-                  value={index}
-                  onChange={(event) => setIndex(event.target.value)}
+                  disabled={mode === FormMode.EDIT}
                 />
               </Grid>
               <Grid item xs={12}>
@@ -454,40 +461,42 @@ export default function HomepageSectionPage() {
                 />
               </Grid>
               <Grid item xs={12}>
-                <Typography>Buttons:</Typography>
-                <ButtonsForm
-                  buttons={buttons}
-                  setButtons={setButtons}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <Typography>Buttons Subtext:</Typography>
-                <ButtonSubtextForm
-                  buttonSubtext={buttonSubtext}
-                  setButtonSubtext={setButtonSubtext}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <Typography>Bottom Image:</Typography>
-                <BottomImageForm
-                  bottomImage={bottomImage}
-                  setBottomImage={setBottomImage}
+                <TextField
+                  label="Description (HTML allowed)"
+                  fullWidth
+                  multiline
+                  rows={4}
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
                 />
               </Grid>
               <Grid item xs={12}>
                 <TextField
-                  label="Background Color"
+                  label="Order"
                   fullWidth
-                  value={backgroundColor}
-                  onChange={(event) => setBackgroundColor(event.target.value)}
+                  type="number"
+                  value={order}
+                  onChange={(event) => setOrder(event.target.value)}
                 />
               </Grid>
               <Grid item xs={12}>
                 <TextField
-                  label="Text Color"
+                  label="Background Image URL"
                   fullWidth
-                  value={textColor}
-                  onChange={(event) => setTextColor(event.target.value)}
+                  value={backgroundImage}
+                  onChange={(event) => setBackgroundImage(event.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <BottomImageForm 
+                  bottomImage={bottomImage} 
+                  setBottomImage={setBottomImage} 
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <ButtonsForm 
+                  buttons={buttons} 
+                  setButtons={setButtons} 
                 />
               </Grid>
             </Grid>
@@ -495,7 +504,9 @@ export default function HomepageSectionPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseForm}>Cancel</Button>
-          <Button type="submit" onClick={handleSubmit}>Submit</Button>
+          <Button onClick={handleSubmit} color="primary">
+            {mode === FormMode.CREATE ? 'Create' : 'Update'}
+          </Button>
         </DialogActions>
       </Dialog>
     </>

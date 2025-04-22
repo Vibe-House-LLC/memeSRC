@@ -198,7 +198,7 @@ export default function TopBannerSearchRevised(props) {
                     sx={{ width: '100%' }}
                     value={searchTerm || searchTerms}
                     onChange={(e) => {
-                      let value = e.target.value;
+                      let {value} = e.target;
 
                       // Replace curly single quotes with straight single quotes
                       value = value.replace(/[\u2018\u2019]/g, "'");
@@ -294,7 +294,7 @@ export default function TopBannerSearchRevised(props) {
                       sx={{ width: '100%' }}
                       value={searchTerm}
                       onChange={(e) => {
-                        let value = e.target.value;
+                        let {value} = e.target;
 
                         // Replace curly single quotes with straight single quotes
                         value = value.replace(/[\u2018\u2019]/g, "'");
@@ -416,7 +416,7 @@ export default function TopBannerSearchRevised(props) {
                       sx={{ width: '100%' }}
                       value={searchTerm}
                       onChange={(e) => {
-                        let value = e.target.value;
+                        let {value} = e.target;
 
                         // Replace curly single quotes with straight single quotes
                         value = value.replace(/[\u2018\u2019]/g, "'");
@@ -524,7 +524,7 @@ export default function TopBannerSearchRevised(props) {
                       sx={{ width: '100%' }}
                       value={searchTerm}
                       onChange={(e) => {
-                        let value = e.target.value;
+                        let {value} = e.target;
 
                         // Replace curly single quotes with straight single quotes
                         value = value.replace(/[\u2018\u2019]/g, "'");
@@ -624,7 +624,7 @@ export default function TopBannerSearchRevised(props) {
                       sx={{ width: '100%' }}
                       value={searchTerm}
                       onChange={(e) => {
-                        let value = e.target.value;
+                        let {value} = e.target;
 
                         // Replace curly single quotes with straight single quotes
                         value = value.replace(/[\u2018\u2019]/g, "'");

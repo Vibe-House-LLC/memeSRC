@@ -1,4 +1,4 @@
-import { forgotPassword, confirmResetPassword } from 'aws-amplify/auth';
+import { resetPassword, confirmResetPassword } from 'aws-amplify/auth';
 import { useNavigate } from 'react-router-dom';
 import { Backdrop, CircularProgress, Link, Stack, TextField, Typography, styled } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
@@ -30,7 +30,7 @@ export default function ResetPasswordForm(props) {
 
   const handleResetPassword = () => {
     setLoading(true)
-    forgotPassword({
+    resetPassword({
       username
     })
       .then(() => {

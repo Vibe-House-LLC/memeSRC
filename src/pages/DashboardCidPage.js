@@ -1,16 +1,15 @@
-import { generateClient } from 'aws-amplify/api';
-const client = generateClient();
+import { generateClient , graphqlOperation } from 'aws-amplify/api';
 import { Container, Divider, IconButton, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from "@mui/material";
-import { graphqlOperation } from 'aws-amplify/api';
 import { useEffect, useState } from "react";
 import { Add } from "@mui/icons-material";
 import { listV2ContentMetadata } from "../graphql/queries";
 import AliasTableRow from "../components/alias-table-row/AliasTableRow";
 
+const client = generateClient();
+
 /* -------------------------------- Functions ------------------------------- */
 
-const getAllMetadataObjects = (nextToken = null) => {
-  return new Promise((resolve, reject) => {
+const getAllMetadataObjects = (nextToken = null) => new Promise((resolve, reject) => {
     client.graphql({
       query: listV2ContentMetadata,
       variables: { nextToken },
@@ -26,7 +25,6 @@ const getAllMetadataObjects = (nextToken = null) => {
       reject(error);
     });
   });
-};
 
 
 const listMetadataRecursive = async (nextToken = null, allItems = []) => {

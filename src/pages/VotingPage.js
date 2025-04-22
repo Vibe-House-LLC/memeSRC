@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import PropTypes from 'prop-types';
-import { Auth } from 'aws-amplify/auth';
+import { fetchAuthSession } from 'aws-amplify/auth';
 import { generateClient, get, post } from 'aws-amplify/api';
 import {
   Container,
@@ -615,7 +615,7 @@ export default function VotingPage() {
           const votesData = JSON.parse(votesResponse);
 
           votesData.forEach((item) => {
-            const seriesId = item.seriesId;
+            const {seriesId} = item;
             if (newVoteData[seriesId]) {
               newVoteData[seriesId].totalVotesUp = item.totalVotes.upvotes || 0;
               newVoteData[seriesId].totalVotesDown = item.totalVotes.downvotes || 0;
@@ -748,7 +748,7 @@ export default function VotingPage() {
             }
           });
 
-          const hits = response.hits;
+          const {hits} = response;
           
           // Store the ranks from search results
           const newSearchRanks = {};
@@ -1189,7 +1189,7 @@ export default function VotingPage() {
         setVoteData((prevVoteData) => {
           const updatedVoteData = { ...prevVoteData };
           votesArray.forEach((item) => {
-            const seriesId = item.seriesId;
+            const {seriesId} = item;
             const existingData = updatedVoteData[seriesId] || {};
             
             updatedVoteData[seriesId] = {
@@ -1224,8 +1224,8 @@ export default function VotingPage() {
   useEffect(() => {
     const checkAdminStatus = async () => {
       try {
-        const session = await Auth.currentSession();
-        const groups = session.getAccessToken().payload['cognito:groups'] || [];
+        const session = await fetchAuthSession();
+        const groups = session.tokens?.accessToken?.payload['cognito:groups'] || [];
         setIsAdmin(groups.includes('admins'));
       } catch (error) {
         console.error('Error checking admin status:', error);

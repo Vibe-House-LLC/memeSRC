@@ -1,11 +1,9 @@
-import { generateClient } from 'aws-amplify/api';
-const client = generateClient();
+import { generateClient , graphqlOperation } from 'aws-amplify/api';
 import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 // @mui
 import { useTheme } from '@mui/material/styles';
 import { Grid, Container, Typography } from '@mui/material';
-import { graphqlOperation } from 'aws-amplify/api';
 import { listHomepageSections, getAnalyticsMetrics } from '../graphql/queries';
 // components
 // import { API, graphqlOperation } from 'aws-amplify';
@@ -22,6 +20,8 @@ import {
   AppCurrentSubject,
   AppConversionRates,
 } from '../sections/@dashboard/app';
+
+const client = generateClient();
 
 // import { createGlobalMessage } from '../graphql/mutations';
 
@@ -134,12 +134,10 @@ export default function DashboardAppPage() {
     })
     console.log(result)
     console.log(`POPULAR SHOWS: ${result.data.getAnalyticsMetrics.value}`)
-    const cleaned = JSON.parse(result.data.getAnalyticsMetrics.value).slice(1).map(row => {
-      return {
+    const cleaned = JSON.parse(result.data.getAnalyticsMetrics.value).slice(1).map(row => ({
         label: row[0],
         value: parseInt(row[1], 10)
-      };
-    });
+      }));
     const cleanedSorted = cleaned.sort((a, b) => {
       if (a.value < b.value) return 1;
       if (a.value > b.value) return -1;

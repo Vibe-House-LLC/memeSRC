@@ -1,5 +1,4 @@
-import { generateClient } from 'aws-amplify/api';
-const client = generateClient();
+import { generateClient , graphqlOperation } from 'aws-amplify/api';
 // V2EditorPage.js
 
 import { Fragment, forwardRef, memo, useCallback, useContext, useEffect, useRef, useState } from 'react'
@@ -11,7 +10,6 @@ import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
 import { Accordion, AccordionDetails, AccordionSummary, Backdrop, Button, ButtonGroup, Card, CircularProgress, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, LinearProgress, List, ListItem, ListItemIcon, ListItemText, Popover, Skeleton, Slider, Snackbar, Stack, Tab, Tabs, TextField, ToggleButton, ToggleButtonGroup, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { AccessTime, Add, AddCircleOutline, AddPhotoAlternate, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ClosedCaption, ContentCopy, FolderOpen, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, History, HistoryToggleOffRounded, IosShare, Menu, MoreTime, Redo, Save, Share, Timelapse, Timeline, Undo, Update, ZoomIn, ZoomOut } from '@mui/icons-material';
-import { graphqlOperation } from 'aws-amplify/api';
 import { Storage } from 'aws-amplify/storage';
 import { Box } from '@mui/system';
 import { Helmet } from 'react-helmet-async';
@@ -32,6 +30,8 @@ import HomePageBannerAd from '../ads/HomePageBannerAd';
 
 import { calculateEditorSize, getContrastColor, deleteLayer, moveLayerUp } from '../utils/editorFunctions';
 import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
+
+const client = generateClient();
 
 const Alert = forwardRef((props, ref) => <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />);
 
@@ -904,7 +904,7 @@ const EditorPage = ({ shows }) => {
           }
         });
 
-        const magicResultId = response.magicResultId;
+        const {magicResultId} = response;
 
         const startTime = Date.now();
 
@@ -1449,14 +1449,12 @@ const EditorPage = ({ shows }) => {
       setLoadingFineTuning(true);
 
       // Create an array of promises for each image load
-      const blobPromises = fineTuningFrames.map((url) => {
-        return fetch(url)
+      const blobPromises = fineTuningFrames.map((url) => fetch(url)
           .then((response) => response.blob())
           .catch((error) => {
             console.error('Error fetching image:', error);
             return null;
-          });
-      });
+          }));
 
       // Wait for all blob promises to resolve
       Promise.all(blobPromises)

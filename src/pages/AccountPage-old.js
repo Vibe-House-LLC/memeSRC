@@ -1,8 +1,7 @@
-import { getCurrentUser } from 'aws-amplify/auth';
+import { getCurrentUser , Auth } from 'aws-amplify/auth';
 import { useState, useEffect, useContext } from 'react';
 import { Box, Typography, Button, Container, Divider, Grid, Card, TextField, List, ListItem, ListItemIcon, ListItemText, IconButton, Avatar, Chip, Skeleton, LinearProgress, CircularProgress } from '@mui/material';
 import { Receipt, Download, Edit, Save, Cancel, Block, SupportAgent, Bolt, AutoFixHighRounded } from '@mui/icons-material';
-import { Auth } from 'aws-amplify/auth';
 import { Storage } from 'aws-amplify/storage';
 import { LoadingButton } from '@mui/lab';
 import { UserContext } from '../UserContext';

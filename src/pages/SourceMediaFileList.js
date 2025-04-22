@@ -24,9 +24,6 @@ import {
 import { Auth } from 'aws-amplify/auth';
 import { downloadData } from 'aws-amplify/storage';
 import { generateClient } from 'aws-amplify/api';
-
-// Initialize GraphQL client
-const client = generateClient();
 import { useNavigate, useParams } from 'react-router-dom';
 // components
 import Label from '../components/label';
@@ -38,6 +35,9 @@ import UserCountChart from '../sections/@dashboard/app/UserSignupsGraph';
 // graphql
 import { listSourceMedias, listUserDetails } from '../graphql/queries';
 import { updateUserDetails } from '../graphql/mutations';
+
+// Initialize GraphQL client
+const client = generateClient();
 // mock
 // import USERLIST from '../_mock/user';
 
@@ -192,7 +192,7 @@ export default function SourceMediaFileList() {
       authMode: 'AMAZON_COGNITO_USER_POOLS',
     });
   
-    const items = response.data.getSourceMedia.files.items;
+    const {items} = response.data.getSourceMedia.files;
     console.log(response)
     result.push(...items);
   

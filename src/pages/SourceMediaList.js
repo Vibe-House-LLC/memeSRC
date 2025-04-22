@@ -134,7 +134,7 @@ async function listSourceMediasGraphQL(limit, nextToken = null, result = []) {
     authMode: 'AMAZON_COGNITO_USER_POOLS',
   });
 
-  const items = response.data.listSourceMedias.items;
+  const {items} = response.data.listSourceMedias;
   result.push(...items);
 
   if (response.data.listSourceMedias.nextToken) {

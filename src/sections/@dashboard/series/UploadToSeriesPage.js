@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useRef, useContext, Fragment } from 'react';
-import { API } from 'aws-amplify';
-import { uploadData } from '../../../utils/api';
+import { generateClient } from 'aws-amplify/api';
 import Dropzone from 'react-dropzone';
 import { Container, Grid, Stack, Typography, Card, CircularProgress, Backdrop, Divider, LinearProgress } from '@mui/material';
 import { UploadFile } from '@mui/icons-material';
 import { LoadingButton } from '@mui/lab';
+import { uploadData } from '../../../utils/api';
 import { getSeries } from '../../../graphql/queries';
 import { UserContext } from '../../../UserContext';
 import { SnackbarContext } from '../../../SnackbarContext';
 
-const client = API;
+const client = generateClient();
 
 // ----------------------------------------------------------------------
 
@@ -41,9 +41,7 @@ export default function UploadToSeriesPage({ seriesId }) {
 
   const handleUpload = async () => {
     setUploading(true);
-    if (user?.['cognito:groups']?.some((element) => {
-      return element === 'admins' || element === 'mods' || element === 'contributors';
-    })) {
+    if (user?.['cognito:groups']?.some((element) => element === 'admins' || element === 'mods' || element === 'contributors')) {
       try {
         const sourceMediaInput = {
           sourceMediaSeriesId: seriesId,

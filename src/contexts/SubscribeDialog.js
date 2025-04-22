@@ -1,8 +1,6 @@
 import { generateClient } from 'aws-amplify/api';
-const client = generateClient();
 import { AutoFixHighRounded, Block, Close, Favorite, Star, SupportAgent, ExpandMore, Clear, Check, Bolt, Share, ThumbUp, Feedback, ArrowBack, Settings } from '@mui/icons-material';
 import { Box, Button, Card, Checkbox, Chip, CircularProgress, Collapse, Dialog, DialogContent, DialogTitle, Divider, Fade, Grid, IconButton, LinearProgress, Typography, useMediaQuery, FormControlLabel, Fab, Stack } from '@mui/material';
-import { graphqlOperation } from 'aws-amplify/api';
 import { createContext, useState, useRef, useEffect, useContext } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { LoadingButton } from '@mui/lab';
@@ -11,6 +9,9 @@ import useUserLocation from '../utils/geo/useUserLocation';
 import { createLocationLeads } from '../graphql/mutations';
 import { CountdownTimer } from '../components/CountdownTimer';
 import { CURRENT_SALE } from '../constants/sales';
+import { post } from '../utils/api';
+
+const client = generateClient();
 
 export const SubscribeDialogContext = createContext();
 

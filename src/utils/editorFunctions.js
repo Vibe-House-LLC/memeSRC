@@ -74,13 +74,11 @@ export const moveLayerUp = (canvas, index) => {
 };
 
 // Save image as data URL
-export const saveImageAsDataURL = (canvas, imageScale) => {
-  return canvas.toDataURL({
+export const saveImageAsDataURL = (canvas, imageScale) => canvas.toDataURL({
     format: 'jpeg',
     quality: 0.6,
     multiplier: imageScale
   });
-};
 
 // Add text to canvas
 export const addText = (editor, text, append, canvasWidth, canvasHeight) => {
@@ -115,8 +113,7 @@ export const addText = (editor, text, append, canvasWidth, canvasHeight) => {
 };
 
 // Add image layer to canvas
-export const addImageLayer = (editor, imageFile) => {
-  return new Promise((resolve, reject) => {
+export const addImageLayer = (editor, imageFile) => new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = function (event) {
       const imgObj = new Image();
@@ -160,7 +157,6 @@ export const addImageLayer = (editor, imageFile) => {
     reader.onerror = reject;
     reader.readAsDataURL(imageFile);
   });
-};
 
 // Handle color change for text
 export const changeTextColor = (editor, color, index) => {

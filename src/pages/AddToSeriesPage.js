@@ -1,5 +1,4 @@
-import { generateClient } from 'aws-amplify/api';
-const client = generateClient();
+import { generateClient , graphqlOperation } from 'aws-amplify/api';
 import { Helmet } from 'react-helmet-async';
 // @mui
 import { Dialog, DialogTitle, DialogContent, FormControl, InputLabel, Select, MenuItem, DialogActions, TextField, List, CardHeader, Avatar, ListItem, ListItemText, Button, Container, Grid, Stack, Typography, Card, CardContent, CircularProgress, IconButton, Collapse, Backdrop, Divider, LinearProgress } from '@mui/material';
@@ -13,7 +12,6 @@ import CardActions from '@mui/material/CardActions';
 import { styled } from '@mui/material/styles';
 // components
 import { useState, useEffect, useRef, useContext, Fragment } from 'react';
-import { graphqlOperation } from 'aws-amplify/api';
 import { Storage } from 'aws-amplify/storage';
 import { useParams } from 'react-router-dom';
 import { UploadFile } from '@mui/icons-material';
@@ -24,6 +22,8 @@ import { createSourceMedia, createFile } from '../graphql/mutations';
 import Iconify from '../components/iconify';
 import { UserContext } from '../UserContext';
 import { SnackbarContext } from '../SnackbarContext';
+
+const client = generateClient();
 
 // ----------------------------------------------------------------------
 

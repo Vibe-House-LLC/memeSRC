@@ -1,6 +1,5 @@
 import { generateClient } from 'aws-amplify/api';
 import { getCurrentUser } from 'aws-amplify/auth';
-import { API } from 'aws-amplify';
 import { listFavorites } from '../graphql/queries';
 
 const client = generateClient();
@@ -51,10 +50,10 @@ async function getCacheKey() {
 }
 
 async function fetchShowsFromAPI() {
-  const aliases = await API.graphql({
+  const aliases = await client.graphql({
     query: listAliasesQuery,
     variables: { filter: {}, limit: 250 },
-    authMode: 'API_KEY',
+    authMode: 'apiKey',
   });
 
   const loadedV2Shows = aliases?.data?.listAliases?.items.filter(obj => obj?.v2ContentMetadata) || [];

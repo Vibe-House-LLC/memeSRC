@@ -1,13 +1,13 @@
-import { generateClient } from 'aws-amplify/api';
-const client = generateClient();
+import { generateClient , graphqlOperation } from 'aws-amplify/api';
 import React, { useContext, useEffect, useState } from 'react';
 import { Container, Divider, IconButton, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography, Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField, CircularProgress } from "@mui/material";
-import { graphqlOperation } from 'aws-amplify/api';
 import { Storage } from 'aws-amplify/storage';
 import { Add, Edit, Delete, Refresh } from "@mui/icons-material";
 import { getV2ContentMetadata, listAliases } from '../graphql/queries';
 import { createAlias, updateAlias, deleteAlias, createV2ContentMetadata, updateV2ContentMetadata } from '../graphql/mutations';
 import { SnackbarContext } from '../SnackbarContext';
+
+const client = generateClient();
 
 /* Utility Functions */
 
@@ -80,8 +80,7 @@ const AliasFormDialog = ({ open, onClose, onSubmit, initialValues }) => {
 };
 
 
-const ConfirmDeleteDialog = ({ open, onClose, onConfirm }) => {
-  return (
+const ConfirmDeleteDialog = ({ open, onClose, onConfirm }) => (
     <Dialog open={open} onClose={onClose}>
       <DialogTitle>Confirm Delete</DialogTitle>
       <DialogContent>
@@ -93,7 +92,6 @@ const ConfirmDeleteDialog = ({ open, onClose, onConfirm }) => {
       </DialogActions>
     </Dialog>
   );
-};
 
 /* Main Component */
 

@@ -2,7 +2,7 @@ import { Helmet } from 'react-helmet-async';
 import { filter } from 'lodash';
 import { sentenceCase } from 'change-case';
 import { useContext, useEffect, useState } from 'react';
-import { Auth } from 'aws-amplify/auth';
+import { fetchAuthSession } from 'aws-amplify/auth';
 import { graphqlOperation, generateClient, post } from 'aws-amplify/api';
 
 // @mui
@@ -116,7 +116,7 @@ async function listUserDetailsGraphQL(limit, nextToken = null, result = []) {
     authMode: 'AMAZON_COGNITO_USER_POOLS',
   });
 
-  const items = response.data.listUserDetails.items;
+  const {items} = response.data.listUserDetails;
   result.push(...items);
 
   if (response.data.listUserDetails.nextToken) {
@@ -130,15 +130,15 @@ async function listUserDetailsGraphQL(limit, nextToken = null, result = []) {
 async function disableUser(username) {
   const apiName = 'AdminQueries';
   const path = '/disableUser';
+  const session = await fetchAuthSession();
+  const jwtToken = session.tokens.accessToken.toString();
   const myInit = {
-    body: {
-      "username": username
-    },
+    body: { username },
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `${(await Auth.currentSession()).getAccessToken().getJwtToken()}`
+      Authorization: jwtToken
     }
-  }
+  };
   return post({
     apiName,
     path,
@@ -335,16 +335,18 @@ export default function UserPage() {
     handleCloseMenu();
     const apiName = 'AdminQueries';
     const path = '/addUserToGroup';
+    const session = await fetchAuthSession();
+    const jwtToken = session.tokens.accessToken.toString();
     const myInit = {
       body: {
-        "username": userObj.username,
-        "groupname": "contributors"
+        username: userObj.username,
+        groupname: 'contributors'
       },
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `${(await Auth.currentSession()).getAccessToken().getJwtToken()}`
+        Authorization: jwtToken
       }
-    }
+    };
     try {
       await post({
         apiName,

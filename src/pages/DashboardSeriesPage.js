@@ -1,5 +1,4 @@
-import { generateClient } from 'aws-amplify/api';
-const client = generateClient();
+import { generateClient , graphqlOperation } from 'aws-amplify/api';
 import { Helmet } from 'react-helmet-async';
 // @mui
 import { Dialog, DialogTitle, DialogContent, FormControl, InputLabel, Select, MenuItem, DialogActions, TextField, List, CardHeader, Avatar, ListItem, ListItemText, Button, Container, Grid, Stack, Typography, Card, CardContent, CircularProgress, IconButton, Collapse, Autocomplete, LinearProgress, Tabs, Tab, Box, Menu, Backdrop } from '@mui/material';
@@ -13,8 +12,7 @@ import CardActions from '@mui/material/CardActions';
 import { styled } from '@mui/material/styles';
 // components
 import { useState, useEffect, Fragment, useContext } from 'react';
-import { Auth } from 'aws-amplify/auth';
-import { graphqlOperation } from 'aws-amplify/api';
+import { fetchAuthSession } from 'aws-amplify/auth';
 import { Storage } from 'aws-amplify/storage';
 import { LoadingButton } from '@mui/lab';
 import { useNavigate } from 'react-router-dom';
@@ -36,6 +34,8 @@ import { listSeries } from '../graphql/queries';
 import { onUpdateSeries } from '../graphql/subscriptions';
 import SeriesCard from '../sections/@dashboard/series/SeriesCard';
 import { SnackbarContext } from '../SnackbarContext';
+
+const client = generateClient();
 
 // ----------------------------------------------------------------------
 
@@ -470,7 +470,8 @@ export default function DashboardSeriesPage() {
         completeCallback: (event) => {
           setUploading(false);
           console.log('Upload Complete!');
-          Auth.currentUserCredentials().then((creds) => {
+          fetchAuthSession().then((session) => {
+            const creds = session.credentials;
             setUploading(false);
             console.log(`protected/${creds.identityId}/${event.key}`);
             setFileLocation(`protected/${creds.identityId}/${event.key}`);

@@ -1,4 +1,4 @@
-import { generateClient, graphqlOperation, get } from 'aws-amplify/api';
+import { generateClient, get } from 'aws-amplify/api';
 import { getFrameSubtitle } from "../graphql/queries";
 
 const client = generateClient();
@@ -23,8 +23,9 @@ const generateFrameIds = (frameId, fineTuning = false) => {
 const fetchSubtitleForFrame = async (frameId) => {
   try {
     const frameData = await client.graphql({
-      ...graphqlOperation(getFrameSubtitle, { id: frameId }),
-      authMode: 'API_KEY',
+      query: getFrameSubtitle,
+      variables: { id: frameId },
+      authMode: 'apiKey',
     });
 
     if (frameData.data.getFrameSubtitle && typeof frameData.data.getFrameSubtitle.subtitle !== 'undefined') {

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { Grid, CircularProgress, Card, Chip, Typography, Button, IconButton, Dialog, DialogContent, DialogActions, Box, CardContent, TextField } from '@mui/material';
 import styled from '@emotion/styled';
-import { graphqlOperation, generateClient } from 'aws-amplify/api';
+import { generateClient } from 'aws-amplify/api';
 import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import InfiniteScroll from 'react-infinite-scroll-component';
 import useMediaQuery from '@mui/material/useMediaQuery';
@@ -19,7 +19,7 @@ import SearchPageResultsAd from '../ads/SearchPageResultsAd';
 import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
 import HomePageBannerAd from '../ads/HomePageBannerAd';
 
-const API = generateClient();
+const client = generateClient();
 
 
 
@@ -200,9 +200,10 @@ export default function SearchPage() {
 
     async function getMaintenanceMode() {
       try {
-        const response = await API.graphql({
-          ...graphqlOperation(getWebsiteSetting, { id: 'globalSettings' }),
-          authMode: 'API_KEY',
+        const response = await client.graphql({
+          query: getWebsiteSetting,
+          variables: { id: 'globalSettings' },
+          authMode: 'apiKey',
         });
         // console.log("setUniversalSearchMaintenance to: ", response?.data?.getWebsiteSetting?.universalSearchMaintenance);
         return response?.data?.getWebsiteSetting?.universalSearchMaintenance;

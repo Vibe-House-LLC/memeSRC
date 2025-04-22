@@ -4,7 +4,7 @@ import { styled } from '@mui/material/styles';
 import { Container, Typography } from '@mui/material';
 import PropTypes from 'prop-types';
 import { Link } from 'react-router-dom';
-import { graphqlOperation, generateClient } from 'aws-amplify/api';
+import { generateClient } from 'aws-amplify/api';
 import Logo from '../components/logo';
 import VerifyForm from '../sections/auth/login/VerifyForm';
 import SignupForm from '../sections/auth/login/SignupForm';
@@ -40,7 +40,8 @@ export default function SiteWideMaintenance({ children }) {
     setLoading(true)
     API.graphql(
       {
-        ...graphqlOperation(getWebsiteSetting, { id: 'globalSettings' }),
+        query: getWebsiteSetting,
+        variables: { id: 'globalSettings' },
         authMode: 'apiKey'
       }
     ).then(response => {

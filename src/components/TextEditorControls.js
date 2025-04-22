@@ -35,8 +35,7 @@ TextEditorControls.propTypes = {
 
 const fonts = ["Arial", "Courier New", "Georgia", "Verdana", "Akbar", "Baveuse", "PULPY", "scrubs", "South Park", "SPIDEY", "HORROR", "IMPACT", "Star Jedi", "twilight", "zuume"];
 
-const FontSelector = ({ selectedFont, onSelectFont, index }) => {
-    return (
+const FontSelector = ({ selectedFont, onSelectFont, index }) => (
       <Select
         value={selectedFont || 'Arial'}
         onChange={(e) => onSelectFont(e.target.value, index)}
@@ -62,7 +61,6 @@ const FontSelector = ({ selectedFont, onSelectFont, index }) => {
         ))}
       </Select>
     );
-};
 
 export default function TextEditorControls(props) {
     const [formats, setFormats] = React.useState(() => []);

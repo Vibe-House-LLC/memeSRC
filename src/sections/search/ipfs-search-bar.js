@@ -220,7 +220,7 @@ export default function IpfsSearchBar(props) {
                 sx={{ width: '100%' }}
                 value={search || ''} // Ensure value is never null
                 onChange={(e) => {
-                  let value = e.target.value;
+                  let {value} = e.target;
 
                   // Replace curly single quotes with straight single quotes
                   value = value.replace(/[\u2018\u2019]/g, "'");
@@ -361,9 +361,7 @@ export default function IpfsSearchBar(props) {
           </Box>
         </Container>
       }
-      {Children.map(props.children, (child) => {
-        return cloneElement(child, { shows });
-      })}
+      {Children.map(props.children, (child) => cloneElement(child, { shows }))}
       <StyledLeftFooter className="bottomBtn" hasAd={showAd}>
         <a href="/support" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
           <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black", zIndex: '1300' }} size='medium'>

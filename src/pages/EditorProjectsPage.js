@@ -1,13 +1,13 @@
-import { generateClient } from 'aws-amplify/api';
-const client = generateClient();
+import { generateClient , graphqlOperation } from 'aws-amplify/api';
 import { useEffect, useState } from 'react';
 import { Container, Typography, ImageList, ImageListItem, Button } from '@mui/material';
 import { Add } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { graphqlOperation } from 'aws-amplify/api';
 import { Storage } from 'aws-amplify/storage';
 import BasePage from './BasePage';
 import { listEditorProjects } from '../graphql/queries';
+
+const client = generateClient();
 
 export default function EditorProjectsPage() {
   const [projects, setProjects] = useState([]);
@@ -28,7 +28,7 @@ export default function EditorProjectsPage() {
   
           try {
             imageUrl = await getUrl({
-              key: key,
+              key,
               options: { level: 'protected' }
             });
           } catch (error) {

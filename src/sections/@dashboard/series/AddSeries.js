@@ -1,11 +1,11 @@
-import { generateClient } from 'aws-amplify/api';
-const client = generateClient();
+import { generateClient , graphqlOperation } from 'aws-amplify/api';
 import { Autocomplete, Button, CircularProgress, Grid, TextField, Typography } from "@mui/material";
-import { graphqlOperation } from 'aws-amplify/api';
 import { useEffect, useState } from "react";
 import { LoadingButton } from "@mui/lab";
 import { useNavigate } from "react-router-dom";
 import { createSeries } from '../../../graphql/mutations';
+
+const client = generateClient();
 
 
 export default function AddSeries() {

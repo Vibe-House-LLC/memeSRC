@@ -1,4 +1,4 @@
-import { signOut } from 'aws-amplify/auth';
+import { signOut , Auth } from 'aws-amplify/auth';
 import { useState, useContext, useEffect } from 'react';
 // @mui
 import { alpha } from '@mui/material/styles';
@@ -6,7 +6,6 @@ import { Box, Divider, Typography, Stack, MenuItem, Avatar, IconButton, Popover,
 import { AutoFixHigh, Person } from '@mui/icons-material';
 // mocks_
 import { useNavigate } from 'react-router-dom';
-import { Auth } from 'aws-amplify/auth';
 import { UserContext } from '../../../UserContext';
 import account from '../../../_mock/account';
 import { useSubscribeDialog } from '../../../contexts/useSubscribeDialog';

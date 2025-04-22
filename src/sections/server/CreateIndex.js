@@ -33,7 +33,7 @@ function CreateIndex({ onProcessComplete }) {
     setProgress(0);
   
     const electron = window.require('electron');
-    const ipcRenderer = electron.ipcRenderer;
+    const {ipcRenderer} = electron;
     const ipcArguments = {
       inputPath: folderPath,
       id,

@@ -1,16 +1,17 @@
 import { generateClient } from 'aws-amplify/api';
-const client = generateClient();
 import { useContext, useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Typography, Container, Grid, Stack, FormControl, InputLabel, Select, MenuItem, } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
-import { graphqlOperation } from 'aws-amplify/api';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactMarkdown } from 'react-markdown/lib/react-markdown';
+import { get } from '../utils/api';
 import UploadToSeriesPage from '../sections/@dashboard/series/UploadToSeriesPage';
 import { listSeries } from '../graphql/queries';
 import { UserContext } from '../UserContext';
 import { SnackbarContext } from '../SnackbarContext';
+
+const client = generateClient();
 
 const headerMarkdownContent = `
   # Upload (early access)
@@ -81,9 +82,7 @@ export default function ContributorRequest() {
   const [series, setSeries] = useState();
   const navigate = useNavigate()
 
-  const authorized = user?.['cognito:groups']?.some((element) => {
-    return element === 'admins' || element === 'contributors';
-  })
+  const authorized = user?.['cognito:groups']?.some((element) => element === 'admins' || element === 'contributors')
 
   const becomeContributor = () => {
     if (user) {
@@ -112,13 +111,13 @@ export default function ContributorRequest() {
   async function listAllSeries(limit = 50, nextToken = null, result = []) {
     const listAllSeriesQuery = { limit, nextToken };
 
-    const response = await API.graphql({
+    const response = await client.graphql({
       query: listSeries,
       variables: listAllSeriesQuery,
-      authMode: 'AMAZON_COGNITO_USER_POOLS',
+      authMode: 'userPool',
     });
 
-    const items = response.data.listSeries.items;
+    const {items} = response.data.listSeries;
     result.push(...items);
 
     if (response.data.listSeries.nextToken) {

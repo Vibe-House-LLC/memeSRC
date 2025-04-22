@@ -1,8 +1,33 @@
-import { generateClient } from 'aws-amplify/api';
-const client = generateClient();
 import { Helmet } from 'react-helmet-async';
+import { useState, useEffect } from 'react';
+import { generateClient } from 'aws-amplify/api';
 // @mui
-import { Dialog, DialogTitle, DialogContent, FormControl, InputLabel, Select, MenuItem, DialogActions, TextField, List, CardHeader, Avatar, ListItem, ListItemText, Button, Container, Grid, Stack, Typography, Card, CardContent, CircularProgress, IconButton, Collapse } from '@mui/material';
+import { 
+  Dialog, 
+  DialogTitle, 
+  DialogContent, 
+  FormControl, 
+  InputLabel, 
+  Select, 
+  MenuItem, 
+  DialogActions, 
+  TextField, 
+  List, 
+  CardHeader, 
+  Avatar, 
+  ListItem, 
+  ListItemText, 
+  Button, 
+  Container, 
+  Grid, 
+  Stack, 
+  Typography, 
+  Card, 
+  CardContent, 
+  CircularProgress, 
+  IconButton, 
+  Collapse 
+} from '@mui/material';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import ShareIcon from '@mui/icons-material/Share';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -12,11 +37,12 @@ import { grey } from '@mui/material/colors';
 import CardActions from '@mui/material/CardActions';
 import { styled } from '@mui/material/styles';
 // components
-import { useState, useEffect } from 'react';
-import { graphqlOperation } from 'aws-amplify/api';
 import Iconify from '../components/iconify';
 import { createContentMetadata, updateContentMetadata, deleteContentMetadata } from '../graphql/mutations';
 import { listContentMetadata } from '../graphql/queries';
+
+// Initialize API client
+const client = generateClient();
 
 // ----------------------------------------------------------------------
 
@@ -39,13 +65,11 @@ const ExpandMore = styled((props) => {
 async function fetchMetadata(items = [], nextToken = null) {
   const result = await client.graphql({
     query: listContentMetadata,
-
     variables: {
       filter: {},
       limit: 10,
       nextToken
     },
-
     authMode: 'awsIam'
   });
   const sortedMetadata = result.data.listContentMetadata.items.sort((a, b) => {
@@ -170,7 +194,11 @@ export default function MetadataPage() {
     };
 
     try {
-      const result = await API.graphql({ query: updateContentMetadata, variables });
+      const result = await client.graphql({
+        query: updateContentMetadata,
+        variables,
+        authMode: 'awsIam'
+      });
       console.log(result);
       const updatedMetadata = result.data.updateContentMetadata;
       setMetadata((prevMetadata) =>

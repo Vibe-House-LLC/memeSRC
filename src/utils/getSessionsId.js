@@ -1,3 +1,5 @@
+import { get } from 'aws-amplify/api';
+
 const getSessionID = async () => {
     let sessionID;
     if ('sessionID' in sessionStorage) {

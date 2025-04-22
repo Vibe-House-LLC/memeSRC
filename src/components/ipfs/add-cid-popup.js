@@ -6,6 +6,7 @@ import { LoadingButton } from '@mui/lab';
 import { useNavigate } from 'react-router-dom';
 import useSearchDetailsV2 from '../../hooks/useSearchDetailsV2';
 import { UserContext } from '../../UserContext';
+import { post } from '../../utils/api';
 
 export default function AddCidPopup({ open = false, setOpen = () => { } }) {
     const [cid, setCid] = useState('');

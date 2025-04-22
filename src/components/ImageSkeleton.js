@@ -7,8 +7,6 @@ const StyledSkeleton = styled(Skeleton)`
   position: absolute;
 `;
 
-const ImageSkeleton = () => {
-  return <StyledSkeleton variant="rectangular" />;
-};
+const ImageSkeleton = () => <StyledSkeleton variant="rectangular" />;
 
 export default ImageSkeleton;

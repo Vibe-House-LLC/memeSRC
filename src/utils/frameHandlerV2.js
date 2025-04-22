@@ -1,5 +1,5 @@
 import { Buffer } from "buffer";
-import { Storage } from 'aws-amplify/storage';
+import { downloadData } from 'aws-amplify/storage';
 import sanitizeHtml from 'sanitize-html';
 import { extractVideoFrames } from './videoFrameExtractor';
 
@@ -90,12 +90,10 @@ const fetchFramesSurroundingPromises = (cid, season, episode, frame) => {
   const surroundingFramePromises = offsets.map(offset => {
     const surroundingFrameIndex = Math.round((frame + offset) / 10) * 10; // Round to the nearest whole second
     return extractVideoFrames(cid, season, episode, [surroundingFrameIndex], 10, scaleFactor)
-      .then(frameImages => {
-        return {
+      .then(frameImages => ({
           frame: surroundingFrameIndex,
           frameImage: frameImages.length > 0 ? frameImages[0] : 'No image available',
-        };
-      });
+        }));
   });
 
   return surroundingFramePromises;

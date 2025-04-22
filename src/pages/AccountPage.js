@@ -1,9 +1,8 @@
-import { signOut } from 'aws-amplify/auth';
+import { signOut , Auth } from 'aws-amplify/auth';
 import React, { useState, useEffect, useContext } from 'react';
 import { Box, Typography, Button, Container, Divider, Grid, Card, List, ListItem, ListItemIcon, ListItemText, IconButton, Chip, Skeleton, LinearProgress, CircularProgress } from '@mui/material';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { Receipt, Download, Block, SupportAgent, Bolt, AutoFixHighRounded, CreditCard, LockOpen, ContentCopy, CheckCircle } from '@mui/icons-material';
-import { Auth } from 'aws-amplify/auth';
 import { UserContext } from '../UserContext';
 import { useSubscribeDialog } from '../contexts/useSubscribeDialog';
 import { getShowsWithFavorites } from '../utils/fetchShowsRevised';
@@ -146,13 +145,11 @@ const AccountPage = () => {
     return <Navigate to="/login" replace />;
   }
 
-  const formatAmount = (amount, currency) => {
-    return new Intl.NumberFormat('en-US', {
+  const formatAmount = (amount, currency) => new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: currency || 'usd',
       minimumFractionDigits: 2,
     }).format(amount / 100);
-  };
 
   return (
     <Container maxWidth="lg" sx={{ mt: 2 }}>

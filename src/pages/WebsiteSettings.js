@@ -1,12 +1,12 @@
-import { generateClient } from 'aws-amplify/api';
-const client = generateClient();
+import { generateClient , graphqlOperation } from 'aws-amplify/api';
 import { Card, Container, Divider, FormControlLabel, FormGroup, Grid, LinearProgress, Stack, Switch, Typography } from "@mui/material";
 import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { graphqlOperation } from 'aws-amplify/api';
 import { createWebsiteSetting, updateWebsiteSetting } from "../graphql/mutations";
 import { getWebsiteSetting } from "../graphql/queries";
 import MaintenanceModes from "../sections/@dashboard/website-settings/MaintenanceModes";
+
+const client = generateClient();
 
 export default function WebsiteSettings() {
     const [loading, setLoading] = useState(true);

@@ -1,5 +1,4 @@
-import { generateClient } from 'aws-amplify/api';
-const client = generateClient();
+import { generateClient , graphqlOperation } from 'aws-amplify/api';
 import { Fragment, forwardRef, memo, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { fabric } from 'fabric';
 import { FabricJSCanvas, useFabricJSEditor } from 'fabricjs-react'
@@ -9,7 +8,6 @@ import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
 import { Accordion, AccordionDetails, AccordionSummary, Backdrop, Button, ButtonGroup, Card, CircularProgress, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, Tab, Tabs, TextField, ToggleButton, ToggleButtonGroup, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { AccessTime, Add, AddCircleOutline, AddPhotoAlternate, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ClosedCaption, ContentCopy, FolderOpen, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, History, HistoryToggleOffRounded, IosShare, Menu, MoreTime, Redo, Save, Share, Timelapse, Timeline, Undo, Update, ZoomIn, ZoomOut } from '@mui/icons-material';
-import { graphqlOperation } from 'aws-amplify/api';
 import { Storage } from 'aws-amplify/storage';
 import { Box } from '@mui/system';
 import { Helmet } from 'react-helmet-async';
@@ -24,6 +22,8 @@ import { createEditorProject, updateEditorProject } from '../graphql/mutations';
 import { getEditorProject } from '../graphql/queries';
 import ImageEditorControls from '../components/ImageEditorControls';
 import EditorPageBottomBannerAd from '../ads/EditorPageBottomBannerAd';
+
+const client = generateClient();
 
 const Alert = forwardRef((props, ref) => <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />);
 
@@ -947,7 +947,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
           }
         });
 
-        const magicResultId = response.magicResultId;
+        const {magicResultId} = response;
 
         const startTime = Date.now();
 
@@ -1073,7 +1073,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     try {
       // Save the current state of the canvas for local undo/redo before any scaling or modifications
       const serializedCanvas = JSON.stringify(editor.canvas);
-      const backgroundImage = editor.canvas.backgroundImage;
+      const {backgroundImage} = editor.canvas;
 
       setFutureStates([]);
       setBgFutureStates([]);

@@ -7,8 +7,7 @@ const { loadAsync } = require("jszip");
  * @returns {Promise<Array<{id: string, files: File[]}>>} A promise that resolves to an array of objects, each containing an ID and an array of File objects for the files within the zip.
  */
 const zipToJszipArray = async (linksArray) => {
-    const downloadPromises = linksArray.map(item => {
-        return fetch(item.link)
+    const downloadPromises = linksArray.map(item => fetch(item.link)
             .then(response => {
                 if (!response.ok) throw new Error('Network response was not ok');
                 return response.blob();
@@ -33,8 +32,7 @@ const zipToJszipArray = async (linksArray) => {
                 console.error('Error with ID:', item.id, err);
                 // Return the ID with an error message to indicate failure
                 return { id: item.id, error: err.message };
-            });
-    });
+            }));
 
     return Promise.all(downloadPromises);
 };

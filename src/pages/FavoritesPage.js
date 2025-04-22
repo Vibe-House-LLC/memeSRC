@@ -1,11 +1,8 @@
-import { generateClient } from 'aws-amplify/api';
-const client = generateClient();
-import { getCurrentUser } from 'aws-amplify/auth';
+import { generateClient , graphqlOperation } from 'aws-amplify/api';
+import { getCurrentUser , Auth } from 'aws-amplify/auth';
 // FavoritesPage.js
 
 import React, { useState, useEffect, useContext } from 'react';
-import { Auth } from 'aws-amplify/auth';
-import { graphqlOperation } from 'aws-amplify/api';
 import { Typography, Grid, Card, CardContent, Button, Collapse, Stack } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import Container from '@mui/material/Container';
@@ -15,6 +12,8 @@ import fetchShows from '../utils/fetchShows';
 import { UserContext } from '../UserContext';
 import { useSubscribeDialog } from '../contexts/useSubscribeDialog';
 import FavoriteToggle from '../components/FavoriteToggle';
+
+const client = generateClient();
 
 const UpgradedIndexBanner = styled('div')(({ show }) => ({
   backgroundImage: 'url("https://api-prod-minimal-v510.vercel.app/assets/images/cover/cover_3.jpg")',

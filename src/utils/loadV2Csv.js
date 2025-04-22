@@ -1,4 +1,4 @@
-import { Storage } from 'aws-amplify/storage';
+import { downloadData } from 'aws-amplify/storage';
 import { V2SearchContext } from "../contexts/v2-search-context";
 import getV2Metadata from "./getV2Metadata";
 

@@ -116,8 +116,7 @@ export default function FramePage({ shows = [] }) {
 
   /* -------------------------------------------------------------------------- */
 
-  const FontSelector = ({ selectedFont, onSelectFont }) => {
-    return (
+  const FontSelector = ({ selectedFont, onSelectFont }) => (
       <Select
         value={selectedFont}
         onChange={(e) => {
@@ -142,7 +141,6 @@ export default function FramePage({ shows = [] }) {
         ))}
       </Select>
     );
-  };
 
   useEffect(() => {
     getV2Metadata(cid).then(metadata => {
@@ -154,9 +152,7 @@ export default function FramePage({ shows = [] }) {
 
   const [snackbarOpen, setSnackBarOpen] = useState(false);
 
-  const [alertOpenTapToEdit, setAlertOpenTapToEdit] = useState(() => {
-    return sessionStorage.getItem('alertDismissed-98ruio') !== 'true';
-  });
+  const [alertOpenTapToEdit, setAlertOpenTapToEdit] = useState(() => sessionStorage.getItem('alertDismissed-98ruio') !== 'true');
 
   const theme = useTheme();
 
@@ -488,14 +484,12 @@ export default function FramePage({ shows = [] }) {
       setLoadingFineTuning(true);
 
       // Create an array of promises for each image load
-      const blobPromises = fineTuningFrames.map((url) => {
-        return fetch(url)
+      const blobPromises = fineTuningFrames.map((url) => fetch(url)
           .then((response) => response.blob())
           .catch((error) => {
             console.error('Error fetching image:', error);
             return null;
-          });
-      });
+          }));
 
       // Wait for all blob promises to resolve
       Promise.all(blobPromises)
@@ -672,8 +666,7 @@ useEffect(() => {
     setDisplayImage(fineTuningBlobs?.[newSliderValue] || null);
   };
 
-  const renderFineTuningFrames = (imgSrc) => {
-    return (
+  const renderFineTuningFrames = (imgSrc) => (
       <>
         <div style={{ position: 'relative' }}>
         {!mainImageLoaded && (
@@ -846,7 +839,6 @@ useEffect(() => {
       </>
 
     );
-  };
 
   const [imagesLoaded, setImagesLoaded] = useState({});
 

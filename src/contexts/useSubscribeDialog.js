@@ -2,6 +2,4 @@
 import { useContext } from 'react';
 import { SubscribeDialogContext } from './SubscribeDialog';
 
-export const useSubscribeDialog = () => {
-  return useContext(SubscribeDialogContext);
-};
+export const useSubscribeDialog = () => useContext(SubscribeDialogContext);

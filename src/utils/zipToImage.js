@@ -7,9 +7,7 @@ const { loadAsync } = require("jszip");
  * @param {string} [fileNameWithoutExt] - Optional. The name of a specific file to load from the zip, without its extension.
  * @returns {Promise<string[] | string>} A promise that resolves to an array of image URLs, or a single image URL if a file name is provided.
  */
-const zipToImage = async (link, fileNameWithoutExt = null) => {
-
-    return fetch(link)
+const zipToImage = async (link, fileNameWithoutExt = null) => fetch(link)
         .then(response => {
             if (!response.ok) throw new Error('Network response was not ok');
             return response.blob();
@@ -26,9 +24,7 @@ const zipToImage = async (link, fileNameWithoutExt = null) => {
 
             const filePromises = files.map(file => {
                 if (!file.dir) { // Check if it's a file and not a folder
-                    return file.async('blob').then(blob => {
-                        return URL.createObjectURL(blob);
-                    });
+                    return file.async('blob').then(blob => URL.createObjectURL(blob));
                 }
                 return null
             }).filter(Boolean); // Filter out undefined values (for folders or if fileNameWithoutExt does not exactly match)
@@ -40,6 +36,5 @@ const zipToImage = async (link, fileNameWithoutExt = null) => {
             console.error('Error:', err);
             return err.message; // Optionally, return error message or handle it as needed
         });
-};
 
 export default zipToImage
