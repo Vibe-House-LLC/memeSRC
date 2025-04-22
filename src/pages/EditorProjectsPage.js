@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Container, Typography, ImageList, ImageListItem, Button } from '@mui/material';
 import { Add } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { API, graphqlOperation } from 'aws-amplify/api';
+import { graphqlOperation } from 'aws-amplify/api';
 import { Storage } from 'aws-amplify/storage';
 import BasePage from './BasePage';
 import { listEditorProjects } from '../graphql/queries';

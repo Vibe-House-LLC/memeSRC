@@ -1,5 +1,3 @@
-import { generateClient } from 'aws-amplify/api';
-const client = generateClient();
 import { Helmet } from 'react-helmet-async';
 import { filter } from 'lodash';
 import { sentenceCase } from 'change-case';
@@ -24,8 +22,11 @@ import {
   TablePagination,
 } from '@mui/material';
 import { Auth } from 'aws-amplify/auth';
-import { API } from 'aws-amplify/api';
-import { Storage } from 'aws-amplify/storage';
+import { downloadData } from 'aws-amplify/storage';
+import { generateClient } from 'aws-amplify/api';
+
+// Initialize GraphQL client
+const client = generateClient();
 import { useNavigate, useParams } from 'react-router-dom';
 // components
 import Label from '../components/label';
@@ -185,7 +186,7 @@ export default function SourceMediaFileList() {
   async function listSourceMediasGraphQL(limit, nextToken = null, result = []) {
     const sourceMediaQuery = { limit, nextToken, id: sourceMediaId };
   
-    const response = await API.graphql({
+    const response = await client.graphql({
       query: getSourceMedia,
       variables: sourceMediaQuery,
       authMode: 'AMAZON_COGNITO_USER_POOLS',

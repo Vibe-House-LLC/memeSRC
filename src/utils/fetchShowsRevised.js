@@ -1,9 +1,8 @@
-import { generateClient } from 'aws-amplify/api';
-const client = generateClient();
-import { getCurrentUser } from 'aws-amplify/auth';
-import { Auth } from 'aws-amplify/auth';
-import { API, graphqlOperation } from 'aws-amplify/api';
+import { generateClient, graphqlOperation } from 'aws-amplify/api';
+import { getCurrentUser, Auth } from 'aws-amplify/auth';
 import { listFavorites } from '../graphql/queries';
+
+const client = generateClient();
 
 const listAliasesQuery = /* GraphQL */ `
   query ListAliases(
@@ -39,7 +38,7 @@ const listAliasesQuery = /* GraphQL */ `
 `;
 
 async function fetchShows() {
-    const aliases = await API.graphql({
+    const aliases = await client.graphql({
         query: listAliasesQuery,
         variables: { filter: {}, limit: 250 },
         authMode: 'API_KEY',

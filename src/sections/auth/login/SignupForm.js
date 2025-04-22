@@ -4,11 +4,12 @@ import { useContext, useEffect, useState } from 'react';
 // @mui
 import { Link, Stack, IconButton, InputAdornment, TextField, Checkbox, Typography, styled, FormControlLabel, FormGroup } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
-import { Auth } from 'aws-amplify/auth';
-import { API } from 'aws-amplify/api';
+// import { Auth } from 'aws-amplify/auth';  // unused
+// import { post } from '../../../utils/api';
 // utils
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import PropTypes from 'prop-types';
+import { post } from '../../../utils/api';
 import { SnackbarContext } from '../../../SnackbarContext';
 // components
 import Iconify from '../../../components/iconify';
@@ -112,9 +113,7 @@ export default function SignupForm(props) {
         'text': 'Signing Up...'
       })
 
-      signUp({
-        username: username,
-        password: password,
+      signUp({ username, password,
 
         options: {
           userAttributes: {

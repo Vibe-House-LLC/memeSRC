@@ -2,7 +2,7 @@ import { generateClient } from 'aws-amplify/api';
 const client = generateClient();
 import React, { useContext, useEffect, useState } from 'react';
 import { Container, Divider, IconButton, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography, Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField, CircularProgress } from "@mui/material";
-import { API, graphqlOperation } from 'aws-amplify/api';
+import { graphqlOperation } from 'aws-amplify/api';
 import { Storage } from 'aws-amplify/storage';
 import { Add, Edit, Delete, Refresh } from "@mui/icons-material";
 import { getV2ContentMetadata, listAliases } from '../graphql/queries';

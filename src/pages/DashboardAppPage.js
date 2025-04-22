@@ -5,7 +5,7 @@ import { Helmet } from 'react-helmet-async';
 // @mui
 import { useTheme } from '@mui/material/styles';
 import { Grid, Container, Typography } from '@mui/material';
-import { API, graphqlOperation } from 'aws-amplify/api';
+import { graphqlOperation } from 'aws-amplify/api';
 import { listHomepageSections, getAnalyticsMetrics } from '../graphql/queries';
 // components
 // import { API, graphqlOperation } from 'aws-amplify';

@@ -4,7 +4,6 @@ import { Box, Typography, Button, Container, Divider, Grid, Card, List, ListItem
 import { Navigate, useNavigate } from 'react-router-dom';
 import { Receipt, Download, Block, SupportAgent, Bolt, AutoFixHighRounded, CreditCard, LockOpen, ContentCopy, CheckCircle } from '@mui/icons-material';
 import { Auth } from 'aws-amplify/auth';
-import { API } from 'aws-amplify/api';
 import { UserContext } from '../UserContext';
 import { useSubscribeDialog } from '../contexts/useSubscribeDialog';
 import { getShowsWithFavorites } from '../utils/fetchShowsRevised';

@@ -51,9 +51,9 @@
 
 
 import { useContext, useState } from 'react';
-import { API } from 'aws-amplify/api';
 import { useNavigate } from 'react-router-dom';
 import getSessionID from "./getSessionsId";
+import { get } from './api';
 import fetchShows from "./fetchShows";
 import getRandomIndex from "./getRandomIndex";
 import loadV2Csv from "./loadV2Csv";
@@ -107,8 +107,8 @@ function useLoadRandomFrame() {
                 };
 
                 const response = await get({
-                    apiName: apiName,
-                    path: path,
+                    apiName,
+                    path,
                     options: myInit
                 });
                 const fid = response.frame_id;

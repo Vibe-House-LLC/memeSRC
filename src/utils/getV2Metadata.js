@@ -1,11 +1,11 @@
 import { generateClient } from 'aws-amplify/api';
+import { getAlias, getV2ContentMetadata } from '../graphql/queries';
+
 const client = generateClient();
-import { API } from 'aws-amplify/api';
-import { getAlias, getV2ContentMetadata } from "../graphql/queries"
 
 export default function getV2Metadata(seriesId) {
     return new Promise((resolve, reject) => {
-        API.graphql({
+        client.graphql({
             query: getAlias,
             variables: { id: seriesId },
             authMode: 'API_KEY'
@@ -14,7 +14,7 @@ export default function getV2Metadata(seriesId) {
                 // console.log('METADATA LOADED FROM ALIAS')
                 resolve(aliasResponse.data.getAlias.v2ContentMetadata)
             } else {
-                API.graphql({
+                client.graphql({
                     query: getV2ContentMetadata,
                     variables: { id: seriesId },
                     authMode: 'API_KEY',

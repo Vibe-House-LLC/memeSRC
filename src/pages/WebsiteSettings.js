@@ -3,7 +3,7 @@ const client = generateClient();
 import { Card, Container, Divider, FormControlLabel, FormGroup, Grid, LinearProgress, Stack, Switch, Typography } from "@mui/material";
 import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { API, graphqlOperation } from 'aws-amplify/api';
+import { graphqlOperation } from 'aws-amplify/api';
 import { createWebsiteSetting, updateWebsiteSetting } from "../graphql/mutations";
 import { getWebsiteSetting } from "../graphql/queries";
 import MaintenanceModes from "../sections/@dashboard/website-settings/MaintenanceModes";

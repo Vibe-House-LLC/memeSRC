@@ -3,7 +3,6 @@ import { Link as RouterLink, useParams } from 'react-router-dom';
 import { styled } from '@mui/material/styles';
 import { AppBar, Toolbar, IconButton, Button, Typography, Container, Card, CardContent, CardMedia, Grid, Chip, CircularProgress } from '@mui/material';
 import { useEffect, useState } from 'react';
-import { API } from 'aws-amplify/api';
 import HomeIcon from '@mui/icons-material/Home';
 import { listSeries } from '../graphql/queries';
 import BasePage from './BasePage';

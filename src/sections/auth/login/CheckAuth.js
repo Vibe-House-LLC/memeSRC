@@ -1,9 +1,9 @@
+import { useEffect, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { getCurrentUser } from 'aws-amplify/auth';
-import { useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { Auth } from 'aws-amplify/auth';
-import { API } from 'aws-amplify/api';
-import { PropTypes } from "prop-types";
+import PropTypes from 'prop-types';
+
+import { get } from '../../../utils/api';
 import { UserContext } from '../../../UserContext';
 
 CheckAuth.propTypes = {

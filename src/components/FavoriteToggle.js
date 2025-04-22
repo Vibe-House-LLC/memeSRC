@@ -1,8 +1,8 @@
 import React, { useState, useContext, useEffect } from 'react';
-import { API } from 'aws-amplify/api';
 import { IconButton, CircularProgress } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
+import { post } from '../utils/api';
 import { UserContext } from '../UserContext';
 
 const StyledIconButton = styled(IconButton)(({ theme, isFavorite }) => ({

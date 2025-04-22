@@ -1,9 +1,9 @@
 import { generateClient } from 'aws-amplify/api';
-const client = generateClient();
 import { getCurrentUser } from 'aws-amplify/auth';
-import { Auth } from 'aws-amplify/auth';
-import { API, graphqlOperation } from 'aws-amplify/api';
+import { API } from 'aws-amplify';
 import { listFavorites } from '../graphql/queries';
+
+const client = generateClient();
 
 const listAliasesQuery = /* GraphQL */ `
   query ListAliases(

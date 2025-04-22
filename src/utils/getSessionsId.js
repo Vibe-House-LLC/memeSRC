@@ -1,5 +1,3 @@
-import { API } from 'aws-amplify/api';
-
 const getSessionID = async () => {
     let sessionID;
     if ('sessionID' in sessionStorage) {
@@ -20,4 +18,4 @@ const getSessionID = async () => {
       });
   };
 
-  export default getSessionID
+export default getSessionID

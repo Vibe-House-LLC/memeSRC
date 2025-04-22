@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { Link, Fab, FormControl, Grid, InputBase, MenuItem, Select, Typography, Divider } from "@mui/material";
 import { Close, Favorite, MapsUgc, Search, Shuffle } from "@mui/icons-material";
-import { API, graphqlOperation } from 'aws-amplify/api';
+import { graphqlOperation } from 'aws-amplify/api';
 import { useCallback, useContext, useEffect, useState } from "react";
 import { LoadingButton } from "@mui/lab";
 import { Link as RouterLink, useNavigate } from "react-router-dom";

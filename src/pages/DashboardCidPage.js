@@ -1,7 +1,7 @@
 import { generateClient } from 'aws-amplify/api';
 const client = generateClient();
 import { Container, Divider, IconButton, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from "@mui/material";
-import { API, graphqlOperation } from 'aws-amplify/api';
+import { graphqlOperation } from 'aws-amplify/api';
 import { useEffect, useState } from "react";
 import { Add } from "@mui/icons-material";
 import { listV2ContentMetadata } from "../graphql/queries";

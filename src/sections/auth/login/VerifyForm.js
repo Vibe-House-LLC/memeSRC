@@ -1,10 +1,8 @@
-import { confirmSignUp } from 'aws-amplify/auth';
+import { confirmSignUp as amplifyConfirmSignUp, resendSignUpCode } from 'aws-amplify/auth';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 // @mui
 import { Backdrop, CircularProgress, Link, Stack, TextField, Typography } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
-import { Auth } from 'aws-amplify/auth';
-import { API } from 'aws-amplify/api';
 import { useContext, useState } from 'react';
 import { UserContext } from '../../../UserContext';
 import { SnackbarContext } from '../../../SnackbarContext';
@@ -40,10 +38,7 @@ export default function VerifyForm(props) {
   const confirmSignUp = () => {
     if (checkForm()) {
       setLoading(true)
-      confirmSignUp({
-        username: username,
-        code: code
-      }).then(response => {
+      amplifyConfirmSignUp({ username, code }).then(response => {
         setSeverity('success');
         setMessage(`Account verified! Please log in.`);
         setOpen(true)
@@ -84,10 +79,12 @@ export default function VerifyForm(props) {
   }
 
   const handleResendVerification = () => {
-    setBackdropOpen(true)
-    Auth.resendSignUp(username).then(() => {
-      setBackdropOpen(false)
-    }).catch(error => {
+    setBackdropOpen(true);
+    resendSignUpCode(username)
+      .then(() => {
+        setBackdropOpen(false);
+      })
+      .catch(error => {
       console.log(error);
       switch (error.name) {
         case 'TooManyRequestsException':

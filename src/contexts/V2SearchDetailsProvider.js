@@ -1,7 +1,6 @@
 import PropTypes from 'prop-types';
 import { useContext, useEffect, useState } from "react";
 import { useLocation, useParams } from 'react-router-dom';
-import { API } from 'aws-amplify/api';
 import { V2SearchContext } from "./v2-search-context";
 import { UserContext } from '../UserContext';
 

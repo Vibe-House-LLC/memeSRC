@@ -4,7 +4,7 @@ const client = generateClient();
 import { Helmet } from 'react-helmet-async';
 import { useState, useEffect } from 'react';
 
-import { API, graphqlOperation } from 'aws-amplify/api';
+import { graphqlOperation } from 'aws-amplify/api';
 
 // MUI Components
 import { 

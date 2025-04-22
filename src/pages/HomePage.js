@@ -1,4 +1,3 @@
-import { API } from 'aws-amplify/api';
 import React, { useState, useCallback, useEffect, useContext, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';

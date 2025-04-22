@@ -1,9 +1,9 @@
 import { useNavigate } from 'react-router-dom';
 import { Backdrop, CircularProgress, Link, Stack, TextField, Typography, styled } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
-import { Auth } from 'aws-amplify/auth';
-import { API } from 'aws-amplify/api';
 import { useContext, useState } from 'react';
+// import { Auth } from 'aws-amplify/auth';  // unused
+import { post } from '../../../utils/api';
 import { UserContext } from '../../../UserContext';
 import { SnackbarContext } from '../../../SnackbarContext';
 import validateEmail from '../../../utils/validateEmail';

@@ -1,11 +1,11 @@
 import { getCurrentUser } from 'aws-amplify/auth';
-import { useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { Auth } from 'aws-amplify/auth';
-import { API } from 'aws-amplify/api';
-import { PropTypes } from "prop-types";
+import { useEffect, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import PropTypes from 'prop-types';
+
+import { get } from '../../../utils/api';
+import { getShowsWithFavorites } from '../../../utils/fetchShowsRevised';
 import { UserContext } from '../../../UserContext';
-import { getShowsWithFavorites } from "../../../utils/fetchShowsRevised";
 
 GuestAuth.propTypes = {
   children: PropTypes.object

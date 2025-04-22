@@ -1,4 +1,4 @@
-import { API, graphqlOperation } from 'aws-amplify/api';
+import { graphqlOperation } from 'aws-amplify/api';
 import { Storage } from 'aws-amplify/storage';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';

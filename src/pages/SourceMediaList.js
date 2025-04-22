@@ -1,9 +1,11 @@
-import { generateClient } from 'aws-amplify/api';
-const client = generateClient();
 import { Helmet } from 'react-helmet-async';
 import { filter } from 'lodash';
 import { sentenceCase } from 'change-case';
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Auth } from 'aws-amplify/auth';
+import { generateClient } from 'aws-amplify/api';
+
 // @mui
 import {
   Card,
@@ -23,21 +25,22 @@ import {
   TableContainer,
   TablePagination,
 } from '@mui/material';
-import { Auth } from 'aws-amplify/auth';
-import { API } from 'aws-amplify/api';
-import { useNavigate } from 'react-router-dom';
+
 // components
 import Label from '../components/label';
 import Iconify from '../components/iconify';
 import Scrollbar from '../components/scrollbar';
+
 // sections
 import { UserListHead, UserListToolbar } from '../sections/@dashboard/user';
 import UserCountChart from '../sections/@dashboard/app/UserSignupsGraph';
+
 // graphql
 import { listUserDetails } from '../graphql/queries';
 import { updateUserDetails } from '../graphql/mutations';
-// mock
-// import USERLIST from '../_mock/user';
+
+// Initialize API client
+const API = generateClient();
 
 const listSourceMedias = /* GraphQL */ `
   query ListSourceMedias(

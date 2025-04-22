@@ -13,7 +13,7 @@ import CardActions from '@mui/material/CardActions';
 import { styled } from '@mui/material/styles';
 // components
 import { useState, useEffect } from 'react';
-import { API, graphqlOperation } from 'aws-amplify/api';
+import { graphqlOperation } from 'aws-amplify/api';
 import Iconify from '../components/iconify';
 import { createContentMetadata, updateContentMetadata, deleteContentMetadata } from '../graphql/mutations';
 import { listContentMetadata } from '../graphql/queries';

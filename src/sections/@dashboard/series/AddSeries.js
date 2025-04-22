@@ -1,7 +1,7 @@
 import { generateClient } from 'aws-amplify/api';
 const client = generateClient();
 import { Autocomplete, Button, CircularProgress, Grid, TextField, Typography } from "@mui/material";
-import { API, graphqlOperation } from 'aws-amplify/api';
+import { graphqlOperation } from 'aws-amplify/api';
 import { useEffect, useState } from "react";
 import { LoadingButton } from "@mui/lab";
 import { useNavigate } from "react-router-dom";

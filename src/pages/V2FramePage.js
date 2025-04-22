@@ -4,7 +4,6 @@
 import { Helmet } from 'react-helmet-async';
 import { Navigate, Link as RouterLink, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useCallback, useEffect, useRef, useState, useContext, memo } from 'react';
-import { API } from 'aws-amplify/api';
 import { styled } from '@mui/material/styles';
 import { useTheme } from '@emotion/react';
 import {

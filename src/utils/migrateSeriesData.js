@@ -1,8 +1,8 @@
 import { generateClient } from 'aws-amplify/api';
-const client = generateClient();
-import { API, graphqlOperation } from 'aws-amplify/api';
 import { listSeries } from "../graphql/queries";
 import { updateSeries } from "../graphql/mutations";
+
+const client = generateClient();
 
 async function getAllSeries(nextToken = null, series = []) {
     const result = await client.graphql({

@@ -13,7 +13,7 @@ import CardActions from '@mui/material/CardActions';
 import { styled } from '@mui/material/styles';
 // components
 import { useState, useEffect, useRef, useContext, Fragment } from 'react';
-import { API, graphqlOperation } from 'aws-amplify/api';
+import { graphqlOperation } from 'aws-amplify/api';
 import { Storage } from 'aws-amplify/storage';
 import { useParams } from 'react-router-dom';
 import { UploadFile } from '@mui/icons-material';

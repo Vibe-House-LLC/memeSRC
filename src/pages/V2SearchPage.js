@@ -1,11 +1,9 @@
-import { generateClient } from 'aws-amplify/api';
-const client = generateClient();
 // V2SearchPage.js
 
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { Grid, CircularProgress, Card, Chip, Typography, Button, IconButton, Dialog, DialogContent, DialogActions, Box, CardContent, TextField } from '@mui/material';
 import styled from '@emotion/styled';
-import { API, graphqlOperation } from 'aws-amplify/api';
+import { graphqlOperation, generateClient } from 'aws-amplify/api';
 import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import InfiniteScroll from 'react-infinite-scroll-component';
 import useMediaQuery from '@mui/material/useMediaQuery';
@@ -20,6 +18,8 @@ import ImageSkeleton from '../components/ImageSkeleton';
 import SearchPageResultsAd from '../ads/SearchPageResultsAd';
 import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
 import HomePageBannerAd from '../ads/HomePageBannerAd';
+
+const API = generateClient();
 
 
 

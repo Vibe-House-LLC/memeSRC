@@ -14,7 +14,7 @@ import { styled } from '@mui/material/styles';
 // components
 import { useState, useEffect, Fragment, useContext } from 'react';
 import { Auth } from 'aws-amplify/auth';
-import { API, graphqlOperation } from 'aws-amplify/api';
+import { graphqlOperation } from 'aws-amplify/api';
 import { Storage } from 'aws-amplify/storage';
 import { LoadingButton } from '@mui/lab';
 import { useNavigate } from 'react-router-dom';

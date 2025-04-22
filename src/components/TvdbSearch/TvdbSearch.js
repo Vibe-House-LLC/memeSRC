@@ -1,6 +1,5 @@
 import { Close, Search } from "@mui/icons-material";
 import { Autocomplete, CircularProgress, Container, Grid, IconButton, Paper, Popover, Popper, TextField, Typography, styled } from "@mui/material";
-import { API } from 'aws-amplify/api';
 import { useRef, useState } from "react";
 
 const StyledList = styled('li')``

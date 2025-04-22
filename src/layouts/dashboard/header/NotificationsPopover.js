@@ -19,7 +19,6 @@ import {
   ListItemAvatar,
   ListItemButton,
 } from '@mui/material';
-import { API } from 'aws-amplify/api';
 import { useNavigate } from 'react-router-dom';
 import { fToNow } from '../../../utils/formatTime';
 // components

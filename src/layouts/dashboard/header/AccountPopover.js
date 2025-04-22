@@ -7,7 +7,6 @@ import { AutoFixHigh, Person } from '@mui/icons-material';
 // mocks_
 import { useNavigate } from 'react-router-dom';
 import { Auth } from 'aws-amplify/auth';
-import { API } from 'aws-amplify/api';
 import { UserContext } from '../../../UserContext';
 import account from '../../../_mock/account';
 import { useSubscribeDialog } from '../../../contexts/useSubscribeDialog';

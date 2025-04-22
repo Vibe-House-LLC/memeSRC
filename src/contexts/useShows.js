@@ -1,12 +1,10 @@
-import { generateClient } from 'aws-amplify/api';
-const client = generateClient();
-import { getCurrentUser } from 'aws-amplify/auth';
-// ShowContext.js
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import { Auth } from 'aws-amplify/auth';
-import { API, graphqlOperation } from 'aws-amplify/api';
+import { generateClient } from 'aws-amplify/api';
+import { getCurrentUser } from 'aws-amplify/auth';
 import { listFavorites } from '../graphql/queries';
 import { UserContext } from '../UserContext';
+
+const client = generateClient();
 
 const listAliasesQuery = /* GraphQL */ `
   query ListAliases(
@@ -65,10 +63,10 @@ export const ShowProvider = ({ children }) => {
     }
 
     async function fetchShowsFromAPI() {
-        const aliases = await API.graphql({
+        const aliases = await client.graphql({
             query: listAliasesQuery,
             variables: { filter: {}, limit: 250 },
-            authMode: 'API_KEY',
+            authMode: 'apiKey',
         });
 
         const loadedV2Shows = aliases?.data?.listAliases?.items.filter(obj => obj?.v2ContentMetadata) || [];

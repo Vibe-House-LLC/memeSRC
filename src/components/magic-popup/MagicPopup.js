@@ -3,7 +3,6 @@ import PropTypes from 'prop-types';
 import { forwardRef, useContext, useEffect, useRef, useState } from 'react';
 import { Box, Button, Chip, Divider, Fab, Popover, Stack, Typography, css, useTheme } from '@mui/material';
 import { AutoFixHighRounded, Close, SupervisedUserCircle, Verified } from '@mui/icons-material';
-import { API } from 'aws-amplify/api';
 import { LoadingButton } from '@mui/lab';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { UserContext } from '../../UserContext';

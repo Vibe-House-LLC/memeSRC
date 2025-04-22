@@ -5,7 +5,7 @@ import { getCurrentUser } from 'aws-amplify/auth';
 
 import React, { useState, useEffect, useContext } from 'react';
 import { Auth } from 'aws-amplify/auth';
-import { API, graphqlOperation } from 'aws-amplify/api';
+import { graphqlOperation } from 'aws-amplify/api';
 import { Typography, Grid, Card, CardContent, Button, Collapse, Stack } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import Container from '@mui/material/Container';

@@ -4,9 +4,9 @@ import { useNavigate, useLocation } from 'react-router-dom';
 // @mui
 import { Link, Stack, IconButton, InputAdornment, TextField, Checkbox, FormControlLabel, Typography, styled } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
-import { Auth } from 'aws-amplify/auth';
-import { API } from 'aws-amplify/api';
+// import { Auth } from 'aws-amplify/auth';  // unused
 import Iconify from '../../../components/iconify';
+import { post } from '../../../utils/api';
 import { UserContext } from '../../../UserContext';
 import { SnackbarContext } from '../../../SnackbarContext';
 import { getShowsWithFavorites } from '../../../utils/fetchShowsRevised';
@@ -67,10 +67,7 @@ export default function LoginForm() {
 
 
     if (username && password) {
-      signIn({
-        username: username,
-        password: password
-      }).then((x) => {
+      signIn({ username, password }).then((x) => {
         post({
           apiName: 'publicapi',
           path: '/user/update/status'

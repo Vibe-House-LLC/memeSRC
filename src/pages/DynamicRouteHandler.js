@@ -1,8 +1,6 @@
-import { generateClient } from 'aws-amplify/api';
-const client = generateClient();
 import { useState, useEffect } from 'react';
 import { useParams, Navigate, useNavigate } from 'react-router-dom';
-import { API, graphqlOperation } from 'aws-amplify/api';
+import { graphqlOperation, generateClient } from 'aws-amplify/api';
 import { CircularProgress } from '@mui/material';
 import { getAlias, getContentMetadata, getV2ContentMetadata } from '../graphql/queries'; // Import the getContentMetadata
 import SeriesPage from './SeriesPage';
@@ -17,6 +15,7 @@ const DynamicRouteHandler = () => {
   const { loadingSavedCids } = useSearchDetailsV2();
   const [error, setError] = useState(false);
   const [favorites, setFavorites] = useState(false);
+  const API = generateClient();
 
   const navigate = useNavigate();
 
@@ -53,7 +52,7 @@ const DynamicRouteHandler = () => {
         API.graphql({
           query: getAlias,
           variables: { id: seriesId },
-          authMode: 'API_KEY'
+          authMode: 'apiKey'
         }).then(aliasResponse => {
           if (aliasResponse?.data?.getAlias?.v2ContentMetadata) {
             console.log('METADATA LOADED FROM ALIAS')
@@ -63,7 +62,7 @@ const DynamicRouteHandler = () => {
             API.graphql({
               query: getV2ContentMetadata,
               variables: { id: seriesId },
-              authMode: 'API_KEY',
+              authMode: 'apiKey',
             }).then(response => {
               if (response?.data?.getV2ContentMetadata) {
                 console.log('METADATA LOADED FROM CID')
@@ -74,7 +73,7 @@ const DynamicRouteHandler = () => {
                 API.graphql({
                   query: getContentMetadata,
                   variables: { id: seriesId },
-                  authMode: 'API_KEY',
+                  authMode: 'apiKey',
                 }).then(response => {
                   if (response?.data?.getContentMetadata) {
                     console.log('METADATA LOADED FROM V1 METADATA')

@@ -1,9 +1,8 @@
-import { forgotPassword } from 'aws-amplify/auth';
+import { forgotPassword, confirmResetPassword } from 'aws-amplify/auth';
 import { useNavigate } from 'react-router-dom';
 import { Backdrop, CircularProgress, Link, Stack, TextField, Typography, styled } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
-import { Auth } from 'aws-amplify/auth';
-import { API } from 'aws-amplify/api';
+// import { Auth } from 'aws-amplify/auth';  // unused
 import { useContext, useState } from 'react';
 import { UserContext } from '../../../UserContext';
 import { SnackbarContext } from '../../../SnackbarContext';
@@ -32,7 +31,7 @@ export default function ResetPasswordForm(props) {
   const handleResetPassword = () => {
     setLoading(true)
     forgotPassword({
-      username: username
+      username
     })
       .then(() => {
         setLoading(false);
@@ -52,7 +51,11 @@ export default function ResetPasswordForm(props) {
 
   const handleResetPasswordSubmit = () => {
     setLoading(true)
-    Auth.forgotPasswordSubmit(username, code, password)
+    confirmResetPassword({
+      username,
+      confirmationCode: code,
+      newPassword: password
+    })
       .then(() => {
         setLoading(false);
         setSeverity('success');

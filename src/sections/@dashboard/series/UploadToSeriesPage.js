@@ -1,17 +1,15 @@
-import { generateClient } from 'aws-amplify/api';
-const client = generateClient();
-// @mui
-import { Container, Grid, Stack, Typography, Card, CircularProgress, Backdrop, Divider, LinearProgress } from '@mui/material';
-// components
-import { useState, useEffect, useRef, useContext, Fragment } from 'react';
-import { API, graphqlOperation } from 'aws-amplify/api';
-import { Storage } from 'aws-amplify/storage';
-import { UploadFile } from '@mui/icons-material';
+import React, { useState, useEffect, useRef, useContext, Fragment } from 'react';
+import { API } from 'aws-amplify';
+import { uploadData } from '../../../utils/api';
 import Dropzone from 'react-dropzone';
+import { Container, Grid, Stack, Typography, Card, CircularProgress, Backdrop, Divider, LinearProgress } from '@mui/material';
+import { UploadFile } from '@mui/icons-material';
 import { LoadingButton } from '@mui/lab';
 import { getSeries } from '../../../graphql/queries';
 import { UserContext } from '../../../UserContext';
 import { SnackbarContext } from '../../../SnackbarContext';
+
+const client = API;
 
 // ----------------------------------------------------------------------
 

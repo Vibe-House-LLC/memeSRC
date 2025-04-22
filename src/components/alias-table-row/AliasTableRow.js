@@ -2,7 +2,7 @@ import { generateClient } from 'aws-amplify/api';
 const client = generateClient();
 import { Add } from "@mui/icons-material";
 import { Button, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, TableCell, TableRow, TextField, Typography } from "@mui/material";
-import { API, graphqlOperation } from 'aws-amplify/api';
+import { graphqlOperation } from 'aws-amplify/api';
 import { useContext, useState } from "react";
 import { LoadingButton } from "@mui/lab";
 import { getAlias } from "../../graphql/queries";

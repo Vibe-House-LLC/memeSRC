@@ -1,9 +1,7 @@
-import { generateClient } from 'aws-amplify/api';
-const client = generateClient();
 import React, { useContext, useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import { Auth } from 'aws-amplify/auth';
-import { API, graphqlOperation } from 'aws-amplify/api';
+import { generateClient, get, post } from 'aws-amplify/api';
 import {
   Container,
   Grid,
@@ -53,6 +51,9 @@ import { SnackbarContext } from '../SnackbarContext';
 import { useShows } from '../contexts/useShows';  // Add this import if not already present
 import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
 import HomePageBannerAd from '../ads/HomePageBannerAd';
+
+// Initialize the Amplify API client
+const client = generateClient();
 
 const StyledBadge = styled(Badge)(() => ({
   '& .MuiBadge-badge': {
@@ -511,9 +512,10 @@ export default function VotingPage() {
       // Fetch series metadata for the IDs not in cache
       if (idsToFetch.length > 0) {
         const seriesDataPromises = idsToFetch.map((id) =>
-          API.graphql({
-            ...graphqlOperation(getSeries, { id }),
-            authMode: 'API_KEY',
+          client.graphql({
+            query: getSeries,
+            variables: { id },
+            authMode: 'apiKey',
           })
         );
 
@@ -698,9 +700,10 @@ export default function VotingPage() {
     setLoading(true);
     try {
       const fetchSeries = async (nextToken = null, accumulatedItems = []) => {
-        const result = await API.graphql({
-          ...graphqlOperation(listSeries, { nextToken, limit: 1000 }),
-          authMode: 'API_KEY',
+        const result = await client.graphql({
+          query: listSeries,
+          variables: { nextToken, limit: 1000 },
+          authMode: 'apiKey',
         });
         const items = accumulatedItems.concat(result.data.listSeries.items);
         if (result.data.listSeries.nextToken) {
@@ -780,9 +783,10 @@ export default function VotingPage() {
 
           if (idsToFetch.length > 0) {
             const seriesDataPromises = idsToFetch.map((id) =>
-              API.graphql({
-                ...graphqlOperation(getSeries, { id }),
-                authMode: 'API_KEY',
+              client.graphql({
+                query: getSeries,
+                variables: { id },
+                authMode: 'apiKey',
               })
             );
 

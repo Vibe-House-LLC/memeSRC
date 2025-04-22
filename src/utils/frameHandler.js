@@ -1,8 +1,7 @@
-import { generateClient } from 'aws-amplify/api';
-const client = generateClient();
-import { API, graphqlOperation } from 'aws-amplify/api';
-import { getFrameSubtitle } from "../graphql/queries"; // assuming queries.js is in the same directory
+import { generateClient, graphqlOperation, get } from 'aws-amplify/api';
+import { getFrameSubtitle } from "../graphql/queries";
 
+const client = generateClient();
 const ERROR_SUBTITLE = "ERROR: AWAITING DDB CACHE";
 
 const splitFrameId = (frameId) => {
@@ -23,7 +22,7 @@ const generateFrameIds = (frameId, fineTuning = false) => {
 
 const fetchSubtitleForFrame = async (frameId) => {
   try {
-    const frameData = await API.graphql({
+    const frameData = await client.graphql({
       ...graphqlOperation(getFrameSubtitle, { id: frameId }),
       authMode: 'API_KEY',
     });

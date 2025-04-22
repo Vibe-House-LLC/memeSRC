@@ -3,6 +3,7 @@ module.exports = function(fileInfo, api) {
   const root = j(fileInfo.source);
   root.find(j.ImportDeclaration, { source: { value: 'aws-amplify' } })
     .forEach(path => {
+      // Only handle named imports; drop deprecated graphqlOperation
       const specifiers = path.node.specifiers.filter(s => s.type === 'ImportSpecifier');
       const authSpec = [];
       const apiSpec = [];
@@ -11,9 +12,9 @@ module.exports = function(fileInfo, api) {
       specifiers.forEach(s => {
         const name = s.imported.name;
         if (name === 'Auth') authSpec.push(s);
-        else if (name === 'API' || name === 'graphqlOperation') apiSpec.push(s);
+        else if (name === 'API') apiSpec.push(s);
         else if (name === 'Storage') storageSpec.push(s);
-        else otherSpec.push(s);
+        else if (name !== 'graphqlOperation') otherSpec.push(s);
       });
       const newImports = [];
       if (authSpec.length) newImports.push(j.importDeclaration(authSpec, j.literal('aws-amplify/auth')));

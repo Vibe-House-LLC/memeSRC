@@ -1,7 +1,7 @@
 import { generateClient } from 'aws-amplify/api';
 const client = generateClient();
 import React, { useEffect, useState } from 'react';
-import { API, graphqlOperation } from 'aws-amplify/api';
+import { graphqlOperation } from 'aws-amplify/api';
 import {
   Typography,
   Container,

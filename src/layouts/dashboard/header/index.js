@@ -31,7 +31,6 @@ import SupervisedUserCircleIcon from '@mui/icons-material/SupervisedUserCircle';
 // utils
 import { useLocation, useNavigate } from "react-router-dom";
 import { LoadingButton } from '@mui/lab';
-import { API } from 'aws-amplify/api';
 import { bgBlur } from '../../../utils/cssStyles';
 // components
 import Iconify from '../../../components/iconify';

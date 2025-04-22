@@ -1,9 +1,10 @@
-import { generateClient } from 'aws-amplify/api';
-const client = generateClient();
 import { Helmet } from 'react-helmet-async';
 import { filter } from 'lodash';
 import { sentenceCase } from 'change-case';
 import { useContext, useEffect, useState } from 'react';
+import { Auth } from 'aws-amplify/auth';
+import { graphqlOperation, generateClient, post } from 'aws-amplify/api';
+
 // @mui
 import {
   Card,
@@ -30,22 +31,24 @@ import {
   TextField,
   CircularProgress,
 } from '@mui/material';
-import { Auth } from 'aws-amplify/auth';
-import { API, graphqlOperation } from 'aws-amplify/api';
+
 // components
 import { AutoFixHighRounded, Check, Delete, Edit, Message, Upload } from '@mui/icons-material';
 import Label from '../components/label';
 import Iconify from '../components/iconify';
 import Scrollbar from '../components/scrollbar';
+
 // sections
 import { UserListHead, UserListToolbar } from '../sections/@dashboard/user';
 import UserCountChart from '../sections/@dashboard/app/UserSignupsGraph';
+
 // graphql
 import { listUserDetails } from '../graphql/queries';
 import { createUserNotification, updateUserDetails } from '../graphql/mutations';
 import { SnackbarContext } from '../SnackbarContext';
-// mock
-// import USERLIST from '../_mock/user';
+
+// Initialize API client
+const API = generateClient();
 
 // ----------------------------------------------------------------------
 
@@ -137,8 +140,8 @@ async function disableUser(username) {
     }
   }
   return post({
-    apiName: apiName,
-    path: path,
+    apiName,
+    path,
     options: myInit
   });
 }
@@ -211,7 +214,7 @@ export default function UserPage() {
     }
 
     console.log(notificationData)
-    client.graphql({
+    API.graphql({
       query: createUserNotification,
       variables: { input: notificationData },
       authMode: 'awsIam'
@@ -344,11 +347,11 @@ export default function UserPage() {
     }
     try {
       await post({
-        apiName: apiName,
-        path: path,
+        apiName,
+        path,
         options: myInit
       });
-      await client.graphql({
+      await API.graphql({
         query: updateUserDetails,
         variables: { input: { id: userObj.id, contributorAccessStatus: 'approved' } },
         authMode: 'awsIam'
@@ -369,7 +372,7 @@ export default function UserPage() {
   const giveEarlyAccessInvite = async (userObj) => {
     handleCloseMenu();
     try {
-      await client.graphql({
+      await API.graphql({
         query: updateUserDetails,
         variables: { input: { id: userObj.id, earlyAccessStatus: 'invited' } },
         authMode: 'awsIam'
