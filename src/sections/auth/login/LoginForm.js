@@ -1,16 +1,14 @@
-import { signIn } from 'aws-amplify/auth';
 import { useContext, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 // @mui
 import { Link, Stack, IconButton, InputAdornment, TextField, Checkbox, FormControlLabel, Typography, styled } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
-// import { Auth } from 'aws-amplify/auth';  // unused
 import Iconify from '../../../components/iconify';
-import { post } from '../../../utils/api';
+import { post, get } from '../../../utils/api';
 import { UserContext } from '../../../UserContext';
 import { SnackbarContext } from '../../../SnackbarContext';
 import { getShowsWithFavorites } from '../../../utils/fetchShowsRevised';
-
+import { useAuth } from '../../../hooks/useAuth';
 
 // ----------------------------------------------------------------------
 
@@ -26,27 +24,20 @@ input:-webkit-autofill:active  {
 
 export default function LoginForm() {
   const navigate = useNavigate();
-
   const { setSeverity, setMessage, setOpen } = useContext(SnackbarContext);
-
   const [showPassword, setShowPassword] = useState(false);
-
   const [staySignedIn, setStaySignedIn] = useState(false);
-
   const [username, setUsername] = useState(null);
-
   const [password, setPassword] = useState(null);
-
   const [loading, setLoading] = useState(false);
-
   const [formErrors, setFormErrors] = useState({
     username: false,
     password: false
   });
 
   const loginForm = useRef();
-
-  const { setUser, handleUpdateDefaultShow, setShows } = useContext(UserContext)
+  const { setUser, handleUpdateDefaultShow, setShows } = useContext(UserContext);
+  const { login } = useAuth();
 
   // Use the useLocation hook to get the location object
   const location = useLocation();
@@ -57,42 +48,19 @@ export default function LoginForm() {
   const handleClick = async () => {
     setLoading(true);
 
-    // TODO: Get the session/local storage thing figured out. Currently if it's set to session, if you manually go to another page on the site it logs you out.
-
-    // Handle sign in
-    // if (!staySignedIn) {
-    //   Auth.configure({ storage: window.sessionStorage })
-    // } else {
-    //   Auth.configure({ storage: window.localStorage })
-    // }
-
     if (username && password) {
       try {
-        const x = await signIn({ username, password });
+        await login(username, password);
         
-        try {
-          // Create the API operation
-          const postOperation = post({
-            apiName: 'publicapi',
-            path: '/user/update/status'
-          });
-          
-          // Wait for the response to complete
-          await postOperation.response;
-          
-          const loadedShows = await getShowsWithFavorites();
-          setShows(loadedShows);
-          window.localStorage.setItem('memeSRCShows', JSON.stringify(loadedShows));
-          setUser(x);
-          handleUpdateDefaultShow(window.localStorage.getItem('memeSRCDefaultIndex'));
-          navigate(dest ? decodeURIComponent(dest) : '/', { replace: true });
-        } catch (apiError) {
-          console.error('API error:', apiError);
-          setOpen(true);
-          setMessage(`Error updating user status: ${apiError.message}`);
-          setSeverity('error');
-          setLoading(false);
-        }
+        const loadedShows = await getShowsWithFavorites();
+        setShows(loadedShows);
+        window.localStorage.setItem('memeSRCShows', JSON.stringify(loadedShows));
+        
+        const userData = JSON.parse(window.localStorage.getItem('memeSRCUserDetails'));
+        setUser(userData);
+        
+        handleUpdateDefaultShow(window.localStorage.getItem('memeSRCDefaultIndex'));
+        navigate(dest ? decodeURIComponent(dest) : '/', { replace: true });
       } catch (error) {
         console.log(error.name);
 
