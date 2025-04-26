@@ -2,6 +2,7 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { Amplify } from 'aws-amplify';
+import awsconfig from './aws-exports';
 import App from './App';
 import * as serviceWorker from './serviceWorker';
 import reportWebVitals from './reportWebVitals';
@@ -28,13 +29,22 @@ try {
           endpoint: `https://api.memesrc.com/${userBranch}/admin`,
           region: 'us-east-1'
         }
+      },
+      GraphQL: {
+        endpoint: awsconfig.aws_appsync_graphqlEndpoint,
+        region: awsconfig.aws_appsync_region,
+        defaultAuthMode: 'apiKey',
+        apiKey: awsconfig.aws_appsync_apiKey
       }
     },
     
     // Basic Auth config - include to prevent errors
     Auth: {
       Cognito: {
-        region: 'us-east-1'
+        region: 'us-east-1',
+        userPoolId: awsconfig.aws_user_pools_id,
+        userPoolClientId: awsconfig.aws_user_pools_web_client_id,
+        identityPoolId: awsconfig.aws_cognito_identity_pool_id
       }
     }
   });

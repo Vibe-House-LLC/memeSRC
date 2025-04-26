@@ -63,7 +63,7 @@ export default function CheckAuth(props) {
         setUser({ username: false })  // indicate the context is ready but user is not auth'd
         window.localStorage.removeItem('memeSRCUserInfo')
         console.log("There wasn't an authenticated user found")
-        console.log("Updating Amplify config to use API_KEY")
+        // console.log("Updating Amplify config to use API_KEY")
         // Amplify.configure({
         //     "aws_appsync_authenticationType": "API_KEY",
         // });

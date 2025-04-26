@@ -8,7 +8,7 @@ export default function getV2Metadata(seriesId) {
         client.graphql({
             query: getAlias,
             variables: { id: seriesId },
-            authMode: 'API_KEY'
+            authMode: 'awsIam'
         }).then(aliasResponse => {
             if (aliasResponse?.data?.getAlias?.v2ContentMetadata) {
                 // console.log('METADATA LOADED FROM ALIAS')
@@ -17,7 +17,7 @@ export default function getV2Metadata(seriesId) {
                 client.graphql({
                     query: getV2ContentMetadata,
                     variables: { id: seriesId },
-                    authMode: 'API_KEY',
+                    authMode: 'awsIam'
                 }).then(response => {
                     if (response?.data?.getV2ContentMetadata) {
                         // console.log('METADATA LOADED FROM CID')
