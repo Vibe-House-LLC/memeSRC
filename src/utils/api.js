@@ -10,6 +10,7 @@ export function get({ apiName, path, options }) {
 }
 
 export function post({ apiName, path, options }) {
+  // Return the operation object directly
   return amplifyPost({
     apiName,
     path,

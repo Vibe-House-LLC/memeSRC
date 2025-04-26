@@ -53,7 +53,8 @@ export default function LoginForm() {
   const queryString = location.search;
   const queryParams = new URLSearchParams(queryString);
   const dest = queryParams.get('dest');
-  const handleClick = () => {
+  
+  const handleClick = async () => {
     setLoading(true);
 
     // TODO: Get the session/local storage thing figured out. Currently if it's set to session, if you manually go to another page on the site it logs you out.
@@ -65,23 +66,35 @@ export default function LoginForm() {
     //   Auth.configure({ storage: window.localStorage })
     // }
 
-
     if (username && password) {
-      signIn({ username, password }).then((x) => {
-        post({
-          apiName: 'publicapi',
-          path: '/user/update/status'
-        }).then(response => {
-          getShowsWithFavorites().then(loadedShows => {
-            setShows(loadedShows)
-            window.localStorage.setItem('memeSRCShows', JSON.stringify(loadedShows))
-            setUser(x)
-            handleUpdateDefaultShow(window.localStorage.getItem('memeSRCDefaultIndex'))
-            navigate(dest ? decodeURIComponent(dest) : '/', { replace: true })
-          })
-        })
-      }).catch((error) => {
-        console.log(error.name)
+      try {
+        const x = await signIn({ username, password });
+        
+        try {
+          // Create the API operation
+          const postOperation = post({
+            apiName: 'publicapi',
+            path: '/user/update/status'
+          });
+          
+          // Wait for the response to complete
+          await postOperation.response;
+          
+          const loadedShows = await getShowsWithFavorites();
+          setShows(loadedShows);
+          window.localStorage.setItem('memeSRCShows', JSON.stringify(loadedShows));
+          setUser(x);
+          handleUpdateDefaultShow(window.localStorage.getItem('memeSRCDefaultIndex'));
+          navigate(dest ? decodeURIComponent(dest) : '/', { replace: true });
+        } catch (apiError) {
+          console.error('API error:', apiError);
+          setOpen(true);
+          setMessage(`Error updating user status: ${apiError.message}`);
+          setSeverity('error');
+          setLoading(false);
+        }
+      } catch (error) {
+        console.log(error.name);
 
         switch (error.name) {
           case 'UserNotConfirmedException':
@@ -93,34 +106,34 @@ export default function LoginForm() {
             setMessage('Please verify your account.');
             setSeverity('error');
             navigate('/verify');
-            setLoading(false)
+            setLoading(false);
             break;
           case 'UserNotFoundException':
             setOpen(true);
             setMessage('Account not found. Please try again.');
-            setSeverity('error')
+            setSeverity('error');
             setFormErrors({
               ...formErrors,
               username: true
-            })
-            setLoading(false)
+            });
+            setLoading(false);
             break;
           default:
             setOpen(true);
             setMessage(`Error: ${error.message}`);
-            setSeverity('error')
-            setLoading(false)
+            setSeverity('error');
+            setLoading(false);
         }
-      })
+      }
     } else {
       setFormErrors({
         username: (!username),
         password: (!password)
-      })
+      });
       setOpen(true);
       setMessage(`${username ? '' : 'Username'}${(!username && !password) ? ' & ' : ''}${password ? '' : 'Password'} required.`);
-      setSeverity('error')
-      setLoading(false)
+      setSeverity('error');
+      setLoading(false);
     }
   };
 
