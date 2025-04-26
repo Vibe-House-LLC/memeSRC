@@ -105,7 +105,7 @@ export const DialogProvider = ({ children }) => {
   };
 
   const buySubscription = () => {
-    // console.log(selectedPlan)
+    console.log('Starting buySubscription, selected plan:', selectedPlan)
     setLoading(true)
     post({
       apiName: 'publicapi',
@@ -117,12 +117,57 @@ export const DialogProvider = ({ children }) => {
           priceKey: selectedPlan
         }
       }
-    }).then(results => {
-      // console.log(results)
-      setCheckoutLink(results)
+    }).then(async results => {
+      console.log('API response type:', typeof results, results)
+      
+      // Handle response properly - convert to text if it's a ReadableStream
+      let checkoutUrl = results;
+      if (results && typeof results === 'object') {
+        console.log('Response is an object, checking for ReadableStream')
+        if (results.constructor && results.constructor.name === 'ReadableStream') {
+          console.log('Found ReadableStream, attempting to read')
+          try {
+            const reader = results.getReader();
+            const decoder = new TextDecoder();
+            let chunks = '';
+            
+            const processResult = async ({ done, value }) => {
+              if (done) {
+                console.log('Stream reading complete')
+                return chunks;
+              }
+              const decodedChunk = decoder.decode(value, { stream: true });
+              console.log('Decoded chunk:', decodedChunk)
+              chunks += decodedChunk;
+              return reader.read().then(processResult);
+            };
+            
+            checkoutUrl = await reader.read().then(processResult);
+          } catch (error) {
+            console.error('Error reading stream:', error)
+          }
+        } else if (results.url) {
+          console.log('Response has url property:', results.url)
+          checkoutUrl = results.url;
+        } else if (results.checkout_url) {
+          console.log('Response has checkout_url property:', results.checkout_url)
+          checkoutUrl = results.checkout_url;
+        }
+      }
+      
+      console.log('Final checkout URL:', checkoutUrl)
+      
+      // Remove surrounding quotes if present
+      if (typeof checkoutUrl === 'string') {
+        // Strip quotes from the beginning and end of the URL
+        checkoutUrl = checkoutUrl.replace(/^"|"$/g, '');
+        console.log('Cleaned checkout URL:', checkoutUrl)
+      }
+      
+      setCheckoutLink(checkoutUrl)
       setLoading(false)
     }).catch(error => {
-      console.log(error.response)
+      console.error('Checkout API error:', error)
       setLoading(false)
     })
   }
@@ -617,7 +662,7 @@ export const DialogProvider = ({ children }) => {
                 </Grid>
                 <Box mt={creditOptionsExpanded || isCompact ? 2 : 4} textAlign="center">
                   {/* {console.log(user)} */}
-                  {user?.userDetails ? (
+                  {user?.username && user !== null ? (
                     <Button
                       ref={subscribeButtonRef}
                       variant="contained"
@@ -971,7 +1016,31 @@ export const DialogProvider = ({ children }) => {
                   color: getTextColor(),
                 }}
                 onClick={() => {
-                  window.location.href = checkoutLink;
+                  console.log('Redirecting to checkout URL:', checkoutLink);
+                  // Don't directly set location to potentially problematic object
+                  if (typeof checkoutLink === 'string') {
+                    // Final safety check to remove any quotes
+                    const cleanUrl = checkoutLink.replace(/^"|"$/g, '');
+                    
+                    if (cleanUrl.startsWith('http')) {
+                      console.log('Navigating to:', cleanUrl);
+                      window.location.href = cleanUrl;
+                    } else {
+                      console.error('URL doesn\'t start with http:', cleanUrl);
+                    }
+                  } else if (checkoutLink && typeof checkoutLink === 'object') {
+                    console.log('CheckoutLink is an object:', checkoutLink);
+                    // Try to find a URL property
+                    if (checkoutLink.url) {
+                      window.location.href = checkoutLink.url;
+                    } else if (checkoutLink.checkout_url) {
+                      window.location.href = checkoutLink.checkout_url;
+                    } else {
+                      console.error('Could not find URL in checkout response', checkoutLink);
+                    }
+                  } else {
+                    console.error('Invalid checkout URL format:', checkoutLink);
+                  }
                 }}
               >
                 {!loading && checkoutLink ? 'Agree & Continue' : ''}
