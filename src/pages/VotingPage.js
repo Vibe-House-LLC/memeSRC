@@ -579,11 +579,79 @@ export default function VotingPage() {
             ? '/vote/new/top/battleground'
             : '/vote/new/top/upvotes';
 
-        const topVotesResponse = await get({
+        const response = await get({
           apiName: 'publicapi',
           path: apiEndpoint
         });
-        const topVotesData = JSON.parse(topVotesResponse);
+        
+        console.log('API Response Structure:', response);
+        
+        // Extract the actual response data
+        let topVotesData;
+        
+        try {
+          // Check if response has a response property that's a Promise
+          if (response.response && typeof response.response.then === 'function') {
+            const resolvedResponse = await response.response;
+            console.log('Resolved response:', resolvedResponse);
+            
+            // If the result is a ReadableStream
+            if (resolvedResponse.body && typeof resolvedResponse.body.json === 'function') {
+              topVotesData = await resolvedResponse.body.json();
+            } 
+            // If it's a text stream
+            else if (resolvedResponse.body && typeof resolvedResponse.body.text === 'function') {
+              const textData = await resolvedResponse.body.text();
+              topVotesData = JSON.parse(textData);
+            }
+            // Direct access to result
+            else if (resolvedResponse.result) {
+              topVotesData = resolvedResponse.result;
+            }
+            // Direct data
+            else {
+              topVotesData = resolvedResponse;
+            }
+          }
+          // Handle ReadableStream directly
+          else if (response.body && typeof response.body.json === 'function') {
+            topVotesData = await response.body.json();
+          }
+          // Handle text stream
+          else if (response.body && typeof response.body.text === 'function') {
+            const textData = await response.body.text();
+            topVotesData = JSON.parse(textData);
+          }
+          // Fallback to direct response
+          else {
+            topVotesData = response;
+          }
+        } catch (error) {
+          console.error('Error extracting data from response:', error);
+          return;
+        }
+        
+        console.log('Extracted topVotesData:', topVotesData);
+        
+        // Convert to array if it's a string
+        if (typeof topVotesData === 'string') {
+          try {
+            topVotesData = JSON.parse(topVotesData);
+          } catch (e) {
+            console.error('Error parsing topVotesData string:', e);
+          }
+        }
+        
+        // Ensure topVotesData is an array
+        if (!Array.isArray(topVotesData)) {
+          console.error('topVotesData is not an array after processing:', topVotesData);
+          // Try to extract data if it's an object with a data property
+          if (topVotesData && typeof topVotesData === 'object' && topVotesData.data && Array.isArray(topVotesData.data)) {
+            topVotesData = topVotesData.data;
+          } else {
+            return;
+          }
+        }
 
         const newVoteData = {};
         topVotesData.forEach((item) => {
@@ -604,7 +672,7 @@ export default function VotingPage() {
         const visibleSeriesIds = seriesIds.slice(0, INITIAL_ITEMS + ITEMS_PER_LOAD);
 
         try {
-          const votesResponse = await post({
+          const response = await post({
             apiName: 'publicapi',
             path: '/vote/new/count',
 
@@ -612,7 +680,72 @@ export default function VotingPage() {
               body: { seriesIds: visibleSeriesIds }
             }
           });
-          const votesData = JSON.parse(votesResponse);
+          
+          // Extract the actual response data
+          let votesData;
+          
+          try {
+            // Check if response has a response property that's a Promise
+            if (response.response && typeof response.response.then === 'function') {
+              const resolvedResponse = await response.response;
+              
+              // If the result is a ReadableStream
+              if (resolvedResponse.body && typeof resolvedResponse.body.json === 'function') {
+                votesData = await resolvedResponse.body.json();
+              } 
+              // If it's a text stream
+              else if (resolvedResponse.body && typeof resolvedResponse.body.text === 'function') {
+                const textData = await resolvedResponse.body.text();
+                votesData = JSON.parse(textData);
+              }
+              // Direct access to result
+              else if (resolvedResponse.result) {
+                votesData = resolvedResponse.result;
+              }
+              // Direct data
+              else {
+                votesData = resolvedResponse;
+              }
+            }
+            // Handle ReadableStream directly
+            else if (response.body && typeof response.body.json === 'function') {
+              votesData = await response.body.json();
+            }
+            // Handle text stream
+            else if (response.body && typeof response.body.text === 'function') {
+              const textData = await response.body.text();
+              votesData = JSON.parse(textData);
+            }
+            // Fallback to direct response
+            else {
+              votesData = response;
+            }
+          } catch (error) {
+            console.error('Error extracting data from votes response:', error);
+            return;
+          }
+          
+          console.log('Extracted votesData:', votesData);
+          
+          // Convert to array if it's a string
+          if (typeof votesData === 'string') {
+            try {
+              votesData = JSON.parse(votesData);
+            } catch (e) {
+              console.error('Error parsing votesData string:', e);
+            }
+          }
+          
+          // Ensure votesData is an array
+          if (!Array.isArray(votesData)) {
+            console.error('votesData is not an array after processing:', votesData);
+            // Try to extract data if it's an object with a data property
+            if (votesData && typeof votesData === 'object' && votesData.data && Array.isArray(votesData.data)) {
+              votesData = votesData.data;
+            } else {
+              return;
+            }
+          }
 
           votesData.forEach((item) => {
             const {seriesId} = item;
@@ -1170,7 +1303,7 @@ export default function VotingPage() {
   const fetchVoteDataForSeries = useCallback(
     async (seriesIds) => {
       try {
-        const votesResponse = await post({
+        const response = await post({
           apiName: 'publicapi',
           path: '/vote/new/count',
 
@@ -1179,35 +1312,109 @@ export default function VotingPage() {
           }
         });
 
-        // Check if votesResponse is a string and parse it
-        const votesData = typeof votesResponse === 'string' ? JSON.parse(votesResponse) : votesResponse;
-
+        // Extract the actual response data
+        let votesData;
+        
+        try {
+          // Check if response has a response property that's a Promise
+          if (response.response && typeof response.response.then === 'function') {
+            const resolvedResponse = await response.response;
+            
+            // If the result is a ReadableStream
+            if (resolvedResponse.body && typeof resolvedResponse.body.json === 'function') {
+              votesData = await resolvedResponse.body.json();
+            } 
+            // If it's a text stream
+            else if (resolvedResponse.body && typeof resolvedResponse.body.text === 'function') {
+              const textData = await resolvedResponse.body.text();
+              votesData = JSON.parse(textData);
+            }
+            // Direct access to result
+            else if (resolvedResponse.result) {
+              votesData = resolvedResponse.result;
+            }
+            // Direct data
+            else {
+              votesData = resolvedResponse;
+            }
+          }
+          // Handle ReadableStream directly
+          else if (response.body && typeof response.body.json === 'function') {
+            votesData = await response.body.json();
+          }
+          // Handle text stream
+          else if (response.body && typeof response.body.text === 'function') {
+            const textData = await response.body.text();
+            votesData = JSON.parse(textData);
+          }
+          // Fallback to direct response
+          else {
+            votesData = response;
+          }
+        } catch (error) {
+          console.error('Error extracting data from votes response in fetchVoteDataForSeries:', error);
+          return;
+        }
+        
+        console.log('Extracted votesData in fetchVoteDataForSeries:', votesData);
+        
+        // Convert to array if it's a string
+        if (typeof votesData === 'string') {
+          try {
+            votesData = JSON.parse(votesData);
+          } catch (e) {
+            console.error('Error parsing votesData string in fetchVoteDataForSeries:', e);
+          }
+        }
+        
         // Ensure votesData is an array
-        const votesArray = Array.isArray(votesData) ? votesData : votesData.data;
+        let votesArray;
+        
+        if (Array.isArray(votesData)) {
+          votesArray = votesData;
+        } 
+        else if (votesData && typeof votesData === 'object') {
+          if (votesData.data && Array.isArray(votesData.data)) {
+            votesArray = votesData.data;
+          } else {
+            console.error('No valid array found in votes data:', votesData);
+            return;
+          }
+        }
+        else {
+          console.error('votesData is not an array or object:', votesData);
+          return;
+        }
 
         // Update voteData in state, preserving existing user vote data
         setVoteData((prevVoteData) => {
           const updatedVoteData = { ...prevVoteData };
-          votesArray.forEach((item) => {
-            const {seriesId} = item;
-            const existingData = updatedVoteData[seriesId] || {};
-            
-            updatedVoteData[seriesId] = {
-              ...existingData, // Preserve existing data
-              totalVotesUp: item.totalVotes.upvotes || 0,
-              totalVotesDown: item.totalVotes.downvotes || 0,
-              // Only update user-specific data if it exists in the response
-              ...(item.userVotes && {
-                ableToVote: item.userVotes.lastVoteTime ? 
-                  new Date(item.userVotes.lastVoteTime).getTime() + (24 * 60 * 60 * 1000) < Date.now() : 
-                  true,
-                userVotesUp: item.userVotes.upvotes || 0,
-                userVotesDown: item.userVotes.downvotes || 0,
-                lastVoteTime: item.userVotes.lastVoteTime,
-                lastBoost: item.userVotes.lastBoost,
-              })
-            };
-          });
+          
+          if (Array.isArray(votesArray) && votesArray.length > 0) {
+            votesArray.forEach((item) => {
+              const {seriesId} = item;
+              const existingData = updatedVoteData[seriesId] || {};
+              
+              updatedVoteData[seriesId] = {
+                ...existingData, // Preserve existing data
+                totalVotesUp: item.totalVotes.upvotes || 0,
+                totalVotesDown: item.totalVotes.downvotes || 0,
+                // Only update user-specific data if it exists in the response
+                ...(item.userVotes && {
+                  ableToVote: item.userVotes.lastVoteTime ? 
+                    new Date(item.userVotes.lastVoteTime).getTime() + (24 * 60 * 60 * 1000) < Date.now() : 
+                    true,
+                  userVotesUp: item.userVotes.upvotes || 0,
+                  userVotesDown: item.userVotes.downvotes || 0,
+                  lastVoteTime: item.userVotes.lastVoteTime,
+                  lastBoost: item.userVotes.lastBoost,
+                })
+              };
+            });
+          } else {
+            console.warn('No vote data to process');
+          }
+          
           return updatedVoteData;
         });
       } catch (error) {
