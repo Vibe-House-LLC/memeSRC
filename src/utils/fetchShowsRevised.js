@@ -42,7 +42,7 @@ async function fetchShows() {
         const aliases = await client.graphql({
             query: listAliasesQuery,
             variables: { filter: {}, limit: 250 },
-            authMode: 'awsIam'
+            authMode: 'apiKey'
         });
 
         const loadedV2Shows = aliases?.data?.listAliases?.items.filter(obj => obj?.v2ContentMetadata) || [];
