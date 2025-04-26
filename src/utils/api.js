@@ -1,21 +1,22 @@
 import { post as amplifyPost, get as amplifyGet } from 'aws-amplify/api';
 import { uploadData as amplifyUploadData, getUrl as amplifyGetUrl, downloadData as amplifyDownloadData } from 'aws-amplify/storage';
 
-export function get({ apiName, path, options }) {
-  return amplifyGet({
+export async function get({ apiName, path, options }) {
+  const response = await amplifyGet({
     apiName,
     path,
     options
-  });
+  }).response;
+  return response.body;
 }
 
-export function post({ apiName, path, options }) {
-  // Return the operation object directly
-  return amplifyPost({
+export async function post({ apiName, path, options }) {
+  const response = await amplifyPost({
     apiName,
     path,
     options
-  });
+  }).response;
+  return response.body;
 }
 
 export function uploadData({ key, data, options }) {

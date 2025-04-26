@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { getCurrentUser } from 'aws-amplify/auth';
+import { getCurrentUser, fetchAuthSession } from 'aws-amplify/auth';
 import PropTypes from 'prop-types';
 
 import { get } from '../../../utils/api';
@@ -18,24 +18,20 @@ export default function CheckAuth(props) {
 
   useEffect(() => {
     const userDetails = window.localStorage.getItem('memeSRCUserDetails')
-    const userObject = { ...userDetails }
-    console.log(userObject)
-    if (user && (user.userDetails !== userObject.userDetails)) {
-      console.log('writing user')
-      console.log(user)
-      window.localStorage.setItem('memeSRCUserDetails', JSON.stringify({ ...user?.signInUserSession?.accessToken?.payload, userDetails: { ...user.userDetails } }))
-      console.log('New User Details')
-      console.log({ ...user?.signInUserSession?.accessToken?.payload, ...user.userDetails })
-      console.log('Full User Details');
-      console.log(user)
-
+    const userObject = userDetails ? JSON.parse(userDetails) : null;
+    if (user && (user.userDetails !== userObject?.userDetails)) {
+      window.localStorage.setItem('memeSRCUserDetails', JSON.stringify({ 
+        ...user?.attributes,
+        userDetails: user.userDetails 
+      }))
     }
   }, [user])
 
   useEffect(() => {
-    console.log(location.pathname)
     if (user) {  // we only want this logic to occur after user context is prepped
-      if (user.username || location.pathname === '/login' || location.pathname === '/signup' || location.pathname === '/verify' || location.pathname === '/forgotpassword' || location.pathname === '/forgotusername') {
+      if (user.username || location.pathname === '/login' || location.pathname === '/signup' || 
+          location.pathname === '/verify' || location.pathname === '/forgotpassword' || 
+          location.pathname === '/forgotusername') {
         setContent(props.children);
       } else {
         navigate(`/login?dest=${encodeURIComponent(location.pathname)}`, { replace: true });
@@ -45,29 +41,34 @@ export default function CheckAuth(props) {
       if (localStorageUser) {
         setUser(localStorageUser)
       }
+      
       // Set up the user context
-      getCurrentUser().then((x) => {
-        get({
-          apiName: 'publicapi',
-          path: '/user/get'
-        }).then(userDetails => {
-          setUser({ ...x, ...x.signInUserSession.accessToken.payload, userDetails: userDetails?.data?.getUserDetails })  // if an authenticated user is found, set it into the context
-          window.localStorage.setItem('memeSRCUserDetails', JSON.stringify({ ...x.signInUserSession.accessToken.payload, userDetails: userDetails?.data?.getUserDetails }))
-          console.log(x)
-          console.log("Updating Amplify config to use AMAZON_COGNITO_USER_POOLS")
-          // Amplify.configure({
-          //     "aws_appsync_authenticationType": "AMAZON_COGNITO_USER_POOLS",
-          // });
-        }).catch(err => console.log(err))
-      }).catch(() => {
-        setUser({ username: false })  // indicate the context is ready but user is not auth'd
-        window.localStorage.removeItem('memeSRCUserInfo')
-        console.log("There wasn't an authenticated user found")
-        // console.log("Updating Amplify config to use API_KEY")
-        // Amplify.configure({
-        //     "aws_appsync_authenticationType": "API_KEY",
-        // });
-      });
+      Promise.all([getCurrentUser(), fetchAuthSession()])
+        .then(async ([currentUser, session]) => {
+          try {
+            const userDetailsResponse = await get({
+              apiName: 'publicapi',
+              path: '/user/get'
+            });
+            
+            const userData = {
+              username: currentUser.username,
+              attributes: currentUser.attributes,
+              signInDetails: session.tokens,
+              userDetails: userDetailsResponse?.data?.getUserDetails
+            };
+            
+            setUser(userData);
+            window.localStorage.setItem('memeSRCUserDetails', JSON.stringify(userData));
+          } catch (err) {
+            console.error('Error fetching user details:', err);
+          }
+        })
+        .catch((error) => {
+          console.log("No authenticated user found:", error);
+          setUser({ username: false });
+          window.localStorage.removeItem('memeSRCUserDetails');
+        });
     }
   }, [user, navigate, props.children, location.pathname])
 

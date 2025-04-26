@@ -1,25 +1,24 @@
 import React, { useState, useCallback, useEffect, useContext, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { get } from 'aws-amplify/api';
+import { get } from '../utils/api';
 import FullScreenSearch from '../sections/search/FullScreenSearch';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
 import { UserContext } from '../UserContext';
 
 const prepSessionID = async () => {
   if (!("sessionID" in sessionStorage)) {
-    get({
-      apiName: 'publicapi',
-      path: '/uuid'
-    })
-      .then(generatedSessionID => {
-        sessionStorage.setItem("sessionID", generatedSessionID);
-        return generatedSessionID;
-      })
-      .catch(err => {
-        console.log(`UUID Gen Fetch Error:  ${err}`);
-        throw err;
+    try {
+      const generatedSessionID = await get({
+        apiName: 'publicapi',
+        path: '/uuid'
       });
+      sessionStorage.setItem("sessionID", generatedSessionID);
+      return generatedSessionID;
+    } catch (err) {
+      console.log(`UUID Gen Fetch Error:  ${err}`);
+      throw err;
+    }
   }
 };
 
@@ -31,21 +30,6 @@ export default function SearchPage({ metadata }) {
 
   const navigate = useNavigate();
 
-  useEffect(() => {
-    // Make sure API functions are warm
-    get({
-      apiName: 'publicapi',
-      path: '/search',
-      options: { queryStringParameters: { warmup: true } }
-    })
-    get({
-      apiName: 'publicapi',
-      path: '/random',
-      options: { queryStringParameters: { warmup: true } }
-    })
-    // Prep sessionID for future use
-    prepSessionID()
-  }, [])
 
   const handleSearch = useCallback((e) => {
     if (e) {
@@ -55,7 +39,7 @@ export default function SearchPage({ metadata }) {
     setV2SearchQuery(searchTerm)
     const encodedSearchTerms = encodeURI(searchTerm)
     navigate(`/search/${seriesTitle}?searchTerm=${encodedSearchTerms}`)
-  }, [seriesTitle, searchTerm, navigate, savedCids]);
+  }, [seriesTitle, searchTerm, navigate, setV2SearchQuery]);
 
   const memoizedFullScreenSearch = useMemo(() => (
     <FullScreenSearch

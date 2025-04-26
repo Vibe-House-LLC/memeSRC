@@ -1,4 +1,4 @@
-import { getCurrentUser } from 'aws-amplify/auth';
+import { getCurrentUser, fetchAuthSession } from 'aws-amplify/auth';
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import PropTypes from 'prop-types';
@@ -21,17 +21,17 @@ export default function GuestAuth(props) {
 
   useEffect(() => {
     if (location.pathname !== 'login') {
-      // console.log(user)
       const userDetails = window.localStorage.getItem('memeSRCUserDetails')
-      const userObject = { ...userDetails }
-      // console.log(userDetails)
+      const userObject = userDetails ? JSON.parse(userDetails) : null;
 
-      if (user && (user.userDetails !== userObject.userDetails)) {
-        window.localStorage.setItem('memeSRCUserDetails', JSON.stringify({ ...user?.signInUserSession?.accessToken?.payload, userDetails: { ...user.userDetails } }))
+      if (user && (user.userDetails !== userObject?.userDetails)) {
+        window.localStorage.setItem('memeSRCUserDetails', JSON.stringify({ 
+          ...user?.attributes,
+          userDetails: { ...user.userDetails } 
+        }))
       }
 
       if (user) {
-        // console.log(user)
         const localStorageDefaultShow = window.localStorage.getItem(`memeSRCDefaultIndex`) || '_universal'
         setDefaultShow(localStorageDefaultShow)
       } else {
@@ -81,11 +81,8 @@ export default function GuestAuth(props) {
       const localStorageShows = JSON.parse(window.localStorage.getItem('memeSRCShows'))
       const localStorageDefaultShow = window.localStorage.getItem('memeSRCDefaultIndex')
 
-      // console.log(localStorageUser)
-
       if (localStorageUser) {
         if (localStorageShows) {
-          // console.log(localStorageShows?.some(show => show.isFavorite))
           setDefaultShow(localStorageShows?.some(show => show.isFavorite) ? localStorageDefaultShow || '_universal' : '_universal')
         }
         setUser(localStorageUser)
@@ -98,46 +95,54 @@ export default function GuestAuth(props) {
         setShows(localStorageShows)
       }
 
-
-
       // Set up the user context
-      // console.log(user)
-      getCurrentUser().then((x) => {
-        get({
-          apiName: 'publicapi',
-          path: '/user/get'
-        }).then(userDetails => {
-          getShowsWithFavorites(userDetails?.data?.getUserDetails?.favorites ? JSON.parse(userDetails?.data?.getUserDetails?.favorites) : []).then(loadedShows => {
+      Promise.all([getCurrentUser(), fetchAuthSession()])
+        .then(async ([currentUser, session]) => {
+          try {
+            const userDetailsResponse = await get({
+              apiName: 'publicapi',
+              path: '/user/get'
+            });
+            
+            const favorites = userDetailsResponse?.data?.getUserDetails?.favorites 
+              ? JSON.parse(userDetailsResponse?.data?.getUserDetails?.favorites) 
+              : [];
+            
+            const loadedShows = await getShowsWithFavorites(favorites);
+            
+            if (!shows?.some(show => show.isFavorite)) {
+              setDefaultShow('_universal');
+            }
+            
+            const userData = {
+              username: currentUser.username,
+              attributes: currentUser.attributes,
+              signInDetails: session.tokens,
+              userDetails: userDetailsResponse?.data?.getUserDetails
+            };
+            
+            setUser(userData);
+            window.localStorage.setItem('memeSRCUserDetails', JSON.stringify(userData));
+            window.localStorage.setItem('memeSRCShows', JSON.stringify(loadedShows));
+            setShows(loadedShows);
+          } catch (err) {
+            console.error('Error fetching user details:', err);
+          }
+        })
+        .catch(() => {
+          getShowsWithFavorites().then(loadedShows => {
             if (!shows?.some(show => show.isFavorite)) {
               setDefaultShow('_universal')
             }
-            setUser({ ...x, ...x.signInUserSession.accessToken.payload, userDetails: userDetails?.data?.getUserDetails })  // if an authenticated user is found, set it into the context
-            
-            window.localStorage.setItem('memeSRCUserDetails', JSON.stringify({ ...x.signInUserSession.accessToken.payload, userDetails: userDetails?.data?.getUserDetails }))
+            setUser(false)  // indicate the context is ready but user is not auth'd
+            window.localStorage.removeItem('memeSRCUserInfo')
             window.localStorage.setItem('memeSRCShows', JSON.stringify(loadedShows))
             setShows(loadedShows)
-            // console.log("Updating Amplify config to use AMAZON_COGNITO_USER_POOLS")
-            // Amplify.configure({
-            //     "aws_appsync_authenticationType": "AMAZON_COGNITO_USER_POOLS",
-            // });
+            setDefaultShow('_universal')
           }).catch(error => {
             console.log(error)
           })
-        }).catch(err => console.log(err))
-      }).catch(() => {
-        getShowsWithFavorites().then(loadedShows => {
-          if (!shows?.some(show => show.isFavorite)) {
-            setDefaultShow('_universal')
-          }
-          setUser(false)  // indicate the context is ready but user is not auth'd
-          window.localStorage.removeItem('memeSRCUserInfo')
-          window.localStorage.setItem('memeSRCShows', JSON.stringify(loadedShows))
-          setShows(loadedShows)
-          setDefaultShow('_universal')
-        }).catch(error => {
-          console.log(error)
-        })
-      });
+        });
     }
   }, [location.pathname])
 
