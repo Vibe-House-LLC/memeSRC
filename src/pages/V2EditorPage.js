@@ -1,4 +1,4 @@
-import { generateClient , graphqlOperation } from 'aws-amplify/api';
+import { generateClient , graphqlOperation, get } from 'aws-amplify/api';
 // V2EditorPage.js
 
 import { Fragment, forwardRef, memo, useCallback, useContext, useEffect, useRef, useState } from 'react'
