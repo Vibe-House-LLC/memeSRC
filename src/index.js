@@ -46,6 +46,14 @@ try {
         userPoolClientId: awsconfig.aws_user_pools_web_client_id,
         identityPoolId: awsconfig.aws_cognito_identity_pool_id
       }
+    },
+    
+    // Add Storage configuration
+    Storage: {
+      S3: {
+        bucket: awsconfig.aws_user_files_s3_bucket,
+        region: awsconfig.aws_user_files_s3_bucket_region
+      }
     }
   });
   
