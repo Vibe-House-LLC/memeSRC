@@ -98,7 +98,7 @@ IpfsSearchBar.propTypes = searchPropTypes;
 export default function IpfsSearchBar(props) {
   const params = useParams();
   const { pathname } = useLocation();
-  const { user, shows, defaultShow, handleUpdateDefaultShow } = useContext(UserContext);
+  const { user, shows, defaultShow, handleUpdateDefaultShow, loading: userLoading } = useContext(UserContext);
   const { show, setShow, searchQuery, setSearchQuery, cid = shows.some(show => show.isFavorite) ? params?.cid || defaultShow : params?.cid || '_universal', setCid, localCids, setLocalCids, showObj, setShowObj, selectedFrameIndex, setSelectedFrameIndex, savedCids, loadingSavedCids } = useSearchDetailsV2();
   const { loadRandomFrame, loadingRandom, error } = useLoadRandomFrame();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -210,7 +210,7 @@ export default function IpfsSearchBar(props) {
                         fontSize='small'
                         onClick={() => {
                           setSearch('');
-                          searchInputRef.current.focus(); // Focus the text field
+                          searchInputRef.current.focus();
                         }}
                         sx={{ cursor: 'pointer', mr: 1, color: 'grey.400' }}
                       />
@@ -219,29 +219,21 @@ export default function IpfsSearchBar(props) {
                   </>
                 }
                 sx={{ width: '100%' }}
-                value={search || ''} // Ensure value is never null
+                value={search || ''}
                 onChange={(e) => {
                   let {value} = e.target;
-
-                  // Replace curly single quotes with straight single quotes
                   value = value.replace(/[\u2018\u2019]/g, "'");
-
-                  // Replace curly double quotes with straight double quotes
                   value = value.replace(/[\u201C\u201D]/g, '"');
-
-                  // Replace en-dash and em-dash with hyphen
                   value = value.replace(/[\u2013\u2014]/g, '-');
-
                   setSearch(value);
                 }}
-                inputRef={searchInputRef} // Add the ref to the text field
+                inputRef={searchInputRef}
               />
             </form>
           </Grid>
         </Grid>
         <Grid container wrap="nowrap" sx={{ overflowX: "scroll", flexWrap: "nowrap", scrollbarWidth: 'none', '&::-webkit-scrollbar': { height: '0 !important', width: '0 !important', display: 'none' } }} paddingX={2}>
           <Grid item marginLeft={{ md: 6 }}>
-
             <FormControl variant="standard" sx={{ minWidth: 120 }}>
               <Select
                 labelId="demo-simple-select-standard-label"
@@ -257,17 +249,17 @@ export default function IpfsSearchBar(props) {
                   🌈 All Shows & Movies
                 </MenuItem>
 
-                {shows.some(show => show.isFavorite) ? (
+                {!userLoading && shows.some(show => show.isFavorite) && (
                   <MenuItem value="_favorites">
                     ⭐ All Favorites
                   </MenuItem>
-                ) : null}
+                )}
 
-                {shows.some(show => show.isFavorite) ? (
+                {!userLoading && shows.some(show => show.isFavorite) && (
                   <ListSubheader key="favorites-subheader">Favorites</ListSubheader>
-                ) : null}
+                )}
 
-                {(shows.some(show => show.isFavorite)) && (
+                {!userLoading && shows.some(show => show.isFavorite) && (
                   shows.filter(show => show.isFavorite).map(show => (
                     <MenuItem key={show.id} value={show.id}>
                       ⭐ {show.emoji} {show.title}
@@ -275,25 +267,23 @@ export default function IpfsSearchBar(props) {
                   ))
                 )}
 
-                {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
+                {!userLoading && (user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite)) && (
                   <MenuItem value="editFavorites" style={{ fontSize: "0.9rem", opacity: 0.7 }}>
                     ⚙ Edit Favorites
                   </MenuItem>
-                ) : null}
+                )}
 
-                {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
+                {!userLoading && (user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite)) && (
                   <ListSubheader key="other-subheader">Other</ListSubheader>
-                ) : null}
+                )}
 
-                {shows.filter(show => !show.isFavorite).map(show => (
+                {!userLoading && shows.filter(show => !show.isFavorite).map(show => (
                   <MenuItem key={show.id} value={show.id}>
                     {show.emoji} {show.title}
                   </MenuItem>
                 ))}
               </Select>
             </FormControl>
-
-
           </Grid>
           <Grid item marginLeft={{ xs: 3 }} marginY='auto' display='flex' style={{ whiteSpace: 'nowrap' }}>
             <Typography fontSize={13}><a href="/vote" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>Request a show</a></Typography>

@@ -12,37 +12,42 @@ GuestAuth.propTypes = {
 
 export default function GuestAuth(props) {
   const navigate = useNavigate();
-  const [shows, setShows] = useState(JSON.parse(window.localStorage.getItem('memeSRCShows')) || []);
+  const [shows, setShows] = useState([]);
   const [defaultShow, setDefaultShow] = useState('_universal');
   const location = useLocation();
   const { user, setUser, refreshUserData } = useAuth();
-  // Add a ref to track initial mount
   const initialMount = useRef(true);
+  const [isInitializing, setIsInitializing] = useState(true);
 
   // Load shows on mount or when user changes
   useEffect(() => {
     if (location.pathname !== 'login') {
-      // Set default show based on user and localStorage
-      if (user) {
-        const localStorageDefaultShow = window.localStorage.getItem(`memeSRCDefaultIndex`) || '_universal';
-        setDefaultShow(localStorageDefaultShow);
-      } else {
-        setDefaultShow('_universal');
-      }
+      const initializeData = async () => {
+        try {
+          // Set default show based on user and localStorage
+          if (user) {
+            const localStorageDefaultShow = window.localStorage.getItem(`memeSRCDefaultIndex`) || '_universal';
+            setDefaultShow(localStorageDefaultShow);
+          } else {
+            setDefaultShow('_universal');
+          }
 
-      // Load shows with favorites if available
-      const favoritesToLoad = user?.userDetails?.favorites 
-        ? JSON.parse(user.userDetails.favorites) 
-        : [];
-        
-      getShowsWithFavorites(favoritesToLoad)
-        .then(loadedShows => {
+          // Load shows with favorites if available
+          const favoritesToLoad = user?.userDetails?.favorites 
+            ? JSON.parse(user.userDetails.favorites) 
+            : [];
+            
+          const loadedShows = await getShowsWithFavorites(favoritesToLoad);
           window.localStorage.setItem('memeSRCShows', JSON.stringify(loadedShows));
           setShows(loadedShows);
-        })
-        .catch(error => {
+        } catch (error) {
           console.error('Error loading shows:', error);
-        });
+        } finally {
+          setIsInitializing(false);
+        }
+      };
+
+      initializeData();
     }
   }, [user, location.pathname]);
 
@@ -67,8 +72,6 @@ export default function GuestAuth(props) {
           userDetails: newUserDetails,
         };
         
-        console.log('handleUpdateUserDetails: updating user data:', updatedUser);
-        
         setUser(updatedUser);
         window.localStorage.setItem('memeSRCUserDetails', JSON.stringify(updatedUser));
         window.localStorage.setItem('memeSRCShows', JSON.stringify(loadedShows));
@@ -83,12 +86,12 @@ export default function GuestAuth(props) {
 
   // Attempt to refresh user data ONLY on initial mount
   useEffect(() => {
-    // Only run on initial mount
-    if (initialMount.current && location.pathname !== 'login') {
+    // Only run on initial mount and if we're not already initializing
+    if (initialMount.current && location.pathname !== 'login' && !isInitializing) {
       initialMount.current = false;
       refreshUserData();
     }
-  }, [location.pathname]); // Removed refreshUserData from dependencies
+  }, [location.pathname, isInitializing]);
 
   return (
     <UserContext.Provider value={{ 
@@ -99,7 +102,8 @@ export default function GuestAuth(props) {
       defaultShow, 
       handleUpdateDefaultShow, 
       setDefaultShow, 
-      handleUpdateUserDetails 
+      handleUpdateUserDetails,
+      loading: isInitializing
     }}>
       {props.children}
     </UserContext.Provider>

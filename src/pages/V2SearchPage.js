@@ -101,7 +101,7 @@ export default function SearchPage() {
 
   const params = useParams();
 
-  const { user, shows } = useContext(UserContext);
+  const { user, shows, loading: userLoading } = useContext(UserContext);
 
   const RESULTS_PER_PAGE = 8;
 
@@ -310,11 +310,26 @@ export default function SearchPage() {
         return;
       }
 
+      // If we're searching favorites but user data is still loading, wait
+      if ((cid === '_favorites' || params?.cid === '_favorites') && userLoading) {
+        setLoadingResults(true);
+        return;
+      }
+
       try {
         let seriesToSearch;
         if (cid === '_favorites' || params?.cid === '_favorites') {
-          // console.log(shows)
+          if (!shows || shows.length === 0) {
+            setLoadingResults(false);
+            setNewResults([]);
+            return;
+          }
           seriesToSearch = shows.filter(show => show.isFavorite).map(show => show.id).join(',');
+          if (!seriesToSearch) {
+            setLoadingResults(false);
+            setNewResults([]);
+            return;
+          }
         } else {
           seriesToSearch = cid || params?.cid
         }
@@ -347,7 +362,7 @@ export default function SearchPage() {
       setNewResults([]);
     }
     // }
-  }, [loadingCsv, showObj, searchQuery, cid, universalSearchMaintenance]);
+  }, [loadingCsv, showObj, searchQuery, cid, universalSearchMaintenance, userLoading]);
 
   // useEffect(() => {
   //   console.log(newResults);
