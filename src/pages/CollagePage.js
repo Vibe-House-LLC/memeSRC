@@ -1,4 +1,4 @@
-import { useContext, useEffect } from "react";
+import { useContext, useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { useTheme } from "@mui/material/styles";
 import { useMediaQuery } from "@mui/material";
@@ -40,6 +40,9 @@ export default function CollagePage() {
   const { user } = useContext(UserContext);
   const { openSubscriptionDialog } = useSubscribeDialog();
   const authorized = (user?.userDetails?.magicSubscription === "true" || user?.['cognito:groups']?.includes('admins'));
+  
+  // State to track if we're showing the result inline
+  const [showInlineResult, setShowInlineResult] = useState(false);
 
   const {
     selectedImages, 
@@ -81,6 +84,11 @@ export default function CollagePage() {
     debugLog(`[PAGE DEBUG] Border settings: color=${borderColor}, thickness=${borderThickness} (${borderThicknessValue}px)`);
   }, [borderColor, borderThickness, borderThicknessValue]);
 
+  // Handler to go back to edit mode
+  const handleBackToEdit = () => {
+    setShowInlineResult(false);
+  };
+
 
   // Props for settings step (selectedImages length might be useful for UI feedback)
   const settingsStepProps = {
@@ -98,6 +106,11 @@ export default function CollagePage() {
     borderColor,
     setBorderColor,
     borderThicknessOptions
+  };
+
+  // Handler for when collage is generated - show inline result
+  const handleCollageGenerated = () => {
+    setShowInlineResult(true);
   };
 
   // Props for images step (pass the correct state and actions)
@@ -119,6 +132,8 @@ export default function CollagePage() {
     updateImage,
     replaceImage,
     clearImages,
+    // Custom handler for showing inline result
+    onCollageGenerated: handleCollageGenerated,
   };
 
   // Log mapping changes for debugging
@@ -144,7 +159,11 @@ export default function CollagePage() {
         <UpgradeMessage openSubscriptionDialog={openSubscriptionDialog} previewImage="/assets/images/products/collage-tool.png" />
       ) : (
         <MainContainer isMobile={isMobile} isMediumScreen={isMediumScreen}>
-          <PageHeader icon={Dashboard} title="Collage Tool" isMobile={isMobile} />
+          <PageHeader 
+            icon={Dashboard} 
+            title={showInlineResult ? "Collage Result" : "Collage Tool"} 
+            isMobile={isMobile} 
+          />
           <ContentPaper isMobile={isMobile}>
             <CollageLayout
               settingsStepProps={settingsStepProps}
@@ -152,6 +171,8 @@ export default function CollagePage() {
               finalImage={finalImage}
               setFinalImage={setFinalImage}
               isMobile={isMobile}
+              showInlineResult={showInlineResult}
+              onBackToEdit={handleBackToEdit}
             />
           </ContentPaper>
         </MainContainer>

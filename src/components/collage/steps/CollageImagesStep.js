@@ -31,7 +31,8 @@ const CollageImagesStep = ({
   panelTransforms, // Receive new state
   updatePanelTransform, // Receive new function
   setFinalImage, // <<< Keep this
-  handleOpenExportDialog // <<< Add handleOpenExportDialog prop
+  handleOpenExportDialog, // <<< Add handleOpenExportDialog prop
+  onCollageGenerated // <<< NEW: Handler for inline result display
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -300,11 +301,15 @@ const CollageImagesStep = ({
         setFinalImage(dataUrl);
         debugLog("Final image state updated.");
         
-        if (handleOpenExportDialog) {
+        // Prioritize inline result over dialog
+        if (onCollageGenerated) {
+          onCollageGenerated();
+          debugLog("Inline result triggered.");
+        } else if (handleOpenExportDialog) {
           handleOpenExportDialog(); 
           debugLog("Export dialog triggered.");
         } else {
-          debugWarn("handleOpenExportDialog function not provided to CollageImagesStep.");
+          debugWarn("No result handler provided to CollageImagesStep.");
         }
 
       } else {
@@ -337,6 +342,7 @@ CollageImagesStep.defaultProps = {
   handleNext: () => {},
   setFinalImage: () => { console.warn("setFinalImage default prop called"); }, // Add default
   handleOpenExportDialog: () => { console.warn("handleOpenExportDialog default prop called"); }, // Add default
+  onCollageGenerated: null, // Add default for new handler
 };
 
 export default CollageImagesStep;
