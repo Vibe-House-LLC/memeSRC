@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'; // Add useCallback
+import { useState, useEffect, useCallback, useRef } from 'react'; // Add useCallback and useRef
 import { getLayoutsForPanelCount } from '../config/CollageConfig';
 
 // Debug flag - only enable in development mode
@@ -26,9 +26,25 @@ export const useCollageState = () => {
     return savedCustomColor || '#FFFFFF'; // Default white border color
   });
 
+  // Refs to track previous values for comparison
+  const prevLayoutValues = useRef({
+    panelCount: null,
+    selectedAspectRatio: null,
+    selectedTemplate: null
+  });
+
   useEffect(() => {
     localStorage.setItem('meme-src-collage-custom-color', borderColor);
   }, [borderColor]);
+
+  /**
+   * Reset all panel transforms (zoom/pan positions) to defaults.
+   * Used when layout, aspect ratio, or template changes.
+   */
+  const resetPanelTransforms = useCallback(() => {
+    setPanelTransforms({});
+    if (DEBUG_MODE) console.log("Reset all panel transforms due to layout change");
+  }, [DEBUG_MODE]);
 
   // Initialize template on mount
   useEffect(() => {
@@ -75,7 +91,28 @@ export const useCollageState = () => {
         }
     }
 
-  }, [panelCount, selectedAspectRatio, selectedTemplate]);
+    // Check if any layout-related values have actually changed (not just initial load)
+    const prev = prevLayoutValues.current;
+    const hasChanges = 
+      (prev.panelCount !== null && prev.panelCount !== panelCount) ||
+      (prev.selectedAspectRatio !== null && prev.selectedAspectRatio !== selectedAspectRatio) ||
+      (prev.selectedTemplate !== null && prev.selectedTemplate?.id !== selectedTemplate?.id);
+
+    // Reset all transforms when layout-related properties change
+    // This ensures images get repositioned/rescaled appropriately for the new layout
+    if (hasChanges) {
+      resetPanelTransforms();
+      if (DEBUG_MODE) console.log("Layout change detected, resetting transforms");
+    }
+
+    // Update previous values
+    prevLayoutValues.current = {
+      panelCount,
+      selectedAspectRatio,
+      selectedTemplate
+    };
+
+  }, [panelCount, selectedAspectRatio, selectedTemplate, resetPanelTransforms, DEBUG_MODE]);
 
   // Clean up ObjectURLs when component unmounts or images change
   useEffect(() => {
@@ -293,5 +330,6 @@ export const useCollageState = () => {
     clearImages, // Clears images, mapping & transforms
     updatePanelImageMapping,
     updatePanelTransform, // New: Updates transform for a panel
+    resetPanelTransforms, // New: Resets all transforms to defaults
   };
 };
