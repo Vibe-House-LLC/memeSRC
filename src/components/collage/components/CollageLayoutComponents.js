@@ -99,7 +99,7 @@ export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, 
           <CollageResultView 
             finalImage={finalImage}
             onBackToEdit={handleBackToEdit}
-            showBackButton={true}
+            showBackButton
             layout="responsive"
           />
         </Box>

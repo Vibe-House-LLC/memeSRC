@@ -221,11 +221,6 @@ const DynamicCollagePreview = ({
         }
       }
     }
-    
-    if (!imageUrl) {
-      console.error(`No valid image URL found for index ${imageIndex}`, imageData);
-      return <RenderAddButton index={index} panelId={panelId} />;
-    }
 
     // Calculate optimal initial scale to fit image in panel (like object-fit: cover)
     const calculateInitialScale = () => {
@@ -238,10 +233,9 @@ const DynamicCollagePreview = ({
       if (imageAspectRatio > panelAspectRatio) {
         // Image is wider than panel, scale to fit height
         return panelSize.height / imageNaturalSize.height;
-      } else {
-        // Image is taller than panel, scale to fit width  
-        return panelSize.width / imageNaturalSize.width;
       }
+      // Image is taller than panel, scale to fit width  
+      return panelSize.width / imageNaturalSize.width;
     };
 
     // Calculate the perfect center position for the scaled image
@@ -307,6 +301,12 @@ const DynamicCollagePreview = ({
         }
       }
     }, [shouldUseCalculatedScale, calculatedScale, centerPosition.x, centerPosition.y, panelId, updatePanelTransform, panelTransforms]);
+
+    // Handle case where no valid image URL is found
+    if (!imageUrl) {
+      console.error(`No valid image URL found for index ${imageIndex}`, imageData);
+      return <RenderAddButton index={index} panelId={panelId} />;
+    }
     
     return (
       <Box ref={panelRef} sx={{ width: '100%', height: '100%', position: 'relative' }}>
@@ -402,7 +402,9 @@ const DynamicCollagePreview = ({
     <IconButton
       onClick={(e) => {
         e.stopPropagation(); // Prevent event bubbling to parent Box
-        onPanelClick && onPanelClick(index, panelId);
+        if (onPanelClick) {
+          onPanelClick(index, panelId);
+        }
       }}
       sx={{
         backgroundColor: theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.7)' : 'rgba(33, 150, 243, 0.7)',

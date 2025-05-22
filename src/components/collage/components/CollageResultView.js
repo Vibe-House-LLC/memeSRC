@@ -21,6 +21,8 @@ import {
   Edit as EditIcon
 } from '@mui/icons-material';
 
+/* global ClipboardItem */
+
 export default function CollageResultView({ 
   finalImage, 
   onBackToEdit, 

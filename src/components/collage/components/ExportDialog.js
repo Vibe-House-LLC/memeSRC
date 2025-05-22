@@ -69,7 +69,7 @@ export default function ExportDialog({ open, onClose, finalImage }) {
         <CollageResultView 
           finalImage={finalImage}
           onBackToEdit={onClose}
-          showBackButton={true}
+          showBackButton
           layout="horizontal"
         />
       </DialogContent>
