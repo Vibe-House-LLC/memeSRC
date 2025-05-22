@@ -196,6 +196,10 @@ const DynamicCollagePreview = ({
 
   // Helper components for rendering images/add buttons
   const RenderImage = ({ index, panelId }) => {
+    const [imageNaturalSize, setImageNaturalSize] = React.useState(null);
+    const [panelSize, setPanelSize] = React.useState(null);
+    const panelRef = React.useRef(null);
+    
     // Determine the image index using the mapping if available
     const imageIndex = panelId && panelImageMapping[panelId] !== undefined 
       ? panelImageMapping[panelId] 
@@ -222,16 +226,81 @@ const DynamicCollagePreview = ({
       console.error(`No valid image URL found for index ${imageIndex}`, imageData);
       return <RenderAddButton index={index} panelId={panelId} />;
     }
+
+    // Calculate optimal initial scale to fit image in panel (like object-fit: cover)
+    const calculateInitialScale = () => {
+      if (!imageNaturalSize || !panelSize) return 1;
       
-    // Get initial transform state for this panel
-    const initialTransform = panelTransforms[panelId] || { scale: 1, positionX: 0, positionY: 0 };
+      const imageAspectRatio = imageNaturalSize.width / imageNaturalSize.height;
+      const panelAspectRatio = panelSize.width / panelSize.height;
+      
+      // Calculate scale to cover the panel (like object-fit: cover)
+      if (imageAspectRatio > panelAspectRatio) {
+        // Image is wider than panel, scale to fit height
+        return panelSize.height / imageNaturalSize.height;
+      } else {
+        // Image is taller than panel, scale to fit width  
+        return panelSize.width / imageNaturalSize.width;
+      }
+    };
+
+    // Get initial transform state for this panel, with calculated scale fallback
+    const savedTransform = panelTransforms[panelId];
+    const hasCustomTransform = savedTransform && (savedTransform.scale !== 1 || savedTransform.positionX !== 0 || savedTransform.positionY !== 0);
+    const calculatedScale = calculateInitialScale();
+    
+    // Only use calculated scale if we have both image and panel dimensions
+    const shouldUseCalculatedScale = imageNaturalSize && panelSize && !hasCustomTransform;
+    
+    const initialTransform = hasCustomTransform 
+      ? savedTransform 
+      : { 
+          scale: shouldUseCalculatedScale ? calculatedScale : 1, 
+          positionX: 0, 
+          positionY: 0 
+        };
+
+    // Effect to get panel dimensions
+    React.useEffect(() => {
+      if (panelRef.current) {
+        const updatePanelSize = () => {
+          const rect = panelRef.current.getBoundingClientRect();
+          setPanelSize({ width: rect.width, height: rect.height });
+        };
+        
+        updatePanelSize();
+        window.addEventListener('resize', updatePanelSize);
+        return () => window.removeEventListener('resize', updatePanelSize);
+      }
+    }, []);
+
+    // Key to force re-render when we have sizing data
+    const transformKey = `${panelId}-${imageUrl}-${imageNaturalSize?.width || 0}-${imageNaturalSize?.height || 0}-${panelSize?.width || 0}-${panelSize?.height || 0}`;
+
+    // Effect to apply calculated scale when sizing data becomes available
+    React.useEffect(() => {
+      if (shouldUseCalculatedScale && calculatedScale && calculatedScale !== 1 && updatePanelTransform) {
+        // Only update if we don't already have a custom transform saved
+        const currentTransform = panelTransforms[panelId];
+        if (!currentTransform || (currentTransform.scale === 1 && currentTransform.positionX === 0 && currentTransform.positionY === 0)) {
+          updatePanelTransform(panelId, {
+            scale: calculatedScale,
+            positionX: 0,
+            positionY: 0,
+          });
+        }
+      }
+    }, [shouldUseCalculatedScale, calculatedScale, panelId, updatePanelTransform, panelTransforms]);
     
     return (
-      <>
+      <Box ref={panelRef} sx={{ width: '100%', height: '100%', position: 'relative' }}>
         <TransformWrapper
+          key={transformKey} // Reset when sizing data changes
           initialScale={initialTransform.scale}
           initialPositionX={initialTransform.positionX}
           initialPositionY={initialTransform.positionY}
+          centerOnInit={!hasCustomTransform} // Center the image when first loaded (if no custom transform)
+          centerZoomedOut={false} // Don't auto-center when zooming out
           onZoomStop={(ref) => {
             if (updatePanelTransform) {
               updatePanelTransform(panelId, { 
@@ -250,9 +319,9 @@ const DynamicCollagePreview = ({
               });
             }
           }}
-          minScale={0.5} // Allow zooming out a bit
+          minScale={0.1} // Allow zooming out much more to see the full image
           maxScale={5}  // Allow zooming in quite a bit
-          limitToBounds // Keep image within the panel bounds
+          limitToBounds={false} // Don't limit to bounds so users can see the full image
           doubleClick={{ disabled: true }} // Disable double-click zoom
           wheel={{ step: 0.2 }} // Adjust wheel zoom sensitivity
           pinch={{ step: 5 }} // Adjust pinch zoom sensitivity
@@ -260,23 +329,32 @@ const DynamicCollagePreview = ({
           contentStyle={{ width: '100%', height: '100%' }}
         >
           <TransformComponent
-             wrapperStyle={{ width: '100%', height: '100%' }} // Ensure wrapper fills space
-             contentStyle={{ width: '100%', height: '100%' }} // Ensure content fills space
+             wrapperStyle={{ width: '100%', height: '100%' }}
+             contentStyle={{ width: '100%', height: '100%' }}
           >
             <Box
               component="img"
-              src={imageUrl} // Use img tag for better control with react-zoom-pan-pinch
+              src={imageUrl}
               alt={`Collage panel ${index + 1}`}
-              sx={{
-                display: 'block', // Prevent extra space below image
-                width: '100%', // Let the transform scale it
-                height: '100%', // Let the transform scale it
-                objectFit: 'cover', // Start with cover, transform adjusts
-                cursor: 'grab', // Indicate draggable
-                // No background properties needed when using img
+              onLoad={(e) => {
+                // Get natural dimensions when image loads
+                setImageNaturalSize({
+                  width: e.target.naturalWidth,
+                  height: e.target.naturalHeight
+                });
               }}
-              onMouseDown={(e) => e.stopPropagation()} // Prevent grid drag issues if any
-              onTouchStart={(e) => e.stopPropagation()} // Prevent grid drag issues on touch
+              sx={{
+                display: 'block',
+                width: imageNaturalSize ? `${imageNaturalSize.width}px` : 'auto',
+                height: imageNaturalSize ? `${imageNaturalSize.height}px` : 'auto',
+                maxWidth: 'none',
+                maxHeight: 'none',
+                objectFit: 'none', // Show full image without cropping
+                cursor: 'grab',
+                transformOrigin: 'center center',
+              }}
+              onMouseDown={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
             />
           </TransformComponent>
         </TransformWrapper>
@@ -294,13 +372,14 @@ const DynamicCollagePreview = ({
               '&:hover': {
                 backgroundColor: theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.9)' : 'rgba(33, 150, 243, 0.9)',
               },
+              zIndex: 10,
             }}
             onClick={(e) => onMenuOpen(e, imageIndex)}
           >
             <MoreVert fontSize="small" />
           </IconButton>
         )}
-      </>
+      </Box>
     );
   };
 
