@@ -170,19 +170,30 @@ const CollageImagesStep = ({
           />
         </Box>
         
-        {/* Save Button - only show if we have images */}
-        {selectedImages.length > 0 && (
-          <Button 
-            variant="contained" 
-            color="primary" 
-            startIcon={<Save />}
-            onClick={saveCollageAsImage}
-            sx={{ mt: 2 }}
-            aria-label="Generate collage and open preview dialog"
-          >
-            Generate & Preview
-          </Button>
-        )}
+        {/* Save Button - only show if all panels have images assigned */}
+        {(() => {
+          // Check if all panels have images assigned
+          const mappedPanels = Object.keys(panelImageMapping || {}).length;
+          const allPanelsHaveImages = mappedPanels === panelCount && 
+            Object.values(panelImageMapping || {}).every(imageIndex => 
+              imageIndex !== undefined && 
+              imageIndex !== null && 
+              selectedImages[imageIndex]
+            );
+          
+          return allPanelsHaveImages && (
+            <Button 
+              variant="contained" 
+              color="primary" 
+              startIcon={<Save />}
+              onClick={saveCollageAsImage}
+              sx={{ mt: 2 }}
+              aria-label="Generate collage and open preview dialog"
+            >
+              Generate & Preview
+            </Button>
+          );
+        })()}
       </Paper>
     </Box>
   );
