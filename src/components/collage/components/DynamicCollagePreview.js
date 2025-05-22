@@ -244,10 +244,26 @@ const DynamicCollagePreview = ({
       }
     };
 
+    // Calculate the perfect center position for the scaled image
+    const calculateCenterPosition = (scale) => {
+      if (!imageNaturalSize || !panelSize || !scale) return { x: 0, y: 0 };
+
+      // Calculate the scaled image dimensions
+      const scaledImageWidth = imageNaturalSize.width * scale;
+      const scaledImageHeight = imageNaturalSize.height * scale;
+
+      // Calculate the offset needed to center the scaled image in the panel
+      const offsetX = (panelSize.width - scaledImageWidth) / 2;
+      const offsetY = (panelSize.height - scaledImageHeight) / 2;
+
+      return { x: offsetX, y: offsetY };
+    };
+
     // Get initial transform state for this panel, with calculated scale fallback
     const savedTransform = panelTransforms[panelId];
     const hasCustomTransform = savedTransform && (savedTransform.scale !== 1 || savedTransform.positionX !== 0 || savedTransform.positionY !== 0);
     const calculatedScale = calculateInitialScale();
+    const centerPosition = calculateCenterPosition(calculatedScale);
     
     // Only use calculated scale if we have both image and panel dimensions
     const shouldUseCalculatedScale = imageNaturalSize && panelSize && !hasCustomTransform;
@@ -256,8 +272,8 @@ const DynamicCollagePreview = ({
       ? savedTransform 
       : { 
           scale: shouldUseCalculatedScale ? calculatedScale : 1, 
-          positionX: 0, 
-          positionY: 0 
+          positionX: shouldUseCalculatedScale ? centerPosition.x : 0, 
+          positionY: shouldUseCalculatedScale ? centerPosition.y : 0 
         };
 
     // Effect to get panel dimensions
@@ -285,12 +301,12 @@ const DynamicCollagePreview = ({
         if (!currentTransform || (currentTransform.scale === 1 && currentTransform.positionX === 0 && currentTransform.positionY === 0)) {
           updatePanelTransform(panelId, {
             scale: calculatedScale,
-            positionX: 0,
-            positionY: 0,
+            positionX: centerPosition.x,
+            positionY: centerPosition.y,
           });
         }
       }
-    }, [shouldUseCalculatedScale, calculatedScale, panelId, updatePanelTransform, panelTransforms]);
+    }, [shouldUseCalculatedScale, calculatedScale, centerPosition.x, centerPosition.y, panelId, updatePanelTransform, panelTransforms]);
     
     return (
       <Box ref={panelRef} sx={{ width: '100%', height: '100%', position: 'relative' }}>
@@ -299,7 +315,6 @@ const DynamicCollagePreview = ({
           initialScale={initialTransform.scale}
           initialPositionX={initialTransform.positionX}
           initialPositionY={initialTransform.positionY}
-          centerOnInit={!hasCustomTransform} // Center the image when first loaded (if no custom transform)
           centerZoomedOut={false} // Don't auto-center when zooming out
           onZoomStop={(ref) => {
             if (updatePanelTransform) {
