@@ -400,7 +400,10 @@ const DynamicCollagePreview = ({
 
   const RenderAddButton = ({ index, panelId }) => (
     <IconButton
-      onClick={() => onPanelClick && onPanelClick(index, panelId)} // Pass BOTH index and panelId
+      onClick={(e) => {
+        e.stopPropagation(); // Prevent event bubbling to parent Box
+        onPanelClick && onPanelClick(index, panelId);
+      }}
       sx={{
         backgroundColor: theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.7)' : 'rgba(33, 150, 243, 0.7)',
         color: '#ffffff',
