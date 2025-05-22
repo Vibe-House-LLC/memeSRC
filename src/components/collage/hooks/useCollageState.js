@@ -19,7 +19,7 @@ export const useCollageState = () => {
   const [panelCount, setPanelCount] = useState(2); // Default panel count of 2
   const [finalImage, setFinalImage] = useState(null);
   const [isCreatingCollage, setIsCreatingCollage] = useState(false);
-  const [borderThickness, setBorderThickness] = useState('medium'); // Default border thickness
+  const [borderThickness, setBorderThickness] = useState('thin'); // Default border thickness
 
   const [borderColor, setBorderColor] = useState(() => {
     const savedCustomColor = localStorage.getItem('meme-src-collage-custom-color');

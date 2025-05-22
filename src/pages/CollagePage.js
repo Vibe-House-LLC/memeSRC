@@ -29,8 +29,8 @@ const getBorderThicknessValue = (borderThickness, options) => {
     String(opt.label).toLowerCase() === normalizedLabel
   );
   
-  // Return the value if found, otherwise default to 16 (medium)
-  return option ? option.value : 16;
+  // Return the value if found, otherwise default to 6 (thin)
+  return option ? option.value : 6;
 };
 
 export default function CollagePage() {

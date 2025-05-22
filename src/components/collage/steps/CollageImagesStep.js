@@ -325,7 +325,7 @@ CollageImagesStep.defaultProps = {
   selectedImages: [],
   panelCount: 2,
   selectedAspectRatio: 'portrait',
-  borderThickness: 'medium',
+  borderThickness: 'thin',
   borderThicknessOptions: [ { label: "None", value: 0 }, { label: "Thin", value: 6 }, { label: "Medium", value: 16 }, { label: "Thicc", value: 40 }, { label: "Thiccer", value: 80 }, { label: "XTRA THICC", value: 120 } ],
   panelImageMapping: {},
   addImage: () => { console.warn("addImage default prop called"); },

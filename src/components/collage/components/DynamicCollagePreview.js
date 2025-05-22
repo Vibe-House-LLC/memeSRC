@@ -82,7 +82,7 @@ const getBorderPixelSize = (borderThickness) => {
   
   // Normalize and look up in map
   const normalizedKey = String(borderThickness).toLowerCase();
-  return thicknessMap[normalizedKey] || 16; // Default to medium if not found
+  return thicknessMap[normalizedKey] || 6; // Default to thin if not found
 };
 
 /**
