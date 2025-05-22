@@ -197,6 +197,9 @@ const CollageImagesStep = ({
       return;
     }
 
+    // Temporarily hide control icons by adding a CSS class
+    collagePreviewElement.classList.add('export-mode');
+
     try {
       const html2canvasModule = await import('html2canvas');
       const html2canvas = html2canvasModule.default;
@@ -299,6 +302,9 @@ const CollageImagesStep = ({
 
     } catch (err) {
       logError('Error generating collage image:', err);
+    } finally {
+      // Remove the export mode class to restore controls
+      collagePreviewElement.classList.remove('export-mode');
     }
   }
 };
