@@ -448,7 +448,6 @@ const DynamicCollagePreview = ({
         overflow: 'hidden',
         backgroundColor: borderPixels > 0 ? borderColor : theme.palette.background.default,
         border: `1px solid ${theme.palette.divider}`,
-        borderRadius: 1,
         // Hide controls when in export mode
         '&.export-mode': {
           '& .MuiIconButton-root': {

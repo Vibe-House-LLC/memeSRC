@@ -33,7 +33,22 @@ export default function CollageResultView({
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [isDownloading, setIsDownloading] = useState(false);
   const [isCopying, setIsCopying] = useState(false);
+  const [clipboardSupported, setClipboardSupported] = useState(true);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+
+  // Check clipboard support on mount
+  React.useEffect(() => {
+    const checkClipboardSupport = () => {
+      const isSupported = !!(
+        navigator.clipboard && 
+        navigator.clipboard.write && 
+        typeof ClipboardItem !== 'undefined'
+      );
+      setClipboardSupported(isSupported);
+    };
+    
+    checkClipboardSupport();
+  }, []);
 
   // Show snackbar message
   const showSnackbar = (message, severity = 'success') => {
@@ -73,21 +88,57 @@ export default function CollageResultView({
     
     setIsCopying(true);
     try {
+      // Check if the Clipboard API is available and supports write operations
+      if (!navigator.clipboard || !navigator.clipboard.write) {
+        throw new Error('Clipboard API not supported');
+      }
+
+      // Check if ClipboardItem is available
+      if (typeof ClipboardItem === 'undefined') {
+        throw new Error('ClipboardItem not supported');
+      }
+
       // Convert base64 to blob
       const response = await fetch(finalImage);
+      if (!response.ok) {
+        throw new Error('Failed to fetch image data');
+      }
+      
       const blob = await response.blob();
       
-      // Copy to clipboard
-      await navigator.clipboard.write([
-        new ClipboardItem({
-          [blob.type]: blob
-        })
-      ]);
+      // Verify blob type - ensure it's an image
+      if (!blob.type.startsWith('image/')) {
+        throw new Error('Invalid image format');
+      }
+
+      // Check if the browser can handle this specific blob type
+      const clipboardItem = new ClipboardItem({
+        [blob.type]: blob
+      });
+
+      // Write to clipboard
+      await navigator.clipboard.write([clipboardItem]);
       
       showSnackbar('Collage copied to clipboard!', 'success');
     } catch (error) {
       console.error('Copy failed:', error);
-      showSnackbar('Failed to copy to clipboard. Try downloading instead.', 'error');
+      
+      // Provide more specific error messages
+      let errorMessage = 'Failed to copy to clipboard.';
+      
+      if (error.message.includes('not supported')) {
+        errorMessage = 'Clipboard copying not supported in this browser. Try downloading instead.';
+      } else if (error.message.includes('permission')) {
+        errorMessage = 'Permission denied to access clipboard. Please allow clipboard access and try again.';
+      } else if (error.name === 'NotAllowedError') {
+        errorMessage = 'Clipboard access not allowed. Please check browser permissions.';
+      } else if (error.name === 'SecurityError') {
+        errorMessage = 'Clipboard access blocked for security reasons. Try downloading instead.';
+      } else {
+        errorMessage = 'Failed to copy image. Try downloading or right-clicking to copy.';
+      }
+      
+      showSnackbar(errorMessage, 'error');
     }
     setIsCopying(false);
   }, [finalImage]);
@@ -252,17 +303,19 @@ export default function CollageResultView({
                 {isDownloading ? 'Downloading...' : 'Download'}
               </Button>
               
-              <Button
-                variant="contained"
-                startIcon={isCopying ? <CircularProgress size={16} /> : <CopyIcon />}
-                onClick={handleCopyToClipboard}
-                disabled={isCopying}
-                fullWidth={!isMobile || !isVertical}
-                size={isMobile ? "medium" : "large"}
-                sx={{ borderRadius: 2, flex: isMobile && isVertical ? 1 : 'none' }}
-              >
-                {isCopying ? 'Copying...' : (isMobile && isVertical ? 'Copy' : 'Copy to Clipboard')}
-              </Button>
+              {clipboardSupported && (
+                <Button
+                  variant="contained"
+                  startIcon={isCopying ? <CircularProgress size={16} /> : <CopyIcon />}
+                  onClick={handleCopyToClipboard}
+                  disabled={isCopying}
+                  fullWidth={!isMobile || !isVertical}
+                  size={isMobile ? "medium" : "large"}
+                  sx={{ borderRadius: 2, flex: isMobile && isVertical ? 1 : 'none' }}
+                >
+                  {isCopying ? 'Copying...' : (isMobile && isVertical ? 'Copy' : 'Copy to Clipboard')}
+                </Button>
+              )}
               
               {navigator.share && (
                 <Button
