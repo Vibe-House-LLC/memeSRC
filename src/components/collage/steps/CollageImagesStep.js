@@ -145,13 +145,40 @@ const CollageImagesStep = ({
   return (
     <Box sx={{ my: isMobile ? 0 : 0.5 }}>
       {/* Layout Preview */}
-      <Paper elevation={1} sx={{ p: isMobile ? 1 : 2, mb: isMobile ? 1 : 2, borderRadius: 2, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', backgroundColor: theme.palette.background.paper }}>
-        <Typography variant="subtitle2" color="text.secondary" gutterBottom sx={{ mb: 1 }}>
-          Tap to upload. Zoom and drag to reposition.
+      <Box sx={{ 
+        p: isMobile ? 2 : 2, 
+        mb: isMobile ? 2 : 2, 
+        borderRadius: 2, 
+        textAlign: 'center', 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'center', 
+        position: 'relative',
+        bgcolor: 'background.paper',
+        border: isMobile ? 1 : 0,
+        borderColor: 'divider',
+        boxShadow: isMobile ? 0 : 1
+      }}>
+        <Typography 
+          variant={isMobile ? "body2" : "subtitle2"} 
+          color="text.secondary" 
+          gutterBottom 
+          sx={{ 
+            mb: 2, 
+            fontWeight: 500,
+            textAlign: 'center'
+          }}
+        >
+          Tap panels to upload photos. Pinch to zoom and drag to reposition.
         </Typography>
         
         {/* Always render the preview, let it handle null templates */}
-        <Box sx={{ width: '100%', maxWidth: '600px', margin: '0 auto' }} id="collage-preview-container">
+        <Box sx={{ 
+          width: '100%', 
+          maxWidth: isMobile ? '350px' : '600px', 
+          margin: '0 auto',
+          mb: 2
+        }} id="collage-preview-container">
           <CollagePreview 
             selectedTemplate={selectedTemplate}
             selectedAspectRatio={selectedAspectRatio}
@@ -171,7 +198,7 @@ const CollageImagesStep = ({
           />
         </Box>
         
-        {/* Save Button - only show if all panels have images assigned */}
+        {/* Progress and Generate Button */}
         {(() => {
           // Check if all panels have images assigned
           const mappedPanels = Object.keys(panelImageMapping || {}).length;
@@ -182,20 +209,67 @@ const CollageImagesStep = ({
               selectedImages[imageIndex]
             );
           
-          return allPanelsHaveImages && (
-            <Button 
-              variant="contained" 
-              color="primary" 
-              startIcon={<Save />}
-              onClick={saveCollageAsImage}
-              sx={{ mt: 2 }}
-              aria-label="Generate collage and open preview dialog"
-            >
-              Generate & Preview
-            </Button>
+          return (
+            <Box sx={{ 
+              width: '100%', 
+              maxWidth: isMobile ? '350px' : '400px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 2
+            }}>
+              {/* Progress indicator */}
+              <Box sx={{ 
+                p: 1.5,
+                bgcolor: allPanelsHaveImages ? 'success.50' : 'info.50',
+                borderRadius: 2,
+                border: 1,
+                borderColor: allPanelsHaveImages ? 'success.200' : 'info.200',
+                width: '100%',
+                textAlign: 'center'
+              }}>
+                <Typography 
+                  variant="body2" 
+                  color="white"
+                  sx={{ fontWeight: 500 }}
+                >
+                  {mappedPanels} of {panelCount} photos added
+                  {allPanelsHaveImages && ' ✓'}
+                </Typography>
+              </Box>
+
+              {/* Generate Button */}
+              {allPanelsHaveImages && (
+                <Button 
+                  variant="contained" 
+                  color="primary" 
+                  startIcon={<Save />}
+                  onClick={saveCollageAsImage}
+                  size={isMobile ? "large" : "large"}
+                  fullWidth={isMobile}
+                  sx={{ 
+                    borderRadius: 2,
+                    py: isMobile ? 1.5 : 1,
+                    px: isMobile ? 3 : 2,
+                    fontSize: isMobile ? '1rem' : '0.875rem',
+                    fontWeight: 600,
+                    textTransform: 'none',
+                    boxShadow: 2,
+                    '&:hover': {
+                      boxShadow: 4,
+                      transform: 'translateY(-1px)'
+                    },
+                    transition: 'all 0.2s ease-in-out'
+                  }}
+                  aria-label="Generate collage and open preview dialog"
+                >
+                  Generate Collage
+                </Button>
+              )}
+            </Box>
           );
         })()}
-      </Paper>
+      </Box>
     </Box>
   );
 

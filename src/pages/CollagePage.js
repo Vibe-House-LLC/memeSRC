@@ -1,14 +1,13 @@
 import { useContext, useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { useTheme } from "@mui/material/styles";
-import { useMediaQuery } from "@mui/material";
+import { useMediaQuery, Box, Container, Typography } from "@mui/material";
 import { Dashboard } from "@mui/icons-material";
 import { UserContext } from "../UserContext";
 import { useSubscribeDialog } from "../contexts/useSubscribeDialog";
 import { aspectRatioPresets, layoutTemplates } from "../components/collage/config/CollageConfig";
 import UpgradeMessage from "../components/collage/components/UpgradeMessage";
-import { PageHeader } from "../components/collage/components/CollageUIComponents";
-import { MainContainer, ContentPaper, CollageLayout } from "../components/collage/components/CollageLayoutComponents";
+import { CollageLayout } from "../components/collage/components/CollageLayoutComponents";
 import { useCollageState } from "../components/collage/hooks/useCollageState";
 
 const DEBUG_MODE = process.env.NODE_ENV === 'development';
@@ -36,7 +35,6 @@ const getBorderThicknessValue = (borderThickness, options) => {
 export default function CollagePage() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const isMediumScreen = useMediaQuery(theme.breakpoints.down('md'));
   const { user } = useContext(UserContext);
   const { openSubscriptionDialog } = useSubscribeDialog();
   const authorized = (user?.userDetails?.magicSubscription === "true" || user?.['cognito:groups']?.includes('admins'));
@@ -88,7 +86,6 @@ export default function CollagePage() {
   const handleBackToEdit = () => {
     setShowInlineResult(false);
   };
-
 
   // Props for settings step (selectedImages length might be useful for UI feedback)
   const settingsStepProps = {
@@ -158,24 +155,59 @@ export default function CollagePage() {
       {!authorized ? (
         <UpgradeMessage openSubscriptionDialog={openSubscriptionDialog} previewImage="/assets/images/products/collage-tool.png" />
       ) : (
-        <MainContainer isMobile={isMobile} isMediumScreen={isMediumScreen}>
-          <PageHeader 
-            icon={Dashboard} 
-            title={showInlineResult ? "Collage Result" : "Collage Tool"} 
-            isMobile={isMobile} 
-          />
-          <ContentPaper isMobile={isMobile}>
+        <Box component="main" sx={{ 
+          flexGrow: 1,
+          pb: isMobile ? 3 : 6,
+          width: '100%',
+          overflowX: 'hidden',
+          minHeight: '100vh',
+          bgcolor: 'background.default'
+        }}>
+          <Container 
+            maxWidth="xl" 
+            sx={{ 
+              pt: isMobile ? 1 : 3,
+              px: isMobile ? 1 : 3,
+              width: '100%'
+            }}
+            disableGutters={isMobile}
+          >
+            {/* Page Header */}
+            <Box sx={{ mb: isMobile ? 2 : 3 }}>
+              <Typography variant="h3" gutterBottom sx={{ 
+                display: 'flex', 
+                alignItems: 'center',
+                fontWeight: '700', 
+                mb: isMobile ? 0.75 : 1.5,
+                pl: isMobile ? 1 : 0,
+                color: '#fff',
+                fontSize: isMobile ? '2.2rem' : '2.5rem',
+                textShadow: '0px 2px 4px rgba(0,0,0,0.15)'
+              }}>
+                <Dashboard sx={{ mr: 2, color: 'inherit', fontSize: 40 }} /> 
+                {showInlineResult ? "Collage Result" : "Collage Tool"}
+              </Typography>
+              <Typography variant="subtitle1" sx={{ 
+                color: 'text.secondary',
+                mb: isMobile ? 2 : 2.5,
+                pl: isMobile ? 1 : 5,
+                maxWidth: '85%'
+              }}>
+                Merge images together to create multi-panel memes
+              </Typography>
+            </Box>
+
             <CollageLayout
               settingsStepProps={settingsStepProps}
-              imagesStepProps={imagesStepProps} // Pass updated props
+              imagesStepProps={imagesStepProps}
               finalImage={finalImage}
               setFinalImage={setFinalImage}
               isMobile={isMobile}
               showInlineResult={showInlineResult}
               onBackToEdit={handleBackToEdit}
             />
-          </ContentPaper>
-        </MainContainer>
+          </Container>
+        </Box>
       )}
     </>
   );

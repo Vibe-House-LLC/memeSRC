@@ -283,52 +283,70 @@ export default function CollageResultView({
             </Typography>
           </Box>
 
-
-
           {/* Quick Actions */}
-          <Paper variant="outlined" sx={{ p: isMobile ? 1.5 : 2, borderRadius: 2 }}>
-            <Typography variant="subtitle2" gutterBottom>
+          <Paper variant="outlined" sx={{ p: isMobile ? 2 : 2, borderRadius: 2 }}>
+            <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
               Quick Actions
             </Typography>
-            <Stack spacing={isMobile ? 1 : 1.5} direction={isMobile && isVertical ? 'row' : 'column'}>
+            <Stack spacing={isMobile ? 2 : 1.5}>
               <Button
                 variant="contained"
                 startIcon={isDownloading ? <CircularProgress size={16} /> : <DownloadIcon />}
                 onClick={handleDownload}
                 disabled={isDownloading}
-                fullWidth={!isMobile || !isVertical}
-                size={isMobile ? "medium" : "large"}
-                sx={{ borderRadius: 2, flex: isMobile && isVertical ? 1 : 'none' }}
+                fullWidth
+                size="large"
+                sx={{ 
+                  borderRadius: 2, 
+                  py: isMobile ? 1.5 : 1,
+                  fontSize: isMobile ? '1rem' : '0.875rem',
+                  fontWeight: 600,
+                  textTransform: 'none'
+                }}
               >
                 {isDownloading ? 'Downloading...' : 'Download'}
               </Button>
               
-              {clipboardSupported && (
-                <Button
-                  variant="contained"
-                  startIcon={isCopying ? <CircularProgress size={16} /> : <CopyIcon />}
-                  onClick={handleCopyToClipboard}
-                  disabled={isCopying}
-                  fullWidth={!isMobile || !isVertical}
-                  size={isMobile ? "medium" : "large"}
-                  sx={{ borderRadius: 2, flex: isMobile && isVertical ? 1 : 'none' }}
-                >
-                  {isCopying ? 'Copying...' : (isMobile && isVertical ? 'Copy' : 'Copy to Clipboard')}
-                </Button>
-              )}
-              
-              {navigator.share && (
-                <Button
-                  variant="contained"
-                  startIcon={<ShareIcon />}
-                  onClick={handleShare}
-                  fullWidth={!isMobile || !isVertical}
-                  size={isMobile ? "medium" : "large"}
-                  sx={{ borderRadius: 2, flex: isMobile && isVertical ? 1 : 'none' }}
-                >
-                  Share
-                </Button>
-              )}
+              <Stack direction="row" spacing={1}>
+                {clipboardSupported && (
+                  <Button
+                    variant="outlined"
+                    startIcon={isCopying ? <CircularProgress size={16} /> : <CopyIcon />}
+                    onClick={handleCopyToClipboard}
+                    disabled={isCopying}
+                    fullWidth
+                    size={isMobile ? "large" : "medium"}
+                    sx={{ 
+                      borderRadius: 2,
+                      py: isMobile ? 1.5 : 1,
+                      fontSize: isMobile ? '0.95rem' : '0.875rem',
+                      fontWeight: 500,
+                      textTransform: 'none'
+                    }}
+                  >
+                    {isCopying ? 'Copying...' : 'Copy'}
+                  </Button>
+                )}
+                
+                {navigator.share && (
+                  <Button
+                    variant="outlined"
+                    startIcon={<ShareIcon />}
+                    onClick={handleShare}
+                    fullWidth
+                    size={isMobile ? "large" : "medium"}
+                    sx={{ 
+                      borderRadius: 2,
+                      py: isMobile ? 1.5 : 1,
+                      fontSize: isMobile ? '0.95rem' : '0.875rem',
+                      fontWeight: 500,
+                      textTransform: 'none'
+                    }}
+                  >
+                    Share
+                  </Button>
+                )}
+              </Stack>
             </Stack>
           </Paper>
 

@@ -1,13 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useTheme } from "@mui/material/styles";
 import {
   Box,
   Grid,
   Typography,
   Container,
-  Button
+  Button,
+  Stack,
+  Divider,
+  useMediaQuery
 } from "@mui/material";
-import { Settings, PhotoLibrary, Launch as ExportIcon } from "@mui/icons-material";
+import { Settings, PhotoLibrary, Launch as ExportIcon, ArrowBack, KeyboardArrowDown } from "@mui/icons-material";
 
 import CollageSettingsStep from "../steps/CollageSettingsStep";
 import CollageImagesStep from "../steps/CollageImagesStep";
@@ -22,15 +25,17 @@ export const MainContainer = ({ children, isMobile, isMediumScreen }) => {
   return (
     <Box component="main" sx={{ 
       flexGrow: 1,
-      pb: 6,
+      pb: isMobile ? 3 : 6,
       width: '100%',
-      overflowX: 'hidden'
+      overflowX: 'hidden',
+      minHeight: '100vh',
+      bgcolor: 'background.default'
     }}>
       <Container 
         maxWidth={isMediumScreen ? "xl" : "lg"} 
         sx={{ 
-          pt: isMobile ? 2 : 3,
-          px: isMobile ? 2 : 3,
+          pt: isMobile ? 1 : 3,
+          px: isMobile ? 1 : 3,
           width: '100%'
         }}
         disableGutters={isMobile}
@@ -48,6 +53,9 @@ export const ContentPaper = ({ children, isMobile, sx = {} }) => {
   return (
     <Box sx={{ 
       width: '100%',
+      bgcolor: isMobile ? 'transparent' : 'background.paper',
+      borderRadius: isMobile ? 0 : 2,
+      overflow: 'hidden',
       ...sx
     }}>
       {children}
@@ -59,7 +67,12 @@ export const ContentPaper = ({ children, isMobile, sx = {} }) => {
  * Unified layout for the collage tool that adapts to all screen sizes
  */
 export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, setFinalImage, isMobile, showInlineResult = false, onBackToEdit }) => {
+  const theme = useTheme();
+  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  
+  // Ref for scrolling to settings on mobile
+  const settingsRef = useRef(null);
 
   const handleOpenExportDialog = () => {
     setIsExportDialogOpen(true);
@@ -73,6 +86,13 @@ export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, 
     if (onBackToEdit) {
       onBackToEdit();
     }
+  };
+
+  const scrollToSettings = () => {
+    settingsRef.current?.scrollIntoView({ 
+      behavior: 'smooth',
+      block: 'start'
+    });
   };
 
   console.log("CollageLayout received props:", {
@@ -94,37 +114,106 @@ export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, 
   return (
     <>
       {showInlineResult && finalImage ? (
-        // Show inline result view
-        <Box sx={{ width: '100%' }}>
+        // Show inline result view with improved mobile layout
+        <Box sx={{ width: '100%', p: isMobile ? 1 : 2 }}>
+          {isMobile && (
+            <Box sx={{ mb: 2 }}>
+              <Button
+                startIcon={<ArrowBack />}
+                onClick={handleBackToEdit}
+                variant="outlined"
+                size="small"
+                sx={{ 
+                  borderRadius: 2,
+                  textTransform: 'none'
+                }}
+              >
+                Back to Editor
+              </Button>
+            </Box>
+          )}
           <CollageResultView 
             finalImage={finalImage}
             onBackToEdit={handleBackToEdit}
-            showBackButton
+            showBackButton={!isMobile}
             layout="responsive"
           />
         </Box>
       ) : (
-        // Show normal editor interface
-        <Grid container spacing={isMobile ? 2 : 3} sx={{ width: '100%', margin: 0 }}>
-          {/* Settings Section */}
-          <Grid item xs={12} md={6}>
-            <CollageSettingsStep 
-              {...settingsStepProps}
-            />
-          </Grid>
-          
-          {/* Images Section */}
-          <Grid item xs={12} md={6}>
-            <Box>
-              <SectionHeading icon={PhotoLibrary} title="Images" />
-              <CollageImagesStep 
-                {...imagesStepProps} 
-                setFinalImage={setFinalImage}
-                handleOpenExportDialog={handleOpenExportDialog}
-              />
+        // Show normal editor interface with improved mobile layout
+        <Box sx={{ width: '100%' }}>
+          {isMobile ? (
+            // Mobile: Stack vertically with better spacing and visual hierarchy
+            <Stack spacing={3} sx={{ p: 2 }}>
+              {/* Settings Section First on Mobile */}
+              <Box ref={settingsRef}>
+                <CollageSettingsStep 
+                  {...settingsStepProps}
+                />
+              </Box>
+
+              {/* Images Section */}
+              <Box>
+                <Box sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between',
+                  mb: 2,
+                  pb: 1,
+                  borderBottom: 1,
+                  borderColor: 'divider'
+                }}>
+                </Box>
+                <CollageImagesStep 
+                  {...imagesStepProps} 
+                  setFinalImage={setFinalImage}
+                  handleOpenExportDialog={handleOpenExportDialog}
+                />
+              </Box>
+            </Stack>
+          ) : (
+            // Desktop/Tablet: Keep side-by-side layout but improve spacing
+            <Box sx={{ p: isTablet ? 2 : 3 }}>
+              <Grid container spacing={isTablet ? 3 : 4} sx={{ width: '100%', margin: 0 }}>
+                {/* Settings Section */}
+                <Grid item xs={12} md={6}>
+                  <Box sx={{ 
+                    height: '100%',
+                    bgcolor: 'background.paper',
+                    borderRadius: 2,
+                    p: 3,
+                    border: 1,
+                    borderColor: 'divider'
+                  }}>
+                    {/* <SectionHeading icon={Settings} title="Settings" /> */}
+                    <CollageSettingsStep 
+                      {...settingsStepProps}
+                    />
+                  </Box>
+                </Grid>
+                
+                {/* Images Section */}
+                <Grid item xs={12} md={6}>
+                  <Box sx={{ 
+                    height: '100%',
+                    bgcolor: 'background.paper',
+                    borderRadius: 2,
+                    p: 3,
+                    border: 1,
+                    borderColor: 'divider'
+                  }}>
+                    <SectionHeading icon={PhotoLibrary} title="Your Collage" />
+                    <CollageImagesStep 
+                      {...imagesStepProps} 
+                      setFinalImage={setFinalImage}
+                      handleOpenExportDialog={handleOpenExportDialog}
+                    />
+                  </Box>
+                </Grid>
+              </Grid>
             </Box>
-          </Grid>
-        </Grid>
+          )}
+        </Box>
       )}
 
       <ExportDialog 
