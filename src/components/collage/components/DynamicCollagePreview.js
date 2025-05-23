@@ -7,6 +7,24 @@ import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import { layoutDefinitions } from "../config/layouts";
 
 /**
+ * SNAP-TO-FILL & SNAP-TO-CENTER SYSTEM
+ * 
+ * This system provides intelligent image positioning with two main behaviors:
+ * 
+ * 1. SNAP TO CENTER: When repositioning, if the image gets close to being centered
+ *    horizontally or vertically (within 20px), it snaps to perfect center.
+ *    This works like magnetic guides in professional design tools.
+ * 
+ * 2. SNAP TO FILL: Automatically eliminates blank spaces by:
+ *    - Scaling up images that are too small to cover the panel
+ *    - Repositioning images to remove gaps at edges
+ *    - Maintaining proper coverage (like object-fit: cover)
+ * 
+ * Priority: Center snapping is attempted first (when safe), then falls back to fill logic.
+ * Both work together to create a smooth, professional repositioning experience.
+ */
+
+/**
  * Helper function to create a layout config based on the template type
  */
 const createLayoutConfig = (template, panelCount) => {
@@ -95,9 +113,56 @@ const getBorderPixelSize = (borderThickness, componentWidth = 400) => {
 };
 
 /**
+ * Calculate snap-to-center positions if the current position is close enough
+ * Returns center positions if within threshold, otherwise returns current positions
+ */
+const calculateSnapToCenterPosition = (imageNaturalSize, panelSize, scale, currentPositionX, currentPositionY, threshold = 2) => {
+  if (!imageNaturalSize || !panelSize || !scale) {
+    return { positionX: currentPositionX, positionY: currentPositionY, snappedToCenter: false };
+  }
+
+  // Calculate the scaled image dimensions
+  const scaledImageWidth = imageNaturalSize.width * scale;
+  const scaledImageHeight = imageNaturalSize.height * scale;
+
+  // Calculate what the centered positions would be
+  const centeredX = (panelSize.width - scaledImageWidth) / 2;
+  const centeredY = (panelSize.height - scaledImageHeight) / 2;
+
+  // Check if current position is close enough to center to snap
+  const closeToHorizontalCenter = Math.abs(currentPositionX - centeredX) <= threshold;
+  const closeToVerticalCenter = Math.abs(currentPositionY - centeredY) <= threshold;
+
+  // Determine final positions
+  const finalX = closeToHorizontalCenter ? centeredX : currentPositionX;
+  const finalY = closeToVerticalCenter ? centeredY : currentPositionY;
+  
+  const snappedToCenter = closeToHorizontalCenter || closeToVerticalCenter;
+
+  // Debug logging for development
+  if (process.env.NODE_ENV === 'development' && snappedToCenter) {
+    console.log('[Snap to Center]', {
+      currentPos: { x: currentPositionX, y: currentPositionY },
+      centerPos: { x: centeredX, y: centeredY },
+      finalPos: { x: finalX, y: finalY },
+      snapped: { horizontal: closeToHorizontalCenter, vertical: closeToVerticalCenter },
+      threshold
+    });
+  }
+
+  return { 
+    positionX: finalX, 
+    positionY: finalY, 
+    snappedToCenter,
+    snappedHorizontally: closeToHorizontalCenter,
+    snappedVertically: closeToVerticalCenter
+  };
+};
+
+/**
  * Calculate the optimal transform (scale and position) to minimize blank space in the panel
  * This function ensures the scaled image covers as much of the panel as possible,
- * adjusting both scale and position as needed.
+ * adjusting both scale and position as needed, with preference for center snapping when possible.
  */
 const calculateSnapToFillTransform = (imageNaturalSize, panelSize, currentScale, currentPositionX, currentPositionY) => {
   if (!imageNaturalSize || !panelSize || !currentScale) {
@@ -124,20 +189,56 @@ const calculateSnapToFillTransform = (imageNaturalSize, panelSize, currentScale,
   const scaledImageWidth = imageNaturalSize.width * optimalScale;
   const scaledImageHeight = imageNaturalSize.height * optimalScale;
 
-  // Calculate the bounds for positioning (how far we can move the image)
+  // If scale changed, we need to adjust position proportionally to maintain roughly the same view
+  let adjustedX = currentPositionX;
+  let adjustedY = currentPositionY;
+  if (optimalScale !== currentScale) {
+    const scaleRatio = optimalScale / currentScale;
+    adjustedX = currentPositionX * scaleRatio;
+    adjustedY = currentPositionY * scaleRatio;
+  }
+
+  // Try center snapping first (only if image is larger than panel)
+  if (scaledImageWidth >= panelSize.width && scaledImageHeight >= panelSize.height) {
+    const centerSnap = calculateSnapToCenterPosition(
+      imageNaturalSize, 
+      panelSize, 
+      optimalScale, 
+      adjustedX, 
+      adjustedY
+    );
+    
+    if (centerSnap.snappedToCenter) {
+      // Check if center snapping would create gaps
+      const wouldCreateGaps = 
+        (scaledImageWidth < panelSize.width) || 
+        (scaledImageHeight < panelSize.height) ||
+        (centerSnap.positionX > 0) || 
+        (centerSnap.positionY > 0) ||
+        (centerSnap.positionX + scaledImageWidth < panelSize.width) ||
+        (centerSnap.positionY + scaledImageHeight < panelSize.height);
+      
+      if (!wouldCreateGaps) {
+        // Center snapping is safe, use it
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[Snap to Fill Transform] Using center snap');
+        }
+        return { 
+          scale: optimalScale, 
+          positionX: centerSnap.positionX, 
+          positionY: centerSnap.positionY 
+        };
+      }
+    }
+  }
+
+  // Fall back to fill logic (existing logic)
   const maxOffsetX = scaledImageWidth - panelSize.width;
   const maxOffsetY = scaledImageHeight - panelSize.height;
 
   // Calculate the optimal position to fill the panel
-  let optimalX = currentPositionX;
-  let optimalY = currentPositionY;
-
-  // If scale changed, we need to adjust position proportionally to maintain roughly the same view
-  if (optimalScale !== currentScale) {
-    const scaleRatio = optimalScale / currentScale;
-    optimalX = currentPositionX * scaleRatio;
-    optimalY = currentPositionY * scaleRatio;
-  }
+  let optimalX = adjustedX;
+  let optimalY = adjustedY;
 
   // For X axis
   if (maxOffsetX <= 0) {
@@ -167,7 +268,7 @@ const calculateSnapToFillTransform = (imageNaturalSize, panelSize, currentScale,
     const deltaX = Math.abs(optimalX - currentPositionX);
     const deltaY = Math.abs(optimalY - currentPositionY);
     if (scaleChanged || deltaX > 0.1 || deltaY > 0.1) {
-      console.log('[Snap to Fill Transform]', {
+      console.log('[Snap to Fill Transform] Using fill logic', {
         imageSize: { width: scaledImageWidth, height: scaledImageHeight },
         panelSize,
         currentTransform: { scale: currentScale, x: currentPositionX, y: currentPositionY },
@@ -441,6 +542,13 @@ const DynamicCollagePreview = ({
     // Add ref to access TransformWrapper's imperative API
     const transformRef = React.useRef(null);
     
+    // State for real-time snap guides
+    const [snapGuides, setSnapGuides] = React.useState({
+      showHorizontalCenter: false,
+      showVerticalCenter: false,
+      showFillGuides: false
+    });
+    
     // Determine the image index using the mapping if available
     const imageIndex = panelId && panelImageMapping[panelId] !== undefined 
       ? panelImageMapping[panelId] 
@@ -544,6 +652,67 @@ const DynamicCollagePreview = ({
     // Check if transforms are enabled for this panel
     const isTransformEnabled = enabledTransforms.has(panelId);
     
+    // Function to handle real-time snap feedback during panning
+    const handleRealTimeSnap = React.useCallback((ref) => {
+      if (!imageNaturalSize || !panelSize || !isTransformEnabled) return;
+      
+      const currentScale = ref.state.scale;
+      const currentX = ref.state.positionX;
+      const currentY = ref.state.positionY;
+      
+      // Calculate snap positions
+      const centerSnap = calculateSnapToCenterPosition(
+        imageNaturalSize, 
+        panelSize, 
+        currentScale, 
+        currentX, 
+        currentY,
+        3 // Extremely small threshold - need to be almost perfect
+      );
+      
+      const fillSnap = calculateSnapToFillTransform(
+        imageNaturalSize,
+        panelSize, 
+        currentScale,
+        currentX,
+        currentY
+      );
+      
+      // Update snap guides visibility
+      setSnapGuides({
+        showHorizontalCenter: centerSnap.snappedHorizontally,
+        showVerticalCenter: centerSnap.snappedVertically,
+        showFillGuides: Math.abs(fillSnap.positionX - currentX) > 15 || Math.abs(fillSnap.positionY - currentY) > 15
+      });
+      
+      // Apply real-time snap if close enough
+      if (centerSnap.snappedToCenter && transformRef.current) {
+        // Smoothly move to snap position
+        transformRef.current.setTransform(
+          centerSnap.positionX,
+          centerSnap.positionY,
+          currentScale,
+          0 // No animation during dragging for immediate feedback
+        );
+      } else if (snapGuides.showFillGuides && transformRef.current) {
+        // Apply fill snapping if not center snapping and close to fill position
+        const isCloseToFillSnap = 
+          Math.abs(fillSnap.positionX - currentX) < 1 ||
+          Math.abs(fillSnap.positionY - currentY) < 1;
+          
+        if (isCloseToFillSnap) {
+          transformRef.current.setTransform(
+            fillSnap.positionX,
+            fillSnap.positionY,
+            fillSnap.scale,
+            0 // No animation during dragging for immediate feedback
+          );
+        }
+      }
+      
+      resetTimeoutForPanel(panelId);
+    }, [imageNaturalSize, panelSize, isTransformEnabled, panelId]);
+    
     // Effect to use imperative API to restore transforms when enabling edit mode
     React.useEffect(() => {
       if (isTransformEnabled && transformRef.current && savedTransform) {
@@ -553,10 +722,20 @@ const DynamicCollagePreview = ({
       }
     }, [isTransformEnabled, savedTransform]);
     
+    // Function to clear snap guides
+    const clearSnapGuides = React.useCallback(() => {
+      setSnapGuides({
+        showHorizontalCenter: false,
+        showVerticalCenter: false,
+        showFillGuides: false
+      });
+    }, []);
+    
     // Handle click on reposition button to toggle edit mode
     const handleRepositionClick = (e) => {
       e.stopPropagation();
       if (isTransformEnabled) {
+        clearSnapGuides(); // Clear guides when exiting edit mode
         disableTransformForPanel(panelId);
       } else {
         enableTransformForPanel(panelId);
@@ -591,6 +770,7 @@ const DynamicCollagePreview = ({
           initialPositionY={initialTransform.positionY}
           centerZoomedOut={false}
           onZoomStop={(ref) => {
+            clearSnapGuides(); // Clear guides when zoom stops
             if (updatePanelTransform) {
               // Calculate optimal position to fill gaps after zooming
               const snapPosition = calculateSnapToFillTransform(
@@ -610,8 +790,8 @@ const DynamicCollagePreview = ({
               // Only apply snap if position or scale actually changed (avoid unnecessary updates)
               const scaleChanged = Math.abs(snapPosition.scale - ref.state.scale) > 0.01;
               const positionChanged = 
-                Math.abs(snapPosition.positionX - ref.state.positionX) > 0.1 ||
-                Math.abs(snapPosition.positionY - ref.state.positionY) > 0.1;
+                Math.abs(snapPosition.positionX - ref.state.positionX) > 2 ||
+                Math.abs(snapPosition.positionY - ref.state.positionY) > 2;
               
               if ((scaleChanged || positionChanged) && transformRef.current) {
                 // Smoothly animate to the snap position
@@ -619,7 +799,7 @@ const DynamicCollagePreview = ({
                   snapPosition.positionX,
                   snapPosition.positionY,
                   snapPosition.scale,
-                  200 // 200ms animation duration
+                  400 // Longer animation duration for smoother feel
                 );
               }
               
@@ -628,6 +808,7 @@ const DynamicCollagePreview = ({
             resetTimeoutForPanel(panelId);
           }}
           onPanningStop={(ref) => {
+            clearSnapGuides(); // Clear guides when panning stops
             if (updatePanelTransform) {
               // Calculate optimal position to fill gaps
               const snapPosition = calculateSnapToFillTransform(
@@ -647,8 +828,8 @@ const DynamicCollagePreview = ({
               // Only apply snap if position or scale actually changed (avoid unnecessary updates)
               const scaleChanged = Math.abs(snapPosition.scale - ref.state.scale) > 0.01;
               const positionChanged = 
-                Math.abs(snapPosition.positionX - ref.state.positionX) > 0.1 ||
-                Math.abs(snapPosition.positionY - ref.state.positionY) > 0.1;
+                Math.abs(snapPosition.positionX - ref.state.positionX) > 2 ||
+                Math.abs(snapPosition.positionY - ref.state.positionY) > 2;
               
               if ((scaleChanged || positionChanged) && transformRef.current) {
                 // Smoothly animate to the snap position
@@ -656,7 +837,7 @@ const DynamicCollagePreview = ({
                   snapPosition.positionX,
                   snapPosition.positionY,
                   snapPosition.scale,
-                  200 // 200ms animation duration
+                  400 // Longer animation duration for smoother feel
                 );
               }
               
@@ -664,9 +845,7 @@ const DynamicCollagePreview = ({
             }
             resetTimeoutForPanel(panelId);
           }}
-          onPanning={() => {
-            resetTimeoutForPanel(panelId);
-          }}
+          onPanning={handleRealTimeSnap}
           onZoom={() => {
             resetTimeoutForPanel(panelId);
           }}
@@ -737,6 +916,94 @@ const DynamicCollagePreview = ({
               },
             }}
           />
+        )}
+        
+        {/* Snap Guides - only show when in edit mode and guides are active */}
+        {isTransformEnabled && (
+          <>
+            {/* Horizontal center guide */}
+            {snapGuides.showHorizontalCenter && (
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: 0,
+                  left: '50%',
+                  width: '2px',
+                  height: '100%',
+                  backgroundColor: '#FF6B35',
+                  opacity: 0.7, // More subtle opacity
+                  transform: 'translateX(-50%)',
+                  zIndex: 8,
+                  boxShadow: '0 0 2px rgba(255, 107, 53, 0.4)', // Reduced shadow
+                  '&::before': {
+                    content: '""',
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    width: '6px', // Smaller center dot
+                    height: '6px',
+                    backgroundColor: '#FF6B35',
+                    borderRadius: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    boxShadow: '0 0 4px rgba(255, 107, 53, 0.6)', // Reduced shadow
+                  }
+                }}
+              />
+            )}
+            
+            {/* Vertical center guide */}
+            {snapGuides.showVerticalCenter && (
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: 0,
+                  width: '100%',
+                  height: '2px',
+                  backgroundColor: '#FF6B35',
+                  opacity: 0.7, // More subtle opacity
+                  transform: 'translateY(-50%)',
+                  zIndex: 8,
+                  boxShadow: '0 0 2px rgba(255, 107, 53, 0.4)', // Reduced shadow
+                  '&::before': {
+                    content: '""',
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    width: '6px', // Smaller center dot
+                    height: '6px',
+                    backgroundColor: '#FF6B35',
+                    borderRadius: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    boxShadow: '0 0 4px rgba(255, 107, 53, 0.6)', // Reduced shadow
+                  }
+                }}
+              />
+            )}
+            
+            {/* Fill guides indicator */}
+            {snapGuides.showFillGuides && (
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: 8,
+                  left: 8,
+                  padding: '3px 6px', // Smaller padding
+                  backgroundColor: 'rgba(33, 150, 243, 0.7)', // More subtle background
+                  color: 'white',
+                  fontSize: '11px', // Smaller font
+                  fontWeight: 500, // Less bold
+                  borderRadius: '3px', // Smaller border radius
+                  zIndex: 9,
+                  boxShadow: '0 1px 4px rgba(0, 0, 0, 0.2)', // Reduced shadow
+                  opacity: 0.9, // Slightly transparent
+                  // Remove the pulse animation for a more subtle effect
+                }}
+              >
+                Snap to edges
+              </Box>
+            )}
+          </>
         )}
         
         {/* Reposition/Check Button - always visible in top right */}
