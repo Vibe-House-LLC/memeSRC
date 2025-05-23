@@ -128,9 +128,10 @@ export default function CollagePage() {
       }, 800); // 800ms delay for dramatic effect
       
       return () => clearTimeout(timer);
-    } else {
-      setShowAnimatedButton(false);
     }
+    
+    setShowAnimatedButton(false);
+    return () => {}; // Return empty cleanup function for consistency
   }, [allPanelsHaveImages, showResultDialog]);
 
   // Handler to go back to edit mode
