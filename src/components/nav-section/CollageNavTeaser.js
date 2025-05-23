@@ -113,7 +113,7 @@ export default function CollageNavTeaser() {
               Collage Tool
             </Typography>
             <Chip 
-              label="NEW" 
+              label="BETA" 
               size="small" 
               sx={{ 
                 backgroundColor: '#ff9800',
@@ -136,10 +136,10 @@ export default function CollageNavTeaser() {
             }} />
             <Typography variant="caption" sx={{ 
               color: 'rgba(255, 255, 255, 0.7)',
-              fontSize: '0.7rem',
+              fontSize: '0.9rem',
               lineHeight: 1.2
             }}>
-              Early access feature
+              Massive Update!
             </Typography>
           </Box>
         </Box>

@@ -74,7 +74,7 @@ export default function EarlyAccessFeedback() {
         });
 
         if (response.success) {
-          setSnackbarMessage('Collage feedback submitted successfully! Thank you for helping us improve.');
+          setSnackbarMessage('Collage feedback submitted successfully! Thank you for helping improve the tool.');
           setSeverity('success');
           setOpen(true);
           // Reset form
@@ -139,9 +139,9 @@ export default function EarlyAccessFeedback() {
           mb: expanded ? (isMobile ? 1.5 : 2) : 0,
           gap: isMobile ? 1.5 : 0
         }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <ScienceIcon sx={{ 
-              fontSize: 28, 
+              fontSize: 38, 
               color: '#ff9800',
               filter: 'drop-shadow(0 2px 4px rgba(255, 152, 0, 0.3))'
             }} />
@@ -152,9 +152,9 @@ export default function EarlyAccessFeedback() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 1,
-                fontSize: isMobile ? '1.1rem' : '1.25rem'
+                fontSize: isMobile ? '1.3rem' : '1.5rem'
               }}>
-                Early Access Feature
+                Early Access
                 <Chip 
                   label="BETA" 
                   size="small" 
@@ -170,7 +170,7 @@ export default function EarlyAccessFeedback() {
                 color: 'rgba(255, 255, 255, 0.8)',
                 fontSize: isMobile ? '0.8rem' : '0.875rem'
               }}>
-                The Collage Tool is in development and may have limitations or bugs
+                This tool is still in development with limitations and bugs.
               </Typography>
             </Box>
           </Box>
@@ -214,12 +214,12 @@ export default function EarlyAccessFeedback() {
               mb: 2, 
               fontWeight: 600 
             }}>
-              Help us improve the Collage Tool
+              Help improve the Collage Tool
             </Typography>
             
             <TextField
               label="Your feedback"
-              placeholder="Found a bug? Have a suggestion? Let us know!"
+              placeholder="Found a bug? Have a suggestion? Let know!"
               multiline
               rows={3}
               value={messageInput}
