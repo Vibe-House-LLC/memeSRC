@@ -177,12 +177,9 @@ export default function CollageResultDialog({ open, onClose, finalImage }) {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                borderRadius: 2,
                 overflow: 'hidden',
-                boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
                 backgroundColor: 'rgba(255, 255, 255, 0.95)',
                 backdropFilter: 'blur(10px)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
               }}
               onClick={(e) => e.stopPropagation()} // Prevent closing when clicking on the image
             >
@@ -193,10 +190,9 @@ export default function CollageResultDialog({ open, onClose, finalImage }) {
                   style={{
                     maxWidth: '100%',
                     maxHeight: '100%',
-                    height: 'auto',
                     width: 'auto',
+                    height: 'auto',
                     display: 'block',
-                    borderRadius: '8px',
                     userSelect: 'none',
                     WebkitUserSelect: 'none',
                     pointerEvents: 'auto',
