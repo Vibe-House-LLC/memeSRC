@@ -402,7 +402,7 @@ export default function CollagePage() {
                     }}
                     aria-label="Create and save collage"
                   >
-                    {isCreatingCollage ? 'Creating Collage...' : 'Create & Save Collage'}
+                    {isCreatingCollage ? 'Generating Collage...' : 'Generate Collage'}
                   </Button>
                 </Box>
               </Slide>

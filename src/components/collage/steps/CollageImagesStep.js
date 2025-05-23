@@ -154,10 +154,6 @@ const CollageImagesStep = ({
         flexDirection: 'column', 
         alignItems: 'center', 
         position: 'relative',
-        bgcolor: 'background.paper',
-        border: isMobile ? 1 : 0,
-        borderColor: 'divider',
-        boxShadow: isMobile ? 0 : 1
       }}>
         <Typography 
           variant={isMobile ? "body2" : "subtitle2"} 
@@ -197,49 +193,6 @@ const CollageImagesStep = ({
             borderColor={borderColor}
           />
         </Box>
-        
-        {/* Progress and Generate Button */}
-        {(() => {
-          // Check if all panels have images assigned
-          const mappedPanels = Object.keys(panelImageMapping || {}).length;
-          const allPanelsHaveImages = mappedPanels === panelCount && 
-            Object.values(panelImageMapping || {}).every(imageIndex => 
-              imageIndex !== undefined && 
-              imageIndex !== null && 
-              selectedImages[imageIndex]
-            );
-          
-          return (
-            <Box sx={{ 
-              width: '100%', 
-              maxWidth: isMobile ? '350px' : '400px',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: 2
-            }}>
-              {/* Progress indicator */}
-              <Box sx={{
-                p: 1.5,
-                bgcolor: allPanelsHaveImages ? 'success.50' : 'info.50',
-                borderRadius: 2,
-                border: 1,
-                borderColor: allPanelsHaveImages ? 'success.200' : 'info.200',
-                width: '100%',
-                textAlign: 'center'
-              }}>
-                <Typography 
-                  variant="body2" 
-                  color="white"
-                  sx={{ fontWeight: 500 }}
-                >
-                  {mappedPanels} of {panelCount} photos added
-                  {allPanelsHaveImages && ' ✓'}
-                </Typography>
-              </Box>
-            </Box>
-          );
-        })()}
       </Box>
     </Box>
   );
