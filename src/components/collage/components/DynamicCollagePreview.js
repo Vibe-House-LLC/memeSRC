@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useEffect, useState } from 'react';
 import { useTheme } from "@mui/material/styles";
 import { Box, IconButton, Typography } from "@mui/material";
-import { MoreVert, Add } from "@mui/icons-material";
+import { OpenWith, Check, Add } from "@mui/icons-material";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 
 import { layoutDefinitions } from "../config/layouts";
@@ -348,6 +348,9 @@ const DynamicCollagePreview = ({
     const [panelSize, setPanelSize] = React.useState(null);
     const panelRef = React.useRef(null);
     
+    // Add ref to access TransformWrapper's imperative API
+    const transformRef = React.useRef(null);
+    
     // Determine the image index using the mapping if available
     const imageIndex = panelId && panelImageMapping[panelId] !== undefined 
       ? panelImageMapping[panelId] 
@@ -451,12 +454,30 @@ const DynamicCollagePreview = ({
     // Check if transforms are enabled for this panel
     const isTransformEnabled = enabledTransforms.has(panelId);
     
-    // Handle click/tap to enable transforms
-    const handlePanelTap = (e) => {
-      if (!isTransformEnabled) {
-        // Don't prevent default or stop propagation as it might interfere
-        console.log(`Enabling transforms for panel: ${panelId}`);
+    // Effect to use imperative API to restore transforms when enabling edit mode
+    React.useEffect(() => {
+      if (isTransformEnabled && transformRef.current && savedTransform) {
+        // Use the imperative API to restore the exact transform state
+        const { scale, positionX, positionY } = savedTransform;
+        transformRef.current.setTransform(positionX, positionY, scale, 0);
+      }
+    }, [isTransformEnabled, savedTransform]);
+    
+    // Handle click on reposition button to toggle edit mode
+    const handleRepositionClick = (e) => {
+      e.stopPropagation();
+      if (isTransformEnabled) {
+        disableTransformForPanel(panelId);
+      } else {
         enableTransformForPanel(panelId);
+      }
+    };
+
+    // Handle click on overlay - replace when not in edit mode
+    const handleOverlayClick = (e) => {
+      e.stopPropagation();
+      if (onPanelClick) {
+        onPanelClick(index, panelId);
       }
     };
 
@@ -466,9 +487,6 @@ const DynamicCollagePreview = ({
       return <RenderAddButton index={index} panelId={panelId} />;
     }
     
-    // Force re-render when transform state changes by including it in the key
-    const transformKey = `${panelId}-${imageUrl}-${imageNaturalSize?.width || 0}-${imageNaturalSize?.height || 0}-${panelSize?.width || 0}-${panelSize?.height || 0}-${isTransformEnabled}`;
-    
     return (
       <Box 
         ref={panelRef} 
@@ -477,11 +495,11 @@ const DynamicCollagePreview = ({
         sx={{ width: '100%', height: '100%', position: 'relative' }}
       >
         <TransformWrapper
-          key={transformKey} // Reset when sizing data OR transform state changes
+          ref={transformRef}
           initialScale={initialTransform.scale}
           initialPositionX={initialTransform.positionX}
           initialPositionY={initialTransform.positionY}
-          centerZoomedOut={false} // Don't auto-center when zooming out
+          centerZoomedOut={false}
           onZoomStop={(ref) => {
             if (updatePanelTransform) {
               updatePanelTransform(panelId, { 
@@ -490,7 +508,6 @@ const DynamicCollagePreview = ({
                 positionY: ref.state.positionY,
               });
             }
-            // Reset timeout on interaction
             resetTimeoutForPanel(panelId);
           }}
           onPanningStop={(ref) => {
@@ -501,31 +518,29 @@ const DynamicCollagePreview = ({
                 positionY: ref.state.positionY,
               });
             }
-            // Reset timeout on interaction
             resetTimeoutForPanel(panelId);
           }}
           onPanning={() => {
-            // Reset timeout during panning
             resetTimeoutForPanel(panelId);
           }}
           onZoom={() => {
-            // Reset timeout during zooming
             resetTimeoutForPanel(panelId);
           }}
-          minScale={0.1} // Allow zooming out much more to see the full image
-          maxScale={5}  // Allow zooming in quite a bit
-          limitToBounds={false} // Don't limit to bounds so users can see the full image
-          doubleClick={{ disabled: true }} // Disable double-click zoom
+          minScale={0.1}
+          maxScale={5}
+          limitToBounds={false}
+          doubleClick={{ disabled: true }}
+          // Always enable interactions - we'll use overlay to block when needed
           wheel={{ 
-            disabled: !isTransformEnabled, // Only enable wheel zoom after tap
+            disabled: false,
             step: 0.2 
           }}
           pinch={{ 
-            disabled: !isTransformEnabled, // Only enable pinch zoom after tap
+            disabled: false,
             step: 5 
           }}
           panning={{ 
-            disabled: !isTransformEnabled // Only enable panning after tap
+            disabled: false
           }}
           wrapperStyle={{ width: '100%', height: '100%' }}
           contentStyle={{ width: '100%', height: '100%' }}
@@ -539,119 +554,72 @@ const DynamicCollagePreview = ({
               src={imageUrl}
               alt={`Collage panel ${index + 1}`}
               onLoad={(e) => {
-                // Get natural dimensions when image loads
                 setImageNaturalSize({
                   width: e.target.naturalWidth,
                   height: e.target.naturalHeight
                 });
               }}
-              onClick={handlePanelTap}
-              onTouchEnd={handlePanelTap} // Use touchEnd instead of touchStart for better reliability
               sx={{
                 display: 'block',
                 width: imageNaturalSize ? `${imageNaturalSize.width}px` : 'auto',
                 height: imageNaturalSize ? `${imageNaturalSize.height}px` : 'auto',
                 maxWidth: 'none',
                 maxHeight: 'none',
-                objectFit: 'none', // Show full image without cropping
+                objectFit: 'none',
                 cursor: isTransformEnabled ? 'grab' : 'pointer',
                 transformOrigin: 'center center',
-                // Add visual indication when transform is not enabled
-                opacity: isTransformEnabled ? 1 : 0.9,
                 transition: 'opacity 0.2s ease',
               }}
             />
           </TransformComponent>
         </TransformWrapper>
         
-        {/* Overlay hint when transforms are not enabled */}
+        {/* Transparent overlay to capture replacement clicks when not in edit mode */}
         {!isTransformEnabled && (
           <Box
-            onClick={handlePanelTap}
-            onTouchEnd={handlePanelTap}
+            onClick={handleOverlayClick}
             sx={{
               position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              bgcolor: 'rgba(0, 0, 0, 0.7)',
-              color: 'white',
-              px: 2,
-              py: 1,
-              borderRadius: 1,
-              fontSize: '0.8rem',
-              fontWeight: 500,
-              textAlign: 'center',
-              pointerEvents: 'auto', // Enable pointer events so it can be clicked
-              opacity: 0.8, // Make it always visible when not enabled
-              transition: 'opacity 0.3s ease',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
               zIndex: 5,
               cursor: 'pointer',
+              backgroundColor: 'transparent',
+              // Add subtle hover effect
               '&:hover': {
-                opacity: 1,
-                bgcolor: 'rgba(0, 0, 0, 0.8)',
+                backgroundColor: 'rgba(0, 0, 0, 0.1)',
               },
             }}
-          >
-            Tap to edit
-          </Box>
+          />
         )}
-
-        {/* Done button when transforms are enabled */}
-        {isTransformEnabled && (
-          <Box
-            onClick={() => disableTransformForPanel(panelId)}
-            onTouchEnd={() => disableTransformForPanel(panelId)}
-            sx={{
-              position: 'absolute',
-              top: 5,
-              left: 5,
-              bgcolor: 'rgba(76, 175, 80, 0.9)', // Green color
-              color: 'white',
-              px: 1.5,
-              py: 0.5,
-              borderRadius: 1,
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              textAlign: 'center',
-              pointerEvents: 'auto',
-              zIndex: 10,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 0.5,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-              transition: 'all 0.2s ease',
-              '&:hover': {
-                bgcolor: 'rgba(76, 175, 80, 1)',
-                transform: 'scale(1.05)',
-              },
-            }}
-          >
-            ✓ Done
-          </Box>
-        )}
-
-        {/* Menu Button (only shown when image exists) */}
-        {onMenuOpen && (
-          <IconButton 
-            size="small" 
-            sx={{ 
-              position: 'absolute', 
-              top: 5, 
-              right: 5,
-              backgroundColor: theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.7)' : 'rgba(33, 150, 243, 0.7)',
-              color: '#ffffff',
-              '&:hover': {
-                backgroundColor: theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.9)' : 'rgba(33, 150, 243, 0.9)',
-              },
-              zIndex: 10,
-            }}
-            onClick={(e) => onMenuOpen(e, imageIndex)}
-          >
-            <MoreVert fontSize="small" />
-          </IconButton>
-        )}
+        
+        {/* Reposition/Check Button - always visible in top right */}
+        <IconButton 
+          size="small" 
+          onClick={handleRepositionClick}
+          onTouchEnd={handleRepositionClick}
+          sx={{ 
+            position: 'absolute', 
+            top: 5, 
+            right: 5,
+            backgroundColor: isTransformEnabled 
+              ? 'rgba(76, 175, 80, 0.9)' // Green when in edit mode
+              : theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.7)' : 'rgba(33, 150, 243, 0.7)', // Blue when not in edit mode
+            color: '#ffffff',
+            '&:hover': {
+              backgroundColor: isTransformEnabled
+                ? 'rgba(76, 175, 80, 1)' // Darker green on hover
+                : theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.9)' : 'rgba(33, 150, 243, 0.9)', // Darker blue on hover
+              transform: 'scale(1.05)',
+            },
+            zIndex: 10, // Higher than overlay
+            transition: 'all 0.2s ease',
+          }}
+        >
+          {isTransformEnabled ? <Check fontSize="small" /> : <OpenWith fontSize="small" />}
+        </IconButton>
       </Box>
     );
   };
@@ -725,6 +693,8 @@ const DynamicCollagePreview = ({
             const panelId = selectedTemplate?.layout?.panels?.[index]?.id || `panel-${index + 1}`;
             // Check if this panel has an associated image
             const hasImage = panelImageMapping[panelId] !== undefined && images[panelImageMapping[panelId]];
+            // Check if this panel is in edit mode
+            const isInEditMode = enabledTransforms.has(panelId);
             
             return (
               <Box
@@ -735,14 +705,14 @@ const DynamicCollagePreview = ({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  cursor: !hasImage && onPanelClick ? 'pointer' : 'default', // Keep cursor logic based on !hasImage
+                  cursor: (!hasImage || (hasImage && !isInEditMode)) && onPanelClick ? 'pointer' : 'default',
                   overflow: 'hidden',
                   position: 'relative',
                   '&:hover': {
                     backgroundColor: hasImage ? theme.palette.action.hover : 'rgba(0,0,0,0.4)',
                   },
                 }}
-                onClick={() => !hasImage && onPanelClick && onPanelClick(index, panelId)} // Pass BOTH index and panelId
+                onClick={() => (!hasImage || (hasImage && !isInEditMode)) && onPanelClick && onPanelClick(index, panelId)}
               >
                 {hasImage ? <RenderImage index={index} panelId={panelId} /> : <RenderAddButton index={index} panelId={panelId} />}
               </Box>
@@ -756,6 +726,8 @@ const DynamicCollagePreview = ({
               const panelId = selectedTemplate?.layout?.panels?.[index]?.id || `panel-${index + 1}`;
               // Check if this panel has an associated image
               const hasImage = panelImageMapping[panelId] !== undefined && images[panelImageMapping[panelId]];
+              // Check if this panel is in edit mode
+              const isInEditMode = enabledTransforms.has(panelId);
               
               return (
                 <Box
@@ -766,14 +738,14 @@ const DynamicCollagePreview = ({
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    cursor: !hasImage && onPanelClick ? 'pointer' : 'default',
+                    cursor: (!hasImage || (hasImage && !isInEditMode)) && onPanelClick ? 'pointer' : 'default',
                     overflow: 'hidden',
                     position: 'relative',
                     '&:hover': {
                       backgroundColor: hasImage ? theme.palette.action.hover : 'rgba(0,0,0,0.4)',
                     },
                   }}
-                  onClick={() => !hasImage && onPanelClick && onPanelClick(index, panelId)} // Pass BOTH index and panelId
+                  onClick={() => (!hasImage || (hasImage && !isInEditMode)) && onPanelClick && onPanelClick(index, panelId)}
                 >
                   {hasImage ? <RenderImage index={index} panelId={panelId} /> : <RenderAddButton index={index} panelId={panelId} />}
                 </Box>
@@ -786,6 +758,8 @@ const DynamicCollagePreview = ({
               const panelId = `panel-${index + 1}`;
               // Check if this panel has an associated image
               const hasImage = panelImageMapping[panelId] !== undefined && images[panelImageMapping[panelId]];
+              // Check if this panel is in edit mode
+              const isInEditMode = enabledTransforms.has(panelId);
               
               return (
                 <Box
@@ -795,14 +769,14 @@ const DynamicCollagePreview = ({
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    cursor: !hasImage && onPanelClick ? 'pointer' : 'default',
+                    cursor: (!hasImage || (hasImage && !isInEditMode)) && onPanelClick ? 'pointer' : 'default',
                     overflow: 'hidden',
                     position: 'relative',
                     '&:hover': {
                       backgroundColor: hasImage ? theme.palette.action.hover : 'rgba(0,0,0,0.4)',
                     },
                   }}
-                  onClick={() => !hasImage && onPanelClick && onPanelClick(index, panelId)} // Pass BOTH index and panelId
+                  onClick={() => (!hasImage || (hasImage && !isInEditMode)) && onPanelClick && onPanelClick(index, panelId)}
                 >
                   {hasImage ? <RenderImage index={index} panelId={panelId} /> : <RenderAddButton index={index} panelId={panelId} />}
                 </Box>
