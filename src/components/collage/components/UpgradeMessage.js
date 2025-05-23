@@ -23,30 +23,30 @@ import {
 const floatingAnimation = {
   '@keyframes floating': {
     '0%': {
-      transform: 'perspective(1200px) rotateX(5deg) rotateY(-2deg) scale(0.85) translateY(0px)',
+      transform: 'perspective(1200px) rotateX(5deg) rotateY(-2deg) scale(1.0) translateY(0px)',
     },
     '50%': {
-      transform: 'perspective(1200px) rotateX(5deg) rotateY(-2deg) scale(0.85) translateY(-8px)',
+      transform: 'perspective(1200px) rotateX(5deg) rotateY(-2deg) scale(1.0) translateY(-8px)',
     },
     '100%': {
-      transform: 'perspective(1200px) rotateX(5deg) rotateY(-2deg) scale(0.85) translateY(0px)',
+      transform: 'perspective(1200px) rotateX(5deg) rotateY(-2deg) scale(1.0) translateY(0px)',
     },
   },
   '@keyframes gentleRotate': {
     '0%': {
-      transform: 'perspective(1200px) rotateX(5deg) rotateY(-2deg) scale(0.85) translateY(0px)',
+      transform: 'perspective(1200px) rotateX(5deg) rotateY(-2deg) scale(1.0) translateY(0px)',
     },
     '25%': {
-      transform: 'perspective(1200px) rotateX(6deg) rotateY(-1deg) scale(0.85) translateY(-4px)',
+      transform: 'perspective(1200px) rotateX(6deg) rotateY(-1deg) scale(1.0) translateY(-4px)',
     },
     '50%': {
-      transform: 'perspective(1200px) rotateX(4deg) rotateY(-3deg) scale(0.85) translateY(-8px)',
+      transform: 'perspective(1200px) rotateX(4deg) rotateY(-3deg) scale(1.0) translateY(-8px)',
     },
     '75%': {
-      transform: 'perspective(1200px) rotateX(6deg) rotateY(-1deg) scale(0.85) translateY(-4px)',
+      transform: 'perspective(1200px) rotateX(6deg) rotateY(-1deg) scale(1.0) translateY(-4px)',
     },
     '100%': {
-      transform: 'perspective(1200px) rotateX(5deg) rotateY(-2deg) scale(0.85) translateY(0px)',
+      transform: 'perspective(1200px) rotateX(5deg) rotateY(-2deg) scale(1.0) translateY(0px)',
     },
   },
   '@keyframes glowPulse': {
@@ -91,6 +91,30 @@ const floatingAnimation = {
     },
     '60%': {
       transform: 'translateY(-2px)',
+    },
+  },
+  '@keyframes introBlur': {
+    '0%': {
+      opacity: 0,
+      filter: 'blur(20px)',
+      transform: 'perspective(1200px) rotateX(5deg) rotateY(-2deg) scale(0.9) translateY(20px)',
+    },
+    '100%': {
+      opacity: 1,
+      filter: 'blur(0px)',
+      transform: 'perspective(1200px) rotateX(5deg) rotateY(-2deg) scale(1.0) translateY(0px)',
+    },
+  },
+  '@keyframes introBlurMobile': {
+    '0%': {
+      opacity: 0,
+      filter: 'blur(15px)',
+      transform: 'perspective(1000px) rotateX(3deg) scale(0.9) translateY(20px)',
+    },
+    '100%': {
+      opacity: 1,
+      filter: 'blur(0px)',
+      transform: 'perspective(1000px) rotateX(3deg) scale(0.95) translateY(0px)',
     },
   },
 };
@@ -173,60 +197,6 @@ const UpgradeMessage = ({
           </Typography>
         </Box>
 
-        {/* Early Access Badge - Mobile Only */}
-        {isMobile && (
-          <Box textAlign="center" mb={1}>
-            <Box sx={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 1.5,
-              mb: 1
-            }}>
-              <Box
-                sx={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 1,
-                  px: 2,
-                  py: 0.8,
-                  borderRadius: 8,
-                  background: 'linear-gradient(135deg, #FF6B35 0%, #F7931E 50%, #FFD23F 100%)',
-                  boxShadow: '0 4px 20px rgba(255, 107, 53, 0.4), 0 0 30px rgba(247, 147, 30, 0.2)',
-                  border: '2px solid rgba(255, 255, 255, 0.2)',
-                  color: '#000',
-                  fontWeight: 'bold',
-                  fontSize: '0.8rem',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                  position: 'relative',
-                  overflow: 'hidden',
-                  '&::before': {
-                    content: '""',
-                    position: 'absolute',
-                    top: 0,
-                    left: '-100%',
-                    width: '100%',
-                    height: '100%',
-                    background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)',
-                    animation: 'shimmer 3s infinite',
-                  },
-                  '@keyframes shimmer': {
-                    '0%': { left: '-100%' },
-                    '100%': { left: '100%' }
-                  }
-                }}
-              >
-                <Rocket sx={{ 
-                  fontSize: '1rem',
-                  color: '#000',
-                  animation: 'bounce 2s infinite'
-                }} />
-                Early Access
-              </Box>
-            </Box>
-          </Box>
-        )}
         
         <Grid 
           container 
@@ -254,8 +224,8 @@ const UpgradeMessage = ({
                       ...floatingAnimation,
                       p: 2,
                       borderRadius: 4,
-                      maxWidth: 380,
-                      width: '95%',
+                      maxWidth: 430,
+                      width: '98%',
                       backgroundColor: theme.palette.mode === 'dark' ? '#000000' : '#000000',
                       border: `3px solid ${theme.palette.primary.main}40`,
                       overflow: 'hidden',
@@ -264,9 +234,14 @@ const UpgradeMessage = ({
                         : `0 25px 50px rgba(0,0,0,0.4), 0 0 30px rgba(138, 43, 226, 0.15)`,
                       transform: 'perspective(1000px) rotateX(3deg) scale(0.95)',
                       transformOrigin: 'center center',
+                      transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
                       position: 'relative',
                       cursor: 'pointer',
-                      animation: 'floatingMobile 6s ease-in-out infinite, glowPulse 4s ease-in-out infinite',
+                      animation: 'introBlurMobile 1.2s ease-out, floatingMobile 6s ease-in-out infinite 1.2s, glowPulse 4s ease-in-out infinite 1.2s',
+                      animationFillMode: 'both',
+                      '&:hover': {
+                        transform: 'perspective(1000px) rotateX(3deg) scale(0.9)',
+                      },
                       '&::before': {
                         content: '""',
                         position: 'absolute',
@@ -281,6 +256,45 @@ const UpgradeMessage = ({
                     }}
                     onClick={scrollToProCard}
                   >
+                    {/* Early Access Corner Banner */}
+                    <Box
+                      sx={{
+                        position: 'absolute',
+                        top: 24,
+                        right: -50,
+                        width: 180,
+                        textAlign: 'center',
+                        background: 'linear-gradient(135deg, #FF6B35 0%, #F7931E 50%, #FFD23F 100%)',
+                        color: '#000',
+                        py: 1.2,
+                        fontSize: '0.8rem',
+                        fontWeight: 'bold',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                        transform: 'rotate(45deg)',
+                        transformOrigin: 'center',
+                        zIndex: 10,
+                        boxShadow: '0 3px 10px rgba(0,0,0,0.3)',
+                        overflow: 'hidden',
+                        '&::before': {
+                          content: '""',
+                          position: 'absolute',
+                          top: 0,
+                          left: '-100%',
+                          width: '100%',
+                          height: '100%',
+                          background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)',
+                          animation: 'shimmer 3s infinite',
+                        },
+                        '@keyframes shimmer': {
+                          '0%': { left: '-100%' },
+                          '100%': { left: '100%' }
+                        }
+                      }}
+                    >
+                      Early Access
+                    </Box>
+                    
                     <img 
                       src={previewImage} 
                       alt={`${featureName} Preview`} 
@@ -445,7 +459,7 @@ const UpgradeMessage = ({
                       ...floatingAnimation,
                       p: 2,
                       borderRadius: 3,
-                      maxWidth: isSmall ? 500 : 600,
+                      maxWidth: isSmall ? 580 : 600,
                       width: '100%',
                       backgroundColor: theme.palette.mode === 'dark' ? '#000000' : '#000000',
                       border: `3px solid ${theme.palette.primary.main}40`,
@@ -453,16 +467,16 @@ const UpgradeMessage = ({
                       boxShadow: theme.palette.mode === 'dark' 
                         ? `0 18px 35px rgba(0,0,0,0.6), 0 0 18px rgba(138, 43, 226, 0.15)`
                         : `0 18px 35px rgba(0,0,0,0.25), 0 0 18px rgba(138, 43, 226, 0.1)`,
-                      transform: 'perspective(1200px) rotateX(5deg) rotateY(-2deg) scale(0.95)',
+                      transform: 'perspective(1200px) rotateX(5deg) rotateY(-2deg) scale(1.0)',
                       transformOrigin: 'center center',
-                      transition: 'transform 0.3s ease',
+                      transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
                       cursor: 'pointer',
                       animation: theme.palette.mode === 'dark' 
-                        ? 'gentleRotate 8s ease-in-out infinite, glowPulseDark 4s ease-in-out infinite'
-                        : 'gentleRotate 8s ease-in-out infinite, glowPulse 4s ease-in-out infinite',
+                        ? 'introBlur 1.2s ease-out, gentleRotate 8s ease-in-out infinite 1.2s, glowPulseDark 4s ease-in-out infinite 1.2s'
+                        : 'introBlur 1.2s ease-out, gentleRotate 8s ease-in-out infinite 1.2s, glowPulse 4s ease-in-out infinite 1.2s',
+                      animationFillMode: 'both',
                       '&:hover': {
-                        transform: 'perspective(1200px) rotateX(2deg) rotateY(-1deg) scale(0.98)',
-                        animation: 'none',
+                        transform: 'perspective(1200px) rotateX(2deg) rotateY(-1deg) scale(0.95)',
                       },
                       position: 'relative',
                       '&::after': {
@@ -479,6 +493,45 @@ const UpgradeMessage = ({
                     }}
                     onClick={scrollToProCard}
                   >
+                    {/* Early Access Corner Banner */}
+                    <Box
+                      sx={{
+                        position: 'absolute',
+                        top: 24,
+                        right: -50,
+                        width: 180,
+                        textAlign: 'center',
+                        background: 'linear-gradient(135deg, #FF6B35 0%, #F7931E 50%, #FFD23F 100%)',
+                        color: '#000',
+                        py: 1.2,
+                        fontSize: '0.8rem',
+                        fontWeight: 'bold',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                        transform: 'rotate(45deg)',
+                        transformOrigin: 'center',
+                        zIndex: 10,
+                        boxShadow: '0 3px 10px rgba(0,0,0,0.3)',
+                        overflow: 'hidden',
+                        '&::before': {
+                          content: '""',
+                          position: 'absolute',
+                          top: 0,
+                          left: '-100%',
+                          width: '100%',
+                          height: '100%',
+                          background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)',
+                          animation: 'shimmer 3s infinite',
+                        },
+                        '@keyframes shimmer': {
+                          '0%': { left: '-100%' },
+                          '100%': { left: '100%' }
+                        }
+                      }}
+                    >
+                      Early Access
+                    </Box>
+                    
                     <img 
                       src={previewImage} 
                       alt={`${featureName} Preview`} 
@@ -512,55 +565,13 @@ const UpgradeMessage = ({
                       background: theme.palette.mode === 'dark' 
                         ? 'linear-gradient(145deg, rgba(35,35,45,1) 0%, rgba(25,25,35,1) 100%)' 
                         : 'linear-gradient(145deg, #ffffff 0%, #f5f5f5 100%)',
-                      maxWidth: isSmall ? 450 : 500,
+                      maxWidth: isSmall ? 520 : 500,
                       width: '100%',
                       border: `1px solid ${theme.palette.primary.main}20`,
                       boxShadow: `0 10px 30px ${theme.palette.mode === 'dark' ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.1)'}`
                     }}
                   >
                     <Stack spacing={isSmall ? 2.5 : 3} justifyContent="center" alignItems="center">
-                      {/* Early Access Badge */}
-                      <Box
-                        sx={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 1,
-                          px: 2.5,
-                          py: 1,
-                          borderRadius: 8,
-                          background: 'linear-gradient(135deg, #FF6B35 0%, #F7931E 50%, #FFD23F 100%)',
-                          boxShadow: '0 4px 20px rgba(255, 107, 53, 0.4), 0 0 30px rgba(247, 147, 30, 0.2)',
-                          border: '2px solid rgba(255, 255, 255, 0.2)',
-                          color: '#000',
-                          fontWeight: 'bold',
-                          fontSize: '0.9rem',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.5px',
-                          position: 'relative',
-                          overflow: 'hidden',
-                          '&::before': {
-                            content: '""',
-                            position: 'absolute',
-                            top: 0,
-                            left: '-100%',
-                            width: '100%',
-                            height: '100%',
-                            background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)',
-                            animation: 'shimmer 3s infinite',
-                          },
-                          '@keyframes shimmer': {
-                            '0%': { left: '-100%' },
-                            '100%': { left: '100%' }
-                          }
-                        }}
-                      >
-                        <Rocket sx={{ 
-                          fontSize: '1.1rem',
-                          color: '#000',
-                          animation: 'bounce 2s infinite'
-                        }} />
-                        Early Access
-                      </Box>
                       
                       <Box sx={{ position: 'relative', display: 'flex', justifyContent: 'center' }}>
                         <img
