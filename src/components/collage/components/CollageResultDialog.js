@@ -38,11 +38,8 @@ export default function CollageResultDialog({ open, onClose, finalImage }) {
   };
 
   // Handle backdrop/outside click - close dialog
-  const handleBackdropClick = (event) => {
-    // Only close if clicking the backdrop/outside area, not the content
-    if (event.target === event.currentTarget) {
-      onClose();
-    }
+  const handleBackdropClick = () => {
+    onClose();
   };
 
   // Handle touch start for swipe detection
@@ -166,7 +163,6 @@ export default function CollageResultDialog({ open, onClose, finalImage }) {
               p: isMobile ? 2 : 4,
               position: 'relative',
             }}
-            onClick={handleBackdropClick} // Allow clicking outside the image to close
           >
             {/* Image Container */}
             <Box
@@ -186,16 +182,11 @@ export default function CollageResultDialog({ open, onClose, finalImage }) {
               }}
               role="button"
               tabIndex={0}
-              onClick={(e) => e.stopPropagation()} // Prevent closing when clicking on the image
               onKeyDown={(e) => {
                 // Handle keyboard events for accessibility
                 if (e.key === ' ' || e.key === 'Enter') {
                   e.stopPropagation();
                 }
-              }}
-              onContextMenu={(e) => {
-                // Allow right-click/long-press context menu for saving
-                e.stopPropagation();
               }}
               aria-label="Generated collage image - click to focus, right-click or tap and hold to save"
             >
@@ -214,6 +205,11 @@ export default function CollageResultDialog({ open, onClose, finalImage }) {
                     pointerEvents: 'auto',
                     outline: 'none',
                     objectFit: 'contain',
+                  }}
+                  onClick={(e) => e.stopPropagation()} // Only stop propagation on the image itself
+                  onContextMenu={(e) => {
+                    // Allow right-click/long-press context menu for saving
+                    e.stopPropagation();
                   }}
                 />
               )}
