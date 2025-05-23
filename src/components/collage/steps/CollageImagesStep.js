@@ -165,7 +165,7 @@ const CollageImagesStep = ({
             textAlign: 'center'
           }}
         >
-          Tap panels to upload photos. Pinch to zoom and drag to reposition.
+          Tap panels to upload photos. Tap images to edit - then zoom, drag, or tap "Done" when finished.
         </Typography>
         
         {/* Always render the preview, let it handle null templates */}

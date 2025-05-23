@@ -118,6 +118,83 @@ const DynamicCollagePreview = ({
   const containerRef = useRef(null);
   const [componentWidth, setComponentWidth] = useState(400); // Default fallback width
   
+  // State to track which panels have transform interactions enabled
+  const [enabledTransforms, setEnabledTransforms] = useState(new Set());
+  
+  // Refs to track timeout for auto-disable
+  const timeoutRefs = useRef(new Map());
+  
+  // Function to enable transforms for a specific panel
+  const enableTransformForPanel = (panelId) => {
+    setEnabledTransforms(prev => new Set(prev).add(panelId));
+    
+    // Clear any existing timeout for this panel
+    if (timeoutRefs.current.has(panelId)) {
+      clearTimeout(timeoutRefs.current.get(panelId));
+    }
+    
+    // Set a new timeout to auto-disable after 30 seconds of inactivity
+    const timeoutId = setTimeout(() => {
+      disableTransformForPanel(panelId);
+    }, 30000); // 30 seconds
+    
+    timeoutRefs.current.set(panelId, timeoutId);
+  };
+
+  // Function to disable transforms for a specific panel
+  const disableTransformForPanel = (panelId) => {
+    setEnabledTransforms(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(panelId);
+      return newSet;
+    });
+    
+    // Clear the timeout for this panel
+    if (timeoutRefs.current.has(panelId)) {
+      clearTimeout(timeoutRefs.current.get(panelId));
+      timeoutRefs.current.delete(panelId);
+    }
+  };
+
+  // Function to disable all transforms (useful for cleanup)
+  const disableAllTransforms = () => {
+    setEnabledTransforms(new Set());
+    
+    // Clear all timeouts
+    timeoutRefs.current.forEach(timeoutId => clearTimeout(timeoutId));
+    timeoutRefs.current.clear();
+  };
+  
+  // Function to reset timeout for a panel (called during user interaction)
+  const resetTimeoutForPanel = (panelId) => {
+    if (enabledTransforms.has(panelId)) {
+      // Clear existing timeout
+      if (timeoutRefs.current.has(panelId)) {
+        clearTimeout(timeoutRefs.current.get(panelId));
+      }
+      
+      // Set new timeout
+      const timeoutId = setTimeout(() => {
+        disableTransformForPanel(panelId);
+      }, 30000); // 30 seconds
+      
+      timeoutRefs.current.set(panelId, timeoutId);
+    }
+  };
+
+  // Reset enabled transforms when template or panel count changes
+  useEffect(() => {
+    setEnabledTransforms(new Set());
+  }, [selectedTemplate?.id, panelCount]);
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      timeoutRefs.current.forEach(timeoutId => clearTimeout(timeoutId));
+      timeoutRefs.current.clear();
+    };
+  }, []);
+  
   // Effect to measure component width for responsive border thickness
   useEffect(() => {
     const measureWidth = () => {
@@ -147,6 +224,34 @@ const DynamicCollagePreview = ({
       }
     };
   }, []);
+  
+  // Effect to handle clicking outside to disable transforms
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      // Only handle if we have enabled transforms
+      if (enabledTransforms.size === 0) return;
+
+      // Check if the click was inside any transform-enabled panel
+      const clickedInsideEditingPanel = Array.from(enabledTransforms).some(panelId => {
+        const panelElement = document.querySelector(`[data-panel-id="${panelId}"]`);
+        return panelElement && panelElement.contains(event.target);
+      });
+
+      // If clicked outside all editing panels, disable all transforms
+      if (!clickedInsideEditingPanel) {
+        disableAllTransforms();
+      }
+    };
+
+    // Add event listener to document
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [enabledTransforms]);
   
   // Convert borderThickness to numeric pixel value based on actual component width
   const borderPixels = getBorderPixelSize(borderThickness, componentWidth);
@@ -328,9 +433,6 @@ const DynamicCollagePreview = ({
       return undefined;
     }, []);
 
-    // Key to force re-render when we have sizing data
-    const transformKey = `${panelId}-${imageUrl}-${imageNaturalSize?.width || 0}-${imageNaturalSize?.height || 0}-${panelSize?.width || 0}-${panelSize?.height || 0}`;
-
     // Effect to apply calculated scale when sizing data becomes available
     React.useEffect(() => {
       if (shouldUseCalculatedScale && calculatedScale && calculatedScale !== 1 && updatePanelTransform) {
@@ -346,16 +448,36 @@ const DynamicCollagePreview = ({
       }
     }, [shouldUseCalculatedScale, calculatedScale, centerPosition.x, centerPosition.y, panelId, updatePanelTransform, panelTransforms]);
 
+    // Check if transforms are enabled for this panel
+    const isTransformEnabled = enabledTransforms.has(panelId);
+    
+    // Handle click/tap to enable transforms
+    const handlePanelTap = (e) => {
+      if (!isTransformEnabled) {
+        // Don't prevent default or stop propagation as it might interfere
+        console.log(`Enabling transforms for panel: ${panelId}`);
+        enableTransformForPanel(panelId);
+      }
+    };
+
     // Handle case where no valid image URL is found
     if (!imageUrl) {
       console.error(`No valid image URL found for index ${imageIndex}`, imageData);
       return <RenderAddButton index={index} panelId={panelId} />;
     }
     
+    // Force re-render when transform state changes by including it in the key
+    const transformKey = `${panelId}-${imageUrl}-${imageNaturalSize?.width || 0}-${imageNaturalSize?.height || 0}-${panelSize?.width || 0}-${panelSize?.height || 0}-${isTransformEnabled}`;
+    
     return (
-      <Box ref={panelRef} sx={{ width: '100%', height: '100%', position: 'relative' }}>
+      <Box 
+        ref={panelRef} 
+        className={!isTransformEnabled ? 'hover-parent' : ''}
+        data-panel-id={panelId}
+        sx={{ width: '100%', height: '100%', position: 'relative' }}
+      >
         <TransformWrapper
-          key={transformKey} // Reset when sizing data changes
+          key={transformKey} // Reset when sizing data OR transform state changes
           initialScale={initialTransform.scale}
           initialPositionX={initialTransform.positionX}
           initialPositionY={initialTransform.positionY}
@@ -368,6 +490,8 @@ const DynamicCollagePreview = ({
                 positionY: ref.state.positionY,
               });
             }
+            // Reset timeout on interaction
+            resetTimeoutForPanel(panelId);
           }}
           onPanningStop={(ref) => {
             if (updatePanelTransform) {
@@ -377,13 +501,32 @@ const DynamicCollagePreview = ({
                 positionY: ref.state.positionY,
               });
             }
+            // Reset timeout on interaction
+            resetTimeoutForPanel(panelId);
+          }}
+          onPanning={() => {
+            // Reset timeout during panning
+            resetTimeoutForPanel(panelId);
+          }}
+          onZoom={() => {
+            // Reset timeout during zooming
+            resetTimeoutForPanel(panelId);
           }}
           minScale={0.1} // Allow zooming out much more to see the full image
           maxScale={5}  // Allow zooming in quite a bit
           limitToBounds={false} // Don't limit to bounds so users can see the full image
           doubleClick={{ disabled: true }} // Disable double-click zoom
-          wheel={{ step: 0.2 }} // Adjust wheel zoom sensitivity
-          pinch={{ step: 5 }} // Adjust pinch zoom sensitivity
+          wheel={{ 
+            disabled: !isTransformEnabled, // Only enable wheel zoom after tap
+            step: 0.2 
+          }}
+          pinch={{ 
+            disabled: !isTransformEnabled, // Only enable pinch zoom after tap
+            step: 5 
+          }}
+          panning={{ 
+            disabled: !isTransformEnabled // Only enable panning after tap
+          }}
           wrapperStyle={{ width: '100%', height: '100%' }}
           contentStyle={{ width: '100%', height: '100%' }}
         >
@@ -402,6 +545,8 @@ const DynamicCollagePreview = ({
                   height: e.target.naturalHeight
                 });
               }}
+              onClick={handlePanelTap}
+              onTouchEnd={handlePanelTap} // Use touchEnd instead of touchStart for better reliability
               sx={{
                 display: 'block',
                 width: imageNaturalSize ? `${imageNaturalSize.width}px` : 'auto',
@@ -409,15 +554,84 @@ const DynamicCollagePreview = ({
                 maxWidth: 'none',
                 maxHeight: 'none',
                 objectFit: 'none', // Show full image without cropping
-                cursor: 'grab',
+                cursor: isTransformEnabled ? 'grab' : 'pointer',
                 transformOrigin: 'center center',
+                // Add visual indication when transform is not enabled
+                opacity: isTransformEnabled ? 1 : 0.9,
+                transition: 'opacity 0.2s ease',
               }}
-              onMouseDown={(e) => e.stopPropagation()}
-              onTouchStart={(e) => e.stopPropagation()}
             />
           </TransformComponent>
         </TransformWrapper>
-              
+        
+        {/* Overlay hint when transforms are not enabled */}
+        {!isTransformEnabled && (
+          <Box
+            onClick={handlePanelTap}
+            onTouchEnd={handlePanelTap}
+            sx={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              bgcolor: 'rgba(0, 0, 0, 0.7)',
+              color: 'white',
+              px: 2,
+              py: 1,
+              borderRadius: 1,
+              fontSize: '0.8rem',
+              fontWeight: 500,
+              textAlign: 'center',
+              pointerEvents: 'auto', // Enable pointer events so it can be clicked
+              opacity: 0.8, // Make it always visible when not enabled
+              transition: 'opacity 0.3s ease',
+              zIndex: 5,
+              cursor: 'pointer',
+              '&:hover': {
+                opacity: 1,
+                bgcolor: 'rgba(0, 0, 0, 0.8)',
+              },
+            }}
+          >
+            Tap to edit
+          </Box>
+        )}
+
+        {/* Done button when transforms are enabled */}
+        {isTransformEnabled && (
+          <Box
+            onClick={() => disableTransformForPanel(panelId)}
+            onTouchEnd={() => disableTransformForPanel(panelId)}
+            sx={{
+              position: 'absolute',
+              top: 5,
+              left: 5,
+              bgcolor: 'rgba(76, 175, 80, 0.9)', // Green color
+              color: 'white',
+              px: 1.5,
+              py: 0.5,
+              borderRadius: 1,
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              textAlign: 'center',
+              pointerEvents: 'auto',
+              zIndex: 10,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.5,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+              transition: 'all 0.2s ease',
+              '&:hover': {
+                bgcolor: 'rgba(76, 175, 80, 1)',
+                transform: 'scale(1.05)',
+              },
+            }}
+          >
+            ✓ Done
+          </Box>
+        )}
+
         {/* Menu Button (only shown when image exists) */}
         {onMenuOpen && (
           <IconButton 
