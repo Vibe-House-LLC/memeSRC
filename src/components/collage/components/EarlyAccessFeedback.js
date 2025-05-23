@@ -123,14 +123,20 @@ export default function EarlyAccessFeedback() {
         boxShadow: '0 8px 32px rgba(255, 165, 0, 0.1)',
       }}
     >
-      <Box sx={{ p: isMobile ? 2 : 3 }}>
+      <Box sx={{ 
+        p: isMobile ? 2 : 3,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        minHeight: '120px'
+      }}>
         {/* Header Section */}
         <Box sx={{ 
           display: 'flex', 
           flexDirection: isMobile ? 'column' : 'row',
           alignItems: isMobile ? 'stretch' : 'center', 
           justifyContent: 'space-between', 
-          mb: isMobile ? 1.5 : 2,
+          mb: expanded ? (isMobile ? 1.5 : 2) : 0,
           gap: isMobile ? 1.5 : 0
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>

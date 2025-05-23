@@ -31,6 +31,26 @@ const StyledCollageNavItem = styled(ListItemButton)(({ theme, isActive }) => ({
   border: '1px solid rgba(255, 165, 0, 0.3)',
   boxShadow: '0 4px 16px rgba(255, 165, 0, 0.1)',
   color: '#fff',
+  overflow: 'hidden',
+  '&::before': {
+    content: '""',
+    position: 'absolute',
+    top: 0,
+    left: '-100%',
+    width: '100%',
+    height: '100%',
+    background: 'linear-gradient(90deg, transparent, rgba(255, 165, 0, 0.05), rgba(255, 165, 0, 0.08), rgba(255, 165, 0, 0.05), transparent)',
+    animation: 'shimmer 4.5s ease-in-out infinite',
+    zIndex: 1,
+  },
+  '@keyframes shimmer': {
+    '0%': {
+      left: '-100%',
+    },
+    '100%': {
+      left: '100%',
+    },
+  },
   '&:hover': {
     background: 'linear-gradient(135deg, #2a2a3e 0%, #26314e 50%, #1f4470 100%)',
     borderColor: 'rgba(255, 165, 0, 0.5)',
@@ -40,6 +60,10 @@ const StyledCollageNavItem = styled(ListItemButton)(({ theme, isActive }) => ({
   transition: theme.transitions.create(['background', 'transform', 'box-shadow'], {
     duration: theme.transitions.duration.short,
   }),
+  '& > *': {
+    position: 'relative',
+    zIndex: 2,
+  },
 }));
 
 const StyledNavItemIcon = styled(ListItemIcon)({
