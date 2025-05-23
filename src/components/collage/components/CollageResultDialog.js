@@ -182,6 +182,7 @@ export default function CollageResultDialog({ open, onClose, finalImage }) {
               }}
               role="button"
               tabIndex={0}
+              onClick={(e) => e.stopPropagation()} // Prevent dialog from closing when clicking the image container
               onKeyDown={(e) => {
                 // Handle keyboard events for accessibility
                 if (e.key === ' ' || e.key === 'Enter') {
