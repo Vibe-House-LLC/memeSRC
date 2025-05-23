@@ -250,11 +250,29 @@ export const useCollageState = () => {
         const newImages = [...selectedImages];
         newImages[index] = { originalUrl: newBase64Image, displayUrl: newBase64Image };
         setSelectedImages(newImages);
+
+        // Find the panelId(s) that use this image index and reset their transforms
+        const panelsToResetTransform = Object.entries(panelImageMapping)
+            .filter(([_, mappedIndex]) => mappedIndex === index)
+            .map(([panelId]) => panelId);
+
+        // Reset transforms for the affected panels to default values
+        if (panelsToResetTransform.length > 0) {
+          setPanelTransforms(prevTransforms => {
+            const newTransforms = { ...prevTransforms };
+            panelsToResetTransform.forEach(panelId => {
+              delete newTransforms[panelId]; // Remove transform to reset to default
+            });
+            if (DEBUG_MODE) console.log(`Reset transforms for panels: ${panelsToResetTransform.join(', ')}`);
+            return newTransforms;
+          });
+        }
+
         if (DEBUG_MODE) console.log(`Replaced image at index ${index} with new file.`);
     } else if (DEBUG_MODE) {
       console.warn(`Failed to replace image at index ${index}`);
     }
-  }, [selectedImages, DEBUG_MODE]);
+  }, [selectedImages, panelImageMapping, DEBUG_MODE]);
 
 
   /**

@@ -72,6 +72,30 @@ const CollagePreview = ({
     setMenuPosition(null);
   };
 
+  // Handle replace image from menu
+  const handleReplaceImage = () => {
+    if (activePanelIndex !== null) {
+      // Get the panel ID for the active panel
+      let panelId;
+      try {
+        const layoutPanel = selectedTemplate?.layout?.panels?.[activePanelIndex];
+        const templatePanel = selectedTemplate?.panels?.[activePanelIndex];
+        panelId = layoutPanel?.id || templatePanel?.id || `panel-${activePanelIndex + 1}`;
+      } catch (error) {
+        panelId = `panel-${activePanelIndex + 1}`;
+      }
+      
+      // Set the active panel info for when file is selected
+      setActivePanelId(panelId);
+      
+      // Trigger file input
+      fileInputRef.current?.click();
+    }
+    
+    // Close the menu
+    handleMenuClose();
+  };
+
   // Handle file selection for a panel
   const handleFileChange = (event) => {
     const file = event.target.files?.[0];
@@ -198,7 +222,7 @@ const CollagePreview = ({
         anchorReference="anchorPosition"
         anchorPosition={menuPosition || undefined}
       >
-        <MenuItem onClick={() => alert("TODO: Replace Image")}>Replace image</MenuItem>
+        <MenuItem onClick={handleReplaceImage}>Replace image</MenuItem>
         <MenuItem onClick={() => alert("TODO: Clear Frame")}>Clear frame</MenuItem>
         <MenuItem onClick={() => alert("TODO: Rotate Image")}>Rotate image</MenuItem>
       </Menu>

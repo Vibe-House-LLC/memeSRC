@@ -147,7 +147,7 @@ const CollageImagesStep = ({
       {/* Layout Preview */}
       <Paper elevation={1} sx={{ p: isMobile ? 1 : 2, mb: isMobile ? 1 : 2, borderRadius: 2, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', backgroundColor: theme.palette.background.paper }}>
         <Typography variant="subtitle2" color="text.secondary" gutterBottom sx={{ mb: 1 }}>
-          Click a panel to add an image or edit existing image
+          Tap to upload. Zoom and drag to reposition.
         </Typography>
         
         {/* Always render the preview, let it handle null templates */}
