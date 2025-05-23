@@ -136,7 +136,9 @@ const UpgradeMessage = ({
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
   const isSmall = useMediaQuery(theme.breakpoints.down('md'));
+  const isStacked = useMediaQuery(theme.breakpoints.down('md')); // Elements are stacked when below md breakpoint
   
   // Add ref for the PRO EARLY ACCESS card
   const proCardRef = useRef(null);
@@ -164,13 +166,13 @@ const UpgradeMessage = ({
       }}
     >
       <Container 
-        maxWidth="xl" 
+        maxWidth={isMobile ? "xl" : "lg"} 
         sx={{ 
           pt: isMobile ? 1 : 3,
-          px: isMobile ? 1 : 3,
+          px: isMobile ? 2 : 3,
           width: '100%'
         }}
-        disableGutters={isMobile}
+        disableGutters={false}
       >
         {/* Page Header */}
         <Box sx={{ mb: isMobile ? 2 : 3 }}>
@@ -202,532 +204,352 @@ const UpgradeMessage = ({
           container 
           spacing={isMobile ? 0 : 3}
           justifyContent="center" 
-          alignItems="center"
-          sx={{ maxWidth: isMobile ? '100%' : '1200px', mx: 'auto' }}
+          alignItems="stretch"
         >
-          {/* Mobile layout: Hero-style design */}
-          {isMobile && (
-            <>
-              {/* Hero Preview Section */}
-              <Grid item xs={12}>
-                <Box sx={{ 
-                  display: 'flex', 
-                  flexDirection: 'column',
-                  alignItems: 'center',
+          {/* Feature Preview Image */}
+          <Grid item xs={12} md={6}>
+            <Box sx={{ 
+              display: 'flex', 
+              justifyContent: 'center',
+              alignItems: 'center',
+              minHeight: isStacked ? '50vh' : '60vh',
+              mx: (isStacked && !isMobile) ? '10%' : 0,
+              my: (isStacked && !isMobile) ? 2 : 0
+            }}>
+              <Paper 
+                elevation={isStacked ? 12 : 8} 
+                sx={{ 
+                  ...floatingAnimation,
+                  p: 2,
+                  borderRadius: isStacked ? 4 : 3,
+                  width: '100%',
+                  maxWidth: isStacked ? 'none' : (isSmall ? 580 : 600),
+                  backgroundColor: theme.palette.mode === 'dark' ? '#000000' : '#000000',
+                  border: `3px solid ${theme.palette.primary.main}${isStacked ? '30' : '40'}`,
+                  overflow: 'hidden',
+                  boxShadow: theme.palette.mode === 'dark' 
+                    ? `0 ${isStacked ? 25 : 18}px ${isStacked ? 50 : 35}px rgba(0,0,0,${isStacked ? '0.7' : '0.6'}), 0 0 ${isStacked ? 30 : 18}px rgba(138, 43, 226, ${isStacked ? '0.2' : '0.15'})`
+                    : `0 ${isStacked ? 25 : 18}px ${isStacked ? 50 : 35}px rgba(0,0,0,${isStacked ? '0.4' : '0.25'}), 0 0 ${isStacked ? 30 : 18}px rgba(138, 43, 226, ${isStacked ? '0.15' : '0.1'})`,
+                  transform: isStacked 
+                    ? 'perspective(1000px) rotateX(3deg) scale(0.95)'
+                    : 'perspective(1200px) rotateX(5deg) rotateY(-2deg) scale(1.0)',
+                  transformOrigin: 'center center',
+                  transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
                   position: 'relative',
-                  minHeight: '50vh',
-                  justifyContent: 'center'
-                }}>
-                  <Paper 
-                    elevation={12} 
-                    sx={{ 
-                      ...floatingAnimation,
-                      p: 2,
-                      borderRadius: 4,
-                      maxWidth: 430,
-                      width: '98%',
-                      backgroundColor: theme.palette.mode === 'dark' ? '#000000' : '#000000',
-                      border: `3px solid ${theme.palette.primary.main}30`,
-                      overflow: 'hidden',
-                      boxShadow: theme.palette.mode === 'dark' 
-                        ? `0 25px 50px rgba(0,0,0,0.7), 0 0 30px rgba(138, 43, 226, 0.2)`
-                        : `0 25px 50px rgba(0,0,0,0.4), 0 0 30px rgba(138, 43, 226, 0.15)`,
-                      transform: 'perspective(1000px) rotateX(3deg) scale(0.95)',
-                      transformOrigin: 'center center',
-                      transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                      position: 'relative',
-                      cursor: 'pointer',
-                      animation: 'introBlurMobile 1.2s ease-out, floatingMobile 6s ease-in-out infinite 1.2s, glowPulse 4s ease-in-out infinite 1.2s',
-                      animationFillMode: 'both',
-                      '&:hover': {
-                        transform: 'perspective(1000px) rotateX(3deg) scale(0.9)',
-                      },
-                      '&::before': {
-                        content: '""',
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        width: '100%',
-                        height: '100%',
-                        background: 'linear-gradient(135deg, rgba(138, 43, 226, 0.1) 0%, rgba(138, 43, 226, 0) 30%)',
-                        pointerEvents: 'none',
-                        zIndex: 1
-                      }
-                    }}
-                    onClick={scrollToProCard}
-                  >
-                    {/* Early Access Corner Banner */}
-                    <Box
-                      sx={{
-                        position: 'absolute',
-                        top: 24,
-                        right: -50,
-                        width: 180,
-                        textAlign: 'center',
-                        background: 'linear-gradient(135deg, #FF6B35 0%, #F7931E 50%, #FFD23F 100%)',
-                        color: '#000',
-                        py: 1.2,
-                        fontSize: '0.8rem',
-                        fontWeight: 'bold',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.5px',
-                        transform: 'rotate(45deg)',
-                        transformOrigin: 'center',
-                        zIndex: 10,
-                        boxShadow: '0 3px 10px rgba(0,0,0,0.3)',
-                        overflow: 'hidden',
-                        '&::before': {
-                          content: '""',
-                          position: 'absolute',
-                          top: 0,
-                          left: '-100%',
-                          width: '100%',
-                          height: '100%',
-                          background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)',
-                          animation: 'shimmer 3s infinite',
-                        },
-                        '@keyframes shimmer': {
-                          '0%': { left: '-100%' },
-                          '100%': { left: '100%' }
-                        }
-                      }}
-                    >
-                      Early Access
-                    </Box>
-                    
-                    <img 
-                      src={previewImage} 
-                      alt={`${featureName} Preview`} 
-                      style={{ 
-                        width: '100%', 
-                        height: 'auto',
-                        display: 'block',
-                        objectFit: 'cover',
-                        borderRadius: '8px',
-                      }}
-                    />
-                  </Paper>
+                  cursor: 'pointer',
+                  animation: isStacked
+                    ? 'introBlurMobile 1.2s ease-out, floatingMobile 6s ease-in-out infinite 1.2s, glowPulse 4s ease-in-out infinite 1.2s'
+                    : theme.palette.mode === 'dark' 
+                      ? 'introBlur 1.2s ease-out, gentleRotate 8s ease-in-out infinite 1.2s, glowPulseDark 4s ease-in-out infinite 1.2s'
+                      : 'introBlur 1.2s ease-out, gentleRotate 8s ease-in-out infinite 1.2s, glowPulse 4s ease-in-out infinite 1.2s',
+                  animationFillMode: 'both',
+                  '&:hover': {
+                    transform: isStacked 
+                      ? 'perspective(1000px) rotateX(3deg) scale(0.9)'
+                      : 'perspective(1200px) rotateX(2deg) rotateY(-1deg) scale(0.95)',
+                  },
+                  '&::before': isStacked ? {
+                    content: '""',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    background: 'linear-gradient(135deg, rgba(138, 43, 226, 0.1) 0%, rgba(138, 43, 226, 0) 30%)',
+                    pointerEvents: 'none',
+                    zIndex: 1
+                  } : {},
+                  '&::after': !isStacked ? {
+                    content: '""',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    background: 'linear-gradient(135deg, rgba(138, 43, 226, 0.1) 0%, rgba(138, 43, 226, 0) 30%)',
+                    pointerEvents: 'none',
+                    zIndex: 1
+                  } : {}
+                }}
+                onClick={isStacked ? scrollToProCard : openSubscriptionDialog}
+              >
+                {/* Early Access Corner Banner */}
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    top: 24,
+                    right: -50,
+                    width: 180,
+                    textAlign: 'center',
+                    background: 'linear-gradient(135deg, #FF6B35 0%, #F7931E 50%, #FFD23F 100%)',
+                    color: '#000',
+                    py: 1.2,
+                    fontSize: '0.8rem',
+                    fontWeight: 'bold',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    transform: 'rotate(45deg)',
+                    transformOrigin: 'center',
+                    zIndex: 10,
+                    boxShadow: '0 3px 10px rgba(0,0,0,0.3)',
+                    overflow: 'hidden',
+                    '&::before': {
+                      content: '""',
+                      position: 'absolute',
+                      top: 0,
+                      left: '-100%',
+                      width: '100%',
+                      height: '100%',
+                      background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)',
+                      animation: 'shimmer 3s infinite',
+                    },
+                    '@keyframes shimmer': {
+                      '0%': { left: '-100%' },
+                      '100%': { left: '100%' }
+                    }
+                  }}
+                >
+                  Early Access
                 </Box>
-              </Grid>
+                
+                <img 
+                  src={previewImage} 
+                  alt={`${featureName} Preview`} 
+                  style={{ 
+                    width: '100%', 
+                    height: 'auto',
+                    display: 'block',
+                    objectFit: 'cover',
+                    borderRadius: '8px',
+                  }}
+                />
+              </Paper>
+            </Box>
+          </Grid>
 
-              {/* Scroll Indicator for Mobile */}
-              <Grid item xs={12}>
-                <Box sx={{ 
-                  display: 'flex', 
-                  justifyContent: 'center',
-                  mt: 0.5,
-                  mb: 0.5
-                }}>
-                  <Box
-                    onClick={scrollToProCard}
-                    sx={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      cursor: 'pointer',
-                      py: 0.5,
-                      transition: 'opacity 0.3s ease',
-                      '&:hover': {
-                        opacity: 0.7,
-                      }
+          {/* Scroll Indicator - Only show when stacked */}
+          {isStacked && (
+            <Grid item xs={12}>
+              <Box sx={{ 
+                display: 'flex', 
+                justifyContent: 'center',
+                mt: 0.5,
+                mb: 0.5
+              }}>
+                <Box
+                  onClick={scrollToProCard}
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    cursor: 'pointer',
+                    py: 0.5,
+                    transition: 'opacity 0.3s ease',
+                    '&:hover': {
+                      opacity: 0.7,
+                    }
+                  }}
+                >
+                  <Typography 
+                    variant="body2" 
+                    sx={{ 
+                      color: 'text.secondary',
+                      fontSize: '0.9rem',
+                      fontWeight: 400,
+                      mb: 0.5
                     }}
                   >
-                    <Typography 
-                      variant="body2" 
-                      sx={{ 
-                        color: 'text.secondary',
-                        fontSize: '0.9rem',
-                        fontWeight: 400,
-                        mb: 0.5
-                      }}
-                    >
-                      Get Early Access
-                    </Typography>
-                    <Box sx={{ 
-                      animation: 'bounce 2s infinite',
-                      color: 'text.secondary',
-                      fontSize: '1.2rem'
-                    }}>
-                      ↓
-                    </Box>
+                    Get Early Access
+                  </Typography>
+                  <Box sx={{ 
+                    animation: 'bounce 2s infinite',
+                    color: 'text.secondary',
+                    fontSize: '1.2rem'
+                  }}>
+                    ↓
                   </Box>
                 </Box>
-              </Grid>
-
-              {/* Upgrade Info Section */}
-              <Grid item xs={12}>
-                <Box sx={{ 
-                  pt: 2,
-                  pb: 2,
-                  display: 'flex',
-                  justifyContent: 'center'
-                }}>
-                  <Paper 
-                    ref={proCardRef}
-                    elevation={6} 
-                    sx={{ 
-                      p: 3, 
-                      borderRadius: 3, 
-                      textAlign: 'center',
-                      background: theme.palette.mode === 'dark' 
-                        ? 'linear-gradient(145deg, rgba(35,35,45,0.95) 0%, rgba(25,25,35,0.95) 100%)' 
-                        : 'linear-gradient(145deg, rgba(255,255,255,0.95) 0%, rgba(245,245,245,0.95) 100%)',
-                      maxWidth: 360,
-                      width: '95%',
-                      border: `1px solid ${theme.palette.primary.main}30`,
-                      boxShadow: `0 15px 35px ${theme.palette.mode === 'dark' ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.15)'}`,
-                      backdropFilter: 'blur(10px)'
-                    }}
-                  >
-                    <Stack spacing={2.5} justifyContent="center" alignItems="center">
-                      <Box sx={{ position: 'relative', display: 'flex', justifyContent: 'center' }}>
-                        <img
-                          src="/assets/memeSRC-white.svg"
-                          alt="memeSRC logo"
-                          style={{ height: 44 }}
-                        />
-                        <Box 
-                          sx={{ 
-                            position: 'absolute', 
-                            top: -8, 
-                            right: -8, 
-                            bgcolor: theme.palette.secondary.main,
-                            color: '#fff',
-                            borderRadius: '50%',
-                            width: 24,
-                            height: 24,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                          }}
-                        >
-                          <LockOpen sx={{ fontSize: 14 }} />
-                        </Box>
-                      </Box>
-                      
-                      <Box>
-                        <Typography 
-                          variant="h5" 
-                          fontWeight="700" 
-                          color="primary" 
-                          gutterBottom
-                          sx={{ fontSize: '1.4rem' }}
-                        >
-                          PRO EARLY ACCESS
-                        </Typography>
-                        
-                        <Typography 
-                          variant="body1" 
-                          color="text.secondary"
-                          sx={{ fontSize: '0.95rem', lineHeight: 1.5 }}
-                        >
-                          Unlock this feature and more with Pro!
-                        </Typography>
-                      </Box>
-                      
-                      <Button
-                        onClick={openSubscriptionDialog}
-                        variant="contained"
-                        size="large"
-                        color="primary"
-                        fullWidth
-                        sx={{ 
-                          fontSize: '1.1rem', 
-                          py: 1.5,
-                          borderRadius: 2.5,
-                          fontWeight: 'bold',
-                          boxShadow: '0 6px 20px rgba(0,0,0,0.2)',
-                          textTransform: 'none'
-                        }}
-                      >
-                        Upgrade to Pro
-                      </Button>
-
-                      <Box sx={{ 
-                        width: '100%', 
-                        pt: 1
-                      }}>
-                        <Typography 
-                          variant="subtitle2" 
-                          fontWeight="600" 
-                          color="text.primary"
-                          gutterBottom
-                          sx={{ mb: 1.5, fontSize: '0.9rem' }}
-                        >
-                          What You'll Get:
-                        </Typography>
-                        
-                        <Grid container spacing={1}>
-                          {[
-                            "Multi-panel layouts", 
-                            "Common aspect ratios", 
-                            "Colored borders",
-                            "Ad-free experience",
-                            "All premium features"
-                          ].map((feature, index) => (
-                            <Grid item xs={12} key={index}>
-                              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start' }}>
-                                <CheckCircle 
-                                  color="success" 
-                                  sx={{ fontSize: 18, mr: 1.5 }} 
-                                />
-                                <Typography variant="body2" sx={{ fontSize: '0.85rem' }}>
-                                  {feature}
-                                </Typography>
-                              </Box>
-                            </Grid>
-                          ))}
-                        </Grid>
-                      </Box>
-                    </Stack>
-                  </Paper>
-                </Box>
-              </Grid>
-            </>
+              </Box>
+            </Grid>
           )}
 
-          {/* Desktop/Tablet Layout: Centered Hero Style */}
-          {!isMobile && (
-            <>
-              {/* Feature Preview Image - Left Side */}
-              <Grid item xs={12} md={6}>
-                <Box sx={{ 
-                  display: 'flex', 
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  minHeight: '60vh'
-                }}>
-                  <Paper 
-                    elevation={8} 
-                    sx={{ 
-                      ...floatingAnimation,
-                      p: 2,
-                      borderRadius: 3,
-                      maxWidth: isSmall ? 580 : 600,
-                      width: '100%',
-                      backgroundColor: theme.palette.mode === 'dark' ? '#000000' : '#000000',
-                      border: `3px solid ${theme.palette.primary.main}40`,
-                      overflow: 'hidden',
-                      boxShadow: theme.palette.mode === 'dark' 
-                        ? `0 18px 35px rgba(0,0,0,0.6), 0 0 18px rgba(138, 43, 226, 0.15)`
-                        : `0 18px 35px rgba(0,0,0,0.25), 0 0 18px rgba(138, 43, 226, 0.1)`,
-                      transform: 'perspective(1200px) rotateX(5deg) rotateY(-2deg) scale(1.0)',
-                      transformOrigin: 'center center',
-                      transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                      cursor: 'pointer',
-                      animation: theme.palette.mode === 'dark' 
-                        ? 'introBlur 1.2s ease-out, gentleRotate 8s ease-in-out infinite 1.2s, glowPulseDark 4s ease-in-out infinite 1.2s'
-                        : 'introBlur 1.2s ease-out, gentleRotate 8s ease-in-out infinite 1.2s, glowPulse 4s ease-in-out infinite 1.2s',
-                      animationFillMode: 'both',
-                      '&:hover': {
-                        transform: 'perspective(1200px) rotateX(2deg) rotateY(-1deg) scale(0.95)',
-                      },
-                      position: 'relative',
-                      '&::after': {
-                        content: '""',
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        width: '100%',
-                        height: '100%',
-                        background: 'linear-gradient(135deg, rgba(138, 43, 226, 0.1) 0%, rgba(138, 43, 226, 0) 30%)',
-                        pointerEvents: 'none',
-                        zIndex: 1
-                      }
-                    }}
-                    onClick={openSubscriptionDialog}
-                  >
-                    {/* Early Access Corner Banner */}
-                    <Box
-                      sx={{
-                        position: 'absolute',
-                        top: 24,
-                        right: -50,
-                        width: 180,
-                        textAlign: 'center',
-                        background: 'linear-gradient(135deg, #FF6B35 0%, #F7931E 50%, #FFD23F 100%)',
-                        color: '#000',
-                        py: 1.2,
-                        fontSize: '0.8rem',
-                        fontWeight: 'bold',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.5px',
-                        transform: 'rotate(45deg)',
-                        transformOrigin: 'center',
-                        zIndex: 10,
-                        boxShadow: '0 3px 10px rgba(0,0,0,0.3)',
-                        overflow: 'hidden',
-                        '&::before': {
-                          content: '""',
-                          position: 'absolute',
-                          top: 0,
-                          left: '-100%',
-                          width: '100%',
-                          height: '100%',
-                          background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)',
-                          animation: 'shimmer 3s infinite',
-                        },
-                        '@keyframes shimmer': {
-                          '0%': { left: '-100%' },
-                          '100%': { left: '100%' }
-                        }
+          {/* Pro Card */}
+          <Grid item xs={12} md={6}>
+            <Box sx={{ 
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              minHeight: isStacked ? 'auto' : '60vh',
+              px: isSmall ? 2 : 3,
+              py: isStacked ? 2 : (isSmall ? 3 : 0),
+              pt: isStacked ? 2 : (isSmall ? 3 : 0)
+            }}>
+              <Paper 
+                ref={proCardRef}
+                elevation={isStacked ? 6 : 3} 
+                sx={{ 
+                  p: isStacked ? 3 : (isSmall ? 3 : 4),
+                  borderRadius: 3, 
+                  textAlign: 'center',
+                  background: theme.palette.mode === 'dark' 
+                    ? `linear-gradient(145deg, rgba(35,35,45,${isStacked ? '0.95' : '1'}) 0%, rgba(25,25,35,${isStacked ? '0.95' : '1'}) 100%)` 
+                    : `linear-gradient(145deg, rgba(255,255,255,${isStacked ? '0.95' : '1'}) 0%, rgba(245,245,245,${isStacked ? '0.95' : '1'}) 100%)`,
+                  maxWidth: isStacked ? 360 : (isSmall ? 520 : 500),
+                  width: isStacked ? '95%' : '100%',
+                  border: `1px solid ${theme.palette.primary.main}${isStacked ? '30' : '20'}`,
+                  boxShadow: `0 ${isStacked ? 15 : 10}px ${isStacked ? 35 : 30}px ${theme.palette.mode === 'dark' ? `rgba(0,0,0,${isStacked ? '0.4' : '0.3'})` : `rgba(0,0,0,${isStacked ? '0.15' : '0.1'})`}`,
+                  backdropFilter: isStacked ? 'blur(10px)' : 'none'
+                }}
+              >
+                <Stack spacing={isStacked ? 2.5 : (isSmall ? 2.5 : 3)} justifyContent="center" alignItems="center">
+                  
+                  <Box sx={{ position: 'relative', display: 'flex', justifyContent: 'center' }}>
+                    <img
+                      src="/assets/memeSRC-white.svg"
+                      alt="memeSRC logo"
+                      style={{ height: isStacked ? 44 : 48 }}
+                    />
+                    <Box 
+                      sx={{ 
+                        position: 'absolute', 
+                        top: isStacked ? -8 : -10, 
+                        right: isStacked ? -8 : -10, 
+                        bgcolor: theme.palette.secondary.main,
+                        color: '#fff',
+                        borderRadius: '50%',
+                        width: isStacked ? 24 : 28,
+                        height: isStacked ? 24 : 28,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
                       }}
                     >
-                      Early Access
+                      <LockOpen sx={{ fontSize: isStacked ? 14 : 16 }} />
                     </Box>
+                  </Box>
+                  
+                  <Box>
+                    <Typography 
+                      variant={isStacked ? "h5" : (isSmall ? "h5" : "h4")}
+                      fontWeight="700" 
+                      color="primary" 
+                      gutterBottom
+                      sx={isStacked ? { fontSize: '1.4rem' } : {}}
+                    >
+                      PRO EARLY ACCESS
+                    </Typography>
                     
-                    <img 
-                      src={previewImage} 
-                      alt={`${featureName} Preview`} 
-                      style={{ 
-                        width: '100%', 
-                        height: 'auto',
-                        display: 'block',
-                        objectFit: 'cover',
-                        borderRadius: '8px',
+                    <Typography 
+                      variant={isStacked ? "body1" : (isSmall ? "body1" : "h6")}
+                      color="text.secondary"
+                      sx={{ 
+                        maxWidth: isStacked ? 'none' : '400px', 
+                        mx: 'auto', 
+                        textAlign: isStacked ? 'center' : 'left',
+                        fontSize: isStacked ? '0.95rem' : undefined,
+                        lineHeight: isStacked ? 1.5 : undefined
                       }}
-                    />
-                  </Paper>
-                </Box>
-              </Grid>
-
-              {/* Pro Card - Right Side */}
-              <Grid item xs={12} md={6}>
-                <Box sx={{ 
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  minHeight: '60vh'
-                }}>
-                  <Paper 
-                    ref={proCardRef}
-                    elevation={3} 
+                    >
+                      {isStacked 
+                        ? "Unlock this feature and more with Pro!" 
+                        : "Upgrade to unlock this feature and get exclusive access to all premium tools!"
+                      }
+                    </Typography>
+                  </Box>
+                  
+                  <Button
+                    onClick={openSubscriptionDialog}
+                    variant="contained"
+                    size="large"
+                    color="primary"
                     sx={{ 
-                      p: isSmall ? 3 : 4,
-                      borderRadius: 3, 
-                      textAlign: 'center',
-                      background: theme.palette.mode === 'dark' 
-                        ? 'linear-gradient(145deg, rgba(35,35,45,1) 0%, rgba(25,25,35,1) 100%)' 
-                        : 'linear-gradient(145deg, #ffffff 0%, #f5f5f5 100%)',
-                      maxWidth: isSmall ? 520 : 500,
-                      width: '100%',
-                      border: `1px solid ${theme.palette.primary.main}20`,
-                      boxShadow: `0 10px 30px ${theme.palette.mode === 'dark' ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.1)'}`
+                      fontSize: isStacked ? '1.1rem' : (isSmall ? 16 : 18), 
+                      px: isStacked ? undefined : 4,
+                      py: 1.5,
+                      borderRadius: isStacked ? 2.5 : 3,
+                      fontWeight: 'bold',
+                      boxShadow: '0 6px 20px rgba(0,0,0,0.2)',
+                      textTransform: 'none',
+                      width: isStacked ? '100%' : '100%',
+                      maxWidth: isStacked ? undefined : '300px'
                     }}
                   >
-                    <Stack spacing={isSmall ? 2.5 : 3} justifyContent="center" alignItems="center">
-                      
-                      <Box sx={{ position: 'relative', display: 'flex', justifyContent: 'center' }}>
-                        <img
-                          src="/assets/memeSRC-white.svg"
-                          alt="memeSRC logo"
-                          style={{ height: 48 }}
-                        />
+                    Upgrade to Pro
+                  </Button>
+
+                  <Box sx={{ 
+                    width: '100%', 
+                    pt: 1,
+                    maxWidth: isStacked ? 'none' : '400px'
+                  }}>
+                    <Typography 
+                      variant={isStacked ? "subtitle2" : (isSmall ? "subtitle1" : "h6")}
+                      fontWeight="600" 
+                      color="text.primary"
+                      gutterBottom
+                      sx={{ 
+                        mb: 2, 
+                        fontSize: isStacked ? '0.9rem' : undefined 
+                      }}
+                    >
+                      What You'll Get:
+                    </Typography>
+                    
+                    <Stack spacing={1.5}>
+                      {[
+                        "Multi-panel layouts", 
+                        "Common aspect ratios", 
+                        "Colored borders",
+                        "Ad-free experience",
+                        "All premium features"
+                      ].map((feature, index) => (
                         <Box 
+                          key={index}
                           sx={{ 
-                            position: 'absolute', 
-                            top: -10, 
-                            right: -10, 
-                            bgcolor: theme.palette.secondary.main,
-                            color: '#fff',
-                            borderRadius: '50%',
-                            width: 28,
-                            height: 28,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            py: 1,
+                            px: 1.5,
+                            borderRadius: 2,
+                            backgroundColor: theme.palette.mode === 'dark' 
+                              ? 'rgba(255,255,255,0.03)' 
+                              : 'rgba(0,0,0,0.02)',
+                            border: `1px solid ${theme.palette.mode === 'dark' 
+                              ? 'rgba(255,255,255,0.08)' 
+                              : 'rgba(0,0,0,0.08)'}`,
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                              backgroundColor: theme.palette.mode === 'dark' 
+                                ? 'rgba(255,255,255,0.06)' 
+                                : 'rgba(0,0,0,0.04)'
+                            }
                           }}
                         >
-                          <LockOpen sx={{ fontSize: 16 }} />
+                          <CheckCircle 
+                            color="success" 
+                            sx={{ fontSize: 18, mr: 1.5, flexShrink: 0 }} 
+                          />
+                          <Typography 
+                            variant="body2" 
+                            sx={{ 
+                              fontSize: '0.85rem',
+                              fontWeight: 500
+                            }}
+                          >
+                            {feature}
+                          </Typography>
                         </Box>
-                      </Box>
-                      
-                      <Box>
-                        <Typography 
-                          variant={isSmall ? "h5" : "h4"}
-                          fontWeight="700" 
-                          color="primary" 
-                          gutterBottom
-                        >
-                          PRO EARLY ACCESS
-                        </Typography>
-                        
-                        <Typography 
-                          variant={isSmall ? "body1" : "h6"}
-                          color="text.secondary"
-                          sx={{ maxWidth: '400px', mx: 'auto' }}
-                        >
-                          Upgrade to unlock this feature and get exclusive access to all premium tools!
-                        </Typography>
-                      </Box>
-                      
-                      <Button
-                        onClick={openSubscriptionDialog}
-                        variant="contained"
-                        size="large"
-                        color="primary"
-                        sx={{ 
-                          fontSize: isSmall ? 16 : 18, 
-                          px: 4,
-                          py: 1.5,
-                          borderRadius: 3,
-                          fontWeight: 'bold',
-                          boxShadow: '0 6px 20px rgba(0,0,0,0.2)',
-                          textTransform: 'none',
-                          width: '100%',
-                          maxWidth: '300px'
-                        }}
-                      >
-                        Upgrade to Pro
-                      </Button>
-
-                      <Box sx={{ 
-                        width: '100%', 
-                        pt: 1,
-                        maxWidth: '400px'
-                      }}>
-                        <Typography 
-                          variant={isSmall ? "subtitle1" : "h6"}
-                          fontWeight="600" 
-                          color="text.primary"
-                          gutterBottom
-                          sx={{ mb: 2 }}
-                        >
-                          What You'll Get:
-                        </Typography>
-                        
-                        <Grid container spacing={1.5}>
-                          {[
-                            "Multi-panel layouts", 
-                            "Common aspect ratios", 
-                            "Colored borders",
-                            "Ad free memeSRC",
-                            "All pro features"
-                          ].map((feature, index) => (
-                            <Grid item xs={12} key={index}>
-                              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start' }}>
-                                <CheckCircle 
-                                  color="success" 
-                                  sx={{ fontSize: 20, mr: 1.5 }} 
-                                />
-                                <Typography variant="body1">
-                                  {feature}
-                                </Typography>
-                              </Box>
-                            </Grid>
-                          ))}
-                        </Grid>
-                      </Box>
+                      ))}
                     </Stack>
-                  </Paper>
-                </Box>
-              </Grid>
-            </>
-          )}
+                  </Box>
+                </Stack>
+              </Paper>
+            </Box>
+          </Grid>
         </Grid>
 
-        {/* Coming Soon Badge - Tablet and Desktop only */}
-        {!isMobile && (
+        {/* Coming Soon Badge - Only show when not stacked */}
+        {!isStacked && (
           <Box sx={{ 
             mt: isSmall ? 3 : 4,
             display: 'flex', 
