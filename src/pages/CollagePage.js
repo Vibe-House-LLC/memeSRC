@@ -7,6 +7,7 @@ import { UserContext } from "../UserContext";
 import { useSubscribeDialog } from "../contexts/useSubscribeDialog";
 import { aspectRatioPresets, layoutTemplates } from "../components/collage/config/CollageConfig";
 import UpgradeMessage from "../components/collage/components/UpgradeMessage";
+import WelcomeMessage from "../components/collage/components/WelcomeMessage";
 import { CollageLayout } from "../components/collage/components/CollageLayoutComponents";
 import { useCollageState } from "../components/collage/hooks/useCollageState";
 import EarlyAccessFeedback from "../components/collage/components/EarlyAccessFeedback";
@@ -14,6 +15,14 @@ import CollageResultDialog from "../components/collage/components/CollageResultD
 
 const DEBUG_MODE = process.env.NODE_ENV === 'development';
 const debugLog = (...args) => { if (DEBUG_MODE) console.log(...args); };
+
+// Development utility - make resetWelcome available globally for testing
+if (DEBUG_MODE && typeof window !== 'undefined') {
+  window.resetCollageWelcome = () => {
+    localStorage.removeItem('memeSRC-collage-v2.7-welcome-seen');
+    console.log('Collage welcome screen reset - refresh page to see welcome again');
+  };
+}
 
 /**
  * Helper function to crop canvas by removing pixels from edges
@@ -70,6 +79,15 @@ export default function CollagePage() {
   
   // State to control button animation
   const [showAnimatedButton, setShowAnimatedButton] = useState(false);
+  
+  // State to control welcome screen for existing Pro users
+  const [showWelcomeScreen, setShowWelcomeScreen] = useState(() => {
+    // Only show for authorized users who haven't seen the v2.7 welcome yet
+    if (!authorized) return false;
+    const hasSeenWelcome = localStorage.getItem('memeSRC-collage-v2.7-welcome-seen');
+    debugLog(`[WELCOME DEBUG] authorized=${authorized}, hasSeenWelcome=${hasSeenWelcome}, showWelcome=${!hasSeenWelcome}`);
+    return !hasSeenWelcome;
+  });
 
   const {
     selectedImages, 
@@ -127,7 +145,7 @@ export default function CollagePage() {
 
   // Animate button in with delay when ready
   useEffect(() => {
-    if (allPanelsHaveImages && !showResultDialog) {
+    if (allPanelsHaveImages && !showResultDialog && !showWelcomeScreen) {
       const timer = setTimeout(() => {
         setShowAnimatedButton(true);
       }, 800); // 800ms delay for dramatic effect
@@ -137,11 +155,24 @@ export default function CollagePage() {
     
     setShowAnimatedButton(false);
     return () => {}; // Return empty cleanup function for consistency
-  }, [allPanelsHaveImages, showResultDialog]);
+  }, [allPanelsHaveImages, showResultDialog, showWelcomeScreen]);
 
   // Handler to go back to edit mode
   const handleBackToEdit = () => {
     setShowResultDialog(false);
+  };
+
+  // Handler to continue from welcome screen
+  const handleContinueFromWelcome = () => {
+    debugLog('[WELCOME DEBUG] User clicked continue, marking welcome as seen');
+    localStorage.setItem('memeSRC-collage-v2.7-welcome-seen', 'true');
+    setShowWelcomeScreen(false);
+    
+    // Smooth scroll to top of the page
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
   };
 
   // Handler for floating button - triggers collage generation
@@ -284,10 +315,15 @@ export default function CollagePage() {
 
       {!authorized ? (
         <UpgradeMessage openSubscriptionDialog={openSubscriptionDialog} previewImage="/assets/images/products/collage-tool.png" />
+      ) : showWelcomeScreen ? (
+        <WelcomeMessage 
+          onContinue={handleContinueFromWelcome} 
+          previewImage="/assets/images/products/collage-tool.png" 
+        />
       ) : (
         <Box component="main" sx={{ 
           flexGrow: 1,
-          pb: !showResultDialog && allPanelsHaveImages ? 10 : (isMobile ? 3 : 6),
+          pb: !showResultDialog && !showWelcomeScreen && allPanelsHaveImages ? 10 : (isMobile ? 3 : 6),
           width: '100%',
           overflowX: 'hidden',
           minHeight: '100vh',
@@ -339,7 +375,7 @@ export default function CollagePage() {
             />
 
             {/* Bottom Action Bar */}
-            {!showResultDialog && allPanelsHaveImages && (
+            {!showResultDialog && !showWelcomeScreen && allPanelsHaveImages && (
               <Slide direction="up" in={showAnimatedButton} timeout={600}>
                 <Box
                   sx={{
