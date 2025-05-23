@@ -1156,7 +1156,7 @@ const CollageLayoutSettings = ({
                     color={borderThickness === option.label.toLowerCase() ? 'primary' : 'default'}
                     onClick={() => setBorderThickness(option.label.toLowerCase())}
                     sx={{ 
-                      fontWeight: fontWeight // Same weight whether selected or not
+                      fontWeight // Same weight whether selected or not
                     }}
                   />
                 );
