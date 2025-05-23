@@ -77,12 +77,14 @@ const getBorderPixelSize = (borderThickness) => {
     'thicc': 16,
     'thiccer': 28,
     'xtra thicc': 48,
-    'XTRA THICC': 48
+    'XTRA THICC': 48,
+    'ungodly chonkd': 80,
+    'UNGODLY CHONKD': 80
   };
   
   // Normalize and look up in map
   const normalizedKey = String(borderThickness).toLowerCase();
-  return thicknessMap[normalizedKey] || 1; // Default to thin if not found
+  return thicknessMap[normalizedKey] || 8; // Default to medium if not found
 };
 
 /**

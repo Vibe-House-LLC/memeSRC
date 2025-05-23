@@ -113,7 +113,8 @@ export default function CollagePage() {
     { label: "Medium", value: 8 },
     { label: "Thicc", value: 16 }, 
     { label: "Thiccer", value: 28 }, 
-    { label: "XTRA THICC", value: 48 }
+    { label: "XTRA THICC", value: 48 },
+    { label: "UNGODLY CHONK'D", value: 80 }
   ];
 
   // Get numeric border thickness value

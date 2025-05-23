@@ -19,7 +19,10 @@ export const useCollageState = () => {
   const [panelCount, setPanelCount] = useState(2); // Default panel count of 2
   const [finalImage, setFinalImage] = useState(null);
   const [isCreatingCollage, setIsCreatingCollage] = useState(false);
-  const [borderThickness, setBorderThickness] = useState('thin'); // Default border thickness
+  const [borderThickness, setBorderThickness] = useState(() => {
+    const savedBorderThickness = localStorage.getItem('meme-src-collage-border-thickness');
+    return savedBorderThickness || 'medium'; // Default to medium border thickness
+  });
 
   const [borderColor, setBorderColor] = useState(() => {
     const savedCustomColor = localStorage.getItem('meme-src-collage-custom-color');
@@ -39,6 +42,10 @@ export const useCollageState = () => {
   useEffect(() => {
     localStorage.setItem('meme-src-collage-custom-color', borderColor);
   }, [borderColor]);
+
+  useEffect(() => {
+    localStorage.setItem('meme-src-collage-border-thickness', borderThickness);
+  }, [borderThickness]);
 
   /**
    * Reset all panel transforms (zoom/pan positions) to defaults.

@@ -1145,6 +1145,7 @@ const CollageLayoutSettings = ({
               }}
             >
               {borderThicknessOptions.map((option, index) => {
+                // Progressive font weight: None=400, then each option gets progressively bolder
                 const fontWeight = option.label === "None" ? 400 : 400 + (index * 100);
                 
                 return (
@@ -1155,8 +1156,7 @@ const CollageLayoutSettings = ({
                     color={borderThickness === option.label.toLowerCase() ? 'primary' : 'default'}
                     onClick={() => setBorderThickness(option.label.toLowerCase())}
                     sx={{ 
-                      fontWeight: borderThickness === option.label.toLowerCase() ? 
-                        fontWeight + 100 : fontWeight 
+                      fontWeight: fontWeight // Same weight whether selected or not
                     }}
                   />
                 );
