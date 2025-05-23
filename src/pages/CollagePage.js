@@ -10,6 +10,7 @@ import UpgradeMessage from "../components/collage/components/UpgradeMessage";
 import { CollageLayout } from "../components/collage/components/CollageLayoutComponents";
 import { useCollageState } from "../components/collage/hooks/useCollageState";
 import EarlyAccessFeedback from "../components/collage/components/EarlyAccessFeedback";
+import CollageResultDialog from "../components/collage/components/CollageResultDialog";
 
 const DEBUG_MODE = process.env.NODE_ENV === 'development';
 const debugLog = (...args) => { if (DEBUG_MODE) console.log(...args); };
@@ -40,8 +41,8 @@ export default function CollagePage() {
   const { openSubscriptionDialog } = useSubscribeDialog();
   const authorized = (user?.userDetails?.magicSubscription === "true" || user?.['cognito:groups']?.includes('admins'));
   
-  // State to track if we're showing the result inline
-  const [showInlineResult, setShowInlineResult] = useState(false);
+  // State to control the result dialog
+  const [showResultDialog, setShowResultDialog] = useState(false);
   
   // State to control button animation
   const [showAnimatedButton, setShowAnimatedButton] = useState(false);
@@ -95,16 +96,9 @@ export default function CollagePage() {
     debugLog(`[PAGE DEBUG] Border settings: color=${borderColor}, thickness=${borderThickness} (${borderThicknessValue}px)`);
   }, [borderColor, borderThickness, borderThicknessValue]);
 
-  // Scroll to top when showing inline result
-  useEffect(() => {
-    if (showInlineResult) {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  }, [showInlineResult]);
-
   // Animate button in with delay when ready
   useEffect(() => {
-    if (allPanelsHaveImages && !showInlineResult) {
+    if (allPanelsHaveImages && !showResultDialog) {
       const timer = setTimeout(() => {
         setShowAnimatedButton(true);
       }, 800); // 800ms delay for dramatic effect
@@ -113,11 +107,11 @@ export default function CollagePage() {
     } else {
       setShowAnimatedButton(false);
     }
-  }, [allPanelsHaveImages, showInlineResult]);
+  }, [allPanelsHaveImages, showResultDialog]);
 
   // Handler to go back to edit mode
   const handleBackToEdit = () => {
-    setShowInlineResult(false);
+    setShowResultDialog(false);
   };
 
   // Handler for floating button - triggers collage generation
@@ -180,7 +174,7 @@ export default function CollagePage() {
       
       const dataUrl = canvas.toDataURL('image/png');
       setFinalImage(dataUrl);
-      setShowInlineResult(true);
+      setShowResultDialog(true);
       debugLog("Floating button: Collage generated and inline result shown.");
 
     } catch (err) {
@@ -211,7 +205,7 @@ export default function CollagePage() {
 
   // Handler for when collage is generated - show inline result
   const handleCollageGenerated = () => {
-    setShowInlineResult(true);
+    setShowResultDialog(true);
   };
 
   // Props for images step (pass the correct state and actions)
@@ -261,7 +255,7 @@ export default function CollagePage() {
       ) : (
         <Box component="main" sx={{ 
           flexGrow: 1,
-          pb: isMobile && !showInlineResult && allPanelsHaveImages ? 10 : (isMobile ? 3 : 6),
+          pb: isMobile && !showResultDialog && allPanelsHaveImages ? 10 : (isMobile ? 3 : 6),
           width: '100%',
           overflowX: 'hidden',
           minHeight: '100vh',
@@ -289,7 +283,7 @@ export default function CollagePage() {
                 textShadow: '0px 2px 4px rgba(0,0,0,0.15)'
               }}>
                 <Dashboard sx={{ mr: 2, color: 'inherit', fontSize: 40 }} /> 
-                {showInlineResult ? "Collage Result" : "Collage Tool"}
+                Collage Tool
               </Typography>
               <Typography variant="subtitle1" sx={{ 
                 color: 'text.secondary',
@@ -309,12 +303,11 @@ export default function CollagePage() {
               finalImage={finalImage}
               setFinalImage={setFinalImage}
               isMobile={isMobile}
-              showInlineResult={showInlineResult}
               onBackToEdit={handleBackToEdit}
             />
 
             {/* Bottom Action Bar for Mobile */}
-            {isMobile && !showInlineResult && allPanelsHaveImages && (
+            {isMobile && !showResultDialog && allPanelsHaveImages && (
               <Slide direction="up" in={showAnimatedButton} timeout={600}>
                 <Box
                   sx={{
@@ -385,6 +378,13 @@ export default function CollagePage() {
               </Slide>
             )}
           </Container>
+
+          {/* Collage Result Dialog */}
+          <CollageResultDialog
+            open={showResultDialog}
+            onClose={() => setShowResultDialog(false)}
+            finalImage={finalImage}
+          />
         </Box>
       )}
     </>

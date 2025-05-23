@@ -16,7 +16,6 @@ import CollageSettingsStep from "../steps/CollageSettingsStep";
 import CollageImagesStep from "../steps/CollageImagesStep";
 import { SectionHeading } from './CollageUIComponents';
 import ExportDialog from './ExportDialog';
-import CollageResultView from './CollageResultView';
 
 /**
  * Main container for the collage page content
@@ -66,7 +65,7 @@ export const ContentPaper = ({ children, isMobile, sx = {} }) => {
 /**
  * Unified layout for the collage tool that adapts to all screen sizes
  */
-export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, setFinalImage, isMobile, showInlineResult = false, onBackToEdit }) => {
+export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, setFinalImage, isMobile, onBackToEdit }) => {
   const theme = useTheme();
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
@@ -80,19 +79,6 @@ export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, 
 
   const handleCloseExportDialog = () => {
     setIsExportDialogOpen(false);
-  };
-
-  const handleBackToEdit = () => {
-    if (onBackToEdit) {
-      onBackToEdit();
-    }
-  };
-
-  const scrollToSettings = () => {
-    settingsRef.current?.scrollIntoView({ 
-      behavior: 'smooth',
-      block: 'start'
-    });
   };
 
   console.log("CollageLayout received props:", {
@@ -113,107 +99,79 @@ export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, 
   
   return (
     <>
-      {showInlineResult && finalImage ? (
-        // Show inline result view with improved mobile layout
-        <Box sx={{ width: '100%', p: isMobile ? 1 : 2 }}>
-          {isMobile && (
-            <Box sx={{ mb: 2 }}>
-              <Button
-                startIcon={<ArrowBack />}
-                onClick={handleBackToEdit}
-                variant="outlined"
-                size="small"
-                sx={{ 
-                  borderRadius: 2,
-                  textTransform: 'none'
-                }}
-              >
-                Back to Editor
-              </Button>
+      {/* Show normal editor interface with improved mobile layout */}
+      <Box sx={{ width: '100%' }}>
+        {isMobile ? (
+          // Mobile: Stack vertically with better spacing and visual hierarchy
+          <Stack spacing={3} sx={{ p: 2 }}>
+            {/* Settings Section First on Mobile */}
+            <Box ref={settingsRef}>
+              <CollageSettingsStep 
+                {...settingsStepProps}
+              />
             </Box>
-          )}
-          <CollageResultView 
-            finalImage={finalImage}
-            onBackToEdit={handleBackToEdit}
-            showBackButton={!isMobile}
-            layout="responsive"
-          />
-        </Box>
-      ) : (
-        // Show normal editor interface with improved mobile layout
-        <Box sx={{ width: '100%' }}>
-          {isMobile ? (
-            // Mobile: Stack vertically with better spacing and visual hierarchy
-            <Stack spacing={3} sx={{ p: 2 }}>
-              {/* Settings Section First on Mobile */}
-              <Box ref={settingsRef}>
-                <CollageSettingsStep 
-                  {...settingsStepProps}
-                />
-              </Box>
 
-              {/* Images Section */}
-              <Box>
-                <Box sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'space-between',
-                  mb: 2,
-                  pb: 1,
-                  borderBottom: 1,
-                  borderColor: 'divider'
-                }} />
-                <CollageImagesStep 
-                  {...imagesStepProps} 
-                  setFinalImage={setFinalImage}
-                  handleOpenExportDialog={handleOpenExportDialog}
-                />
-              </Box>
-            </Stack>
-          ) : (
-            // Desktop/Tablet: Keep side-by-side layout but improve spacing
-            <Box sx={{ p: isTablet ? 2 : 3 }}>
-              <Grid container spacing={isTablet ? 3 : 4} sx={{ width: '100%', margin: 0 }}>
-                {/* Settings Section */}
-                <Grid item xs={12} md={6}>
-                  <Box sx={{ 
-                    height: '100%',
-                    bgcolor: 'background.paper',
-                    borderRadius: 2,
-                    p: 3,
-                    border: 1,
-                    borderColor: 'divider'
-                  }}>
-                    {/* <SectionHeading icon={Settings} title="Settings" /> */}
-                    <CollageSettingsStep 
-                      {...settingsStepProps}
-                    />
-                  </Box>
-                </Grid>
-                
-                {/* Images Section */}
-                <Grid item xs={12} md={6}>
-                  <Box sx={{ 
-                    height: '100%',
-                    bgcolor: 'background.paper',
-                    borderRadius: 2,
-                    p: 3,
-                    border: 1,
-                    borderColor: 'divider'
-                  }}>
-                    <SectionHeading icon={PhotoLibrary} title="Your Collage" />
-                    <CollageImagesStep 
-                      {...imagesStepProps} 
-                      setFinalImage={setFinalImage}
-                      handleOpenExportDialog={handleOpenExportDialog}
-                    />
-                  </Box>
-                </Grid>
-              </Grid>
+            {/* Images Section */}
+            <Box>
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between',
+                mb: 2,
+                pb: 1,
+                borderBottom: 1,
+                borderColor: 'divider'
+              }} />
+              <CollageImagesStep 
+                {...imagesStepProps} 
+                setFinalImage={setFinalImage}
+                handleOpenExportDialog={handleOpenExportDialog}
+              />
             </Box>
-          )}
-        </Box>
-      )}
+          </Stack>
+        ) : (
+          // Desktop/Tablet: Keep side-by-side layout but improve spacing
+          <Box sx={{ p: isTablet ? 2 : 3 }}>
+            <Grid container spacing={isTablet ? 3 : 4} sx={{ width: '100%', margin: 0 }}>
+              {/* Settings Section */}
+              <Grid item xs={12} md={6}>
+                <Box sx={{ 
+                  height: '100%',
+                  bgcolor: 'background.paper',
+                  borderRadius: 2,
+                  p: 3,
+                  border: 1,
+                  borderColor: 'divider'
+                }}>
+                  {/* <SectionHeading icon={Settings} title="Settings" /> */}
+                  <CollageSettingsStep 
+                    {...settingsStepProps}
+                  />
+                </Box>
+              </Grid>
+              
+              {/* Images Section */}
+              <Grid item xs={12} md={6}>
+                <Box sx={{ 
+                  height: '100%',
+                  bgcolor: 'background.paper',
+                  borderRadius: 2,
+                  p: 3,
+                  border: 1,
+                  borderColor: 'divider'
+                }}>
+                  <SectionHeading icon={PhotoLibrary} title="Your Collage" />
+                  <CollageImagesStep 
+                    {...imagesStepProps} 
+                    setFinalImage={setFinalImage}
+                    handleOpenExportDialog={handleOpenExportDialog}
+                  />
+                </Box>
+              </Grid>
+            </Grid>
+          </Box>
+        )}
+      </Box>
 
       <ExportDialog 
         open={isExportDialogOpen} 
