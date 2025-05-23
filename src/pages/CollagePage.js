@@ -1,7 +1,7 @@
 import { useContext, useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { useTheme } from "@mui/material/styles";
-import { useMediaQuery, Box, Container, Typography, Button } from "@mui/material";
+import { useMediaQuery, Box, Container, Typography, Button, Slide } from "@mui/material";
 import { Dashboard, Save } from "@mui/icons-material";
 import { UserContext } from "../UserContext";
 import { useSubscribeDialog } from "../contexts/useSubscribeDialog";
@@ -42,6 +42,9 @@ export default function CollagePage() {
   
   // State to track if we're showing the result inline
   const [showInlineResult, setShowInlineResult] = useState(false);
+  
+  // State to control button animation
+  const [showAnimatedButton, setShowAnimatedButton] = useState(false);
 
   const {
     selectedImages, 
@@ -98,6 +101,19 @@ export default function CollagePage() {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }, [showInlineResult]);
+
+  // Animate button in with delay when ready
+  useEffect(() => {
+    if (allPanelsHaveImages && !showInlineResult) {
+      const timer = setTimeout(() => {
+        setShowAnimatedButton(true);
+      }, 800); // 800ms delay for dramatic effect
+      
+      return () => clearTimeout(timer);
+    } else {
+      setShowAnimatedButton(false);
+    }
+  }, [allPanelsHaveImages, showInlineResult]);
 
   // Handler to go back to edit mode
   const handleBackToEdit = () => {
@@ -299,49 +315,74 @@ export default function CollagePage() {
 
             {/* Bottom Action Bar for Mobile */}
             {isMobile && !showInlineResult && allPanelsHaveImages && (
-              <Box
-                sx={{
-                  position: 'fixed',
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  zIndex: 1000,
-                  bgcolor: 'background.paper',
-                  borderTop: 1,
-                  borderColor: 'divider',
-                  p: 2,
-                  boxShadow: '0 -4px 20px rgba(0,0,0,0.1)',
-                  backdropFilter: 'blur(10px)',
-                }}
-              >
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={handleFloatingButtonClick}
-                  disabled={isCreatingCollage}
-                  fullWidth
-                  size="large"
-                  startIcon={<Save />}
+              <Slide direction="up" in={showAnimatedButton} timeout={600}>
+                <Box
                   sx={{
-                    py: 1.5,
-                    fontSize: '1.1rem',
-                    fontWeight: 600,
-                    textTransform: 'none',
-                    borderRadius: 2,
-                    boxShadow: 2,
-                    '&:hover': {
-                      boxShadow: 4,
-                    },
-                    '&:disabled': {
-                      bgcolor: 'action.disabled',
-                      color: 'action.disabled',
-                    }
+                    position: 'fixed',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    zIndex: 1000,
+                    bgcolor: 'background.paper',
+                    borderTop: 1,
+                    borderColor: 'divider',
+                    p: 2,
+                    boxShadow: '0 -8px 32px rgba(0,0,0,0.15)',
+                    backdropFilter: 'blur(20px)',
                   }}
-                  aria-label="Create and save collage"
                 >
-                  {isCreatingCollage ? 'Creating Collage...' : 'Create & Save Collage'}
-                </Button>
-              </Box>
+                  <Button
+                    variant="contained"
+                    onClick={handleFloatingButtonClick}
+                    disabled={isCreatingCollage}
+                    fullWidth
+                    size="large"
+                    startIcon={<Save />}
+                    sx={{
+                      py: 2,
+                      fontSize: '1.2rem',
+                      fontWeight: 700,
+                      textTransform: 'none',
+                      borderRadius: 3,
+                      background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
+                      border: '1px solid #8b5cc7',
+                      boxShadow: '0 6px 20px rgba(107, 66, 161, 0.4)',
+                      color: '#fff',
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                      '&:hover': {
+                        background: 'linear-gradient(45deg, #472a69 30%, #7b4cb8 90%)',
+                        boxShadow: '0 8px 25px rgba(107, 66, 161, 0.6)',
+                        transform: 'translateY(-2px) scale(1.02)',
+                      },
+                      '&:active': {
+                        transform: 'translateY(0) scale(0.98)',
+                      },
+                      '&:disabled': {
+                        background: 'linear-gradient(45deg, #757575 30%, #9E9E9E 90%)',
+                        color: 'rgba(255, 255, 255, 0.7)',
+                        boxShadow: 'none',
+                        transform: 'none',
+                      },
+                      // Add subtle pulse animation when ready
+                      '@keyframes pulse': {
+                        '0%': {
+                          boxShadow: '0 6px 20px rgba(107, 66, 161, 0.4)',
+                        },
+                        '50%': {
+                          boxShadow: '0 6px 25px rgba(107, 66, 161, 0.7)',
+                        },
+                        '100%': {
+                          boxShadow: '0 6px 20px rgba(107, 66, 161, 0.4)',
+                        },
+                      },
+                      animation: !isCreatingCollage ? 'pulse 2s ease-in-out infinite' : 'none',
+                    }}
+                    aria-label="Create and save collage"
+                  >
+                    {isCreatingCollage ? 'Creating Collage...' : 'Create & Save Collage'}
+                  </Button>
+                </Box>
+              </Slide>
             )}
           </Container>
         </Box>
