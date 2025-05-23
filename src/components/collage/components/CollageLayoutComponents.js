@@ -162,8 +162,7 @@ export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, 
                   pb: 1,
                   borderBottom: 1,
                   borderColor: 'divider'
-                }}>
-                </Box>
+                }} />
                 <CollageImagesStep 
                   {...imagesStepProps} 
                   setFinalImage={setFinalImage}
