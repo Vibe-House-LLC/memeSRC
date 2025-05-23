@@ -282,6 +282,7 @@ const DynamicCollagePreview = ({
         window.addEventListener('resize', updatePanelSize);
         return () => window.removeEventListener('resize', updatePanelSize);
       }
+      return undefined;
     }, []);
 
     // Key to force re-render when we have sizing data
