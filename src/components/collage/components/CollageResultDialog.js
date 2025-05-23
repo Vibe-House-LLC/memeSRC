@@ -197,8 +197,6 @@ export default function CollageResultDialog({ open, onClose, finalImage }) {
                 <img
                   src={finalImage}
                   alt="Generated Collage"
-                  tabIndex={0}
-                  role="img"
                   style={{
                     maxWidth: '100%',
                     maxHeight: '100%',
@@ -207,25 +205,8 @@ export default function CollageResultDialog({ open, onClose, finalImage }) {
                     display: 'block',
                     userSelect: 'none',
                     WebkitUserSelect: 'none',
-                    pointerEvents: 'auto',
-                    cursor: 'grab',
+                    pointerEvents: 'none',
                     outline: 'none',
-                  }}
-                  onContextMenu={(e) => {
-                    // Allow right-click for saving
-                    e.stopPropagation();
-                  }}
-                  onMouseDown={(e) => {
-                    // Prevent dragging
-                    e.preventDefault();
-                  }}
-                  onClick={(e) => e.stopPropagation()} // Prevent closing when clicking on image
-                  onKeyDown={(e) => {
-                    // Handle keyboard interactions (Space/Enter to prevent closing)
-                    if (e.key === ' ' || e.key === 'Enter') {
-                      e.stopPropagation();
-                      e.preventDefault();
-                    }
                   }}
                 />
               )}
