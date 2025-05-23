@@ -170,7 +170,7 @@ export default function EarlyAccessFeedback() {
                 color: 'rgba(255, 255, 255, 0.8)',
                 fontSize: isMobile ? '0.8rem' : '0.875rem'
               }}>
-                This tool is still in development with limitations and bugs.
+                This is still in development. More to come!
               </Typography>
             </Box>
           </Box>
