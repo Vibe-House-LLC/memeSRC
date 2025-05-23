@@ -191,14 +191,16 @@ export default function CollageResultDialog({ open, onClose, finalImage }) {
                   e.stopPropagation();
                 }
               }}
-              aria-label="Image container"
+              onContextMenu={(e) => {
+                // Allow right-click/long-press context menu for saving
+                e.stopPropagation();
+              }}
+              aria-label="Generated collage image - click to focus, right-click or tap and hold to save"
             >
               {finalImage && (
                 <img
                   src={finalImage}
                   alt="Generated Collage"
-                  role="button"
-                  tabIndex={0}
                   style={{
                     maxWidth: '100%',
                     maxHeight: '100%',
@@ -208,29 +210,8 @@ export default function CollageResultDialog({ open, onClose, finalImage }) {
                     userSelect: 'none',
                     WebkitUserSelect: 'none',
                     pointerEvents: 'auto',
-                    cursor: 'default',
                     outline: 'none',
                   }}
-                  onClick={(e) => {
-                    // Allow normal click but prevent dialog close
-                    e.stopPropagation();
-                  }}
-                  onKeyDown={(e) => {
-                    // Handle keyboard accessibility
-                    if (e.key === ' ' || e.key === 'Enter') {
-                      e.stopPropagation();
-                      e.preventDefault();
-                    }
-                  }}
-                  onTouchStart={(e) => {
-                    // Don't stop propagation on touch start to allow swipe detection
-                    // but store touch info for potential swipe vs tap-hold detection
-                  }}
-                  onContextMenu={(e) => {
-                    // Allow right-click/long-press context menu for saving
-                    e.stopPropagation();
-                  }}
-                  aria-label="Generated collage image - tap and hold to save"
                 />
               )}
             </Box>
