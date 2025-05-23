@@ -40,10 +40,10 @@ const cropCanvas = (originalCanvas, cropAmount = 10) => {
 };
 
 /**
- * Helper function to get numeric border thickness value from string/option
+ * Helper function to get numeric border thickness percentage value from string/option
  */
 const getBorderThicknessValue = (borderThickness, options) => {
-  // If it's already a number, return it
+  // If it's already a number, return it as percentage
   if (typeof borderThickness === 'number') {
     return borderThickness;
   }
@@ -54,8 +54,8 @@ const getBorderThicknessValue = (borderThickness, options) => {
     String(opt.label).toLowerCase() === normalizedLabel
   );
   
-  // Return the value if found, otherwise default to 6 (thin)
-  return option ? option.value : 6;
+  // Return the percentage value if found, otherwise default to 2 (medium)
+  return option ? option.value : 2;
 };
 
 export default function CollagePage() {
@@ -108,13 +108,13 @@ export default function CollagePage() {
     );
 
   const borderThicknessOptions = [
-    { label: "None", value: 0 }, 
-    { label: "Thin", value: 4 }, 
-    { label: "Medium", value: 8 },
-    { label: "Thicc", value: 16 }, 
-    { label: "Thiccer", value: 28 }, 
-    { label: "XTRA THICC", value: 48 },
-    { label: "UNGODLY CHONK'D", value: 80 }
+    { label: "None", value: 0 },        // 0%
+    { label: "Thin", value: 0.5 },      // 0.5%
+    { label: "Medium", value: 1.5 },    // 1.5%
+    { label: "Thicc", value: 4 },       // 4%
+    { label: "Thiccer", value: 7 },     // 7%
+    { label: "XTRA THICC", value: 12 }, // 12%
+    { label: "UNGODLY CHONK'D", value: 20 } // 20%
   ];
 
   // Get numeric border thickness value
@@ -122,7 +122,7 @@ export default function CollagePage() {
 
   // Log changes to border color and thickness
   useEffect(() => {
-    debugLog(`[PAGE DEBUG] Border settings: color=${borderColor}, thickness=${borderThickness} (${borderThicknessValue}px)`);
+    debugLog(`[PAGE DEBUG] Border settings: color=${borderColor}, thickness=${borderThickness} (${borderThicknessValue}%)`);
   }, [borderColor, borderThickness, borderThicknessValue]);
 
   // Animate button in with delay when ready

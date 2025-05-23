@@ -329,7 +329,15 @@ CollageImagesStep.defaultProps = {
   panelCount: 2,
   selectedAspectRatio: 'portrait',
   borderThickness: 'medium',
-  borderThicknessOptions: [ { label: "None", value: 0 }, { label: "Thin", value: 4 }, { label: "Medium", value: 8 }, { label: "Thicc", value: 16 }, { label: "Thiccer", value: 28 }, { label: "XTRA THICC", value: 48 }, { label: "UNGODLY CHONK'D", value: 80 } ],
+  borderThicknessOptions: [ 
+    { label: "None", value: 0 },        // 0%
+    { label: "Thin", value: 0.5 },      // 0.5%
+    { label: "Medium", value: 1.5 },    // 1.5%
+    { label: "Thicc", value: 4 },       // 4%
+    { label: "Thiccer", value: 7 },     // 7%
+    { label: "XTRA THICC", value: 12 }, // 12%
+    { label: "UNGODLY CHONK'D", value: 20 } // 20%
+  ],
   panelImageMapping: {},
   addImage: () => { console.warn("addImage default prop called"); },
   removeImage: () => { console.warn("removeImage default prop called"); },

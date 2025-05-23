@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useEffect, useState } from 'react';
 import { useTheme } from "@mui/material/styles";
 import { Box, IconButton, Typography } from "@mui/material";
 import { MoreVert, Add } from "@mui/icons-material";
@@ -61,30 +61,37 @@ const createLayoutConfig = (template, panelCount) => {
 };
 
 /**
- * Convert border thickness from string or named value to pixels
+ * Convert border thickness from string or named value to percentage of component width
+ * This ensures consistent relative border thickness regardless of final image size
  */
-const getBorderPixelSize = (borderThickness) => {
-  // If it's already a number, return it
+const getBorderPixelSize = (borderThickness, componentWidth = 400) => {
+  // If it's already a number, treat it as a percentage
   if (typeof borderThickness === 'number') {
-    return borderThickness;
+    return (borderThickness / 100) * componentWidth;
   }
   
-  // Default thickness map - updated to even thicker values
-  const thicknessMap = {
-    'none': 0,
-    'thin': 4,
-    'medium': 8,
-    'thicc': 16,
-    'thiccer': 28,
-    'xtra thicc': 48,
-    'XTRA THICC': 48,
-    'ungodly chonkd': 80,
-    'UNGODLY CHONKD': 80
+  // Border thickness as percentage of component width
+  // These percentages are calibrated for good visual appearance
+  const thicknessPercentageMap = {
+    'none': 0,           // 0%
+    'thin': 0.5,         // 0.5% of width
+    'medium': 1.5,       // 1.5% of width  
+    'thicc': 4,          // 4% of width
+    'thiccer': 7,        // 7% of width
+    'xtra thicc': 12,    // 12% of width
+    'XTRA THICC': 12,    // 12% of width
+    'ungodly chonkd': 20,    // 20% of width
+    'ungodly chonk\'d': 20,  // 20% of width (handle apostrophe)
+    'UNGODLY CHONKD': 20,    // 20% of width
+    'UNGODLY CHONK\'D': 20   // 20% of width (handle apostrophe)
   };
   
   // Normalize and look up in map
   const normalizedKey = String(borderThickness).toLowerCase();
-  return thicknessMap[normalizedKey] || 8; // Default to medium if not found
+  const percentage = thicknessPercentageMap[normalizedKey] || 2; // Default to medium if not found
+  
+  // Return the pixel value as percentage of component width
+  return Math.round((percentage / 100) * componentWidth);
 };
 
 /**
@@ -107,8 +114,42 @@ const DynamicCollagePreview = ({
 }) => {
   const theme = useTheme();
   
-  // Convert borderThickness to numeric pixel value
-  const borderPixels = getBorderPixelSize(borderThickness);
+  // Ref to measure the actual component width
+  const containerRef = useRef(null);
+  const [componentWidth, setComponentWidth] = useState(400); // Default fallback width
+  
+  // Effect to measure component width for responsive border thickness
+  useEffect(() => {
+    const measureWidth = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        setComponentWidth(rect.width || 400);
+      }
+    };
+    
+    // Initial measurement
+    measureWidth();
+    
+    // Listen for resize events
+    window.addEventListener('resize', measureWidth);
+    
+    // Use ResizeObserver if available for more accurate tracking
+    let resizeObserver;
+    if (window.ResizeObserver && containerRef.current) {
+      resizeObserver = new ResizeObserver(measureWidth);
+      resizeObserver.observe(containerRef.current);
+    }
+    
+    return () => {
+      window.removeEventListener('resize', measureWidth);
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
+    };
+  }, []);
+  
+  // Convert borderThickness to numeric pixel value based on actual component width
+  const borderPixels = getBorderPixelSize(borderThickness, componentWidth);
   
   console.log("DynamicCollagePreview props:", {
     hasTemplate: !!selectedTemplate,
@@ -429,6 +470,7 @@ const DynamicCollagePreview = ({
 
   return (
     <Box
+      ref={containerRef}
       data-testid="dynamic-collage-preview-root"
       sx={{
         position: 'relative',
