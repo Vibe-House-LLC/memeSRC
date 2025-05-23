@@ -108,8 +108,12 @@ export default function CollagePage() {
     );
 
   const borderThicknessOptions = [
-    { label: "None", value: 0 }, { label: "Thin", value: 6 }, { label: "Medium", value: 16 },
-    { label: "Thicc", value: 40 }, { label: "Thiccer", value: 80 }, { label: "XTRA THICC", value: 120 }
+    { label: "None", value: 0 }, 
+    { label: "Thin", value: 4 }, 
+    { label: "Medium", value: 8 },
+    { label: "Thicc", value: 16 }, 
+    { label: "Thiccer", value: 28 }, 
+    { label: "XTRA THICC", value: 48 }
   ];
 
   // Get numeric border thickness value

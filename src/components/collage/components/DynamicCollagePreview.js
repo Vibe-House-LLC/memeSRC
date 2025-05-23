@@ -69,20 +69,20 @@ const getBorderPixelSize = (borderThickness) => {
     return borderThickness;
   }
   
-  // Default thickness map
+  // Default thickness map - updated to even thicker values
   const thicknessMap = {
     'none': 0,
-    'thin': 6,
-    'medium': 16,
-    'thicc': 40,
-    'thiccer': 80,
-    'xtra thicc': 120,
-    'XTRA THICC': 120
+    'thin': 4,
+    'medium': 8,
+    'thicc': 16,
+    'thiccer': 28,
+    'xtra thicc': 48,
+    'XTRA THICC': 48
   };
   
   // Normalize and look up in map
   const normalizedKey = String(borderThickness).toLowerCase();
-  return thicknessMap[normalizedKey] || 6; // Default to thin if not found
+  return thicknessMap[normalizedKey] || 1; // Default to thin if not found
 };
 
 /**
@@ -422,19 +422,8 @@ const DynamicCollagePreview = ({
   // Don't render anything if we don't have a template or layout config
   if (!selectedTemplate || !layoutConfig) return null;
 
-  // Calculate the gap size with a custom formula that better differentiates thickness levels
-  const getScaledGapSize = (pixels) => {
-    if (pixels === 0) return 0; // No gap when no border - truly edge to edge
-    
-    // Custom scale that differentiates between thickness levels
-    if (pixels <= 6) return 1; // Thin
-    if (pixels <= 16) return 2; // Medium
-    if (pixels <= 40) return 4; // Thicc
-    if (pixels <= 80) return 6; // Thiccer
-    return 8; // XTRA THICC
-  };
-  
-  const gapSize = getScaledGapSize(borderPixels);
+  // Use the actual pixel values directly instead of scaling them
+  const gapSize = borderPixels; // Use borderPixels directly (0, 1, 3, 6, 12, 24)
 
   return (
     <Box
@@ -464,8 +453,8 @@ const DynamicCollagePreview = ({
           right: 0,
           bottom: 0,
           display: 'grid',
-          gap: gapSize, // Apply border thickness as gap
-          padding: borderPixels > 0 ? gapSize : 0, // No padding when no border for true edge-to-edge
+          gap: `${gapSize}px`, // Apply border thickness as gap with explicit px unit
+          padding: borderPixels > 0 ? `${gapSize}px` : 0, // Use px unit for padding too
           backgroundColor: borderPixels > 0 ? borderColor : 'transparent', // Apply border color as background
           ...getGridConfig()
         }}
