@@ -281,7 +281,7 @@ export default function CollagePage() {
       ) : (
         <Box component="main" sx={{ 
           flexGrow: 1,
-          pb: isMobile && !showResultDialog && allPanelsHaveImages ? 10 : (isMobile ? 3 : 6),
+          pb: !showResultDialog && allPanelsHaveImages ? 10 : (isMobile ? 3 : 6),
           width: '100%',
           overflowX: 'hidden',
           minHeight: '100vh',
@@ -332,8 +332,8 @@ export default function CollagePage() {
               onBackToEdit={handleBackToEdit}
             />
 
-            {/* Bottom Action Bar for Mobile */}
-            {isMobile && !showResultDialog && allPanelsHaveImages && (
+            {/* Bottom Action Bar */}
+            {!showResultDialog && allPanelsHaveImages && (
               <Slide direction="up" in={showAnimatedButton} timeout={600}>
                 <Box
                   sx={{
@@ -345,20 +345,23 @@ export default function CollagePage() {
                     bgcolor: 'background.paper',
                     borderTop: 1,
                     borderColor: 'divider',
-                    p: 2,
+                    p: isMobile ? 2 : 3,
                     boxShadow: '0 -8px 32px rgba(0,0,0,0.15)',
                     backdropFilter: 'blur(20px)',
+                    display: 'flex',
+                    justifyContent: 'center',
                   }}
                 >
                   <Button
                     variant="contained"
                     onClick={handleFloatingButtonClick}
                     disabled={isCreatingCollage}
-                    fullWidth
+                    fullWidth={isMobile}
                     size="large"
                     startIcon={<Save />}
                     sx={{
                       py: 2,
+                      px: isMobile ? 3 : 6,
                       fontSize: '1.2rem',
                       fontWeight: 700,
                       textTransform: 'none',
@@ -368,6 +371,7 @@ export default function CollagePage() {
                       boxShadow: '0 6px 20px rgba(107, 66, 161, 0.4)',
                       color: '#fff',
                       transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                      maxWidth: isMobile ? 'none' : '400px',
                       '&:hover': {
                         background: 'linear-gradient(45deg, #472a69 30%, #7b4cb8 90%)',
                         boxShadow: '0 8px 25px rgba(107, 66, 161, 0.6)',

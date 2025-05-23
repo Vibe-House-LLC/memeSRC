@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Box, Typography, Paper, useMediaQuery, Button } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import { PhotoCamera, Save } from '@mui/icons-material';
+import { PhotoCamera } from '@mui/icons-material';
 
 // Import our new dynamic CollagePreview component
 import CollagePreview from '../components/CollagePreview';
@@ -219,7 +219,7 @@ const CollageImagesStep = ({
               gap: 2
             }}>
               {/* Progress indicator */}
-              <Box sx={{ 
+              <Box sx={{
                 p: 1.5,
                 bgcolor: allPanelsHaveImages ? 'success.50' : 'info.50',
                 borderRadius: 2,
@@ -237,35 +237,6 @@ const CollageImagesStep = ({
                   {allPanelsHaveImages && ' ✓'}
                 </Typography>
               </Box>
-
-              {/* Generate Button */}
-              {allPanelsHaveImages && (
-                <Button 
-                  variant="contained" 
-                  color="primary" 
-                  startIcon={<Save />}
-                  onClick={saveCollageAsImage}
-                  size={isMobile ? "large" : "large"}
-                  fullWidth={isMobile}
-                  sx={{ 
-                    borderRadius: 2,
-                    py: isMobile ? 1.5 : 1,
-                    px: isMobile ? 3 : 2,
-                    fontSize: isMobile ? '1rem' : '0.875rem',
-                    fontWeight: 600,
-                    textTransform: 'none',
-                    boxShadow: 2,
-                    '&:hover': {
-                      boxShadow: 4,
-                      transform: 'translateY(-1px)'
-                    },
-                    transition: 'all 0.2s ease-in-out'
-                  }}
-                  aria-label="Generate collage and open preview dialog"
-                >
-                  Generate Collage
-                </Button>
-              )}
             </Box>
           );
         })()}
