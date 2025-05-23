@@ -227,7 +227,7 @@ const UpgradeMessage = ({
                       maxWidth: 430,
                       width: '98%',
                       backgroundColor: theme.palette.mode === 'dark' ? '#000000' : '#000000',
-                      border: `3px solid ${theme.palette.primary.main}40`,
+                      border: `3px solid ${theme.palette.primary.main}30`,
                       overflow: 'hidden',
                       boxShadow: theme.palette.mode === 'dark' 
                         ? `0 25px 50px rgba(0,0,0,0.7), 0 0 30px rgba(138, 43, 226, 0.2)`
@@ -307,6 +307,50 @@ const UpgradeMessage = ({
                       }}
                     />
                   </Paper>
+                </Box>
+              </Grid>
+
+              {/* Scroll Indicator for Mobile */}
+              <Grid item xs={12}>
+                <Box sx={{ 
+                  display: 'flex', 
+                  justifyContent: 'center',
+                  mt: 0.5,
+                  mb: 0.5
+                }}>
+                  <Box
+                    onClick={scrollToProCard}
+                    sx={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      cursor: 'pointer',
+                      py: 0.5,
+                      transition: 'opacity 0.3s ease',
+                      '&:hover': {
+                        opacity: 0.7,
+                      }
+                    }}
+                  >
+                    <Typography 
+                      variant="body2" 
+                      sx={{ 
+                        color: 'text.secondary',
+                        fontSize: '0.9rem',
+                        fontWeight: 400,
+                        mb: 0.5
+                      }}
+                    >
+                      Get Early Access
+                    </Typography>
+                    <Box sx={{ 
+                      animation: 'bounce 2s infinite',
+                      color: 'text.secondary',
+                      fontSize: '1.2rem'
+                    }}>
+                      ↓
+                    </Box>
+                  </Box>
                 </Box>
               </Grid>
 
@@ -491,7 +535,7 @@ const UpgradeMessage = ({
                         zIndex: 1
                       }
                     }}
-                    onClick={scrollToProCard}
+                    onClick={openSubscriptionDialog}
                   >
                     {/* Early Access Corner Banner */}
                     <Box
