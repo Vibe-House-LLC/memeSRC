@@ -1,6 +1,6 @@
 /* eslint-disable jsx-a11y/click-events-have-key-events */
 /* eslint-disable jsx-a11y/no-noninteractive-element-interactions */
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import {
   Dialog,
@@ -24,6 +24,30 @@ export default function CollageResultDialog({ open, onClose, finalImage }) {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [imageUrl, setImageUrl] = useState(null);
+
+  // Convert blob to object URL or use data URL directly
+  useEffect(() => {
+    if (!finalImage) {
+      setImageUrl(null);
+      return undefined;
+    }
+
+    // If finalImage is a blob, create object URL
+    if (finalImage instanceof Blob) {
+      const objectUrl = URL.createObjectURL(finalImage);
+      setImageUrl(objectUrl);
+      
+      // Cleanup function to revoke object URL
+      return () => {
+        URL.revokeObjectURL(objectUrl);
+      };
+    }
+    
+    // If it's already a data URL or regular URL, use it directly
+    setImageUrl(finalImage);
+    return undefined;
+  }, [finalImage]);
 
   // Touch/swipe state for gesture handling
   const [touchStart, setTouchStart] = useState({ y: 0, time: 0 });
@@ -185,9 +209,9 @@ export default function CollageResultDialog({ open, onClose, finalImage }) {
               onClick={handleBackdropClick} // Allow clicking container area to close dialog
               aria-label="Image container - tap outside image to close"
             >
-              {finalImage && (
+              {imageUrl && (
                 <img
-                  src={finalImage}
+                  src={imageUrl}
                   alt="Generated Collage"
                   style={{
                     maxWidth: '100%',
@@ -266,7 +290,7 @@ export default function CollageResultDialog({ open, onClose, finalImage }) {
 CollageResultDialog.propTypes = {
   open: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
-  finalImage: PropTypes.string,
+  finalImage: PropTypes.oneOfType([PropTypes.string, PropTypes.instanceOf(Blob)]),
 };
 
 CollageResultDialog.defaultProps = {

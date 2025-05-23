@@ -203,10 +203,11 @@ export default function CollagePage() {
       });
       
       const croppedCanvas = cropCanvas(canvas);
-      const dataUrl = croppedCanvas.toDataURL('image/png');
-      setFinalImage(dataUrl);
-      setShowResultDialog(true);
-      debugLog("Floating button: Collage generated, cropped, and inline result shown.");
+      croppedCanvas.toBlob((blob) => {
+        setFinalImage(blob);
+        setShowResultDialog(true);
+        debugLog("Floating button: Collage generated, cropped, and inline result shown.");
+      }, 'image/png');
 
     } catch (err) {
       console.error('Error generating collage:', err);
