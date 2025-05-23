@@ -33,6 +33,9 @@ export const useCollageState = () => {
     selectedTemplate: null
   });
 
+  // Ref to track previous border thickness for transform adjustment
+  const prevBorderThickness = useRef(null);
+
   useEffect(() => {
     localStorage.setItem('meme-src-collage-custom-color', borderColor);
   }, [borderColor]);
@@ -58,6 +61,19 @@ export const useCollageState = () => {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Run only once
+
+  // Adjust transforms when border thickness changes
+  useEffect(() => {
+    if (prevBorderThickness.current !== null && prevBorderThickness.current !== borderThickness) {
+      // Simply reset transforms when border thickness changes
+      // Let DynamicCollagePreview recalculate initial scale for new panel sizes
+      resetPanelTransforms();
+      if (DEBUG_MODE) {
+        console.log(`Border thickness changed from ${prevBorderThickness.current} to ${borderThickness}, resetting transforms`);
+      }
+    }
+    prevBorderThickness.current = borderThickness;
+  }, [borderThickness, resetPanelTransforms, DEBUG_MODE]);
 
   // Select the most suitable template when panel count or aspect ratio changes
   useEffect(() => {

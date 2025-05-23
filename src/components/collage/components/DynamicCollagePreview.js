@@ -424,7 +424,7 @@ const DynamicCollagePreview = ({
 
   // Calculate the gap size with a custom formula that better differentiates thickness levels
   const getScaledGapSize = (pixels) => {
-    if (pixels === 0) return 1; // Default gap when no border
+    if (pixels === 0) return 0; // No gap when no border - truly edge to edge
     
     // Custom scale that differentiates between thickness levels
     if (pixels <= 6) return 1; // Thin
@@ -465,7 +465,7 @@ const DynamicCollagePreview = ({
           bottom: 0,
           display: 'grid',
           gap: gapSize, // Apply border thickness as gap
-          padding: borderPixels > 0 ? gapSize : 1, // Adjust padding based on border thickness
+          padding: borderPixels > 0 ? gapSize : 0, // No padding when no border for true edge-to-edge
           backgroundColor: borderPixels > 0 ? borderColor : 'transparent', // Apply border color as background
           ...getGridConfig()
         }}
