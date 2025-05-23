@@ -95,6 +95,96 @@ const getBorderPixelSize = (borderThickness, componentWidth = 400) => {
 };
 
 /**
+ * Calculate the optimal transform (scale and position) to minimize blank space in the panel
+ * This function ensures the scaled image covers as much of the panel as possible,
+ * adjusting both scale and position as needed.
+ */
+const calculateSnapToFillTransform = (imageNaturalSize, panelSize, currentScale, currentPositionX, currentPositionY) => {
+  if (!imageNaturalSize || !panelSize || !currentScale) {
+    return { scale: currentScale, positionX: currentPositionX, positionY: currentPositionY };
+  }
+
+  // Calculate minimum scale needed to cover the panel (like object-fit: cover)
+  const imageAspectRatio = imageNaturalSize.width / imageNaturalSize.height;
+  const panelAspectRatio = panelSize.width / panelSize.height;
+  
+  let minScale;
+  if (imageAspectRatio > panelAspectRatio) {
+    // Image is wider than panel, scale to fit height
+    minScale = panelSize.height / imageNaturalSize.height;
+  } else {
+    // Image is taller than panel, scale to fit width
+    minScale = panelSize.width / imageNaturalSize.width;
+  }
+
+  // Determine optimal scale - use current scale if it's sufficient, otherwise use minimum
+  const optimalScale = Math.max(currentScale, minScale);
+  
+  // Calculate the scaled image dimensions with optimal scale
+  const scaledImageWidth = imageNaturalSize.width * optimalScale;
+  const scaledImageHeight = imageNaturalSize.height * optimalScale;
+
+  // Calculate the bounds for positioning (how far we can move the image)
+  const maxOffsetX = scaledImageWidth - panelSize.width;
+  const maxOffsetY = scaledImageHeight - panelSize.height;
+
+  // Calculate the optimal position to fill the panel
+  let optimalX = currentPositionX;
+  let optimalY = currentPositionY;
+
+  // If scale changed, we need to adjust position proportionally to maintain roughly the same view
+  if (optimalScale !== currentScale) {
+    const scaleRatio = optimalScale / currentScale;
+    optimalX = currentPositionX * scaleRatio;
+    optimalY = currentPositionY * scaleRatio;
+  }
+
+  // For X axis
+  if (maxOffsetX <= 0) {
+    // Image is smaller than or equal to panel width - center it
+    optimalX = (panelSize.width - scaledImageWidth) / 2;
+  } else {
+    // Image is larger than panel - clamp position to avoid blank space
+    const minX = -maxOffsetX; // Most negative position (image right edge at panel right)
+    const maxX = 0;           // Most positive position (image left edge at panel left)
+    optimalX = Math.max(minX, Math.min(maxX, optimalX));
+  }
+
+  // For Y axis
+  if (maxOffsetY <= 0) {
+    // Image is smaller than or equal to panel height - center it
+    optimalY = (panelSize.height - scaledImageHeight) / 2;
+  } else {
+    // Image is larger than panel - clamp position to avoid blank space
+    const minY = -maxOffsetY; // Most negative position (image bottom edge at panel bottom)
+    const maxY = 0;           // Most positive position (image top edge at panel top)
+    optimalY = Math.max(minY, Math.min(maxY, optimalY));
+  }
+
+  // Debug logging for development
+  if (process.env.NODE_ENV === 'development') {
+    const scaleChanged = Math.abs(optimalScale - currentScale) > 0.01;
+    const deltaX = Math.abs(optimalX - currentPositionX);
+    const deltaY = Math.abs(optimalY - currentPositionY);
+    if (scaleChanged || deltaX > 0.1 || deltaY > 0.1) {
+      console.log('[Snap to Fill Transform]', {
+        imageSize: { width: scaledImageWidth, height: scaledImageHeight },
+        panelSize,
+        currentTransform: { scale: currentScale, x: currentPositionX, y: currentPositionY },
+        optimalTransform: { scale: optimalScale, x: optimalX, y: optimalY },
+        changes: { 
+          scaleChanged, 
+          positionDelta: { x: deltaX, y: deltaY },
+          minScaleNeeded: minScale
+        }
+      });
+    }
+  }
+
+  return { scale: optimalScale, positionX: optimalX, positionY: optimalY };
+};
+
+/**
  * DynamicCollagePreview - A component for rendering a dynamic preview of the collage layout
  * This is extracted from the PlaygroundCollagePage and optimized for reuse
  */
@@ -502,21 +592,75 @@ const DynamicCollagePreview = ({
           centerZoomedOut={false}
           onZoomStop={(ref) => {
             if (updatePanelTransform) {
-              updatePanelTransform(panelId, { 
-                scale: ref.state.scale,
-                positionX: ref.state.positionX,
-                positionY: ref.state.positionY,
-              });
+              // Calculate optimal position to fill gaps after zooming
+              const snapPosition = calculateSnapToFillTransform(
+                imageNaturalSize,
+                panelSize,
+                ref.state.scale,
+                ref.state.positionX,
+                ref.state.positionY
+              );
+              
+              const newTransform = {
+                scale: snapPosition.scale,
+                positionX: snapPosition.positionX,
+                positionY: snapPosition.positionY,
+              };
+              
+              // Only apply snap if position or scale actually changed (avoid unnecessary updates)
+              const scaleChanged = Math.abs(snapPosition.scale - ref.state.scale) > 0.01;
+              const positionChanged = 
+                Math.abs(snapPosition.positionX - ref.state.positionX) > 0.1 ||
+                Math.abs(snapPosition.positionY - ref.state.positionY) > 0.1;
+              
+              if ((scaleChanged || positionChanged) && transformRef.current) {
+                // Smoothly animate to the snap position
+                transformRef.current.setTransform(
+                  snapPosition.positionX,
+                  snapPosition.positionY,
+                  snapPosition.scale,
+                  200 // 200ms animation duration
+                );
+              }
+              
+              updatePanelTransform(panelId, newTransform);
             }
             resetTimeoutForPanel(panelId);
           }}
           onPanningStop={(ref) => {
             if (updatePanelTransform) {
-              updatePanelTransform(panelId, { 
-                scale: ref.state.scale,
-                positionX: ref.state.positionX,
-                positionY: ref.state.positionY,
-              });
+              // Calculate optimal position to fill gaps
+              const snapPosition = calculateSnapToFillTransform(
+                imageNaturalSize,
+                panelSize,
+                ref.state.scale,
+                ref.state.positionX,
+                ref.state.positionY
+              );
+              
+              const newTransform = {
+                scale: snapPosition.scale,
+                positionX: snapPosition.positionX,
+                positionY: snapPosition.positionY,
+              };
+              
+              // Only apply snap if position or scale actually changed (avoid unnecessary updates)
+              const scaleChanged = Math.abs(snapPosition.scale - ref.state.scale) > 0.01;
+              const positionChanged = 
+                Math.abs(snapPosition.positionX - ref.state.positionX) > 0.1 ||
+                Math.abs(snapPosition.positionY - ref.state.positionY) > 0.1;
+              
+              if ((scaleChanged || positionChanged) && transformRef.current) {
+                // Smoothly animate to the snap position
+                transformRef.current.setTransform(
+                  snapPosition.positionX,
+                  snapPosition.positionY,
+                  snapPosition.scale,
+                  200 // 200ms animation duration
+                );
+              }
+              
+              updatePanelTransform(panelId, newTransform);
             }
             resetTimeoutForPanel(panelId);
           }}
