@@ -602,23 +602,31 @@ const DynamicCollagePreview = ({
           onTouchEnd={handleRepositionClick}
           sx={{ 
             position: 'absolute', 
-            top: 5, 
-            right: 5,
+            top: 8, 
+            right: 8,
+            width: 48,
+            height: 48,
             backgroundColor: isTransformEnabled 
-              ? 'rgba(76, 175, 80, 0.9)' // Green when in edit mode
-              : theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.7)' : 'rgba(33, 150, 243, 0.7)', // Blue when not in edit mode
+              ? '#4CAF50' // Solid green when in edit mode
+              : '#2196F3', // Solid blue when not in edit mode
             color: '#ffffff',
+            border: '2px solid #ffffff',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.2)',
             '&:hover': {
               backgroundColor: isTransformEnabled
-                ? 'rgba(76, 175, 80, 1)' // Darker green on hover
-                : theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.9)' : 'rgba(33, 150, 243, 0.9)', // Darker blue on hover
+                ? '#388E3C' // Darker green on hover
+                : '#1976D2', // Darker blue on hover
+              transform: 'scale(1.1)',
+              boxShadow: '0 6px 16px rgba(0, 0, 0, 0.5), 0 3px 6px rgba(0, 0, 0, 0.3)',
+            },
+            '&:active': {
               transform: 'scale(1.05)',
             },
             zIndex: 10, // Higher than overlay
-            transition: 'all 0.2s ease',
+            transition: 'all 0.2s ease-in-out',
           }}
         >
-          {isTransformEnabled ? <Check fontSize="small" /> : <OpenWith fontSize="small" />}
+          {isTransformEnabled ? <Check sx={{ fontSize: 24 }} /> : <OpenWith sx={{ fontSize: 20 }} />}
         </IconButton>
       </Box>
     );
@@ -633,14 +641,24 @@ const DynamicCollagePreview = ({
         }
       }}
       sx={{
-        backgroundColor: theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.7)' : 'rgba(33, 150, 243, 0.7)',
+        width: 64,
+        height: 64,
+        backgroundColor: '#2196F3', // Solid blue background
         color: '#ffffff',
+        border: '3px solid #ffffff',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.2)',
         '&:hover': {
-          backgroundColor: theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.9)' : 'rgba(33, 150, 243, 0.9)',
+          backgroundColor: '#1976D2',
+          transform: 'scale(1.1)',
+          boxShadow: '0 6px 16px rgba(0, 0, 0, 0.5), 0 3px 6px rgba(0, 0, 0, 0.3)',
         },
+        '&:active': {
+          transform: 'scale(1.05)',
+        },
+        transition: 'all 0.2s ease-in-out',
       }}
     >
-      <Add />
+      <Add sx={{ fontSize: 32 }} />
     </IconButton>
   );
 
