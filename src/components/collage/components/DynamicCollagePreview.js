@@ -485,7 +485,6 @@ const DynamicCollagePreview = ({
                 sx={{
                   gridArea: area,
                   backgroundColor: hasImage ? (theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)') : 'rgba(0,0,0,0.3)',
-                  borderRadius: 1,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -502,67 +501,67 @@ const DynamicCollagePreview = ({
               </Box>
             );
           })
-        ) : layoutConfig.items && layoutConfig.items.length > 0 ? (
-          // Render using items with potential gridArea properties
-          layoutConfig.items.slice(0, panelCount).map((item, index) => {
-            // Get panel ID from template or fallback to a default one
-            const panelId = selectedTemplate?.layout?.panels?.[index]?.id || `panel-${index + 1}`;
-            // Check if this panel has an associated image
-            const hasImage = panelImageMapping[panelId] !== undefined && images[panelImageMapping[panelId]];
-            
-            return (
-              <Box
-                key={`panel-item-${index}`}
-                sx={{
-                  ...(item.gridArea ? { gridArea: item.gridArea } : {}),
-                  backgroundColor: hasImage ? (theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)') : 'rgba(0,0,0,0.3)',
-                  borderRadius: 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: !hasImage && onPanelClick ? 'pointer' : 'default',
-                  overflow: 'hidden',
-                  position: 'relative',
-                  '&:hover': {
-                    backgroundColor: hasImage ? theme.palette.action.hover : 'rgba(0,0,0,0.4)',
-                  },
-                }}
-                onClick={() => !hasImage && onPanelClick && onPanelClick(index, panelId)} // Pass BOTH index and panelId
-              >
-                {hasImage ? <RenderImage index={index} panelId={panelId} /> : <RenderAddButton index={index} panelId={panelId} />}
-              </Box>
-            );
-          })
         ) : (
-          // Fallback to simple grid
-          Array.from({ length: panelCount }).map((_, index) => {
-            // Create a panel ID for fallback mode
-            const panelId = `panel-${index + 1}`;
-            // Check if this panel has an associated image
-            const hasImage = panelImageMapping[panelId] !== undefined && images[panelImageMapping[panelId]];
-            
-            return (
-              <Box
-                key={`panel-${index}`}
-                sx={{
-                  backgroundColor: hasImage ? (theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)') : 'rgba(0,0,0,0.3)',
-                  borderRadius: 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: !hasImage && onPanelClick ? 'pointer' : 'default',
-                  overflow: 'hidden',
-                  position: 'relative',
-                  '&:hover': {
-                    backgroundColor: hasImage ? theme.palette.action.hover : 'rgba(0,0,0,0.4)',
-                  },
-                }}
-                onClick={() => !hasImage && onPanelClick && onPanelClick(index, panelId)} // Pass BOTH index and panelId
-              >
-                {hasImage ? <RenderImage index={index} panelId={panelId} /> : <RenderAddButton index={index} panelId={panelId} />}
-              </Box>
-            );
-          })
+          layoutConfig.items ? (
+            // Render using items with potential gridArea properties
+            layoutConfig.items.slice(0, panelCount).map((item, index) => {
+              // Get panel ID from template or fallback to a default one
+              const panelId = selectedTemplate?.layout?.panels?.[index]?.id || `panel-${index + 1}`;
+              // Check if this panel has an associated image
+              const hasImage = panelImageMapping[panelId] !== undefined && images[panelImageMapping[panelId]];
+              
+              return (
+                <Box
+                  key={`panel-item-${index}`}
+                  sx={{
+                    ...(item.gridArea ? { gridArea: item.gridArea } : {}),
+                    backgroundColor: hasImage ? (theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)') : 'rgba(0,0,0,0.3)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: !hasImage && onPanelClick ? 'pointer' : 'default',
+                    overflow: 'hidden',
+                    position: 'relative',
+                    '&:hover': {
+                      backgroundColor: hasImage ? theme.palette.action.hover : 'rgba(0,0,0,0.4)',
+                    },
+                  }}
+                  onClick={() => !hasImage && onPanelClick && onPanelClick(index, panelId)} // Pass BOTH index and panelId
+                >
+                  {hasImage ? <RenderImage index={index} panelId={panelId} /> : <RenderAddButton index={index} panelId={panelId} />}
+                </Box>
+              );
+            })
+          ) : (
+            // Fallback to simple grid
+            Array.from({ length: panelCount }).map((_, index) => {
+              // Create a panel ID for fallback mode
+              const panelId = `panel-${index + 1}`;
+              // Check if this panel has an associated image
+              const hasImage = panelImageMapping[panelId] !== undefined && images[panelImageMapping[panelId]];
+              
+              return (
+                <Box
+                  key={`panel-${index}`}
+                  sx={{
+                    backgroundColor: hasImage ? (theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)') : 'rgba(0,0,0,0.3)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: !hasImage && onPanelClick ? 'pointer' : 'default',
+                    overflow: 'hidden',
+                    position: 'relative',
+                    '&:hover': {
+                      backgroundColor: hasImage ? theme.palette.action.hover : 'rgba(0,0,0,0.4)',
+                    },
+                  }}
+                  onClick={() => !hasImage && onPanelClick && onPanelClick(index, panelId)} // Pass BOTH index and panelId
+                >
+                  {hasImage ? <RenderImage index={index} panelId={panelId} /> : <RenderAddButton index={index} panelId={panelId} />}
+                </Box>
+              );
+            })
+          )
         )}
       </Box>
     </Box>
