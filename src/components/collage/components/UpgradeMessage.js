@@ -101,8 +101,8 @@ const UpgradeMessage = ({
               gap: 1.5
             }}>
               <Dashboard sx={{ 
-                color: theme.palette.primary.main,
-                fontSize: isMobile ? '1.75rem' : '2.125rem'
+                color: '#fff',
+                fontSize: 40
               }} /> 
               <Box component="span">{featureName}</Box>
             </Box>
@@ -293,9 +293,10 @@ const UpgradeMessage = ({
                   <Grid container spacing={1.5}>
                     {[
                       "Multi-panel layouts", 
-                      "Custom aspect ratios", 
-                      "One-click downloads",
-                      "Early access to new features"
+                      "Common aspect ratios", 
+                      "Colored borders",
+                      "Ad free memeSRC",
+                      "All pro features"
                     ].map((feature, index) => (
                       <Grid item xs={12} key={index}>
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
