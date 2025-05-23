@@ -12,7 +12,7 @@ export const useCollageState = () => {
   const [selectedImages, setSelectedImages] = useState([]);
   // panelImageMapping still maps: { panelId: imageIndex }
   const [panelImageMapping, setPanelImageMapping] = useState({});
-  // panelTransforms maps: { panelId: { scale: number, positionX: number, positionY: number } }
+  // panelTransforms maps: { panelId: { scaleRatio: number, positionXPercent: number, positionYPercent: number } }
   const [panelTransforms, setPanelTransforms] = useState({});
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [selectedAspectRatio, setSelectedAspectRatio] = useState('portrait');
@@ -347,7 +347,7 @@ export const useCollageState = () => {
     // State
     selectedImages, // Now [{ originalUrl, displayUrl }, ...]
     panelImageMapping, // Still { panelId: imageIndex }
-    panelTransforms, // New: { panelId: { scale, positionX, positionY } }
+    panelTransforms, // New: { panelId: { scaleRatio: number, positionXPercent: number, positionYPercent: number } }
     selectedTemplate,
     setSelectedTemplate,
     selectedAspectRatio,
