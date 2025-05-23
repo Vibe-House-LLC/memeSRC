@@ -168,10 +168,14 @@ export default function CollagePage() {
     localStorage.setItem('memeSRC-collage-v2.7-welcome-seen', 'true');
     setShowWelcomeScreen(false);
     
-    // Smooth scroll to top of the page
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'
+    // Use requestAnimationFrame to ensure the DOM has updated before scrolling
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        window.scrollTo({
+          top: 0,
+          behavior: 'smooth'
+        });
+      }, 100); // Small delay to ensure the UI transition has started
     });
   };
 

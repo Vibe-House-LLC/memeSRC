@@ -141,6 +141,7 @@ const WelcomeMessage = ({
   const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
   const isSmall = useMediaQuery(theme.breakpoints.down('md'));
   const isStacked = useMediaQuery(theme.breakpoints.down('md')); // Elements are stacked when below md breakpoint
+  const isTabletConstrained = useMediaQuery(theme.breakpoints.between('sm', 800)); // Constrain card width on tablets
   
   // Add ref for the welcome card
   const welcomeCardRef = useRef(null);
@@ -202,6 +203,8 @@ const WelcomeMessage = ({
         </Box>
 
         
+
+        
         <Grid 
           container 
           spacing={isMobile ? 0 : 3}
@@ -216,7 +219,8 @@ const WelcomeMessage = ({
               alignItems: 'center',
               minHeight: isStacked ? '50vh' : '60vh',
               mx: (isStacked && !isMobile) ? '10%' : 0,
-              my: (isStacked && !isMobile) ? 2 : 0
+              my: (isStacked && !isMobile) ? 2 : 0,
+              px: isStacked ? (isSmall ? 2 : 3) : 0
             }}>
               <Paper 
                 elevation={isStacked ? 12 : 8} 
@@ -388,235 +392,267 @@ const WelcomeMessage = ({
             }}>
               <Paper 
                 ref={welcomeCardRef}
-                elevation={isStacked ? 6 : 3} 
+                elevation={0} 
                 sx={{ 
-                  p: isStacked ? 3 : (isSmall ? 3 : 4),
-                  borderRadius: 3, 
+                  p: isStacked ? 4 : (isSmall ? 4 : 5),
+                  borderRadius: 4, 
                   textAlign: 'center',
                   background: theme.palette.mode === 'dark' 
-                    ? `linear-gradient(145deg, rgba(35,35,45,${isStacked ? '0.95' : '1'}) 0%, rgba(25,25,35,${isStacked ? '0.95' : '1'}) 100%)` 
-                    : `linear-gradient(145deg, rgba(255,255,255,${isStacked ? '0.95' : '1'}) 0%, rgba(245,245,245,${isStacked ? '0.95' : '1'}) 100%)`,
-                  maxWidth: isStacked ? 420 : (isSmall ? 580 : 500),
-                  width: isStacked ? '98%' : '100%',
-                  border: `1px solid ${theme.palette.primary.main}${isStacked ? '30' : '20'}`,
-                  boxShadow: `0 ${isStacked ? 15 : 10}px ${isStacked ? 35 : 30}px ${theme.palette.mode === 'dark' ? `rgba(0,0,0,${isStacked ? '0.4' : '0.3'})` : `rgba(0,0,0,${isStacked ? '0.15' : '0.1'})`}`,
-                  backdropFilter: isStacked ? 'blur(10px)' : 'none'
+                    ? `linear-gradient(135deg, 
+                        rgba(30,30,40,0.95) 0%, 
+                        rgba(20,20,30,0.98) 25%,
+                        rgba(25,25,35,1) 50%,
+                        rgba(15,15,25,0.98) 75%,
+                        rgba(20,20,30,0.95) 100%)` 
+                    : `linear-gradient(135deg, 
+                        rgba(255,255,255,0.95) 0%, 
+                        rgba(250,250,255,0.98) 25%,
+                        rgba(245,245,255,1) 50%,
+                        rgba(240,240,250,0.98) 75%,
+                        rgba(250,250,255,0.95) 100%)`,
+                  maxWidth: isStacked ? (isTabletConstrained ? '500px' : '100%') : (isSmall ? 600 : 520),
+                  width: '100%',
+                  border: theme.palette.mode === 'dark' 
+                    ? `2px solid rgba(138, 43, 226, 0.3)`
+                    : `2px solid rgba(138, 43, 226, 0.15)`,
+                  boxShadow: theme.palette.mode === 'dark'
+                    ? `0 25px 60px rgba(0,0,0,0.6), 
+                       0 15px 35px rgba(0,0,0,0.4),
+                       0 5px 15px rgba(138, 43, 226, 0.3),
+                       inset 0 1px 0 rgba(255,255,255,0.1)`
+                    : `0 25px 60px rgba(0,0,0,0.08), 
+                       0 15px 35px rgba(0,0,0,0.05),
+                       0 5px 15px rgba(138, 43, 226, 0.15),
+                       inset 0 1px 0 rgba(255,255,255,0.8)`,
+                  backdropFilter: 'blur(20px) saturate(150%)',
+                  position: 'relative',
+                  overflow: 'hidden',
+                                    '&::before': {
+                    content: '""',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: '1px',
+                    background: theme.palette.mode === 'dark'
+                      ? 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)'
+                      : 'linear-gradient(90deg, transparent, rgba(138, 43, 226, 0.3), transparent)',
+                  }
                 }}
               >
-                <Stack spacing={isStacked ? 2.5 : (isSmall ? 2.5 : 3)} justifyContent="center" alignItems="center">
+                <Stack spacing={isStacked ? 3 : (isSmall ? 3.5 : 4)} justifyContent="center" alignItems="center">
                   
-                  <Box sx={{ position: 'relative', display: 'flex', justifyContent: 'center' }}>
+                  {/* Clean Logo Section */}
+                  <Box sx={{ 
+                    display: 'flex', 
+                    justifyContent: 'center',
+                    mb: 1
+                  }}>
                     <img
                       src="/assets/memeSRC-white.svg"
                       alt="memeSRC logo"
-                      style={{ height: isStacked ? 44 : 48 }}
-                    />
-                    <Box 
-                      sx={{ 
-                        position: 'absolute', 
-                        top: isStacked ? -8 : -10, 
-                        right: isStacked ? -8 : -10, 
-                        bgcolor: '#4CAF50',
-                        color: '#fff',
-                        borderRadius: '50%',
-                        width: isStacked ? 24 : 28,
-                        height: isStacked ? 24 : 28,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
+                      style={{ 
+                        height: isStacked ? 52 : 56,
+                        filter: theme.palette.mode === 'dark' ? 'none' : 'brightness(0.1)'
                       }}
-                    >
-                      <AutoAwesome sx={{ fontSize: isStacked ? 14 : 16 }} />
-                    </Box>
+                    />
                   </Box>
                   
-                  <Box>
+                  {/* Enhanced Title Section */}
+                  <Box sx={{ textAlign: 'center', position: 'relative' }}>
                     <Typography 
-                      variant={isStacked ? "h5" : (isSmall ? "h5" : "h4")}
-                      fontWeight="700" 
-                      color="primary" 
-                      gutterBottom
-                      sx={isStacked ? { fontSize: '1.4rem' } : {}}
+                      variant={isStacked ? "h4" : (isSmall ? "h4" : "h3")}
+                      fontWeight="800" 
+                      sx={{
+                        fontSize: isStacked ? '1.8rem' : (isSmall ? '2rem' : '2.2rem'),
+                        background: theme.palette.mode === 'dark'
+                          ? 'linear-gradient(135deg, #BB86FC 0%, #7C4DFF 50%, #651FFF 100%)'
+                          : 'linear-gradient(135deg, #7B1FA2 0%, #8E24AA 50%, #9C27B0 100%)',
+                        backgroundClip: 'text',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                        textShadow: 'none',
+                        mb: 1,
+                        letterSpacing: '-0.02em',
+                        lineHeight: 1.1
+                      }}
                     >
-                      WELCOME TO v2.7!
+                      WELCOME TO V2.7!
                     </Typography>
+
                     
                     <Typography 
-                      variant={isStacked ? "body1" : (isSmall ? "body1" : "h6")}
-                      color="text.secondary"
+                      variant={isStacked ? "h6" : (isSmall ? "h6" : "h5")}
                       sx={{ 
-                        maxWidth: isStacked ? 'none' : '400px', 
+                        maxWidth: isStacked ? 'none' : '450px', 
                         mx: 'auto', 
-                        textAlign: 'center',
-                        fontSize: isStacked ? '0.95rem' : undefined,
-                        lineHeight: isStacked ? 1.5 : undefined,
-                        mb: 1
+                        textAlign: isStacked ? 'center' : 'left',
+                        fontSize: isStacked ? '1.1rem' : (isSmall ? '1.2rem' : '1.3rem'),
+                        lineHeight: 1.4,
+                        mb: 2,
+                        fontWeight: 500,
+                        color: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.8)'
                       }}
                     >
                       {isStacked 
-                        ? "A complete overhaul of our collage tool - still in development, but you get early access!" 
-                        : "We've completely rebuilt the collage tool from the ground up. This is a total overhaul with new features, better performance, and modern design!"
+                        ? "The collage tool has been rebuilt in Early Access!" 
+                        : "The collage tool has been completely rebuilt in Early Access with new features, better control, and a fresh design."
                       }
                     </Typography>
 
-                    <Typography 
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ 
-                        fontStyle: 'italic',
-                        opacity: 0.8,
-                        fontSize: '0.85rem'
-                      }}
-                    >
-                      Your feedback helps us improve. Thanks for being a Pro subscriber!
-                    </Typography>
                   </Box>
                   
-                  <Button
-                    onClick={onContinue}
-                    variant="contained"
-                    size="large"
-                    color="primary"
-                    startIcon={<RocketLaunch />}
-                    sx={{ 
-                      fontSize: isStacked ? '1.1rem' : (isSmall ? 16 : 18), 
-                      px: isStacked ? undefined : 4,
-                      py: 1.5,
-                      borderRadius: isStacked ? 2.5 : 3,
-                      fontWeight: 700,
-                      textTransform: 'none',
-                      width: isStacked ? '100%' : '100%',
-                      maxWidth: isStacked ? undefined : '300px',
-                      background: 'linear-gradient(45deg, #4CAF50 30%, #66BB6A 90%)',
-                      border: '1px solid #81C784',
-                      boxShadow: '0 6px 20px rgba(76, 175, 80, 0.4)',
-                      color: '#fff',
-                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                      '&:hover': {
-                        background: 'linear-gradient(45deg, #388E3C 30%, #4CAF50 90%)',
-                        boxShadow: '0 8px 25px rgba(76, 175, 80, 0.6)',
-                        transform: 'translateY(-2px) scale(1.02)',
-                      },
-                      '&:active': {
-                        transform: 'translateY(0) scale(0.98)',
-                      }
-                    }}
-                  >
-                    Try the New Tool
-                  </Button>
+                  {/* Enhanced Call-to-Action Button */}
+                  <Box sx={{ position: 'relative', width: '100%', maxWidth: '320px' }}>
+                    <Button
+                      onClick={onContinue}
+                      variant="contained"
+                      size="large"
+                      startIcon={<RocketLaunch />}
+                      sx={{ 
+                        fontSize: isStacked ? '1.2rem' : (isSmall ? '1.25rem' : '1.3rem'), 
+                        px: 4,
+                        py: 2,
+                        borderRadius: 4,
+                        fontWeight: 700,
+                        textTransform: 'none',
+                        width: '100%',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        background: 'linear-gradient(135deg, #4CAF50 0%, #66BB6A 50%, #81C784 100%)',
+                        border: '2px solid rgba(255,255,255,0.2)',
+                        boxShadow: `0 10px 30px rgba(76, 175, 80, 0.4), 
+                                   0 5px 15px rgba(76, 175, 80, 0.3),
+                                   inset 0 1px 0 rgba(255,255,255,0.3)`,
+                        color: '#fff',
+                        transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                        '&:hover': {
+                          background: 'linear-gradient(135deg, #388E3C 0%, #4CAF50 50%, #66BB6A 100%)',
+                          boxShadow: `0 15px 40px rgba(76, 175, 80, 0.6), 
+                                     0 8px 25px rgba(76, 175, 80, 0.4),
+                                     inset 0 1px 0 rgba(255,255,255,0.4)`,
+                          transform: 'translateY(-3px) scale(1.02)',
+                        },
+                        '&:active': {
+                          transform: 'translateY(-1px) scale(0.98)',
+                        }
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        Make a Collage
+                      </Box>
+                    </Button>
+                  </Box>
 
+                  {/* Enhanced Features Grid */}
                   <Box sx={{ 
                     width: '100%', 
-                    pt: 1,
-                    maxWidth: isStacked ? 'none' : '400px'
+                    pt: 0.5,
+                    maxWidth: isStacked ? 'none' : '480px'
                   }}>
-                    <Stack spacing={1.5}>
+                    
+                    
+                    <Grid container spacing={1.5}>
                       {[
-                        "Completely rebuilt interface", 
-                        "New layout templates", 
-                        "Enhanced image controls",
-                        "Better mobile experience",
-                        "Pro early access feature"
+                        { icon: "🎨", text: "Rebuilt interface", highlight: false }, 
+                        { icon: "📐", text: "Easy process", highlight: false }, 
+                        { icon: "⚡", text: "Enhanced controls", highlight: false },
+                        { icon: "📱", text: "Mobile optimized", highlight: false }
                       ].map((feature, index) => (
-                        <Box 
-                          key={index}
-                          sx={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            py: 1,
-                            px: 1.5,
-                            borderRadius: 2,
-                            backgroundColor: theme.palette.mode === 'dark' 
-                              ? 'rgba(255,255,255,0.03)' 
-                              : 'rgba(0,0,0,0.02)',
-                            border: `1px solid ${theme.palette.mode === 'dark' 
-                              ? 'rgba(255,255,255,0.08)' 
-                              : 'rgba(0,0,0,0.08)'}`,
-                            transition: 'all 0.2s ease',
-                            '&:hover': {
-                              backgroundColor: theme.palette.mode === 'dark' 
-                                ? 'rgba(255,255,255,0.06)' 
-                                : 'rgba(0,0,0,0.04)'
-                            }
-                          }}
-                        >
-                          <CheckCircle 
-                            color="success" 
-                            sx={{ fontSize: 18, mr: 1.5, flexShrink: 0 }} 
-                          />
-                          <Typography 
-                            variant="body2" 
+                        <Grid item xs={12} sm={6} key={index}>
+                          <Box 
                             sx={{ 
-                              fontSize: '0.85rem',
-                              fontWeight: 500
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              p: 2,
+                              borderRadius: 3,
+                              background: feature.highlight 
+                                ? (theme.palette.mode === 'dark' 
+                                  ? 'linear-gradient(135deg, rgba(76, 175, 80, 0.15) 0%, rgba(76, 175, 80, 0.08) 100%)' 
+                                  : 'linear-gradient(135deg, rgba(76, 175, 80, 0.08) 0%, rgba(76, 175, 80, 0.03) 100%)')
+                                : (theme.palette.mode === 'dark' 
+                                  ? 'rgba(255,255,255,0.04)' 
+                                  : 'rgba(0,0,0,0.03)'),
+                              border: feature.highlight 
+                                ? (theme.palette.mode === 'dark' 
+                                  ? '1px solid rgba(76, 175, 80, 0.25)' 
+                                  : '1px solid rgba(76, 175, 80, 0.15)')
+                                : (theme.palette.mode === 'dark' 
+                                  ? '1px solid rgba(255,255,255,0.08)' 
+                                  : '1px solid rgba(0,0,0,0.06)'),
+                              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                              transform: 'translateY(0)',
+                              '&:hover': {
+                                backgroundColor: feature.highlight 
+                                  ? (theme.palette.mode === 'dark' 
+                                    ? 'rgba(76, 175, 80, 0.2)' 
+                                    : 'rgba(76, 175, 80, 0.12)')
+                                  : (theme.palette.mode === 'dark' 
+                                    ? 'rgba(255,255,255,0.08)' 
+                                    : 'rgba(0,0,0,0.06)'),
+                                transform: 'translateY(-2px)',
+                                boxShadow: feature.highlight 
+                                  ? '0 8px 25px rgba(76, 175, 80, 0.2)'
+                                  : '0 4px 15px rgba(0,0,0,0.1)'
+                              }
                             }}
                           >
-                            {feature}
-                          </Typography>
-                        </Box>
+                            <Box sx={{ 
+                              fontSize: '1.2rem', 
+                              mr: 1.5, 
+                              flexShrink: 0,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              width: 32,
+                              height: 32,
+                              borderRadius: '50%',
+                              background: feature.highlight 
+                                ? 'rgba(76, 175, 80, 0.2)' 
+                                : 'rgba(138, 43, 226, 0.1)'
+                            }}>
+                              {feature.icon}
+                            </Box>
+                            <Typography 
+                              variant="body2" 
+                              sx={{ 
+                                fontSize: '0.9rem',
+                                fontWeight: feature.highlight ? 600 : 500,
+                                color: feature.highlight 
+                                  ? (theme.palette.mode === 'dark' ? '#81C784' : '#2E7D32')
+                                  : 'text.primary'
+                              }}
+                            >
+                              {feature.text}
+                            </Typography>
+                          </Box>
+                        </Grid>
                       ))}
-                    </Stack>
-                  </Box>
-
-                  {/* Feedback request */}
-                  <Box sx={{ 
-                    mt: 2,
-                    p: 2,
-                    borderRadius: 2,
-                    backgroundColor: theme.palette.mode === 'dark' 
-                      ? 'rgba(255,193,7,0.1)' 
-                      : 'rgba(255,193,7,0.05)',
-                    border: `1px solid ${theme.palette.mode === 'dark' 
-                      ? 'rgba(255,193,7,0.3)' 
-                      : 'rgba(255,193,7,0.2)'}`,
-                    width: '100%'
-                  }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                      <Feedback sx={{ fontSize: 18, mr: 1, color: '#FF9800' }} />
-                      <Typography variant="body2" fontWeight="600" color="text.primary">
-                        Still in Development
-                      </Typography>
-                    </Box>
-                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8rem' }}>
-                      We'd love your feedback as we continue to improve this tool. Report bugs or suggestions through the usual channels!
+                    </Grid>
+                    <Typography 
+                      variant="body2" 
+                      sx={{ 
+                        textAlign: 'center',
+                        mt: 2.5,
+                        fontWeight: 600,
+                        color: 'text.secondary',
+                        fontSize: '0.9rem',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px'
+                      }}
+                    >
+                      ✅ Early Access with Pro
                     </Typography>
                   </Box>
+
+
                 </Stack>
               </Paper>
             </Box>
           </Grid>
         </Grid>
 
-        {/* Development Badge - Only show when not stacked */}
-        {!isStacked && (
-          <Box sx={{ 
-            mt: isSmall ? 3 : 4,
-            display: 'flex', 
-            justifyContent: 'center',
-          }}>
-            <Chip
-              icon={<Build sx={{ fontSize: '1rem !important' }} />}
-              label="Still in development • Pro subscribers get early access • Feedback welcome"
-              color="warning"
-              variant="outlined"
-              sx={{ 
-                py: isSmall ? 2 : 2.5,
-                px: 1, 
-                borderRadius: 3,
-                fontSize: isSmall ? '0.8rem' : '0.9rem',
-                fontWeight: 'medium',
-                backdropFilter: 'blur(8px)',
-                background: theme.palette.mode === 'dark' 
-                  ? 'rgba(255,193,7,0.1)' 
-                  : 'rgba(255,193,7,0.05)',
-                borderColor: 'warning.main',
-                '& .MuiChip-icon': { 
-                  color: 'warning.main'
-                }
-              }}
-            />
-          </Box>
-        )}
+
       </Container>
     </Box>
   );
