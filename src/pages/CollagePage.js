@@ -9,6 +9,7 @@ import { aspectRatioPresets, layoutTemplates } from "../components/collage/confi
 import UpgradeMessage from "../components/collage/components/UpgradeMessage";
 import { CollageLayout } from "../components/collage/components/CollageLayoutComponents";
 import { useCollageState } from "../components/collage/hooks/useCollageState";
+import EarlyAccessFeedback from "../components/collage/components/EarlyAccessFeedback";
 
 const DEBUG_MODE = process.env.NODE_ENV === 'development';
 const debugLog = (...args) => { if (DEBUG_MODE) console.log(...args); };
@@ -203,6 +204,8 @@ export default function CollagePage() {
                 Merge images together to create multi-panel memes
               </Typography>
             </Box>
+
+            <EarlyAccessFeedback />
 
             <CollageLayout
               settingsStepProps={settingsStepProps}
