@@ -180,8 +180,18 @@ export default function CollageResultDialog({ open, onClose, finalImage }) {
                 overflow: 'hidden',
                 backgroundColor: 'rgba(255, 255, 255, 0.95)',
                 backdropFilter: 'blur(10px)',
+                cursor: 'default',
               }}
+              role="button"
+              tabIndex={0}
               onClick={(e) => e.stopPropagation()} // Prevent closing when clicking on the image
+              onKeyDown={(e) => {
+                // Handle keyboard events for accessibility
+                if (e.key === ' ' || e.key === 'Enter') {
+                  e.stopPropagation();
+                }
+              }}
+              aria-label="Image container"
             >
               {finalImage && (
                 <img
