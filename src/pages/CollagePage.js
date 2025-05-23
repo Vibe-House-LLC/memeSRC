@@ -82,6 +82,13 @@ export default function CollagePage() {
     debugLog(`[PAGE DEBUG] Border settings: color=${borderColor}, thickness=${borderThickness} (${borderThicknessValue}px)`);
   }, [borderColor, borderThickness, borderThicknessValue]);
 
+  // Scroll to top when showing inline result
+  useEffect(() => {
+    if (showInlineResult) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [showInlineResult]);
+
   // Handler to go back to edit mode
   const handleBackToEdit = () => {
     setShowInlineResult(false);
