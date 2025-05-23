@@ -660,7 +660,11 @@ const DynamicCollagePreview = ({
       const currentX = ref.state.positionX;
       const currentY = ref.state.positionY;
       
-      // Calculate snap positions
+      // Calculate the scaled image dimensions
+      const scaledImageWidth = imageNaturalSize.width * currentScale;
+      const scaledImageHeight = imageNaturalSize.height * currentScale;
+      
+      // Calculate snap positions for center guides
       const centerSnap = calculateSnapToCenterPosition(
         imageNaturalSize, 
         panelSize, 
@@ -670,44 +674,101 @@ const DynamicCollagePreview = ({
         3 // Extremely small threshold - need to be almost perfect
       );
       
+      // Enforce fill boundaries - prevent gaps from forming
+      let constrainedX = currentX;
+      let constrainedY = currentY;
+      let boundaryEnforced = false;
+      
+      // Calculate maximum allowed offsets
+      const maxOffsetX = scaledImageWidth - panelSize.width;
+      const maxOffsetY = scaledImageHeight - panelSize.height;
+      
+      // Constrain X position to prevent gaps
+      if (maxOffsetX <= 0) {
+        // Image is smaller than panel width - center it
+        const centeredX = (panelSize.width - scaledImageWidth) / 2;
+        if (Math.abs(constrainedX - centeredX) > 1) {
+          constrainedX = centeredX;
+          boundaryEnforced = true;
+        }
+      } else {
+        // Image is larger than panel - clamp position to avoid blank space
+        const minX = -maxOffsetX; // Most negative position (image right edge at panel right)
+        const maxX = 0;           // Most positive position (image left edge at panel left)
+        const clampedX = Math.max(minX, Math.min(maxX, currentX));
+        if (Math.abs(constrainedX - clampedX) > 1) {
+          constrainedX = clampedX;
+          boundaryEnforced = true;
+        }
+      }
+      
+      // Constrain Y position to prevent gaps
+      if (maxOffsetY <= 0) {
+        // Image is smaller than panel height - center it
+        const centeredY = (panelSize.height - scaledImageHeight) / 2;
+        if (Math.abs(constrainedY - centeredY) > 1) {
+          constrainedY = centeredY;
+          boundaryEnforced = true;
+        }
+      } else {
+        // Image is larger than panel - clamp position to avoid blank space
+        const minY = -maxOffsetY; // Most negative position (image bottom edge at panel bottom)
+        const maxY = 0;           // Most positive position (image top edge at panel top)
+        const clampedY = Math.max(minY, Math.min(maxY, currentY));
+        if (Math.abs(constrainedY - clampedY) > 1) {
+          constrainedY = clampedY;
+          boundaryEnforced = true;
+        }
+      }
+      
+      // Calculate fill snap for guides (using constrained positions)
       const fillSnap = calculateSnapToFillTransform(
         imageNaturalSize,
         panelSize, 
         currentScale,
-        currentX,
-        currentY
+        constrainedX,
+        constrainedY
       );
       
       // Update snap guides visibility
       setSnapGuides({
         showHorizontalCenter: centerSnap.snappedHorizontally,
         showVerticalCenter: centerSnap.snappedVertically,
-        showFillGuides: Math.abs(fillSnap.positionX - currentX) > 15 || Math.abs(fillSnap.positionY - currentY) > 15
+        showFillGuides: Math.abs(fillSnap.positionX - constrainedX) > 15 || Math.abs(fillSnap.positionY - constrainedY) > 15
       });
       
-      // Apply real-time snap if close enough
+      // Priority 1: Apply center snap if close enough and it doesn't create gaps
       if (centerSnap.snappedToCenter && transformRef.current) {
-        // Smoothly move to snap position
+        // Check if center snapping would create gaps
+        const wouldCreateGaps = 
+          (scaledImageWidth < panelSize.width) || 
+          (scaledImageHeight < panelSize.height) ||
+          (centerSnap.positionX > 0) || 
+          (centerSnap.positionY > 0) ||
+          (centerSnap.positionX + scaledImageWidth < panelSize.width) ||
+          (centerSnap.positionY + scaledImageHeight < panelSize.height);
+        
+        if (!wouldCreateGaps) {
+          // Center snapping is safe, use it
+          transformRef.current.setTransform(
+            centerSnap.positionX,
+            centerSnap.positionY,
+            currentScale,
+            0 // No animation during dragging for immediate feedback
+          );
+          resetTimeoutForPanel(panelId);
+          return;
+        }
+      }
+      
+      // Priority 2: Enforce fill boundaries (prevent gaps)
+      if (boundaryEnforced && transformRef.current) {
         transformRef.current.setTransform(
-          centerSnap.positionX,
-          centerSnap.positionY,
+          constrainedX,
+          constrainedY,
           currentScale,
           0 // No animation during dragging for immediate feedback
         );
-      } else if (snapGuides.showFillGuides && transformRef.current) {
-        // Apply fill snapping if not center snapping and close to fill position
-        const isCloseToFillSnap = 
-          Math.abs(fillSnap.positionX - currentX) < 1 ||
-          Math.abs(fillSnap.positionY - currentY) < 1;
-          
-        if (isCloseToFillSnap) {
-          transformRef.current.setTransform(
-            fillSnap.positionX,
-            fillSnap.positionY,
-            fillSnap.scale,
-            0 // No animation during dragging for immediate feedback
-          );
-        }
       }
       
       resetTimeoutForPanel(panelId);
