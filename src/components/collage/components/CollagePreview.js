@@ -223,8 +223,6 @@ const CollagePreview = ({
         anchorPosition={menuPosition || undefined}
       >
         <MenuItem onClick={handleReplaceImage}>Replace image</MenuItem>
-        <MenuItem onClick={() => alert("TODO: Clear Frame")}>Clear frame</MenuItem>
-        <MenuItem onClick={() => alert("TODO: Rotate Image")}>Rotate image</MenuItem>
       </Menu>
     </Box>
   );
