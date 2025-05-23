@@ -1,8 +1,8 @@
 import { useContext, useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { useTheme } from "@mui/material/styles";
-import { useMediaQuery, Box, Container, Typography } from "@mui/material";
-import { Dashboard } from "@mui/icons-material";
+import { useMediaQuery, Box, Container, Typography, Button } from "@mui/material";
+import { Dashboard, Save } from "@mui/icons-material";
 import { UserContext } from "../UserContext";
 import { useSubscribeDialog } from "../contexts/useSubscribeDialog";
 import { aspectRatioPresets, layoutTemplates } from "../components/collage/config/CollageConfig";
@@ -70,6 +70,15 @@ export default function CollagePage() {
     updatePanelTransform,
   } = useCollageState();
 
+  // Check if all panels have images assigned (same logic as CollageImagesStep)
+  const mappedPanels = Object.keys(panelImageMapping || {}).length;
+  const allPanelsHaveImages = mappedPanels === panelCount && 
+    Object.values(panelImageMapping || {}).every(imageIndex => 
+      imageIndex !== undefined && 
+      imageIndex !== null && 
+      selectedImages[imageIndex]
+    );
+
   const borderThicknessOptions = [
     { label: "None", value: 0 }, { label: "Thin", value: 6 }, { label: "Medium", value: 16 },
     { label: "Thicc", value: 40 }, { label: "Thiccer", value: 80 }, { label: "XTRA THICC", value: 120 }
@@ -93,6 +102,77 @@ export default function CollagePage() {
   // Handler to go back to edit mode
   const handleBackToEdit = () => {
     setShowInlineResult(false);
+  };
+
+  // Handler for floating button - triggers collage generation
+  const handleFloatingButtonClick = async () => {
+    debugLog('Floating button: Generating collage...');
+    setIsCreatingCollage(true);
+    
+    const collagePreviewElement = document.querySelector('[data-testid="dynamic-collage-preview-root"]');
+
+    if (!collagePreviewElement) {
+      console.error('Collage preview element not found.');
+      setIsCreatingCollage(false);
+      return;
+    }
+
+    // Temporarily hide control icons by adding a CSS class
+    collagePreviewElement.classList.add('export-mode');
+
+    try {
+      const html2canvasModule = await import('html2canvas');
+      const html2canvas = html2canvasModule.default;
+      
+      const canvas = await html2canvas(collagePreviewElement, {
+        useCORS: true,
+        allowTaint: true,
+        logging: DEBUG_MODE,
+        scale: window.devicePixelRatio * 2,
+        onclone: (clonedDoc) => {
+          try {
+            const root = clonedDoc.querySelector('[data-testid="dynamic-collage-preview-root"]');
+            if (!root) return;
+
+            root.querySelectorAll('img').forEach((img) => {
+              const computed = clonedDoc.defaultView.getComputedStyle(img);
+              if (computed.getPropertyValue('object-fit') !== 'cover') return;
+
+              const src = img.getAttribute('src');
+              if (!src) return;
+
+              const replacement = clonedDoc.createElement('div');
+              replacement.style.width = '100%';
+              replacement.style.height = '100%';
+              replacement.style.backgroundImage = `url('${src}')`;
+              replacement.style.backgroundSize = 'cover';
+              replacement.style.backgroundPosition = 'center center';
+              replacement.style.backgroundRepeat = 'no-repeat';
+
+              const transform = computed.getPropertyValue('transform');
+              if (transform && transform !== 'none') {
+                replacement.style.transform = transform;
+              }
+
+              img.parentNode.replaceChild(replacement, img);
+            });
+          } catch (cloneErr) {
+            console.error('onclone processing failed', cloneErr);
+          }
+        },
+      });
+      
+      const dataUrl = canvas.toDataURL('image/png');
+      setFinalImage(dataUrl);
+      setShowInlineResult(true);
+      debugLog("Floating button: Collage generated and inline result shown.");
+
+    } catch (err) {
+      console.error('Error generating collage:', err);
+    } finally {
+      collagePreviewElement.classList.remove('export-mode');
+      setIsCreatingCollage(false);
+    }
   };
 
   // Props for settings step (selectedImages length might be useful for UI feedback)
@@ -165,7 +245,7 @@ export default function CollagePage() {
       ) : (
         <Box component="main" sx={{ 
           flexGrow: 1,
-          pb: isMobile ? 3 : 6,
+          pb: isMobile && !showInlineResult && allPanelsHaveImages ? 10 : (isMobile ? 3 : 6),
           width: '100%',
           overflowX: 'hidden',
           minHeight: '100vh',
@@ -216,6 +296,53 @@ export default function CollagePage() {
               showInlineResult={showInlineResult}
               onBackToEdit={handleBackToEdit}
             />
+
+            {/* Bottom Action Bar for Mobile */}
+            {isMobile && !showInlineResult && allPanelsHaveImages && (
+              <Box
+                sx={{
+                  position: 'fixed',
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  zIndex: 1000,
+                  bgcolor: 'background.paper',
+                  borderTop: 1,
+                  borderColor: 'divider',
+                  p: 2,
+                  boxShadow: '0 -4px 20px rgba(0,0,0,0.1)',
+                  backdropFilter: 'blur(10px)',
+                }}
+              >
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleFloatingButtonClick}
+                  disabled={isCreatingCollage}
+                  fullWidth
+                  size="large"
+                  startIcon={<Save />}
+                  sx={{
+                    py: 1.5,
+                    fontSize: '1.1rem',
+                    fontWeight: 600,
+                    textTransform: 'none',
+                    borderRadius: 2,
+                    boxShadow: 2,
+                    '&:hover': {
+                      boxShadow: 4,
+                    },
+                    '&:disabled': {
+                      bgcolor: 'action.disabled',
+                      color: 'action.disabled',
+                    }
+                  }}
+                  aria-label="Create and save collage"
+                >
+                  {isCreatingCollage ? 'Creating Collage...' : 'Create & Save Collage'}
+                </Button>
+              </Box>
+            )}
           </Container>
         </Box>
       )}
