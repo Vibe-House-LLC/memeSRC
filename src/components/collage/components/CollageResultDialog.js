@@ -180,16 +180,8 @@ export default function CollageResultDialog({ open, onClose, finalImage }) {
                 backgroundColor: 'transparent',
                 cursor: 'default',
               }}
-              role="button"
-              tabIndex={0}
-              onClick={(e) => e.stopPropagation()} // Prevent dialog from closing when clicking the image container
-              onKeyDown={(e) => {
-                // Handle keyboard events for accessibility
-                if (e.key === ' ' || e.key === 'Enter') {
-                  e.stopPropagation();
-                }
-              }}
-              aria-label="Generated collage image - click to focus, right-click or tap and hold to save"
+              onClick={handleBackdropClick} // Allow clicking container area to close dialog
+              aria-label="Image container - tap outside image to close"
             >
               {finalImage && (
                 <img
