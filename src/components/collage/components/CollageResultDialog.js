@@ -108,7 +108,7 @@ export default function CollageResultDialog({ open, onClose, finalImage }) {
         BackdropProps={{
           timeout: 300,
           sx: {
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
             backdropFilter: 'blur(20px)',
             WebkitBackdropFilter: 'blur(20px)', // Safari support
           }
@@ -172,14 +172,16 @@ export default function CollageResultDialog({ open, onClose, finalImage }) {
             <Box
               sx={{
                 position: 'relative',
+                width: '100%',
                 maxWidth: '100%',
-                maxHeight: isMobile ? 'calc(100vh - 180px)' : 'calc(95vh - 180px)',
+                height: isMobile 
+                  ? 'calc(100vh - 150px)' 
+                  : 'calc(95vh - 150px)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 overflow: 'hidden',
-                backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                backdropFilter: 'blur(10px)',
+                backgroundColor: 'transparent',
                 cursor: 'default',
               }}
               role="button"
@@ -211,6 +213,7 @@ export default function CollageResultDialog({ open, onClose, finalImage }) {
                     WebkitUserSelect: 'none',
                     pointerEvents: 'auto',
                     outline: 'none',
+                    objectFit: 'contain',
                   }}
                 />
               )}
@@ -219,7 +222,7 @@ export default function CollageResultDialog({ open, onClose, finalImage }) {
             {/* Instructions */}
             <Box
               sx={{
-                mt: 3,
+                mt: 2,
                 backgroundColor: 'rgba(0, 0, 0, 0.8)',
                 color: 'white',
                 px: 3,
@@ -241,8 +244,8 @@ export default function CollageResultDialog({ open, onClose, finalImage }) {
                 }}
               >
                 {isMobile 
-                  ? 'Tap / hold image to save • Swipe to dismiss'
-                  : 'Right-click image to save • Click outside to dismiss'
+                  ? 'Hold image to save'
+                  : 'Right-click image to save'
                 }
               </Typography>
             </Box>
