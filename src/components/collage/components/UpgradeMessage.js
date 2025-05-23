@@ -394,8 +394,8 @@ const UpgradeMessage = ({
                   background: theme.palette.mode === 'dark' 
                     ? `linear-gradient(145deg, rgba(35,35,45,${isStacked ? '0.95' : '1'}) 0%, rgba(25,25,35,${isStacked ? '0.95' : '1'}) 100%)` 
                     : `linear-gradient(145deg, rgba(255,255,255,${isStacked ? '0.95' : '1'}) 0%, rgba(245,245,245,${isStacked ? '0.95' : '1'}) 100%)`,
-                  maxWidth: isStacked ? 360 : (isSmall ? 520 : 500),
-                  width: isStacked ? '95%' : '100%',
+                  maxWidth: isStacked ? 420 : (isSmall ? 580 : 500),
+                  width: isStacked ? '98%' : '100%',
                   border: `1px solid ${theme.palette.primary.main}${isStacked ? '30' : '20'}`,
                   boxShadow: `0 ${isStacked ? 15 : 10}px ${isStacked ? 35 : 30}px ${theme.palette.mode === 'dark' ? `rgba(0,0,0,${isStacked ? '0.4' : '0.3'})` : `rgba(0,0,0,${isStacked ? '0.15' : '0.1'})`}`,
                   backdropFilter: isStacked ? 'blur(10px)' : 'none'
@@ -467,11 +467,23 @@ const UpgradeMessage = ({
                       px: isStacked ? undefined : 4,
                       py: 1.5,
                       borderRadius: isStacked ? 2.5 : 3,
-                      fontWeight: 'bold',
-                      boxShadow: '0 6px 20px rgba(0,0,0,0.2)',
+                      fontWeight: 700,
                       textTransform: 'none',
                       width: isStacked ? '100%' : '100%',
-                      maxWidth: isStacked ? undefined : '300px'
+                      maxWidth: isStacked ? undefined : '300px',
+                      background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
+                      border: '1px solid #8b5cc7',
+                      boxShadow: '0 6px 20px rgba(107, 66, 161, 0.4)',
+                      color: '#fff',
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                      '&:hover': {
+                        background: 'linear-gradient(45deg, #472a69 30%, #7b4cb8 90%)',
+                        boxShadow: '0 8px 25px rgba(107, 66, 161, 0.6)',
+                        transform: 'translateY(-2px) scale(1.02)',
+                      },
+                      '&:active': {
+                        transform: 'translateY(0) scale(0.98)',
+                      }
                     }}
                   >
                     Upgrade to Pro
@@ -482,19 +494,6 @@ const UpgradeMessage = ({
                     pt: 1,
                     maxWidth: isStacked ? 'none' : '400px'
                   }}>
-                    <Typography 
-                      variant={isStacked ? "subtitle2" : (isSmall ? "subtitle1" : "h6")}
-                      fontWeight="600" 
-                      color="text.primary"
-                      gutterBottom
-                      sx={{ 
-                        mb: 2, 
-                        fontSize: isStacked ? '0.9rem' : undefined 
-                      }}
-                    >
-                      What You'll Get:
-                    </Typography>
-                    
                     <Stack spacing={1.5}>
                       {[
                         "Multi-panel layouts", 
