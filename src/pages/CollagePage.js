@@ -16,6 +16,30 @@ const DEBUG_MODE = process.env.NODE_ENV === 'development';
 const debugLog = (...args) => { if (DEBUG_MODE) console.log(...args); };
 
 /**
+ * Helper function to crop canvas by removing pixels from edges
+ */
+const cropCanvas = (originalCanvas, cropAmount = 10) => {
+  const croppedCanvas = document.createElement('canvas');
+  const ctx = croppedCanvas.getContext('2d');
+  
+  // Calculate new dimensions (remove cropAmount pixels from each edge)
+  const newWidth = Math.max(1, originalCanvas.width - (cropAmount * 2));
+  const newHeight = Math.max(1, originalCanvas.height - (cropAmount * 2));
+  
+  croppedCanvas.width = newWidth;
+  croppedCanvas.height = newHeight;
+  
+  // Draw the cropped portion of the original canvas
+  ctx.drawImage(
+    originalCanvas,
+    cropAmount, cropAmount, newWidth, newHeight, // Source coordinates and dimensions
+    0, 0, newWidth, newHeight // Destination coordinates and dimensions
+  );
+  
+  return croppedCanvas;
+};
+
+/**
  * Helper function to get numeric border thickness value from string/option
  */
 const getBorderThicknessValue = (borderThickness, options) => {
@@ -172,10 +196,11 @@ export default function CollagePage() {
         },
       });
       
-      const dataUrl = canvas.toDataURL('image/png');
+      const croppedCanvas = cropCanvas(canvas);
+      const dataUrl = croppedCanvas.toDataURL('image/png');
       setFinalImage(dataUrl);
       setShowResultDialog(true);
-      debugLog("Floating button: Collage generated and inline result shown.");
+      debugLog("Floating button: Collage generated, cropped, and inline result shown.");
 
     } catch (err) {
       console.error('Error generating collage:', err);
