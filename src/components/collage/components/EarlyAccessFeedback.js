@@ -270,7 +270,7 @@ export default function EarlyAccessFeedback() {
               fontSize: '0.85rem',
               fontWeight: 500
             }}>
-              {expanded ? 'Close' : 'Feedback'}
+              {expanded ? 'Close' : 'Options'}
             </Typography>
             {expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
           </Box>
@@ -559,7 +559,7 @@ export default function EarlyAccessFeedback() {
                 </Box>
                 
                 <TextField
-                  placeholder="What's the new version need? (optional)"
+                  placeholder="What's missing on this version? (optional)"
                   multiline
                   rows={3}
                   value={switchFeedback}
@@ -592,12 +592,48 @@ export default function EarlyAccessFeedback() {
                   }}
                 />
                 
+                <Box sx={{ 
+                  display: 'flex', 
+                  gap: 1, 
+                  alignItems: 'center'
+                }}>
+                  <LoadingButton
+                    loading={switchLoadingSubmit}
+                    onClick={submitSwitchFeedback}
+                    variant="contained"
+                    size="medium"
+                    sx={{ 
+                      textTransform: 'none',
+                      backgroundColor: '#ff9800',
+                      color: '#000',
+                      fontWeight: 600,
+                      fontSize: '0.9rem',
+                      px: 2.5,
+                      py: 1,
+                      borderRadius: 2,
+                      boxShadow: '0 4px 12px rgba(255, 152, 0, 0.3)',
+                      flex: 1,
+                      minHeight: 42,
+                      '&:hover': {
+                        backgroundColor: '#ffb74d',
+                        boxShadow: '0 6px 16px rgba(255, 152, 0, 0.4)',
+                      },
+                      '&:disabled': {
+                        backgroundColor: 'rgba(255, 152, 0, 0.4)',
+                        color: 'rgba(0, 0, 0, 0.6)',
+                      },
+                    }}
+                  >
+                    {switchFeedback.trim() === '' ? 'Switch Back' : 'Submit & Switch'}
+                  </LoadingButton>
+                </Box>
+
                 {switchFeedback.trim() !== '' && (
                   <Box sx={{ 
                     backgroundColor: 'rgba(255, 255, 255, 0.03)',
                     borderRadius: 2,
                     p: 1.5,
-                    mb: 1.5,
+                    mt: 1.5,
                     border: (switchFormSubmitted && switchFeedback.trim() !== '' && !switchEmailConsent) ? 
                       '1px solid #ff5252' : '1px solid rgba(255, 255, 255, 0.1)'
                   }}>
@@ -638,42 +674,6 @@ export default function EarlyAccessFeedback() {
                     )}
                   </Box>
                 )}
-                
-                <Box sx={{ 
-                  display: 'flex', 
-                  gap: 1, 
-                  alignItems: 'center'
-                }}>
-                  <LoadingButton
-                    loading={switchLoadingSubmit}
-                    onClick={submitSwitchFeedback}
-                    variant="contained"
-                    size="medium"
-                    sx={{ 
-                      textTransform: 'none',
-                      backgroundColor: '#ff9800',
-                      color: '#000',
-                      fontWeight: 600,
-                      fontSize: '0.9rem',
-                      px: 2.5,
-                      py: 1,
-                      borderRadius: 2,
-                      boxShadow: '0 4px 12px rgba(255, 152, 0, 0.3)',
-                      flex: 1,
-                      minHeight: 42,
-                      '&:hover': {
-                        backgroundColor: '#ffb74d',
-                        boxShadow: '0 6px 16px rgba(255, 152, 0, 0.4)',
-                      },
-                      '&:disabled': {
-                        backgroundColor: 'rgba(255, 152, 0, 0.4)',
-                        color: 'rgba(0, 0, 0, 0.6)',
-                      },
-                    }}
-                  >
-                    {switchFeedback.trim() === '' ? 'Skip & Switch' : 'Submit & Switch'}
-                  </LoadingButton>
-                </Box>
               </Box>
             )}
           </Box>
