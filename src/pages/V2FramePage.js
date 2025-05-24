@@ -47,7 +47,7 @@ import {
   ToggleButton,
   Popover,
 } from '@mui/material';
-import { Add, ArrowBack, ArrowBackIos, ArrowForward, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, FontDownload, FontDownloadOutlined, FormatBold, FormatColorFill, FormatItalic, FormatLineSpacing, FormatSize, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu, OpenInBrowser, OpenInNew, VerticalAlignBottom, VerticalAlignTop, Visibility, VisibilityOff } from '@mui/icons-material';
+import { Add, ArrowBack, ArrowBackIos, ArrowForward, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, FontDownload, FontDownloadOutlined, FormatBold, FormatColorFill, FormatItalic, FormatLineSpacing, FormatSize, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu, OpenInBrowser, OpenInNew, VerticalAlignBottom, VerticalAlignTop, Visibility, VisibilityOff, PhotoLibrary } from '@mui/icons-material';
 import { TwitterPicker } from 'react-color';
 import useSearchDetails from '../hooks/useSearchDetails';
 import { fetchFrameInfo, fetchFramesFineTuning, fetchFramesSurroundingPromises } from '../utils/frameHandlerV2';
@@ -57,6 +57,7 @@ import FramePageBottomBannerAd from '../ads/FramePageBottomBannerAd';
 import { UserContext } from '../UserContext';
 import HomePageBannerAd from '../ads/HomePageBannerAd';
 import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
+import { PhotoCollectionContext } from '../components/PhotoCollection';
 
 // import { listGlobalMessages } from '../../../graphql/queries'
 
@@ -108,6 +109,7 @@ export default function FramePage({ shows = [] }) {
   const throttleTimeoutRef = useRef(null);
 
   const { user } = useContext(UserContext);
+  const { addToCollection } = useContext(PhotoCollectionContext);
 
   /* ---------- This is used to prevent slider activity while scrolling on mobile ---------- */
 
@@ -154,6 +156,7 @@ export default function FramePage({ shows = [] }) {
   }, [cid]);
 
   const [snackbarOpen, setSnackBarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
 
   const [alertOpenTapToEdit, setAlertOpenTapToEdit] = useState(() => {
     return sessionStorage.getItem('alertDismissed-98ruio') !== 'true';
@@ -161,7 +164,8 @@ export default function FramePage({ shows = [] }) {
 
   const theme = useTheme();
 
-  const handleSnackbarOpen = () => {
+  const handleSnackbarOpen = (message = 'Copied to clipboard!') => {
+    setSnackbarMessage(message);
     setSnackBarOpen(true);
   }
 
@@ -1320,6 +1324,49 @@ useEffect(() => {
                 size="medium"
                 fullWidth
                 variant="contained"
+                onClick={() => {
+                  const photoData = {
+                    id: `${cid}-${season}-${episode}-${frame}-${selectedFrameIndex || 0}-${Date.now()}`,
+                    title: `${showTitle || shows.find(show => show.id === cid)?.title || 'Unknown Show'} S${season}E${episode}`,
+                    subtitle: loadedSubtitle || '',
+                    frameImage: displayImage || frameData?.frame_image,
+                    editedImage: imgSrc || null,
+                    metadata: {
+                      cid,
+                      season: parseInt(season, 10),
+                      episode: parseInt(episode, 10),
+                      frame: parseInt(frame, 10),
+                      selectedFrameIndex: selectedFrameIndex || 0,
+                      timestamp: frameToTimeCode(frame),
+                      searchQuery,
+                      showTitle: showTitle || shows.find(show => show.id === cid)?.title || 'Unknown Show',
+                      fontSettings: showText ? {
+                        fontFamily,
+                        isBold,
+                        isItalic,
+                        colorPickerColor,
+                        fontSizeScaleFactor,
+                        fontLineHeightScaleFactor,
+                        fontBottomMarginScaleFactor
+                      } : null
+                    },
+                    addedAt: new Date().toISOString(),
+                    frameUrl: `/frame/${cid}/${season}/${episode}/${frame}${selectedFrameIndex ? `/${selectedFrameIndex}` : ''}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`
+                  };
+                  
+                  addToCollection(photoData);
+                  handleSnackbarOpen('Added to photo collection!');
+                }}
+                sx={{ mt: 2, backgroundColor: '#FF9800', '&:hover': { backgroundColor: '#F57C00' } }}
+                startIcon={<PhotoLibrary />}
+              >
+                Add to Collection
+              </Button>
+
+              <Button
+                size="medium"
+                fullWidth
+                variant="contained"
                 to={`/editor/${cid}/${season}/${episode}/${frame}${(fineTuningIndex || fineTuningLoadStarted) ? `/${selectedFrameIndex}` : ''}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`}
                 component={RouterLink}
                 sx={{ my: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
@@ -1446,10 +1493,10 @@ useEffect(() => {
             autoHideDuration={2000}
             severity="success"
             onClose={handleSnackbarClose}
-            message="Copied to clipboard!"
+            message={snackbarMessage}
           >
             <Alert onClose={handleSnackbarClose} severity="success" sx={{ width: '100%' }}>
-              Copied to clipboard!
+              {snackbarMessage}
             </Alert>
           </Snackbar>
 

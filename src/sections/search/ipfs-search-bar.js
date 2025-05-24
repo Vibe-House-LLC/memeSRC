@@ -2,7 +2,7 @@
 
 import styled from "@emotion/styled";
 import { Link, Fab, FormControl, Grid, InputBase, MenuItem, Select, Typography, Divider, Box, Stack, Container, ListSubheader } from "@mui/material";
-import { ArrowBack, Close, Favorite, MapsUgc, Search, Shuffle } from "@mui/icons-material";
+import { ArrowBack, Close, Favorite, Search, Shuffle } from "@mui/icons-material";
 import { API } from 'aws-amplify';
 import { Children, cloneElement, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { LoadingButton } from "@mui/lab";
@@ -13,6 +13,7 @@ import AddCidPopup from "../../components/ipfs/add-cid-popup";
 import { UserContext } from "../../UserContext";
 import useLoadRandomFrame from "../../utils/loadRandomFrame";
 import FixedMobileBannerAd from '../../ads/FixedMobileBannerAd';
+import PhotoCollectionButton from '../../components/PhotoCollection';
 
 // Define constants for colors and fonts
 const PRIMARY_COLOR = '#4285F4';
@@ -364,11 +365,10 @@ export default function IpfsSearchBar(props) {
         return cloneElement(child, { shows });
       })}
       <StyledLeftFooter className="bottomBtn" hasAd={showAd}>
-        <a href="/support" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
-          <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black", zIndex: '1300' }} size='medium'>
-            <MapsUgc color="white" />
-          </Fab>
-        </a>
+        <PhotoCollectionButton 
+          style={{ margin: "0 10px 0 0" }}
+          size='medium'
+        />
         <a href="https://memesrc.com/donate" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
           <Fab color="primary" aria-label="donate" style={{ backgroundColor: "black", zIndex: '1300' }} size='medium'>
             <Favorite />

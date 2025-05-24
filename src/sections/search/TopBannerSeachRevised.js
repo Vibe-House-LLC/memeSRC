@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { Box, Button, Container, Divider, Fab, FormControl, Grid, InputBase, Link, MenuItem, Select, Stack, Typography, useMediaQuery } from "@mui/material";
-import { ArrowBack, Close, Favorite, MapsUgc, Search, Shuffle } from "@mui/icons-material";
+import { ArrowBack, Close, Favorite, Search, Shuffle } from "@mui/icons-material";
 import { API, graphqlOperation } from 'aws-amplify';
 import { cloneElement, useCallback, useContext, useEffect, useState } from "react";
 import { LoadingButton } from "@mui/lab";
@@ -14,6 +14,7 @@ import AddCidPopup from "../../components/ipfs/add-cid-popup";
 import { UserContext } from "../../UserContext";
 import fetchShows from "../../utils/fetchShows";
 import useLoadRandomFrame from "../../utils/loadRandomFrame";
+import PhotoCollectionButton from '../../components/PhotoCollection';
 
 // Define constants for colors and fonts
 const PRIMARY_COLOR = '#4285F4';
@@ -258,11 +259,10 @@ export default function TopBannerSearchRevised(props) {
           </StyledHeader>
           {cloneElement(props.children, { setSeriesTitle, shows })}
           <StyledLeftFooter className="bottomBtn">
-            <a href="/support" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
-              <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black", zIndex: '1300' }} size='medium'>
-                <MapsUgc color="white" />
-              </Fab>
-            </a>
+            <PhotoCollectionButton 
+              style={{ margin: "0 10px 0 0" }}
+              size='medium'
+            />
             <a href="https://memesrc.com/donate" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
               <Fab color="primary" aria-label="donate" style={{ backgroundColor: "black", zIndex: '1300' }} size='medium'>
                 <Favorite />
@@ -380,11 +380,10 @@ export default function TopBannerSearchRevised(props) {
             </Box>
             {cloneElement(props.children, { setSeriesTitle, shows })}
             <StyledLeftFooter className="bottomBtn">
-              <a href="/support" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
-                <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black", zIndex: '1300' }} size='medium'>
-                  <MapsUgc color="white" />
-                </Fab>
-              </a>
+              <PhotoCollectionButton 
+                style={{ margin: "0 10px 0 0" }}
+                size='medium'
+              />
               <a href="https://memesrc.com/donate" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
                 <Fab color="primary" aria-label="donate" style={{ backgroundColor: "black", zIndex: '1300' }} size='medium'>
                   <Favorite />
@@ -590,11 +589,10 @@ export default function TopBannerSearchRevised(props) {
           <Container maxWidth="xl" sx={{ pt: 0 }} disableGutters>
             {cloneElement(props.children, { setSeriesTitle, shows })}
             <StyledLeftFooter className="bottomBtn">
-              <a href="/support" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
-                <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black", zIndex: '1300' }} size='medium'>
-                  <MapsUgc color="white" />
-                </Fab>
-              </a>
+              <PhotoCollectionButton 
+                style={{ margin: "0 10px 0 0" }}
+                size='medium'
+              />
               <a href="https://memesrc.com/donate" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
                 <Fab color="primary" aria-label="donate" style={{ backgroundColor: "black", zIndex: '1300' }} size='medium'>
                   <Favorite />
@@ -691,11 +689,10 @@ export default function TopBannerSearchRevised(props) {
           <Container maxWidth="xl" sx={{ pt: 0 }} disableGutters>
             {cloneElement(props.children, { setSeriesTitle, shows })}
             <StyledLeftFooter className="bottomBtn">
-              <a href="/support" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
-                <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black", zIndex: '1300' }} size='medium'>
-                  <MapsUgc color="white" />
-                </Fab>
-              </a>
+              <PhotoCollectionButton 
+                style={{ margin: "0 10px 0 0" }}
+                size='medium'
+              />
               <a href="https://memesrc.com/donate" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
                 <Fab color="primary" aria-label="donate" style={{ backgroundColor: "black", zIndex: '1300' }} size='medium'>
                   <Favorite />

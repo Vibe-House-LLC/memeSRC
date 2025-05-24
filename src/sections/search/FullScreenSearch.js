@@ -3,7 +3,7 @@
 import styled from '@emotion/styled';
 import { Button, Fab, Grid, Typography, useMediaQuery, Select, MenuItem, ListSubheader, useTheme } from '@mui/material';
 import { Box } from '@mui/system';
-import { Favorite, MapsUgc, Shuffle } from '@mui/icons-material';
+import { Favorite, Shuffle } from '@mui/icons-material';
 import React, { useCallback, useContext, useEffect, useState } from 'react';
 import { LoadingButton } from '@mui/lab';
 import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
@@ -17,6 +17,7 @@ import FavoriteToggle from '../../components/FavoriteToggle';
 import useLoadRandomFrame from '../../utils/loadRandomFrame';
 import Logo from '../../logo/logo';
 import FixedMobileBannerAd from '../../ads/FixedMobileBannerAd';
+import PhotoCollectionButton from '../../components/PhotoCollection';
 
 /* --------------------------------- GraphQL -------------------------------- */
 
@@ -391,19 +392,10 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
           }
         </Grid>
         <StyledFooter position="left" className="bottomBtn">
-          <a
-            href="/support"
-            style={{ color: 'white', textDecoration: 'none' }}
-          >
-            <Fab
-              color="primary"
-              aria-label="feedback"
-              style={{ margin: '0 10px 0 0', backgroundColor: 'black', zIndex: '1300' }}
-              size="medium"
-            >
-              <MapsUgc color="white" />
-            </Fab>
-          </a>
+          <PhotoCollectionButton 
+            style={{ margin: '0 10px 0 0' }}
+            size="medium"
+          />
           <a
             href="https://memesrc.com/donate"
             target="_blank"
