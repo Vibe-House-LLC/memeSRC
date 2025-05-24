@@ -82,6 +82,9 @@ export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, 
     setIsExportDialogOpen(false);
   };
 
+  // Check if user has added at least one image
+  const hasImages = imagesStepProps.selectedImages && imagesStepProps.selectedImages.length > 0;
+
   console.log("CollageLayout received props:", {
     settingsStepProps: {
       hasTemplate: !!settingsStepProps.selectedTemplate,
@@ -95,7 +98,8 @@ export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, 
       imageCount: imagesStepProps.selectedImages.length,
       panelCount: imagesStepProps.panelCount
     },
-    hasFinalImage: !!finalImage
+    hasFinalImage: !!finalImage,
+    hasImages: hasImages
   });
   
   return (
@@ -124,7 +128,10 @@ export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, 
 
       {/* Main Content Layout */}
       <Box sx={{ width: '100%' }}>
-        {isMobile ? (
+        {!hasImages ? (
+          // No images: Clean empty state, let the bulk uploader speak for itself
+          null
+        ) : isMobile ? (
           // Mobile: Stack vertically with better spacing and visual hierarchy
           <Stack spacing={3} sx={{ p: 2, px: 1 }}>
             {/* Settings Section First on Mobile */}

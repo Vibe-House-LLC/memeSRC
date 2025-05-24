@@ -154,6 +154,9 @@ export default function CollagePage() {
       selectedImages[imageIndex]
     );
 
+  // Check if user has added at least one image
+  const hasImages = selectedImages && selectedImages.length > 0;
+
   const borderThicknessOptions = [
     { label: "None", value: 0 },        // 0%
     { label: "Thin", value: 0.5 },      // 0.5%
@@ -174,7 +177,7 @@ export default function CollagePage() {
 
   // Animate button in with delay when ready
   useEffect(() => {
-    if (allPanelsHaveImages && !showResultDialog && !showWelcomeScreen) {
+    if (hasImages && allPanelsHaveImages && !showResultDialog && !showWelcomeScreen) {
       const timer = setTimeout(() => {
         setShowAnimatedButton(true);
       }, 800); // 800ms delay for dramatic effect
@@ -184,7 +187,7 @@ export default function CollagePage() {
     
     setShowAnimatedButton(false);
     return undefined; // Consistent return for all code paths
-  }, [allPanelsHaveImages, showResultDialog, showWelcomeScreen]);
+  }, [hasImages, allPanelsHaveImages, showResultDialog, showWelcomeScreen]);
 
   // Auto-forwarding logic based on user preference
   useEffect(() => {
@@ -371,7 +374,7 @@ export default function CollagePage() {
       ) : (
         <Box component="main" sx={{ 
           flexGrow: 1,
-          pb: !showResultDialog && !showWelcomeScreen && allPanelsHaveImages ? 8 : (isMobile ? 2 : 4),
+          pb: !showResultDialog && !showWelcomeScreen && hasImages && allPanelsHaveImages ? 8 : (isMobile ? 2 : 4),
           width: '100%',
           overflowX: 'hidden',
           minHeight: '100vh',
@@ -423,7 +426,7 @@ export default function CollagePage() {
             />
 
             {/* Bottom Action Bar */}
-            {!showResultDialog && !showWelcomeScreen && allPanelsHaveImages && (
+            {!showResultDialog && !showWelcomeScreen && hasImages && allPanelsHaveImages && (
               <Slide direction="up" in={showAnimatedButton} timeout={600}>
                 <Box
                   sx={{

@@ -177,10 +177,10 @@ const BulkUploadSection = ({
         >
           <CloudUpload sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
           <Typography variant="h4" gutterBottom sx={{ fontWeight: 600, color: '#fff' }}>
-            Add Images
+            Upload Your Images
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ mb: 3, maxWidth: '500px', mx: 'auto' }}>
-            Click here or drag and drop to upload multiple images. Panel count will automatically adjust to fit your images.
+            Drag and drop or click to select multiple images for your collage
           </Typography>
           <Button 
             variant="contained" 
