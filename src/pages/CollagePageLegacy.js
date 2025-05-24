@@ -33,12 +33,15 @@ import {
   Paper,
   Chip,
   Collapse,
+  TextField,
+  Checkbox,
 } from "@mui/material";
 import { styled } from "@mui/system";
 import { Delete, Add, ArrowBack, ArrowForward, ExpandMore, Close, Edit, ArrowUpward, ArrowDownward, Save, FormatColorFill, TrendingUp, ExpandLess } from "@mui/icons-material";
 import { useNavigate, useLocation } from 'react-router-dom'; 
 import { LoadingButton } from "@mui/lab";
 import { useTheme } from "@mui/material/styles";
+import { API } from 'aws-amplify';
 import BasePage from "./BasePage";
 import { UserContext } from "../UserContext";
 import { useSubscribeDialog } from "../contexts/useSubscribeDialog";
@@ -72,10 +75,131 @@ const setCollagePreference = (user, preference) => {
   localStorage.setItem(key, preference);
 };
 
+// Utility functions for managing banner dismiss timestamp
+const getBannerDismissKey = (user) => {
+  if (!user?.userDetails?.email) return 'memeSRC-banner-dismiss-anonymous';
+  const hashedUsername = hashString(user.userDetails.email);
+  return `memeSRC-banner-dismiss-${hashedUsername}`;
+};
+
+const isBannerDismissed = (user) => {
+  const key = getBannerDismissKey(user);
+  const dismissedTimestamp = localStorage.getItem(key);
+  if (!dismissedTimestamp) return false;
+  
+  const now = new Date().getTime();
+  const dismissedTime = parseInt(dismissedTimestamp, 10);
+  const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
+  
+  return (now - dismissedTime) < sevenDaysInMs;
+};
+
+const setBannerDismissed = (user) => {
+  const key = getBannerDismissKey(user);
+  const now = new Date().getTime().toString();
+  localStorage.setItem(key, now);
+};
+
+// Component for subtle chip to try new version when banner is dismissed
+function SubtleSwitchChip({ onTryNewVersion }) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
+  return (
+    <Box sx={{ px: isMobile ? 1 : 0, mb: 3, textAlign: 'center' }}>
+      <Chip
+        label="Tap to try the new version"
+        icon={<TrendingUp sx={{ fontSize: '16px !important' }} />}
+        onClick={onTryNewVersion}
+        variant="outlined"
+        size="small"
+        sx={{
+          borderColor: 'rgba(76, 175, 80, 0.4)',
+          color: 'rgba(76, 175, 80, 0.8)',
+          fontSize: '0.75rem',
+          fontWeight: 500,
+          backgroundColor: 'rgba(76, 175, 80, 0.05)',
+          '&:hover': {
+            borderColor: 'rgba(76, 175, 80, 0.6)',
+            color: '#4caf50',
+            backgroundColor: 'rgba(76, 175, 80, 0.1)',
+            cursor: 'pointer'
+          },
+          '& .MuiChip-icon': {
+            color: 'inherit'
+          }
+        }}
+      />
+    </Box>
+  );
+}
+
 // Component for encouraging users to try the new version
 function TryNewVersionBanner({ user, onTryNewVersion }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  
+  // Local state for dismiss feedback
+  const [showDismissFeedback, setShowDismissFeedback] = useState(false);
+  const [dismissFeedback, setDismissFeedback] = useState('');
+  const [dismissEmailConsent, setDismissEmailConsent] = useState(false);
+  const [dismissFormSubmitted, setDismissFormSubmitted] = useState(false);
+  const [dismissLoadingSubmit, setDismissLoadingSubmit] = useState(false);
+  const [bannerDismissed, setBannerDismissedLocal] = useState(false);
+
+  const handleDismissClick = () => {
+    setShowDismissFeedback(true);
+  };
+
+  const handleDismissWithoutFeedback = () => {
+    setBannerDismissed(user);
+    setBannerDismissedLocal(true);
+  };
+
+  const handleCancelDismiss = () => {
+    setShowDismissFeedback(false);
+    setDismissFeedback('');
+    setDismissEmailConsent(false);
+    setDismissFormSubmitted(false);
+  };
+
+  const submitDismissFeedback = async () => {
+    setDismissFormSubmitted(true);
+    
+    if (dismissFeedback.trim() !== '' && !dismissEmailConsent) {
+      // Show error for email consent if feedback is provided
+      return;
+    }
+    
+    setDismissLoadingSubmit(true);
+    
+    try {
+      if (dismissFeedback.trim() !== '') {
+        const feedbackMessage = `[DISMISSED NEW VERSION BANNER] ${dismissFeedback}`;
+        
+        await API.post('publicapi', '/user/update/proSupportMessage', {
+          body: { message: feedbackMessage },
+        });
+      }
+      
+      // Dismiss banner regardless of feedback submission
+      setBannerDismissed(user);
+      setBannerDismissedLocal(true);
+      
+    } catch (error) {
+      console.log('Error submitting dismiss feedback:', error);
+      // Still dismiss even if feedback fails
+      setBannerDismissed(user);
+      setBannerDismissedLocal(true);
+    }
+    
+    setDismissLoadingSubmit(false);
+  };
+
+  // Don't render if banner has been dismissed
+  if (bannerDismissed) {
+    return null;
+  }
 
   return (
     <Box sx={{ px: isMobile ? 1 : 0, mb: 3 }}>
@@ -87,62 +211,244 @@ function TryNewVersionBanner({ user, onTryNewVersion }) {
           background: 'linear-gradient(135deg, #1a2e1a 0%, #16623e 50%, #0f6034 100%)',
           border: '1px solid rgba(76, 175, 80, 0.3)',
           boxShadow: '0 8px 32px rgba(76, 175, 80, 0.1)',
+          position: 'relative'
         }}
       >
-        <Box sx={{ 
-          p: isMobile ? 2 : 3,
-          display: 'flex',
-          flexDirection: isMobile ? 'column' : 'row',
-          alignItems: 'center', 
-          justifyContent: 'space-between',
-          gap: isMobile ? 1.5 : 0
-        }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <TrendingUp sx={{ 
-              fontSize: 32, 
-              color: '#4caf50',
-              filter: 'drop-shadow(0 2px 4px rgba(76, 175, 80, 0.3))'
-            }} />
-            <Box>
-              <Typography variant="h6" sx={{ 
-                fontWeight: 600, 
-                color: '#fff',
-                fontSize: isMobile ? '1.1rem' : '1.25rem',
-                mb: 0.5
+        {!showDismissFeedback ? (
+          <>
+            {/* Close button */}
+            <IconButton
+              onClick={handleDismissClick}
+              sx={{
+                position: 'absolute',
+                top: 8,
+                right: 8,
+                color: 'rgba(255, 255, 255, 0.7)',
+                zIndex: 1,
+                '&:hover': {
+                  color: '#fff',
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                }
+              }}
+              size="small"
+            >
+              <Close fontSize="small" />
+            </IconButton>
+
+            <Box sx={{ 
+              p: isMobile ? 2 : 3,
+              display: 'flex',
+              flexDirection: isMobile ? 'column' : 'row',
+              alignItems: 'center', 
+              justifyContent: 'space-between',
+              gap: isMobile ? 1.5 : 0,
+              pr: isMobile ? 2 : 3 // Normal right padding on mobile since button is below close button
+            }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <TrendingUp sx={{ 
+                  fontSize: 32, 
+                  color: '#4caf50',
+                  filter: 'drop-shadow(0 2px 4px rgba(76, 175, 80, 0.3))'
+                }} />
+                <Box>
+                  <Typography variant="h6" sx={{ 
+                    fontWeight: 600, 
+                    color: '#fff',
+                    fontSize: isMobile ? '1.1rem' : '1.25rem',
+                    mb: 0.5
+                  }}>
+                    New Collage Tool Available
+                  </Typography>
+                  <Typography variant="body2" sx={{ 
+                    color: 'rgba(255, 255, 255, 0.8)',
+                    fontSize: isMobile ? '0.8rem' : '0.875rem'
+                  }}>
+                    We've redesigned the collage tool with better layouts and features
+                  </Typography>
+                </Box>
+              </Box>
+              
+              <Box sx={{ 
+                width: isMobile ? '100%' : 'auto'
               }}>
-                New Collage Tool Available
-              </Typography>
-              <Typography variant="body2" sx={{ 
-                color: 'rgba(255, 255, 255, 0.8)',
-                fontSize: isMobile ? '0.8rem' : '0.875rem'
+                <Button
+                  onClick={onTryNewVersion}
+                  variant="contained"
+                  size={isMobile ? "medium" : "small"}
+                  startIcon={<TrendingUp />}
+                  fullWidth={isMobile}
+                  sx={{
+                    backgroundColor: '#4caf50',
+                    color: '#000',
+                    '&:hover': {
+                      backgroundColor: '#66bb6a',
+                    },
+                    fontWeight: 600,
+                    borderRadius: 2,
+                    minWidth: isMobile ? 'auto' : 'fit-content',
+                    px: 3,
+                    py: 1,
+                  }}
+                >
+                  Try New Version
+                </Button>
+              </Box>
+            </Box>
+          </>
+        ) : (
+          /* Dismiss Feedback Form */
+          <Box sx={{ 
+            p: isMobile ? 2 : 2.5
+          }}>
+            <Box sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 1, 
+              mb: 1.5 
+            }}>
+              <Typography variant="body1" sx={{ 
+                color: '#fff', 
+                fontWeight: 600,
+                fontSize: '1rem'
               }}>
-                We've redesigned the collage tool with better layouts and features
+                Keep Using Classic Version
               </Typography>
             </Box>
+            
+            <TextField
+              placeholder="What's better about this version?"
+              multiline
+              rows={3}
+              value={dismissFeedback}
+              onChange={(e) => setDismissFeedback(e.target.value)}
+              fullWidth
+              sx={{ 
+                mb: 1.5,
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                  borderRadius: 2,
+                  '& fieldset': {
+                    borderColor: 'rgba(255, 255, 255, 0.25)',
+                  },
+                  '&:hover fieldset': {
+                    borderColor: 'rgba(76, 175, 80, 0.6)',
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: '#4caf50',
+                    borderWidth: 2,
+                  },
+                },
+                '& .MuiInputBase-input': {
+                  color: '#fff',
+                  fontSize: '0.9rem'
+                },
+                '& .MuiInputBase-input::placeholder': {
+                  color: 'rgba(255, 255, 255, 0.5)',
+                  opacity: 1,
+                },
+              }}
+            />
+            
+            {dismissFeedback.trim() !== '' && (
+              <Box sx={{ 
+                backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                borderRadius: 2,
+                p: 1.5,
+                mb: 1.5,
+                border: (dismissFormSubmitted && dismissFeedback.trim() !== '' && !dismissEmailConsent) ? 
+                  '1px solid #ff5252' : '1px solid rgba(255, 255, 255, 0.1)'
+              }}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={dismissEmailConsent}
+                      onChange={(e) => setDismissEmailConsent(e.target.checked)}
+                      size="small"
+                      sx={{
+                        color: 'rgba(255, 255, 255, 0.6)',
+                        '&.Mui-checked': {
+                          color: '#4caf50',
+                        },
+                      }}
+                    />
+                  }
+                  label={
+                    <Typography variant="body2" sx={{ 
+                      color: 'rgba(255, 255, 255, 0.9)',
+                      fontSize: '0.85rem',
+                      lineHeight: 1.4
+                    }}>
+                      I consent to being contacted via email about this feedback
+                    </Typography>
+                  }
+                />
+                
+                {dismissFormSubmitted && dismissFeedback.trim() !== '' && !dismissEmailConsent && (
+                  <Typography variant="caption" sx={{ 
+                    display: 'block', 
+                    mt: 0.5,
+                    color: '#ff5252',
+                    fontSize: '0.75rem'
+                  }}>
+                    Email consent is required when providing feedback
+                  </Typography>
+                )}
+              </Box>
+            )}
+            
+            <Box sx={{ 
+              display: 'flex', 
+              gap: 1.5, 
+              justifyContent: 'flex-end',
+              alignItems: 'center'
+            }}>
+              <Button
+                onClick={handleCancelDismiss}
+                size="medium"
+                startIcon={<ArrowBack />}
+                sx={{ 
+                  textTransform: 'none', 
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  fontSize: '0.85rem',
+                  px: 2,
+                  '&:hover': {
+                    color: '#fff',
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                  }
+                }}
+              >
+                Back
+              </Button>
+              
+              <LoadingButton
+                loading={dismissLoadingSubmit}
+                onClick={submitDismissFeedback}
+                variant="contained"
+                size="medium"
+                sx={{ 
+                  textTransform: 'none',
+                  backgroundColor: '#4caf50',
+                  color: '#000',
+                  fontWeight: 600,
+                  fontSize: '0.85rem',
+                  px: 3,
+                  borderRadius: 2,
+                  boxShadow: '0 4px 12px rgba(76, 175, 80, 0.3)',
+                  '&:hover': {
+                    backgroundColor: '#66bb6a',
+                    boxShadow: '0 6px 16px rgba(76, 175, 80, 0.4)',
+                  },
+                  '&:disabled': {
+                    backgroundColor: 'rgba(76, 175, 80, 0.4)',
+                    color: 'rgba(0, 0, 0, 0.6)',
+                  },
+                }}
+              >
+                {dismissFeedback.trim() === '' ? 'Skip & Hide' : 'Submit & Hide'}
+              </LoadingButton>
+            </Box>
           </Box>
-          
-          <Button
-            onClick={onTryNewVersion}
-            variant="contained"
-            size={isMobile ? "medium" : "small"}
-            startIcon={<TrendingUp />}
-            fullWidth={isMobile}
-            sx={{
-              backgroundColor: '#4caf50',
-              color: '#000',
-              '&:hover': {
-                backgroundColor: '#66bb6a',
-              },
-              fontWeight: 600,
-              borderRadius: 2,
-              minWidth: isMobile ? 'auto' : 'fit-content',
-              px: 3,
-              py: 1,
-            }}
-          >
-            Try New Version
-          </Button>
-        </Box>
+        )}
       </Paper>
     </Box>
   );
@@ -398,8 +704,17 @@ export default function CollagePage() {
 
   const authorized = (user?.userDetails?.magicSubscription === "true" || user?.['cognito:groups']?.includes('admins'));
 
-  // Check if user has explicitly chosen legacy version
-  const shouldShowNewVersionBanner = authorized && user && getCollagePreference(user) === 'legacy';
+  // Check if user has explicitly chosen legacy version and banner hasn't been dismissed
+  const shouldShowNewVersionBanner = authorized && user && !isBannerDismissed(user);
+  
+  // Show subtle chip when banner is dismissed
+  const shouldShowSubtleChip = authorized && user && isBannerDismissed(user);
+
+  // Handle switching to new version
+  const handleTryNewVersion = () => {
+    setCollagePreference(user, 'new');
+    navigate('/collage?force=new');
+  };
 
   const handleReset = () => {
     // Clear all state variables
@@ -749,12 +1064,6 @@ export default function CollagePage() {
     setBorderColor(event.target.value);
   };
 
-  // Handle switching to new version
-  const handleTryNewVersion = () => {
-    setCollagePreference(user, 'new');
-    navigate('/collage?force=new');
-  };
-
   return (
     <BasePage
       pageTitle="Create a collage"
@@ -799,6 +1108,10 @@ export default function CollagePage() {
         <>
           {shouldShowNewVersionBanner && (
             <TryNewVersionBanner user={user} onTryNewVersion={handleTryNewVersion} />
+          )}
+          
+          {shouldShowSubtleChip && (
+            <SubtleSwitchChip onTryNewVersion={handleTryNewVersion} />
           )}
           
           <StepperContainer>
