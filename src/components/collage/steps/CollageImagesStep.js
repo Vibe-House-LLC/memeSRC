@@ -129,9 +129,7 @@ const CollageImagesStep = ({
       }}>        
         {/* Always render the preview, let it handle null templates */}
         <Box sx={{ 
-          width: isMobile ? 'calc(100vw - 16px)' : '100%', 
-          maxWidth: isMobile ? 'none' : '600px', 
-          margin: isMobile ? '0 calc(-50vw + 50% - 8px)' : '0 auto',
+          width: '100%', 
           mb: 2,
           position: 'relative'
         }} id="collage-preview-container">

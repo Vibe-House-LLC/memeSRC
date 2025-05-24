@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useEffect, useState } from 'react';
 import { useTheme } from "@mui/material/styles";
-import { Box, IconButton, Typography } from "@mui/material";
+import { Box, IconButton, Typography, useMediaQuery } from "@mui/material";
 import { OpenWith, Check, Add } from "@mui/icons-material";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 
@@ -304,6 +304,7 @@ const DynamicCollagePreview = ({
   updatePanelTransform, // Function to update transform state
 }) => {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   
   // Ref to measure the actual component width
   const containerRef = useRef(null);
@@ -1148,8 +1149,6 @@ const DynamicCollagePreview = ({
         position: 'relative',
         width: '100%',
         paddingBottom: `${(1 / aspectRatioValue) * 100}%`, // Set aspect ratio based on selection
-        maxWidth: 800,
-        margin: '0 auto',
         overflow: 'hidden',
         backgroundColor: borderPixels > 0 ? borderColor : theme.palette.background.default,
         border: `1px solid ${theme.palette.divider}`,

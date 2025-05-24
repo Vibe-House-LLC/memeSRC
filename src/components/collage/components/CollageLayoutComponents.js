@@ -8,9 +8,12 @@ import {
   Button,
   Stack,
   Divider,
-  useMediaQuery
+  useMediaQuery,
+  Collapse,
+  Paper,
+  IconButton
 } from "@mui/material";
-import { Settings, PhotoLibrary, Launch as ExportIcon, ArrowBack, KeyboardArrowDown } from "@mui/icons-material";
+import { Settings, PhotoLibrary, Launch as ExportIcon, ArrowBack, KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
 
 import CollageSettingsStep from "../steps/CollageSettingsStep";
 import CollageImagesStep from "../steps/CollageImagesStep";
@@ -64,15 +67,94 @@ export const ContentPaper = ({ children, isMobile, sx = {} }) => {
 };
 
 /**
+ * Collapsible Settings Section for Mobile
+ */
+const CollapsibleSettingsSection = ({ settingsStepProps, isMobile }) => {
+  const theme = useTheme();
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  const handleToggleSettings = () => {
+    setIsSettingsOpen(!isSettingsOpen);
+  };
+
+  if (!isMobile) {
+    return null; // Only render on mobile
+  }
+
+  return (
+    <Paper
+      elevation={1}
+      sx={{
+        mb: 2,
+        borderRadius: 2,
+        border: 1,
+        borderColor: 'divider',
+        overflow: 'hidden'
+      }}
+    >
+      {/* Collapsible Header */}
+      <Box
+        onClick={handleToggleSettings}
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          p: 2,
+          cursor: 'pointer',
+          bgcolor: 'background.paper',
+          borderBottom: isSettingsOpen ? 1 : 0,
+          borderColor: 'divider',
+          '&:hover': {
+            bgcolor: theme.palette.mode === 'dark' 
+              ? 'rgba(255, 255, 255, 0.05)'
+              : 'rgba(0, 0, 0, 0.02)'
+          }
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <Settings sx={{ 
+            mr: 1.5, 
+            color: theme.palette.primary.main,
+            fontSize: '1.5rem' 
+          }} />
+          <Typography 
+            variant="h6" 
+            fontWeight={600}
+            sx={{ color: 'text.primary' }}
+          >
+            Collage Settings
+          </Typography>
+        </Box>
+        
+        <IconButton
+          size="small"
+          sx={{
+            transition: 'transform 0.2s ease',
+            transform: isSettingsOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+            color: 'text.secondary'
+          }}
+        >
+          <KeyboardArrowDown />
+        </IconButton>
+      </Box>
+
+      {/* Collapsible Content */}
+      <Collapse in={isSettingsOpen} timeout="auto" unmountOnExit>
+        <Box sx={{ p: 2, pt: 1 }}>
+          <CollageSettingsStep {...settingsStepProps} />
+        </Box>
+      </Collapse>
+    </Paper>
+  );
+};
+
+/**
  * Unified layout for the collage tool that adapts to all screen sizes
  */
 export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, setFinalImage, isMobile, onBackToEdit }) => {
   const theme = useTheme();
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
-  
-  // Ref for scrolling to settings on mobile
-  const settingsRef = useRef(null);
 
   const handleOpenExportDialog = () => {
     setIsExportDialogOpen(true);
@@ -99,7 +181,7 @@ export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, 
       panelCount: imagesStepProps.panelCount
     },
     hasFinalImage: !!finalImage,
-    hasImages: hasImages
+    hasImages
   });
   
   return (
@@ -132,26 +214,20 @@ export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, 
           // No images: Clean empty state, let the bulk uploader speak for itself
           null
         ) : isMobile ? (
-          // Mobile: Stack vertically with better spacing and visual hierarchy
-          <Stack spacing={3} sx={{ p: 2, px: 1 }}>
-            {/* Settings Section First on Mobile */}
-            <Box ref={settingsRef}>
-              <CollageSettingsStep 
-                {...settingsStepProps}
-              />
-            </Box>
+          // Mobile: Stack vertically with collapsible settings
+          <Stack spacing={2} sx={{ p: 2, px: 1 }}>
+            {/* Collapsible Settings Section for Mobile */}
+            <CollapsibleSettingsSection settingsStepProps={settingsStepProps} isMobile={isMobile} />
 
             {/* Images Section */}
-            <Box>
-              <Box sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'space-between',
-                mb: 2,
-                pb: 1,
-                borderBottom: 1,
-                borderColor: 'divider'
-              }} />
+            <Box sx={{ 
+              width: '100%',
+              overflow: 'hidden',
+              '& #collage-preview-container': {
+                width: '100% !important',
+                maxWidth: '100% !important'
+              }
+            }}>
               <CollageImagesStep 
                 {...imagesStepProps} 
                 setFinalImage={setFinalImage}
@@ -178,7 +254,6 @@ export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, 
               border: 1,
               borderColor: 'divider'
             }}>
-              {/* <SectionHeading icon={Settings} title="Settings" /> */}
               <CollageSettingsStep 
                 {...settingsStepProps}
               />
@@ -195,11 +270,20 @@ export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, 
               borderColor: 'divider'
             }}>
               <SectionHeading icon={PhotoLibrary} title="Your Collage" />
-              <CollageImagesStep 
-                {...imagesStepProps} 
-                setFinalImage={setFinalImage}
-                handleOpenExportDialog={handleOpenExportDialog}
-              />
+              <Box sx={{ 
+                width: '100%',
+                overflow: 'hidden',
+                '& #collage-preview-container': {
+                  width: '100% !important',
+                  maxWidth: '100% !important'
+                }
+              }}>
+                <CollageImagesStep 
+                  {...imagesStepProps} 
+                  setFinalImage={setFinalImage}
+                  handleOpenExportDialog={handleOpenExportDialog}
+                />
+              </Box>
             </Box>
           </Box>
         )}
