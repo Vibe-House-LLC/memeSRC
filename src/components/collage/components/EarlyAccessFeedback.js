@@ -226,127 +226,178 @@ export default function EarlyAccessFeedback() {
         {/* Expanded Content */}
         <Collapse in={expanded}>
           <Box sx={{ 
-            px: isMobile ? 2 : 2.5, 
-            pb: isMobile ? 2 : 2.5,
             borderTop: '1px solid rgba(255, 165, 0, 0.2)',
-            backgroundColor: 'rgba(255, 255, 255, 0.05)'
+            backgroundColor: 'rgba(0, 0, 0, 0.2)'
           }}>
-            {/* Quick Actions */}
+            {/* Quick Actions Section */}
             <Box sx={{ 
-              display: 'flex', 
-              gap: 1, 
-              mb: 2.5,
-              pt: 2,
-              flexWrap: 'wrap'
+              px: isMobile ? 2 : 2.5, 
+              py: 2,
+              borderBottom: '1px solid rgba(255, 165, 0, 0.1)'
             }}>
+              <Typography variant="body2" sx={{ 
+                color: 'rgba(255, 255, 255, 0.8)', 
+                mb: 1.5,
+                fontWeight: 500,
+                fontSize: '0.85rem'
+              }}>
+                Quick Actions
+              </Typography>
               <Button
                 onClick={handleRevertToLegacy}
                 size="small"
                 startIcon={<HistoryIcon />}
+                variant="outlined"
                 sx={{ 
                   textTransform: 'none',
-                  color: 'rgba(255, 255, 255, 0.8)',
+                  borderColor: 'rgba(255, 152, 0, 0.5)',
+                  color: '#ff9800',
                   fontSize: '0.8rem',
+                  fontWeight: 500,
                   '&:hover': {
-                    color: '#fff',
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                    borderColor: '#ff9800',
+                    backgroundColor: 'rgba(255, 152, 0, 0.1)',
+                    color: '#ffb74d'
                   }
                 }}
               >
-                Switch to classic version
+                Switch to Classic Version
               </Button>
             </Box>
 
-            {/* Feedback Form */}
-            <Box>
-              <Typography variant="body2" sx={{ 
-                color: '#fff', 
-                mb: 1.5, 
-                display: 'block',
-                fontWeight: 600
+            {/* Feedback Form Section */}
+            <Box sx={{ 
+              px: isMobile ? 2 : 2.5, 
+              py: 2.5
+            }}>
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 1, 
+                mb: 2 
               }}>
-                Send Feedback
+                <FeedbackIcon sx={{ 
+                  fontSize: 20, 
+                  color: '#ff9800' 
+                }} />
+                <Typography variant="body1" sx={{ 
+                  color: '#fff', 
+                  fontWeight: 600,
+                  fontSize: '1rem'
+                }}>
+                  Send Feedback
+                </Typography>
+              </Box>
+              
+              <Typography variant="body2" sx={{ 
+                color: 'rgba(255, 255, 255, 0.7)', 
+                mb: 2,
+                fontSize: '0.85rem',
+                lineHeight: 1.4
+              }}>
+                Help us improve by sharing bugs, suggestions, or feature requests.
               </Typography>
               
               <TextField
-                placeholder="Found a bug or have a suggestion?"
+                placeholder="What would you like to tell us?"
                 multiline
-                rows={2}
+                rows={3}
                 value={messageInput}
                 onChange={handleMessageChange}
                 fullWidth
-                size="small"
                 sx={{ 
-                  mb: 1.5,
+                  mb: 2,
                   '& .MuiOutlinedInput-root': {
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                    borderRadius: 2,
                     '& fieldset': {
-                      borderColor: 'rgba(255, 255, 255, 0.3)',
+                      borderColor: 'rgba(255, 255, 255, 0.25)',
                     },
                     '&:hover fieldset': {
-                      borderColor: 'rgba(255, 152, 0, 0.5)',
+                      borderColor: 'rgba(255, 152, 0, 0.6)',
                     },
                     '&.Mui-focused fieldset': {
                       borderColor: '#ff9800',
+                      borderWidth: 2,
                     },
                   },
                   '& .MuiInputBase-input': {
                     color: '#fff',
+                    fontSize: '0.9rem'
                   },
                   '& .MuiInputBase-input::placeholder': {
-                    color: 'rgba(255, 255, 255, 0.6)',
+                    color: 'rgba(255, 255, 255, 0.5)',
                     opacity: 1,
                   },
                 }}
                 error={formSubmitted && messageError}
-                helperText={formSubmitted && messageError ? 'Message required' : ''}
+                helperText={formSubmitted && messageError ? 'Please enter your feedback' : ''}
                 FormHelperTextProps={{
-                  sx: { color: '#ff5252' }
+                  sx: { 
+                    color: '#ff5252',
+                    fontSize: '0.75rem'
+                  }
                 }}
               />
               
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={emailConsent}
-                    onChange={handleEmailConsentChange}
-                    size="small"
-                    sx={{
-                      color: 'rgba(255, 255, 255, 0.7)',
-                      '&.Mui-checked': {
-                        color: '#ff9800',
-                      },
-                    }}
-                  />
-                }
-                label={
-                  <Typography variant="body2" sx={{ 
-                    color: 'rgba(255, 255, 255, 0.9)',
-                    fontSize: '0.8rem'
+              <Box sx={{ 
+                backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                borderRadius: 2,
+                p: 1.5,
+                mb: 2,
+                border: emailConsentError ? '1px solid #ff5252' : '1px solid rgba(255, 255, 255, 0.1)'
+              }}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={emailConsent}
+                      onChange={handleEmailConsentChange}
+                      size="small"
+                      sx={{
+                        color: 'rgba(255, 255, 255, 0.6)',
+                        '&.Mui-checked': {
+                          color: '#ff9800',
+                        },
+                      }}
+                    />
+                  }
+                  label={
+                    <Typography variant="body2" sx={{ 
+                      color: 'rgba(255, 255, 255, 0.9)',
+                      fontSize: '0.85rem',
+                      lineHeight: 1.4
+                    }}>
+                      I consent to being contacted via email about this feedback
+                    </Typography>
+                  }
+                />
+                
+                {formSubmitted && emailConsentError && (
+                  <Typography variant="caption" sx={{ 
+                    display: 'block', 
+                    mt: 0.5,
+                    color: '#ff5252',
+                    fontSize: '0.75rem'
                   }}>
-                    OK to email me about this feedback
+                    Email consent is required to submit feedback
                   </Typography>
-                }
-                sx={{ mb: 1 }}
-              />
+                )}
+              </Box>
               
-              {formSubmitted && emailConsentError && (
-                <Typography variant="caption" sx={{ 
-                  display: 'block', 
-                  mb: 1,
-                  color: '#ff5252'
-                }}>
-                  Please consent to email contact
-                </Typography>
-              )}
-              
-              <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'flex-end', mt: 2 }}>
+              <Box sx={{ 
+                display: 'flex', 
+                gap: 1.5, 
+                justifyContent: 'flex-end',
+                alignItems: 'center'
+              }}>
                 <Button
                   onClick={handleClose}
-                  size="small"
+                  size="medium"
                   sx={{ 
                     textTransform: 'none', 
                     color: 'rgba(255, 255, 255, 0.7)',
+                    fontSize: '0.85rem',
+                    px: 2,
                     '&:hover': {
                       color: '#fff',
                       backgroundColor: 'rgba(255, 255, 255, 0.1)'
@@ -359,21 +410,27 @@ export default function EarlyAccessFeedback() {
                   loading={loadingSubmitStatus}
                   onClick={submitFeedback}
                   variant="contained"
-                  size="small"
+                  size="medium"
                   sx={{ 
                     textTransform: 'none',
                     backgroundColor: '#ff9800',
                     color: '#000',
                     fontWeight: 600,
+                    fontSize: '0.85rem',
+                    px: 3,
+                    borderRadius: 2,
+                    boxShadow: '0 4px 12px rgba(255, 152, 0, 0.3)',
                     '&:hover': {
                       backgroundColor: '#ffb74d',
+                      boxShadow: '0 6px 16px rgba(255, 152, 0, 0.4)',
                     },
                     '&:disabled': {
-                      backgroundColor: 'rgba(255, 152, 0, 0.3)',
+                      backgroundColor: 'rgba(255, 152, 0, 0.4)',
+                      color: 'rgba(0, 0, 0, 0.6)',
                     },
                   }}
                 >
-                  Send
+                  Send Feedback
                 </LoadingButton>
               </Box>
             </Box>
