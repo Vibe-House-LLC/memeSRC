@@ -554,9 +554,9 @@ const WelcomeMessage = ({
                     
                     <Grid container spacing={1.5}>
                       {[
-                        { icon: "🎨", text: "Rebuilt interface", highlight: false }, 
-                        { icon: "📐", text: "Easy process", highlight: false }, 
-                        { icon: "⚡", text: "Enhanced controls", highlight: false },
+                        { icon: "🎨", text: "New interface", highlight: false }, 
+                        { icon: "📐", text: "Advanced layouts", highlight: false }, 
+                        { icon: "⚡", text: "Better controls", highlight: false },
                         { icon: "📱", text: "Mobile optimized", highlight: false }
                       ].map((feature, index) => (
                         <Grid item xs={12} sm={6} key={index}>

@@ -257,13 +257,13 @@ function TryNewVersionBanner({ user, onTryNewVersion }) {
                     fontSize: isMobile ? '1.1rem' : '1.25rem',
                     mb: 0.5
                   }}>
-                    New Collage Tool Available
+                    New Collage Tool Available!
                   </Typography>
                   <Typography variant="body2" sx={{ 
                     color: 'rgba(255, 255, 255, 0.8)',
                     fontSize: isMobile ? '0.8rem' : '0.875rem'
                   }}>
-                    We've redesigned the collage tool with better layouts and features
+                    A brand new Collage Tool with better layouts and features is in early access
                   </Typography>
                 </Box>
               </Box>
