@@ -154,20 +154,7 @@ const CollageImagesStep = ({
         flexDirection: 'column', 
         alignItems: 'center', 
         position: 'relative',
-      }}>
-        <Typography 
-          variant={isMobile ? "body2" : "subtitle2"} 
-          color="text.secondary" 
-          gutterBottom 
-          sx={{ 
-            mb: 2, 
-            fontWeight: 500,
-            textAlign: 'center'
-          }}
-        >
-          Tap panels to upload photos. Tap images to edit - then zoom, drag, or tap "Done" when finished.
-        </Typography>
-        
+      }}>        
         {/* Always render the preview, let it handle null templates */}
         <Box sx={{ 
           width: '100%', 
@@ -193,6 +180,20 @@ const CollageImagesStep = ({
             borderColor={borderColor}
           />
         </Box>
+        <Typography 
+          variant={isMobile ? "body2" : "subtitle2"} 
+          color="text.secondary" 
+          gutterBottom 
+          sx={{ 
+            mb: 2, 
+            fontWeight: 500,
+            textAlign: 'center'
+          }}
+        >
+          Tap to add or replace photos.
+          <br />
+          Fill all frames to generate.
+        </Typography>
       </Box>
     </Box>
   );
