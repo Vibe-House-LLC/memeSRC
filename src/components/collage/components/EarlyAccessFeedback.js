@@ -56,6 +56,9 @@ export default function EarlyAccessFeedback() {
   const navigate = useNavigate();
   
   const [expanded, setExpanded] = useState(false);
+  
+  // Feedback section state
+  const [feedbackExpanded, setFeedbackExpanded] = useState(false);
   const [messageInput, setMessageInput] = useState('');
   const [emailConsent, setEmailConsent] = useState(false);
   const [messageError, setMessageError] = useState(false);
@@ -63,7 +66,8 @@ export default function EarlyAccessFeedback() {
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [loadingSubmitStatus, setLoadingSubmitStatus] = useState(false);
   
-  // Switch feedback inline state
+  // Switch section state
+  const [switchExpanded, setSwitchExpanded] = useState(false);
   const [showSwitchFeedback, setShowSwitchFeedback] = useState(false);
   const [switchFeedback, setSwitchFeedback] = useState('');
   const [switchEmailConsent, setSwitchEmailConsent] = useState(false);
@@ -282,101 +286,65 @@ export default function EarlyAccessFeedback() {
             borderTop: '1px solid rgba(255, 165, 0, 0.2)',
             backgroundColor: 'rgba(0, 0, 0, 0.2)'
           }}>
-            {!showSwitchFeedback ? (
-              <>
-                {/* Switch to Classic Action */}
-                <Box sx={{ 
-                  px: isMobile ? 2 : 2.5, 
-                  py: 2,
-                  borderBottom: '1px solid rgba(255, 165, 0, 0.1)'
-                }}>
-                  <Box sx={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'space-between',
-                    p: 1.5,
-                    borderRadius: 2,
-                    backgroundColor: 'rgba(255, 152, 0, 0.05)',
-                    border: '1px solid rgba(255, 152, 0, 0.2)',
-                    transition: 'all 0.2s ease',
-                    '&:hover': {
-                      backgroundColor: 'rgba(255, 152, 0, 0.08)',
-                      border: '1px solid rgba(255, 152, 0, 0.3)',
-                    }
-                  }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                      <HistoryIcon sx={{ 
-                        fontSize: 20, 
-                        color: '#ff9800',
-                        opacity: 0.8
-                      }} />
-                      <Box>
-                        <Typography variant="body2" sx={{ 
-                          color: '#fff', 
-                          fontWeight: 600,
-                          fontSize: '0.9rem',
-                          lineHeight: 1.2
-                        }}>
-                          Need the old version?
-                        </Typography>
-                        <Typography variant="caption" sx={{ 
-                          color: 'rgba(255, 255, 255, 0.6)',
-                          fontSize: '0.75rem'
-                        }}>
-                          You can switch at any time.
-                        </Typography>
-                      </Box>
-                    </Box>
-                    <Button
-                      onClick={handleRevertToLegacy}
-                      size="small"
-                      variant="contained"
-                      sx={{ 
-                        textTransform: 'none',
-                        backgroundColor: 'rgba(255, 152, 0, 0.9)',
-                        color: '#000',
-                        fontSize: '0.75rem',
-                        fontWeight: 600,
-                        px: 1.5,
-                        py: 0.5,
-                        borderRadius: 1.5,
-                        minWidth: 'auto',
-                        boxShadow: 'none',
-                        '&:hover': {
-                          backgroundColor: '#ff9800',
-                          boxShadow: '0 2px 8px rgba(255, 152, 0, 0.3)',
-                        }
-                      }}
-                    >
-                      Switch
-                    </Button>
-                  </Box>
-                </Box>
-
-                {/* Feedback Form Section */}
-                <Box sx={{ 
-                  px: isMobile ? 2 : 2.5, 
-                  py: 2.5
-                }}>
-                  <Box sx={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: 1, 
-                    mb: 2 
-                  }}>
-                    <FeedbackIcon sx={{ 
-                      fontSize: 20, 
-                      color: '#ff9800' 
-                    }} />
-                    <Typography variant="body1" sx={{ 
+            {/* Feedback Section */}
+            <Box sx={{ 
+              borderBottom: '1px solid rgba(255, 165, 0, 0.1)'
+            }}>
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between',
+                px: isMobile ? 2 : 2.5,
+                py: 1.5,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                '&:hover': {
+                  backgroundColor: 'rgba(0, 0, 0, 0.4)'
+                }
+              }}
+              onClick={() => setFeedbackExpanded(!feedbackExpanded)}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <FeedbackIcon sx={{ 
+                    fontSize: 20, 
+                    color: '#ff9800' 
+                  }} />
+                  <Box>
+                    <Typography variant="body2" sx={{ 
                       color: '#fff', 
                       fontWeight: 600,
-                      fontSize: '1rem'
+                      fontSize: '0.9rem',
+                      lineHeight: 1.2
                     }}>
                       Send Feedback
                     </Typography>
+                    <Typography variant="caption" sx={{ 
+                      color: 'rgba(255, 255, 255, 0.6)',
+                      fontSize: '0.75rem'
+                    }}>
+                      Share bugs, suggestions, or requests
+                    </Typography>
                   </Box>
-                  
+                </Box>
+                
+                <Box sx={{ 
+                  color: '#ff9800',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.5
+                }}>
+                  {feedbackExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                </Box>
+              </Box>
+
+              <Collapse in={feedbackExpanded}>
+                <Box sx={{ 
+                  px: isMobile ? 2 : 2.5, 
+                  pb: 2.5,
+                  pt: 0.5,
+                  backgroundColor: 'rgba(0, 0, 0, 0.4)'
+                }}>
                   <Typography variant="body2" sx={{ 
                     color: 'rgba(255, 255, 255, 0.7)', 
                     mb: 2,
@@ -511,171 +479,288 @@ export default function EarlyAccessFeedback() {
                     </Box>
                   )}
                 </Box>
-              </>
-            ) : (
-              /* Switch to Classic Feedback Form */
+              </Collapse>
+            </Box>
+
+            {/* Switch to Classic Section */}
+            <Box>
               <Box sx={{ 
-                px: isMobile ? 2 : 2.5, 
-                py: 2
-              }}>
-                <Box sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'space-between',
-                  gap: 1, 
-                  mb: 1.5 
-                }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <HistoryIcon sx={{ 
-                      fontSize: 20, 
-                      color: '#ff9800' 
-                    }} />
-                    <Typography variant="body1" sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between',
+                px: isMobile ? 2 : 2.5,
+                py: 1.5,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                '&:hover': {
+                  backgroundColor: 'rgba(0, 0, 0, 0.4)'
+                }
+              }}
+              onClick={() => setSwitchExpanded(!switchExpanded)}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <HistoryIcon sx={{ 
+                    fontSize: 20, 
+                    color: '#ff9800',
+                    opacity: 0.8
+                  }} />
+                  <Box>
+                    <Typography variant="body2" sx={{ 
                       color: '#fff', 
                       fontWeight: 600,
-                      fontSize: '1rem'
+                      fontSize: '0.9rem',
+                      lineHeight: 1.2
                     }}>
-                      Switch to Classic Version
+                      Need the old version?
+                    </Typography>
+                    <Typography variant="caption" sx={{ 
+                      color: 'rgba(255, 255, 255, 0.6)',
+                      fontSize: '0.75rem'
+                    }}>
+                      Switch back to the classic tool
                     </Typography>
                   </Box>
-                  
-                  <Typography
-                    onClick={handleCancelSwitch}
-                    variant="body2"
-                    sx={{ 
-                      color: 'rgba(255, 255, 255, 0.7)',
-                      fontSize: '0.8rem',
-                      cursor: 'pointer',
-                      textDecoration: 'underline',
-                      textDecorationColor: 'transparent',
-                      '&:hover': {
-                        color: '#fff',
-                        textDecorationColor: 'rgba(255, 255, 255, 0.7)'
-                      }
-                    }}
-                  >
-                    Cancel
-                  </Typography>
                 </Box>
-                
-                <TextField
-                  placeholder="What's missing on this version? (optional)"
-                  multiline
-                  rows={3}
-                  value={switchFeedback}
-                  onChange={(e) => setSwitchFeedback(e.target.value)}
-                  fullWidth
-                  sx={{ 
-                    mb: 1.5,
-                    '& .MuiOutlinedInput-root': {
-                      backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                      borderRadius: 2,
-                      '& fieldset': {
-                        borderColor: 'rgba(255, 255, 255, 0.25)',
-                      },
-                      '&:hover fieldset': {
-                        borderColor: 'rgba(255, 152, 0, 0.6)',
-                      },
-                      '&.Mui-focused fieldset': {
-                        borderColor: '#ff9800',
-                        borderWidth: 2,
-                      },
-                    },
-                    '& .MuiInputBase-input': {
-                      color: '#fff',
-                      fontSize: '0.9rem'
-                    },
-                    '& .MuiInputBase-input::placeholder': {
-                      color: 'rgba(255, 255, 255, 0.5)',
-                      opacity: 1,
-                    },
-                  }}
-                />
                 
                 <Box sx={{ 
-                  display: 'flex', 
-                  gap: 1, 
-                  alignItems: 'center'
+                  color: '#ff9800',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.5
                 }}>
-                  <LoadingButton
-                    loading={switchLoadingSubmit}
-                    onClick={submitSwitchFeedback}
-                    variant="contained"
-                    size="medium"
-                    sx={{ 
-                      textTransform: 'none',
-                      backgroundColor: '#ff9800',
-                      color: '#000',
-                      fontWeight: 600,
-                      fontSize: '0.9rem',
-                      px: 2.5,
-                      py: 1,
-                      borderRadius: 2,
-                      boxShadow: '0 4px 12px rgba(255, 152, 0, 0.3)',
-                      flex: 1,
-                      minHeight: 42,
-                      '&:hover': {
-                        backgroundColor: '#ffb74d',
-                        boxShadow: '0 6px 16px rgba(255, 152, 0, 0.4)',
-                      },
-                      '&:disabled': {
-                        backgroundColor: 'rgba(255, 152, 0, 0.4)',
-                        color: 'rgba(0, 0, 0, 0.6)',
-                      },
-                    }}
-                  >
-                    {switchFeedback.trim() === '' ? 'Switch Back' : 'Submit & Switch'}
-                  </LoadingButton>
+                  {switchExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
                 </Box>
+              </Box>
 
-                {switchFeedback.trim() !== '' && (
-                  <Box sx={{ 
-                    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                    borderRadius: 2,
-                    p: 1.5,
-                    mt: 1.5,
-                    border: (switchFormSubmitted && switchFeedback.trim() !== '' && !switchEmailConsent) ? 
-                      '1px solid #ff5252' : '1px solid rgba(255, 255, 255, 0.1)'
-                  }}>
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={switchEmailConsent}
-                          onChange={(e) => setSwitchEmailConsent(e.target.checked)}
-                          size="small"
-                          sx={{
-                            color: 'rgba(255, 255, 255, 0.6)',
-                            '&.Mui-checked': {
-                              color: '#ff9800',
+              <Collapse in={switchExpanded}>
+                <Box sx={{ 
+                  px: isMobile ? 2 : 2.5, 
+                  pb: 2.5,
+                  pt: 0.5,
+                  backgroundColor: 'rgba(0, 0, 0, 0.4)'
+                }}>
+                  {!showSwitchFeedback ? (
+                    <>
+                      <Typography variant="body2" sx={{ 
+                        color: 'rgba(255, 255, 255, 0.7)', 
+                        mb: 2,
+                        fontSize: '0.85rem',
+                        lineHeight: 1.4
+                      }}>
+                        You can switch back to the classic collage tool at any time.
+                      </Typography>
+                      
+                      <Box sx={{ 
+                        display: 'flex', 
+                        gap: 1, 
+                        alignItems: 'center'
+                      }}>
+                        <Button
+                          onClick={handleRevertToLegacy}
+                          variant="contained"
+                          size="medium"
+                          sx={{ 
+                            textTransform: 'none',
+                            backgroundColor: '#ff9800',
+                            color: '#000',
+                            fontWeight: 600,
+                            fontSize: '0.9rem',
+                            px: 2.5,
+                            py: 1,
+                            borderRadius: 2,
+                            boxShadow: '0 4px 12px rgba(255, 152, 0, 0.3)',
+                            flex: 1,
+                            minHeight: 42,
+                            '&:hover': {
+                              backgroundColor: '#ffb74d',
+                              boxShadow: '0 6px 16px rgba(255, 152, 0, 0.4)',
+                            }
+                          }}
+                        >
+                          Switch with Feedback
+                        </Button>
+                        <Button
+                          onClick={handleSwitchWithoutFeedback}
+                          variant="outlined"
+                          size="medium"
+                          sx={{ 
+                            textTransform: 'none',
+                            borderColor: 'rgba(255, 152, 0, 0.6)',
+                            color: '#ff9800',
+                            fontWeight: 600,
+                            fontSize: '0.9rem',
+                            px: 2,
+                            py: 1,
+                            borderRadius: 2,
+                            minHeight: 42,
+                            '&:hover': {
+                              borderColor: '#ff9800',
+                              backgroundColor: 'rgba(255, 152, 0, 0.05)',
+                            }
+                          }}
+                        >
+                          Just Switch
+                        </Button>
+                      </Box>
+                    </>
+                  ) : (
+                    <>
+                      <Box sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between',
+                        gap: 1, 
+                        mb: 1.5 
+                      }}>
+                        <Typography variant="body1" sx={{ 
+                          color: '#fff', 
+                          fontWeight: 600,
+                          fontSize: '1rem'
+                        }}>
+                          Tell us why you're switching
+                        </Typography>
+                        
+                        <Typography
+                          onClick={handleCancelSwitch}
+                          variant="body2"
+                          sx={{ 
+                            color: 'rgba(255, 255, 255, 0.7)',
+                            fontSize: '0.8rem',
+                            cursor: 'pointer',
+                            textDecoration: 'underline',
+                            textDecorationColor: 'transparent',
+                            '&:hover': {
+                              color: '#fff',
+                              textDecorationColor: 'rgba(255, 255, 255, 0.7)'
+                            }
+                          }}
+                        >
+                          Cancel
+                        </Typography>
+                      </Box>
+                      
+                      <TextField
+                        placeholder="What's missing on this version? (optional)"
+                        multiline
+                        rows={3}
+                        value={switchFeedback}
+                        onChange={(e) => setSwitchFeedback(e.target.value)}
+                        fullWidth
+                        sx={{ 
+                          mb: 1.5,
+                          '& .MuiOutlinedInput-root': {
+                            backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                            borderRadius: 2,
+                            '& fieldset': {
+                              borderColor: 'rgba(255, 255, 255, 0.25)',
+                            },
+                            '&:hover fieldset': {
+                              borderColor: 'rgba(255, 152, 0, 0.6)',
+                            },
+                            '&.Mui-focused fieldset': {
+                              borderColor: '#ff9800',
+                              borderWidth: 2,
+                            },
+                          },
+                          '& .MuiInputBase-input': {
+                            color: '#fff',
+                            fontSize: '0.9rem'
+                          },
+                          '& .MuiInputBase-input::placeholder': {
+                            color: 'rgba(255, 255, 255, 0.5)',
+                            opacity: 1,
+                          },
+                        }}
+                      />
+                      
+                      <Box sx={{ 
+                        display: 'flex', 
+                        gap: 1, 
+                        alignItems: 'center'
+                      }}>
+                        <LoadingButton
+                          loading={switchLoadingSubmit}
+                          onClick={submitSwitchFeedback}
+                          variant="contained"
+                          size="medium"
+                          sx={{ 
+                            textTransform: 'none',
+                            backgroundColor: '#ff9800',
+                            color: '#000',
+                            fontWeight: 600,
+                            fontSize: '0.9rem',
+                            px: 2.5,
+                            py: 1,
+                            borderRadius: 2,
+                            boxShadow: '0 4px 12px rgba(255, 152, 0, 0.3)',
+                            flex: 1,
+                            minHeight: 42,
+                            '&:hover': {
+                              backgroundColor: '#ffb74d',
+                              boxShadow: '0 6px 16px rgba(255, 152, 0, 0.4)',
+                            },
+                            '&:disabled': {
+                              backgroundColor: 'rgba(255, 152, 0, 0.4)',
+                              color: 'rgba(0, 0, 0, 0.6)',
                             },
                           }}
-                        />
-                      }
-                      label={
-                        <Typography variant="body2" sx={{ 
-                          color: 'rgba(255, 255, 255, 0.9)',
-                          fontSize: '0.85rem',
-                          lineHeight: 1.4
+                        >
+                          {switchFeedback.trim() === '' ? 'Switch Back' : 'Submit & Switch'}
+                        </LoadingButton>
+                      </Box>
+
+                      {switchFeedback.trim() !== '' && (
+                        <Box sx={{ 
+                          backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                          borderRadius: 2,
+                          p: 1.5,
+                          mt: 1.5,
+                          border: (switchFormSubmitted && switchFeedback.trim() !== '' && !switchEmailConsent) ? 
+                            '1px solid #ff5252' : '1px solid rgba(255, 255, 255, 0.1)'
                         }}>
-                          I consent to being contacted via email about this feedback
-                        </Typography>
-                      }
-                    />
-                    
-                    {switchFormSubmitted && switchFeedback.trim() !== '' && !switchEmailConsent && (
-                      <Typography variant="caption" sx={{ 
-                        display: 'block', 
-                        mt: 0.5,
-                        color: '#ff5252',
-                        fontSize: '0.75rem'
-                      }}>
-                        Email consent is required when providing feedback
-                      </Typography>
-                    )}
-                  </Box>
-                )}
-              </Box>
-            )}
+                          <FormControlLabel
+                            control={
+                              <Checkbox
+                                checked={switchEmailConsent}
+                                onChange={(e) => setSwitchEmailConsent(e.target.checked)}
+                                size="small"
+                                sx={{
+                                  color: 'rgba(255, 255, 255, 0.6)',
+                                  '&.Mui-checked': {
+                                    color: '#ff9800',
+                                  },
+                                }}
+                              />
+                            }
+                            label={
+                              <Typography variant="body2" sx={{ 
+                                color: 'rgba(255, 255, 255, 0.9)',
+                                fontSize: '0.85rem',
+                                lineHeight: 1.4
+                              }}>
+                                I consent to being contacted via email about this feedback
+                              </Typography>
+                            }
+                          />
+                          
+                          {switchFormSubmitted && switchFeedback.trim() !== '' && !switchEmailConsent && (
+                            <Typography variant="caption" sx={{ 
+                              display: 'block', 
+                              mt: 0.5,
+                              color: '#ff5252',
+                              fontSize: '0.75rem'
+                            }}>
+                              Email consent is required when providing feedback
+                            </Typography>
+                          )}
+                        </Box>
+                      )}
+                    </>
+                  )}
+                </Box>
+              </Collapse>
+            </Box>
           </Box>
         </Collapse>
       </Paper>
