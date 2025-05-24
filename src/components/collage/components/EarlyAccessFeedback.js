@@ -284,40 +284,73 @@ export default function EarlyAccessFeedback() {
           }}>
             {!showSwitchFeedback ? (
               <>
-                {/* Quick Actions Section */}
+                {/* Switch to Classic Action */}
                 <Box sx={{ 
                   px: isMobile ? 2 : 2.5, 
                   py: 2,
                   borderBottom: '1px solid rgba(255, 165, 0, 0.1)'
                 }}>
-                  <Typography variant="body2" sx={{ 
-                    color: 'rgba(255, 255, 255, 0.8)', 
-                    mb: 1.5,
-                    fontWeight: 500,
-                    fontSize: '0.85rem'
+                  <Box sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'space-between',
+                    p: 1.5,
+                    borderRadius: 2,
+                    backgroundColor: 'rgba(255, 152, 0, 0.05)',
+                    border: '1px solid rgba(255, 152, 0, 0.2)',
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                      backgroundColor: 'rgba(255, 152, 0, 0.08)',
+                      border: '1px solid rgba(255, 152, 0, 0.3)',
+                    }
                   }}>
-                    Quick Actions
-                  </Typography>
-                  <Button
-                    onClick={handleRevertToLegacy}
-                    size="small"
-                    startIcon={<HistoryIcon />}
-                    variant="outlined"
-                    sx={{ 
-                      textTransform: 'none',
-                      borderColor: 'rgba(255, 152, 0, 0.5)',
-                      color: '#ff9800',
-                      fontSize: '0.8rem',
-                      fontWeight: 500,
-                      '&:hover': {
-                        borderColor: '#ff9800',
-                        backgroundColor: 'rgba(255, 152, 0, 0.1)',
-                        color: '#ffb74d'
-                      }
-                    }}
-                  >
-                    Switch to Classic Version
-                  </Button>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <HistoryIcon sx={{ 
+                        fontSize: 20, 
+                        color: '#ff9800',
+                        opacity: 0.8
+                      }} />
+                      <Box>
+                        <Typography variant="body2" sx={{ 
+                          color: '#fff', 
+                          fontWeight: 600,
+                          fontSize: '0.9rem',
+                          lineHeight: 1.2
+                        }}>
+                          Need the old version?
+                        </Typography>
+                        <Typography variant="caption" sx={{ 
+                          color: 'rgba(255, 255, 255, 0.6)',
+                          fontSize: '0.75rem'
+                        }}>
+                          You can switch at any time.
+                        </Typography>
+                      </Box>
+                    </Box>
+                    <Button
+                      onClick={handleRevertToLegacy}
+                      size="small"
+                      variant="contained"
+                      sx={{ 
+                        textTransform: 'none',
+                        backgroundColor: 'rgba(255, 152, 0, 0.9)',
+                        color: '#000',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        px: 1.5,
+                        py: 0.5,
+                        borderRadius: 1.5,
+                        minWidth: 'auto',
+                        boxShadow: 'none',
+                        '&:hover': {
+                          backgroundColor: '#ff9800',
+                          boxShadow: '0 2px 8px rgba(255, 152, 0, 0.3)',
+                        }
+                      }}
+                    >
+                      Switch
+                    </Button>
+                  </Box>
                 </Box>
 
                 {/* Feedback Form Section */}
@@ -395,12 +428,49 @@ export default function EarlyAccessFeedback() {
                     }}
                   />
                   
+                  <Box sx={{ 
+                    display: 'flex', 
+                    justifyContent: 'center',
+                    alignItems: 'center'
+                  }}>
+                    <LoadingButton
+                      loading={loadingSubmitStatus}
+                      onClick={submitFeedback}
+                      variant="contained"
+                      size="medium"
+                      startIcon={<SendIcon />}
+                      sx={{ 
+                        textTransform: 'none',
+                        backgroundColor: '#ff9800',
+                        color: '#000',
+                        fontWeight: 600,
+                        fontSize: '0.9rem',
+                        px: 3,
+                        py: 1,
+                        borderRadius: 2,
+                        boxShadow: '0 4px 12px rgba(255, 152, 0, 0.3)',
+                        minHeight: 42,
+                        ...(isMobile ? { width: '100%' } : { minWidth: 140 }),
+                        '&:hover': {
+                          backgroundColor: '#ffb74d',
+                          boxShadow: '0 6px 16px rgba(255, 152, 0, 0.4)',
+                        },
+                        '&:disabled': {
+                          backgroundColor: 'rgba(255, 152, 0, 0.4)',
+                          color: 'rgba(0, 0, 0, 0.6)',
+                        },
+                      }}
+                    >
+                      Send Feedback
+                    </LoadingButton>
+                  </Box>
+
                   {messageInput.trim() !== '' && (
                     <Box sx={{ 
                       backgroundColor: 'rgba(255, 255, 255, 0.03)',
                       borderRadius: 2,
                       p: 1.5,
-                      mb: 2,
+                      mt: 2,
                       border: emailConsentError ? '1px solid #ff5252' : '1px solid rgba(255, 255, 255, 0.1)'
                     }}>
                       <FormControlLabel
@@ -440,43 +510,6 @@ export default function EarlyAccessFeedback() {
                       )}
                     </Box>
                   )}
-                  
-                  <Box sx={{ 
-                    display: 'flex', 
-                    justifyContent: isMobile ? 'stretch' : 'flex-end',
-                    mt: 1
-                  }}>
-                    <LoadingButton
-                      loading={loadingSubmitStatus}
-                      onClick={submitFeedback}
-                      variant="contained"
-                      size="medium"
-                      startIcon={<SendIcon />}
-                      sx={{ 
-                        textTransform: 'none',
-                        backgroundColor: '#ff9800',
-                        color: '#000',
-                        fontWeight: 600,
-                        fontSize: '0.9rem',
-                        px: 3,
-                        py: 1,
-                        borderRadius: 2,
-                        boxShadow: '0 4px 12px rgba(255, 152, 0, 0.3)',
-                        minHeight: 42,
-                        ...(isMobile ? { width: '100%' } : { minWidth: 140 }),
-                        '&:hover': {
-                          backgroundColor: '#ffb74d',
-                          boxShadow: '0 6px 16px rgba(255, 152, 0, 0.4)',
-                        },
-                        '&:disabled': {
-                          backgroundColor: 'rgba(255, 152, 0, 0.4)',
-                          color: 'rgba(0, 0, 0, 0.6)',
-                        },
-                      }}
-                    >
-                      Send Feedback
-                    </LoadingButton>
-                  </Box>
                 </Box>
               </>
             ) : (
@@ -488,24 +521,45 @@ export default function EarlyAccessFeedback() {
                 <Box sx={{ 
                   display: 'flex', 
                   alignItems: 'center', 
+                  justifyContent: 'space-between',
                   gap: 1, 
                   mb: 1.5 
                 }}>
-                  <HistoryIcon sx={{ 
-                    fontSize: 20, 
-                    color: '#ff9800' 
-                  }} />
-                  <Typography variant="body1" sx={{ 
-                    color: '#fff', 
-                    fontWeight: 600,
-                    fontSize: '1rem'
-                  }}>
-                    Switch to Classic Version
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <HistoryIcon sx={{ 
+                      fontSize: 20, 
+                      color: '#ff9800' 
+                    }} />
+                    <Typography variant="body1" sx={{ 
+                      color: '#fff', 
+                      fontWeight: 600,
+                      fontSize: '1rem'
+                    }}>
+                      Switch to Classic Version
+                    </Typography>
+                  </Box>
+                  
+                  <Typography
+                    onClick={handleCancelSwitch}
+                    variant="body2"
+                    sx={{ 
+                      color: 'rgba(255, 255, 255, 0.7)',
+                      fontSize: '0.8rem',
+                      cursor: 'pointer',
+                      textDecoration: 'underline',
+                      textDecorationColor: 'transparent',
+                      '&:hover': {
+                        color: '#fff',
+                        textDecorationColor: 'rgba(255, 255, 255, 0.7)'
+                      }
+                    }}
+                  >
+                    Cancel
                   </Typography>
                 </Box>
                 
                 <TextField
-                  placeholder="What made you want to switch back? (optional)"
+                  placeholder="What's the new version need? (optional)"
                   multiline
                   rows={3}
                   value={switchFeedback}
@@ -590,26 +644,6 @@ export default function EarlyAccessFeedback() {
                   gap: 1, 
                   alignItems: 'center'
                 }}>
-                  <Button
-                    onClick={handleCancelSwitch}
-                    size="small"
-                    startIcon={<ArrowBackIcon />}
-                    sx={{ 
-                      textTransform: 'none', 
-                      color: 'rgba(255, 255, 255, 0.7)',
-                      fontSize: '0.8rem',
-                      px: 1.5,
-                      py: 0.5,
-                      minWidth: 'auto',
-                      '&:hover': {
-                        color: '#fff',
-                        backgroundColor: 'rgba(255, 255, 255, 0.1)'
-                      }
-                    }}
-                  >
-                    Back
-                  </Button>
-                  
                   <LoadingButton
                     loading={switchLoadingSubmit}
                     onClick={submitSwitchFeedback}
