@@ -2,7 +2,7 @@ import { useContext, useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { useTheme } from "@mui/material/styles";
 import { useMediaQuery, Box, Container, Typography, Button, Slide, Chip } from "@mui/material";
-import { Dashboard, Save, History } from "@mui/icons-material";
+import { Dashboard, Save } from "@mui/icons-material";
 import { useNavigate, useLocation } from 'react-router-dom';
 import { UserContext } from "../UserContext";
 import { useSubscribeDialog } from "../contexts/useSubscribeDialog";
@@ -24,35 +24,6 @@ if (DEBUG_MODE && typeof window !== 'undefined') {
     console.log('Collage welcome screen reset - refresh page to see welcome again');
   };
 }
-
-// Utility function to hash username for localStorage (same as in CollagePageLegacy)
-const hashString = (str) => {
-  let hash = 0;
-  if (str.length === 0) return hash;
-  for (let i = 0; i < str.length; i += 1) {
-    const char = str.charCodeAt(i);
-    hash = ((hash * 33) - hash) + char;
-    hash = Math.imul(hash, 1); // Convert to 32bit integer
-  }
-  return Math.abs(hash).toString();
-};
-
-// Utility functions for localStorage preference management (same as in CollagePageLegacy)
-const getCollagePreferenceKey = (user) => {
-  if (!user?.userDetails?.email) return 'memeSRC-collage-preference-anonymous';
-  const hashedUsername = hashString(user.userDetails.email);
-  return `memeSRC-collage-preference-${hashedUsername}`;
-};
-
-const getCollagePreference = (user) => {
-  const key = getCollagePreferenceKey(user);
-  return localStorage.getItem(key) || 'new'; // Default to new version
-};
-
-const setCollagePreference = (user, preference) => {
-  const key = getCollagePreferenceKey(user);
-  localStorage.setItem(key, preference);
-};
 
 /**
  * Helper function to crop canvas by removing pixels from edges
@@ -95,6 +66,30 @@ const getBorderThicknessValue = (borderThickness, options) => {
   
   // Return the percentage value if found, otherwise default to 2 (medium)
   return option ? option.value : 2;
+};
+
+// Utility function to hash username for localStorage (needed for auto-forwarding)
+const hashString = (str) => {
+  let hash = 0;
+  if (str.length === 0) return hash;
+  for (let i = 0; i < str.length; i += 1) {
+    const char = str.charCodeAt(i);
+    hash = ((hash * 33) - hash) + char;
+    hash = Math.imul(hash, 1); // Convert to 32bit integer
+  }
+  return Math.abs(hash).toString();
+};
+
+// Utility functions for localStorage preference management (needed for auto-forwarding)
+const getCollagePreferenceKey = (user) => {
+  if (!user?.userDetails?.email) return 'memeSRC-collage-preference-anonymous';
+  const hashedUsername = hashString(user.userDetails.email);
+  return `memeSRC-collage-preference-${hashedUsername}`;
+};
+
+const getCollagePreference = (user) => {
+  const key = getCollagePreferenceKey(user);
+  return localStorage.getItem(key) || 'new'; // Default to new version
 };
 
 export default function CollagePage() {
@@ -360,12 +355,6 @@ export default function CollagePage() {
     }
   }, [panelImageMapping, selectedImages, borderThickness, borderThicknessValue, borderColor, selectedAspectRatio, panelTransforms]);
 
-  // Handle reverting to legacy version
-  const handleRevertToLegacy = () => {
-    setCollagePreference(user, 'legacy');
-    navigate('/collage-legacy?force=legacy');
-  };
-
   return (
     <>
       <Helmet><title>Collage Tool - Editor - memeSRC</title></Helmet>
@@ -421,41 +410,6 @@ export default function CollagePage() {
             </Box>
 
             <EarlyAccessFeedback />
-
-            {/* Subtle revert option */}
-            <Box sx={{ 
-              display: 'flex', 
-              justifyContent: isMobile ? 'center' : 'flex-start',
-              pl: isMobile ? 1 : 5,
-              mt: 1
-            }}>
-              <Chip
-                icon={<History sx={{ fontSize: '0.9rem !important' }} />}
-                label="Revert to classic collage tool"
-                size="small"
-                variant="outlined"
-                clickable
-                onClick={handleRevertToLegacy}
-                sx={{ 
-                  fontSize: '0.75rem',
-                  height: 28,
-                  borderRadius: 2,
-                  color: 'text.secondary',
-                  borderColor: theme.palette.divider,
-                  backgroundColor: 'transparent',
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    borderColor: 'text.secondary',
-                    backgroundColor: theme.palette.action.hover,
-                    color: 'text.primary',
-                  },
-                  '& .MuiChip-icon': { 
-                    color: 'inherit',
-                    fontSize: '0.9rem'
-                  }
-                }}
-              />
-            </Box>
 
             <CollageLayout
               settingsStepProps={settingsStepProps}

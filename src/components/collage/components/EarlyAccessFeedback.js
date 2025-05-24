@@ -1,7 +1,5 @@
 import { useState, useContext } from 'react';
 import { 
-  Alert, 
-  AlertTitle, 
   Box, 
   Button, 
   Collapse, 
@@ -9,10 +7,10 @@ import {
   Typography, 
   Checkbox,
   FormControlLabel,
-  IconButton,
   Paper,
   Chip,
-  useMediaQuery
+  useMediaQuery,
+  IconButton
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { LoadingButton } from '@mui/lab';
@@ -21,12 +19,40 @@ import FeedbackIcon from '@mui/icons-material/Feedback';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ScienceIcon from '@mui/icons-material/Science';
+import HistoryIcon from '@mui/icons-material/History';
+import CloseIcon from '@mui/icons-material/Close';
+import { useNavigate } from 'react-router-dom';
 import { UserContext } from '../../../UserContext';
 import { SnackbarContext } from '../../../SnackbarContext';
+
+// Utility function to hash username for localStorage
+const hashString = (str) => {
+  let hash = 0;
+  if (str.length === 0) return hash;
+  for (let i = 0; i < str.length; i += 1) {
+    const char = str.charCodeAt(i);
+    hash = ((hash * 33) - hash) + char;
+    hash = Math.imul(hash, 1); // Convert to 32bit integer
+  }
+  return Math.abs(hash).toString();
+};
+
+// Utility functions for localStorage preference management
+const getCollagePreferenceKey = (user) => {
+  if (!user?.userDetails?.email) return 'memeSRC-collage-preference-anonymous';
+  const hashedUsername = hashString(user.userDetails.email);
+  return `memeSRC-collage-preference-${hashedUsername}`;
+};
+
+const setCollagePreference = (user, preference) => {
+  const key = getCollagePreferenceKey(user);
+  localStorage.setItem(key, preference);
+};
 
 export default function EarlyAccessFeedback() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const navigate = useNavigate();
   
   const [expanded, setExpanded] = useState(false);
   const [messageInput, setMessageInput] = useState('');
@@ -38,6 +64,22 @@ export default function EarlyAccessFeedback() {
   
   const { user } = useContext(UserContext);
   const { setOpen, setMessage: setSnackbarMessage, setSeverity } = useContext(SnackbarContext);
+
+  // Handle reverting to legacy version
+  const handleRevertToLegacy = () => {
+    setCollagePreference(user, 'legacy');
+    navigate('/collage-legacy?force=legacy');
+  };
+
+  // Close and reset
+  const handleClose = () => {
+    setExpanded(false);
+    setMessageInput('');
+    setEmailConsent(false);
+    setFormSubmitted(false);
+    setMessageError(false);
+    setEmailConsentError(false);
+  };
 
   const validateForm = () => {
     let isValid = true;
@@ -64,23 +106,17 @@ export default function EarlyAccessFeedback() {
     if (validateForm()) {
       setLoadingSubmitStatus(true);
       try {
-        // Append identifier to message to indicate it came from collage tool
         const feedbackMessage = `[COLLAGE TOOL FEEDBACK] ${messageInput}`;
         
         const response = await API.post('publicapi', '/user/update/proSupportMessage', {
-          body: {
-            message: feedbackMessage,
-          },
+          body: { message: feedbackMessage },
         });
 
         if (response.success) {
-          setSnackbarMessage('Collage feedback submitted successfully! Thank you for helping improve the tool.');
+          setSnackbarMessage('Feedback submitted successfully! Thank you.');
           setSeverity('success');
           setOpen(true);
-          // Reset form
-          setMessageInput('');
-          setEmailConsent(false);
-          setExpanded(false);
+          handleClose();
         } else {
           setSnackbarMessage('Failed to submit feedback');
           setSeverity('error');
@@ -99,20 +135,16 @@ export default function EarlyAccessFeedback() {
 
   const handleMessageChange = (e) => {
     setMessageInput(e.target.value);
-    if (formSubmitted) {
-      setMessageError(false);
-    }
+    if (formSubmitted) setMessageError(false);
   };
 
   const handleEmailConsentChange = (e) => {
     setEmailConsent(e.target.checked);
-    if (formSubmitted) {
-      setEmailConsentError(false);
-    }
+    if (formSubmitted) setEmailConsentError(false);
   };
 
   return (
-    <Box sx={{ px: isMobile ? 1 : 0, mb: 3 }}>
+    <Box sx={{ px: isMobile ? 1 : 0, mb: 2 }}>
       <Paper 
         elevation={6}
         sx={{ 
@@ -123,110 +155,129 @@ export default function EarlyAccessFeedback() {
           boxShadow: '0 8px 32px rgba(255, 165, 0, 0.1)',
         }}
       >
+        {/* Compact Header */}
         <Box sx={{ 
-          p: isMobile ? 2 : 3,
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          minHeight: '120px'
-        }}>
-          {/* Header Section */}
-          <Box sx={{ 
-            display: 'flex', 
-            flexDirection: isMobile ? 'column' : 'row',
-            alignItems: isMobile ? 'stretch' : 'center', 
-            justifyContent: 'space-between', 
-            mb: expanded ? (isMobile ? 1.5 : 2) : 0,
-            gap: isMobile ? 1.5 : 0
-          }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <ScienceIcon sx={{ 
-                fontSize: 38, 
-                color: '#ff9800',
-                filter: 'drop-shadow(0 2px 4px rgba(255, 152, 0, 0.3))'
-              }} />
-              <Box>
-                <Typography variant="h6" sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between',
+          p: isMobile ? 2 : 2.5,
+          minHeight: 'auto',
+          cursor: 'pointer',
+          transition: 'all 0.2s ease',
+          '&:hover': {
+            backgroundColor: 'rgba(255, 152, 0, 0.05)'
+          }
+        }}
+        onClick={() => setExpanded(!expanded)}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <ScienceIcon sx={{ 
+              fontSize: 28, 
+              color: '#ff9800',
+              filter: 'drop-shadow(0 2px 4px rgba(255, 152, 0, 0.3))'
+            }} />
+            <Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant="subtitle1" sx={{ 
                   fontWeight: 700, 
                   color: '#fff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1,
-                  fontSize: isMobile ? '1.3rem' : '1.5rem'
+                  fontSize: isMobile ? '1.1rem' : '1.2rem'
                 }}>
                   Early Access
-                  <Chip 
-                    label="BETA" 
-                    size="small" 
-                    sx={{ 
-                      backgroundColor: '#ff9800',
-                      color: '#000',
-                      fontWeight: 'bold',
-                      fontSize: '0.7rem'
-                    }} 
-                  />
                 </Typography>
-                <Typography variant="body2" sx={{ 
-                  color: 'rgba(255, 255, 255, 0.8)',
-                  fontSize: isMobile ? '0.8rem' : '0.875rem'
-                }}>
-                  This is still in development. More to come!
-                </Typography>
+                <Chip 
+                  label="BETA" 
+                  size="small" 
+                  sx={{ 
+                    backgroundColor: '#ff9800',
+                    color: '#000',
+                    fontWeight: 'bold',
+                    fontSize: '0.65rem',
+                    height: 20
+                  }} 
+                />
               </Box>
-            </Box>
-            
-            <Button
-              onClick={() => setExpanded(!expanded)}
-              variant="outlined"
-              size={isMobile ? "medium" : "small"}
-              startIcon={<FeedbackIcon />}
-              endIcon={expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-              fullWidth={isMobile}
-              sx={{
-                color: '#ff9800',
-                borderColor: '#ff9800',
-                '&:hover': {
-                  borderColor: '#ffb74d',
-                  backgroundColor: 'rgba(255, 152, 0, 0.1)',
-                },
-                fontWeight: 600,
-                borderRadius: 2,
-                minWidth: isMobile ? 'auto' : 'fit-content',
-                px: isMobile ? 2 : 3,
-                py: isMobile ? 1 : 1.5,
-              }}
-            >
-              Send Feedback
-            </Button>
-          </Box>
-
-          {/* Feedback Form */}
-          <Collapse in={expanded}>
-            <Box sx={{ 
-              mt: 3, 
-              p: 3, 
-              backgroundColor: 'rgba(255, 255, 255, 0.05)',
-              borderRadius: 2,
-              border: '1px solid rgba(255, 152, 0, 0.2)'
-            }}>
-              <Typography variant="subtitle1" sx={{ 
-                color: '#fff', 
-                mb: 2, 
-                fontWeight: 600 
+              <Typography variant="body2" sx={{ 
+                color: 'rgba(255, 255, 255, 0.8)',
+                fontSize: '0.8rem'
               }}>
-                Help improve the Collage Tool
+                Still in progress. More to come!
+              </Typography>
+            </Box>
+          </Box>
+          
+          <Box sx={{ 
+            color: '#ff9800',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.5
+          }}>
+            <Typography variant="body2" sx={{ 
+              color: '#ff9800',
+              fontSize: '0.85rem',
+              fontWeight: 500
+            }}>
+              Options
+            </Typography>
+            {expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+          </Box>
+        </Box>
+
+        {/* Expanded Content */}
+        <Collapse in={expanded}>
+          <Box sx={{ 
+            px: isMobile ? 2 : 2.5, 
+            pb: isMobile ? 2 : 2.5,
+            borderTop: '1px solid rgba(255, 165, 0, 0.2)',
+            backgroundColor: 'rgba(255, 255, 255, 0.05)'
+          }}>
+            {/* Quick Actions */}
+            <Box sx={{ 
+              display: 'flex', 
+              gap: 1, 
+              mb: 2.5,
+              pt: 2,
+              flexWrap: 'wrap'
+            }}>
+              <Button
+                onClick={handleRevertToLegacy}
+                size="small"
+                startIcon={<HistoryIcon />}
+                sx={{ 
+                  textTransform: 'none',
+                  color: 'rgba(255, 255, 255, 0.8)',
+                  fontSize: '0.8rem',
+                  '&:hover': {
+                    color: '#fff',
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                  }
+                }}
+              >
+                Switch to classic version
+              </Button>
+            </Box>
+
+            {/* Feedback Form */}
+            <Box>
+              <Typography variant="body2" sx={{ 
+                color: '#fff', 
+                mb: 1.5, 
+                display: 'block',
+                fontWeight: 600
+              }}>
+                Send Feedback
               </Typography>
               
               <TextField
-                label="Your feedback"
-                placeholder="Found a bug? Have a suggestion? Let know!"
+                placeholder="Found a bug or have a suggestion?"
                 multiline
-                rows={3}
+                rows={2}
                 value={messageInput}
                 onChange={handleMessageChange}
                 fullWidth
+                size="small"
                 sx={{ 
-                  mb: 2,
+                  mb: 1.5,
                   '& .MuiOutlinedInput-root': {
                     backgroundColor: 'rgba(255, 255, 255, 0.1)',
                     '& fieldset': {
@@ -239,15 +290,19 @@ export default function EarlyAccessFeedback() {
                       borderColor: '#ff9800',
                     },
                   },
-                  '& .MuiInputLabel-root': {
-                    color: 'rgba(255, 255, 255, 0.8)',
-                  },
                   '& .MuiInputBase-input': {
                     color: '#fff',
                   },
+                  '& .MuiInputBase-input::placeholder': {
+                    color: 'rgba(255, 255, 255, 0.6)',
+                    opacity: 1,
+                  },
                 }}
                 error={formSubmitted && messageError}
-                helperText={formSubmitted && messageError ? 'Feedback message is required' : ''}
+                helperText={formSubmitted && messageError ? 'Message required' : ''}
+                FormHelperTextProps={{
+                  sx: { color: '#ff5252' }
+                }}
               />
               
               <FormControlLabel
@@ -255,8 +310,9 @@ export default function EarlyAccessFeedback() {
                   <Checkbox
                     checked={emailConsent}
                     onChange={handleEmailConsentChange}
+                    size="small"
                     sx={{
-                      color: 'rgba(255, 255, 255, 0.8)',
+                      color: 'rgba(255, 255, 255, 0.7)',
                       '&.Mui-checked': {
                         color: '#ff9800',
                       },
@@ -264,24 +320,48 @@ export default function EarlyAccessFeedback() {
                   />
                 }
                 label={
-                  <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.9)' }}>
-                    It's okay to email me about this feedback and my account
+                  <Typography variant="body2" sx={{ 
+                    color: 'rgba(255, 255, 255, 0.9)',
+                    fontSize: '0.8rem'
+                  }}>
+                    OK to email me about this feedback
                   </Typography>
                 }
+                sx={{ mb: 1 }}
               />
               
               {formSubmitted && emailConsentError && (
-                <Typography variant="caption" color="error" sx={{ display: 'block', mt: 1 }}>
-                  Email consent is required
+                <Typography variant="caption" sx={{ 
+                  display: 'block', 
+                  mb: 1,
+                  color: '#ff5252'
+                }}>
+                  Please consent to email contact
                 </Typography>
               )}
               
-              <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
+              <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'flex-end', mt: 2 }}>
+                <Button
+                  onClick={handleClose}
+                  size="small"
+                  sx={{ 
+                    textTransform: 'none', 
+                    color: 'rgba(255, 255, 255, 0.7)',
+                    '&:hover': {
+                      color: '#fff',
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                    }
+                  }}
+                >
+                  Cancel
+                </Button>
                 <LoadingButton
                   loading={loadingSubmitStatus}
                   onClick={submitFeedback}
                   variant="contained"
-                  sx={{
+                  size="small"
+                  sx={{ 
+                    textTransform: 'none',
                     backgroundColor: '#ff9800',
                     color: '#000',
                     fontWeight: 600,
@@ -293,26 +373,12 @@ export default function EarlyAccessFeedback() {
                     },
                   }}
                 >
-                  Submit Feedback
+                  Send
                 </LoadingButton>
-                
-                <Button
-                  onClick={() => setExpanded(false)}
-                  variant="text"
-                  sx={{ 
-                    color: 'rgba(255, 255, 255, 0.7)',
-                    '&:hover': {
-                      color: '#fff',
-                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                    }
-                  }}
-                >
-                  Cancel
-                </Button>
               </Box>
             </Box>
-          </Collapse>
-        </Box>
+          </Box>
+        </Collapse>
       </Paper>
     </Box>
   );
