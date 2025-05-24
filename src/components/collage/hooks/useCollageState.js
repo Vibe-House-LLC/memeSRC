@@ -168,6 +168,27 @@ export const useCollageState = () => {
   }, [DEBUG_MODE]);
 
   /**
+   * Add multiple images to the collection at once.
+   * Stores the same URL for both original and display initially for each image.
+   * @param {string[]} imageBase64Urls - Array of image URLs (usually base64) to add
+   */
+  const addMultipleImages = useCallback((imageBase64Urls) => {
+    if (!imageBase64Urls || !Array.isArray(imageBase64Urls) || imageBase64Urls.length === 0) return;
+    
+    const newImageObjects = imageBase64Urls
+      .filter(url => url) // Filter out any null/undefined URLs
+      .map(url => ({
+        originalUrl: url,
+        displayUrl: url
+      }));
+    
+    if (newImageObjects.length > 0) {
+      setSelectedImages(prev => [...prev, ...newImageObjects]);
+      if (DEBUG_MODE) console.log("Added multiple images:", newImageObjects);
+    }
+  }, [DEBUG_MODE]);
+
+  /**
    * Remove an image object by index and update panel mapping.
    * @param {number} indexToRemove - The index of the image object to remove
    */
@@ -365,6 +386,7 @@ export const useCollageState = () => {
 
     // Operations
     addImage, // Adds new object { original, display }
+    addMultipleImages, // Adds multiple objects { original, display }
     removeImage, // Removes object, updates mapping & transform
     updateImage, // Updates displayUrl
     replaceImage, // Replaces image object

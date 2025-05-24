@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Box, Typography, Paper, useMediaQuery, Button } from '@mui/material';
+import { Box, Typography, Paper, useMediaQuery, Button, Fab, Grid, IconButton, Chip } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import { PhotoCamera } from '@mui/icons-material';
+import { PhotoCamera, Add, Delete, CloudUpload } from '@mui/icons-material';
 
 // Import our new dynamic CollagePreview component
 import CollagePreview from '../components/CollagePreview';
@@ -15,6 +15,7 @@ const logError = (...args) => { console.error(...args); };
 const CollageImagesStep = ({
   selectedImages, // Now [{ originalUrl, displayUrl }, ...]
   addImage, // Adds new object { original, display }
+  addMultipleImages, // Adds multiple objects { original, display }
   removeImage, // Removes object, updates mapping
   updateImage, // Updates ONLY displayUrl (for crop result)
   replaceImage, // <-- NEW: Updates BOTH urls (for replacing upload)
@@ -36,6 +37,9 @@ const CollageImagesStep = ({
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  
+  // Add ref for bulk upload
+  const bulkFileInputRef = useRef(null);
 
   // Debug the props we're receiving
   console.log("CollageImagesStep props:", {
@@ -111,6 +115,105 @@ const CollageImagesStep = ({
     setCurrentPanelToEdit(null);
   }, []);
 
+  // --- Handler for bulk file upload ---
+  const handleBulkFileUpload = (event) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+
+    // Helper function to load a single file and return a Promise with the data URL
+    const loadFile = (file) => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = (e) => reject(e);
+        reader.readAsDataURL(file);
+      });
+    };
+
+    debugLog(`Bulk uploading ${files.length} files...`);
+
+    // Process all files
+    Promise.all(files.map(loadFile))
+      .then((imageUrls) => {
+        debugLog(`Loaded ${imageUrls.length} files for bulk upload`);
+        // Add all images at once
+        addMultipleImages(imageUrls);
+        
+        // Auto-assign images to empty panels if available
+        const assignedIndices = new Set(Object.values(panelImageMapping));
+        const currentLength = selectedImages.length;
+        const newMapping = { ...panelImageMapping };
+        let newImageIndex = currentLength;
+        let assignedCount = 0;
+
+        // Find empty panels and assign images
+        for (let panelIndex = 0; panelIndex < panelCount && assignedCount < imageUrls.length; panelIndex++) {
+          const panelId = selectedTemplate?.layout?.panels?.[panelIndex]?.id || `panel-${panelIndex + 1}`;
+          
+          if (!newMapping[panelId]) {
+            newMapping[panelId] = newImageIndex;
+            newImageIndex++;
+            assignedCount++;
+          }
+        }
+
+        if (assignedCount > 0) {
+          updatePanelImageMapping(newMapping);
+          debugLog(`Auto-assigned ${assignedCount} images to empty panels`);
+        }
+
+        debugLog(`Added ${imageUrls.length} images. ${assignedCount} auto-assigned, ${imageUrls.length - assignedCount} available for manual assignment.`);
+      })
+      .catch((error) => {
+        console.error("Error loading files:", error);
+      });
+    
+    // Reset file input
+    if (event.target) {
+      event.target.value = null;
+    }
+  };
+
+  // Helper function to get unassigned images
+  const getUnassignedImages = () => {
+    const assignedIndices = new Set(Object.values(panelImageMapping));
+    return selectedImages
+      .map((img, index) => ({ ...img, originalIndex: index }))
+      .filter((img) => !assignedIndices.has(img.originalIndex));
+  };
+
+  // Helper function to assign an unassigned image to a panel
+  const assignImageToPanel = (imageIndex, panelId) => {
+    const newMapping = {
+      ...panelImageMapping,
+      [panelId]: imageIndex
+    };
+    updatePanelImageMapping(newMapping);
+    debugLog(`Assigned image ${imageIndex} to panel ${panelId}`);
+  };
+
+  // Helper function to find the next empty panel
+  const getNextEmptyPanel = () => {
+    for (let panelIndex = 0; panelIndex < panelCount; panelIndex++) {
+      const panelId = selectedTemplate?.layout?.panels?.[panelIndex]?.id || `panel-${panelIndex + 1}`;
+      if (!panelImageMapping[panelId]) {
+        return panelId;
+      }
+    }
+    return null;
+  };
+
+  // Helper function to find the next empty panel excluding already processed ones
+  const getNextEmptyPanelExcluding = (excludeMapping) => {
+    for (let panelIndex = 0; panelIndex < panelCount; panelIndex++) {
+      const panelId = selectedTemplate?.layout?.panels?.[panelIndex]?.id || `panel-${panelIndex + 1}`;
+      if (!panelImageMapping[panelId] && !excludeMapping[panelId]) {
+        return panelId;
+      }
+    }
+    return null;
+  };
+
   // --- Handler for Remove Image request ---
   const handleRemoveRequest = useCallback(() => {
     if (!currentPanelToEdit) {
@@ -144,6 +247,172 @@ const CollageImagesStep = ({
 
   return (
     <Box sx={{ my: isMobile ? 0 : 0.5 }}>
+      {/* Bulk Upload Section */}
+      <Box sx={{ 
+        p: isMobile ? 2 : 2, 
+        mb: isMobile ? 2 : 2, 
+        borderRadius: 2,
+        border: `2px dashed ${theme.palette.divider}`,
+        backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+        textAlign: 'center',
+        cursor: 'pointer',
+        transition: 'all 0.3s ease',
+        '&:hover': {
+          borderColor: theme.palette.primary.main,
+          backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+        }
+      }}>
+        <Box 
+          onClick={() => bulkFileInputRef.current?.click()}
+          sx={{ py: 2 }}
+        >
+          <CloudUpload sx={{ fontSize: 48, color: 'text.secondary', mb: 1 }} />
+          <Typography variant="h6" gutterBottom>
+            Add Images
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Click here or drag and drop to upload multiple images at once
+          </Typography>
+          <Button 
+            variant="contained" 
+            startIcon={<Add />}
+            onClick={(e) => {
+              e.stopPropagation();
+              bulkFileInputRef.current?.click();
+            }}
+          >
+            Upload Images
+          </Button>
+        </Box>
+        
+        {/* Hidden bulk file input */}
+        <input
+          type="file"
+          ref={bulkFileInputRef}
+          style={{ display: 'none' }}
+          accept="image/*"
+          multiple
+          onChange={handleBulkFileUpload}
+        />
+      </Box>
+
+      {/* Unassigned Images Section */}
+      {(() => {
+        const unassignedImages = getUnassignedImages();
+        if (unassignedImages.length > 0) {
+          return (
+            <Box sx={{ 
+              p: isMobile ? 2 : 2, 
+              mb: isMobile ? 2 : 2, 
+              borderRadius: 2,
+              backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+              border: `1px solid ${theme.palette.divider}`
+            }}>
+              <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 600 }}>
+                Available Images ({unassignedImages.length})
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Click on an image below, then click on an empty panel to assign it
+              </Typography>
+              
+              <Grid container spacing={1}>
+                {unassignedImages.map((img, displayIndex) => (
+                  <Grid item key={`unassigned-${img.originalIndex}`} xs={3} sm={2} md={1.5}>
+                    <Paper
+                      elevation={2}
+                      sx={{
+                        position: 'relative',
+                        aspectRatio: '1',
+                        overflow: 'hidden',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        '&:hover': {
+                          transform: 'scale(1.05)',
+                          boxShadow: theme.shadows[4],
+                        }
+                      }}
+                      onClick={() => {
+                        const nextEmptyPanel = getNextEmptyPanel();
+                        if (nextEmptyPanel) {
+                          assignImageToPanel(img.originalIndex, nextEmptyPanel);
+                        } else {
+                          // Show some feedback that all panels are full
+                          debugLog('All panels are full. Replace an existing image by clicking on a panel.');
+                        }
+                      }}
+                    >
+                      <img
+                        src={img.displayUrl}
+                        alt={`Unassigned ${displayIndex + 1}`}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                        }}
+                      />
+                      
+                      {/* Remove button */}
+                      <IconButton
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeImage(img.originalIndex);
+                        }}
+                        sx={{
+                          position: 'absolute',
+                          top: 4,
+                          right: 4,
+                          backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                          color: 'error.main',
+                          '&:hover': {
+                            backgroundColor: 'rgba(255, 255, 255, 1)',
+                          },
+                          width: 24,
+                          height: 24,
+                        }}
+                      >
+                        <Delete sx={{ fontSize: 16 }} />
+                      </IconButton>
+                    </Paper>
+                  </Grid>
+                ))}
+              </Grid>
+              
+              {/* Quick assign button */}
+              <Box sx={{ mt: 2, textAlign: 'center' }}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<Add />}
+                  onClick={() => {
+                    // Auto-assign as many unassigned images as possible
+                    const newMapping = { ...panelImageMapping };
+                    let assignedCount = 0;
+                    
+                    unassignedImages.forEach((img) => {
+                      const nextEmptyPanel = getNextEmptyPanelExcluding(newMapping);
+                      if (nextEmptyPanel) {
+                        newMapping[nextEmptyPanel] = img.originalIndex;
+                        assignedCount++;
+                      }
+                    });
+                    
+                    if (assignedCount > 0) {
+                      updatePanelImageMapping(newMapping);
+                      debugLog(`Auto-assigned ${assignedCount} unassigned images`);
+                    }
+                  }}
+                  disabled={getNextEmptyPanel() === null}
+                >
+                  Auto-assign to empty panels
+                </Button>
+              </Box>
+            </Box>
+          );
+        }
+        return null;
+      })()}
+
       {/* Layout Preview */}
       <Box sx={{ 
         p: isMobile ? 2 : 2, 
@@ -169,6 +438,7 @@ const CollageImagesStep = ({
             panelCount={panelCount || 2} /* Ensure we always have a fallback */
             selectedImages={selectedImages || []}
             addImage={addImage}
+            addMultipleImages={addMultipleImages}
             removeImage={removeImage}
             updateImage={updateImage}
             replaceImage={replaceImage}
@@ -191,9 +461,9 @@ const CollageImagesStep = ({
             textAlign: 'center'
           }}
         >
-          Tap to add or replace photos.
+          Upload images above, then assign to panels by clicking. 
           <br />
-          Fill all frames to generate.
+          Fill all frames to generate your collage.
         </Typography>
       </Box>
     </Box>
@@ -342,6 +612,7 @@ CollageImagesStep.defaultProps = {
   ],
   panelImageMapping: {},
   addImage: () => { console.warn("addImage default prop called"); },
+  addMultipleImages: () => { console.warn("addMultipleImages default prop called"); },
   removeImage: () => { console.warn("removeImage default prop called"); },
   updateImage: () => { console.warn("updateImage default prop called"); },
   replaceImage: () => { console.warn("replaceImage default prop called"); }, // Add default

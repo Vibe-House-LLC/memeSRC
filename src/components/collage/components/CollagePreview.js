@@ -24,6 +24,7 @@ const CollagePreview = ({
   panelCount,
   selectedImages,
   addImage,
+  addMultipleImages,
   removeImage,
   updateImage,
   replaceImage,
@@ -98,70 +99,89 @@ const CollagePreview = ({
 
   // Handle file selection for a panel
   const handleFileChange = (event) => {
-    const file = event.target.files?.[0];
-    if (file && activePanelIndex !== null) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const imageUrl = e.target?.result;
-        
-        // Debug selected template and active panel
-        console.log("File upload for panel:", {
-          activePanelIndex,
-          template: selectedTemplate,
-          hasLayout: selectedTemplate && !!selectedTemplate.layout,
-          hasPanels: selectedTemplate && selectedTemplate.layout && !!selectedTemplate.layout.panels,
-          currentMapping: panelImageMapping
-        });
-        
-        // Determine panel ID from template structure (same for both menu and direct clicks)
-        let clickedPanelId;
-        
-        // Use the stored activePanelId if available
-        if (activePanelId) {
-          clickedPanelId = activePanelId;
-          console.log(`Using stored activePanelId: ${clickedPanelId}`);
-        } else {
-          // Fallback: Try to get panel ID from template structure using activePanelIndex
-          // (This fallback might be less reliable but kept for safety)
-          console.warn("activePanelId not set, falling back to index-based lookup");
-          try {
-            const layoutPanel = selectedTemplate?.layout?.panels?.[activePanelIndex];
-            const templatePanel = selectedTemplate?.panels?.[activePanelIndex];
-            clickedPanelId = layoutPanel?.id || templatePanel?.id || `panel-${activePanelIndex + 1}`;
-            console.log(`Using fallback panel ID: ${clickedPanelId} for activePanelIndex: ${activePanelIndex}`);
-          } catch (error) {
-            console.error("Error getting fallback panel ID:", error);
-            clickedPanelId = `panel-${activePanelIndex + 1}`;
-          }
-        }
-        
-        // Check if this is a replacement operation (either from menu or direct click)
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0 || activePanelIndex === null) return;
+
+    // Helper function to load a single file and return a Promise with the data URL
+    const loadFile = (file) => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = (e) => reject(e);
+        reader.readAsDataURL(file);
+      });
+    };
+
+    // Debug selected template and active panel
+    console.log("File upload for panel:", {
+      activePanelIndex,
+      fileCount: files.length,
+      template: selectedTemplate,
+      hasLayout: selectedTemplate && !!selectedTemplate.layout,
+      hasPanels: selectedTemplate && selectedTemplate.layout && !!selectedTemplate.layout.panels,
+      currentMapping: panelImageMapping
+    });
+
+    // Determine panel ID from template structure (same for both menu and direct clicks)
+    let clickedPanelId;
+    
+    // Use the stored activePanelId if available
+    if (activePanelId) {
+      clickedPanelId = activePanelId;
+      console.log(`Using stored activePanelId: ${clickedPanelId}`);
+    } else {
+      // Fallback: Try to get panel ID from template structure using activePanelIndex
+      console.warn("activePanelId not set, falling back to index-based lookup");
+      try {
+        const layoutPanel = selectedTemplate?.layout?.panels?.[activePanelIndex];
+        const templatePanel = selectedTemplate?.panels?.[activePanelIndex];
+        clickedPanelId = layoutPanel?.id || templatePanel?.id || `panel-${activePanelIndex + 1}`;
+        console.log(`Using fallback panel ID: ${clickedPanelId} for activePanelIndex: ${activePanelIndex}`);
+      } catch (error) {
+        console.error("Error getting fallback panel ID:", error);
+        clickedPanelId = `panel-${activePanelIndex + 1}`;
+      }
+    }
+
+    // Process all files
+    Promise.all(files.map(loadFile))
+      .then((imageUrls) => {
+        console.log(`Loaded ${imageUrls.length} files for panel ${clickedPanelId}`);
+
+        // Check if this is a replacement operation for the first file
         const existingImageIndex = panelImageMapping[clickedPanelId];
         console.log(`Panel ${clickedPanelId}: existingImageIndex=${existingImageIndex}`);
         
-        if (existingImageIndex !== undefined) {
-          // If this panel already has an image, replace it
+        if (existingImageIndex !== undefined && imageUrls.length === 1) {
+          // If this panel already has an image and we're only uploading one file, replace it
           console.log(`Replacing image at index ${existingImageIndex} for panel ${clickedPanelId}`);
-          replaceImage(existingImageIndex, imageUrl);
+          replaceImage(existingImageIndex, imageUrls[0]);
         } else {
-          // Otherwise, add a new image and then update the mapping
+          // Otherwise, add all images sequentially
           const currentLength = selectedImages.length;
-          console.log(`Adding new image at index ${currentLength} for panel ${clickedPanelId}`);
+          console.log(`Adding ${imageUrls.length} new images starting at index ${currentLength}`);
           
-          // Add the image first
-          addImage(imageUrl);
+          // Add all images at once
+          addMultipleImages(imageUrls);
           
-          // Now update the mapping with the index where we just added the image
-          const newMapping = {
-            ...panelImageMapping,
-            [clickedPanelId]: currentLength
-          };
-          console.log("Updated mapping:", newMapping);
-          updatePanelImageMapping(newMapping);
+          // If this is a single file replacement, update the specific panel mapping
+          if (imageUrls.length === 1) {
+            const newMapping = {
+              ...panelImageMapping,
+              [clickedPanelId]: currentLength
+            };
+            console.log("Updated mapping for single image:", newMapping);
+            updatePanelImageMapping(newMapping);
+          } else {
+            // For multiple files, don't auto-assign them to panels
+            // Let the user manually assign them by clicking on panels
+            console.log(`Added ${imageUrls.length} images. Users can now assign them to panels manually.`);
+          }
         }
-      };
-      reader.readAsDataURL(file);
-    }
+      })
+      .catch((error) => {
+        console.error("Error loading files:", error);
+      });
     
     // Reset file input and active panel state
     setActivePanelIndex(null);
@@ -212,6 +232,7 @@ const CollagePreview = ({
         ref={fileInputRef}
         style={{ display: 'none' }}
         accept="image/*"
+        multiple
         onChange={handleFileChange}
       />
       

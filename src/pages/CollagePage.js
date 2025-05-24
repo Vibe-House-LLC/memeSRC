@@ -136,6 +136,7 @@ export default function CollagePage() {
     borderColor,
     setBorderColor,
     addImage,
+    addMultipleImages,
     removeImage,
     updateImage,
     replaceImage,
@@ -332,6 +333,7 @@ export default function CollagePage() {
     borderThicknessOptions,
     // Actions
     addImage,
+    addMultipleImages,
     removeImage,
     updateImage,
     replaceImage,
