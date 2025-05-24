@@ -103,7 +103,7 @@ export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, 
       <Box sx={{ width: '100%' }}>
         {isMobile ? (
           // Mobile: Stack vertically with better spacing and visual hierarchy
-          <Stack spacing={3} sx={{ p: 2 }}>
+          <Stack spacing={3} sx={{ p: 2, px: 1 }}>
             {/* Settings Section First on Mobile */}
             <Box ref={settingsRef}>
               <CollageSettingsStep 
@@ -131,7 +131,7 @@ export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, 
           </Stack>
         ) : (
           // Desktop/Tablet: Keep side-by-side layout but improve spacing
-          <Box sx={{ p: isTablet ? 2 : 3 }}>
+          <Box sx={{ p: isTablet ? 2 : 3, px: 0 }}>
             <Grid container spacing={isTablet ? 3 : 4} sx={{ width: '100%', margin: 0 }}>
               {/* Settings Section */}
               <Grid item xs={12} md={6}>

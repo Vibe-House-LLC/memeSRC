@@ -337,7 +337,7 @@ export default function CollagePage() {
             maxWidth="xl" 
             sx={{ 
               pt: isMobile ? 1 : 3,
-              px: isMobile ? 1 : 3,
+              px: isMobile ? 0.25 : 3,
               width: '100%'
             }}
             disableGutters={isMobile}
