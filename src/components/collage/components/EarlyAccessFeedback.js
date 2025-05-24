@@ -554,7 +554,7 @@ export default function EarlyAccessFeedback() {
                       <Box sx={{ 
                         display: 'flex', 
                         gap: 1, 
-                        alignItems: 'center'
+                        alignItems: 'stretch'
                       }}>
                         <Button
                           onClick={handleRevertToLegacy}
@@ -572,6 +572,9 @@ export default function EarlyAccessFeedback() {
                             boxShadow: '0 4px 12px rgba(255, 152, 0, 0.3)',
                             flex: 1,
                             minHeight: 42,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
                             '&:hover': {
                               backgroundColor: '#ffb74d',
                               boxShadow: '0 6px 16px rgba(255, 152, 0, 0.4)',
@@ -594,6 +597,10 @@ export default function EarlyAccessFeedback() {
                             py: 1,
                             borderRadius: 2,
                             minHeight: 42,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            whiteSpace: 'nowrap',
                             '&:hover': {
                               borderColor: '#ff9800',
                               backgroundColor: 'rgba(255, 152, 0, 0.05)',
@@ -677,7 +684,7 @@ export default function EarlyAccessFeedback() {
                       <Box sx={{ 
                         display: 'flex', 
                         gap: 1, 
-                        alignItems: 'center'
+                        alignItems: 'stretch'
                       }}>
                         <LoadingButton
                           loading={switchLoadingSubmit}
@@ -696,6 +703,9 @@ export default function EarlyAccessFeedback() {
                             boxShadow: '0 4px 12px rgba(255, 152, 0, 0.3)',
                             flex: 1,
                             minHeight: 42,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
                             '&:hover': {
                               backgroundColor: '#ffb74d',
                               boxShadow: '0 6px 16px rgba(255, 152, 0, 0.4)',
