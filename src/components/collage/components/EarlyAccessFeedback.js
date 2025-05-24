@@ -268,7 +268,7 @@ export default function EarlyAccessFeedback() {
               fontSize: '0.85rem',
               fontWeight: 500
             }}>
-              Options
+              Feedback
             </Typography>
             {expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
           </Box>
