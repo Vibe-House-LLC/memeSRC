@@ -186,7 +186,8 @@ export default function CollageResultDialog({ open, onClose, finalImage }) {
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              p: isMobile ? 2 : 4,
+              px: 0,
+              py: isMobile ? 2 : 4,
               position: 'relative',
             }}
           >
@@ -205,6 +206,7 @@ export default function CollageResultDialog({ open, onClose, finalImage }) {
                 overflow: 'hidden',
                 backgroundColor: 'transparent',
                 cursor: 'default',
+                px: 0,
               }}
               onClick={handleBackdropClick} // Allow clicking container area to close dialog
               aria-label="Image container - tap outside image to close"
