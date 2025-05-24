@@ -237,7 +237,7 @@ export default function CollagePage() {
         },
       });
       
-      const croppedCanvas = cropCanvas(canvas);
+      const croppedCanvas = cropCanvas(canvas, 3);
       croppedCanvas.toBlob((blob) => {
         setFinalImage(blob);
         setShowResultDialog(true);
