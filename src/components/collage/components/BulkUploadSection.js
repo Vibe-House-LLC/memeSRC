@@ -110,6 +110,37 @@ const BulkUploadSection = ({
         debugLog(`Final mapping:`, newMapping);
         updatePanelImageMapping(newMapping);
         debugLog(`Assigned ${numNewImages} new images to panels`);
+        
+        // Scroll to collage preview after a short delay to ensure DOM updates
+        setTimeout(() => {
+          // Look for the collage preview section
+          const collagePreview = document.querySelector('[data-testid="dynamic-collage-preview-root"]') || 
+                               document.querySelector('.MuiBox-root:has([data-testid="dynamic-collage-preview-root"])') ||
+                               document.querySelector('h5:contains("Your Collage")') ||
+                               // Fallback to any element with "collage" in data attributes or class
+                               document.querySelector('[class*="collage"], [data-*="collage"]');
+          
+          if (collagePreview) {
+            const navBarHeight = 80; // Account for navigation bar height
+            const elementTop = collagePreview.getBoundingClientRect().top + window.pageYOffset;
+            const offsetPosition = elementTop - navBarHeight;
+            
+            window.scrollTo({
+              top: offsetPosition,
+              behavior: 'smooth'
+            });
+            
+            debugLog('Scrolled to collage preview');
+          } else {
+            // Fallback: scroll to a reasonable position down the page
+            window.scrollTo({
+              top: window.innerHeight * 0.6, // Scroll down about 60% of viewport
+              behavior: 'smooth'
+            });
+            
+            debugLog('Scrolled to fallback position (collage preview not found)');
+          }
+        }, 500); // 500ms delay to ensure DOM updates and panel count changes are applied
       })
       .catch((error) => {
         console.error("Error loading files:", error);
