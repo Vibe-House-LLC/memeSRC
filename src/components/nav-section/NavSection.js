@@ -6,6 +6,7 @@ import { Box, List, ListItemText, Typography, Chip } from '@mui/material';
 import { Fragment, useContext, useEffect } from 'react';
 import { StyledNavItem, StyledNavItemIcon } from './styles';
 import { UserContext } from '../../UserContext';
+import CollageNavTeaser from './CollageNavTeaser';
 
 // ----------------------------------------------------------------------
 
@@ -62,6 +63,11 @@ NavItem.propTypes = {
 
 function NavItem({ item }) {
   const { title, path, icon, info, chipText, chipColor, externalLink } = item;
+
+  // Use special teaser for collage tool
+  if (title === 'collage') {
+    return <CollageNavTeaser />;
+  }
 
   return (
     <>

@@ -20,14 +20,14 @@ const navConfig = [
         path: '/collage',
         externalLink: false,
         icon: <PhotoLibrary />,
-        chipText: 'Pro',
+        chipText: 'UPDATED',
         chipColor: 'info',
       },
       {
         title: 'Favorites',
         path: '/favorites',
         externalLink: false,
-        chipText: 'Pro',
+        // chipText: 'Pro',
         chipColor: 'info',
         icon: <Star />
       },
