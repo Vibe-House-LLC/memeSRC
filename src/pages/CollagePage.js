@@ -371,7 +371,7 @@ export default function CollagePage() {
       ) : (
         <Box component="main" sx={{ 
           flexGrow: 1,
-          pb: !showResultDialog && !showWelcomeScreen && allPanelsHaveImages ? 10 : (isMobile ? 3 : 6),
+          pb: !showResultDialog && !showWelcomeScreen && allPanelsHaveImages ? 8 : (isMobile ? 2 : 4),
           width: '100%',
           overflowX: 'hidden',
           minHeight: '100vh',
@@ -380,20 +380,20 @@ export default function CollagePage() {
           <Container 
             maxWidth="xl" 
             sx={{ 
-              pt: isMobile ? 1 : 3,
-              px: isMobile ? 0.25 : 3,
+              pt: isMobile ? 1.5 : 2,
+              px: isMobile ? 1 : 2.5,
               width: '100%'
             }}
             disableGutters={isMobile}
           >
             {/* Page Header */}
-            <Box sx={{ mb: isMobile ? 2 : 3 }}>
+            <Box sx={{ mb: isMobile ? 1.5 : 2 }}>
               <Typography variant="h3" gutterBottom sx={{ 
                 display: 'flex', 
                 alignItems: 'center',
                 fontWeight: '700', 
-                mb: isMobile ? 0.75 : 1.5,
-                pl: isMobile ? 1 : 0,
+                mb: isMobile ? 0.5 : 1,
+                pl: isMobile ? 0 : 0,
                 color: '#fff',
                 fontSize: isMobile ? '2.2rem' : '2.5rem',
                 textShadow: '0px 2px 4px rgba(0,0,0,0.15)'
@@ -403,8 +403,8 @@ export default function CollagePage() {
               </Typography>
               <Typography variant="subtitle1" sx={{ 
                 color: 'text.secondary',
-                mb: isMobile ? 2 : 2.5,
-                pl: isMobile ? 1 : 5,
+                mb: isMobile ? 1.5 : 2,
+                pl: isMobile ? 0 : 5,
                 maxWidth: '85%'
               }}>
                 Merge images together to create multi-panel memes
@@ -435,7 +435,7 @@ export default function CollagePage() {
                     bgcolor: 'background.paper',
                     borderTop: 1,
                     borderColor: 'divider',
-                    p: isMobile ? 2 : 3,
+                    p: isMobile ? 1.5 : 2,
                     boxShadow: '0 -8px 32px rgba(0,0,0,0.15)',
                     backdropFilter: 'blur(20px)',
                     display: 'flex',
@@ -450,8 +450,8 @@ export default function CollagePage() {
                     size="large"
                     startIcon={<Save />}
                     sx={{
-                      py: 2,
-                      px: isMobile ? 3 : 6,
+                      py: 1.5,
+                      px: isMobile ? 2.5 : 5,
                       fontSize: '1.2rem',
                       fontWeight: 700,
                       textTransform: 'none',

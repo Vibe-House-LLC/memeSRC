@@ -14,6 +14,7 @@ import { Settings, PhotoLibrary, Launch as ExportIcon, ArrowBack, KeyboardArrowD
 
 import CollageSettingsStep from "../steps/CollageSettingsStep";
 import CollageImagesStep from "../steps/CollageImagesStep";
+import BulkUploadSection from "./BulkUploadSection";
 import { SectionHeading } from './CollageUIComponents';
 import ExportDialog from './ExportDialog';
 
@@ -99,7 +100,29 @@ export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, 
   
   return (
     <>
-      {/* Show normal editor interface with improved mobile layout */}
+      {/* Bulk Upload Section - Full Width at Top */}
+      <Box sx={{ 
+        width: isMobile ? 'calc(100% - 16px)' : '100%', // Subtract margin space on mobile
+        mb: 2,
+        bgcolor: 'background.paper',
+        borderRadius: 2,
+        p: isMobile ? 2 : 3,
+        mx: isMobile ? 1 : 0, // Add horizontal margins on mobile only
+        border: 1,
+        borderColor: 'divider'
+      }}>
+        <BulkUploadSection
+          selectedImages={imagesStepProps.selectedImages}
+          addMultipleImages={imagesStepProps.addMultipleImages}
+          removeImage={imagesStepProps.removeImage}
+          panelImageMapping={imagesStepProps.panelImageMapping}
+          updatePanelImageMapping={imagesStepProps.updatePanelImageMapping}
+          panelCount={imagesStepProps.panelCount}
+          selectedTemplate={imagesStepProps.selectedTemplate}
+        />
+      </Box>
+
+      {/* Main Content Layout */}
       <Box sx={{ width: '100%' }}>
         {isMobile ? (
           // Mobile: Stack vertically with better spacing and visual hierarchy
@@ -131,44 +154,46 @@ export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, 
           </Stack>
         ) : (
           // Desktop/Tablet: Keep side-by-side layout but improve spacing
-          <Box sx={{ p: isTablet ? 2 : 3, px: 0 }}>
-            <Grid container spacing={isTablet ? 3 : 4} sx={{ width: '100%', margin: 0 }}>
-              {/* Settings Section */}
-              <Grid item xs={12} md={6}>
-                <Box sx={{ 
-                  height: '100%',
-                  bgcolor: 'background.paper',
-                  borderRadius: 2,
-                  p: 3,
-                  border: 1,
-                  borderColor: 'divider'
-                }}>
-                  {/* <SectionHeading icon={Settings} title="Settings" /> */}
-                  <CollageSettingsStep 
-                    {...settingsStepProps}
-                  />
-                </Box>
-              </Grid>
-              
-              {/* Images Section */}
-              <Grid item xs={12} md={6}>
-                <Box sx={{ 
-                  height: '100%',
-                  bgcolor: 'background.paper',
-                  borderRadius: 2,
-                  p: 3,
-                  border: 1,
-                  borderColor: 'divider'
-                }}>
-                  <SectionHeading icon={PhotoLibrary} title="Your Collage" />
-                  <CollageImagesStep 
-                    {...imagesStepProps} 
-                    setFinalImage={setFinalImage}
-                    handleOpenExportDialog={handleOpenExportDialog}
-                  />
-                </Box>
-              </Grid>
-            </Grid>
+          <Box sx={{ 
+            pb: isTablet ? 1 : 1.5,
+            display: 'flex',
+            flexDirection: { xs: 'column', md: 'row' },
+            gap: 2,
+            width: '100%'
+          }}>
+            {/* Settings Section */}
+            <Box sx={{ 
+              flex: { xs: 'none', md: '1 1 0' },
+              width: { xs: '100%', md: '50%' },
+              bgcolor: 'background.paper',
+              borderRadius: 2,
+              p: 3,
+              border: 1,
+              borderColor: 'divider'
+            }}>
+              {/* <SectionHeading icon={Settings} title="Settings" /> */}
+              <CollageSettingsStep 
+                {...settingsStepProps}
+              />
+            </Box>
+            
+            {/* Images Section */}
+            <Box sx={{ 
+              flex: { xs: 'none', md: '1 1 0' },
+              width: { xs: '100%', md: '50%' },
+              bgcolor: 'background.paper',
+              borderRadius: 2,
+              p: 3,
+              border: 1,
+              borderColor: 'divider'
+            }}>
+              <SectionHeading icon={PhotoLibrary} title="Your Collage" />
+              <CollageImagesStep 
+                {...imagesStepProps} 
+                setFinalImage={setFinalImage}
+                handleOpenExportDialog={handleOpenExportDialog}
+              />
+            </Box>
           </Box>
         )}
       </Box>
