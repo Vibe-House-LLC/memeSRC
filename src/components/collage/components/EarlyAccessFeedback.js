@@ -21,6 +21,7 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ScienceIcon from '@mui/icons-material/Science';
 import HistoryIcon from '@mui/icons-material/History';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import SendIcon from '@mui/icons-material/Send';
 import { useNavigate } from 'react-router-dom';
 import { UserContext } from '../../../UserContext';
 import { SnackbarContext } from '../../../SnackbarContext';
@@ -142,7 +143,8 @@ export default function EarlyAccessFeedback() {
       setMessageError(false);
     }
 
-    if (!emailConsent) {
+    // Only require email consent if there's a message
+    if (messageInput.trim() !== '' && !emailConsent) {
       setEmailConsentError(true);
       isValid = false;
     } else {
@@ -268,7 +270,7 @@ export default function EarlyAccessFeedback() {
               fontSize: '0.85rem',
               fontWeight: 500
             }}>
-              Feedback
+              {expanded ? 'Close' : 'Feedback'}
             </Typography>
             {expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
           </Box>
@@ -393,87 +395,75 @@ export default function EarlyAccessFeedback() {
                     }}
                   />
                   
-                  <Box sx={{ 
-                    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                    borderRadius: 2,
-                    p: 1.5,
-                    mb: 2,
-                    border: emailConsentError ? '1px solid #ff5252' : '1px solid rgba(255, 255, 255, 0.1)'
-                  }}>
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={emailConsent}
-                          onChange={handleEmailConsentChange}
-                          size="small"
-                          sx={{
-                            color: 'rgba(255, 255, 255, 0.6)',
-                            '&.Mui-checked': {
-                              color: '#ff9800',
-                            },
-                          }}
-                        />
-                      }
-                      label={
-                        <Typography variant="body2" sx={{ 
-                          color: 'rgba(255, 255, 255, 0.9)',
-                          fontSize: '0.85rem',
-                          lineHeight: 1.4
+                  {messageInput.trim() !== '' && (
+                    <Box sx={{ 
+                      backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                      borderRadius: 2,
+                      p: 1.5,
+                      mb: 2,
+                      border: emailConsentError ? '1px solid #ff5252' : '1px solid rgba(255, 255, 255, 0.1)'
+                    }}>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={emailConsent}
+                            onChange={handleEmailConsentChange}
+                            size="small"
+                            sx={{
+                              color: 'rgba(255, 255, 255, 0.6)',
+                              '&.Mui-checked': {
+                                color: '#ff9800',
+                              },
+                            }}
+                          />
+                        }
+                        label={
+                          <Typography variant="body2" sx={{ 
+                            color: 'rgba(255, 255, 255, 0.9)',
+                            fontSize: '0.85rem',
+                            lineHeight: 1.4
+                          }}>
+                            I consent to being contacted via email about this feedback
+                          </Typography>
+                        }
+                      />
+                      
+                      {formSubmitted && emailConsentError && (
+                        <Typography variant="caption" sx={{ 
+                          display: 'block', 
+                          mt: 0.5,
+                          color: '#ff5252',
+                          fontSize: '0.75rem'
                         }}>
-                          I consent to being contacted via email about this feedback
+                          Email consent is required to submit feedback
                         </Typography>
-                      }
-                    />
-                    
-                    {formSubmitted && emailConsentError && (
-                      <Typography variant="caption" sx={{ 
-                        display: 'block', 
-                        mt: 0.5,
-                        color: '#ff5252',
-                        fontSize: '0.75rem'
-                      }}>
-                        Email consent is required to submit feedback
-                      </Typography>
-                    )}
-                  </Box>
+                      )}
+                    </Box>
+                  )}
                   
                   <Box sx={{ 
                     display: 'flex', 
-                    gap: 1.5, 
-                    justifyContent: 'flex-end',
-                    alignItems: 'center',
-                    mt: 2
+                    justifyContent: isMobile ? 'stretch' : 'flex-end',
+                    mt: 1
                   }}>
-                    <Button
-                      onClick={handleClose}
-                      size="medium"
-                      sx={{ 
-                        textTransform: 'none', 
-                        color: 'rgba(255, 255, 255, 0.7)',
-                        fontSize: '0.85rem',
-                        px: 2,
-                        '&:hover': {
-                          color: '#fff',
-                          backgroundColor: 'rgba(255, 255, 255, 0.1)'
-                        }
-                      }}
-                    >
-                      Cancel
-                    </Button>
                     <LoadingButton
                       loading={loadingSubmitStatus}
                       onClick={submitFeedback}
                       variant="contained"
                       size="medium"
+                      startIcon={<SendIcon />}
                       sx={{ 
                         textTransform: 'none',
                         backgroundColor: '#ff9800',
                         color: '#000',
                         fontWeight: 600,
-                        fontSize: '0.85rem',
+                        fontSize: '0.9rem',
                         px: 3,
+                        py: 1,
                         borderRadius: 2,
                         boxShadow: '0 4px 12px rgba(255, 152, 0, 0.3)',
+                        minHeight: 42,
+                        ...(isMobile ? { width: '100%' } : { minWidth: 140 }),
                         '&:hover': {
                           backgroundColor: '#ffb74d',
                           boxShadow: '0 6px 16px rgba(255, 152, 0, 0.4)',
@@ -597,19 +587,20 @@ export default function EarlyAccessFeedback() {
                 
                 <Box sx={{ 
                   display: 'flex', 
-                  gap: 1.5, 
-                  justifyContent: 'flex-end',
+                  gap: 1, 
                   alignItems: 'center'
                 }}>
                   <Button
                     onClick={handleCancelSwitch}
-                    size="medium"
+                    size="small"
                     startIcon={<ArrowBackIcon />}
                     sx={{ 
                       textTransform: 'none', 
                       color: 'rgba(255, 255, 255, 0.7)',
-                      fontSize: '0.85rem',
-                      px: 2,
+                      fontSize: '0.8rem',
+                      px: 1.5,
+                      py: 0.5,
+                      minWidth: 'auto',
                       '&:hover': {
                         color: '#fff',
                         backgroundColor: 'rgba(255, 255, 255, 0.1)'
@@ -629,10 +620,13 @@ export default function EarlyAccessFeedback() {
                       backgroundColor: '#ff9800',
                       color: '#000',
                       fontWeight: 600,
-                      fontSize: '0.85rem',
-                      px: 3,
+                      fontSize: '0.9rem',
+                      px: 2.5,
+                      py: 1,
                       borderRadius: 2,
                       boxShadow: '0 4px 12px rgba(255, 152, 0, 0.3)',
+                      flex: 1,
+                      minHeight: 42,
                       '&:hover': {
                         backgroundColor: '#ffb74d',
                         boxShadow: '0 6px 16px rgba(255, 152, 0, 0.4)',
