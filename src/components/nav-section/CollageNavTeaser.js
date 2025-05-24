@@ -16,6 +16,31 @@ import ScienceIcon from '@mui/icons-material/Science';
 import PhotoLibraryIcon from '@mui/icons-material/PhotoLibrary';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import { UserContext } from '../../UserContext';
+import { StyledNavItem, StyledNavItemIcon } from './styles';
+
+// Utility function to hash username for localStorage (same as in CollagePageLegacy)
+const hashString = (str) => {
+  let hash = 0;
+  if (str.length === 0) return hash;
+  for (let i = 0; i < str.length; i += 1) {
+    const char = str.charCodeAt(i);
+    hash = ((hash * 33) - hash) + char;
+    hash = Math.imul(hash, 1); // Convert to 32bit integer
+  }
+  return Math.abs(hash).toString();
+};
+
+// Utility functions for localStorage preference management (same as in CollagePageLegacy)
+const getCollagePreferenceKey = (user) => {
+  if (!user?.userDetails?.email) return 'memeSRC-collage-preference-anonymous';
+  const hashedUsername = hashString(user.userDetails.email);
+  return `memeSRC-collage-preference-${hashedUsername}`;
+};
+
+const getCollagePreference = (user) => {
+  const key = getCollagePreferenceKey(user);
+  return localStorage.getItem(key) || 'new'; // Default to new version
+};
 
 const StyledCollageNavItem = styled(ListItemButton)(({ theme, isActive }) => ({
   ...theme.typography.body2,
@@ -66,7 +91,7 @@ const StyledCollageNavItem = styled(ListItemButton)(({ theme, isActive }) => ({
   },
 }));
 
-const StyledNavItemIcon = styled(ListItemIcon)({
+const StyledTeaserNavItemIcon = styled(ListItemIcon)({
   width: 24,
   height: 24,
   color: '#ff9800',
@@ -85,7 +110,48 @@ export default function CollageNavTeaser() {
   
   const isActive = location.pathname === '/collage';
   const authorized = (user?.userDetails?.magicSubscription === "true" || user?.['cognito:groups']?.includes('admins'));
+  
+  // Check if user prefers legacy collage tool
+  const collagePreference = getCollagePreference(user);
+  const prefersLegacy = collagePreference === 'legacy';
 
+  // If user prefers legacy version, show normal nav item
+  if (prefersLegacy) {
+    return (
+      <StyledNavItem
+        component={Link}
+        to="/collage"
+        sx={{
+          '&.active': {
+            color: 'text.primary',
+            bgcolor: 'action.selected',
+            fontWeight: 'fontWeightBold',
+          },
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'none',  // Ensure even spacing like other nav items with chips
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <StyledNavItemIcon>
+            <PhotoLibraryIcon />
+          </StyledNavItemIcon>
+          <ListItemText sx={{ fontSize: 16 }} disableTypography primary="collage" />
+        </Box>
+        <Chip
+          label="NEW"
+          color="info"
+          size="small"
+          sx={{
+            fontWeight: 'bold',
+            mx: '10px'
+          }}
+        />
+      </StyledNavItem>
+    );
+  }
+
+  // Otherwise, show fancy teaser
   return (
     <StyledCollageNavItem
       component={Link}
@@ -99,9 +165,9 @@ export default function CollageNavTeaser() {
       }}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-        <StyledNavItemIcon>
+        <StyledTeaserNavItemIcon>
           <DashboardIcon sx={{ fontSize: 20 }} />
-        </StyledNavItemIcon>
+        </StyledTeaserNavItemIcon>
         
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
