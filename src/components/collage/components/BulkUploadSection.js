@@ -51,11 +51,18 @@ const BulkUploadSection = ({
         // Add all images at once
         addMultipleImages(imageUrls);
         
-        // Find currently empty panels
+        // Find currently empty panels by checking existing mapping
         const emptyPanels = [];
+        const assignedPanelIds = new Set(Object.keys(panelImageMapping));
+        
+        debugLog(`Current panel mapping:`, panelImageMapping);
+        debugLog(`Assigned panel IDs:`, Array.from(assignedPanelIds));
+        
         for (let panelIndex = 0; panelIndex < panelCount; panelIndex += 1) {
           const panelId = selectedTemplate?.layout?.panels?.[panelIndex]?.id || `panel-${panelIndex + 1}`;
-          if (!panelImageMapping[panelId]) {
+          
+          // Check if this panel is not assigned or assigned to undefined/null
+          if (!assignedPanelIds.has(panelId) || panelImageMapping[panelId] === undefined || panelImageMapping[panelId] === null) {
             emptyPanels.push(panelId);
           }
         }
@@ -63,7 +70,7 @@ const BulkUploadSection = ({
         const numEmptyPanels = emptyPanels.length;
         const numNewImages = imageUrls.length;
         
-        debugLog(`Found ${numEmptyPanels} empty panels for ${numNewImages} new images`);
+        debugLog(`Found ${numEmptyPanels} empty panels (${emptyPanels}) for ${numNewImages} new images`);
         
         // Calculate if we need to increase panel count
         let newPanelCount = panelCount;
@@ -86,6 +93,7 @@ const BulkUploadSection = ({
         // First, fill existing empty panels
         for (let i = 0; i < Math.min(numEmptyPanels, numNewImages); i += 1) {
           newMapping[emptyPanels[i]] = newImageIndex;
+          debugLog(`Assigning new image ${newImageIndex} to empty panel ${emptyPanels[i]}`);
           newImageIndex += 1;
         }
         
@@ -94,10 +102,12 @@ const BulkUploadSection = ({
           for (let panelIndex = panelCount; panelIndex < newPanelCount && newImageIndex < currentLength + numNewImages; panelIndex += 1) {
             const panelId = selectedTemplate?.layout?.panels?.[panelIndex]?.id || `panel-${panelIndex + 1}`;
             newMapping[panelId] = newImageIndex;
+            debugLog(`Assigning new image ${newImageIndex} to new panel ${panelId}`);
             newImageIndex += 1;
           }
         }
 
+        debugLog(`Final mapping:`, newMapping);
         updatePanelImageMapping(newMapping);
         debugLog(`Assigned ${numNewImages} new images to panels`);
       })
