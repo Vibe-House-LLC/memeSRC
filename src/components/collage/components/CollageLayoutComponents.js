@@ -114,11 +114,11 @@ export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, 
         <BulkUploadSection
           selectedImages={imagesStepProps.selectedImages}
           addMultipleImages={imagesStepProps.addMultipleImages}
-          removeImage={imagesStepProps.removeImage}
           panelImageMapping={imagesStepProps.panelImageMapping}
           updatePanelImageMapping={imagesStepProps.updatePanelImageMapping}
           panelCount={imagesStepProps.panelCount}
           selectedTemplate={imagesStepProps.selectedTemplate}
+          setPanelCount={settingsStepProps.setPanelCount}
         />
       </Box>
 

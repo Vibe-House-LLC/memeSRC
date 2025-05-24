@@ -3,16 +3,12 @@ import {
   Box, 
   Typography, 
   Button, 
-  Paper, 
-  Grid, 
-  IconButton, 
   useMediaQuery 
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { 
   CloudUpload, 
-  Add, 
-  Delete 
+  Add
 } from '@mui/icons-material';
 
 const debugLog = (...args) => { console.log(...args); };
@@ -20,11 +16,11 @@ const debugLog = (...args) => { console.log(...args); };
 const BulkUploadSection = ({
   selectedImages,
   addMultipleImages,
-  removeImage,
   panelImageMapping,
   updatePanelImageMapping,
   panelCount,
-  selectedTemplate
+  selectedTemplate,
+  setPanelCount // Add this prop to automatically adjust panel count
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -51,33 +47,59 @@ const BulkUploadSection = ({
     Promise.all(files.map(loadFile))
       .then((imageUrls) => {
         debugLog(`Loaded ${imageUrls.length} files for bulk upload`);
+        
         // Add all images at once
         addMultipleImages(imageUrls);
         
-        // Auto-assign images to empty panels if available
-        const assignedIndices = new Set(Object.values(panelImageMapping));
-        const currentLength = selectedImages.length;
-        const newMapping = { ...panelImageMapping };
-        let newImageIndex = currentLength;
-        let assignedCount = 0;
-
-        // Find empty panels and assign images
-        for (let panelIndex = 0; panelIndex < panelCount && assignedCount < imageUrls.length; panelIndex += 1) {
+        // Find currently empty panels
+        const emptyPanels = [];
+        for (let panelIndex = 0; panelIndex < panelCount; panelIndex += 1) {
           const panelId = selectedTemplate?.layout?.panels?.[panelIndex]?.id || `panel-${panelIndex + 1}`;
+          if (!panelImageMapping[panelId]) {
+            emptyPanels.push(panelId);
+          }
+        }
+        
+        const numEmptyPanels = emptyPanels.length;
+        const numNewImages = imageUrls.length;
+        
+        debugLog(`Found ${numEmptyPanels} empty panels for ${numNewImages} new images`);
+        
+        // Calculate if we need to increase panel count
+        let newPanelCount = panelCount;
+        if (numNewImages > numEmptyPanels) {
+          // Need more panels - increase by the difference
+          const additionalPanelsNeeded = numNewImages - numEmptyPanels;
+          newPanelCount = Math.min(panelCount + additionalPanelsNeeded, 12); // Max 12 panels
           
-          if (!newMapping[panelId]) {
+          if (setPanelCount && newPanelCount !== panelCount) {
+            setPanelCount(newPanelCount);
+            debugLog(`Increased panel count from ${panelCount} to ${newPanelCount} to accommodate new images`);
+          }
+        }
+        
+        // Create new mapping with assignments
+        const newMapping = { ...panelImageMapping };
+        const currentLength = selectedImages.length;
+        let newImageIndex = currentLength;
+        
+        // First, fill existing empty panels
+        for (let i = 0; i < Math.min(numEmptyPanels, numNewImages); i += 1) {
+          newMapping[emptyPanels[i]] = newImageIndex;
+          newImageIndex += 1;
+        }
+        
+        // Then, assign remaining images to newly created panels (if any)
+        if (numNewImages > numEmptyPanels) {
+          for (let panelIndex = panelCount; panelIndex < newPanelCount && newImageIndex < currentLength + numNewImages; panelIndex += 1) {
+            const panelId = selectedTemplate?.layout?.panels?.[panelIndex]?.id || `panel-${panelIndex + 1}`;
             newMapping[panelId] = newImageIndex;
             newImageIndex += 1;
-            assignedCount += 1;
           }
         }
 
-        if (assignedCount > 0) {
-          updatePanelImageMapping(newMapping);
-          debugLog(`Auto-assigned ${assignedCount} images to empty panels`);
-        }
-
-        debugLog(`Added ${imageUrls.length} images. ${assignedCount} auto-assigned, ${imageUrls.length - assignedCount} available for manual assignment.`);
+        updatePanelImageMapping(newMapping);
+        debugLog(`Assigned ${numNewImages} new images to panels`);
       })
       .catch((error) => {
         console.error("Error loading files:", error);
@@ -89,58 +111,14 @@ const BulkUploadSection = ({
     }
   };
 
-  // Helper function to get unassigned images
-  const getUnassignedImages = () => {
-    const assignedIndices = new Set(Object.values(panelImageMapping));
-    return selectedImages
-      .map((img, index) => ({ ...img, originalIndex: index }))
-      .filter((img) => !assignedIndices.has(img.originalIndex));
-  };
-
-  // Helper function to assign an unassigned image to a panel
-  const assignImageToPanel = (imageIndex, panelId) => {
-    const newMapping = {
-      ...panelImageMapping,
-      [panelId]: imageIndex
-    };
-    updatePanelImageMapping(newMapping);
-    debugLog(`Assigned image ${imageIndex} to panel ${panelId}`);
-  };
-
-  // Helper function to find the next empty panel
-  const getNextEmptyPanel = () => {
-    for (let panelIndex = 0; panelIndex < panelCount; panelIndex += 1) {
-      const panelId = selectedTemplate?.layout?.panels?.[panelIndex]?.id || `panel-${panelIndex + 1}`;
-      if (!panelImageMapping[panelId]) {
-        return panelId;
-      }
-    }
-    return null;
-  };
-
-  // Helper function to find the next empty panel excluding already processed ones
-  const getNextEmptyPanelExcluding = (excludeMapping) => {
-    for (let panelIndex = 0; panelIndex < panelCount; panelIndex += 1) {
-      const panelId = selectedTemplate?.layout?.panels?.[panelIndex]?.id || `panel-${panelIndex + 1}`;
-      if (!panelImageMapping[panelId] && !excludeMapping[panelId]) {
-        return panelId;
-      }
-    }
-    return null;
-  };
-
-  const unassignedImages = getUnassignedImages();
-
   return (
     <Box sx={{ 
       width: '100%',
-      mb: 3,
       px: isMobile ? 1 : 0
     }}>
       {/* Bulk Upload Section */}
       <Box sx={{ 
         p: 3, 
-        mb: unassignedImages.length > 0 ? 2 : 0, 
         borderRadius: 3,
         border: `2px dashed ${theme.palette.divider}`,
         backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
@@ -161,7 +139,7 @@ const BulkUploadSection = ({
             Add Images
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ mb: 3, maxWidth: '500px', mx: 'auto' }}>
-            Click here or drag and drop to upload multiple images at once. They'll be automatically assigned to empty panels.
+            Click here or drag and drop to upload multiple images. Panel count will automatically adjust to fit your images.
           </Typography>
           <Button 
             variant="contained" 
@@ -193,121 +171,6 @@ const BulkUploadSection = ({
           onChange={handleBulkFileUpload}
         />
       </Box>
-
-      {/* Unassigned Images Section */}
-      {unassignedImages.length > 0 && (
-        <Box sx={{ 
-          p: 3, 
-          borderRadius: 3,
-          backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-          border: `1px solid ${theme.palette.divider}`
-        }}>
-          <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, color: '#fff' }}>
-            Available Images ({unassignedImages.length})
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            Click on an image below, then click on an empty panel to assign it
-          </Typography>
-          
-          <Grid container spacing={2}>
-            {unassignedImages.map((img, displayIndex) => (
-              <Grid item key={`unassigned-${img.originalIndex}`} xs={3} sm={2} md={1.5}>
-                <Paper
-                  elevation={3}
-                  sx={{
-                    position: 'relative',
-                    aspectRatio: '1',
-                    overflow: 'hidden',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    borderRadius: 2,
-                    '&:hover': {
-                      transform: 'scale(1.05)',
-                      boxShadow: theme.shadows[6],
-                    }
-                  }}
-                  onClick={() => {
-                    const nextEmptyPanel = getNextEmptyPanel();
-                    if (nextEmptyPanel) {
-                      assignImageToPanel(img.originalIndex, nextEmptyPanel);
-                    } else {
-                      debugLog('All panels are full. Replace an existing image by clicking on a panel.');
-                    }
-                  }}
-                >
-                  <img
-                    src={img.displayUrl}
-                    alt={`Unassigned ${displayIndex + 1}`}
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'cover',
-                    }}
-                  />
-                  
-                  {/* Remove button */}
-                  <IconButton
-                    size="small"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeImage(img.originalIndex);
-                    }}
-                    sx={{
-                      position: 'absolute',
-                      top: 6,
-                      right: 6,
-                      backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                      color: 'error.main',
-                      '&:hover': {
-                        backgroundColor: 'rgba(255, 255, 255, 1)',
-                      },
-                      width: 28,
-                      height: 28,
-                    }}
-                  >
-                    <Delete sx={{ fontSize: 18 }} />
-                  </IconButton>
-                </Paper>
-              </Grid>
-            ))}
-          </Grid>
-          
-          {/* Quick assign button */}
-          <Box sx={{ mt: 3, textAlign: 'center' }}>
-            <Button
-              variant="outlined"
-              size="medium"
-              startIcon={<Add />}
-              onClick={() => {
-                // Auto-assign as many unassigned images as possible
-                const newMapping = { ...panelImageMapping };
-                let assignedCount = 0;
-                
-                unassignedImages.forEach((img) => {
-                  const nextEmptyPanel = getNextEmptyPanelExcluding(newMapping);
-                  if (nextEmptyPanel) {
-                    newMapping[nextEmptyPanel] = img.originalIndex;
-                    assignedCount += 1;
-                  }
-                });
-                
-                if (assignedCount > 0) {
-                  updatePanelImageMapping(newMapping);
-                  debugLog(`Auto-assigned ${assignedCount} unassigned images`);
-                }
-              }}
-              disabled={getNextEmptyPanel() === null}
-              sx={{
-                px: 3,
-                py: 1,
-                borderRadius: 2
-              }}
-            >
-              Auto-assign to empty panels
-            </Button>
-          </Box>
-        </Box>
-      )}
     </Box>
   );
 };
