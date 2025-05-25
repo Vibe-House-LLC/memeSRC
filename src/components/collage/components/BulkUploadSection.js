@@ -436,9 +436,9 @@ const BulkUploadSection = ({
 
   return (
     <DisclosureCard
-      title={`Image Collection (${panelCount})`}
+      title={`Image Collection`}
       icon={PhotoLibrary}
-      defaultOpen={true}
+      defaultOpen
       isMobile={isMobile}
       sx={{ width: '100%' }}
     >
