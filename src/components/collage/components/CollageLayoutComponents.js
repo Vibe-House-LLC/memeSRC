@@ -145,8 +145,8 @@ export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, 
             />
           </Box>
         ) : isMobile ? (
-          // Mobile: Stack vertically with consistent padding for all sections
-          <Stack spacing={2} sx={{ p: 2, px: 1 }}>
+          // Mobile: Stack vertically with tighter spacing for all sections
+          <Stack spacing={1.5} sx={{ p: 1.5, px: 1 }}>
             {/* Bulk Upload Section */}
             <BulkUploadSection
               selectedImages={imagesStepProps.selectedImages}

@@ -25,7 +25,9 @@ import {
   RemoveCircle,
   Upload,
   Refresh,
-  Clear
+  Clear,
+  Settings,
+  MoreVert
 } from '@mui/icons-material';
 import DisclosureCard from './DisclosureCard';
 
@@ -41,13 +43,13 @@ const HorizontalScroller = styled(Box)(({ theme }) => ({
     display: 'none',  // Chrome, Safari, Opera
   },
   msOverflowStyle: 'none',  // IE, Edge
-  gap: theme.spacing(2),
-  padding: theme.spacing(1, 0, 1.25, 0),
+  gap: theme.spacing(1.5),
+  padding: theme.spacing(0.75, 0, 1, 0),
   position: 'relative',
   scrollBehavior: 'smooth',
   alignItems: 'center',
   justifyContent: 'flex-start',
-  minHeight: 80,
+  minHeight: 72,
   maxWidth: '100%',
   width: '100%',
   boxSizing: 'border-box',
@@ -55,8 +57,8 @@ const HorizontalScroller = styled(Box)(({ theme }) => ({
   WebkitOverflowScrolling: 'touch',
   overscrollBehavior: 'contain',
   [theme.breakpoints.up('sm')]: {
-    padding: theme.spacing(1, 0, 1.25, 0),
-    gap: theme.spacing(2),
+    padding: theme.spacing(0.75, 0, 1, 0),
+    gap: theme.spacing(1.5),
   }
 }));
 
@@ -149,9 +151,9 @@ const PanelThumbnail = styled(Card)(({ theme, hasImage }) => ({
         : '0 4px 12px rgba(0,0,0,0.1)',
     borderColor: hasImage ? theme.palette.primary.main : theme.palette.primary.light
   },
-  width: 80,
-  height: 80,
-  padding: theme.spacing(1),
+  width: 72,
+  height: 72,
+  padding: theme.spacing(0.75),
   flexShrink: 0,
   '&:active': {
     transform: 'scale(0.98)',
@@ -180,9 +182,9 @@ const AddMoreCard = styled(Card)(({ theme }) => ({
       ? '0 4px 12px rgba(0,0,0,0.25)'
       : '0 4px 12px rgba(0,0,0,0.1)',
   },
-  width: 80,
-  height: 80,
-  padding: theme.spacing(1),
+  width: 72,
+  height: 72,
+  padding: theme.spacing(0.75),
   flexShrink: 0,
   '&:active': {
     transform: 'scale(0.98)',
@@ -294,6 +296,43 @@ const BulkUploadSection = ({
       window.removeEventListener('resize', handleResize);
     };
   }, []);
+
+  // Effect to clean up orphaned mappings when images or panel count changes
+  useEffect(() => {
+    if (!panelImageMapping || !selectedImages) return;
+    
+    let needsCleanup = false;
+    const cleanedMapping = {};
+    
+    // Check each mapping entry
+    Object.entries(panelImageMapping).forEach(([panelId, imageIndex]) => {
+      // Extract panel number from panelId
+      const panelNumber = parseInt(panelId.split('-')[1] || '0', 10);
+      
+      // Check if panel number is valid (within current panel count)
+      const isPanelValid = panelNumber > 0 && panelNumber <= panelCount;
+      
+      // Check if image index is valid (within current images array)
+      const isImageValid = imageIndex !== undefined && 
+                          imageIndex !== null && 
+                          imageIndex >= 0 && 
+                          imageIndex < selectedImages.length &&
+                          selectedImages[imageIndex];
+      
+      if (isPanelValid && isImageValid) {
+        cleanedMapping[panelId] = imageIndex;
+      } else {
+        needsCleanup = true;
+        debugLog(`Cleaning up orphaned mapping: panel ${panelId} -> image ${imageIndex} (panelValid: ${isPanelValid}, imageValid: ${isImageValid})`);
+      }
+    });
+    
+    // Update mapping if cleanup is needed
+    if (needsCleanup) {
+      debugLog('Updating panel mapping after cleanup:', cleanedMapping);
+      updatePanelImageMapping(cleanedMapping);
+    }
+  }, [selectedImages, panelCount, panelImageMapping, updatePanelImageMapping]);
 
   // Update scroll indicators when content changes
   useEffect(() => {
@@ -446,7 +485,7 @@ const BulkUploadSection = ({
 
     debugLog(`Removing frame: ${panelIdToRemove}`);
 
-    // Extract the panel number from the panel ID to remove
+    // Extract the panel number from the panel ID to remove (1-based)
     const panelNumberToRemove = parseInt(panelIdToRemove.split('-')[1] || '0', 10);
     
     debugLog(`Removing panel number: ${panelNumberToRemove} (reducing from ${panelCount} to ${panelCount - 1} panels)`);
@@ -454,29 +493,65 @@ const BulkUploadSection = ({
     // Get the current panel mapping
     const currentMapping = { ...panelImageMapping };
     
-    // Remove the specific panel from mapping
-    delete currentMapping[panelIdToRemove];
+    // Store the image that was in the removed panel (if any) - we'll remove it from images array
+    const removedImageIndex = currentMapping[panelIdToRemove];
+    const hasRemovedImage = removedImageIndex !== undefined && removedImageIndex !== null;
     
-    // Create new mapping by shifting all panels after the removed one
+    debugLog(`Panel ${panelIdToRemove} had image at index: ${removedImageIndex}`);
+    
+    // Remove the image from the images array if it exists
+    if (hasRemovedImage && removeImage) {
+      removeImage(removedImageIndex);
+      debugLog(`Removed image at index ${removedImageIndex} from images array`);
+    }
+    
+    // Create new mapping by rebuilding it from scratch for remaining panels
     const updatedMapping = {};
     
-    Object.entries(currentMapping).forEach(([panelId, imageIndex]) => {
-      const panelNumber = parseInt(panelId.split('-')[1] || '0', 10);
+    // Get all current panel-to-image mappings, excluding the removed panel
+    const remainingMappings = Object.entries(currentMapping)
+      .filter(([panelId]) => panelId !== panelIdToRemove)
+      .map(([panelId, imageIndex]) => {
+        const panelNumber = parseInt(panelId.split('-')[1] || '0', 10);
+        return { panelId, panelNumber, imageIndex };
+      })
+      .sort((a, b) => a.panelNumber - b.panelNumber); // Sort by panel number
+    
+    debugLog('Remaining mappings before adjustment:', remainingMappings);
+    
+    // Adjust image indices for images that come after the removed image
+    const adjustedMappings = remainingMappings.map(({ panelId, panelNumber, imageIndex }) => {
+      let adjustedImageIndex = imageIndex;
       
-      if (panelNumber < panelNumberToRemove) {
-        // Panels before the removed one stay the same
-        updatedMapping[panelId] = imageIndex;
-      } else if (panelNumber > panelNumberToRemove) {
-        // Panels after the removed one shift up by 1
-        const newPanelNumber = panelNumber - 1;
-        const newPanelId = selectedTemplate?.layout?.panels?.[newPanelNumber - 1]?.id || `panel-${newPanelNumber}`;
-        updatedMapping[newPanelId] = imageIndex;
-        debugLog(`Shifting panel ${panelNumber} to panel ${newPanelNumber} (${panelId} -> ${newPanelId})`);
+      // If we removed an image and this mapping points to an image after it, shift the index down
+      if (hasRemovedImage && imageIndex > removedImageIndex) {
+        adjustedImageIndex = imageIndex - 1;
+        debugLog(`Adjusted image index from ${imageIndex} to ${adjustedImageIndex} for panel ${panelId}`);
       }
-      // The removed panel (panelNumber === panelNumberToRemove) is skipped
+      
+      return { panelId, panelNumber, imageIndex: adjustedImageIndex };
     });
     
-    // Update panel count
+    debugLog('Mappings after image index adjustment:', adjustedMappings);
+    
+    // Now rebuild the mapping with new panel IDs for panels that need to shift
+    adjustedMappings.forEach(({ panelNumber, imageIndex }) => {
+      let newPanelNumber = panelNumber;
+      
+      // If this panel comes after the removed panel, shift it up by 1
+      if (panelNumber > panelNumberToRemove) {
+        newPanelNumber = panelNumber - 1;
+        debugLog(`Shifting panel ${panelNumber} to panel ${newPanelNumber}`);
+      }
+      
+      // Generate the new panel ID
+      const newPanelId = selectedTemplate?.layout?.panels?.[newPanelNumber - 1]?.id || `panel-${newPanelNumber}`;
+      updatedMapping[newPanelId] = imageIndex;
+      
+      debugLog(`Mapped panel ${newPanelId} to image index ${imageIndex}`);
+    });
+    
+    // Update panel count first
     const newPanelCount = panelCount - 1;
     setPanelCount(newPanelCount);
     
@@ -489,6 +564,7 @@ const BulkUploadSection = ({
   // Handler for opening context menu on empty panel click
   const handleEmptyPanelClick = (event, panel) => {
     event.preventDefault();
+    event.stopPropagation(); // Prevent event bubbling
     
     setDisableTooltips(true);
     setSelectedPanelForAction(panel);
@@ -501,6 +577,7 @@ const BulkUploadSection = ({
   // Handler for opening context menu on panel with image click
   const handleImagePanelClick = (event, panel) => {
     event.preventDefault();
+    event.stopPropagation(); // Prevent event bubbling
     
     setDisableTooltips(true);
     setSelectedPanelForAction(panel);
@@ -514,7 +591,10 @@ const BulkUploadSection = ({
   const handleContextMenuClose = () => {
     setContextMenu(null);
     setSelectedPanelForAction(null);
-    setDisableTooltips(false);
+    // Add a small delay before re-enabling tooltips to ensure menu is fully closed
+    setTimeout(() => {
+      setDisableTooltips(false);
+    }, 100);
   };
 
   // Handler for uploading to specific panel
@@ -560,10 +640,8 @@ const BulkUploadSection = ({
   // Handler for deleting frame with image
   const handleDeleteFrameWithImage = () => {
     if (selectedPanelForAction && selectedPanelForAction.hasImage) {
-      // First remove the image
-      handleRemoveImage(selectedPanelForAction.imageIndex);
-      
-      // Then remove the frame
+      // The handleRemoveFrame function now handles both removing the image and the frame
+      // so we don't need to call handleRemoveImage separately
       handleRemoveFrame(selectedPanelForAction.panelId);
     }
     handleContextMenuClose();
@@ -662,14 +740,20 @@ const BulkUploadSection = ({
     for (let panelIndex = 0; panelIndex < panelCount; panelIndex += 1) {
       const panelId = selectedTemplate?.layout?.panels?.[panelIndex]?.id || `panel-${panelIndex + 1}`;
       const imageIndex = panelImageMapping[panelId];
-      const hasImage = imageIndex !== undefined && imageIndex !== null && selectedImages[imageIndex];
+      
+      // Add safety check to ensure imageIndex is valid and image exists
+      const hasValidImage = imageIndex !== undefined && 
+                           imageIndex !== null && 
+                           imageIndex >= 0 && 
+                           imageIndex < selectedImages.length && 
+                           selectedImages[imageIndex];
       
       panels.push({
         panelId,
         panelNumber: panelIndex + 1,
-        imageIndex,
-        hasImage,
-        image: hasImage ? selectedImages[imageIndex] : null
+        imageIndex: hasValidImage ? imageIndex : undefined,
+        hasImage: hasValidImage,
+        image: hasValidImage ? selectedImages[imageIndex] : null
       });
     }
     
@@ -746,6 +830,13 @@ const BulkUploadSection = ({
                   disableHoverListener={disableTooltips}
                   disableFocusListener={disableTooltips}
                   disableTouchListener={disableTooltips}
+                  enterDelay={500}
+                  leaveDelay={0}
+                  PopperProps={{
+                    sx: {
+                      display: contextMenu !== null ? 'none !important' : 'block'
+                    }
+                  }}
                 >
                   <PanelThumbnail
                     hasImage={panel.hasImage}
@@ -808,13 +899,13 @@ const BulkUploadSection = ({
                         variant="filled"
                         sx={{
                           position: 'absolute',
-                          bottom: -8,
+                          bottom: -6,
                           left: '50%',
                           transform: 'translateX(-50%)',
-                          height: 18,
-                          fontSize: '0.65rem',
+                          height: 16,
+                          fontSize: '0.6rem',
                           fontWeight: 'bold',
-                          px: 0.75,
+                          px: 0.5,
                           backgroundColor: theme => panel.hasImage 
                             ? theme.palette.primary.main
                             : theme.palette.mode === 'dark' 
@@ -824,49 +915,51 @@ const BulkUploadSection = ({
                             ? theme.palette.primary.contrastText
                             : theme.palette.text.primary,
                           '& .MuiChip-label': {
-                            px: 0.75,
+                            px: 0.5,
                             py: 0
                           }
                         }}
                       />
 
-                      {/* Remove indicator for images */}
+                      {/* Settings indicator for images */}
                       {panel.hasImage && removeImage && (
                         <Box 
                           sx={{ 
                             position: 'absolute', 
-                            top: 4, 
-                            right: 4, 
-                            bgcolor: 'error.main',
+                            top: 3,
+                            right: 3,
+                            bgcolor: 'primary.main',
                             borderRadius: '50%',
-                            width: 16,
-                            height: 16,
+                            width: 14,
+                            height: 14,
                             display: 'flex',
                             alignItems: 'center',
-                            justifyContent: 'center'
+                            justifyContent: 'center',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.3)'
                           }}
                         >
-                          <Delete sx={{ fontSize: 10, color: 'white' }} />
+                          <MoreVert sx={{ fontSize: 8, color: 'white' }} />
                         </Box>
                       )}
 
-                      {/* Remove frame indicator for empty panels */}
+                      {/* Settings indicator for empty panels */}
                       {!panel.hasImage && panelCount > 2 && (
                         <Box 
                           sx={{ 
                             position: 'absolute', 
-                            top: 4, 
-                            right: 4, 
-                            bgcolor: 'warning.main',
+                            top: 3,
+                            right: 3,
+                            bgcolor: 'secondary.main',
                             borderRadius: '50%',
-                            width: 16,
-                            height: 16,
+                            width: 14,
+                            height: 14,
                             display: 'flex',
                             alignItems: 'center',
-                            justifyContent: 'center'
+                            justifyContent: 'center',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.3)'
                           }}
                         >
-                          <RemoveCircle sx={{ fontSize: 10, color: 'white' }} />
+                          <Settings sx={{ fontSize: 8, color: 'white' }} />
                         </Box>
                       )}
                     </Box>
@@ -888,13 +981,13 @@ const BulkUploadSection = ({
                       height: '100%'
                     }}>
                       <Add sx={{ 
-                        fontSize: 24, 
+                        fontSize: 20,
                         color: 'text.secondary',
-                        mb: 0.5
+                        mb: 0.25
                       }} />
                       <Typography variant="caption" sx={{ 
                         color: 'text.secondary',
-                        fontSize: '0.6rem',
+                        fontSize: '0.55rem',
                         textAlign: 'center',
                         lineHeight: 1
                       }}>

@@ -177,11 +177,11 @@ const CollageImagesStep = ({
   }, [currentPanelToEdit, panelImageMapping, removeImage, updatePanelImageMapping]);
 
   return (
-    <Box sx={{ my: isMobile ? 0 : 0.5 }}>
+    <Box sx={{ my: isMobile ? 0 : 0.25 }}>
       {/* Layout Preview */}
       <Box sx={{ 
-        p: isMobile ? 2 : 2, 
-        mb: isMobile ? 2 : 2, 
+        p: isMobile ? 1.5 : 1.5,
+        mb: isMobile ? 1.5 : 1.5,
         borderRadius: 2, 
         textAlign: 'center', 
         display: 'flex', 
@@ -192,7 +192,7 @@ const CollageImagesStep = ({
         {/* Always render the preview, let it handle null templates */}
         <Box sx={{ 
           width: '100%', 
-          mb: 2,
+          mb: 1.5,
           position: 'relative'
         }} id="collage-preview-container">
           <CollagePreview 
@@ -222,7 +222,7 @@ const CollageImagesStep = ({
         
         <Typography variant="body2" sx={{ 
             color: 'text.secondary', 
-            fontSize: '0.9rem', 
+            fontSize: '0.85rem',
             textAlign: 'center'
           }}
         >

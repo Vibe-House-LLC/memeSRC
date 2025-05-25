@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useEffect, useState } from 'react';
 import { useTheme } from "@mui/material/styles";
 import { Box, IconButton, Typography, useMediaQuery } from "@mui/material";
-import { OpenWith, Check, Add } from "@mui/icons-material";
+import { OpenWith, Check, Add, Settings, CropFree } from "@mui/icons-material";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 
 import { layoutDefinitions } from "../config/layouts";
@@ -1099,7 +1099,7 @@ const DynamicCollagePreview = ({
             transition: 'all 0.2s ease-in-out',
           }}
         >
-          {isTransformEnabled ? <Check sx={{ fontSize: 24 }} /> : <OpenWith sx={{ fontSize: 20 }} />}
+          {isTransformEnabled ? <Check sx={{ fontSize: 24 }} /> : <Settings sx={{ fontSize: 20 }} />}
         </IconButton>
       </Box>
     );

@@ -383,19 +383,19 @@ export default function CollagePage() {
           <Container 
             maxWidth="xl" 
             sx={{ 
-              pt: isMobile ? 1.5 : 2,
-              px: isMobile ? 1 : 2.5,
+              pt: isMobile ? 1 : 1.5,
+              px: isMobile ? 1 : 2,
               width: '100%'
             }}
             disableGutters={isMobile}
           >
             {/* Page Header */}
-            <Box sx={{ mb: isMobile ? 1.5 : 2 }}>
+            <Box sx={{ mb: isMobile ? 1 : 1.5 }}>
               <Typography variant="h3" gutterBottom sx={{ 
                 display: 'flex', 
                 alignItems: 'center',
                 fontWeight: '700', 
-                mb: isMobile ? 0.5 : 1,
+                mb: isMobile ? 0.5 : 0.75,
                 pl: isMobile ? 0 : 0,
                 color: '#fff',
                 fontSize: isMobile ? '2.2rem' : '2.5rem',
@@ -406,7 +406,7 @@ export default function CollagePage() {
               </Typography>
               <Typography variant="subtitle1" sx={{ 
                 color: 'text.secondary',
-                mb: isMobile ? 1.5 : 2,
+                mb: isMobile ? 1 : 1.5,
                 pl: isMobile ? 0 : 5,
                 maxWidth: '85%'
               }}>
