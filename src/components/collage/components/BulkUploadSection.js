@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { 
   Box, 
   Typography, 
@@ -8,19 +8,181 @@ import {
   Card,
   CardMedia,
   Stack,
-  Chip
+  Chip,
+  Tooltip
 } from '@mui/material';
-import { useTheme } from '@mui/material/styles';
+import { useTheme, styled, alpha } from '@mui/material/styles';
 import { 
   CloudUpload, 
   Add,
   Delete,
   Image as ImageIcon,
-  PhotoLibrary
+  PhotoLibrary,
+  ChevronLeft,
+  ChevronRight
 } from '@mui/icons-material';
 import DisclosureCard from './DisclosureCard';
 
 const debugLog = (...args) => { console.log(...args); };
+
+// Styled components similar to CollageSettingsStep
+const HorizontalScroller = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  overflowX: 'auto',
+  overflowY: 'hidden',
+  scrollbarWidth: 'none',  // Firefox
+  '&::-webkit-scrollbar': {
+    display: 'none',  // Chrome, Safari, Opera
+  },
+  msOverflowStyle: 'none',  // IE, Edge
+  gap: theme.spacing(2),
+  padding: theme.spacing(1, 0, 1.25, 0),
+  position: 'relative',
+  scrollBehavior: 'smooth',
+  alignItems: 'center',
+  justifyContent: 'flex-start',
+  minHeight: 80,
+  maxWidth: '100%',
+  width: '100%',
+  boxSizing: 'border-box',
+  contain: 'content',
+  WebkitOverflowScrolling: 'touch',
+  overscrollBehavior: 'contain',
+  [theme.breakpoints.up('sm')]: {
+    padding: theme.spacing(1, 0, 1.25, 0),
+    gap: theme.spacing(2),
+  }
+}));
+
+const ScrollButton = styled(IconButton)(({ theme, direction }) => ({
+  position: 'absolute',
+  top: 'calc(50% - 8px)',
+  transform: 'translateY(-50%)',
+  zIndex: 10,
+  backgroundColor: theme.palette.mode === 'dark' 
+    ? alpha(theme.palette.background.paper, 0.8)
+    : alpha(theme.palette.background.paper, 0.9),
+  boxShadow: `0 2px 8px ${theme.palette.mode === 'dark' 
+    ? 'rgba(0,0,0,0.3)' 
+    : 'rgba(0,0,0,0.15)'}`,
+  border: `1px solid ${theme.palette.mode === 'dark'
+    ? alpha(theme.palette.divider, 0.5)
+    : theme.palette.divider}`,
+  color: theme.palette.primary.main,
+  '&:hover': {
+    backgroundColor: theme.palette.mode === 'dark' 
+      ? alpha(theme.palette.background.paper, 0.9)
+      : alpha(theme.palette.background.default, 0.95),
+    color: theme.palette.primary.dark,
+    transform: 'translateY(-50%) scale(1.05)',
+    boxShadow: `0 3px 10px ${theme.palette.mode === 'dark' 
+      ? 'rgba(0,0,0,0.4)' 
+      : 'rgba(0,0,0,0.2)'}`,
+  },
+  ...(direction === 'left' ? { left: -8 } : { right: -8 }),
+  width: 32,
+  height: 32,
+  minWidth: 'unset',
+  padding: 0,
+  borderRadius: '50%',
+  transition: theme.transitions.create(
+    ['background-color', 'color', 'box-shadow', 'transform', 'opacity'], 
+    { duration: theme.transitions.duration.shorter }
+  ),
+  [theme.breakpoints.up('sm')]: {
+    width: 36,
+    height: 36,
+    ...(direction === 'left' ? { left: -12 } : { right: -12 }),
+  }
+}));
+
+const ScrollIndicator = styled(Box, {
+  shouldForwardProp: (prop) => prop !== 'isVisible'
+})(({ theme, direction, isVisible }) => ({
+  position: 'absolute',
+  top: 0,
+  bottom: 0,
+  width: 40,
+  pointerEvents: 'none',
+  zIndex: 2,
+  opacity: isVisible ? 1 : 0,
+  transition: 'opacity 0.3s ease',
+  background: direction === 'left'
+    ? `linear-gradient(90deg, ${theme.palette.mode === 'dark' 
+        ? 'rgba(25,25,25,0.9)' 
+        : 'rgba(255,255,255,0.9)'} 0%, transparent 100%)`
+    : `linear-gradient(270deg, ${theme.palette.mode === 'dark' 
+        ? 'rgba(25,25,25,0.9)' 
+        : 'rgba(255,255,255,0.9)'} 0%, transparent 100%)`,
+  ...(direction === 'left' ? { left: 0 } : { right: 0 })
+}));
+
+const PanelThumbnail = styled(Card)(({ theme, hasImage }) => ({
+  cursor: 'pointer',
+  position: 'relative',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  transition: theme.transitions.create(
+    ['border-color', 'background-color', 'box-shadow'],
+    { duration: theme.transitions.duration.shorter }
+  ),
+  border: hasImage 
+    ? `2px solid ${theme.palette.primary.main}` 
+    : `1px solid ${theme.palette.divider}`,
+  backgroundColor: hasImage 
+    ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.15 : 0.08)
+    : theme.palette.background.paper,
+  borderRadius: theme.shape.borderRadius,
+  '&:hover': {
+    boxShadow: hasImage 
+      ? `0 4px 12px ${alpha(theme.palette.primary.main, 0.3)}`
+      : theme.palette.mode === 'dark'
+        ? '0 4px 12px rgba(0,0,0,0.25)'
+        : '0 4px 12px rgba(0,0,0,0.1)',
+    borderColor: hasImage ? theme.palette.primary.main : theme.palette.primary.light
+  },
+  width: 80,
+  height: 80,
+  padding: theme.spacing(1),
+  flexShrink: 0,
+  '&:active': {
+    transform: 'scale(0.98)',
+    transition: 'transform 0.1s',
+  }
+}));
+
+const AddMoreCard = styled(Card)(({ theme }) => ({
+  cursor: 'pointer',
+  position: 'relative',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  transition: theme.transitions.create(
+    ['border-color', 'background-color', 'box-shadow'],
+    { duration: theme.transitions.duration.shorter }
+  ),
+  border: `2px dashed ${theme.palette.divider}`,
+  backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+  borderRadius: theme.shape.borderRadius,
+  '&:hover': {
+    borderColor: theme.palette.primary.main,
+    backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+    boxShadow: theme.palette.mode === 'dark'
+      ? '0 4px 12px rgba(0,0,0,0.25)'
+      : '0 4px 12px rgba(0,0,0,0.1)',
+  },
+  width: 80,
+  height: 80,
+  padding: theme.spacing(1),
+  flexShrink: 0,
+  '&:active': {
+    transform: 'scale(0.98)',
+    transition: 'transform 0.1s',
+  }
+}));
 
 const BulkUploadSection = ({
   selectedImages,
@@ -35,9 +197,86 @@ const BulkUploadSection = ({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const bulkFileInputRef = useRef(null);
+  const panelScrollerRef = useRef(null);
+
+  // State for scroll indicators
+  const [panelLeftScroll, setPanelLeftScroll] = useState(false);
+  const [panelRightScroll, setPanelRightScroll] = useState(false);
 
   // Check if there are any selected images
   const hasImages = selectedImages && selectedImages.length > 0;
+
+  // Scroll functions
+  const scrollLeft = (ref) => {
+    if (ref.current) {
+      const scrollDistance = Math.min(ref.current.clientWidth * 0.5, 250);
+      ref.current.scrollBy({ left: -scrollDistance, behavior: 'smooth' });
+      
+      setTimeout(() => {
+        handlePanelScroll();
+      }, 350);
+    }
+  };
+  
+  const scrollRight = (ref) => {
+    if (ref.current) {
+      const scrollDistance = Math.min(ref.current.clientWidth * 0.5, 250);
+      ref.current.scrollBy({ left: scrollDistance, behavior: 'smooth' });
+      
+      setTimeout(() => {
+        handlePanelScroll();
+      }, 350);
+    }
+  };
+
+  // Check scroll position and update indicators
+  const checkScrollPosition = (ref, setLeftScroll, setRightScroll) => {
+    if (!ref.current) return;
+    
+    const { scrollLeft, scrollWidth, clientWidth } = ref.current;
+    const hasLeft = scrollLeft > 5;
+    const hasRight = scrollLeft < scrollWidth - clientWidth - 5;
+    
+    setLeftScroll(hasLeft);
+    setRightScroll(hasRight);
+  };
+
+  const handlePanelScroll = () => {
+    checkScrollPosition(panelScrollerRef, setPanelLeftScroll, setPanelRightScroll);
+  };
+
+  // Effect to handle scroll indicators
+  useEffect(() => {
+    handlePanelScroll();
+    
+    const handleResize = () => {
+      handlePanelScroll();
+    };
+    
+    const panelScrollerElement = panelScrollerRef.current;
+    
+    if (panelScrollerElement) {
+      panelScrollerElement.addEventListener('scroll', handlePanelScroll);
+    }
+    
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      if (panelScrollerElement) {
+        panelScrollerElement.removeEventListener('scroll', handlePanelScroll);
+      }
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+
+  // Update scroll indicators when content changes
+  useEffect(() => {
+    handlePanelScroll();
+    
+    setTimeout(() => {
+      handlePanelScroll();
+    }, 100);
+  }, [selectedImages, panelCount, panelImageMapping]);
 
   // --- Handler for bulk file upload ---
   const handleBulkFileUpload = (event) => {
@@ -206,131 +445,194 @@ const BulkUploadSection = ({
       {hasImages ? (
         // Show panel list matching collage state
         <Box>
-          {/* Panel list */}
-          <Stack spacing={2} sx={{ mb: 3 }}>
-            {panelList.map((panel) => (
-              <Card 
-                key={panel.panelId}
-                sx={{ 
-                  p: 2,
-                  borderRadius: 2,
-                  border: 1,
-                  borderColor: panel.hasImage ? 'primary.main' : 'divider',
-                  bgcolor: panel.hasImage 
-                    ? (theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.08)' : 'rgba(25, 118, 210, 0.04)')
-                    : 'background.paper'
-                }}
-              >
-                <Box sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center',
-                  gap: 2
-                }}>
-                  {/* Panel indicator */}
-                  <Chip 
-                    label={`Panel ${panel.panelNumber}`}
-                    size="small"
-                    color={panel.hasImage ? 'primary' : 'default'}
-                    sx={{ 
-                      minWidth: 80,
-                      fontWeight: 600
+          {/* Panel list with horizontal scrolling */}
+          <Box sx={{ 
+            position: 'relative', 
+            width: '100%',
+            mt: 1,
+            pt: 0.5, 
+            pb: 0.5,
+            [theme.breakpoints.up('sm')]: {
+              width: '100%',
+              mt: 1,
+              pt: 0.5,
+              pb: 0.5
+            }
+          }}>
+            <ScrollButton 
+              direction="left" 
+              onClick={() => scrollLeft(panelScrollerRef)} 
+              size="small"
+              aria-label="Scroll left"
+              sx={{ 
+                display: 'flex',
+                visibility: panelLeftScroll ? 'visible' : 'hidden',
+                opacity: panelLeftScroll ? 1 : 0,
+              }}
+            >
+              <ChevronLeft fontSize="small" />
+            </ScrollButton>
+            
+            <ScrollButton 
+              direction="right" 
+              onClick={() => scrollRight(panelScrollerRef)} 
+              size="small"
+              aria-label="Scroll right"
+              sx={{ 
+                display: 'flex',
+                visibility: panelRightScroll ? 'visible' : 'hidden',
+                opacity: panelRightScroll ? 1 : 0,
+              }}
+            >
+              <ChevronRight fontSize="small" />
+            </ScrollButton>
+
+            <HorizontalScroller ref={panelScrollerRef}>
+              {panelList.map((panel) => (
+                <Tooltip 
+                  key={panel.panelId}
+                  title={panel.hasImage ? `Panel ${panel.panelNumber} - Click to remove` : `Panel ${panel.panelNumber} - Empty`}
+                  arrow
+                >
+                  <PanelThumbnail
+                    hasImage={panel.hasImage}
+                    onClick={() => panel.hasImage && removeImage && handleRemoveImage(panel.imageIndex)}
+                    sx={{
+                      cursor: panel.hasImage && removeImage ? 'pointer' : 'default'
                     }}
-                  />
-                  
-                  {/* Image preview or empty state */}
+                  >
+                    <Box sx={{ 
+                      position: 'relative',
+                      width: '100%',
+                      height: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}>
+                      {/* Image preview or empty state */}
+                      <Box sx={{ 
+                        width: '85%', 
+                        height: '85%', 
+                        borderRadius: 1,
+                        overflow: 'hidden',
+                        border: 1,
+                        borderColor: 'divider',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        bgcolor: panel.hasImage ? 'transparent' : 'action.hover'
+                      }}>
+                        {panel.hasImage ? (
+                          <CardMedia
+                            component="img"
+                            width="100%"
+                            height="100%"
+                            image={panel.image.displayUrl || panel.image.originalUrl || panel.image}
+                            alt={`Panel ${panel.panelNumber} image`}
+                            sx={{ objectFit: 'cover' }}
+                          />
+                        ) : (
+                          <ImageIcon sx={{ color: 'text.disabled', fontSize: 20 }} />
+                        )}
+                      </Box>
+
+                      {/* Panel number chip */}
+                      <Chip
+                        label={panel.panelNumber}
+                        size="small"
+                        variant="filled"
+                        sx={{
+                          position: 'absolute',
+                          bottom: -8,
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          height: 18,
+                          fontSize: '0.65rem',
+                          fontWeight: 'bold',
+                          px: 0.75,
+                          backgroundColor: theme => panel.hasImage 
+                            ? theme.palette.primary.main
+                            : theme.palette.mode === 'dark' 
+                              ? 'rgba(255, 255, 255, 0.15)' 
+                              : 'rgba(0, 0, 0, 0.08)',
+                          color: theme => panel.hasImage 
+                            ? theme.palette.primary.contrastText
+                            : theme.palette.text.primary,
+                          '& .MuiChip-label': {
+                            px: 0.75,
+                            py: 0
+                          }
+                        }}
+                      />
+
+                      {/* Remove indicator for images */}
+                      {panel.hasImage && removeImage && (
+                        <Box 
+                          sx={{ 
+                            position: 'absolute', 
+                            top: 4, 
+                            right: 4, 
+                            bgcolor: 'error.main',
+                            borderRadius: '50%',
+                            width: 16,
+                            height: 16,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                        >
+                          <Delete sx={{ fontSize: 10, color: 'white' }} />
+                        </Box>
+                      )}
+                    </Box>
+                  </PanelThumbnail>
+                </Tooltip>
+              ))}
+
+              {/* Add more images card */}
+              <Tooltip title="Upload more images" arrow>
+                <AddMoreCard
+                  onClick={() => bulkFileInputRef.current?.click()}
+                >
                   <Box sx={{ 
-                    width: 60, 
-                    height: 60, 
-                    borderRadius: 1,
-                    overflow: 'hidden',
-                    border: 1,
-                    borderColor: 'divider',
                     display: 'flex',
+                    flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    bgcolor: panel.hasImage ? 'transparent' : 'action.hover'
+                    height: '100%'
                   }}>
-                    {panel.hasImage ? (
-                      <CardMedia
-                        component="img"
-                        width="60"
-                        height="60"
-                        image={panel.image.displayUrl || panel.image.originalUrl || panel.image}
-                        alt={`Panel ${panel.panelNumber} image`}
-                        sx={{ objectFit: 'cover' }}
-                      />
-                    ) : (
-                      <ImageIcon sx={{ color: 'text.disabled', fontSize: 24 }} />
-                    )}
+                    <Add sx={{ 
+                      fontSize: 24, 
+                      color: 'text.secondary',
+                      mb: 0.5
+                    }} />
+                    <Typography variant="caption" sx={{ 
+                      color: 'text.secondary',
+                      fontSize: '0.6rem',
+                      textAlign: 'center',
+                      lineHeight: 1
+                    }}>
+                      Add More
+                    </Typography>
                   </Box>
-                  
-                  {/* Image info */}
-                  <Box sx={{ flex: 1 }}>
-                    {panel.hasImage ? (
-                      <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 500 }}>
-                        Image assigned
-                      </Typography>
-                    ) : (
-                      <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
-                        No image assigned
-                      </Typography>
-                    )}
-                  </Box>
-                  
-                  {/* Remove button */}
-                  {panel.hasImage && removeImage && (
-                    <IconButton
-                      onClick={() => handleRemoveImage(panel.imageIndex)}
-                      size="small"
-                      sx={{
-                        color: 'error.main',
-                        '&:hover': {
-                          bgcolor: 'error.main',
-                          color: 'error.contrastText'
-                        }
-                      }}
-                    >
-                      <Delete fontSize="small" />
-                    </IconButton>
-                  )}
-                </Box>
-              </Card>
-            ))}
-          </Stack>
-
-          {/* Add more images section */}
-          <Card 
-            onClick={() => bulkFileInputRef.current?.click()}
-            sx={{ 
-              p: 3,
-              borderRadius: 2,
-              border: `2px dashed ${theme.palette.divider}`,
-              bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              transition: 'all 0.3s ease',
-              '&:hover': {
-                borderColor: theme.palette.primary.main,
-                bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-              }
-            }}
-          >
-            <Box sx={{ textAlign: 'center' }}>
-              <Add sx={{ 
-                fontSize: 40, 
-                color: 'text.secondary',
-                mb: 1
-              }} />
-              <Typography variant="h6" sx={{ color: '#fff', fontWeight: 600, mb: 0.5 }}>
-                Add More Images
-              </Typography>
-              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                Upload additional images to fill empty panels
-              </Typography>
-            </Box>
-          </Card>
+                </AddMoreCard>
+              </Tooltip>
+              
+              {/* Spacer to ensure last items can be centered when scrolled fully */}
+              <Box sx={{ minWidth: 4, flexShrink: 0 }} />
+            </HorizontalScroller>
+            
+            {/* Visual indicators for scrolling */}
+            <ScrollIndicator 
+              direction="left" 
+              isVisible={panelLeftScroll}
+            />
+            
+            <ScrollIndicator 
+              direction="right" 
+              isVisible={panelRightScroll}
+            />
+          </Box>
 
           {/* Hidden file input */}
           <input
