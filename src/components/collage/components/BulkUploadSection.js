@@ -23,7 +23,9 @@ import {
   ChevronLeft,
   ChevronRight,
   RemoveCircle,
-  Upload
+  Upload,
+  Refresh,
+  Clear
 } from '@mui/icons-material';
 import DisclosureCard from './DisclosureCard';
 
@@ -196,7 +198,8 @@ const BulkUploadSection = ({
   panelCount,
   selectedTemplate,
   setPanelCount, // Add this prop to automatically adjust panel count
-  removeImage // Add removeImage function
+  removeImage, // Add removeImage function
+  replaceImage // Add replaceImage function
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -211,6 +214,7 @@ const BulkUploadSection = ({
   // State for context menu
   const [contextMenu, setContextMenu] = useState(null);
   const [selectedPanelForAction, setSelectedPanelForAction] = useState(null);
+  const [disableTooltips, setDisableTooltips] = useState(false);
 
   // Check if there are any selected images
   const hasImages = selectedImages && selectedImages.length > 0;
@@ -486,6 +490,19 @@ const BulkUploadSection = ({
   const handleEmptyPanelClick = (event, panel) => {
     event.preventDefault();
     
+    setDisableTooltips(true);
+    setSelectedPanelForAction(panel);
+    setContextMenu({
+      mouseX: event.clientX - 2,
+      mouseY: event.clientY - 4,
+    });
+  };
+
+  // Handler for opening context menu on panel with image click
+  const handleImagePanelClick = (event, panel) => {
+    event.preventDefault();
+    
+    setDisableTooltips(true);
     setSelectedPanelForAction(panel);
     setContextMenu({
       mouseX: event.clientX - 2,
@@ -497,6 +514,7 @@ const BulkUploadSection = ({
   const handleContextMenuClose = () => {
     setContextMenu(null);
     setSelectedPanelForAction(null);
+    setDisableTooltips(false);
   };
 
   // Handler for uploading to specific panel
@@ -510,6 +528,42 @@ const BulkUploadSection = ({
   // Handler for removing specific frame from context menu
   const handleRemoveFrameFromMenu = () => {
     if (selectedPanelForAction) {
+      handleRemoveFrame(selectedPanelForAction.panelId);
+    }
+    handleContextMenuClose();
+  };
+
+  // Handler for replacing image in panel
+  const handleReplaceImage = () => {
+    if (selectedPanelForAction) {
+      specificPanelFileInputRef.current?.click();
+    }
+    handleContextMenuClose();
+  };
+
+  // Handler for clearing image from panel
+  const handleClearImage = () => {
+    if (selectedPanelForAction && selectedPanelForAction.hasImage) {
+      // Remove the image from the images array
+      handleRemoveImage(selectedPanelForAction.imageIndex);
+      
+      // Remove the panel mapping
+      const newMapping = { ...panelImageMapping };
+      delete newMapping[selectedPanelForAction.panelId];
+      updatePanelImageMapping(newMapping);
+      
+      debugLog(`Cleared image from panel ${selectedPanelForAction.panelId}`);
+    }
+    handleContextMenuClose();
+  };
+
+  // Handler for deleting frame with image
+  const handleDeleteFrameWithImage = () => {
+    if (selectedPanelForAction && selectedPanelForAction.hasImage) {
+      // First remove the image
+      handleRemoveImage(selectedPanelForAction.imageIndex);
+      
+      // Then remove the frame
       handleRemoveFrame(selectedPanelForAction.panelId);
     }
     handleContextMenuClose();
@@ -537,22 +591,59 @@ const BulkUploadSection = ({
       .then((imageUrls) => {
         debugLog(`Loaded ${imageUrls.length} files for panel ${selectedPanelForAction.panelId}`);
         
-        // Add all images to the collection
-        addMultipleImages(imageUrls);
-        
-        // Get the starting index for new images
-        const currentLength = selectedImages.length;
-        
-        // Create new mapping with the first image assigned to the selected panel
-        const newMapping = { ...panelImageMapping };
-        newMapping[selectedPanelForAction.panelId] = currentLength;
-        
-        debugLog(`Assigning image ${currentLength} to panel ${selectedPanelForAction.panelId}`);
-        
-        // If there are more images, they'll be available for assignment to other panels
-        updatePanelImageMapping(newMapping);
-        
-        debugLog(`Assigned image to specific panel. Updated mapping:`, newMapping);
+        if (selectedPanelForAction.hasImage) {
+          // Replace existing image
+          const firstImageUrl = imageUrls[0];
+          
+          // Update the existing image in the array
+          const updatedImages = [...selectedImages];
+          updatedImages[selectedPanelForAction.imageIndex] = {
+            originalUrl: firstImageUrl,
+            displayUrl: firstImageUrl
+          };
+          
+          // If there are additional images, add them to the collection
+          if (imageUrls.length > 1) {
+            const additionalImages = imageUrls.slice(1).map(url => ({
+              originalUrl: url,
+              displayUrl: url
+            }));
+            updatedImages.push(...additionalImages);
+          }
+          
+          // Use replaceImage if available, otherwise use addMultipleImages
+          if (typeof replaceImage === 'function') {
+            replaceImage(selectedPanelForAction.imageIndex, firstImageUrl);
+            if (imageUrls.length > 1) {
+              addMultipleImages(imageUrls.slice(1));
+            }
+          } else {
+            // Fallback: add all images and update mapping
+            addMultipleImages(imageUrls);
+            const newMapping = { ...panelImageMapping };
+            newMapping[selectedPanelForAction.panelId] = selectedImages.length;
+            updatePanelImageMapping(newMapping);
+          }
+          
+          debugLog(`Replaced image in panel ${selectedPanelForAction.panelId}`);
+        } else {
+          // Add new image to empty panel
+          addMultipleImages(imageUrls);
+          
+          // Get the starting index for new images
+          const currentLength = selectedImages.length;
+          
+          // Create new mapping with the first image assigned to the selected panel
+          const newMapping = { ...panelImageMapping };
+          newMapping[selectedPanelForAction.panelId] = currentLength;
+          
+          debugLog(`Assigning image ${currentLength} to panel ${selectedPanelForAction.panelId}`);
+          
+          // If there are more images, they'll be available for assignment to other panels
+          updatePanelImageMapping(newMapping);
+          
+          debugLog(`Assigned image to specific panel. Updated mapping:`, newMapping);
+        }
       })
       .catch((error) => {
         console.error("Error loading files for specific panel:", error);
@@ -646,21 +737,21 @@ const BulkUploadSection = ({
                   key={panel.panelId}
                   title={
                     panel.hasImage 
-                      ? `Panel ${panel.panelNumber} - Click to remove image` 
+                      ? `Panel ${panel.panelNumber} - Click for options` 
                       : panelCount > 2 
                         ? `Panel ${panel.panelNumber} - Empty (Click for options)`
                         : `Panel ${panel.panelNumber} - Empty (Click to upload)`
                   }
                   arrow
-                  disableHoverListener={contextMenu !== null && selectedPanelForAction?.panelId === panel.panelId}
-                  disableFocusListener={contextMenu !== null && selectedPanelForAction?.panelId === panel.panelId}
-                  disableTouchListener={contextMenu !== null && selectedPanelForAction?.panelId === panel.panelId}
+                  disableHoverListener={disableTooltips}
+                  disableFocusListener={disableTooltips}
+                  disableTouchListener={disableTooltips}
                 >
                   <PanelThumbnail
                     hasImage={panel.hasImage}
                     onClick={(event) => {
-                      if (panel.hasImage && removeImage) {
-                        handleRemoveImage(panel.imageIndex);
+                      if (panel.hasImage) {
+                        handleImagePanelClick(event, panel);
                       } else if (!panel.hasImage) {
                         if (panelCount > 2) {
                           handleEmptyPanelClick(event, panel);
@@ -849,7 +940,7 @@ const BulkUploadSection = ({
             onChange={handleSpecificPanelFileChange}
           />
 
-          {/* Context menu for empty panels */}
+          {/* Context menu for panels */}
           <Menu
             open={contextMenu !== null}
             onClose={handleContextMenuClose}
@@ -860,15 +951,38 @@ const BulkUploadSection = ({
                 : undefined
             }
           >
-            <MenuItem onClick={handleUploadToPanel}>
-              <Upload sx={{ mr: 1, fontSize: 18 }} />
-              Add image
-            </MenuItem>
-            {panelCount > 2 && (
-              <MenuItem onClick={handleRemoveFrameFromMenu}>
-                <RemoveCircle sx={{ mr: 1, fontSize: 18 }} />
-                Remove frame
-              </MenuItem>
+            {selectedPanelForAction?.hasImage ? (
+              // Options for panels with images
+              <>
+                <MenuItem onClick={handleReplaceImage}>
+                  <Refresh sx={{ mr: 1, fontSize: 18 }} />
+                  Replace image
+                </MenuItem>
+                <MenuItem onClick={handleClearImage}>
+                  <Clear sx={{ mr: 1, fontSize: 18 }} />
+                  Clear image
+                </MenuItem>
+                {panelCount > 2 && (
+                  <MenuItem onClick={handleDeleteFrameWithImage}>
+                    <Delete sx={{ mr: 1, fontSize: 18 }} />
+                    Delete frame
+                  </MenuItem>
+                )}
+              </>
+            ) : (
+              // Options for empty panels
+              <>
+                <MenuItem onClick={handleUploadToPanel}>
+                  <Upload sx={{ mr: 1, fontSize: 18 }} />
+                  Add image
+                </MenuItem>
+                {panelCount > 2 && (
+                  <MenuItem onClick={handleRemoveFrameFromMenu}>
+                    <RemoveCircle sx={{ mr: 1, fontSize: 18 }} />
+                    Remove frame
+                  </MenuItem>
+                )}
+              </>
             )}
           </Menu>
         </Box>

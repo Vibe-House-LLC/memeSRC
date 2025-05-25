@@ -141,6 +141,7 @@ export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, 
               selectedTemplate={imagesStepProps.selectedTemplate}
               setPanelCount={settingsStepProps.setPanelCount}
               removeImage={imagesStepProps.removeImage}
+              replaceImage={imagesStepProps.replaceImage}
             />
           </Box>
         ) : isMobile ? (
@@ -156,6 +157,7 @@ export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, 
               selectedTemplate={imagesStepProps.selectedTemplate}
               setPanelCount={settingsStepProps.setPanelCount}
               removeImage={imagesStepProps.removeImage}
+              replaceImage={imagesStepProps.replaceImage}
             />
 
             {/* Collapsible Settings Section for Mobile */}
@@ -194,6 +196,7 @@ export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, 
                 selectedTemplate={imagesStepProps.selectedTemplate}
                 setPanelCount={settingsStepProps.setPanelCount}
                 removeImage={imagesStepProps.removeImage}
+                replaceImage={imagesStepProps.replaceImage}
               />
             </Box>
 

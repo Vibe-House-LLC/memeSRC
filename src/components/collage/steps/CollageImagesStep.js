@@ -220,33 +220,14 @@ const CollageImagesStep = ({
           />
         </Box>
         
-        {/* Conditionally show either the message or Add Image button */}
-        {areAllFramesFilled() ? (
-          <Button
-            variant="contained"
-            startIcon={<Add />}
-            onClick={handleAddImageClick}
-            sx={{
-              mt: 1,
-              px: 3,
-              py: 1,
-              borderRadius: 2,
-              textTransform: 'none',
-              fontWeight: 600
-            }}
-          >
-            Add Image
-          </Button>
-        ) : (
-          <Typography variant="body2" sx={{ 
-              color: 'text.secondary', 
-              fontSize: '0.9rem', 
-              textAlign: 'center'
-            }}
-          >
-            Fill all frames to generate your collage.
-          </Typography>
-        )}
+        <Typography variant="body2" sx={{ 
+            color: 'text.secondary', 
+            fontSize: '0.9rem', 
+            textAlign: 'center'
+          }}
+        >
+          Fill all frames to generate your collage.
+        </Typography>
         
         {/* Hidden file input for Add Image button */}
         <input
