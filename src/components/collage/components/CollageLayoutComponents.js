@@ -20,6 +20,7 @@ import CollageImagesStep from "../steps/CollageImagesStep";
 import BulkUploadSection from "./BulkUploadSection";
 import { SectionHeading } from './CollageUIComponents';
 import ExportDialog from './ExportDialog';
+import DisclosureCard from './DisclosureCard';
 
 /**
  * Main container for the collage page content
@@ -70,81 +71,21 @@ export const ContentPaper = ({ children, isMobile, sx = {} }) => {
  * Collapsible Settings Section for Mobile
  */
 const CollapsibleSettingsSection = ({ settingsStepProps, isMobile }) => {
-  const theme = useTheme();
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-
-  const handleToggleSettings = () => {
-    setIsSettingsOpen(!isSettingsOpen);
-  };
-
   if (!isMobile) {
     return null; // Only render on mobile
   }
 
   return (
-    <Paper
-      elevation={1}
-      sx={{
-        mb: 2,
-        borderRadius: 2,
-        border: 1,
-        borderColor: 'divider',
-        overflow: 'hidden'
-      }}
+    <DisclosureCard
+      title="Collage Settings"
+      icon={Settings}
+      defaultOpen={false}
+      isMobile={isMobile}
+      sx={{ mb: 2 }}
+      contentSx={{ pt: 1 }}
     >
-      {/* Collapsible Header */}
-      <Box
-        onClick={handleToggleSettings}
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          p: 2,
-          cursor: 'pointer',
-          bgcolor: 'background.paper',
-          borderBottom: isSettingsOpen ? 1 : 0,
-          borderColor: 'divider',
-          '&:hover': {
-            bgcolor: theme.palette.mode === 'dark' 
-              ? 'rgba(255, 255, 255, 0.05)'
-              : 'rgba(0, 0, 0, 0.02)'
-          }
-        }}
-      >
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <Settings sx={{ 
-            mr: 1.5, 
-            color: theme.palette.primary.main,
-            fontSize: '1.5rem' 
-          }} />
-          <Typography 
-            variant="h6" 
-            fontWeight={600}
-            sx={{ color: 'text.primary' }}
-          >
-            Collage Settings
-          </Typography>
-        </Box>
-        
-        <IconButton
-          size="small"
-          sx={{
-            transition: 'transform 0.2s ease',
-            transform: isSettingsOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-            color: 'text.secondary'
-          }}
-        >
-          <KeyboardArrowDown />
-        </IconButton>
-      </Box>
-
-      {/* Collapsible Content */}
-      <Collapse in={isSettingsOpen} timeout="auto" unmountOnExit>
-        <Box sx={{ p: 2, pt: 1 }}>
-          <CollageSettingsStep {...settingsStepProps} />
-        </Box>
-      </Collapse>
-    </Paper>
+      <CollageSettingsStep {...settingsStepProps} />
+    </DisclosureCard>
   );
 };
 
@@ -186,37 +127,37 @@ export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, 
   
   return (
     <>
-      {/* Bulk Upload Section - Full Width at Top */}
-      <Box sx={{ 
-        width: isMobile ? 'calc(100% - 16px)' : '100%', // Subtract margin space on mobile
-        mb: 2,
-        bgcolor: 'background.paper',
-        borderRadius: 2,
-        p: isMobile ? 2 : 3,
-        mx: isMobile ? 1 : 0, // Add horizontal margins on mobile only
-        border: 1,
-        borderColor: 'divider'
-      }}>
-        <BulkUploadSection
-          selectedImages={imagesStepProps.selectedImages}
-          addMultipleImages={imagesStepProps.addMultipleImages}
-          panelImageMapping={imagesStepProps.panelImageMapping}
-          updatePanelImageMapping={imagesStepProps.updatePanelImageMapping}
-          panelCount={imagesStepProps.panelCount}
-          selectedTemplate={imagesStepProps.selectedTemplate}
-          setPanelCount={settingsStepProps.setPanelCount}
-          removeImage={imagesStepProps.removeImage}
-        />
-      </Box>
-
       {/* Main Content Layout */}
       <Box sx={{ width: '100%' }}>
         {!hasImages ? (
-          // No images: Clean empty state, let the bulk uploader speak for itself
-          null
+          // No images: Show bulk uploader with proper padding
+          <Box sx={{ p: isMobile ? 2 : 0, px: isMobile ? 1 : 0 }}>
+            <BulkUploadSection
+              selectedImages={imagesStepProps.selectedImages}
+              addMultipleImages={imagesStepProps.addMultipleImages}
+              panelImageMapping={imagesStepProps.panelImageMapping}
+              updatePanelImageMapping={imagesStepProps.updatePanelImageMapping}
+              panelCount={imagesStepProps.panelCount}
+              selectedTemplate={imagesStepProps.selectedTemplate}
+              setPanelCount={settingsStepProps.setPanelCount}
+              removeImage={imagesStepProps.removeImage}
+            />
+          </Box>
         ) : isMobile ? (
-          // Mobile: Stack vertically with collapsible settings
+          // Mobile: Stack vertically with consistent padding for all sections
           <Stack spacing={2} sx={{ p: 2, px: 1 }}>
+            {/* Bulk Upload Section */}
+            <BulkUploadSection
+              selectedImages={imagesStepProps.selectedImages}
+              addMultipleImages={imagesStepProps.addMultipleImages}
+              panelImageMapping={imagesStepProps.panelImageMapping}
+              updatePanelImageMapping={imagesStepProps.updatePanelImageMapping}
+              panelCount={imagesStepProps.panelCount}
+              selectedTemplate={imagesStepProps.selectedTemplate}
+              setPanelCount={settingsStepProps.setPanelCount}
+              removeImage={imagesStepProps.removeImage}
+            />
+
             {/* Collapsible Settings Section for Mobile */}
             <CollapsibleSettingsSection settingsStepProps={settingsStepProps} isMobile={isMobile} />
 
@@ -238,55 +179,74 @@ export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, 
           </Stack>
         ) : (
           // Desktop/Tablet: Keep side-by-side layout but improve spacing
-          <Box sx={{ 
-            pb: isTablet ? 1 : 1.5,
-            display: 'flex',
-            flexDirection: { xs: 'column', md: 'row' },
-            gap: 2,
-            width: '100%'
-          }}>
-            {/* Settings Section */}
+          <>
+            {/* Bulk Upload Section - Full Width at Top for Desktop */}
             <Box sx={{ 
-              flex: { xs: 'none', md: '1 1 0' },
-              width: { xs: '100%', md: '50%' },
-              bgcolor: 'background.paper',
-              borderRadius: 2,
-              p: 3,
-              border: 1,
-              borderColor: 'divider'
+              width: '100%',
+              mb: 2,
             }}>
-              <CollageSettingsStep 
-                {...settingsStepProps}
+              <BulkUploadSection
+                selectedImages={imagesStepProps.selectedImages}
+                addMultipleImages={imagesStepProps.addMultipleImages}
+                panelImageMapping={imagesStepProps.panelImageMapping}
+                updatePanelImageMapping={imagesStepProps.updatePanelImageMapping}
+                panelCount={imagesStepProps.panelCount}
+                selectedTemplate={imagesStepProps.selectedTemplate}
+                setPanelCount={settingsStepProps.setPanelCount}
+                removeImage={imagesStepProps.removeImage}
               />
             </Box>
-            
-            {/* Images Section */}
+
             <Box sx={{ 
-              flex: { xs: 'none', md: '1 1 0' },
-              width: { xs: '100%', md: '50%' },
-              bgcolor: 'background.paper',
-              borderRadius: 2,
-              p: 3,
-              border: 1,
-              borderColor: 'divider'
+              pb: isTablet ? 1 : 1.5,
+              display: 'flex',
+              flexDirection: { xs: 'column', md: 'row' },
+              gap: 2,
+              width: '100%'
             }}>
-              <SectionHeading icon={PhotoLibrary} title="Your Collage" />
+              {/* Settings Section */}
               <Box sx={{ 
-                width: '100%',
-                overflow: 'hidden',
-                '& #collage-preview-container': {
-                  width: '100% !important',
-                  maxWidth: '100% !important'
-                }
+                flex: { xs: 'none', md: '1 1 0' },
+                width: { xs: '100%', md: '50%' },
+                bgcolor: 'background.paper',
+                borderRadius: 2,
+                p: 3,
+                border: 1,
+                borderColor: 'divider'
               }}>
-                <CollageImagesStep 
-                  {...imagesStepProps} 
-                  setFinalImage={setFinalImage}
-                  handleOpenExportDialog={handleOpenExportDialog}
+                <CollageSettingsStep 
+                  {...settingsStepProps}
                 />
               </Box>
+              
+              {/* Images Section */}
+              <Box sx={{ 
+                flex: { xs: 'none', md: '1 1 0' },
+                width: { xs: '100%', md: '50%' },
+                bgcolor: 'background.paper',
+                borderRadius: 2,
+                p: 3,
+                border: 1,
+                borderColor: 'divider'
+              }}>
+                <SectionHeading icon={PhotoLibrary} title="Your Collage" />
+                <Box sx={{ 
+                  width: '100%',
+                  overflow: 'hidden',
+                  '& #collage-preview-container': {
+                    width: '100% !important',
+                    maxWidth: '100% !important'
+                  }
+                }}>
+                  <CollageImagesStep 
+                    {...imagesStepProps} 
+                    setFinalImage={setFinalImage}
+                    handleOpenExportDialog={handleOpenExportDialog}
+                  />
+                </Box>
+              </Box>
             </Box>
-          </Box>
+          </>
         )}
       </Box>
 

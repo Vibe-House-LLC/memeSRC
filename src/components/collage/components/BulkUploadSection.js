@@ -1,20 +1,24 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { 
   Box, 
   Typography, 
   Button, 
   useMediaQuery,
   IconButton,
-  Grid,
   Card,
-  CardMedia
+  CardMedia,
+  Stack,
+  Chip
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { 
   CloudUpload, 
   Add,
-  Delete
+  Delete,
+  Image as ImageIcon,
+  PhotoLibrary
 } from '@mui/icons-material';
+import DisclosureCard from './DisclosureCard';
 
 const debugLog = (...args) => { console.log(...args); };
 
@@ -168,112 +172,165 @@ const BulkUploadSection = ({
     }
   };
 
+  // Generate panel list data
+  const generatePanelList = () => {
+    const panels = [];
+    
+    for (let panelIndex = 0; panelIndex < panelCount; panelIndex += 1) {
+      const panelId = selectedTemplate?.layout?.panels?.[panelIndex]?.id || `panel-${panelIndex + 1}`;
+      const imageIndex = panelImageMapping[panelId];
+      const hasImage = imageIndex !== undefined && imageIndex !== null && selectedImages[imageIndex];
+      
+      panels.push({
+        panelId,
+        panelNumber: panelIndex + 1,
+        imageIndex,
+        hasImage,
+        image: hasImage ? selectedImages[imageIndex] : null
+      });
+    }
+    
+    return panels;
+  };
+
+  const panelList = generatePanelList();
+
   return (
-    <Box sx={{ 
-      width: '100%',
-      px: isMobile ? 1 : 0
-    }}>
+    <DisclosureCard
+      title={`Image Collection (${panelCount})`}
+      icon={PhotoLibrary}
+      defaultOpen={true}
+      isMobile={isMobile}
+      sx={{ width: '100%' }}
+    >
       {hasImages ? (
-        // Show thumbnails of selected images with "add more" button
+        // Show panel list matching collage state
         <Box>
-          <Typography variant="h5" gutterBottom sx={{ 
-            fontWeight: 600, 
-            color: '#fff',
-            mb: 3 
-          }}>
-            Your Images ({selectedImages.length})
-          </Typography>
-          
-          {/* Image thumbnails grid with add more item */}
-          <Grid container spacing={2}>
-            {selectedImages.map((image, index) => (
-              <Grid item xs={6} sm={4} md={3} lg={2} key={index}>
-                <Card sx={{ 
-                  position: 'relative',
+          {/* Panel list */}
+          <Stack spacing={2} sx={{ mb: 3 }}>
+            {panelList.map((panel) => (
+              <Card 
+                key={panel.panelId}
+                sx={{ 
+                  p: 2,
                   borderRadius: 2,
-                  overflow: 'hidden',
-                  '&:hover .delete-button': {
-                    opacity: 1
-                  }
+                  border: 1,
+                  borderColor: panel.hasImage ? 'primary.main' : 'divider',
+                  bgcolor: panel.hasImage 
+                    ? (theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.08)' : 'rgba(25, 118, 210, 0.04)')
+                    : 'background.paper'
+                }}
+              >
+                <Box sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center',
+                  gap: 2
                 }}>
-                  <CardMedia
-                    component="img"
-                    height="120"
-                    image={image.displayUrl || image.originalUrl || image}
-                    alt={`Selected image ${index + 1}`}
-                    sx={{
-                      objectFit: 'cover',
-                      transition: 'transform 0.2s ease',
-                      '&:hover': {
-                        transform: 'scale(1.05)'
-                      }
+                  {/* Panel indicator */}
+                  <Chip 
+                    label={`Panel ${panel.panelNumber}`}
+                    size="small"
+                    color={panel.hasImage ? 'primary' : 'default'}
+                    sx={{ 
+                      minWidth: 80,
+                      fontWeight: 600
                     }}
                   />
-                  {removeImage && (
+                  
+                  {/* Image preview or empty state */}
+                  <Box sx={{ 
+                    width: 60, 
+                    height: 60, 
+                    borderRadius: 1,
+                    overflow: 'hidden',
+                    border: 1,
+                    borderColor: 'divider',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    bgcolor: panel.hasImage ? 'transparent' : 'action.hover'
+                  }}>
+                    {panel.hasImage ? (
+                      <CardMedia
+                        component="img"
+                        width="60"
+                        height="60"
+                        image={panel.image.displayUrl || panel.image.originalUrl || panel.image}
+                        alt={`Panel ${panel.panelNumber} image`}
+                        sx={{ objectFit: 'cover' }}
+                      />
+                    ) : (
+                      <ImageIcon sx={{ color: 'text.disabled', fontSize: 24 }} />
+                    )}
+                  </Box>
+                  
+                  {/* Image info */}
+                  <Box sx={{ flex: 1 }}>
+                    {panel.hasImage ? (
+                      <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 500 }}>
+                        Image assigned
+                      </Typography>
+                    ) : (
+                      <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
+                        No image assigned
+                      </Typography>
+                    )}
+                  </Box>
+                  
+                  {/* Remove button */}
+                  {panel.hasImage && removeImage && (
                     <IconButton
-                      className="delete-button"
-                      onClick={() => handleRemoveImage(index)}
+                      onClick={() => handleRemoveImage(panel.imageIndex)}
+                      size="small"
                       sx={{
-                        position: 'absolute',
-                        top: 4,
-                        right: 4,
-                        bgcolor: 'rgba(0,0,0,0.7)',
-                        color: '#fff',
-                        opacity: 0,
-                        transition: 'opacity 0.2s ease',
+                        color: 'error.main',
                         '&:hover': {
-                          bgcolor: 'rgba(244,67,54,0.8)'
+                          bgcolor: 'error.main',
+                          color: 'error.contrastText'
                         }
                       }}
-                      size="small"
                     >
                       <Delete fontSize="small" />
                     </IconButton>
                   )}
-                </Card>
-              </Grid>
-            ))}
-            
-            {/* Add more images item */}
-            <Grid item xs={6} sm={4} md={3} lg={2}>
-              <Card 
-                onClick={() => bulkFileInputRef.current?.click()}
-                sx={{ 
-                  height: 120,
-                  borderRadius: 2,
-                  border: `2px dashed ${theme.palette.divider}`,
-                  bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    borderColor: theme.palette.primary.main,
-                    bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-                    transform: 'scale(1.02)'
-                  }
-                }}
-              >
-                <Add sx={{ 
-                  fontSize: 40, 
-                  color: 'text.secondary',
-                  mb: 0.5
-                }} />
-                <Typography 
-                  variant="caption" 
-                  sx={{ 
-                    color: 'text.secondary',
-                    fontWeight: 600,
-                    textAlign: 'center'
-                  }}
-                >
-                  Add More
-                </Typography>
+                </Box>
               </Card>
-            </Grid>
-          </Grid>
+            ))}
+          </Stack>
+
+          {/* Add more images section */}
+          <Card 
+            onClick={() => bulkFileInputRef.current?.click()}
+            sx={{ 
+              p: 3,
+              borderRadius: 2,
+              border: `2px dashed ${theme.palette.divider}`,
+              bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                borderColor: theme.palette.primary.main,
+                bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+              }
+            }}
+          >
+            <Box sx={{ textAlign: 'center' }}>
+              <Add sx={{ 
+                fontSize: 40, 
+                color: 'text.secondary',
+                mb: 1
+              }} />
+              <Typography variant="h6" sx={{ color: '#fff', fontWeight: 600, mb: 0.5 }}>
+                Add More Images
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                Upload additional images to fill empty panels
+              </Typography>
+            </Box>
+          </Card>
 
           {/* Hidden file input */}
           <input
@@ -342,7 +399,7 @@ const BulkUploadSection = ({
           />
         </Box>
       )}
-    </Box>
+    </DisclosureCard>
   );
 };
 
