@@ -117,6 +117,10 @@ export default function CollagePage() {
     return !hasSeenWelcome;
   });
 
+  // State to control BulkUploadSection collapse after first image upload
+  const [bulkUploadSectionOpen, setBulkUploadSectionOpen] = useState(true);
+  const [hasAutoCollapsed, setHasAutoCollapsed] = useState(false);
+
   const {
     selectedImages, 
     panelImageMapping,
@@ -202,6 +206,50 @@ export default function CollagePage() {
       }
     }
   }, [user, navigate, location.search, authorized, showWelcomeScreen]);
+
+  // Effect to collapse BulkUploadSection after first image upload
+  useEffect(() => {
+    if (hasImages && bulkUploadSectionOpen && !hasAutoCollapsed) {
+      // Collapse the section after first image upload (only once)
+      setBulkUploadSectionOpen(false);
+      setHasAutoCollapsed(true);
+      debugLog('Auto-collapsing BulkUploadSection after first image upload');
+      
+      // Scroll to the image collection section after it collapses
+      setTimeout(() => {
+        // Look for the BulkUploadSection (Image Collection) - prioritize the data-testid we added
+        const imageCollectionSection = document.querySelector('[data-testid="bulk-upload-section"]') ||
+                                     // Fallback: look for the DisclosureCard containing the Image Collection title
+                                     Array.from(document.querySelectorAll('h6, .MuiTypography-h6'))
+                                       .find(el => el.textContent?.includes('Image Collection'))?.closest('.MuiPaper-root') ||
+                                     // Another fallback: look for any element with PhotoLibrary icon nearby
+                                     document.querySelector('[data-testid*="PhotoLibrary"], [aria-label*="PhotoLibrary"]')?.closest('.MuiPaper-root') ||
+                                     // Final fallback: look for the first DisclosureCard after images are uploaded
+                                     document.querySelector('.MuiPaper-root');
+        
+        if (imageCollectionSection) {
+          const navBarHeight = 80; // Account for navigation bar height
+          const elementTop = imageCollectionSection.getBoundingClientRect().top + window.pageYOffset;
+          const offsetPosition = elementTop - navBarHeight;
+          
+          window.scrollTo({
+            top: offsetPosition,
+            behavior: 'smooth'
+          });
+          
+          debugLog('Scrolled to image collection section after collapse');
+        } else {
+          debugLog('Image collection section not found for scrolling');
+        }
+      }, 600); // 600ms delay to ensure the collapse animation completes
+    }
+  }, [hasImages, bulkUploadSectionOpen, hasAutoCollapsed]);
+
+  // Handler to toggle BulkUploadSection open state
+  const handleBulkUploadSectionToggle = (open) => {
+    setBulkUploadSectionOpen(open);
+    debugLog(`BulkUploadSection toggled to: ${open ? 'open' : 'closed'}`);
+  };
 
   // Handler to go back to edit mode
   const handleBackToEdit = () => {
@@ -343,6 +391,9 @@ export default function CollagePage() {
     clearImages,
     // Custom handler for showing inline result
     onCollageGenerated: handleCollageGenerated,
+    // BulkUploadSection state
+    bulkUploadSectionOpen,
+    onBulkUploadSectionToggle: handleBulkUploadSectionToggle,
   };
 
   // Log mapping changes for debugging

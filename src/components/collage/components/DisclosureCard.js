@@ -16,7 +16,8 @@ import { KeyboardArrowDown } from "@mui/icons-material";
  * @param {string} props.title - The title displayed in the header
  * @param {React.ReactNode} props.icon - Icon component to display next to the title
  * @param {React.ReactNode} props.children - Content to be displayed when expanded
- * @param {boolean} props.defaultOpen - Whether the card should be open by default
+ * @param {boolean} props.defaultOpen - Whether the card should be open by default (uncontrolled)
+ * @param {boolean} props.open - Whether the card should be open (controlled - overrides defaultOpen)
  * @param {string} props.subtitle - Optional subtitle/description text
  * @param {Function} props.onToggle - Optional callback when toggle state changes
  * @param {Object} props.sx - Additional styling for the paper container
@@ -30,6 +31,7 @@ const DisclosureCard = ({
   icon: IconComponent,
   children,
   defaultOpen = false,
+  open: controlledOpen,
   subtitle,
   onToggle,
   sx = {},
@@ -39,11 +41,21 @@ const DisclosureCard = ({
   ...paperProps
 }) => {
   const theme = useTheme();
-  const [isOpen, setIsOpen] = useState(defaultOpen);
+  const [internalOpen, setInternalOpen] = useState(defaultOpen);
+
+  // Use controlled open if provided, otherwise use internal state
+  const isOpen = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const isControlled = controlledOpen !== undefined;
 
   const handleToggle = () => {
     const newState = !isOpen;
-    setIsOpen(newState);
+    
+    // Only update internal state if not controlled
+    if (!isControlled) {
+      setInternalOpen(newState);
+    }
+    
+    // Always call onToggle callback
     onToggle?.(newState);
   };
 

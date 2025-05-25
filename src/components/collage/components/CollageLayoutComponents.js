@@ -71,16 +71,23 @@ export const ContentPaper = ({ children, isMobile, sx = {} }) => {
  * Collapsible Settings Section for Mobile
  */
 const CollapsibleSettingsSection = ({ settingsStepProps, isMobile }) => {
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
   if (!isMobile) {
     return null; // Only render on mobile
   }
 
+  const handleSettingsToggle = (open) => {
+    setIsSettingsOpen(open);
+  };
+
   return (
     <DisclosureCard
-      title="Collage Settings"
+      title={isSettingsOpen ? "Hide Settings" : "Open Settings"}
       icon={Settings}
       defaultOpen={false}
       isMobile={isMobile}
+      onToggle={handleSettingsToggle}
       sx={{ mb: 2 }}
       contentSx={{ pt: 1 }}
     >
@@ -142,6 +149,8 @@ export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, 
               setPanelCount={settingsStepProps.setPanelCount}
               removeImage={imagesStepProps.removeImage}
               replaceImage={imagesStepProps.replaceImage}
+              bulkUploadSectionOpen={imagesStepProps.bulkUploadSectionOpen}
+              onBulkUploadSectionToggle={imagesStepProps.onBulkUploadSectionToggle}
             />
           </Box>
         ) : isMobile ? (
@@ -158,6 +167,8 @@ export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, 
               setPanelCount={settingsStepProps.setPanelCount}
               removeImage={imagesStepProps.removeImage}
               replaceImage={imagesStepProps.replaceImage}
+              bulkUploadSectionOpen={imagesStepProps.bulkUploadSectionOpen}
+              onBulkUploadSectionToggle={imagesStepProps.onBulkUploadSectionToggle}
             />
 
             {/* Collapsible Settings Section for Mobile */}
@@ -197,6 +208,8 @@ export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, 
                 setPanelCount={settingsStepProps.setPanelCount}
                 removeImage={imagesStepProps.removeImage}
                 replaceImage={imagesStepProps.replaceImage}
+                bulkUploadSectionOpen={imagesStepProps.bulkUploadSectionOpen}
+                onBulkUploadSectionToggle={imagesStepProps.onBulkUploadSectionToggle}
               />
             </Box>
 
