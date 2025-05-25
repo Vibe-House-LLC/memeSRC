@@ -1,6 +1,7 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { Box, Typography, useMediaQuery } from '@mui/material';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { Box, Typography, useMediaQuery, Button } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
+import { Add } from '@mui/icons-material';
 
 // Import our new dynamic CollagePreview component
 import CollagePreview from '../components/CollagePreview';
@@ -36,6 +37,7 @@ const CollageImagesStep = ({
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const fileInputRef = useRef(null);
   
   // Debug the props we're receiving
   console.log("CollageImagesStep props:", {
@@ -51,6 +53,66 @@ const CollageImagesStep = ({
 
   // Track which panel the user is currently trying to edit
   const [currentPanelToEdit, setCurrentPanelToEdit] = useState(null);
+
+  // Check if all frames are filled
+  const areAllFramesFilled = () => {
+    if (!panelCount || !panelImageMapping) return false;
+    
+    // Get the number of panels that have images assigned
+    const filledPanelsCount = Object.keys(panelImageMapping).length;
+    
+    // Check if all panels have valid images
+    const allPanelsHaveValidImages = Object.values(panelImageMapping).every(imageIndex => 
+      imageIndex !== undefined && 
+      imageIndex >= 0 && 
+      imageIndex < selectedImages.length &&
+      selectedImages[imageIndex]
+    );
+    
+    return filledPanelsCount === panelCount && allPanelsHaveValidImages;
+  };
+
+  // Handler for Add Image button click
+  const handleAddImageClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  // Handler for file selection from Add Image button - use same logic as BulkUploadSection
+  const handleFileChange = (event) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+
+    // Helper function to load a single file and return a Promise with the data URL
+    const loadFile = (file) => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    };
+
+    debugLog(`Add Image button: uploading ${files.length} files...`);
+
+    // Process all files using the same logic as BulkUploadSection
+    Promise.all(files.map(loadFile))
+      .then((imageUrls) => {
+        debugLog(`Loaded ${imageUrls.length} files from Add Image button`);
+        
+        // Add all images at once - this will trigger the same auto-assignment logic
+        addMultipleImages(imageUrls);
+        
+        debugLog(`Added ${imageUrls.length} new images via Add Image button`);
+      })
+      .catch((error) => {
+        console.error("Error loading files from Add Image button:", error);
+      });
+    
+    // Reset file input
+    if (event.target) {
+      event.target.value = null;
+    }
+  };
 
   // Effect to debug props
   useEffect(() => {
@@ -158,16 +220,43 @@ const CollageImagesStep = ({
           />
         </Box>
         
-        <Typography variant="body2" sx={{ 
-            color: 'text.secondary', 
-            fontSize: '0.9rem', 
-            textAlign: 'center'
-          }}
-        >
-          Upload images above, then assign to panels by clicking. 
-          <br />
-          Fill all frames to generate your collage.
-        </Typography>
+        {/* Conditionally show either the message or Add Image button */}
+        {areAllFramesFilled() ? (
+          <Button
+            variant="contained"
+            startIcon={<Add />}
+            onClick={handleAddImageClick}
+            sx={{
+              mt: 1,
+              px: 3,
+              py: 1,
+              borderRadius: 2,
+              textTransform: 'none',
+              fontWeight: 600
+            }}
+          >
+            Add Image
+          </Button>
+        ) : (
+          <Typography variant="body2" sx={{ 
+              color: 'text.secondary', 
+              fontSize: '0.9rem', 
+              textAlign: 'center'
+            }}
+          >
+            Fill all frames to generate your collage.
+          </Typography>
+        )}
+        
+        {/* Hidden file input for Add Image button */}
+        <input
+          type="file"
+          ref={fileInputRef}
+          style={{ display: 'none' }}
+          accept="image/*"
+          multiple
+          onChange={handleFileChange}
+        />
       </Box>
     </Box>
   );

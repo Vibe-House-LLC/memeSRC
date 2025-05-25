@@ -9,7 +9,9 @@ import {
   CardMedia,
   Stack,
   Chip,
-  Tooltip
+  Tooltip,
+  Menu,
+  MenuItem
 } from '@mui/material';
 import { useTheme, styled, alpha } from '@mui/material/styles';
 import { 
@@ -19,7 +21,9 @@ import {
   Image as ImageIcon,
   PhotoLibrary,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  RemoveCircle,
+  Upload
 } from '@mui/icons-material';
 import DisclosureCard from './DisclosureCard';
 
@@ -198,13 +202,31 @@ const BulkUploadSection = ({
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const bulkFileInputRef = useRef(null);
   const panelScrollerRef = useRef(null);
+  const specificPanelFileInputRef = useRef(null);
 
   // State for scroll indicators
   const [panelLeftScroll, setPanelLeftScroll] = useState(false);
   const [panelRightScroll, setPanelRightScroll] = useState(false);
 
+  // State for context menu
+  const [contextMenu, setContextMenu] = useState(null);
+  const [selectedPanelForAction, setSelectedPanelForAction] = useState(null);
+
   // Check if there are any selected images
   const hasImages = selectedImages && selectedImages.length > 0;
+
+  // Check if there are any empty frames
+  const hasEmptyFrames = () => {
+    for (let panelIndex = 0; panelIndex < panelCount; panelIndex += 1) {
+      const panelId = selectedTemplate?.layout?.panels?.[panelIndex]?.id || `panel-${panelIndex + 1}`;
+      const imageIndex = panelImageMapping[panelId];
+      const hasImage = imageIndex !== undefined && imageIndex !== null && selectedImages[imageIndex];
+      if (!hasImage) {
+        return true;
+      }
+    }
+    return false;
+  };
 
   // Scroll functions
   const scrollLeft = (ref) => {
@@ -411,6 +433,137 @@ const BulkUploadSection = ({
     }
   };
 
+  // Handler for removing a frame/panel
+  const handleRemoveFrame = (panelIdToRemove) => {
+    if (!setPanelCount || panelCount <= 2) {
+      debugLog('Cannot remove frame: minimum panel count is 2 or setPanelCount not available');
+      return;
+    }
+
+    debugLog(`Removing frame: ${panelIdToRemove}`);
+
+    // Extract the panel number from the panel ID to remove
+    const panelNumberToRemove = parseInt(panelIdToRemove.split('-')[1] || '0', 10);
+    
+    debugLog(`Removing panel number: ${panelNumberToRemove} (reducing from ${panelCount} to ${panelCount - 1} panels)`);
+
+    // Get the current panel mapping
+    const currentMapping = { ...panelImageMapping };
+    
+    // Remove the specific panel from mapping
+    delete currentMapping[panelIdToRemove];
+    
+    // Create new mapping by shifting all panels after the removed one
+    const updatedMapping = {};
+    
+    Object.entries(currentMapping).forEach(([panelId, imageIndex]) => {
+      const panelNumber = parseInt(panelId.split('-')[1] || '0', 10);
+      
+      if (panelNumber < panelNumberToRemove) {
+        // Panels before the removed one stay the same
+        updatedMapping[panelId] = imageIndex;
+      } else if (panelNumber > panelNumberToRemove) {
+        // Panels after the removed one shift up by 1
+        const newPanelNumber = panelNumber - 1;
+        const newPanelId = selectedTemplate?.layout?.panels?.[newPanelNumber - 1]?.id || `panel-${newPanelNumber}`;
+        updatedMapping[newPanelId] = imageIndex;
+        debugLog(`Shifting panel ${panelNumber} to panel ${newPanelNumber} (${panelId} -> ${newPanelId})`);
+      }
+      // The removed panel (panelNumber === panelNumberToRemove) is skipped
+    });
+    
+    // Update panel count
+    const newPanelCount = panelCount - 1;
+    setPanelCount(newPanelCount);
+    
+    // Apply the updated mapping
+    updatePanelImageMapping(updatedMapping);
+    
+    debugLog(`Frame removed. New panel count: ${newPanelCount}, Updated mapping:`, updatedMapping);
+  };
+
+  // Handler for opening context menu on empty panel click
+  const handleEmptyPanelClick = (event, panel) => {
+    event.preventDefault();
+    
+    setSelectedPanelForAction(panel);
+    setContextMenu({
+      mouseX: event.clientX - 2,
+      mouseY: event.clientY - 4,
+    });
+  };
+
+  // Handler for closing context menu
+  const handleContextMenuClose = () => {
+    setContextMenu(null);
+    setSelectedPanelForAction(null);
+  };
+
+  // Handler for uploading to specific panel
+  const handleUploadToPanel = () => {
+    if (selectedPanelForAction) {
+      specificPanelFileInputRef.current?.click();
+    }
+    handleContextMenuClose();
+  };
+
+  // Handler for removing specific frame from context menu
+  const handleRemoveFrameFromMenu = () => {
+    if (selectedPanelForAction) {
+      handleRemoveFrame(selectedPanelForAction.panelId);
+    }
+    handleContextMenuClose();
+  };
+
+  // Handler for file selection for specific panel
+  const handleSpecificPanelFileChange = (event) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0 || !selectedPanelForAction) return;
+
+    // Helper function to load a single file and return a Promise with the data URL
+    const loadFile = (file) => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    };
+
+    debugLog(`Uploading ${files.length} files to specific panel: ${selectedPanelForAction.panelId}`);
+
+    // Process all files
+    Promise.all(files.map(loadFile))
+      .then((imageUrls) => {
+        debugLog(`Loaded ${imageUrls.length} files for panel ${selectedPanelForAction.panelId}`);
+        
+        // Add all images to the collection
+        addMultipleImages(imageUrls);
+        
+        // Get the starting index for new images
+        const currentLength = selectedImages.length;
+        
+        // Create new mapping with the first image assigned to the selected panel
+        const newMapping = { ...panelImageMapping };
+        newMapping[selectedPanelForAction.panelId] = currentLength;
+        
+        debugLog(`Assigning image ${currentLength} to panel ${selectedPanelForAction.panelId}`);
+        
+        // If there are more images, they'll be available for assignment to other panels
+        updatePanelImageMapping(newMapping);
+        
+        debugLog(`Assigned image to specific panel. Updated mapping:`, newMapping);
+      })
+      .catch((error) => {
+        console.error("Error loading files for specific panel:", error);
+      });
+    
+    // Reset file input
+    if (event.target) {
+      event.target.value = null;
+    }
+  };
+
   // Generate panel list data
   const generatePanelList = () => {
     const panels = [];
@@ -491,14 +644,35 @@ const BulkUploadSection = ({
               {panelList.map((panel) => (
                 <Tooltip 
                   key={panel.panelId}
-                  title={panel.hasImage ? `Panel ${panel.panelNumber} - Click to remove` : `Panel ${panel.panelNumber} - Empty`}
+                  title={
+                    panel.hasImage 
+                      ? `Panel ${panel.panelNumber} - Click to remove image` 
+                      : panelCount > 2 
+                        ? `Panel ${panel.panelNumber} - Empty (Click for options)`
+                        : `Panel ${panel.panelNumber} - Empty (Click to upload)`
+                  }
                   arrow
+                  disableHoverListener={contextMenu !== null && selectedPanelForAction?.panelId === panel.panelId}
+                  disableFocusListener={contextMenu !== null && selectedPanelForAction?.panelId === panel.panelId}
+                  disableTouchListener={contextMenu !== null && selectedPanelForAction?.panelId === panel.panelId}
                 >
                   <PanelThumbnail
                     hasImage={panel.hasImage}
-                    onClick={() => panel.hasImage && removeImage && handleRemoveImage(panel.imageIndex)}
+                    onClick={(event) => {
+                      if (panel.hasImage && removeImage) {
+                        handleRemoveImage(panel.imageIndex);
+                      } else if (!panel.hasImage) {
+                        if (panelCount > 2) {
+                          handleEmptyPanelClick(event, panel);
+                        } else {
+                          // If only 2 panels, directly upload to this panel
+                          setSelectedPanelForAction(panel);
+                          specificPanelFileInputRef.current?.click();
+                        }
+                      }
+                    }}
                     sx={{
-                      cursor: panel.hasImage && removeImage ? 'pointer' : 'default'
+                      cursor: 'pointer'
                     }}
                   >
                     <Box sx={{ 
@@ -584,39 +758,61 @@ const BulkUploadSection = ({
                           <Delete sx={{ fontSize: 10, color: 'white' }} />
                         </Box>
                       )}
+
+                      {/* Remove frame indicator for empty panels */}
+                      {!panel.hasImage && panelCount > 2 && (
+                        <Box 
+                          sx={{ 
+                            position: 'absolute', 
+                            top: 4, 
+                            right: 4, 
+                            bgcolor: 'warning.main',
+                            borderRadius: '50%',
+                            width: 16,
+                            height: 16,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                        >
+                          <RemoveCircle sx={{ fontSize: 10, color: 'white' }} />
+                        </Box>
+                      )}
                     </Box>
                   </PanelThumbnail>
                 </Tooltip>
               ))}
 
-              {/* Add more images card */}
-              <Tooltip title="Upload more images" arrow>
-                <AddMoreCard
-                  onClick={() => bulkFileInputRef.current?.click()}
-                >
-                  <Box sx={{ 
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    height: '100%'
-                  }}>
-                    <Add sx={{ 
-                      fontSize: 24, 
-                      color: 'text.secondary',
-                      mb: 0.5
-                    }} />
-                    <Typography variant="caption" sx={{ 
-                      color: 'text.secondary',
-                      fontSize: '0.6rem',
-                      textAlign: 'center',
-                      lineHeight: 1
+              {/* Add more images card - only show if no empty frames */}
+              {!hasEmptyFrames() && (
+                <Tooltip title="Upload more images" arrow>
+                  <AddMoreCard
+                    onClick={() => bulkFileInputRef.current?.click()}
+                  >
+                    <Box sx={{ 
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      height: '100%'
                     }}>
-                      Add More
-                    </Typography>
-                  </Box>
-                </AddMoreCard>
-              </Tooltip>
+                      <Add sx={{ 
+                        fontSize: 24, 
+                        color: 'text.secondary',
+                        mb: 0.5
+                      }} />
+                      <Typography variant="caption" sx={{ 
+                        color: 'text.secondary',
+                        fontSize: '0.6rem',
+                        textAlign: 'center',
+                        lineHeight: 1
+                      }}>
+                        Add More
+                      </Typography>
+                    </Box>
+                  </AddMoreCard>
+                </Tooltip>
+              )}
               
               {/* Spacer to ensure last items can be centered when scrolled fully */}
               <Box sx={{ minWidth: 4, flexShrink: 0 }} />
@@ -634,7 +830,7 @@ const BulkUploadSection = ({
             />
           </Box>
 
-          {/* Hidden file input */}
+          {/* Hidden file inputs */}
           <input
             type="file"
             ref={bulkFileInputRef}
@@ -643,6 +839,38 @@ const BulkUploadSection = ({
             multiple
             onChange={handleBulkFileUpload}
           />
+          
+          <input
+            type="file"
+            ref={specificPanelFileInputRef}
+            style={{ display: 'none' }}
+            accept="image/*"
+            multiple
+            onChange={handleSpecificPanelFileChange}
+          />
+
+          {/* Context menu for empty panels */}
+          <Menu
+            open={contextMenu !== null}
+            onClose={handleContextMenuClose}
+            anchorReference="anchorPosition"
+            anchorPosition={
+              contextMenu !== null
+                ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
+                : undefined
+            }
+          >
+            <MenuItem onClick={handleUploadToPanel}>
+              <Upload sx={{ mr: 1, fontSize: 18 }} />
+              Add image
+            </MenuItem>
+            {panelCount > 2 && (
+              <MenuItem onClick={handleRemoveFrameFromMenu}>
+                <RemoveCircle sx={{ mr: 1, fontSize: 18 }} />
+                Remove frame
+              </MenuItem>
+            )}
+          </Menu>
         </Box>
       ) : (
         // Show initial upload interface
