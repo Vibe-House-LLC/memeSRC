@@ -3,12 +3,17 @@ import {
   Box, 
   Typography, 
   Button, 
-  useMediaQuery 
+  useMediaQuery,
+  IconButton,
+  Grid,
+  Card,
+  CardMedia
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { 
   CloudUpload, 
-  Add
+  Add,
+  Delete
 } from '@mui/icons-material';
 
 const debugLog = (...args) => { console.log(...args); };
@@ -20,11 +25,15 @@ const BulkUploadSection = ({
   updatePanelImageMapping,
   panelCount,
   selectedTemplate,
-  setPanelCount // Add this prop to automatically adjust panel count
+  setPanelCount, // Add this prop to automatically adjust panel count
+  removeImage // Add removeImage function
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const bulkFileInputRef = useRef(null);
+
+  // Check if there are any selected images
+  const hasImages = selectedImages && selectedImages.length > 0;
 
   // --- Handler for bulk file upload ---
   const handleBulkFileUpload = (event) => {
@@ -152,66 +161,187 @@ const BulkUploadSection = ({
     }
   };
 
+  // Handler for removing an image
+  const handleRemoveImage = (imageIndex) => {
+    if (removeImage) {
+      removeImage(imageIndex);
+    }
+  };
+
   return (
     <Box sx={{ 
       width: '100%',
       px: isMobile ? 1 : 0
     }}>
-      {/* Bulk Upload Section */}
-      <Box sx={{ 
-        p: 3, 
-        borderRadius: 3,
-        border: `2px dashed ${theme.palette.divider}`,
-        backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
-        textAlign: 'center',
-        cursor: 'pointer',
-        transition: 'all 0.3s ease',
-        '&:hover': {
-          borderColor: theme.palette.primary.main,
-          backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-        }
-      }}>
-        <Box 
-          onClick={() => bulkFileInputRef.current?.click()}
-          sx={{ py: 2 }}
-        >
-          <CloudUpload sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
-          <Typography variant="h4" gutterBottom sx={{ fontWeight: 600, color: '#fff' }}>
-            Upload Your Images
+      {hasImages ? (
+        // Show thumbnails of selected images with "add more" button
+        <Box>
+          <Typography variant="h5" gutterBottom sx={{ 
+            fontWeight: 600, 
+            color: '#fff',
+            mb: 3 
+          }}>
+            Your Images ({selectedImages.length})
           </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 3, maxWidth: '500px', mx: 'auto' }}>
-            Drag and drop or click to select multiple images for your collage
-          </Typography>
-          <Button 
-            variant="contained" 
-            size="large"
-            startIcon={<Add />}
-            onClick={(e) => {
-              e.stopPropagation();
-              bulkFileInputRef.current?.click();
-            }}
-            sx={{
-              py: 1.5,
-              px: 4,
-              fontSize: '1.1rem',
-              fontWeight: 600,
-              borderRadius: 2
-            }}
-          >
-            Upload Images
-          </Button>
+          
+          {/* Image thumbnails grid with add more item */}
+          <Grid container spacing={2}>
+            {selectedImages.map((image, index) => (
+              <Grid item xs={6} sm={4} md={3} lg={2} key={index}>
+                <Card sx={{ 
+                  position: 'relative',
+                  borderRadius: 2,
+                  overflow: 'hidden',
+                  '&:hover .delete-button': {
+                    opacity: 1
+                  }
+                }}>
+                  <CardMedia
+                    component="img"
+                    height="120"
+                    image={image.displayUrl || image.originalUrl || image}
+                    alt={`Selected image ${index + 1}`}
+                    sx={{
+                      objectFit: 'cover',
+                      transition: 'transform 0.2s ease',
+                      '&:hover': {
+                        transform: 'scale(1.05)'
+                      }
+                    }}
+                  />
+                  {removeImage && (
+                    <IconButton
+                      className="delete-button"
+                      onClick={() => handleRemoveImage(index)}
+                      sx={{
+                        position: 'absolute',
+                        top: 4,
+                        right: 4,
+                        bgcolor: 'rgba(0,0,0,0.7)',
+                        color: '#fff',
+                        opacity: 0,
+                        transition: 'opacity 0.2s ease',
+                        '&:hover': {
+                          bgcolor: 'rgba(244,67,54,0.8)'
+                        }
+                      }}
+                      size="small"
+                    >
+                      <Delete fontSize="small" />
+                    </IconButton>
+                  )}
+                </Card>
+              </Grid>
+            ))}
+            
+            {/* Add more images item */}
+            <Grid item xs={6} sm={4} md={3} lg={2}>
+              <Card 
+                onClick={() => bulkFileInputRef.current?.click()}
+                sx={{ 
+                  height: 120,
+                  borderRadius: 2,
+                  border: `2px dashed ${theme.palette.divider}`,
+                  bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    borderColor: theme.palette.primary.main,
+                    bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+                    transform: 'scale(1.02)'
+                  }
+                }}
+              >
+                <Add sx={{ 
+                  fontSize: 40, 
+                  color: 'text.secondary',
+                  mb: 0.5
+                }} />
+                <Typography 
+                  variant="caption" 
+                  sx={{ 
+                    color: 'text.secondary',
+                    fontWeight: 600,
+                    textAlign: 'center'
+                  }}
+                >
+                  Add More
+                </Typography>
+              </Card>
+            </Grid>
+          </Grid>
+
+          {/* Hidden file input */}
+          <input
+            type="file"
+            ref={bulkFileInputRef}
+            style={{ display: 'none' }}
+            accept="image/*"
+            multiple
+            onChange={handleBulkFileUpload}
+          />
         </Box>
-        
-        {/* Hidden bulk file input */}
-        <input
-          type="file"
-          ref={bulkFileInputRef}
-          style={{ display: 'none' }}
-          accept="image/*"
-          multiple
-          onChange={handleBulkFileUpload}
-        />
-      </Box>
+      ) : (
+        // Show initial upload interface
+        <Box sx={{ 
+          p: 3, 
+          borderRadius: 3,
+          border: `2px dashed ${theme.palette.divider}`,
+          backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+          textAlign: 'center',
+          cursor: 'pointer',
+          transition: 'all 0.3s ease',
+          '&:hover': {
+            borderColor: theme.palette.primary.main,
+            backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+          }
+        }}>
+          <Box 
+            onClick={() => bulkFileInputRef.current?.click()}
+            sx={{ py: 2 }}
+          >
+            <CloudUpload sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
+            <Typography variant="h4" gutterBottom sx={{ fontWeight: 600, color: '#fff' }}>
+              Upload Your Images
+            </Typography>
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 3, maxWidth: '500px', mx: 'auto' }}>
+              Drag and drop or click to select multiple images for your collage
+            </Typography>
+            <Button 
+              variant="contained" 
+              size="large"
+              startIcon={<Add />}
+              onClick={(e) => {
+                e.stopPropagation();
+                bulkFileInputRef.current?.click();
+              }}
+              sx={{
+                py: 1.5,
+                px: 4,
+                fontSize: '1.1rem',
+                fontWeight: 600,
+                borderRadius: 2
+              }}
+            >
+              Upload Images
+            </Button>
+          </Box>
+          
+          {/* Hidden bulk file input */}
+          <input
+            type="file"
+            ref={bulkFileInputRef}
+            style={{ display: 'none' }}
+            accept="image/*"
+            multiple
+            onChange={handleBulkFileUpload}
+          />
+        </Box>
+      )}
     </Box>
   );
 };

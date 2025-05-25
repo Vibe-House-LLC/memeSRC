@@ -205,6 +205,7 @@ export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, 
           panelCount={imagesStepProps.panelCount}
           selectedTemplate={imagesStepProps.selectedTemplate}
           setPanelCount={settingsStepProps.setPanelCount}
+          removeImage={imagesStepProps.removeImage}
         />
       </Box>
 
