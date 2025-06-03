@@ -1,19 +1,13 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
+import PropTypes from 'prop-types';
 import { useTheme } from "@mui/material/styles";
 import {
   Box,
-  Grid,
-  Typography,
   Container,
-  Button,
   Stack,
-  Divider,
   useMediaQuery,
-  Collapse,
-  Paper,
-  IconButton
 } from "@mui/material";
-import { Settings, PhotoLibrary, Launch as ExportIcon, ArrowBack, KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
+import { Settings, PhotoLibrary } from "@mui/icons-material";
 
 import CollageSettingsStep from "../steps/CollageSettingsStep";
 import CollageImagesStep from "../steps/CollageImagesStep";
@@ -25,8 +19,7 @@ import DisclosureCard from './DisclosureCard';
 /**
  * Main container for the collage page content
  */
-export const MainContainer = ({ children, isMobile, isMediumScreen }) => {
-  return (
+export const MainContainer = ({ children, isMobile, isMediumScreen }) => 
     <Box component="main" sx={{ 
       flexGrow: 1,
       pb: isMobile ? 3 : 6,
@@ -47,14 +40,18 @@ export const MainContainer = ({ children, isMobile, isMediumScreen }) => {
         {children}
       </Container>
     </Box>
-  );
+;
+
+MainContainer.propTypes = {
+  children: PropTypes.node.isRequired,
+  isMobile: PropTypes.bool.isRequired,
+  isMediumScreen: PropTypes.bool.isRequired,
 };
 
 /**
  * Paper container for the main content
  */
-export const ContentPaper = ({ children, isMobile, sx = {} }) => {
-  return (
+export const ContentPaper = ({ children, isMobile, sx = {} }) => 
     <Box sx={{ 
       width: '100%',
       bgcolor: isMobile ? 'transparent' : 'background.paper',
@@ -64,7 +61,12 @@ export const ContentPaper = ({ children, isMobile, sx = {} }) => {
     }}>
       {children}
     </Box>
-  );
+;
+
+ContentPaper.propTypes = {
+  children: PropTypes.node.isRequired,
+  isMobile: PropTypes.bool.isRequired,
+  sx: PropTypes.object,
 };
 
 /**
@@ -96,10 +98,24 @@ const CollapsibleSettingsSection = ({ settingsStepProps, isMobile }) => {
   );
 };
 
+CollapsibleSettingsSection.propTypes = {
+  settingsStepProps: PropTypes.shape({
+    selectedAspectRatio: PropTypes.number,
+    selectedTemplate: PropTypes.object,
+    panelCount: PropTypes.number.isRequired,
+    borderThickness: PropTypes.number,
+    setBorderThickness: PropTypes.func,
+    setPanelCount: PropTypes.func.isRequired,
+    onAspectRatioChange: PropTypes.func.isRequired,
+    onTemplateChange: PropTypes.func.isRequired,
+  }).isRequired,
+  isMobile: PropTypes.bool.isRequired,
+};
+
 /**
  * Unified layout for the collage tool that adapts to all screen sizes
  */
-export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, setFinalImage, isMobile, onBackToEdit }) => {
+export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, setFinalImage, isMobile }) => {
   const theme = useTheme();
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
@@ -273,4 +289,34 @@ export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, 
       />
     </>
   );
+};
+
+CollageLayout.propTypes = {
+  settingsStepProps: PropTypes.shape({
+    selectedAspectRatio: PropTypes.number,
+    selectedTemplate: PropTypes.object,
+    panelCount: PropTypes.number.isRequired,
+    borderThickness: PropTypes.number,
+    setBorderThickness: PropTypes.func,
+    setPanelCount: PropTypes.func.isRequired,
+    onAspectRatioChange: PropTypes.func.isRequired,
+    onTemplateChange: PropTypes.func.isRequired,
+  }).isRequired,
+  imagesStepProps: PropTypes.shape({
+    selectedImages: PropTypes.array.isRequired,
+    selectedTemplate: PropTypes.object,
+    selectedAspectRatio: PropTypes.number,
+    panelCount: PropTypes.number.isRequired,
+    panelImageMapping: PropTypes.object.isRequired,
+    addMultipleImages: PropTypes.func.isRequired,
+    updatePanelImageMapping: PropTypes.func.isRequired,
+    removeImage: PropTypes.func.isRequired,
+    replaceImage: PropTypes.func.isRequired,
+    bulkUploadSectionOpen: PropTypes.bool.isRequired,
+    onBulkUploadSectionToggle: PropTypes.func.isRequired,
+  }).isRequired,
+  finalImage: PropTypes.string,
+  setFinalImage: PropTypes.func.isRequired,
+  isMobile: PropTypes.bool.isRequired,
+  onBackToEdit: PropTypes.func,
 };

@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import { 
   Box, 
   Typography, 
@@ -239,7 +240,10 @@ const BulkUploadSection = ({
   // Scroll functions
   const scrollLeft = (ref) => {
     if (ref.current) {
-      const scrollDistance = Math.min(ref.current.clientWidth * 0.5, 250);
+      // Use a more conservative scroll distance that adapts to container size
+      // but prevents over-scrolling by using smaller increments
+      const containerWidth = ref.current.clientWidth;
+      const scrollDistance = Math.min(containerWidth * 0.3, 150); // 30% of container or 150px max
       ref.current.scrollBy({ left: -scrollDistance, behavior: 'smooth' });
       
       setTimeout(() => {
@@ -250,7 +254,10 @@ const BulkUploadSection = ({
   
   const scrollRight = (ref) => {
     if (ref.current) {
-      const scrollDistance = Math.min(ref.current.clientWidth * 0.5, 250);
+      // Use a more conservative scroll distance that adapts to container size
+      // but prevents over-scrolling by using smaller increments
+      const containerWidth = ref.current.clientWidth;
+      const scrollDistance = Math.min(containerWidth * 0.3, 150); // 30% of container or 150px max
       ref.current.scrollBy({ left: scrollDistance, behavior: 'smooth' });
       
       setTimeout(() => {
@@ -264,8 +271,10 @@ const BulkUploadSection = ({
     if (!ref.current) return;
     
     const { scrollLeft, scrollWidth, clientWidth } = ref.current;
-    const hasLeft = scrollLeft > 5;
-    const hasRight = scrollLeft < scrollWidth - clientWidth - 5;
+    // Use a smaller threshold (1 pixel) to better detect when we're at the edges
+    // This fixes the issue where the left arrow wouldn't disappear after scrolling back to the start
+    const hasLeft = scrollLeft > 1;
+    const hasRight = scrollLeft < scrollWidth - clientWidth - 1;
     
     setLeftScroll(hasLeft);
     setRightScroll(hasRight);
@@ -1113,6 +1122,20 @@ const BulkUploadSection = ({
       )}
     </DisclosureCard>
   );
+};
+
+BulkUploadSection.propTypes = {
+  selectedImages: PropTypes.array.isRequired,
+  addMultipleImages: PropTypes.func.isRequired,
+  panelImageMapping: PropTypes.object.isRequired,
+  updatePanelImageMapping: PropTypes.func.isRequired,
+  panelCount: PropTypes.number.isRequired,
+  selectedTemplate: PropTypes.object,
+  setPanelCount: PropTypes.func,
+  removeImage: PropTypes.func,
+  replaceImage: PropTypes.func,
+  bulkUploadSectionOpen: PropTypes.bool,
+  onBulkUploadSectionToggle: PropTypes.func,
 };
 
 export default BulkUploadSection; 

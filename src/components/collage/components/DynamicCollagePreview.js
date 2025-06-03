@@ -550,6 +550,13 @@ const DynamicCollagePreview = ({
       showFillGuides: false
     });
     
+    // Touch tracking for preventing accidental clicks during scroll
+    const [touchState, setTouchState] = React.useState({
+      startX: null,
+      startY: null,
+      moved: false
+    });
+    
     // Determine the image index using the mapping if available
     const imageIndex = panelId && panelImageMapping[panelId] !== undefined 
       ? panelImageMapping[panelId] 
@@ -802,6 +809,43 @@ const DynamicCollagePreview = ({
       } else {
         enableTransformForPanel(panelId);
       }
+    };
+
+    // Touch handlers for preventing accidental clicks during scroll
+    const handleTouchStart = (e) => {
+      const touch = e.touches[0];
+      setTouchState({
+        startX: touch.clientX,
+        startY: touch.clientY,
+        moved: false
+      });
+    };
+
+    const handleTouchMove = (e) => {
+      if (touchState.startX === null || touchState.startY === null) return;
+      
+      const touch = e.touches[0];
+      const deltaX = Math.abs(touch.clientX - touchState.startX);
+      const deltaY = Math.abs(touch.clientY - touchState.startY);
+      
+      // If movement is more than 10px in any direction, consider it a scroll
+      if (deltaX > 10 || deltaY > 10) {
+        setTouchState(prev => ({ ...prev, moved: true }));
+      }
+    };
+
+    const handleTouchEnd = (e) => {
+      // Only trigger click if there was minimal movement (not a scroll)
+      if (!touchState.moved) {
+        handleRepositionClick(e);
+      }
+      
+      // Reset touch state
+      setTouchState({
+        startX: null,
+        startY: null,
+        moved: false
+      });
     };
 
     // Handle click on overlay - replace when not in edit mode
@@ -1072,7 +1116,9 @@ const DynamicCollagePreview = ({
         <IconButton 
           size="small" 
           onClick={handleRepositionClick}
-          onTouchEnd={handleRepositionClick}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
           sx={{ 
             position: 'absolute', 
             top: 8, 
@@ -1105,35 +1151,86 @@ const DynamicCollagePreview = ({
     );
   };
 
-  const RenderAddButton = ({ index, panelId }) => (
-    <IconButton
-      onClick={(e) => {
-        e.stopPropagation(); // Prevent event bubbling to parent Box
-        if (onPanelClick) {
-          onPanelClick(index, panelId);
-        }
-      }}
-      sx={{
-        width: 64,
-        height: 64,
-        backgroundColor: '#2196F3', // Solid blue background
-        color: '#ffffff',
-        border: '3px solid #ffffff',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.2)',
-        '&:hover': {
-          backgroundColor: '#1976D2',
-          transform: 'scale(1.1)',
-          boxShadow: '0 6px 16px rgba(0, 0, 0, 0.5), 0 3px 6px rgba(0, 0, 0, 0.3)',
-        },
-        '&:active': {
-          transform: 'scale(1.05)',
-        },
-        transition: 'all 0.2s ease-in-out',
-      }}
-    >
-      <Add sx={{ fontSize: 32 }} />
-    </IconButton>
-  );
+  const RenderAddButton = ({ index, panelId }) => {
+    // Touch tracking for preventing accidental clicks during scroll
+    const [touchState, setTouchState] = React.useState({
+      startX: null,
+      startY: null,
+      moved: false
+    });
+
+    const handleAddClick = (e) => {
+      e.stopPropagation(); // Prevent event bubbling to parent Box
+      if (onPanelClick) {
+        onPanelClick(index, panelId);
+      }
+    };
+
+    // Touch handlers for preventing accidental clicks during scroll
+    const handleTouchStart = (e) => {
+      const touch = e.touches[0];
+      setTouchState({
+        startX: touch.clientX,
+        startY: touch.clientY,
+        moved: false
+      });
+    };
+
+    const handleTouchMove = (e) => {
+      if (touchState.startX === null || touchState.startY === null) return;
+      
+      const touch = e.touches[0];
+      const deltaX = Math.abs(touch.clientX - touchState.startX);
+      const deltaY = Math.abs(touch.clientY - touchState.startY);
+      
+      // If movement is more than 10px in any direction, consider it a scroll
+      if (deltaX > 10 || deltaY > 10) {
+        setTouchState(prev => ({ ...prev, moved: true }));
+      }
+    };
+
+    const handleTouchEnd = (e) => {
+      // Only trigger click if there was minimal movement (not a scroll)
+      if (!touchState.moved) {
+        handleAddClick(e);
+      }
+      
+      // Reset touch state
+      setTouchState({
+        startX: null,
+        startY: null,
+        moved: false
+      });
+    };
+
+    return (
+      <IconButton
+        onClick={handleAddClick}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        sx={{
+          width: 64,
+          height: 64,
+          backgroundColor: '#2196F3', // Solid blue background
+          color: '#ffffff',
+          border: '3px solid #ffffff',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.2)',
+          '&:hover': {
+            backgroundColor: '#1976D2',
+            transform: 'scale(1.1)',
+            boxShadow: '0 6px 16px rgba(0, 0, 0, 0.5), 0 3px 6px rgba(0, 0, 0, 0.3)',
+          },
+          '&:active': {
+            transform: 'scale(1.05)',
+          },
+          transition: 'all 0.2s ease-in-out',
+        }}
+      >
+        <Add sx={{ fontSize: 32 }} />
+      </IconButton>
+    );
+  };
 
   // Don't render anything if we don't have a template or layout config
   if (!selectedTemplate || !layoutConfig) return null;
