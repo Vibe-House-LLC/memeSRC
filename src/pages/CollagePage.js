@@ -117,6 +117,10 @@ export default function CollagePage() {
     return !hasSeenWelcome;
   });
 
+  // State to control BulkUploadSection collapse after first image upload
+  const [bulkUploadSectionOpen, setBulkUploadSectionOpen] = useState(true);
+  const [hasAutoCollapsed, setHasAutoCollapsed] = useState(false);
+
   const {
     selectedImages, 
     panelImageMapping,
@@ -136,6 +140,7 @@ export default function CollagePage() {
     borderColor,
     setBorderColor,
     addImage,
+    addMultipleImages,
     removeImage,
     updateImage,
     replaceImage,
@@ -152,6 +157,9 @@ export default function CollagePage() {
       imageIndex !== null && 
       selectedImages[imageIndex]
     );
+
+  // Check if user has added at least one image
+  const hasImages = selectedImages && selectedImages.length > 0;
 
   const borderThicknessOptions = [
     { label: "None", value: 0 },        // 0%
@@ -173,7 +181,7 @@ export default function CollagePage() {
 
   // Animate button in with delay when ready
   useEffect(() => {
-    if (allPanelsHaveImages && !showResultDialog && !showWelcomeScreen) {
+    if (hasImages && allPanelsHaveImages && !showResultDialog && !showWelcomeScreen) {
       const timer = setTimeout(() => {
         setShowAnimatedButton(true);
       }, 800); // 800ms delay for dramatic effect
@@ -183,7 +191,7 @@ export default function CollagePage() {
     
     setShowAnimatedButton(false);
     return undefined; // Consistent return for all code paths
-  }, [allPanelsHaveImages, showResultDialog, showWelcomeScreen]);
+  }, [hasImages, allPanelsHaveImages, showResultDialog, showWelcomeScreen]);
 
   // Auto-forwarding logic based on user preference
   useEffect(() => {
@@ -198,6 +206,50 @@ export default function CollagePage() {
       }
     }
   }, [user, navigate, location.search, authorized, showWelcomeScreen]);
+
+  // Effect to collapse BulkUploadSection after first image upload
+  useEffect(() => {
+    if (hasImages && bulkUploadSectionOpen && !hasAutoCollapsed) {
+      // Collapse the section after first image upload (only once)
+      setBulkUploadSectionOpen(false);
+      setHasAutoCollapsed(true);
+      debugLog('Auto-collapsing BulkUploadSection after first image upload');
+      
+      // Scroll to the image collection section after it collapses
+      setTimeout(() => {
+        // Look for the BulkUploadSection (Image Collection) - prioritize the data-testid we added
+        const imageCollectionSection = document.querySelector('[data-testid="bulk-upload-section"]') ||
+                                     // Fallback: look for the DisclosureCard containing the Image Collection title
+                                     Array.from(document.querySelectorAll('h6, .MuiTypography-h6'))
+                                       .find(el => el.textContent?.includes('Image Collection'))?.closest('.MuiPaper-root') ||
+                                     // Another fallback: look for any element with PhotoLibrary icon nearby
+                                     document.querySelector('[data-testid*="PhotoLibrary"], [aria-label*="PhotoLibrary"]')?.closest('.MuiPaper-root') ||
+                                     // Final fallback: look for the first DisclosureCard after images are uploaded
+                                     document.querySelector('.MuiPaper-root');
+        
+        if (imageCollectionSection) {
+          const navBarHeight = 80; // Account for navigation bar height
+          const elementTop = imageCollectionSection.getBoundingClientRect().top + window.pageYOffset;
+          const offsetPosition = elementTop - navBarHeight;
+          
+          window.scrollTo({
+            top: offsetPosition,
+            behavior: 'smooth'
+          });
+          
+          debugLog('Scrolled to image collection section after collapse');
+        } else {
+          debugLog('Image collection section not found for scrolling');
+        }
+      }, 600); // 600ms delay to ensure the collapse animation completes
+    }
+  }, [hasImages, bulkUploadSectionOpen, hasAutoCollapsed]);
+
+  // Handler to toggle BulkUploadSection open state
+  const handleBulkUploadSectionToggle = (open) => {
+    setBulkUploadSectionOpen(open);
+    debugLog(`BulkUploadSection toggled to: ${open ? 'open' : 'closed'}`);
+  };
 
   // Handler to go back to edit mode
   const handleBackToEdit = () => {
@@ -332,12 +384,16 @@ export default function CollagePage() {
     borderThicknessOptions,
     // Actions
     addImage,
+    addMultipleImages,
     removeImage,
     updateImage,
     replaceImage,
     clearImages,
     // Custom handler for showing inline result
     onCollageGenerated: handleCollageGenerated,
+    // BulkUploadSection state
+    bulkUploadSectionOpen,
+    onBulkUploadSectionToggle: handleBulkUploadSectionToggle,
   };
 
   // Log mapping changes for debugging
@@ -369,7 +425,7 @@ export default function CollagePage() {
       ) : (
         <Box component="main" sx={{ 
           flexGrow: 1,
-          pb: !showResultDialog && !showWelcomeScreen && allPanelsHaveImages ? 10 : (isMobile ? 3 : 6),
+          pb: !showResultDialog && !showWelcomeScreen && hasImages && allPanelsHaveImages ? 8 : (isMobile ? 2 : 4),
           width: '100%',
           overflowX: 'hidden',
           minHeight: '100vh',
@@ -378,20 +434,21 @@ export default function CollagePage() {
           <Container 
             maxWidth="xl" 
             sx={{ 
-              pt: isMobile ? 1 : 3,
-              px: isMobile ? 0.25 : 3,
+              pt: isMobile ? 1 : 1.5,
+              px: isMobile ? 1 : 2,
               width: '100%'
             }}
             disableGutters={isMobile}
           >
             {/* Page Header */}
-            <Box sx={{ mb: isMobile ? 2 : 3 }}>
+            <Box sx={{ mb: isMobile ? 1 : 1.5 }}>
               <Typography variant="h3" gutterBottom sx={{ 
                 display: 'flex', 
                 alignItems: 'center',
                 fontWeight: '700', 
-                mb: isMobile ? 0.75 : 1.5,
-                pl: isMobile ? 1 : 0,
+                mb: isMobile ? 0.5 : 0.75,
+                pl: isMobile ? 0.5 : 0,
+                ml: isMobile ? 0 : -0.5,
                 color: '#fff',
                 fontSize: isMobile ? '2.2rem' : '2.5rem',
                 textShadow: '0px 2px 4px rgba(0,0,0,0.15)'
@@ -401,8 +458,8 @@ export default function CollagePage() {
               </Typography>
               <Typography variant="subtitle1" sx={{ 
                 color: 'text.secondary',
-                mb: isMobile ? 2 : 2.5,
-                pl: isMobile ? 1 : 5,
+                mb: isMobile ? 2 : 1.5,
+                pl: isMobile ? 1 : 0,
                 maxWidth: '85%'
               }}>
                 Merge images together to create multi-panel memes
@@ -421,7 +478,7 @@ export default function CollagePage() {
             />
 
             {/* Bottom Action Bar */}
-            {!showResultDialog && !showWelcomeScreen && allPanelsHaveImages && (
+            {!showResultDialog && !showWelcomeScreen && hasImages && allPanelsHaveImages && (
               <Slide direction="up" in={showAnimatedButton} timeout={600}>
                 <Box
                   sx={{
@@ -433,7 +490,7 @@ export default function CollagePage() {
                     bgcolor: 'background.paper',
                     borderTop: 1,
                     borderColor: 'divider',
-                    p: isMobile ? 2 : 3,
+                    p: isMobile ? 1.5 : 2,
                     boxShadow: '0 -8px 32px rgba(0,0,0,0.15)',
                     backdropFilter: 'blur(20px)',
                     display: 'flex',
@@ -448,8 +505,8 @@ export default function CollagePage() {
                     size="large"
                     startIcon={<Save />}
                     sx={{
-                      py: 2,
-                      px: isMobile ? 3 : 6,
+                      py: 1.5,
+                      px: isMobile ? 2.5 : 5,
                       fontSize: '1.2rem',
                       fontWeight: 700,
                       textTransform: 'none',
