@@ -447,7 +447,8 @@ export default function CollagePage() {
                 alignItems: 'center',
                 fontWeight: '700', 
                 mb: isMobile ? 0.5 : 0.75,
-                pl: isMobile ? 0 : 0,
+                pl: isMobile ? 0.5 : 0,
+                ml: isMobile ? 0 : -0.5,
                 color: '#fff',
                 fontSize: isMobile ? '2.2rem' : '2.5rem',
                 textShadow: '0px 2px 4px rgba(0,0,0,0.15)'
@@ -457,8 +458,8 @@ export default function CollagePage() {
               </Typography>
               <Typography variant="subtitle1" sx={{ 
                 color: 'text.secondary',
-                mb: isMobile ? 1 : 1.5,
-                pl: isMobile ? 0 : 5,
+                mb: isMobile ? 2 : 1.5,
+                pl: isMobile ? 1 : 0,
                 maxWidth: '85%'
               }}>
                 Merge images together to create multi-panel memes
