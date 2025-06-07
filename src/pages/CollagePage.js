@@ -117,9 +117,10 @@ export default function CollagePage() {
     return !hasSeenWelcome;
   });
 
-  // State to control BulkUploadSection collapse after first image upload
-  const [bulkUploadSectionOpen, setBulkUploadSectionOpen] = useState(true);
-  const [hasAutoCollapsed, setHasAutoCollapsed] = useState(false);
+
+
+  // Note: BulkUploadSection is now completely hidden when images are present
+  // No need for collapse state management since it's not shown after initial upload
 
   const {
     selectedImages, 
@@ -158,7 +159,7 @@ export default function CollagePage() {
       selectedImages[imageIndex]
     );
 
-  // Check if user has added at least one image
+  // Check if user has added at least one image or wants to start from scratch
   const hasImages = selectedImages && selectedImages.length > 0;
 
   const borderThicknessOptions = [
@@ -193,6 +194,8 @@ export default function CollagePage() {
     return undefined; // Consistent return for all code paths
   }, [hasImages, allPanelsHaveImages, showResultDialog, showWelcomeScreen]);
 
+
+
   // Auto-forwarding logic based on user preference
   useEffect(() => {
     if (authorized && user) {
@@ -207,49 +210,7 @@ export default function CollagePage() {
     }
   }, [user, navigate, location.search, authorized, showWelcomeScreen]);
 
-  // Effect to collapse BulkUploadSection after first image upload
-  useEffect(() => {
-    if (hasImages && bulkUploadSectionOpen && !hasAutoCollapsed) {
-      // Collapse the section after first image upload (only once)
-      setBulkUploadSectionOpen(false);
-      setHasAutoCollapsed(true);
-      debugLog('Auto-collapsing BulkUploadSection after first image upload');
-      
-      // Scroll to the image collection section after it collapses
-      setTimeout(() => {
-        // Look for the BulkUploadSection (Image Collection) - prioritize the data-testid we added
-        const imageCollectionSection = document.querySelector('[data-testid="bulk-upload-section"]') ||
-                                     // Fallback: look for the DisclosureCard containing the Image Collection title
-                                     Array.from(document.querySelectorAll('h6, .MuiTypography-h6'))
-                                       .find(el => el.textContent?.includes('Image Collection'))?.closest('.MuiPaper-root') ||
-                                     // Another fallback: look for any element with PhotoLibrary icon nearby
-                                     document.querySelector('[data-testid*="PhotoLibrary"], [aria-label*="PhotoLibrary"]')?.closest('.MuiPaper-root') ||
-                                     // Final fallback: look for the first DisclosureCard after images are uploaded
-                                     document.querySelector('.MuiPaper-root');
-        
-        if (imageCollectionSection) {
-          const navBarHeight = 80; // Account for navigation bar height
-          const elementTop = imageCollectionSection.getBoundingClientRect().top + window.pageYOffset;
-          const offsetPosition = elementTop - navBarHeight;
-          
-          window.scrollTo({
-            top: offsetPosition,
-            behavior: 'smooth'
-          });
-          
-          debugLog('Scrolled to image collection section after collapse');
-        } else {
-          debugLog('Image collection section not found for scrolling');
-        }
-      }, 600); // 600ms delay to ensure the collapse animation completes
-    }
-  }, [hasImages, bulkUploadSectionOpen, hasAutoCollapsed]);
-
-  // Handler to toggle BulkUploadSection open state
-  const handleBulkUploadSectionToggle = (open) => {
-    setBulkUploadSectionOpen(open);
-    debugLog(`BulkUploadSection toggled to: ${open ? 'open' : 'closed'}`);
-  };
+  // Note: BulkUploadSection auto-collapse logic removed since section is now hidden when images are present
 
   // Handler to go back to edit mode
   const handleBackToEdit = () => {
@@ -369,6 +330,15 @@ export default function CollagePage() {
     setShowResultDialog(true);
   };
 
+  // Handler for starting from scratch without images
+  const handleStartFromScratch = () => {
+    debugLog('Starting from scratch - user chose to continue without images');
+    // Add a placeholder to trigger showing the collage interface
+    addMultipleImages(['__START_FROM_SCRATCH__']);
+    // Scroll to top to show the collage interface
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   // Props for images step (pass the correct state and actions)
   const imagesStepProps = {
     selectedImages, // Pass the array of objects [{ originalUrl, displayUrl }, ...]
@@ -391,9 +361,10 @@ export default function CollagePage() {
     clearImages,
     // Custom handler for showing inline result
     onCollageGenerated: handleCollageGenerated,
-    // BulkUploadSection state
-    bulkUploadSectionOpen,
-    onBulkUploadSectionToggle: handleBulkUploadSectionToggle,
+    // BulkUploadSection state (kept for compatibility, though section is hidden when images present)
+    bulkUploadSectionOpen: true, // Always true since we don't manage collapse state anymore
+    onBulkUploadSectionToggle: () => {}, // No-op since BulkUploadSection is hidden when images are present
+    onStartFromScratch: handleStartFromScratch, // Handler for starting without images
   };
 
   // Log mapping changes for debugging
