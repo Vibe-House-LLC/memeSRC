@@ -117,6 +117,8 @@ export default function CollagePage() {
     return !hasSeenWelcome;
   });
 
+
+
   // Note: BulkUploadSection is now completely hidden when images are present
   // No need for collapse state management since it's not shown after initial upload
 
@@ -157,7 +159,7 @@ export default function CollagePage() {
       selectedImages[imageIndex]
     );
 
-  // Check if user has added at least one image
+  // Check if user has added at least one image or wants to start from scratch
   const hasImages = selectedImages && selectedImages.length > 0;
 
   const borderThicknessOptions = [
@@ -191,6 +193,8 @@ export default function CollagePage() {
     setShowAnimatedButton(false);
     return undefined; // Consistent return for all code paths
   }, [hasImages, allPanelsHaveImages, showResultDialog, showWelcomeScreen]);
+
+
 
   // Auto-forwarding logic based on user preference
   useEffect(() => {
@@ -326,6 +330,15 @@ export default function CollagePage() {
     setShowResultDialog(true);
   };
 
+  // Handler for starting from scratch without images
+  const handleStartFromScratch = () => {
+    debugLog('Starting from scratch - user chose to continue without images');
+    // Add a placeholder to trigger showing the collage interface
+    addMultipleImages(['__START_FROM_SCRATCH__']);
+    // Scroll to top to show the collage interface
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   // Props for images step (pass the correct state and actions)
   const imagesStepProps = {
     selectedImages, // Pass the array of objects [{ originalUrl, displayUrl }, ...]
@@ -351,6 +364,7 @@ export default function CollagePage() {
     // BulkUploadSection state (kept for compatibility, though section is hidden when images present)
     bulkUploadSectionOpen: true, // Always true since we don't manage collapse state anymore
     onBulkUploadSectionToggle: () => {}, // No-op since BulkUploadSection is hidden when images are present
+    onStartFromScratch: handleStartFromScratch, // Handler for starting without images
   };
 
   // Log mapping changes for debugging

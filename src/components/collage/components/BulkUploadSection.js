@@ -113,6 +113,7 @@ const BulkUploadSection = ({
   replaceImage, // Add replaceImage function
   bulkUploadSectionOpen = true, // Add prop to control collapse state
   onBulkUploadSectionToggle, // Add prop to handle toggle events
+  onStartFromScratch, // Add prop to handle starting without images
 }) => {
   const theme = useTheme();
   const bulkFileInputRef = useRef(null);
@@ -716,42 +717,68 @@ const BulkUploadSection = ({
         </Box>
       ) : (
         // Simple empty state like legacy version
-        <Box sx={{ 
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '200px',
-          border: `2px dashed ${theme.palette.divider}`,
-          borderRadius: 2,
-          cursor: 'pointer',
-          transition: 'all 0.3s ease',
-          '&:hover': {
-            borderColor: theme.palette.primary.main,
-            backgroundColor: theme.palette.action.hover,
-          }
-        }}>
-          <Box 
-            onClick={() => bulkFileInputRef.current?.click()}
-            sx={{ textAlign: 'center', p: 3 }}
-          >
-            <Add sx={{ fontSize: 48, color: 'text.secondary', mb: 1 }} />
-            <Typography variant="h6" gutterBottom>
-              Add Images
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Upload images for your collage
-            </Typography>
+        <Box>
+          <Box sx={{ 
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: '200px',
+            border: `2px dashed ${theme.palette.divider}`,
+            borderRadius: 2,
+            cursor: 'pointer',
+            transition: 'all 0.3s ease',
+            '&:hover': {
+              borderColor: theme.palette.primary.main,
+              backgroundColor: theme.palette.action.hover,
+            }
+          }}>
+            <Box 
+              onClick={() => bulkFileInputRef.current?.click()}
+              sx={{ textAlign: 'center', p: 3 }}
+            >
+              <Add sx={{ fontSize: 48, color: 'text.secondary', mb: 1 }} />
+              <Typography variant="h6" gutterBottom>
+                Add Images
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Upload images for your collage
+              </Typography>
+            </Box>
+            
+            <input
+              type="file"
+              ref={bulkFileInputRef}
+              style={{ display: 'none' }}
+              accept="image/*"
+              multiple
+              onChange={handleBulkFileUpload}
+            />
           </Box>
-          
-          <input
-            type="file"
-            ref={bulkFileInputRef}
-            style={{ display: 'none' }}
-            accept="image/*"
-            multiple
-            onChange={handleBulkFileUpload}
-          />
+
+          {/* Start from scratch option below the upload box */}
+          {onStartFromScratch && (
+            <Box sx={{ textAlign: 'center', mt: 2 }}>
+              <Typography variant="body2" color="text.secondary">
+                or,{' '}
+                <Typography 
+                  component="span" 
+                  variant="body2"
+                  onClick={onStartFromScratch}
+                  sx={{ 
+                    color: 'primary.main',
+                    textDecoration: 'underline',
+                    cursor: 'pointer',
+                    '&:hover': {
+                      color: 'primary.dark'
+                    }
+                  }}
+                >
+                  start from scratch
+                </Typography>
+              </Typography>
+            </Box>
+          )}
         </Box>
       )}
     </Box>
@@ -770,6 +797,7 @@ BulkUploadSection.propTypes = {
   replaceImage: PropTypes.func,
   bulkUploadSectionOpen: PropTypes.bool,
   onBulkUploadSectionToggle: PropTypes.func,
+  onStartFromScratch: PropTypes.func,
 };
 
 export default BulkUploadSection; 

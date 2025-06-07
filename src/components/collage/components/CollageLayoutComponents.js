@@ -167,6 +167,7 @@ export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, 
               replaceImage={imagesStepProps.replaceImage}
               bulkUploadSectionOpen={imagesStepProps.bulkUploadSectionOpen}
               onBulkUploadSectionToggle={imagesStepProps.onBulkUploadSectionToggle}
+              onStartFromScratch={imagesStepProps.onStartFromScratch}
             />
           </Box>
         ) : isMobile ? (
@@ -277,6 +278,7 @@ CollageLayout.propTypes = {
     replaceImage: PropTypes.func.isRequired,
     bulkUploadSectionOpen: PropTypes.bool.isRequired,
     onBulkUploadSectionToggle: PropTypes.func.isRequired,
+    onStartFromScratch: PropTypes.func,
   }).isRequired,
   finalImage: PropTypes.string,
   setFinalImage: PropTypes.func.isRequired,
