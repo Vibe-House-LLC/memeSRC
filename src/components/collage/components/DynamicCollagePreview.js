@@ -1145,7 +1145,7 @@ const DynamicCollagePreview = ({
             transition: 'all 0.2s ease-in-out',
           }}
         >
-          {isTransformEnabled ? <Check sx={{ fontSize: 24 }} /> : <Settings sx={{ fontSize: 20 }} />}
+          {isTransformEnabled ? <Check sx={{ fontSize: 24 }} /> : <OpenWith sx={{ fontSize: 20 }} />}
         </IconButton>
       </Box>
     );
