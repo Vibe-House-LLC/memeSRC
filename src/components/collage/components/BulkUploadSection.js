@@ -7,7 +7,9 @@ import {
   CardMedia,
   Chip,
   Menu,
-  MenuItem
+  MenuItem,
+  Snackbar,
+  Alert
 } from '@mui/material';
 import { useTheme, styled, alpha } from '@mui/material/styles';
 import { 
@@ -124,6 +126,13 @@ const BulkUploadSection = ({
   const [contextMenu, setContextMenu] = useState(null);
   const [selectedPanelForAction, setSelectedPanelForAction] = useState(null);
 
+  // State for toast notifications
+  const [toast, setToast] = useState({
+    open: false,
+    message: '',
+    severity: 'error'
+  });
+
   // Check if there are any selected images
   const hasImages = selectedImages && selectedImages.length > 0;
 
@@ -185,6 +194,21 @@ const BulkUploadSection = ({
   const handleBulkFileUpload = (event) => {
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
+
+    // Check if upload exceeds 5 image limit
+    if (files.length > 5) {
+      setToast({
+        open: true,
+        message: 'Beta supports up to 5 images for now',
+        severity: 'error'
+      });
+      
+      // Reset file input
+      if (event.target) {
+        event.target.value = null;
+      }
+      return;
+    }
 
     // Helper function to load a single file and return a Promise with the data URL
     const loadFile = (file) => {
@@ -565,6 +589,14 @@ const BulkUploadSection = ({
 
   const panelList = generatePanelList();
 
+  // Handler for closing toast
+  const handleCloseToast = (event, reason) => {
+    if (reason === 'clickaway') {
+      return;
+    }
+    setToast(prev => ({ ...prev, open: false }));
+  };
+
   return (
     <Box data-testid="bulk-upload-section">
       {hasImages ? (
@@ -781,6 +813,23 @@ const BulkUploadSection = ({
           )}
         </Box>
       )}
+
+      {/* Toast Notification */}
+      <Snackbar
+        open={toast.open}
+        autoHideDuration={4000}
+        onClose={handleCloseToast}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={handleCloseToast}
+          severity={toast.severity}
+          variant="filled"
+          sx={{ width: '100%' }}
+        >
+          {toast.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
