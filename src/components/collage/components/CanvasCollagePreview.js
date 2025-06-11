@@ -556,12 +556,76 @@ const CanvasCollagePreview = ({
         const deltaY = y - dragStart.y;
         
         const currentTransform = panelTransforms[panel.panelId] || { scale: 1, positionX: 0, positionY: 0 };
+        const imageIndex = panelImageMapping[panel.panelId];
+        const img = loadedImages[imageIndex];
         
-        if (updatePanelTransform) {
+        if (img && updatePanelTransform) {
+          // Calculate the same scaling and positioning logic as in drawCanvas
+          const imageAspectRatio = img.naturalWidth / img.naturalHeight;
+          const panelAspectRatio = panel.width / panel.height;
+          
+          let initialScale;
+          if (imageAspectRatio > panelAspectRatio) {
+            // Image is wider than panel, scale to fit height
+            initialScale = panel.height / img.naturalHeight;
+          } else {
+            // Image is taller than panel, scale to fit width  
+            initialScale = panel.width / img.naturalWidth;
+          }
+          
+          // Apply user transform on top of initial scale
+          const finalScale = initialScale * currentTransform.scale;
+          const scaledWidth = img.naturalWidth * finalScale;
+          const scaledHeight = img.naturalHeight * finalScale;
+          
+          // Calculate centering offset (for initial positioning)
+          const centerOffsetX = (panel.width - scaledWidth) / 2;
+          const centerOffsetY = (panel.height - scaledHeight) / 2;
+          
+          // Calculate proposed new positions
+          const newPositionX = currentTransform.positionX + deltaX;
+          const newPositionY = currentTransform.positionY + deltaY;
+          
+          // Calculate the final image bounds with new position
+          const finalOffsetX = centerOffsetX + newPositionX;
+          const finalOffsetY = centerOffsetY + newPositionY;
+          
+          // Calculate bounds to prevent white space (image must always cover the panel)
+          let minPositionX;
+          let maxPositionX;
+          let minPositionY;
+          let maxPositionY;
+          
+          if (scaledWidth > panel.width) {
+            // Image is wider than panel - can move horizontally but not show white space
+            // When image is wider, centerOffsetX is negative
+            maxPositionX = -centerOffsetX; // Left edge of image at left edge of panel
+            minPositionX = panel.width - scaledWidth - centerOffsetX; // Right edge of image at right edge of panel
+          } else {
+            // Image is narrower than or equal to panel - center it and don't allow horizontal movement
+            minPositionX = 0;
+            maxPositionX = 0;
+          }
+          
+          if (scaledHeight > panel.height) {
+            // Image is taller than panel - can move vertically but not show white space
+            // When image is taller, centerOffsetY is negative
+            maxPositionY = -centerOffsetY; // Top edge of image at top edge of panel
+            minPositionY = panel.height - scaledHeight - centerOffsetY; // Bottom edge of image at bottom edge of panel
+          } else {
+            // Image is shorter than or equal to panel - center it and don't allow vertical movement
+            minPositionY = 0;
+            maxPositionY = 0;
+          }
+          
+          // Clamp the positions to prevent white space
+          const clampedPositionX = Math.max(minPositionX, Math.min(maxPositionX, newPositionX));
+          const clampedPositionY = Math.max(minPositionY, Math.min(maxPositionY, newPositionY));
+          
           updatePanelTransform(panel.panelId, {
             ...currentTransform,
-            positionX: currentTransform.positionX + deltaX,
-            positionY: currentTransform.positionY + deltaY
+            positionX: clampedPositionX,
+            positionY: clampedPositionY
           });
         }
         
