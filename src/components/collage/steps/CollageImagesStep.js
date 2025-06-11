@@ -39,6 +39,17 @@ const CollageImagesStep = ({
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const fileInputRef = useRef(null);
   
+  // Panel text state management
+  const [panelTexts, setPanelTexts] = useState({});
+  
+  // Function to update panel text
+  const updatePanelText = useCallback((panelId, textConfig) => {
+    setPanelTexts(prev => ({
+      ...prev,
+      [panelId]: textConfig
+    }));
+  }, []);
+  
   // Debug the props we're receiving
   console.log("CollageImagesStep props:", {
     selectedImages: selectedImages?.length,
@@ -48,7 +59,8 @@ const CollageImagesStep = ({
     borderThickness,
     borderColor,
     panelImageMapping,
-    panelTransforms
+    panelTransforms,
+    panelTexts
   });
 
   // Track which panel the user is currently trying to edit
@@ -213,6 +225,8 @@ const CollageImagesStep = ({
             updatePanelImageMapping={updatePanelImageMapping}
             panelTransforms={panelTransforms || {}}
             updatePanelTransform={updatePanelTransform}
+            panelTexts={panelTexts}
+            updatePanelText={updatePanelText}
             onEditRequest={handleEditRequest}
             setFinalImage={setFinalImage}
             handleOpenExportDialog={handleOpenExportDialog}

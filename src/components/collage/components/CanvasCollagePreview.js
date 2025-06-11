@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
-import { Box, IconButton, Typography } from "@mui/material";
+import { Box, IconButton, Typography, TextField, Popover, Slider, FormControl, InputLabel, Select, MenuItem, Button } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import { Add, OpenWith, Check } from '@mui/icons-material';
+import { Add, OpenWith, Check, TextFields, FormatColorText, Close } from '@mui/icons-material';
 import { layoutDefinitions } from '../config/layouts';
 
 /**
@@ -297,6 +297,8 @@ const CanvasCollagePreview = ({
   borderColor = '#000000',
   panelTransforms = {},
   updatePanelTransform,
+  panelTexts = {},
+  updatePanelText,
 }) => {
   const theme = useTheme();
   const canvasRef = useRef(null);
@@ -310,6 +312,8 @@ const CanvasCollagePreview = ({
   const [isTransformMode, setIsTransformMode] = useState({});
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [textEditingPanel, setTextEditingPanel] = useState(null);
+  const [textEditAnchor, setTextEditAnchor] = useState(null);
 
   // Get layout configuration
   const layoutConfig = useMemo(() => {
@@ -417,6 +421,7 @@ const CanvasCollagePreview = ({
       const isHovered = hoveredPanel === index;
       const isSelected = selectedPanel === index;
       const isInTransformMode = isTransformMode[panelId];
+      const panelText = panelTexts[panelId] || {};
       
       // Draw panel background
       ctx.fillStyle = hasImage 
@@ -507,6 +512,86 @@ const CanvasCollagePreview = ({
         ctx.lineTo(iconX + iconSize/2, iconY + iconSize * 0.75);
         ctx.stroke();
       }
+      
+      // Draw text at the bottom of the panel
+      if (panelText.content && panelText.content.trim()) {
+        ctx.save();
+        
+        // Set text properties
+        const fontSize = panelText.fontSize || 16;
+        const fontWeight = panelText.fontWeight || 'normal';
+        const fontFamily = panelText.fontFamily || 'Arial, sans-serif';
+        const textColor = panelText.color || '#ffffff';
+        
+        ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
+        ctx.fillStyle = textColor;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        
+        // Add text shadow for better readability
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+        ctx.shadowOffsetX = 1;
+        ctx.shadowOffsetY = 1;
+        ctx.shadowBlur = 3;
+        
+        // Calculate available text area (with padding on sides and bottom)
+        const textPadding = 10;
+        const maxTextWidth = width - (textPadding * 2);
+        const textX = x + width / 2;
+        const textY = y + height - textPadding;
+        const lineHeight = fontSize * 1.2;
+        
+        // Helper function to wrap text
+        const wrapText = (text, maxWidth) => {
+          const lines = [];
+          const manualLines = text.split('\n'); // Handle manual line breaks first
+          
+          manualLines.forEach(line => {
+            if (ctx.measureText(line).width <= maxWidth) {
+              // Line fits within width
+              lines.push(line);
+            } else {
+              // Line needs to be wrapped
+              const words = line.split(' ');
+              let currentLine = '';
+              
+              words.forEach(word => {
+                const testLine = currentLine ? `${currentLine} ${word}` : word;
+                const testWidth = ctx.measureText(testLine).width;
+                
+                                 if (testWidth <= maxWidth) {
+                   currentLine = testLine;
+                 } else if (currentLine) {
+                   // Current line is full, start a new line
+                   lines.push(currentLine);
+                   currentLine = word;
+                 } else {
+                   // Single word is too long, force it on its own line
+                   lines.push(word);
+                 }
+              });
+              
+              // Add the last line if it has content
+              if (currentLine) {
+                lines.push(currentLine);
+              }
+            }
+          });
+          
+          return lines;
+        };
+        
+        // Get wrapped lines
+        const wrappedLines = wrapText(panelText.content, maxTextWidth);
+        
+        // Draw each line
+        wrappedLines.forEach((line, lineIndex) => {
+          const lineY = textY - (wrappedLines.length - 1 - lineIndex) * lineHeight;
+          ctx.fillText(line, textX, lineY);
+        });
+        
+        ctx.restore();
+      }
     });
   }, [
     componentWidth, 
@@ -520,6 +605,7 @@ const CanvasCollagePreview = ({
     hoveredPanel, 
     selectedPanel, 
     isTransformMode,
+    panelTexts,
     theme.palette.mode
   ]);
 
@@ -763,6 +849,27 @@ const CanvasCollagePreview = ({
     }
   }, [getCanvasBlob]);
 
+  // Handle text editing
+  const handleTextEdit = useCallback((panelId, event) => {
+    setTextEditingPanel(panelId);
+    setTextEditAnchor(event.currentTarget);
+  }, []);
+
+  const handleTextClose = useCallback(() => {
+    setTextEditingPanel(null);
+    setTextEditAnchor(null);
+  }, []);
+
+  const handleTextChange = useCallback((panelId, property, value) => {
+    if (updatePanelText) {
+      const currentText = panelTexts[panelId] || {};
+      updatePanelText(panelId, {
+        ...currentText,
+        [property]: value
+      });
+    }
+  }, [panelTexts, updatePanelText]);
+
   if (!selectedTemplate || !layoutConfig) {
     return (
       <Box 
@@ -822,34 +929,190 @@ const CanvasCollagePreview = ({
         const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
         const isInTransformMode = isTransformMode[panelId];
         
-        if (!hasImage) return null;
-        
         return (
-          <IconButton
-            key={`control-${panelId}`}
-            size="small"
-            onClick={() => toggleTransformMode(panelId)}
-            sx={{
-              position: 'absolute',
-              top: rect.y + 8,
-              left: rect.x + rect.width - 56,
-              width: 48,
-              height: 48,
-              backgroundColor: isInTransformMode ? '#4CAF50' : '#2196F3',
-              color: '#ffffff',
-              border: '2px solid #ffffff',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-              '&:hover': {
-                backgroundColor: isInTransformMode ? '#388E3C' : '#1976D2',
-                transform: 'scale(1.1)',
-              },
-              zIndex: 10,
-            }}
-          >
-            {isInTransformMode ? <Check sx={{ fontSize: 24 }} /> : <OpenWith sx={{ fontSize: 20 }} />}
-          </IconButton>
+          <Box key={`controls-${panelId}`}>
+            {/* Transform control button */}
+            {hasImage && (
+              <IconButton
+                size="small"
+                onClick={() => toggleTransformMode(panelId)}
+                sx={{
+                  position: 'absolute',
+                  top: rect.y + 8,
+                  left: rect.x + rect.width - 56,
+                  width: 40,
+                  height: 40,
+                  backgroundColor: isInTransformMode ? '#4CAF50' : '#2196F3',
+                  color: '#ffffff',
+                  border: '2px solid #ffffff',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                  '&:hover': {
+                    backgroundColor: isInTransformMode ? '#388E3C' : '#1976D2',
+                    transform: 'scale(1.1)',
+                  },
+                  zIndex: 10,
+                }}
+              >
+                {isInTransformMode ? <Check sx={{ fontSize: 20 }} /> : <OpenWith sx={{ fontSize: 16 }} />}
+              </IconButton>
+            )}
+            
+            {/* Text edit button */}
+            <IconButton
+              size="small"
+              onClick={(e) => handleTextEdit(panelId, e)}
+              sx={{
+                position: 'absolute',
+                top: rect.y + 8,
+                left: rect.x + rect.width - (hasImage ? 104 : 56),
+                width: 40,
+                height: 40,
+                backgroundColor: '#FF9800',
+                color: '#ffffff',
+                border: '2px solid #ffffff',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                '&:hover': {
+                  backgroundColor: '#F57C00',
+                  transform: 'scale(1.1)',
+                },
+                zIndex: 10,
+              }}
+            >
+              <TextFields sx={{ fontSize: 16 }} />
+            </IconButton>
+          </Box>
         );
       })}
+
+      {/* Text editing popover */}
+      <Popover
+        open={Boolean(textEditingPanel)}
+        anchorEl={textEditAnchor}
+        onClose={handleTextClose}
+        anchorOrigin={{
+          vertical: 'bottom', 
+          horizontal: 'left',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'left',
+        }}
+      >
+        {textEditingPanel && (
+          <Box sx={{ p: 3, minWidth: 300 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6">Edit Text</Typography>
+              <IconButton size="small" onClick={handleTextClose}>
+                <Close />
+              </IconButton>
+            </Box>
+            
+            {/* Text content */}
+            <TextField
+              fullWidth
+              multiline
+              rows={3}
+              label="Text Content"
+              value={panelTexts[textEditingPanel]?.content || ''}
+              onChange={(e) => handleTextChange(textEditingPanel, 'content', e.target.value)}
+              sx={{ mb: 2 }}
+            />
+            
+            {/* Font size */}
+            <Box sx={{ mb: 2 }}>
+              <Typography gutterBottom>Font Size: {panelTexts[textEditingPanel]?.fontSize || 16}px</Typography>
+              <Slider
+                value={panelTexts[textEditingPanel]?.fontSize || 16}
+                onChange={(e, value) => handleTextChange(textEditingPanel, 'fontSize', value)}
+                min={8}
+                max={72}
+                step={1}
+                marks={[
+                  { value: 8, label: '8px' },
+                  { value: 24, label: '24px' },
+                  { value: 48, label: '48px' },
+                  { value: 72, label: '72px' }
+                ]}
+              />
+            </Box>
+            
+            {/* Font weight */}
+            <FormControl fullWidth sx={{ mb: 2 }}>
+              <InputLabel>Font Weight</InputLabel>
+              <Select
+                value={panelTexts[textEditingPanel]?.fontWeight || 'normal'}
+                onChange={(e) => handleTextChange(textEditingPanel, 'fontWeight', e.target.value)}
+                label="Font Weight"
+              >
+                <MenuItem value="normal">Normal</MenuItem>
+                <MenuItem value="bold">Bold</MenuItem>
+                <MenuItem value="lighter">Light</MenuItem>
+                <MenuItem value="100">100</MenuItem>
+                <MenuItem value="200">200</MenuItem>
+                <MenuItem value="300">300</MenuItem>
+                <MenuItem value="400">400</MenuItem>
+                <MenuItem value="500">500</MenuItem>
+                <MenuItem value="600">600</MenuItem>
+                <MenuItem value="700">700</MenuItem>
+                <MenuItem value="800">800</MenuItem>
+                <MenuItem value="900">900</MenuItem>
+              </Select>
+            </FormControl>
+            
+            {/* Font family */}
+            <FormControl fullWidth sx={{ mb: 2 }}>
+              <InputLabel>Font Family</InputLabel>
+              <Select
+                value={panelTexts[textEditingPanel]?.fontFamily || 'Arial, sans-serif'}
+                onChange={(e) => handleTextChange(textEditingPanel, 'fontFamily', e.target.value)}
+                label="Font Family"
+              >
+                <MenuItem value="Arial, sans-serif">Arial</MenuItem>
+                <MenuItem value="Helvetica, sans-serif">Helvetica</MenuItem>
+                <MenuItem value="'Times New Roman', serif">Times New Roman</MenuItem>
+                <MenuItem value="Georgia, serif">Georgia</MenuItem>
+                <MenuItem value="'Courier New', monospace">Courier New</MenuItem>
+                <MenuItem value="Verdana, sans-serif">Verdana</MenuItem>
+                <MenuItem value="Impact, sans-serif">Impact</MenuItem>
+                <MenuItem value="'Comic Sans MS', cursive">Comic Sans MS</MenuItem>
+              </Select>
+            </FormControl>
+            
+            {/* Text color */}
+            <Box sx={{ mb: 2 }}>
+              <Typography gutterBottom>Text Color</Typography>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                {['#ffffff', '#000000', '#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'].map((color) => (
+                  <Button
+                    key={color}
+                    onClick={() => handleTextChange(textEditingPanel, 'color', color)}
+                    sx={{
+                      width: 40,
+                      height: 40,
+                      minWidth: 40,
+                      backgroundColor: color,
+                      border: panelTexts[textEditingPanel]?.color === color ? '3px solid #2196F3' : '1px solid #ccc',
+                      '&:hover': {
+                        backgroundColor: color,
+                        opacity: 0.8,
+                      }
+                    }}
+                  />
+                ))}
+              </Box>
+              <TextField
+                fullWidth
+                size="small"
+                label="Custom Color (hex)"
+                value={panelTexts[textEditingPanel]?.color || '#ffffff'}
+                onChange={(e) => handleTextChange(textEditingPanel, 'color', e.target.value)}
+                sx={{ mt: 1 }}
+                placeholder="#ffffff"
+              />
+            </Box>
+          </Box>
+        )}
+      </Popover>
     </Box>
   );
 };

@@ -35,6 +35,8 @@ const CollagePreview = ({
   borderColor = '#000000',
   panelTransforms,
   updatePanelTransform,
+  panelTexts,
+  updatePanelText,
 }) => {
   const theme = useTheme();
   const fileInputRef = useRef(null);
@@ -224,6 +226,8 @@ const CollagePreview = ({
         borderColor={borderColor}
         panelTransforms={panelTransforms}
         updatePanelTransform={updatePanelTransform}
+        panelTexts={panelTexts}
+        updatePanelText={updatePanelText}
       />
       
       {/* Hidden file input */}
