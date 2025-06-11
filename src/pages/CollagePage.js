@@ -25,29 +25,7 @@ if (DEBUG_MODE && typeof window !== 'undefined') {
   };
 }
 
-/**
- * Helper function to crop canvas by removing pixels from edges
- */
-const cropCanvas = (originalCanvas, cropAmount = 10) => {
-  const croppedCanvas = document.createElement('canvas');
-  const ctx = croppedCanvas.getContext('2d');
-  
-  // Calculate new dimensions (remove cropAmount pixels from each edge)
-  const newWidth = Math.max(1, originalCanvas.width - (cropAmount * 2));
-  const newHeight = Math.max(1, originalCanvas.height - (cropAmount * 2));
-  
-  croppedCanvas.width = newWidth;
-  croppedCanvas.height = newHeight;
-  
-  // Draw the cropped portion of the original canvas
-  ctx.drawImage(
-    originalCanvas,
-    cropAmount, cropAmount, newWidth, newHeight, // Source coordinates and dimensions
-    0, 0, newWidth, newHeight // Destination coordinates and dimensions
-  );
-  
-  return croppedCanvas;
-};
+
 
 /**
  * Helper function to get numeric border thickness percentage value from string/option
@@ -239,70 +217,41 @@ export default function CollagePage() {
     debugLog('Floating button: Generating collage...');
     setIsCreatingCollage(true);
     
-    const collagePreviewElement = document.querySelector('[data-testid="dynamic-collage-preview-root"]');
+    // Find the canvas element instead of the HTML element
+    const canvasElement = document.querySelector('[data-testid="canvas-collage-preview"]');
 
-    if (!collagePreviewElement) {
-      console.error('Collage preview element not found.');
+    if (!canvasElement) {
+      console.error('Canvas collage preview element not found.');
       setIsCreatingCollage(false);
       return;
     }
 
-    // Temporarily hide control icons by adding a CSS class
-    collagePreviewElement.classList.add('export-mode');
-
     try {
-      const html2canvasModule = await import('html2canvas');
-      const html2canvas = html2canvasModule.default;
-      
-      const canvas = await html2canvas(collagePreviewElement, {
-        useCORS: true,
-        allowTaint: true,
-        logging: DEBUG_MODE,
-        scale: window.devicePixelRatio * 2,
-        onclone: (clonedDoc) => {
-          try {
-            const root = clonedDoc.querySelector('[data-testid="dynamic-collage-preview-root"]');
-            if (!root) return;
-
-            root.querySelectorAll('img').forEach((img) => {
-              const computed = clonedDoc.defaultView.getComputedStyle(img);
-              if (computed.getPropertyValue('object-fit') !== 'cover') return;
-
-              const src = img.getAttribute('src');
-              if (!src) return;
-
-              const replacement = clonedDoc.createElement('div');
-              replacement.style.width = '100%';
-              replacement.style.height = '100%';
-              replacement.style.backgroundImage = `url('${src}')`;
-              replacement.style.backgroundSize = 'cover';
-              replacement.style.backgroundPosition = 'center center';
-              replacement.style.backgroundRepeat = 'no-repeat';
-
-              const transform = computed.getPropertyValue('transform');
-              if (transform && transform !== 'none') {
-                replacement.style.transform = transform;
-              }
-
-              img.parentNode.replaceChild(replacement, img);
-            });
-          } catch (cloneErr) {
-            console.error('onclone processing failed', cloneErr);
+      // Get the canvas blob directly - no need for html2canvas
+      if (canvasElement.getCanvasBlob) {
+        const blob = await canvasElement.getCanvasBlob();
+        if (blob) {
+          setFinalImage(blob);
+          setShowResultDialog(true);
+          debugLog("Floating button: Collage generated directly from canvas.");
+        } else {
+          console.error('Failed to generate canvas blob.');
+        }
+      } else {
+        // Fallback: use canvas toBlob method directly
+        canvasElement.toBlob((blob) => {
+          if (blob) {
+            setFinalImage(blob);
+            setShowResultDialog(true);
+            debugLog("Floating button: Collage generated directly from canvas (fallback method).");
+          } else {
+            console.error('Failed to generate canvas blob using fallback method.');
           }
-        },
-      });
-      
-      const croppedCanvas = cropCanvas(canvas, 3);
-      croppedCanvas.toBlob((blob) => {
-        setFinalImage(blob);
-        setShowResultDialog(true);
-        debugLog("Floating button: Collage generated, cropped, and inline result shown.");
-      }, 'image/png');
-
+        }, 'image/png');
+      }
     } catch (err) {
       console.error('Error generating collage:', err);
     } finally {
-      collagePreviewElement.classList.remove('export-mode');
       setIsCreatingCollage(false);
     }
   };

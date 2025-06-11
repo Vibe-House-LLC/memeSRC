@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Menu, MenuItem, Box } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { aspectRatioPresets } from '../config/CollageConfig';
-import DynamicCollagePreview from './DynamicCollagePreview';
+import CanvasCollagePreview from './CanvasCollagePreview';
 
 /**
  * Get the aspect ratio value from the presets
@@ -211,7 +211,7 @@ const CollagePreview = ({
 
   return (
     <Box sx={{ position: 'relative' }}>
-      <DynamicCollagePreview
+      <CanvasCollagePreview
         selectedTemplate={selectedTemplate}
         selectedAspectRatio={selectedAspectRatio}
         panelCount={panelCount}

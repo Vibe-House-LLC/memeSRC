@@ -1,0 +1,743 @@
+import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
+import { Box, IconButton, Typography } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
+import { Add, OpenWith, Check } from '@mui/icons-material';
+import { layoutDefinitions } from '../config/layouts';
+
+/**
+ * Helper function to get border pixel size based on percentage and component width
+ */
+const getBorderPixelSize = (borderThickness, componentWidth = 400) => {
+  if (typeof borderThickness === 'number') {
+    return Math.round((borderThickness / 100) * componentWidth);
+  }
+  return 0;
+};
+
+/**
+ * Helper function to create layout config from template
+ */
+const createLayoutConfig = (template, panelCount) => {
+  if (!template) return null;
+  
+  console.log("Creating layout config for template:", template);
+  
+  try {
+    // Look up the original layout in the layout definitions
+    const panelCountKey = Math.max(2, Math.min(panelCount, 5));
+    const categories = layoutDefinitions[panelCountKey];
+    
+    // Search for the layout in all categories (wide, tall, square)
+    if (categories) {
+      const foundLayout = Object.keys(categories).reduce((result, category) => {
+        if (result) return result; // Already found a layout
+        
+        const layouts = categories[category];
+        const originalLayout = layouts.find(l => l.id === template.id);
+        
+        if (originalLayout && typeof originalLayout.getLayoutConfig === 'function') {
+          return originalLayout;
+        }
+        
+        return null;
+      }, null);
+      
+      if (foundLayout) {
+        console.log("Found layout, getting config:", foundLayout);
+        return foundLayout.getLayoutConfig();
+      }
+    }
+    
+    console.log("No layout found, using default grid");
+    // Fallback to a basic grid layout in case of error
+    return {
+      gridTemplateColumns: `repeat(${Math.ceil(Math.sqrt(panelCount))}, 1fr)`,
+      gridTemplateRows: `repeat(${Math.ceil(panelCount / Math.ceil(Math.sqrt(panelCount)))}, 1fr)`,
+      gridTemplateAreas: null,
+      items: Array(panelCount).fill({ gridArea: null })
+    };
+  } catch (error) {
+    console.error("Error creating layout config:", error, template);
+    // Fallback to a basic grid layout in case of error
+    return {
+      gridTemplateColumns: `repeat(${Math.ceil(Math.sqrt(panelCount))}, 1fr)`,
+      gridTemplateRows: `repeat(${Math.ceil(panelCount / Math.ceil(Math.sqrt(panelCount)))}, 1fr)`,
+      gridTemplateAreas: null,
+      items: Array(panelCount).fill({ gridArea: null })
+    };
+  }
+};
+
+/**
+ * Helper function to parse CSS grid template areas string
+ */
+const parseGridTemplateAreas = (gridTemplateAreas) => {
+  if (!gridTemplateAreas) return {};
+  
+  const areas = {};
+  
+  // Split by quotes to get individual rows
+  // Handle both 'row1' 'row2' and "row1" "row2" formats
+  const cleanString = gridTemplateAreas.trim();
+  let rows;
+  
+  if (cleanString.includes('" "')) {
+    // Format: "main main" "left right"
+    rows = cleanString.split('" "').map(row => 
+      row.replace(/"/g, '').trim().split(/\s+/)
+    );
+  } else if (cleanString.includes("' '")) {
+    // Format: 'main main' 'left right'
+    rows = cleanString.split("' '").map(row => 
+      row.replace(/'/g, '').trim().split(/\s+/)
+    );
+  } else {
+    // Single row or space-separated format
+    rows = [cleanString.replace(/['"]/g, '').trim().split(/\s+/)];
+  }
+  
+  // Find the bounds of each named area
+  rows.forEach((row, rowIndex) => {
+    row.forEach((areaName, colIndex) => {
+      if (areaName !== '.' && areaName !== '') {
+        if (!areas[areaName]) {
+          areas[areaName] = {
+            rowStart: rowIndex,
+            rowEnd: rowIndex,
+            colStart: colIndex,
+            colEnd: colIndex
+          };
+        } else {
+          // Extend the area bounds
+          areas[areaName].rowStart = Math.min(areas[areaName].rowStart, rowIndex);
+          areas[areaName].rowEnd = Math.max(areas[areaName].rowEnd, rowIndex);
+          areas[areaName].colStart = Math.min(areas[areaName].colStart, colIndex);
+          areas[areaName].colEnd = Math.max(areas[areaName].colEnd, colIndex);
+        }
+      }
+    });
+  });
+  
+  return areas;
+};
+
+/**
+ * Helper function to parse CSS grid template and convert to panel rectangles
+ */
+const parseGridToRects = (layoutConfig, containerWidth, containerHeight, panelCount, borderPixels) => {
+  const rects = [];
+  
+  // Calculate the available space (subtract borders)
+  const totalPadding = borderPixels * 2;
+  const availableWidth = containerWidth - totalPadding;
+  const availableHeight = containerHeight - totalPadding;
+  
+  // Parse grid template columns/rows to get exact dimensions and track sizes
+  let columns = 1;
+  let rows = 1;
+  let columnSizes = [1]; // Default: single column taking full width
+  let rowSizes = [1];    // Default: single row taking full height
+  
+  // Parse columns
+  if (layoutConfig.gridTemplateColumns) {
+    if (layoutConfig.gridTemplateColumns.includes('repeat(')) {
+      const repeatMatch = layoutConfig.gridTemplateColumns.match(/repeat\((\d+),/);
+      if (repeatMatch) {
+        columns = parseInt(repeatMatch[1], 10);
+        columnSizes = Array(columns).fill(1); // All equal size
+      }
+    } else {
+      // Parse individual fr units like "2fr 1fr" or "1fr 1fr 1fr"
+      const frMatches = layoutConfig.gridTemplateColumns.match(/(\d*\.?\d*)fr/g);
+      if (frMatches) {
+        columns = frMatches.length;
+        columnSizes = frMatches.map(match => {
+          const value = match.replace('fr', '');
+          return value === '' ? 1 : parseFloat(value);
+        });
+      }
+    }
+  }
+  
+  // Parse rows
+  if (layoutConfig.gridTemplateRows) {
+    if (layoutConfig.gridTemplateRows.includes('repeat(')) {
+      const repeatMatch = layoutConfig.gridTemplateRows.match(/repeat\((\d+),/);
+      if (repeatMatch) {
+        rows = parseInt(repeatMatch[1], 10);
+        rowSizes = Array(rows).fill(1); // All equal size
+      }
+    } else {
+      // Parse individual fr units like "2fr 1fr" or "1fr 1fr 1fr"
+      const frMatches = layoutConfig.gridTemplateRows.match(/(\d*\.?\d*)fr/g);
+      if (frMatches) {
+        rows = frMatches.length;
+        rowSizes = frMatches.map(match => {
+          const value = match.replace('fr', '');
+          return value === '' ? 1 : parseFloat(value);
+        });
+      }
+    }
+  }
+  
+  // Calculate total fractional units
+  const totalColumnFr = columnSizes.reduce((sum, size) => sum + size, 0);
+  const totalRowFr = rowSizes.reduce((sum, size) => sum + size, 0);
+  
+  // Calculate gaps - only between panels, not at edges
+  const horizontalGaps = Math.max(0, columns - 1) * borderPixels;
+  const verticalGaps = Math.max(0, rows - 1) * borderPixels;
+  
+  // Calculate base unit sizes
+  const columnFrUnit = (availableWidth - horizontalGaps) / totalColumnFr;
+  const rowFrUnit = (availableHeight - verticalGaps) / totalRowFr;
+  
+  // Helper function to calculate cumulative position and size for a cell
+  const getCellDimensions = (col, row) => {
+    // Calculate X position: sum of all previous column widths + gaps
+    let x = borderPixels;
+    for (let c = 0; c < col; c += 1) {
+      x += columnSizes[c] * columnFrUnit + borderPixels;
+    }
+    
+    // Calculate Y position: sum of all previous row heights + gaps  
+    let y = borderPixels;
+    for (let r = 0; r < row; r += 1) {
+      y += rowSizes[r] * rowFrUnit + borderPixels;
+    }
+    
+    // Calculate current cell dimensions
+    const width = columnSizes[col] * columnFrUnit;
+    const height = rowSizes[row] * rowFrUnit;
+    
+    return { x, y, width, height };
+  };
+
+  if (layoutConfig.areas && layoutConfig.areas.length > 0 && layoutConfig.gridTemplateAreas) {
+    // Use grid template areas - need to parse the actual grid areas
+    const gridAreas = parseGridTemplateAreas(layoutConfig.gridTemplateAreas);
+    
+    layoutConfig.areas.slice(0, panelCount).forEach((areaName, index) => {
+      const areaInfo = gridAreas[areaName];
+      if (areaInfo) {
+        // Calculate position and size based on grid area bounds
+        let x = borderPixels;
+        let y = borderPixels;
+        let width = 0;
+        let height = 0;
+        
+                 // Calculate X position and width
+         for (let c = 0; c < areaInfo.colStart; c += 1) {
+           x += columnSizes[c] * columnFrUnit + borderPixels;
+         }
+         for (let c = areaInfo.colStart; c <= areaInfo.colEnd; c += 1) {
+           width += columnSizes[c] * columnFrUnit;
+         }
+         // Add gaps between columns within the area
+         if (areaInfo.colEnd > areaInfo.colStart) {
+           width += (areaInfo.colEnd - areaInfo.colStart) * borderPixels;
+         }
+         
+         // Calculate Y position and height
+         for (let r = 0; r < areaInfo.rowStart; r += 1) {
+           y += rowSizes[r] * rowFrUnit + borderPixels;
+         }
+         for (let r = areaInfo.rowStart; r <= areaInfo.rowEnd; r += 1) {
+           height += rowSizes[r] * rowFrUnit;
+         }
+         // Add gaps between rows within the area
+         if (areaInfo.rowEnd > areaInfo.rowStart) {
+           height += (areaInfo.rowEnd - areaInfo.rowStart) * borderPixels;
+         }
+        
+        rects.push({
+          x,
+          y,
+          width,
+          height,
+          panelId: `panel-${index + 1}`,
+          index
+        });
+      }
+    });
+  } else {
+    // Use items array or simple grid
+    for (let i = 0; i < panelCount; i += 1) {
+      const col = i % columns;
+      const row = Math.floor(i / columns);
+      const { x, y, width, height } = getCellDimensions(col, row);
+      
+      rects.push({
+        x,
+        y,
+        width,
+        height,
+        panelId: `panel-${i + 1}`,
+        index: i
+      });
+    }
+  }
+  
+  return rects;
+};
+
+/**
+ * Canvas-based Collage Preview Component
+ */
+const CanvasCollagePreview = ({
+  selectedTemplate,
+  selectedAspectRatio,
+  panelCount,
+  images = [],
+  onPanelClick,
+  onMenuOpen,
+  aspectRatioValue = 1,
+  panelImageMapping = {},
+  borderThickness = 0,
+  borderColor = '#000000',
+  panelTransforms = {},
+  updatePanelTransform,
+}) => {
+  const theme = useTheme();
+  const canvasRef = useRef(null);
+  const containerRef = useRef(null);
+  const [componentWidth, setComponentWidth] = useState(400);
+  const [componentHeight, setComponentHeight] = useState(400);
+  const [loadedImages, setLoadedImages] = useState({});
+  const [panelRects, setPanelRects] = useState([]);
+  const [hoveredPanel, setHoveredPanel] = useState(null);
+  const [selectedPanel, setSelectedPanel] = useState(null);
+  const [isTransformMode, setIsTransformMode] = useState({});
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+
+  // Get layout configuration
+  const layoutConfig = useMemo(() => {
+    return selectedTemplate ? createLayoutConfig(selectedTemplate, panelCount) : null;
+  }, [selectedTemplate, panelCount]);
+
+  // Calculate border pixels
+  const borderPixels = getBorderPixelSize(borderThickness, componentWidth);
+
+  // Load images when they change
+  useEffect(() => {
+    const loadImage = (src, key) => {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => resolve({ key, img });
+        img.onerror = () => resolve({ key, img: null });
+        
+        if (typeof src === 'string') {
+          img.src = src;
+        } else if (src && typeof src === 'object') {
+          img.src = src.displayUrl || src.originalUrl || '';
+        }
+      });
+    };
+
+    const loadAllImages = async () => {
+      const imagePromises = images.map((imageData, index) => 
+        loadImage(imageData, index)
+      );
+      
+      const results = await Promise.all(imagePromises);
+      const newLoadedImages = {};
+      
+      results.forEach(({ key, img }) => {
+        if (img) {
+          newLoadedImages[key] = img;
+        }
+      });
+      
+      setLoadedImages(newLoadedImages);
+    };
+
+    if (images.length > 0) {
+      loadAllImages();
+    }
+  }, [images]);
+
+  // Update component dimensions and panel rectangles
+  useEffect(() => {
+    const updateDimensions = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        const width = rect.width || 400;
+        const height = width / aspectRatioValue;
+        
+        setComponentWidth(width);
+        setComponentHeight(height);
+        
+        if (layoutConfig) {
+          const rects = parseGridToRects(layoutConfig, width, height, panelCount, borderPixels);
+          setPanelRects(rects);
+        }
+      }
+    };
+
+    updateDimensions();
+    window.addEventListener('resize', updateDimensions);
+    
+    return () => window.removeEventListener('resize', updateDimensions);
+  }, [aspectRatioValue, layoutConfig, panelCount, borderPixels]);
+
+  // Draw the canvas
+  const drawCanvas = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    
+    // Set canvas size with device pixel ratio for crisp rendering
+    canvas.width = componentWidth * dpr;
+    canvas.height = componentHeight * dpr;
+    canvas.style.width = `${componentWidth}px`;
+    canvas.style.height = `${componentHeight}px`;
+    
+    // Scale context to match device pixel ratio
+    ctx.scale(dpr, dpr);
+    
+    // Clear canvas
+    ctx.clearRect(0, 0, componentWidth, componentHeight);
+    
+    // Draw background (border color if borders are enabled)
+    if (borderPixels > 0) {
+      ctx.fillStyle = borderColor;
+      ctx.fillRect(0, 0, componentWidth, componentHeight);
+    }
+    
+    // Draw panels
+    panelRects.forEach((rect) => {
+      const { x, y, width, height, panelId, index } = rect;
+      const imageIndex = panelImageMapping[panelId];
+      const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
+      const transform = panelTransforms[panelId] || { scale: 1, positionX: 0, positionY: 0 };
+      const isHovered = hoveredPanel === index;
+      const isSelected = selectedPanel === index;
+      const isInTransformMode = isTransformMode[panelId];
+      
+      // Draw panel background
+      ctx.fillStyle = hasImage 
+        ? (theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)')
+        : 'rgba(0,0,0,0.3)';
+      ctx.fillRect(x, y, width, height);
+      
+      // Draw hover effect
+      if (isHovered && !hasImage) {
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.fillRect(x, y, width, height);
+      }
+      
+      if (hasImage) {
+        const img = loadedImages[imageIndex];
+        if (img) {
+          ctx.save();
+          
+          // Clip to panel bounds
+          ctx.beginPath();
+          ctx.rect(x, y, width, height);
+          ctx.clip();
+          
+          // Calculate initial scale to cover the panel (like object-fit: cover)
+          const imageAspectRatio = img.naturalWidth / img.naturalHeight;
+          const panelAspectRatio = width / height;
+          
+          let initialScale;
+          if (imageAspectRatio > panelAspectRatio) {
+            // Image is wider than panel, scale to fit height
+            initialScale = height / img.naturalHeight;
+          } else {
+            // Image is taller than panel, scale to fit width  
+            initialScale = width / img.naturalWidth;
+          }
+          
+          // Apply user transform on top of initial scale
+          const finalScale = initialScale * transform.scale;
+          const scaledWidth = img.naturalWidth * finalScale;
+          const scaledHeight = img.naturalHeight * finalScale;
+          
+          // Calculate centering offset (for initial positioning)
+          const centerOffsetX = (width - scaledWidth) / 2;
+          const centerOffsetY = (height - scaledHeight) / 2;
+          
+          // Apply user position offset on top of centering
+          const finalOffsetX = centerOffsetX + transform.positionX;
+          const finalOffsetY = centerOffsetY + transform.positionY;
+          
+          // Draw image with transforms
+          ctx.drawImage(
+            img,
+            x + finalOffsetX,
+            y + finalOffsetY,
+            scaledWidth,
+            scaledHeight
+          );
+          
+          ctx.restore();
+          
+          // Draw hover effect for images
+          if (isHovered && !isInTransformMode) {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+            ctx.fillRect(x, y, width, height);
+          }
+        }
+      } else {
+        // Draw add icon for empty panels
+        const iconSize = Math.min(width, height) * 0.3;
+        const iconX = x + (width - iconSize) / 2;
+        const iconY = y + (height - iconSize) / 2;
+        
+        // Draw add icon background circle
+        ctx.fillStyle = '#2196F3';
+        ctx.beginPath();
+        ctx.arc(iconX + iconSize/2, iconY + iconSize/2, iconSize/2, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Draw plus sign
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        // Horizontal line
+        ctx.moveTo(iconX + iconSize * 0.25, iconY + iconSize/2);
+        ctx.lineTo(iconX + iconSize * 0.75, iconY + iconSize/2);
+        // Vertical line
+        ctx.moveTo(iconX + iconSize/2, iconY + iconSize * 0.25);
+        ctx.lineTo(iconX + iconSize/2, iconY + iconSize * 0.75);
+        ctx.stroke();
+      }
+    });
+  }, [
+    componentWidth, 
+    componentHeight, 
+    panelRects, 
+    loadedImages, 
+    panelImageMapping, 
+    panelTransforms, 
+    borderPixels, 
+    borderColor, 
+    hoveredPanel, 
+    selectedPanel, 
+    isTransformMode,
+    theme.palette.mode
+  ]);
+
+  // Redraw canvas when dependencies change
+  useEffect(() => {
+    drawCanvas();
+  }, [drawCanvas]);
+
+  // Handle mouse events
+  const handleMouseMove = useCallback((e) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    // Find which panel is under the mouse
+    const hoveredPanelIndex = panelRects.findIndex(panel => 
+      x >= panel.x && x <= panel.x + panel.width &&
+      y >= panel.y && y <= panel.y + panel.height
+    );
+    
+    if (hoveredPanelIndex !== hoveredPanel) {
+      setHoveredPanel(hoveredPanelIndex >= 0 ? hoveredPanelIndex : null);
+      canvas.style.cursor = hoveredPanelIndex >= 0 ? 'pointer' : 'default';
+    }
+    
+    // Handle dragging for transform mode
+    if (isDragging && selectedPanel !== null) {
+      const panel = panelRects[selectedPanel];
+      if (panel && isTransformMode[panel.panelId]) {
+        const deltaX = x - dragStart.x;
+        const deltaY = y - dragStart.y;
+        
+        const currentTransform = panelTransforms[panel.panelId] || { scale: 1, positionX: 0, positionY: 0 };
+        
+        if (updatePanelTransform) {
+          updatePanelTransform(panel.panelId, {
+            ...currentTransform,
+            positionX: currentTransform.positionX + deltaX,
+            positionY: currentTransform.positionY + deltaY
+          });
+        }
+        
+        setDragStart({ x, y });
+      }
+    }
+  }, [panelRects, hoveredPanel, isDragging, selectedPanel, dragStart, isTransformMode, panelTransforms, updatePanelTransform]);
+
+  const handleMouseDown = useCallback((e) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    const clickedPanelIndex = panelRects.findIndex(panel => 
+      x >= panel.x && x <= panel.x + panel.width &&
+      y >= panel.y && y <= panel.y + panel.height
+    );
+    
+    if (clickedPanelIndex >= 0) {
+      const clickedPanel = panelRects[clickedPanelIndex];
+      setSelectedPanel(clickedPanelIndex);
+      
+      // Check if this panel is in transform mode
+      if (isTransformMode[clickedPanel.panelId]) {
+        setIsDragging(true);
+        setDragStart({ x, y });
+      } else if (onPanelClick) {
+        // Regular panel click
+        onPanelClick(clickedPanel.index, clickedPanel.panelId);
+      }
+    }
+  }, [panelRects, isTransformMode, onPanelClick]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  const handleWheel = useCallback((e) => {
+    if (selectedPanel !== null) {
+      const panel = panelRects[selectedPanel];
+      if (panel && isTransformMode[panel.panelId]) {
+        e.preventDefault();
+        
+        const scaleChange = e.deltaY > 0 ? 0.9 : 1.1;
+        const currentTransform = panelTransforms[panel.panelId] || { scale: 1, positionX: 0, positionY: 0 };
+        const newScale = Math.max(0.1, Math.min(5, currentTransform.scale * scaleChange));
+        
+        if (updatePanelTransform) {
+          updatePanelTransform(panel.panelId, {
+            ...currentTransform,
+            scale: newScale
+          });
+        }
+      }
+    }
+  }, [selectedPanel, panelRects, isTransformMode, panelTransforms, updatePanelTransform]);
+
+  // Toggle transform mode for a panel
+  const toggleTransformMode = useCallback((panelId) => {
+    setIsTransformMode(prev => ({
+      ...prev,
+      [panelId]: !prev[panelId]
+    }));
+  }, []);
+
+  // Get final canvas for export
+  const getCanvasBlob = useCallback(() => {
+    return new Promise((resolve) => {
+      const canvas = canvasRef.current;
+      if (canvas) {
+        canvas.toBlob(resolve, 'image/png');
+      } else {
+        resolve(null);
+      }
+    });
+  }, []);
+
+  // Expose the getCanvasBlob function to parent components
+  useEffect(() => {
+    if (canvasRef.current) {
+      canvasRef.current.getCanvasBlob = getCanvasBlob;
+    }
+  }, [getCanvasBlob]);
+
+  if (!selectedTemplate || !layoutConfig) {
+    return (
+      <Box 
+        sx={{
+          width: '100%', 
+          paddingBottom: `${(1 / aspectRatioValue) * 100}%`, 
+          backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          position: 'relative',
+          borderRadius: 1,
+          border: `1px solid ${theme.palette.divider}`
+        }}
+      >
+        <Box 
+          sx={{ 
+            position: 'absolute', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          <Typography variant="body2" color="text.secondary">
+            Select a template to preview collage
+          </Typography>
+        </Box>
+      </Box>
+    );
+  }
+
+  return (
+    <Box ref={containerRef} sx={{ position: 'relative', width: '100%' }}>
+      <canvas
+        ref={canvasRef}
+        data-testid="canvas-collage-preview"
+        onMouseMove={handleMouseMove}
+        onMouseDown={handleMouseDown}
+        onMouseUp={handleMouseUp}
+        onWheel={handleWheel}
+        style={{
+          display: 'block',
+          width: '100%',
+          height: 'auto',
+          border: `1px solid ${theme.palette.divider}`,
+        }}
+      />
+      
+      {/* Control panels positioned over canvas */}
+      {panelRects.map((rect) => {
+        const { panelId, index } = rect;
+        const imageIndex = panelImageMapping[panelId];
+        const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
+        const isInTransformMode = isTransformMode[panelId];
+        
+        if (!hasImage) return null;
+        
+        return (
+          <IconButton
+            key={`control-${panelId}`}
+            size="small"
+            onClick={() => toggleTransformMode(panelId)}
+            sx={{
+              position: 'absolute',
+              top: rect.y + 8,
+              left: rect.x + rect.width - 56,
+              width: 48,
+              height: 48,
+              backgroundColor: isInTransformMode ? '#4CAF50' : '#2196F3',
+              color: '#ffffff',
+              border: '2px solid #ffffff',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+              '&:hover': {
+                backgroundColor: isInTransformMode ? '#388E3C' : '#1976D2',
+                transform: 'scale(1.1)',
+              },
+              zIndex: 10,
+            }}
+          >
+            {isInTransformMode ? <Check sx={{ fontSize: 24 }} /> : <OpenWith sx={{ fontSize: 20 }} />}
+          </IconButton>
+        );
+      })}
+    </Box>
+  );
+};
+
+export default CanvasCollagePreview; 
