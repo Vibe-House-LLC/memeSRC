@@ -674,17 +674,67 @@ const CanvasCollagePreview = ({
         
         const scaleChange = e.deltaY > 0 ? 0.9 : 1.1;
         const currentTransform = panelTransforms[panel.panelId] || { scale: 1, positionX: 0, positionY: 0 };
-        const newScale = Math.max(0.1, Math.min(5, currentTransform.scale * scaleChange));
+        const imageIndex = panelImageMapping[panel.panelId];
+        const img = loadedImages[imageIndex];
         
-        if (updatePanelTransform) {
-          updatePanelTransform(panel.panelId, {
-            ...currentTransform,
-            scale: newScale
-          });
+        if (img && updatePanelTransform) {
+          // Calculate the minimum scale needed to cover the panel (same as initial scale logic)
+          const imageAspectRatio = img.naturalWidth / img.naturalHeight;
+          const panelAspectRatio = panel.width / panel.height;
+          
+                     let minScale;
+           if (imageAspectRatio > panelAspectRatio) {
+             // Image is wider than panel, scale to fit height
+             minScale = 1; // The initial scale already fits height, so 1x user scale is minimum
+           } else {
+             // Image is taller than panel, scale to fit width  
+             minScale = 1; // The initial scale already fits width, so 1x user scale is minimum
+           }
+          
+                     const proposedScale = currentTransform.scale * scaleChange;
+           const newScale = Math.max(minScale, Math.min(5, proposedScale));
+           
+           // Recalculate position bounds with new scale and adjust position if needed
+           const initialScale = imageAspectRatio > panelAspectRatio 
+             ? panel.height / img.naturalHeight 
+             : panel.width / img.naturalWidth;
+           const finalScale = initialScale * newScale;
+           const scaledWidth = img.naturalWidth * finalScale;
+           const scaledHeight = img.naturalHeight * finalScale;
+           const centerOffsetX = (panel.width - scaledWidth) / 2;
+           const centerOffsetY = (panel.height - scaledHeight) / 2;
+           
+           let adjustedPositionX = currentTransform.positionX;
+           let adjustedPositionY = currentTransform.positionY;
+           
+           // Check and adjust horizontal position if needed
+           if (scaledWidth > panel.width) {
+             const maxPositionX = -centerOffsetX;
+             const minPositionX = panel.width - scaledWidth - centerOffsetX;
+             adjustedPositionX = Math.max(minPositionX, Math.min(maxPositionX, currentTransform.positionX));
+           } else {
+             adjustedPositionX = 0;
+           }
+           
+           // Check and adjust vertical position if needed
+           if (scaledHeight > panel.height) {
+             const maxPositionY = -centerOffsetY;
+             const minPositionY = panel.height - scaledHeight - centerOffsetY;
+             adjustedPositionY = Math.max(minPositionY, Math.min(maxPositionY, currentTransform.positionY));
+           } else {
+             adjustedPositionY = 0;
+           }
+          
+           updatePanelTransform(panel.panelId, {
+             ...currentTransform,
+             scale: newScale,
+             positionX: adjustedPositionX,
+             positionY: adjustedPositionY
+           });
         }
       }
     }
-  }, [selectedPanel, panelRects, isTransformMode, panelTransforms, updatePanelTransform]);
+  }, [selectedPanel, panelRects, isTransformMode, panelTransforms, updatePanelTransform, panelImageMapping, loadedImages]);
 
   // Toggle transform mode for a panel
   const toggleTransformMode = useCallback((panelId) => {
