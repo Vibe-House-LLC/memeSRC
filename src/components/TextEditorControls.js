@@ -16,6 +16,7 @@ import FormatAlignCenterIcon from '@mui/icons-material/FormatAlignCenter';
 import FormatAlignRightIcon from '@mui/icons-material/FormatAlignRight';
 import FormatColorTextIcon from '@mui/icons-material/FormatColorText';
 import BorderColorIcon from '@mui/icons-material/BorderColor';
+import fonts from '../utils/fonts';
 
 // Update PropTypes to include layerColor and layerStrokeColor
 TextEditorControls.propTypes = {
@@ -33,7 +34,7 @@ TextEditorControls.propTypes = {
     setLayerFonts: PropTypes.func.isRequired,
 };
 
-const fonts = ["Arial", "Courier New", "Georgia", "Verdana", "Akbar", "Baveuse", "PULPY", "scrubs", "South Park", "SPIDEY", "HORROR", "IMPACT", "Star Jedi", "twilight", "zuume"];
+
 
 const FontSelector = ({ selectedFont, onSelectFont, index }) => {
     return (

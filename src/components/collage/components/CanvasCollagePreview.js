@@ -3,6 +3,7 @@ import { Box, IconButton, Typography, TextField, Popover, Slider, FormControl, I
 import { useTheme } from "@mui/material/styles";
 import { Add, OpenWith, Check, TextFields, FormatColorText, Close } from '@mui/icons-material';
 import { layoutDefinitions } from '../config/layouts';
+import fonts from '../../../utils/fonts';
 
 /**
  * Helper function to get border pixel size based on percentage and component width
@@ -299,6 +300,7 @@ const CanvasCollagePreview = ({
   updatePanelTransform,
   panelTexts = {},
   updatePanelText,
+  lastUsedTextSettings = {},
 }) => {
   const theme = useTheme();
   const canvasRef = useRef(null);
@@ -517,16 +519,23 @@ const CanvasCollagePreview = ({
       if (panelText.content && panelText.content.trim()) {
         ctx.save();
         
-        // Set text properties
-        const fontSize = panelText.fontSize || 16;
-        const fontWeight = panelText.fontWeight || 'normal';
-        const fontFamily = panelText.fontFamily || 'Arial, sans-serif';
-        const textColor = panelText.color || '#ffffff';
+        // Set text properties (use last used settings as defaults)
+        const fontSize = panelText.fontSize || lastUsedTextSettings.fontSize || 26;
+        const fontWeight = panelText.fontWeight || lastUsedTextSettings.fontWeight || '700';
+        const fontFamily = panelText.fontFamily || lastUsedTextSettings.fontFamily || 'Arial';
+        const textColor = panelText.color || lastUsedTextSettings.color || '#ffffff';
+        const strokeWidth = panelText.strokeWidth || lastUsedTextSettings.strokeWidth || 2;
         
         ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
         ctx.fillStyle = textColor;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
+        
+        // Set stroke properties
+        ctx.strokeStyle = '#000000'; // Black stroke for contrast
+        ctx.lineWidth = strokeWidth;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
         
         // Add text shadow for better readability
         ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
@@ -587,6 +596,13 @@ const CanvasCollagePreview = ({
         // Draw each line
         wrappedLines.forEach((line, lineIndex) => {
           const lineY = textY - (wrappedLines.length - 1 - lineIndex) * lineHeight;
+          
+          // Draw stroke first if stroke width > 0
+          if (strokeWidth > 0) {
+            ctx.strokeText(line, textX, lineY);
+          }
+          
+          // Then draw the fill text on top
           ctx.fillText(line, textX, lineY);
         });
         
@@ -1020,9 +1036,9 @@ const CanvasCollagePreview = ({
             
             {/* Font size */}
             <Box sx={{ mb: 2 }}>
-              <Typography gutterBottom>Font Size: {panelTexts[textEditingPanel]?.fontSize || 16}px</Typography>
+              <Typography gutterBottom>Font Size: {panelTexts[textEditingPanel]?.fontSize || lastUsedTextSettings.fontSize || 26}px</Typography>
               <Slider
-                value={panelTexts[textEditingPanel]?.fontSize || 16}
+                value={panelTexts[textEditingPanel]?.fontSize || lastUsedTextSettings.fontSize || 26}
                 onChange={(e, value) => handleTextChange(textEditingPanel, 'fontSize', value)}
                 min={8}
                 max={72}
@@ -1036,11 +1052,29 @@ const CanvasCollagePreview = ({
               />
             </Box>
             
+            {/* Stroke width */}
+            <Box sx={{ mb: 2 }}>
+              <Typography gutterBottom>Stroke Width: {panelTexts[textEditingPanel]?.strokeWidth || lastUsedTextSettings.strokeWidth || 2}px</Typography>
+              <Slider
+                value={panelTexts[textEditingPanel]?.strokeWidth || lastUsedTextSettings.strokeWidth || 2}
+                onChange={(e, value) => handleTextChange(textEditingPanel, 'strokeWidth', value)}
+                min={0}
+                max={10}
+                step={0.5}
+                marks={[
+                  { value: 0, label: '0px' },
+                  { value: 2, label: '2px' },
+                  { value: 5, label: '5px' },
+                  { value: 10, label: '10px' }
+                ]}
+              />
+            </Box>
+            
             {/* Font weight */}
             <FormControl fullWidth sx={{ mb: 2 }}>
               <InputLabel>Font Weight</InputLabel>
               <Select
-                value={panelTexts[textEditingPanel]?.fontWeight || 'normal'}
+                value={panelTexts[textEditingPanel]?.fontWeight || lastUsedTextSettings.fontWeight || '700'}
                 onChange={(e) => handleTextChange(textEditingPanel, 'fontWeight', e.target.value)}
                 label="Font Weight"
               >
@@ -1063,18 +1097,15 @@ const CanvasCollagePreview = ({
             <FormControl fullWidth sx={{ mb: 2 }}>
               <InputLabel>Font Family</InputLabel>
               <Select
-                value={panelTexts[textEditingPanel]?.fontFamily || 'Arial, sans-serif'}
+                value={panelTexts[textEditingPanel]?.fontFamily || lastUsedTextSettings.fontFamily || 'Arial'}
                 onChange={(e) => handleTextChange(textEditingPanel, 'fontFamily', e.target.value)}
                 label="Font Family"
               >
-                <MenuItem value="Arial, sans-serif">Arial</MenuItem>
-                <MenuItem value="Helvetica, sans-serif">Helvetica</MenuItem>
-                <MenuItem value="'Times New Roman', serif">Times New Roman</MenuItem>
-                <MenuItem value="Georgia, serif">Georgia</MenuItem>
-                <MenuItem value="'Courier New', monospace">Courier New</MenuItem>
-                <MenuItem value="Verdana, sans-serif">Verdana</MenuItem>
-                <MenuItem value="Impact, sans-serif">Impact</MenuItem>
-                <MenuItem value="'Comic Sans MS', cursive">Comic Sans MS</MenuItem>
+                {fonts.map((font) => (
+                  <MenuItem key={font} value={font}>
+                    {font}
+                  </MenuItem>
+                ))}
               </Select>
             </FormControl>
             
@@ -1091,7 +1122,7 @@ const CanvasCollagePreview = ({
                       height: 40,
                       minWidth: 40,
                       backgroundColor: color,
-                      border: panelTexts[textEditingPanel]?.color === color ? '3px solid #2196F3' : '1px solid #ccc',
+                      border: (panelTexts[textEditingPanel]?.color || lastUsedTextSettings.color || '#ffffff') === color ? '3px solid #2196F3' : '1px solid #ccc',
                       '&:hover': {
                         backgroundColor: color,
                         opacity: 0.8,
@@ -1104,9 +1135,9 @@ const CanvasCollagePreview = ({
                 fullWidth
                 size="small"
                 label="Custom Color (hex)"
-                value={panelTexts[textEditingPanel]?.color || '#ffffff'}
+                value={panelTexts[textEditingPanel]?.color || lastUsedTextSettings.color || '#ffffff'}
                 onChange={(e) => handleTextChange(textEditingPanel, 'color', e.target.value)}
-                sx={{ mt: 1 }}
+                sx={{ mt: 2 }}
                 placeholder="#ffffff"
               />
             </Box>

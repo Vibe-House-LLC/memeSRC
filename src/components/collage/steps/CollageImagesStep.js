@@ -42,11 +42,27 @@ const CollageImagesStep = ({
   // Panel text state management
   const [panelTexts, setPanelTexts] = useState({});
   
+  // Last used text settings to remember across panels
+  const [lastUsedTextSettings, setLastUsedTextSettings] = useState({
+    fontSize: 26,
+    fontWeight: '700',
+    fontFamily: 'Arial',
+    color: '#ffffff',
+    strokeWidth: 2
+  });
+  
   // Function to update panel text
   const updatePanelText = useCallback((panelId, textConfig) => {
     setPanelTexts(prev => ({
       ...prev,
       [panelId]: textConfig
+    }));
+    
+    // Update last used settings (excluding content which is panel-specific)
+    const { content, ...settingsOnly } = textConfig;
+    setLastUsedTextSettings(prev => ({
+      ...prev,
+      ...settingsOnly
     }));
   }, []);
   
@@ -227,6 +243,7 @@ const CollageImagesStep = ({
             updatePanelTransform={updatePanelTransform}
             panelTexts={panelTexts}
             updatePanelText={updatePanelText}
+            lastUsedTextSettings={lastUsedTextSettings}
             onEditRequest={handleEditRequest}
             setFinalImage={setFinalImage}
             handleOpenExportDialog={handleOpenExportDialog}
