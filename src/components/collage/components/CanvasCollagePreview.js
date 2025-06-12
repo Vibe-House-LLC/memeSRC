@@ -316,6 +316,8 @@ const CanvasCollagePreview = ({
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [textEditingPanel, setTextEditingPanel] = useState(null);
   const [textEditAnchor, setTextEditAnchor] = useState(null);
+  const [touchStartDistance, setTouchStartDistance] = useState(null);
+  const [touchStartScale, setTouchStartScale] = useState(1);
 
   // Get layout configuration
   const layoutConfig = useMemo(() => {
@@ -838,6 +840,224 @@ const CanvasCollagePreview = ({
     }
   }, [selectedPanel, panelRects, isTransformMode, panelTransforms, updatePanelTransform, panelImageMapping, loadedImages]);
 
+  // Helper function to get distance between two touch points
+  const getTouchDistance = useCallback((touches) => {
+    if (touches.length < 2) return 0;
+    
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    
+    return Math.sqrt(dx * dx + dy * dy);
+  }, []);
+
+  // Helper function to get center point between two touches
+  const getTouchCenter = useCallback((touches) => {
+    if (touches.length < 2) return { x: touches[0].clientX, y: touches[0].clientY };
+    
+    return {
+      x: (touches[0].clientX + touches[1].clientX) / 2,
+      y: (touches[0].clientY + touches[1].clientY) / 2
+    };
+  }, []);
+
+  // Touch event handlers
+  const handleTouchStart = useCallback((e) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const rect = canvas.getBoundingClientRect();
+    const touches = Array.from(e.touches);
+    
+    if (touches.length === 1) {
+      // Single touch - handle like mouse down
+      const touch = touches[0];
+      const x = touch.clientX - rect.left;
+      const y = touch.clientY - rect.top;
+      
+      const clickedPanelIndex = panelRects.findIndex(panel => 
+        x >= panel.x && x <= panel.x + panel.width &&
+        y >= panel.y && y <= panel.y + panel.height
+      );
+      
+      if (clickedPanelIndex >= 0) {
+        const clickedPanel = panelRects[clickedPanelIndex];
+        setSelectedPanel(clickedPanelIndex);
+        
+        // Check if this panel is in transform mode
+        if (isTransformMode[clickedPanel.panelId]) {
+          e.preventDefault(); // Prevent scrolling
+          setIsDragging(true);
+          setDragStart({ x, y });
+        } else if (onPanelClick) {
+          // Regular panel click
+          onPanelClick(clickedPanel.index, clickedPanel.panelId);
+        }
+      }
+    } else if (touches.length === 2 && selectedPanel !== null) {
+      // Two touches - prepare for pinch zoom
+      const panel = panelRects[selectedPanel];
+      if (panel && isTransformMode[panel.panelId]) {
+        e.preventDefault(); // Prevent scrolling
+        const distance = getTouchDistance(touches);
+        const currentTransform = panelTransforms[panel.panelId] || { scale: 1, positionX: 0, positionY: 0 };
+        
+        setTouchStartDistance(distance);
+        setTouchStartScale(currentTransform.scale);
+        setIsDragging(false); // Stop any ongoing drag
+      }
+    }
+  }, [panelRects, isTransformMode, onPanelClick, selectedPanel, panelTransforms, getTouchDistance]);
+
+  const handleTouchMove = useCallback((e) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const rect = canvas.getBoundingClientRect();
+    const touches = Array.from(e.touches);
+    
+    if (touches.length === 1 && isDragging && selectedPanel !== null) {
+      // Single touch drag
+      const panel = panelRects[selectedPanel];
+      if (panel && isTransformMode[panel.panelId]) {
+        e.preventDefault(); // Prevent scrolling
+        
+        const touch = touches[0];
+        const x = touch.clientX - rect.left;
+        const y = touch.clientY - rect.top;
+        
+        const deltaX = x - dragStart.x;
+        const deltaY = y - dragStart.y;
+        
+        const currentTransform = panelTransforms[panel.panelId] || { scale: 1, positionX: 0, positionY: 0 };
+        const imageIndex = panelImageMapping[panel.panelId];
+        const img = loadedImages[imageIndex];
+        
+        if (img && updatePanelTransform) {
+          // Same positioning logic as mouse drag
+          const imageAspectRatio = img.naturalWidth / img.naturalHeight;
+          const panelAspectRatio = panel.width / panel.height;
+          
+          let initialScale;
+          if (imageAspectRatio > panelAspectRatio) {
+            initialScale = panel.height / img.naturalHeight;
+          } else {
+            initialScale = panel.width / img.naturalWidth;
+          }
+          
+          const finalScale = initialScale * currentTransform.scale;
+          const scaledWidth = img.naturalWidth * finalScale;
+          const scaledHeight = img.naturalHeight * finalScale;
+          
+          const centerOffsetX = (panel.width - scaledWidth) / 2;
+          const centerOffsetY = (panel.height - scaledHeight) / 2;
+          
+          const newPositionX = currentTransform.positionX + deltaX;
+          const newPositionY = currentTransform.positionY + deltaY;
+          
+          // Calculate bounds to prevent white space
+          let minPositionX;
+          let maxPositionX;
+          let minPositionY;
+          let maxPositionY;
+          
+          if (scaledWidth > panel.width) {
+            maxPositionX = -centerOffsetX;
+            minPositionX = panel.width - scaledWidth - centerOffsetX;
+          } else {
+            minPositionX = 0;
+            maxPositionX = 0;
+          }
+          
+          if (scaledHeight > panel.height) {
+            maxPositionY = -centerOffsetY;
+            minPositionY = panel.height - scaledHeight - centerOffsetY;
+          } else {
+            minPositionY = 0;
+            maxPositionY = 0;
+          }
+          
+          const clampedPositionX = Math.max(minPositionX, Math.min(maxPositionX, newPositionX));
+          const clampedPositionY = Math.max(minPositionY, Math.min(maxPositionY, newPositionY));
+          
+          updatePanelTransform(panel.panelId, {
+            ...currentTransform,
+            positionX: clampedPositionX,
+            positionY: clampedPositionY
+          });
+        }
+        
+        setDragStart({ x, y });
+      }
+    } else if (touches.length === 2 && selectedPanel !== null && touchStartDistance !== null) {
+      // Two-finger pinch zoom
+      const panel = panelRects[selectedPanel];
+      if (panel && isTransformMode[panel.panelId]) {
+        e.preventDefault(); // Prevent scrolling
+        
+        const currentDistance = getTouchDistance(touches);
+        const scaleRatio = currentDistance / touchStartDistance;
+        const newScale = touchStartScale * scaleRatio;
+        
+        const currentTransform = panelTransforms[panel.panelId] || { scale: 1, positionX: 0, positionY: 0 };
+        const imageIndex = panelImageMapping[panel.panelId];
+        const img = loadedImages[imageIndex];
+        
+        if (img && updatePanelTransform) {
+          // Calculate minimum scale (same logic as wheel handler)
+          const imageAspectRatio = img.naturalWidth / img.naturalHeight;
+          const panelAspectRatio = panel.width / panel.height;
+          
+          const minScale = 1;
+          const clampedScale = Math.max(minScale, Math.min(5, newScale));
+          
+          // Recalculate position bounds with new scale
+          const initialScale = imageAspectRatio > panelAspectRatio 
+            ? panel.height / img.naturalHeight 
+            : panel.width / img.naturalWidth;
+          const finalScale = initialScale * clampedScale;
+          const scaledWidth = img.naturalWidth * finalScale;
+          const scaledHeight = img.naturalHeight * finalScale;
+          const centerOffsetX = (panel.width - scaledWidth) / 2;
+          const centerOffsetY = (panel.height - scaledHeight) / 2;
+          
+          let adjustedPositionX = currentTransform.positionX;
+          let adjustedPositionY = currentTransform.positionY;
+          
+          // Check and adjust horizontal position if needed
+          if (scaledWidth > panel.width) {
+            const maxPositionX = -centerOffsetX;
+            const minPositionX = panel.width - scaledWidth - centerOffsetX;
+            adjustedPositionX = Math.max(minPositionX, Math.min(maxPositionX, currentTransform.positionX));
+          } else {
+            adjustedPositionX = 0;
+          }
+          
+          // Check and adjust vertical position if needed
+          if (scaledHeight > panel.height) {
+            const maxPositionY = -centerOffsetY;
+            const minPositionY = panel.height - scaledHeight - centerOffsetY;
+            adjustedPositionY = Math.max(minPositionY, Math.min(maxPositionY, currentTransform.positionY));
+          } else {
+            adjustedPositionY = 0;
+          }
+          
+          updatePanelTransform(panel.panelId, {
+            ...currentTransform,
+            scale: clampedScale,
+            positionX: adjustedPositionX,
+            positionY: adjustedPositionY
+          });
+        }
+      }
+    }
+  }, [isDragging, selectedPanel, panelRects, isTransformMode, dragStart, panelTransforms, panelImageMapping, loadedImages, updatePanelTransform, touchStartDistance, touchStartScale, getTouchDistance]);
+
+  const handleTouchEnd = useCallback((e) => {
+    setIsDragging(false);
+    setTouchStartDistance(null);
+    setTouchStartScale(1);
+  }, []);
+
   // Toggle transform mode for a panel
   const toggleTransformMode = useCallback((panelId) => {
     setIsTransformMode(prev => ({
@@ -930,11 +1150,15 @@ const CanvasCollagePreview = ({
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
         onWheel={handleWheel}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
         style={{
           display: 'block',
           width: '100%',
           height: 'auto',
           border: `1px solid ${theme.palette.divider}`,
+          touchAction: 'none', // Prevent default touch behaviors
         }}
       />
       
