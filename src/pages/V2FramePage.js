@@ -57,6 +57,7 @@ import FramePageBottomBannerAd from '../ads/FramePageBottomBannerAd';
 import { UserContext } from '../UserContext';
 import HomePageBannerAd from '../ads/HomePageBannerAd';
 import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
+import { useCollector } from '../contexts/CollectorContext';
 
 // import { listGlobalMessages } from '../../../graphql/queries'
 
@@ -108,6 +109,7 @@ export default function FramePage({ shows = [] }) {
   const throttleTimeoutRef = useRef(null);
 
   const { user } = useContext(UserContext);
+  const { addItem, isItemCollected, collectedItems, count } = useCollector();
 
   /* ---------- This is used to prevent slider activity while scrolling on mobile ---------- */
 

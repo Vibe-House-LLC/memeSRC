@@ -4,6 +4,7 @@ import { Fab, Button, styled, Stack, Typography, Box } from '@mui/material';
 import { MapsUgc, Favorite, Shuffle, Collections } from '@mui/icons-material';
 import LoadingButton from '@mui/lab/LoadingButton';
 import useLoadRandomFrame from '../../utils/loadRandomFrame';
+import { useCollector } from '../../contexts/CollectorContext';
 
 // Define constants for colors and fonts
 const PRIMARY_COLOR = '#4285F4';
@@ -55,27 +56,38 @@ const StyledRightFooter = styled('footer')`
 const ImageDrawerPopup = styled('div')`
     position: fixed;
     bottom: ${props => props.hasAd ? '110px' : '70px'};
-    left: 20px;
-    background-color: rgba(0, 0, 0, 0.6);
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-radius: 8px;
-    padding: 16px;
-    min-width: 200px;
-    max-width: 300px;
-    max-height: 400px;
+    left: 0;
+    right: 0;
+    width: 100%;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.05));
+    padding: 20px 16px 16px 16px;
+    max-height: 200px;
     overflow-y: auto;
     z-index: 1301;
-    backdrop-filter: blur(4px);
+    backdrop-filter: blur(6px);
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    animation: slideUpFade 0.4s ease-out forwards;
+    
+    @keyframes slideUpFade {
+        0% {
+            transform: translateY(100%);
+            opacity: 0;
+        }
+        100% {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
 `;
 
 export default function FloatingActionButtons({ shows, showAd }) {
     const { loadRandomFrame, loadingRandom, error } = useLoadRandomFrame();
+    const { collectedItems, clearAll, removeItem, count } = useCollector();
     const [showImageDrawer, setShowImageDrawer] = useState(false);
-    const [queuedImages, setQueuedImages] = useState([]); // This will hold the metadata images
     const popupRef = useRef(null);
     const buttonRef = useRef(null);
 
-    console.log('showImageDrawer:', showImageDrawer, 'queuedImages.length:', queuedImages.length);
+    console.log('showImageDrawer:', showImageDrawer, 'collectedItems.length:', collectedItems.length);
 
     // Handle click outside to close popup
     useEffect(() => {
@@ -135,9 +147,9 @@ export default function FloatingActionButtons({ shows, showAd }) {
                 <ImageDrawerPopup ref={popupRef} hasAd={showAd}>
                     <Stack spacing={2}>
                         <Typography variant="h6" style={{ color: 'white', marginBottom: '8px', textAlign: 'center' }}>
-                            Image Drawer
+                            Image Drawer ({count})
                         </Typography>
-                        {queuedImages.length === 0 ? (
+                        {collectedItems.length === 0 ? (
                             <Typography 
                                 variant="body2" 
                                 style={{ 
@@ -147,26 +159,46 @@ export default function FloatingActionButtons({ shows, showAd }) {
                                     padding: '20px 0'
                                 }}
                             >
-                                No images added
+                                No images collected
                             </Typography>
                         ) : (
                             <Stack spacing={1}>
-                                {queuedImages.map((image, index) => (
+                                {collectedItems.map((item, index) => (
                                     <Box 
-                                        key={index}
+                                        key={item.id}
                                         style={{
                                             padding: '8px',
                                             backgroundColor: 'rgba(255, 255, 255, 0.1)',
                                             borderRadius: '4px',
-                                            cursor: 'pointer'
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center'
                                         }}
+                                        onClick={() => removeItem(item.id)}
                                     >
-                                        {/* Future: Display image thumbnail and metadata */}
                                         <Typography variant="body2" style={{ color: 'white' }}>
-                                            Image {index + 1}
+                                            S{item.season}E{item.episode} - Frame {item.frame}
+                                        </Typography>
+                                        <Typography variant="caption" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>
+                                            Tap to remove
                                         </Typography>
                                     </Box>
                                 ))}
+                                {collectedItems.length > 1 && (
+                                    <Button 
+                                        onClick={clearAll}
+                                        variant="outlined"
+                                        size="small"
+                                        style={{ 
+                                            color: 'white', 
+                                            borderColor: 'rgba(255, 255, 255, 0.3)',
+                                            marginTop: '8px'
+                                        }}
+                                    >
+                                        Clear All
+                                    </Button>
+                                )}
                             </Stack>
                         )}
                     </Stack>
