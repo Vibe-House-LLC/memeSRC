@@ -1350,7 +1350,7 @@ useEffect(() => {
                 fullWidth
                 variant="outlined"
                 onClick={handleAddToCollection}
-                disabled={!confirmedCid || isItemCollected(confirmedCid, parseInt(season, 10), parseInt(episode, 10), parseInt(frame, 10))}
+                disabled={!confirmedCid}
                 sx={{ 
                   mb: 2, 
                   borderColor: '#2196F3', 
@@ -1366,10 +1366,7 @@ useEffect(() => {
                 }}
                 startIcon={<Collections />}
               >
-                {isItemCollected(confirmedCid, parseInt(season, 10), parseInt(episode, 10), parseInt(frame, 10)) 
-                  ? 'Already in Collection' 
-                  : 'Add to Collection'
-                }
+                Add to Collection
               </Button>
           </Grid>
           {/* {user?.userDetails?.subscriptionStatus !== 'active' &&

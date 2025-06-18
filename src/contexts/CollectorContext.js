@@ -41,18 +41,6 @@ export const CollectorProvider = ({ children }) => {
 
   const addItem = useCallback((item) => {
     setCollectedItems(prev => {
-      // Check if item already exists (by unique identifier)
-      const exists = prev.some(existing => 
-        existing.cid === item.cid && 
-        existing.season === item.season && 
-        existing.episode === item.episode && 
-        existing.frame === item.frame
-      );
-      
-      if (exists) {
-        return prev; // Don't add duplicates
-      }
-      
       return [...prev, { ...item, id: Date.now() + Math.random() }];
     });
   }, []);
