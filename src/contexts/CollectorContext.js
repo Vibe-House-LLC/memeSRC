@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 
 const CollectorContext = createContext();
+const STORAGE_KEY = 'memeSRC_collectedItems';
 
 export const useCollector = () => {
   const context = useContext(CollectorContext);
@@ -10,8 +11,33 @@ export const useCollector = () => {
   return context;
 };
 
+// Helper function to safely get items from localStorage
+const getStoredItems = () => {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch (error) {
+    console.error('Error loading collected items from localStorage:', error);
+    return [];
+  }
+};
+
+// Helper function to safely save items to localStorage
+const saveItemsToStorage = (items) => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  } catch (error) {
+    console.error('Error saving collected items to localStorage:', error);
+  }
+};
+
 export const CollectorProvider = ({ children }) => {
-  const [collectedItems, setCollectedItems] = useState([]);
+  const [collectedItems, setCollectedItems] = useState(() => getStoredItems());
+
+  // Save to localStorage whenever collectedItems changes
+  useEffect(() => {
+    saveItemsToStorage(collectedItems);
+  }, [collectedItems]);
 
   const addItem = useCallback((item) => {
     setCollectedItems(prev => {

@@ -47,7 +47,7 @@ import {
   ToggleButton,
   Popover,
 } from '@mui/material';
-import { Add, ArrowBack, ArrowBackIos, ArrowForward, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, FontDownload, FontDownloadOutlined, FormatBold, FormatColorFill, FormatItalic, FormatLineSpacing, FormatSize, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu, OpenInBrowser, OpenInNew, VerticalAlignBottom, VerticalAlignTop, Visibility, VisibilityOff } from '@mui/icons-material';
+import { Add, ArrowBack, ArrowBackIos, ArrowForward, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, FontDownload, FontDownloadOutlined, FormatBold, FormatColorFill, FormatItalic, FormatLineSpacing, FormatSize, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu, OpenInBrowser, OpenInNew, VerticalAlignBottom, VerticalAlignTop, Visibility, VisibilityOff, Collections } from '@mui/icons-material';
 import { TwitterPicker } from 'react-color';
 import useSearchDetails from '../hooks/useSearchDetails';
 import { fetchFrameInfo, fetchFramesFineTuning, fetchFramesSurroundingPromises } from '../utils/frameHandlerV2';
@@ -110,6 +110,21 @@ export default function FramePage({ shows = [] }) {
 
   const { user } = useContext(UserContext);
   const { addItem, isItemCollected, collectedItems, count } = useCollector();
+
+  // Function to add current frame to collector
+  const handleAddToCollection = () => {
+    const currentItem = {
+      cid: confirmedCid,
+      season: parseInt(season, 10),
+      episode: parseInt(episode, 10),
+      frame: parseInt(frame, 10),
+      subtitle: loadedSubtitle || '',
+      frameImage: displayImage || frameData?.frame_image,
+      showTitle: showTitle || frameData?.showTitle,
+      timestamp: frameToTimeCode(frame)
+    };
+    addItem(currentItem);
+  };
 
   /* ---------- This is used to prevent slider activity while scrolling on mobile ---------- */
 
@@ -1328,6 +1343,33 @@ useEffect(() => {
                 startIcon={<Edit />}
               >
                 Advanced Editor
+              </Button>
+
+              <Button
+                size="medium"
+                fullWidth
+                variant="outlined"
+                onClick={handleAddToCollection}
+                disabled={!confirmedCid || isItemCollected(confirmedCid, parseInt(season, 10), parseInt(episode, 10), parseInt(frame, 10))}
+                sx={{ 
+                  mb: 2, 
+                  borderColor: '#2196F3', 
+                  color: '#2196F3',
+                  '&:hover': { 
+                    borderColor: '#1976D2', 
+                    backgroundColor: 'rgba(33, 150, 243, 0.04)' 
+                  },
+                  '&.Mui-disabled': {
+                    borderColor: '#ccc',
+                    color: '#ccc'
+                  }
+                }}
+                startIcon={<Collections />}
+              >
+                {isItemCollected(confirmedCid, parseInt(season, 10), parseInt(episode, 10), parseInt(frame, 10)) 
+                  ? 'Already in Collection' 
+                  : 'Add to Collection'
+                }
               </Button>
           </Grid>
           {/* {user?.userDetails?.subscriptionStatus !== 'active' &&
