@@ -13,6 +13,7 @@ import AddCidPopup from "../../components/ipfs/add-cid-popup";
 import { UserContext } from "../../UserContext";
 import useLoadRandomFrame from "../../utils/loadRandomFrame";
 import FixedMobileBannerAd from '../../ads/FixedMobileBannerAd';
+import FloatingActionButtons from "../../components/floating-action-buttons/FloatingActionButtons";
 
 // Define constants for colors and fonts
 const PRIMARY_COLOR = '#4285F4';
@@ -100,7 +101,6 @@ export default function IpfsSearchBar(props) {
   const { pathname } = useLocation();
   const { user, shows, defaultShow, handleUpdateDefaultShow } = useContext(UserContext);
   const { show, setShow, searchQuery, setSearchQuery, cid = shows.some(show => show.isFavorite) ? params?.cid || defaultShow : params?.cid || '_universal', setCid, localCids, setLocalCids, showObj, setShowObj, selectedFrameIndex, setSelectedFrameIndex, savedCids, loadingSavedCids } = useSearchDetailsV2();
-  const { loadRandomFrame, loadingRandom, error } = useLoadRandomFrame();
   const [searchParams, setSearchParams] = useSearchParams();
   const searchTerm = searchParams.get('searchTerm');
 
@@ -363,21 +363,7 @@ export default function IpfsSearchBar(props) {
       {Children.map(props.children, (child) => {
         return cloneElement(child, { shows });
       })}
-      <StyledLeftFooter className="bottomBtn" hasAd={showAd}>
-        <a href="/support" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
-          <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black", zIndex: '1300' }} size='medium'>
-            <MapsUgc color="white" />
-          </Fab>
-        </a>
-        <a href="https://memesrc.com/donate" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
-          <Fab color="primary" aria-label="donate" style={{ backgroundColor: "black", zIndex: '1300' }} size='medium'>
-            <Favorite />
-          </Fab>
-        </a>
-      </StyledLeftFooter>
-      <StyledRightFooter className="bottomBtn" hasAd={showAd}>
-        <StyledButton onClick={() => { loadRandomFrame(cid) }} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
-      </StyledRightFooter>
+      <FloatingActionButtons shows={cid} showAd={showAd} />
 
       {showAd && (
         <StyledAdFooter>
