@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
-import { Fab, Button, styled, Stack, Typography, Box } from '@mui/material';
-import { MapsUgc, Favorite, Shuffle, Collections } from '@mui/icons-material';
+import { Fab, Button, styled, Stack, Typography, Box, CardMedia, Divider } from '@mui/material';
+import { MapsUgc, Favorite, Shuffle, Collections, Delete } from '@mui/icons-material';
 import LoadingButton from '@mui/lab/LoadingButton';
 import useLoadRandomFrame from '../../utils/loadRandomFrame';
 import { useCollector } from '../../contexts/CollectorContext';
@@ -59,12 +59,12 @@ const ImageDrawerPopup = styled('div')`
     left: 0;
     right: 0;
     width: 100%;
-    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.05));
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.3));
     padding: 20px 16px 16px 16px;
-    max-height: 200px;
+    max-height: 400px;
     overflow-y: auto;
     z-index: 1301;
-    backdrop-filter: blur(6px);
+    backdrop-filter: blur(8px);
     border-top: 1px solid rgba(255, 255, 255, 0.2);
     animation: slideUpFade 0.4s ease-out forwards;
     
@@ -79,6 +79,15 @@ const ImageDrawerPopup = styled('div')`
         }
     }
 `;
+
+// Helper function to generate image URL from collected item
+const getImageUrl = (item) => {
+    if (item.frameImage && item.frameImage.startsWith('http')) {
+        return item.frameImage;
+    }
+    // Use the same URL format as videoFrameExtractor.js
+    return `https://v2-${process.env.REACT_APP_USER_BRANCH}.memesrc.com/frame/${item.cid}/${item.season}/${item.episode}/${item.frame}`;
+};
 
 export default function FloatingActionButtons({ shows, showAd }) {
     const { loadRandomFrame, loadingRandom, error } = useLoadRandomFrame();
@@ -162,41 +171,109 @@ export default function FloatingActionButtons({ shows, showAd }) {
                                 No images collected
                             </Typography>
                         ) : (
-                            <Stack spacing={1}>
+                            <Stack spacing={2}>
                                 {collectedItems.map((item, index) => (
                                     <Box 
                                         key={item.id}
                                         style={{
-                                            padding: '8px',
-                                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                            borderRadius: '4px',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            alignItems: 'center'
+                                            padding: '12px',
+                                            backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                                            borderRadius: '8px',
+                                            border: '1px solid rgba(255, 255, 255, 0.15)'
                                         }}
-                                        onClick={() => removeItem(item.id)}
                                     >
-                                        <Typography variant="body2" style={{ color: 'white' }}>
-                                            S{item.season}E{item.episode} - Frame {item.frame}
-                                        </Typography>
-                                        <Typography variant="caption" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>
-                                            Tap to remove
-                                        </Typography>
+                                        <Stack direction="row" spacing={2} alignItems="flex-start">
+                                            {/* Thumbnail */}
+                                            <Box style={{ flexShrink: 0 }}>
+                                                <CardMedia
+                                                    component="img"
+                                                    src={getImageUrl(item)}
+                                                    alt={`S${item.season}E${item.episode} Frame ${item.frame}`}
+                                                    style={{
+                                                        width: '80px',
+                                                        height: '45px',
+                                                        objectFit: 'cover',
+                                                        borderRadius: '4px',
+                                                        backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                                                    }}
+                                                    onError={(e) => {
+                                                        e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+                                                        e.target.style.display = 'flex';
+                                                        e.target.style.alignItems = 'center';
+                                                        e.target.style.justifyContent = 'center';
+                                                        e.target.innerHTML = '📷';
+                                                    }}
+                                                />
+                                            </Box>
+                                            
+                                            {/* Content */}
+                                            <Stack spacing={1} style={{ flex: 1, minWidth: 0 }}>
+                                                <Typography variant="body2" style={{ color: 'white', fontWeight: 'bold' }}>
+                                                    S{item.season}E{item.episode} - Frame {item.frame}
+                                                </Typography>
+                                                {item.timestamp && (
+                                                    <Typography variant="caption" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                                                        {item.timestamp}
+                                                    </Typography>
+                                                )}
+                                                {item.subtitle && (
+                                                    <Typography 
+                                                        variant="body2" 
+                                                        style={{ 
+                                                            color: 'rgba(255, 255, 255, 0.9)',
+                                                            fontStyle: 'italic',
+                                                            overflow: 'hidden',
+                                                            textOverflow: 'ellipsis',
+                                                            display: '-webkit-box',
+                                                            WebkitLineClamp: 2,
+                                                            WebkitBoxOrient: 'vertical'
+                                                        }}
+                                                    >
+                                                        "{item.subtitle}"
+                                                    </Typography>
+                                                )}
+                                            </Stack>
+                                            
+                                            {/* Remove button */}
+                                            <Button
+                                                onClick={() => removeItem(item.id)}
+                                                size="small"
+                                                style={{
+                                                    minWidth: '32px',
+                                                    width: '32px',
+                                                    height: '32px',
+                                                    padding: '0',
+                                                    color: 'rgba(255, 255, 255, 0.7)',
+                                                    flexShrink: 0
+                                                }}
+                                            >
+                                                <Delete fontSize="small" />
+                                            </Button>
+                                        </Stack>
+                                        
+                                        {index < collectedItems.length - 1 && (
+                                            <Divider style={{ 
+                                                marginTop: '12px', 
+                                                backgroundColor: 'rgba(255, 255, 255, 0.1)' 
+                                            }} />
+                                        )}
                                     </Box>
                                 ))}
+                                
                                 {collectedItems.length > 1 && (
                                     <Button 
                                         onClick={clearAll}
                                         variant="outlined"
                                         size="small"
+                                        fullWidth
                                         style={{ 
                                             color: 'white', 
                                             borderColor: 'rgba(255, 255, 255, 0.3)',
                                             marginTop: '8px'
                                         }}
+                                        startIcon={<Delete />}
                                     >
-                                        Clear All
+                                        Clear All ({count})
                                     </Button>
                                 )}
                             </Stack>
