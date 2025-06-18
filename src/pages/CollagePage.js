@@ -210,6 +210,48 @@ export default function CollagePage() {
     }
   }, [user, navigate, location.search, authorized, showWelcomeScreen]);
 
+  // Handle images passed from collector
+  useEffect(() => {
+    if (location.state?.fromCollector && location.state?.images) {
+      debugLog('Loading images from collector:', location.state.images);
+      
+      // Transform images to the expected format
+      const transformedImages = location.state.images.map(item => {
+        if (typeof item === 'string') {
+          return item; // Already a URL
+        }
+        // Return the displayUrl or originalUrl from the collector item
+        return item.displayUrl || item.originalUrl || item;
+      });
+      
+      addMultipleImages(transformedImages);
+      
+      // Auto-assign images to panels like bulk upload does
+      setTimeout(() => {
+        const newMapping = {};
+        const imagesToAssign = Math.min(transformedImages.length, panelCount);
+        
+        for (let i = 0; i < imagesToAssign; i += 1) {
+          const panelId = selectedTemplate?.layout?.panels?.[i]?.id || `panel-${i + 1}`;
+          newMapping[panelId] = i;
+        }
+        
+        debugLog('Auto-assigning collector images to panels:', newMapping);
+        updatePanelImageMapping(newMapping);
+        
+        // Adjust panel count if needed
+        if (transformedImages.length > panelCount && setPanelCount) {
+          const newPanelCount = Math.min(transformedImages.length, 12);
+          setPanelCount(newPanelCount);
+          debugLog(`Adjusted panel count to ${newPanelCount} for ${transformedImages.length} images`);
+        }
+      }, 100); // Small delay to ensure images are added first
+      
+      // Clear the navigation state to prevent re-loading on refresh
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state, addMultipleImages, navigate, location.pathname, panelCount, selectedTemplate, updatePanelImageMapping, setPanelCount]);
+
   // Note: BulkUploadSection auto-collapse logic removed since section is now hidden when images are present
 
   // Handler to go back to edit mode
@@ -307,12 +349,30 @@ export default function CollagePage() {
     }
   };
 
+  // Helper function to convert aspect ratio string to number
+  const getAspectRatioValue = (aspectRatio) => {
+    if (typeof aspectRatio === 'number') return aspectRatio;
+    
+    // If it's a string like "16:9", convert to decimal
+    if (typeof aspectRatio === 'string' && aspectRatio.includes(':')) {
+      const [width, height] = aspectRatio.split(':').map(Number);
+      return width / height;
+    }
+    
+    // Find in presets if it's a preset name
+    const preset = aspectRatioPresets.find(p => 
+      p.label === aspectRatio || p.value === aspectRatio
+    );
+    
+    return preset ? preset.value : parseFloat(aspectRatio) || 1;
+  };
+
   // Props for settings step (selectedImages length might be useful for UI feedback)
   const settingsStepProps = {
     selectedImageCount: selectedImages.length, // Pass count instead of full array
     selectedTemplate,
     setSelectedTemplate,
-    selectedAspectRatio,
+    selectedAspectRatio: getAspectRatioValue(selectedAspectRatio),
     setSelectedAspectRatio,
     panelCount,
     setPanelCount,
@@ -348,7 +408,7 @@ export default function CollagePage() {
     updatePanelTransform,
     panelCount,
     selectedTemplate,
-    selectedAspectRatio,
+    selectedAspectRatio: getAspectRatioValue(selectedAspectRatio),
     borderThickness: borderThicknessValue, // Pass the numeric value
     borderColor,
     borderThicknessOptions,

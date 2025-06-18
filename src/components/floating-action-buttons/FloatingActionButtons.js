@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { Fab, Button, styled, Stack, Typography, Box, CardMedia, Divider, Badge } from '@mui/material';
-import { MapsUgc, Favorite, Shuffle, Collections, Delete } from '@mui/icons-material';
+import { MapsUgc, Favorite, Shuffle, Collections, Delete, Dashboard } from '@mui/icons-material';
 import LoadingButton from '@mui/lab/LoadingButton';
+import { useNavigate } from 'react-router-dom';
 import useLoadRandomFrame from '../../utils/loadRandomFrame';
 import { useCollector } from '../../contexts/CollectorContext';
 
@@ -95,8 +96,39 @@ export default function FloatingActionButtons({ shows, showAd }) {
     const [showImageDrawer, setShowImageDrawer] = useState(false);
     const popupRef = useRef(null);
     const buttonRef = useRef(null);
+    const navigate = useNavigate();
 
     console.log('showImageDrawer:', showImageDrawer, 'collectedItems.length:', collectedItems.length);
+
+    // Function to create collage from collected items
+    const handleCreateCollage = () => {
+        if (collectedItems.length === 0) return;
+        
+        // Transform collected items into format expected by collage system
+        const collageImages = collectedItems.map(item => ({
+            originalUrl: getImageUrl(item),
+            displayUrl: getImageUrl(item),
+            subtitle: item.subtitle || '',
+            metadata: {
+                season: item.season,
+                episode: item.episode,
+                frame: item.frame,
+                timestamp: item.timestamp,
+                showTitle: item.showTitle
+            }
+        }));
+
+        // Navigate to collage page with images
+        navigate('/collage', { 
+            state: { 
+                fromCollector: true,
+                images: collageImages 
+            } 
+        });
+        
+        // Close the drawer
+        setShowImageDrawer(false);
+    };
 
     // Handle click outside to close popup
     useEffect(() => {
@@ -285,6 +317,22 @@ export default function FloatingActionButtons({ shows, showAd }) {
                                         )}
                                     </Box>
                                 ))}
+                                
+                                <Button 
+                                    onClick={handleCreateCollage}
+                                    variant="contained"
+                                    size="medium"
+                                    fullWidth
+                                    style={{ 
+                                        backgroundColor: '#4CAF50',
+                                        color: 'white',
+                                        marginTop: '12px',
+                                        fontWeight: 'bold'
+                                    }}
+                                    startIcon={<Dashboard />}
+                                >
+                                    Create Collage ({count} images)
+                                </Button>
                                 
                                 {collectedItems.length > 1 && (
                                     <Button 
