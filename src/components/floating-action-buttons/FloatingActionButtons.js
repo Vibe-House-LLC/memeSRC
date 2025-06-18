@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
-import { Fab, Button, styled, Stack, Typography, Box, CardMedia, Divider } from '@mui/material';
+import { Fab, Button, styled, Stack, Typography, Box, CardMedia, Divider, Badge } from '@mui/material';
 import { MapsUgc, Favorite, Shuffle, Collections, Delete } from '@mui/icons-material';
 import LoadingButton from '@mui/lab/LoadingButton';
 import useLoadRandomFrame from '../../utils/loadRandomFrame';
@@ -119,24 +119,50 @@ export default function FloatingActionButtons({ shows, showAd }) {
     return (
         <>
             <StyledLeftFooter className="bottomBtn" hasAd={showAd}>
-                <Button 
-                    ref={buttonRef}
-                    aria-label="image drawer" 
-                    onClick={() => setShowImageDrawer(!showImageDrawer)}
-                    style={{ 
-                        margin: "0 10px 0 0", 
-                        backgroundColor: "black", 
-                        zIndex: '1300',
-                        minWidth: '48px',
-                        width: '48px',
-                        height: '48px',
-                        borderRadius: '8px',
-                        padding: '0'
+                <Badge 
+                    badgeContent={count} 
+                    color="error"
+                    max={99}
+                    invisible={count === 0}
+                    anchorOrigin={{
+                        vertical: 'top',
+                        horizontal: 'right',
                     }}
-                    variant="contained"
+                    sx={{
+                        '& .MuiBadge-badge': {
+                            fontSize: '0.75rem',
+                            minWidth: '18px',
+                            height: '18px',
+                            backgroundColor: '#ff4444',
+                            color: 'white',
+                            fontWeight: 'bold',
+                            top: '6px',
+                            right: '6px',
+                            border: '2px solid black',
+                            borderRadius: '50%',
+                            zIndex: 1301
+                        }
+                    }}
                 >
-                    <Collections style={{ color: 'white' }} />
-                </Button>
+                    <Button 
+                        ref={buttonRef}
+                        aria-label="image drawer" 
+                        onClick={() => setShowImageDrawer(!showImageDrawer)}
+                        style={{ 
+                            margin: "0 10px 0 0", 
+                            backgroundColor: "black", 
+                            zIndex: '1300',
+                            minWidth: '48px',
+                            width: '48px',
+                            height: '48px',
+                            borderRadius: '8px',
+                            padding: '0'
+                        }}
+                        variant="contained"
+                    >
+                        <Collections style={{ color: 'white' }} />
+                    </Button>
+                </Badge>
                 <a href="/support" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
                     <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black", zIndex: '1300' }} size='medium'>
                         <MapsUgc color="white" />

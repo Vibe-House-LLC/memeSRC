@@ -124,6 +124,7 @@ export default function FramePage({ shows = [] }) {
       timestamp: frameToTimeCode(frame)
     };
     addItem(currentItem);
+    setCollectionSnackbarOpen(true);
   };
 
   /* ---------- This is used to prevent slider activity while scrolling on mobile ---------- */
@@ -171,6 +172,7 @@ export default function FramePage({ shows = [] }) {
   }, [cid]);
 
   const [snackbarOpen, setSnackBarOpen] = useState(false);
+  const [collectionSnackbarOpen, setCollectionSnackbarOpen] = useState(false);
 
   const [alertOpenTapToEdit, setAlertOpenTapToEdit] = useState(() => {
     return sessionStorage.getItem('alertDismissed-98ruio') !== 'true';
@@ -184,6 +186,10 @@ export default function FramePage({ shows = [] }) {
 
   const handleSnackbarClose = () => {
     setSnackBarOpen(false);
+  }
+
+  const handleCollectionSnackbarClose = () => {
+    setCollectionSnackbarOpen(false);
   }
 
   /* ---------------------------- Subtitle Function --------------------------- */
@@ -1491,6 +1497,17 @@ useEffect(() => {
           >
             <Alert onClose={handleSnackbarClose} severity="success" sx={{ width: '100%' }}>
               Copied to clipboard!
+            </Alert>
+          </Snackbar>
+
+          <Snackbar
+            open={collectionSnackbarOpen}
+            autoHideDuration={3000}
+            onClose={handleCollectionSnackbarClose}
+            anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+          >
+            <Alert onClose={handleCollectionSnackbarClose} severity="success" sx={{ width: '100%' }}>
+              Frame added to collection! ({count} items)
             </Alert>
           </Snackbar>
 
