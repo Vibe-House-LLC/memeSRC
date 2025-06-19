@@ -47,7 +47,7 @@ import {
   ToggleButton,
   Popover,
 } from '@mui/material';
-import { Add, ArrowBack, ArrowBackIos, ArrowForward, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, FontDownload, FontDownloadOutlined, FormatBold, FormatColorFill, FormatItalic, FormatLineSpacing, FormatSize, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu, OpenInBrowser, OpenInNew, VerticalAlignBottom, VerticalAlignTop, Visibility, VisibilityOff } from '@mui/icons-material';
+import { Add, ArrowBack, ArrowBackIos, ArrowForward, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, FontDownload, FontDownloadOutlined, FormatBold, FormatColorFill, FormatItalic, FormatLineSpacing, FormatSize, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu, OpenInBrowser, OpenInNew, VerticalAlignBottom, VerticalAlignTop, Visibility, VisibilityOff, Collections } from '@mui/icons-material';
 import { TwitterPicker } from 'react-color';
 import useSearchDetails from '../hooks/useSearchDetails';
 import { fetchFrameInfo, fetchFramesFineTuning, fetchFramesSurroundingPromises } from '../utils/frameHandlerV2';
@@ -57,6 +57,7 @@ import FramePageBottomBannerAd from '../ads/FramePageBottomBannerAd';
 import { UserContext } from '../UserContext';
 import HomePageBannerAd from '../ads/HomePageBannerAd';
 import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
+import { useCollector } from '../contexts/CollectorContext';
 
 // import { listGlobalMessages } from '../../../graphql/queries'
 
@@ -108,6 +109,23 @@ export default function FramePage({ shows = [] }) {
   const throttleTimeoutRef = useRef(null);
 
   const { user } = useContext(UserContext);
+  const { addItem, isItemCollected, collectedItems, count } = useCollector();
+
+  // Function to add current frame to collector
+  const handleAddToCollection = () => {
+    const currentItem = {
+      cid: confirmedCid,
+      season: parseInt(season, 10),
+      episode: parseInt(episode, 10),
+      frame: parseInt(frame, 10),
+      subtitle: loadedSubtitle || '',
+      frameImage: displayImage || frameData?.frame_image,
+      showTitle: showTitle || frameData?.showTitle,
+      timestamp: frameToTimeCode(frame)
+    };
+    addItem(currentItem);
+    setCollectionSnackbarOpen(true);
+  };
 
   /* ---------- This is used to prevent slider activity while scrolling on mobile ---------- */
 
@@ -154,6 +172,7 @@ export default function FramePage({ shows = [] }) {
   }, [cid]);
 
   const [snackbarOpen, setSnackBarOpen] = useState(false);
+  const [collectionSnackbarOpen, setCollectionSnackbarOpen] = useState(false);
 
   const [alertOpenTapToEdit, setAlertOpenTapToEdit] = useState(() => {
     return sessionStorage.getItem('alertDismissed-98ruio') !== 'true';
@@ -167,6 +186,10 @@ export default function FramePage({ shows = [] }) {
 
   const handleSnackbarClose = () => {
     setSnackBarOpen(false);
+  }
+
+  const handleCollectionSnackbarClose = () => {
+    setCollectionSnackbarOpen(false);
   }
 
   /* ---------------------------- Subtitle Function --------------------------- */
@@ -1327,6 +1350,30 @@ useEffect(() => {
               >
                 Advanced Editor
               </Button>
+
+              <Button
+                size="medium"
+                fullWidth
+                variant="outlined"
+                onClick={handleAddToCollection}
+                disabled={!confirmedCid}
+                sx={{ 
+                  mb: 2, 
+                  borderColor: '#2196F3', 
+                  color: '#2196F3',
+                  '&:hover': { 
+                    borderColor: '#1976D2', 
+                    backgroundColor: 'rgba(33, 150, 243, 0.04)' 
+                  },
+                  '&.Mui-disabled': {
+                    borderColor: '#ccc',
+                    color: '#ccc'
+                  }
+                }}
+                startIcon={<Collections />}
+              >
+                Add to Collection
+              </Button>
           </Grid>
           {/* {user?.userDetails?.subscriptionStatus !== 'active' &&
             <Grid item xs={12} my={1}>
@@ -1450,6 +1497,17 @@ useEffect(() => {
           >
             <Alert onClose={handleSnackbarClose} severity="success" sx={{ width: '100%' }}>
               Copied to clipboard!
+            </Alert>
+          </Snackbar>
+
+          <Snackbar
+            open={collectionSnackbarOpen}
+            autoHideDuration={3000}
+            onClose={handleCollectionSnackbarClose}
+            anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+          >
+            <Alert onClose={handleCollectionSnackbarClose} severity="success" sx={{ width: '100%' }}>
+              Frame added to collection! ({count} items)
             </Alert>
           </Snackbar>
 
