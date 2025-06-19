@@ -119,6 +119,7 @@ export default function FramePage({ shows = [] }) {
       episode: parseInt(episode, 10),
       frame: parseInt(frame, 10),
       subtitle: loadedSubtitle || '',
+      subtitleUserEdited: subtitleUserInteracted || (loadedSubtitle || '') !== (originalSubtitle || ''),
       frameImage: displayImage || frameData?.frame_image,
       showTitle: showTitle || frameData?.showTitle,
       timestamp: frameToTimeCode(frame)
@@ -409,6 +410,7 @@ export default function FramePage({ shows = [] }) {
           setFrameData(initialInfo);
           setDisplayImage(initialInfo.frame_image);
           setLoadedSubtitle(initialInfo.subtitle);
+          setOriginalSubtitle(initialInfo.subtitle);
           setLoadedSeason(season);
           setLoadedEpisode(episode);
           if (initialInfo.fontFamily && fonts.includes(initialInfo.fontFamily)) {
@@ -472,6 +474,8 @@ export default function FramePage({ shows = [] }) {
       setFrameData(null);
       setDisplayImage(null);
       setLoadedSubtitle(null);
+      setOriginalSubtitle('');
+      setSubtitleUserInteracted(false);
       setSelectedFrameIndex(5);
       setFineTuningFrames([]);
       setFrames([]);
@@ -578,6 +582,8 @@ useEffect(() => {
   const [loadingCsv, setLoadingCsv] = useState();
   const [frames, setFrames] = useState();
   const [loadedSubtitle, setLoadedSubtitle] = useState('');  // TODO
+  const [originalSubtitle, setOriginalSubtitle] = useState(''); // Track original subtitle from server
+  const [subtitleUserInteracted, setSubtitleUserInteracted] = useState(false); // Track if user interacted with subtitle UI
   const [loadedSeason, setLoadedSeason] = useState('');  // TODO
   const [loadedEpisode, setLoadedEpisode] = useState('');  // TODO
   const [formats, setFormats] = useState(() => ['bold', 'italic']);
@@ -1038,9 +1044,15 @@ useEffect(() => {
                           size="small"
                           placeholder="Type a caption..."
                           value={loadedSubtitle}
-                          onMouseDown={() => setShowText(true)}
+                          onMouseDown={() => {
+                            setShowText(true);
+                            setSubtitleUserInteracted(true);
+                          }}
                           onChange={(e) => setLoadedSubtitle(e.target.value)}
-                          onFocus={() => setTextFieldFocused(true)}
+                          onFocus={() => {
+                            setTextFieldFocused(true);
+                            setSubtitleUserInteracted(true);
+                          }}
                           onBlur={() => setTextFieldFocused(false)}
                           InputProps={{
                             style: {
@@ -1332,7 +1344,8 @@ useEffect(() => {
               sx={{ mt: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: theme => theme.palette.grey[400] } }}
               // startIcon={<Edit />}
               onClick={() => {
-                setShowText(true)
+                setShowText(true);
+                setSubtitleUserInteracted(true);
               }}
             >
               Make A Meme

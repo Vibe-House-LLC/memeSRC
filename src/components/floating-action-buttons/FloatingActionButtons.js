@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { Fab, Button, styled, Stack, Typography, Box, CardMedia, Divider, Badge } from '@mui/material';
-import { MapsUgc, Favorite, Shuffle, Collections, Delete, Dashboard } from '@mui/icons-material';
+import { MapsUgc, Favorite, Shuffle, Collections, Delete, Dashboard, Edit } from '@mui/icons-material';
 import LoadingButton from '@mui/lab/LoadingButton';
 import { useNavigate } from 'react-router-dom';
 import useLoadRandomFrame from '../../utils/loadRandomFrame';
@@ -109,6 +109,7 @@ export default function FloatingActionButtons({ shows, showAd }) {
             originalUrl: getImageUrl(item),
             displayUrl: getImageUrl(item),
             subtitle: item.subtitle || '',
+            subtitleUserEdited: item.subtitleUserEdited || false,
             metadata: {
                 season: item.season,
                 episode: item.episode,
@@ -275,20 +276,34 @@ export default function FloatingActionButtons({ shows, showAd }) {
                                                     </Typography>
                                                 )}
                                                 {item.subtitle && (
-                                                    <Typography 
-                                                        variant="body2" 
-                                                        style={{ 
-                                                            color: 'rgba(255, 255, 255, 0.9)',
-                                                            fontStyle: 'italic',
-                                                            overflow: 'hidden',
-                                                            textOverflow: 'ellipsis',
-                                                            display: '-webkit-box',
-                                                            WebkitLineClamp: 2,
-                                                            WebkitBoxOrient: 'vertical'
-                                                        }}
-                                                    >
-                                                        "{item.subtitle}"
-                                                    </Typography>
+                                                    <Box style={{ display: 'flex', alignItems: 'flex-start', gap: '4px' }}>
+                                                        <Typography 
+                                                            variant="body2" 
+                                                            style={{ 
+                                                                color: 'rgba(255, 255, 255, 0.9)',
+                                                                fontStyle: 'italic',
+                                                                overflow: 'hidden',
+                                                                textOverflow: 'ellipsis',
+                                                                display: '-webkit-box',
+                                                                WebkitLineClamp: 2,
+                                                                WebkitBoxOrient: 'vertical',
+                                                                flex: 1
+                                                            }}
+                                                        >
+                                                            "{item.subtitle}"
+                                                        </Typography>
+                                                        {item.subtitleUserEdited && (
+                                                            <Edit 
+                                                                style={{ 
+                                                                    color: '#4CAF50', 
+                                                                    fontSize: '14px',
+                                                                    marginTop: '2px',
+                                                                    flexShrink: 0
+                                                                }} 
+                                                                titleAccess="User edited subtitle"
+                                                            />
+                                                        )}
+                                                    </Box>
                                                 )}
                                             </Stack>
                                             
