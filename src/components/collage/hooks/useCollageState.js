@@ -8,12 +8,22 @@ const DEBUG_MODE = process.env.NODE_ENV === 'development';
  * Custom hook to manage collage state
  */
 export const useCollageState = () => {
-  // selectedImages now stores: { originalUrl: string, displayUrl: string }[]
+  // selectedImages now stores: { originalUrl: string, displayUrl: string, subtitle?: string, subtitleUserEdited?: boolean, metadata?: object }[]
   const [selectedImages, setSelectedImages] = useState([]);
   // panelImageMapping still maps: { panelId: imageIndex }
   const [panelImageMapping, setPanelImageMapping] = useState({});
   // panelTransforms maps: { panelId: { scaleRatio: number, positionXPercent: number, positionYPercent: number } }
   const [panelTransforms, setPanelTransforms] = useState({});
+  // panelTexts maps: { panelId: { content: string, fontSize: number, fontWeight: string, fontFamily: string, color: string, strokeWidth: number } }
+  const [panelTexts, setPanelTexts] = useState({});
+  // lastUsedTextSettings to remember settings across panels
+  const [lastUsedTextSettings, setLastUsedTextSettings] = useState({
+    fontSize: 26,
+    fontWeight: '700',
+    fontFamily: 'Arial',
+    color: '#ffffff',
+    strokeWidth: 2
+  });
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [selectedAspectRatio, setSelectedAspectRatio] = useState('portrait');
   const [panelCount, setPanelCount] = useState(2); // Default panel count of 2
@@ -54,6 +64,15 @@ export const useCollageState = () => {
   const resetPanelTransforms = useCallback(() => {
     setPanelTransforms({});
     if (DEBUG_MODE) console.log("Reset all panel transforms due to layout change");
+  }, [DEBUG_MODE]);
+
+  /**
+   * Reset all panel texts to defaults.
+   * Used when layout changes significantly.
+   */
+  const resetPanelTexts = useCallback(() => {
+    setPanelTexts({});
+    if (DEBUG_MODE) console.log("Reset all panel texts due to layout change");
   }, [DEBUG_MODE]);
 
   // Initialize template on mount
@@ -125,7 +144,9 @@ export const useCollageState = () => {
     // This ensures images get repositioned/rescaled appropriately for the new layout
     if (hasChanges) {
       resetPanelTransforms();
-      if (DEBUG_MODE) console.log("Layout change detected, resetting transforms");
+      // Also reset panel texts when layout changes significantly
+      resetPanelTexts();
+      if (DEBUG_MODE) console.log("Layout change detected, resetting transforms and texts");
     }
 
     // Update previous values
@@ -135,7 +156,7 @@ export const useCollageState = () => {
       selectedTemplate
     };
 
-  }, [panelCount, selectedAspectRatio, selectedTemplate, resetPanelTransforms, DEBUG_MODE]);
+  }, [panelCount, selectedAspectRatio, selectedTemplate, resetPanelTransforms, resetPanelTexts, DEBUG_MODE]);
 
   // Clean up ObjectURLs when component unmounts or images change
   useEffect(() => {
@@ -155,14 +176,29 @@ export const useCollageState = () => {
   /**
    * Add a new image to the collection.
    * Stores the same URL for both original and display initially.
-   * @param {string} imageBase64Url - The image URL (usually base64) to add
+   * @param {string|object} imageData - The image URL (usually base64) or object with subtitle data to add
    */
-  const addImage = useCallback((imageBase64Url) => {
-    if (!imageBase64Url) return;
-    const newImageObject = {
-        originalUrl: imageBase64Url,
-        displayUrl: imageBase64Url
-    };
+  const addImage = useCallback((imageData) => {
+    if (!imageData) return;
+    
+    let newImageObject;
+    if (typeof imageData === 'string') {
+      newImageObject = {
+        originalUrl: imageData,
+        displayUrl: imageData
+      };
+    } else if (typeof imageData === 'object') {
+      newImageObject = {
+        originalUrl: imageData.originalUrl || imageData.displayUrl || imageData,
+        displayUrl: imageData.displayUrl || imageData.originalUrl || imageData,
+        subtitle: imageData.subtitle || '',
+        subtitleUserEdited: imageData.subtitleUserEdited || false,
+        metadata: imageData.metadata || {}
+      };
+    } else {
+      return;
+    }
+    
     setSelectedImages(prev => [...prev, newImageObject]);
     if (DEBUG_MODE) console.log("Added image:", newImageObject);
   }, [DEBUG_MODE]);
@@ -170,17 +206,39 @@ export const useCollageState = () => {
   /**
    * Add multiple images to the collection at once.
    * Stores the same URL for both original and display initially for each image.
-   * @param {string[]} imageBase64Urls - Array of image URLs (usually base64) to add
+   * @param {Array} imageDataArray - Array of image URLs (usually base64) or objects with subtitle data to add
    */
-  const addMultipleImages = useCallback((imageBase64Urls) => {
-    if (!imageBase64Urls || !Array.isArray(imageBase64Urls) || imageBase64Urls.length === 0) return;
+  const addMultipleImages = useCallback((imageDataArray) => {
+    if (!imageDataArray || !Array.isArray(imageDataArray) || imageDataArray.length === 0) return;
     
-    const newImageObjects = imageBase64Urls
-      .filter(url => url) // Filter out any null/undefined URLs
-      .map(url => ({
-        originalUrl: url,
-        displayUrl: url
-      }));
+    const newImageObjects = imageDataArray
+      .filter(data => data) // Filter out any null/undefined
+      .map(imageData => {
+        if (typeof imageData === 'string') {
+          return {
+            originalUrl: imageData,
+            displayUrl: imageData
+          };
+        } else if (typeof imageData === 'object') {
+          const newImageObj = {
+            originalUrl: imageData.originalUrl || imageData.displayUrl || imageData,
+            displayUrl: imageData.displayUrl || imageData.originalUrl || imageData,
+            subtitle: imageData.subtitle || '',
+            subtitleUserEdited: imageData.subtitleUserEdited || false,
+            metadata: imageData.metadata || {}
+          };
+          if (DEBUG_MODE) {
+            console.log(`[SUBTITLE DEBUG] Processing image object:`, {
+              originalData: imageData,
+              processedData: newImageObj,
+              hasSubtitle: !!newImageObj.subtitle
+            });
+          }
+          return newImageObj;
+        }
+        return null;
+      })
+      .filter(obj => obj !== null);
     
     if (newImageObjects.length > 0) {
       setSelectedImages(prev => [...prev, ...newImageObjects]);
@@ -226,7 +284,7 @@ export const useCollageState = () => {
     });
     setPanelImageMapping(newMapping);
 
-    // Remove transforms for the affected panels
+    // Remove transforms and texts for the affected panels
     if (panelsToRemoveTransform.length > 0) {
       setPanelTransforms(prevTransforms => {
         const newTransforms = { ...prevTransforms };
@@ -235,6 +293,19 @@ export const useCollageState = () => {
         });
         if (DEBUG_MODE) console.log(`Removed transforms for panels: ${panelsToRemoveTransform.join(', ')}`);
         return newTransforms;
+      });
+      
+      // Also remove texts for panels that no longer have images
+      setPanelTexts(prevTexts => {
+        const newTexts = { ...prevTexts };
+        panelsToRemoveTransform.forEach(panelId => {
+          // Only remove auto-assigned texts, keep manually edited ones
+          if (newTexts[panelId] && newTexts[panelId].autoAssigned) {
+            delete newTexts[panelId];
+          }
+        });
+        if (DEBUG_MODE) console.log(`Removed auto-assigned texts for panels: ${panelsToRemoveTransform.join(', ')}`);
+        return newTexts;
       });
     }
 
@@ -320,7 +391,7 @@ export const useCollageState = () => {
 
 
   /**
-   * Clear all selected images and mappings.
+   * Clear all selected images, mappings, and texts.
    */
   const clearImages = useCallback(() => {
     // Clean up all potential blob URLs first
@@ -332,11 +403,12 @@ export const useCollageState = () => {
     setSelectedImages([]);
     setPanelImageMapping({});
     setPanelTransforms({}); // Clear transforms as well
-    if (DEBUG_MODE) console.log("Cleared all images, mapping, and transforms");
+    setPanelTexts({}); // Clear texts as well
+    if (DEBUG_MODE) console.log("Cleared all images, mapping, transforms, and texts");
   }, [selectedImages, DEBUG_MODE]);
 
   /**
-   * Update the mapping between panels and image indices.
+   * Update the mapping between panels and image indices, and auto-assign subtitles.
    * @param {Object} newMapping - The new panel-to-image mapping { panelId: imageIndex }
    */
   const updatePanelImageMapping = useCallback((newMapping) => {
@@ -345,6 +417,60 @@ export const useCollageState = () => {
     }
     setPanelImageMapping(newMapping);
   }, [DEBUG_MODE]);
+
+  /**
+   * Auto-assign subtitles when both mapping and images are available
+   */
+  useEffect(() => {
+    if (Object.keys(panelImageMapping).length === 0 || selectedImages.length === 0) {
+      return; // Nothing to process
+    }
+
+    const newPanelTexts = {};
+    Object.entries(panelImageMapping).forEach(([panelId, imageIndex]) => {
+      const imageData = selectedImages[imageIndex];
+      if (DEBUG_MODE) {
+        console.log(`[SUBTITLE DEBUG] Panel ${panelId} -> Image ${imageIndex}:`, {
+          imageData,
+          hasSubtitle: imageData && imageData.subtitle,
+          subtitle: imageData?.subtitle,
+          subtitleTrimmed: imageData?.subtitle?.trim()
+        });
+      }
+      
+      if (imageData && imageData.subtitle && imageData.subtitle.trim()) {
+        newPanelTexts[panelId] = {
+          content: imageData.subtitle,
+          fontSize: lastUsedTextSettings.fontSize,
+          fontWeight: lastUsedTextSettings.fontWeight,
+          fontFamily: lastUsedTextSettings.fontFamily,
+          color: lastUsedTextSettings.color,
+          strokeWidth: lastUsedTextSettings.strokeWidth,
+          autoAssigned: true, // Mark as auto-assigned from subtitle
+          subtitleUserEdited: imageData.subtitleUserEdited || false
+        };
+        if (DEBUG_MODE) {
+          console.log(`[SUBTITLE DEBUG] Auto-assigning subtitle to ${panelId}:`, newPanelTexts[panelId]);
+        }
+      } else if (DEBUG_MODE) {
+        console.log(`[SUBTITLE DEBUG] No subtitle data for panel ${panelId}`);
+      }
+    });
+    
+    if (Object.keys(newPanelTexts).length > 0) {
+      setPanelTexts(prev => {
+        const updated = { ...prev };
+        // Only update panels that don't have manually edited text
+        Object.entries(newPanelTexts).forEach(([panelId, textConfig]) => {
+          if (!prev[panelId] || !prev[panelId].content.trim() || prev[panelId].autoAssigned) {
+            updated[panelId] = textConfig;
+          }
+        });
+        return updated;
+      });
+      if (DEBUG_MODE) console.log("Auto-assigned subtitles to panels:", newPanelTexts);
+    }
+  }, [panelImageMapping, selectedImages, lastUsedTextSettings, DEBUG_MODE]);
 
   /**
    * Update the transform state for a specific panel.
@@ -364,11 +490,40 @@ export const useCollageState = () => {
     });
   }, [DEBUG_MODE]);
 
+  /**
+   * Update the text configuration for a specific panel.
+   * @param {string} panelId - The ID of the panel to update.
+   * @param {object} textConfig - The new text configuration { content, fontSize, fontWeight, fontFamily, color, strokeWidth }.
+   */
+  const updatePanelText = useCallback((panelId, textConfig) => {
+    setPanelTexts(prev => ({
+      ...prev,
+      [panelId]: {
+        ...prev[panelId],
+        ...textConfig,
+        autoAssigned: false // Mark as manually edited once user modifies
+      }
+    }));
+    
+    // Update last used settings (excluding content which is panel-specific)
+    const { content, autoAssigned, subtitleUserEdited, ...settingsOnly } = textConfig;
+    setLastUsedTextSettings(prev => ({
+      ...prev,
+      ...settingsOnly
+    }));
+    
+    if (DEBUG_MODE) {
+      console.log(`Updating text for panel ${panelId}:`, textConfig);
+    }
+  }, [DEBUG_MODE]);
+
   return {
     // State
-    selectedImages, // Now [{ originalUrl, displayUrl }, ...]
+    selectedImages, // Now [{ originalUrl, displayUrl, subtitle?, subtitleUserEdited?, metadata? }, ...]
     panelImageMapping, // Still { panelId: imageIndex }
-    panelTransforms, // New: { panelId: { scaleRatio: number, positionXPercent: number, positionYPercent: number } }
+    panelTransforms, // { panelId: { scaleRatio: number, positionXPercent: number, positionYPercent: number } }
+    panelTexts, // NEW: { panelId: { content, fontSize, fontWeight, fontFamily, color, strokeWidth, autoAssigned?, subtitleUserEdited? } }
+    lastUsedTextSettings, // NEW: Default text settings for new panels
     selectedTemplate,
     setSelectedTemplate,
     selectedAspectRatio,
@@ -385,14 +540,16 @@ export const useCollageState = () => {
     setBorderColor,
 
     // Operations
-    addImage, // Adds new object { original, display }
-    addMultipleImages, // Adds multiple objects { original, display }
+    addImage, // UPDATED: Adds new object with optional subtitle data
+    addMultipleImages, // UPDATED: Adds multiple objects with optional subtitle data
     removeImage, // Removes object, updates mapping & transform
     updateImage, // Updates displayUrl
     replaceImage, // Replaces image object
-    clearImages, // Clears images, mapping & transforms
-    updatePanelImageMapping,
-    updatePanelTransform, // New: Updates transform for a panel
-    resetPanelTransforms, // New: Resets all transforms to defaults
+    clearImages, // Clears images, mapping, transforms & texts
+    updatePanelImageMapping, // UPDATED: Also auto-assigns subtitles
+    updatePanelTransform, // Updates transform for a panel
+    updatePanelText, // NEW: Updates text configuration for a panel
+    resetPanelTransforms, // Resets all transforms to defaults
+    resetPanelTexts, // NEW: Resets all texts to defaults
   };
 };

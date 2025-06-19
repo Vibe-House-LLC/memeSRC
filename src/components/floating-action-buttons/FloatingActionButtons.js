@@ -104,6 +104,8 @@ export default function FloatingActionButtons({ shows, showAd }) {
     const handleCreateCollage = () => {
         if (collectedItems.length === 0) return;
         
+        console.log('[COLLECTOR DEBUG] Original collected items:', collectedItems);
+        
         // Transform collected items into format expected by collage system
         const collageImages = collectedItems.map(item => ({
             originalUrl: getImageUrl(item),
@@ -118,6 +120,8 @@ export default function FloatingActionButtons({ shows, showAd }) {
                 showTitle: item.showTitle
             }
         }));
+
+        console.log('[COLLECTOR DEBUG] Transformed collage images:', collageImages);
 
         // Navigate to collage page with images
         navigate('/collage', { 

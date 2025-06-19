@@ -106,6 +106,8 @@ export default function CollagePage() {
     selectedImages, 
     panelImageMapping,
     panelTransforms,
+    panelTexts,
+    lastUsedTextSettings,
     selectedTemplate,
     setSelectedTemplate,
     selectedAspectRatio,
@@ -128,6 +130,7 @@ export default function CollagePage() {
     clearImages,
     updatePanelImageMapping,
     updatePanelTransform,
+    updatePanelText,
   } = useCollageState();
 
   // Check if all panels have images assigned (same logic as CollageImagesStep)
@@ -195,15 +198,22 @@ export default function CollagePage() {
     if (location.state?.fromCollector && location.state?.images) {
       debugLog('Loading images from collector:', location.state.images);
       
-      // Transform images to the expected format
+      // Transform images to the expected format, preserving subtitle data
       const transformedImages = location.state.images.map(item => {
         if (typeof item === 'string') {
           return item; // Already a URL
         }
-        // Return the displayUrl or originalUrl from the collector item
-        return item.displayUrl || item.originalUrl || item;
+        // Return the complete item with subtitle data preserved
+        return {
+          originalUrl: item.originalUrl || item.displayUrl || item,
+          displayUrl: item.displayUrl || item.originalUrl || item,
+          subtitle: item.subtitle || '',
+          subtitleUserEdited: item.subtitleUserEdited || false,
+          metadata: item.metadata || {}
+        };
       });
       
+      debugLog('Transformed collector images with subtitle data:', transformedImages);
       addMultipleImages(transformedImages);
       
       // Auto-assign images to panels like bulk upload does
@@ -359,11 +369,14 @@ export default function CollagePage() {
 
   // Props for images step (pass the correct state and actions)
   const imagesStepProps = {
-    selectedImages, // Pass the array of objects [{ originalUrl, displayUrl }, ...]
+    selectedImages, // Pass the array of objects [{ originalUrl, displayUrl, subtitle?, subtitleUserEdited?, metadata? }, ...]
     panelImageMapping,
     panelTransforms,
+    panelTexts,
+    lastUsedTextSettings,
     updatePanelImageMapping,
     updatePanelTransform,
+    updatePanelText,
     panelCount,
     selectedTemplate,
     selectedAspectRatio: getAspectRatioValue(selectedAspectRatio),
