@@ -6,6 +6,7 @@ import { Dashboard, Save } from "@mui/icons-material";
 import { useNavigate, useLocation } from 'react-router-dom';
 import { UserContext } from "../UserContext";
 import { useSubscribeDialog } from "../contexts/useSubscribeDialog";
+import { useCollector } from "../contexts/CollectorContext";
 import { aspectRatioPresets, layoutTemplates } from "../components/collage/config/CollageConfig";
 import UpgradeMessage from "../components/collage/components/UpgradeMessage";
 import WelcomeMessage from "../components/collage/components/WelcomeMessage";
@@ -75,6 +76,7 @@ export default function CollagePage() {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { user } = useContext(UserContext);
   const { openSubscriptionDialog } = useSubscribeDialog();
+  const { clearAll } = useCollector();
   const authorized = (user?.userDetails?.magicSubscription === "true" || user?.['cognito:groups']?.includes('admins'));
   
   const navigate = useNavigate();
@@ -277,6 +279,9 @@ export default function CollagePage() {
           setFinalImage(blob);
           setShowResultDialog(true);
           debugLog("Floating button: Collage generated directly from canvas.");
+          
+          // Clear the collector since the collage has been successfully generated
+          clearAll();
         } else {
           console.error('Failed to generate canvas blob.');
         }
@@ -287,6 +292,9 @@ export default function CollagePage() {
             setFinalImage(blob);
             setShowResultDialog(true);
             debugLog("Floating button: Collage generated directly from canvas (fallback method).");
+            
+            // Clear the collector since the collage has been successfully generated
+            clearAll();
           } else {
             console.error('Failed to generate canvas blob using fallback method.');
           }
