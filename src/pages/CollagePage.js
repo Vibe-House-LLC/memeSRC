@@ -348,7 +348,7 @@ export default function CollagePage() {
     selectedImageCount: selectedImages.length, // Pass count instead of full array
     selectedTemplate,
     setSelectedTemplate,
-    selectedAspectRatio: getAspectRatioValue(selectedAspectRatio),
+    selectedAspectRatio, // Pass the original aspect ratio ID, not the converted value
     setSelectedAspectRatio,
     panelCount,
     setPanelCount,
@@ -387,7 +387,7 @@ export default function CollagePage() {
     updatePanelText,
     panelCount,
     selectedTemplate,
-    selectedAspectRatio: getAspectRatioValue(selectedAspectRatio),
+    selectedAspectRatio, // Pass the original aspect ratio ID, not the converted value
     borderThickness: borderThicknessValue, // Pass the numeric value
     borderColor,
     borderThicknessOptions,

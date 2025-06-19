@@ -160,9 +160,8 @@ export const useCollageState = () => {
     // This ensures images get repositioned/rescaled appropriately for the new layout
     if (hasChanges) {
       resetPanelTransforms();
-      // Also reset panel texts when layout changes significantly
-      resetPanelTexts();
-      if (DEBUG_MODE) console.log("Layout change detected, resetting transforms and texts");
+      // Don't reset texts - let the subtitle auto-assignment effect handle text reassignment
+      if (DEBUG_MODE) console.log("Layout change detected, resetting transforms only");
     }
 
     // Update previous values
@@ -443,7 +442,8 @@ export const useCollageState = () => {
         mappingCount: Object.keys(panelImageMapping).length,
         imageCount: selectedImages.length,
         mapping: panelImageMapping,
-        panelCount
+        panelCount,
+        templateId: selectedTemplate?.id
       });
     }
     
@@ -488,17 +488,51 @@ export const useCollageState = () => {
     if (Object.keys(newPanelTexts).length > 0) {
       setPanelTexts(prev => {
         const updated = { ...prev };
-        // Only update panels that don't have manually edited text
+        
+        // Strategy for text preservation during layout changes:
+        // 1. Always assign subtitles to new panels that don't exist yet
+        // 2. For existing panels, only overwrite if they have auto-assigned text
+        // 3. Preserve manually edited text even during layout changes
+        
         Object.entries(newPanelTexts).forEach(([panelId, textConfig]) => {
-          if (!prev[panelId] || !prev[panelId].content.trim() || prev[panelId].autoAssigned) {
+          const existingText = prev[panelId];
+          
+          if (!existingText) {
+            // New panel - always assign subtitle
             updated[panelId] = textConfig;
+            if (DEBUG_MODE) {
+              console.log(`[SUBTITLE DEBUG] Assigning subtitle to new panel ${panelId}`);
+            }
+          } else if (existingText.autoAssigned) {
+            // Existing panel with auto-assigned text - update it
+            updated[panelId] = textConfig;
+            if (DEBUG_MODE) {
+              console.log(`[SUBTITLE DEBUG] Updating auto-assigned text for panel ${panelId}`);
+            }
+          } else {
+            // Existing panel with manually edited text - preserve it
+            if (DEBUG_MODE) {
+              console.log(`[SUBTITLE DEBUG] Preserving manually edited text for panel ${panelId}`);
+            }
           }
         });
+        
+        // Clean up texts for panels that no longer exist in the mapping
+        const validPanelIds = new Set(Object.keys(panelImageMapping));
+        Object.keys(prev).forEach(panelId => {
+          if (!validPanelIds.has(panelId)) {
+            delete updated[panelId];
+            if (DEBUG_MODE) {
+              console.log(`[SUBTITLE DEBUG] Removing text for deleted panel ${panelId}`);
+            }
+          }
+        });
+        
         return updated;
       });
       if (DEBUG_MODE) console.log("Auto-assigned subtitles to panels:", newPanelTexts);
     }
-  }, [panelImageMapping, selectedImages, lastUsedTextSettings, DEBUG_MODE]);
+  }, [panelImageMapping, selectedImages, lastUsedTextSettings, selectedTemplate?.id, DEBUG_MODE]);
 
   /**
    * Update the transform state for a specific panel.
