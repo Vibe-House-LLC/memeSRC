@@ -108,11 +108,27 @@ export const useCollageState = () => {
          selectedTemplate.minImages <= panelCount &&
          selectedTemplate.maxImages >= panelCount;
 
+    if (DEBUG_MODE) {
+      console.log(`[TEMPLATE DEBUG] Panel count: ${panelCount}, aspect ratio: ${selectedAspectRatio}`);
+      console.log(`[TEMPLATE DEBUG] Compatible templates:`, compatibleTemplates.map(t => t.name));
+      console.log(`[TEMPLATE DEBUG] Current template:`, selectedTemplate?.name);
+      console.log(`[TEMPLATE DEBUG] Current template compatible:`, currentTemplateIsCompatible);
+    }
+
     if (!currentTemplateIsCompatible && compatibleTemplates.length > 0) {
+        if (DEBUG_MODE) {
+          console.log(`[TEMPLATE DEBUG] Switching to template:`, compatibleTemplates[0].name);
+        }
         setSelectedTemplate(compatibleTemplates[0]);
     } else if (!selectedTemplate && compatibleTemplates.length > 0) {
+        if (DEBUG_MODE) {
+          console.log(`[TEMPLATE DEBUG] Setting initial template:`, compatibleTemplates[0].name);
+        }
         setSelectedTemplate(compatibleTemplates[0]);
     } else if (compatibleTemplates.length === 0) {
+        if (DEBUG_MODE) {
+          console.log(`[TEMPLATE DEBUG] No compatible templates found, setting to null`);
+        }
         setSelectedTemplate(null);
     }
 
@@ -422,7 +438,19 @@ export const useCollageState = () => {
    * Auto-assign subtitles when both mapping and images are available
    */
   useEffect(() => {
+    if (DEBUG_MODE) {
+      console.log(`[SUBTITLE DEBUG] Auto-assignment effect triggered:`, {
+        mappingCount: Object.keys(panelImageMapping).length,
+        imageCount: selectedImages.length,
+        mapping: panelImageMapping,
+        panelCount
+      });
+    }
+    
     if (Object.keys(panelImageMapping).length === 0 || selectedImages.length === 0) {
+      if (DEBUG_MODE) {
+        console.log(`[SUBTITLE DEBUG] Skipping auto-assignment - no mapping or images`);
+      }
       return; // Nothing to process
     }
 

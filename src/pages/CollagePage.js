@@ -220,22 +220,30 @@ export default function CollagePage() {
       setTimeout(() => {
         // First adjust panel count if needed to accommodate all images
         const desiredPanelCount = Math.min(transformedImages.length, 5); // Max 5 panels supported
+        debugLog(`[PANEL DEBUG] Current panel count: ${panelCount}, desired: ${desiredPanelCount}, images: ${transformedImages.length}`);
+        debugLog(`[PANEL DEBUG] Current template:`, selectedTemplate);
+        
         if (transformedImages.length > panelCount && setPanelCount) {
           setPanelCount(desiredPanelCount);
-          debugLog(`Adjusted panel count to ${desiredPanelCount} for ${transformedImages.length} images`);
+          debugLog(`[PANEL DEBUG] Adjusted panel count to ${desiredPanelCount} for ${transformedImages.length} images`);
         }
         
-        // Then assign images to panels using the updated panel count
-        const newMapping = {};
-        const imagesToAssign = Math.min(transformedImages.length, desiredPanelCount);
-        
-        for (let i = 0; i < imagesToAssign; i += 1) {
-          const panelId = selectedTemplate?.layout?.panels?.[i]?.id || `panel-${i + 1}`;
-          newMapping[panelId] = i;
-        }
-        
-        debugLog('Auto-assigning collector images to panels:', newMapping);
-        updatePanelImageMapping(newMapping);
+        // Wait a bit more for template to update if panel count changed
+        setTimeout(() => {
+          debugLog(`[PANEL DEBUG] Template after panel count change:`, selectedTemplate);
+          
+          // Then assign images to panels using the updated panel count
+          const newMapping = {};
+          const imagesToAssign = Math.min(transformedImages.length, desiredPanelCount);
+          
+          for (let i = 0; i < imagesToAssign; i += 1) {
+            const panelId = selectedTemplate?.layout?.panels?.[i]?.id || `panel-${i + 1}`;
+            newMapping[panelId] = i;
+          }
+          
+          debugLog('[PANEL DEBUG] Auto-assigning collector images to panels:', newMapping);
+          updatePanelImageMapping(newMapping);
+        }, transformedImages.length > panelCount ? 200 : 0); // Extra delay if panel count changed
       }, 100); // Small delay to ensure images are added first
       
       // Clear the navigation state to prevent re-loading on refresh
