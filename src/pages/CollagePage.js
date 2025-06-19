@@ -206,8 +206,16 @@ export default function CollagePage() {
       
       // Auto-assign images to panels like bulk upload does
       setTimeout(() => {
+        // First adjust panel count if needed to accommodate all images
+        const desiredPanelCount = Math.min(transformedImages.length, 5); // Max 5 panels supported
+        if (transformedImages.length > panelCount && setPanelCount) {
+          setPanelCount(desiredPanelCount);
+          debugLog(`Adjusted panel count to ${desiredPanelCount} for ${transformedImages.length} images`);
+        }
+        
+        // Then assign images to panels using the updated panel count
         const newMapping = {};
-        const imagesToAssign = Math.min(transformedImages.length, panelCount);
+        const imagesToAssign = Math.min(transformedImages.length, desiredPanelCount);
         
         for (let i = 0; i < imagesToAssign; i += 1) {
           const panelId = selectedTemplate?.layout?.panels?.[i]?.id || `panel-${i + 1}`;
@@ -216,13 +224,6 @@ export default function CollagePage() {
         
         debugLog('Auto-assigning collector images to panels:', newMapping);
         updatePanelImageMapping(newMapping);
-        
-        // Adjust panel count if needed
-        if (transformedImages.length > panelCount && setPanelCount) {
-          const newPanelCount = Math.min(transformedImages.length, 12);
-          setPanelCount(newPanelCount);
-          debugLog(`Adjusted panel count to ${newPanelCount} for ${transformedImages.length} images`);
-        }
       }, 100); // Small delay to ensure images are added first
       
       // Clear the navigation state to prevent re-loading on refresh
