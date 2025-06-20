@@ -342,8 +342,9 @@ export default function FloatingActionButtons({ shows, showAd }) {
                                     variant="contained"
                                     size="medium"
                                     fullWidth
+                                    disabled={count > 5}
                                     style={{ 
-                                        backgroundColor: '#4CAF50',
+                                        backgroundColor: count > 5 ? '#666666' : '#4CAF50',
                                         color: 'white',
                                         marginTop: '12px',
                                         fontWeight: 'bold'
@@ -352,6 +353,21 @@ export default function FloatingActionButtons({ shows, showAd }) {
                                 >
                                     Create Collage ({count} images)
                                 </Button>
+                                
+                                {count > 5 && (
+                                    <Typography 
+                                        variant="caption" 
+                                        style={{ 
+                                            color: 'rgba(255, 255, 255, 0.7)',
+                                            fontStyle: 'italic',
+                                            textAlign: 'center',
+                                            marginTop: '8px',
+                                            display: 'block'
+                                        }}
+                                    >
+                                        Maximum 5 images allowed for collage
+                                    </Typography>
+                                )}
                                 
                                 {collectedItems.length > 1 && (
                                     <Button 
