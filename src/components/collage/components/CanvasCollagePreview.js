@@ -433,11 +433,12 @@ const CanvasCollagePreview = ({
         : 'rgba(0,0,0,0.3)';
       ctx.fillRect(x, y, width, height);
       
-      // Draw hover effect
-      if (isHovered && !hasImage) {
-        ctx.fillStyle = 'rgba(0,0,0,0.4)';
-        ctx.fillRect(x, y, width, height);
-      }
+      // Remove hover effect for empty panels to prevent interference with collage generation
+      // Hover effects should be handled by CSS or UI overlays, not drawn on the canvas
+      // if (isHovered && !hasImage) {
+      //   ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      //   ctx.fillRect(x, y, width, height);
+      // }
       
       if (hasImage) {
         const img = loadedImages[imageIndex];
@@ -486,11 +487,12 @@ const CanvasCollagePreview = ({
           
           ctx.restore();
           
-          // Draw hover effect for images
-          if (isHovered && !isInTransformMode) {
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-            ctx.fillRect(x, y, width, height);
-          }
+          // Remove hover effect for images to prevent darkening during collage generation
+          // Hover effects should be handled by CSS or UI overlays, not drawn on the canvas
+          // if (isHovered && !isInTransformMode) {
+          //   ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+          //   ctx.fillRect(x, y, width, height);
+          // }
         }
       } else {
         // Draw add icon for empty panels
