@@ -760,6 +760,15 @@ const CanvasCollagePreview = ({
     setIsDragging(false);
   }, []);
 
+  const handleMouseLeave = useCallback(() => {
+    // Clear hover state when mouse leaves canvas
+    setHoveredPanel(null);
+    const canvas = canvasRef.current;
+    if (canvas) {
+      canvas.style.cursor = 'default';
+    }
+  }, []);
+
   const handleWheel = useCallback((e) => {
     if (selectedPanel !== null) {
       const panel = panelRects[selectedPanel];
@@ -1139,6 +1148,7 @@ const CanvasCollagePreview = ({
         onMouseMove={handleMouseMove}
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
         onWheel={handleWheel}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
