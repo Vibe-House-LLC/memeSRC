@@ -784,13 +784,13 @@ const CanvasCollagePreview = ({
       cursorY >= panel.y && cursorY <= panel.y + panel.height
     );
     
-    // Only proceed if cursor is over a panel with an image
+    // Only proceed if cursor is over a panel with an image AND transform mode is enabled
     if (hoveredPanelIndex >= 0) {
       const panel = panelRects[hoveredPanelIndex];
       const imageIndex = panelImageMapping[panel.panelId];
       const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
       
-      if (hasImage) {
+      if (hasImage && isTransformMode[panel.panelId]) {
         // Auto-select this panel for zoom operation
         if (selectedPanel !== hoveredPanelIndex) {
           setSelectedPanel(hoveredPanelIndex);
@@ -886,7 +886,7 @@ const CanvasCollagePreview = ({
         }
       }
     }
-  }, [panelRects, panelImageMapping, loadedImages, selectedPanel, panelTransforms, updatePanelTransform, setSelectedPanel]);
+  }, [panelRects, panelImageMapping, loadedImages, selectedPanel, panelTransforms, updatePanelTransform, setSelectedPanel, isTransformMode]);
 
   // Helper function to get distance between two touch points
   const getTouchDistance = useCallback((touches) => {
@@ -947,7 +947,7 @@ const CanvasCollagePreview = ({
       const imageIndex = panelImageMapping[panel.panelId];
       const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
       
-      if (panel && hasImage) {
+      if (panel && hasImage && isTransformMode[panel.panelId]) {
         e.preventDefault(); // Prevent scrolling
         const distance = getTouchDistance(touches);
         const currentTransform = panelTransforms[panel.panelId] || { scale: 1, positionX: 0, positionY: 0 };
@@ -1045,7 +1045,7 @@ const CanvasCollagePreview = ({
       const imageIndex = panelImageMapping[panel.panelId];
       const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
       
-      if (panel && hasImage) {
+      if (panel && hasImage && isTransformMode[panel.panelId]) {
         e.preventDefault(); // Prevent scrolling
         
         const currentDistance = getTouchDistance(touches);
