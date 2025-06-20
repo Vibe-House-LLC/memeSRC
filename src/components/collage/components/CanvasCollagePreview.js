@@ -838,7 +838,10 @@ const CanvasCollagePreview = ({
           const newPositionY = newImageY - newCenterOffsetY;
           
           // Calculate bounds to prevent white space and clamp the new position
-          let minPositionX, maxPositionX, minPositionY, maxPositionY;
+          let minPositionX;
+          let maxPositionX;
+          let minPositionY;
+          let maxPositionY;
           
           if (newScaledWidth > panel.width) {
             maxPositionX = -newCenterOffsetX;
@@ -1081,7 +1084,10 @@ const CanvasCollagePreview = ({
           const newPositionY = newImageY - newCenterOffsetY;
           
           // Calculate bounds to prevent white space and clamp the new position
-          let minPositionX, maxPositionX, minPositionY, maxPositionY;
+          let minPositionX;
+          let maxPositionX;
+          let minPositionY;
+          let maxPositionY;
           
           if (newScaledWidth > panel.width) {
             maxPositionX = -newCenterOffsetX;
