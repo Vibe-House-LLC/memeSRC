@@ -69,7 +69,7 @@ const ImageDrawerPopup = styled('div')`
     padding: 20px 16px 68px 16px;
     max-height: 400px;
     overflow-y: auto;
-    z-index: 1299;
+    z-index: 1301;
     backdrop-filter: blur(8px);
     border-top: 1px solid rgba(255, 255, 255, 0.2);
     animation: ${props => props.isClosing ? 'slideDownFade' : 'slideUpFade'} 0.4s ease-out forwards;
@@ -242,7 +242,7 @@ export default function FloatingActionButtons({ shows, showAd }) {
             </StyledRightFooter>
             
             {(showImageDrawer || isClosing) && (
-                <ImageDrawerPopup ref={popupRef} hasAd={showAd} isClosing={isClosing}>
+                <ImageDrawerPopup ref={popupRef} hasAd={showAd} isClosing={isClosing} itemCount={count}>
                     <Stack spacing={2}>
                         <Typography variant="h6" style={{ color: 'white', marginBottom: '8px', textAlign: 'center' }}>
                             Image Drawer ({count})
