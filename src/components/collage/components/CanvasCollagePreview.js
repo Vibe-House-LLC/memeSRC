@@ -433,12 +433,8 @@ const CanvasCollagePreview = ({
         : 'rgba(0,0,0,0.3)';
       ctx.fillRect(x, y, width, height);
       
-      // Remove hover effect for empty panels to prevent interference with collage generation
-      // Hover effects should be handled by CSS or UI overlays, not drawn on the canvas
-      // if (isHovered && !hasImage) {
-      //   ctx.fillStyle = 'rgba(0,0,0,0.4)';
-      //   ctx.fillRect(x, y, width, height);
-      // }
+      // Note: Hover effects are now handled by CSS overlays, not canvas drawing
+      // This ensures they don't interfere with collage generation
       
       if (hasImage) {
         const img = loadedImages[imageIndex];
@@ -486,13 +482,6 @@ const CanvasCollagePreview = ({
           );
           
           ctx.restore();
-          
-          // Remove hover effect for images to prevent darkening during collage generation
-          // Hover effects should be handled by CSS or UI overlays, not drawn on the canvas
-          // if (isHovered && !isInTransformMode) {
-          //   ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-          //   ctx.fillRect(x, y, width, height);
-          // }
         }
       } else {
         // Draw add icon for empty panels
@@ -622,7 +611,6 @@ const CanvasCollagePreview = ({
     panelTransforms, 
     borderPixels, 
     borderColor, 
-    hoveredPanel, 
     selectedPanel, 
     isTransformMode,
     panelTexts,
@@ -1223,6 +1211,37 @@ const CanvasCollagePreview = ({
               <TextFields sx={{ fontSize: 16 }} />
             </IconButton>
           </Box>
+        );
+      })}
+
+      {/* Hover overlays - positioned over canvas panels */}
+      {panelRects.map((rect, index) => {
+        const { panelId } = rect;
+        const imageIndex = panelImageMapping[panelId];
+        const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
+        const isHovered = hoveredPanel === index;
+        const isInTransformMode = isTransformMode[panelId];
+        
+        // Only show hover overlay when actually hovered and not in transform mode
+        if (!isHovered || isInTransformMode) return null;
+        
+        return (
+          <Box
+            key={`hover-overlay-${panelId}`}
+            sx={{
+              position: 'absolute',
+              top: rect.y,
+              left: rect.x,
+              width: rect.width,
+              height: rect.height,
+              backgroundColor: hasImage 
+                ? 'rgba(0, 0, 0, 0.1)' // Light overlay for images
+                : 'rgba(0, 0, 0, 0.4)', // Darker overlay for empty panels
+              pointerEvents: 'none', // Don't interfere with mouse events
+              transition: 'backgroundColor 0.2s ease-in-out',
+              zIndex: 5, // Above canvas, below control buttons
+            }}
+          />
         );
       })}
 
