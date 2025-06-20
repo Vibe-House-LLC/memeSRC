@@ -56,18 +56,23 @@ const StyledRightFooter = styled('footer')`
 
 const ImageDrawerPopup = styled('div')`
     position: fixed;
-    bottom: ${props => props.hasAd ? '110px' : '70px'};
+    bottom: ${props => props.hasAd ? '50px' : '0px'};
     left: 0;
     right: 0;
     width: 100%;
-    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.3));
-    padding: 20px 16px 16px 16px;
+    background: linear-gradient(to bottom, 
+        rgba(0, 0, 0, 0.9) 0%, 
+        rgba(0, 0, 0, 0.6) 70%, 
+        rgba(0, 0, 0, 0.4) 90%, 
+        rgba(0, 0, 0, 0.3) 100%
+    );
+    padding: 20px 16px 68px 16px;
     max-height: 400px;
     overflow-y: auto;
-    z-index: 1301;
+    z-index: 1299;
     backdrop-filter: blur(8px);
     border-top: 1px solid rgba(255, 255, 255, 0.2);
-    animation: slideUpFade 0.4s ease-out forwards;
+    animation: ${props => props.isClosing ? 'slideDownFade' : 'slideUpFade'} 0.4s ease-out forwards;
     
     @keyframes slideUpFade {
         0% {
@@ -77,6 +82,17 @@ const ImageDrawerPopup = styled('div')`
         100% {
             transform: translateY(0);
             opacity: 1;
+        }
+    }
+    
+    @keyframes slideDownFade {
+        0% {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        100% {
+            transform: translateY(100%);
+            opacity: 0;
         }
     }
 `;
@@ -94,11 +110,21 @@ export default function FloatingActionButtons({ shows, showAd }) {
     const { loadRandomFrame, loadingRandom, error } = useLoadRandomFrame();
     const { collectedItems, clearAll, removeItem, count } = useCollector();
     const [showImageDrawer, setShowImageDrawer] = useState(false);
+    const [isClosing, setIsClosing] = useState(false);
     const popupRef = useRef(null);
     const buttonRef = useRef(null);
     const navigate = useNavigate();
 
     console.log('showImageDrawer:', showImageDrawer, 'collectedItems.length:', collectedItems.length);
+
+    // Function to handle closing with animation
+    const handleClose = () => {
+        setIsClosing(true);
+        setTimeout(() => {
+            setShowImageDrawer(false);
+            setIsClosing(false);
+        }, 400); // Match animation duration
+    };
 
     // Function to create collage from collected items
     const handleCreateCollage = () => {
@@ -131,8 +157,8 @@ export default function FloatingActionButtons({ shows, showAd }) {
             } 
         });
         
-        // Close the drawer
-        setShowImageDrawer(false);
+        // Close the drawer with animation
+        handleClose();
     };
 
     // Handle click outside to close popup
@@ -140,7 +166,7 @@ export default function FloatingActionButtons({ shows, showAd }) {
         function handleClickOutside(event) {
             if (popupRef.current && !popupRef.current.contains(event.target) &&
                 buttonRef.current && !buttonRef.current.contains(event.target)) {
-                setShowImageDrawer(false);
+                handleClose();
             }
         }
 
@@ -184,7 +210,7 @@ export default function FloatingActionButtons({ shows, showAd }) {
                     <Button 
                         ref={buttonRef}
                         aria-label="image drawer" 
-                        onClick={() => setShowImageDrawer(!showImageDrawer)}
+                        onClick={() => showImageDrawer ? handleClose() : setShowImageDrawer(true)}
                         style={{ 
                             margin: "0 10px 0 0", 
                             backgroundColor: "black", 
@@ -215,8 +241,8 @@ export default function FloatingActionButtons({ shows, showAd }) {
                 <StyledButton onClick={() => { loadRandomFrame(shows) }} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
             </StyledRightFooter>
             
-            {showImageDrawer && (
-                <ImageDrawerPopup ref={popupRef} hasAd={showAd}>
+            {(showImageDrawer || isClosing) && (
+                <ImageDrawerPopup ref={popupRef} hasAd={showAd} isClosing={isClosing}>
                     <Stack spacing={2}>
                         <Typography variant="h6" style={{ color: 'white', marginBottom: '8px', textAlign: 'center' }}>
                             Image Drawer ({count})
