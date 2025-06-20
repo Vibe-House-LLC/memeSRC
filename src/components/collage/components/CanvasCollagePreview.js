@@ -771,23 +771,38 @@ const CanvasCollagePreview = ({
   }, []);
 
   const handleWheel = useCallback((e) => {
-    if (selectedPanel !== null) {
-      const panel = panelRects[selectedPanel];
-      if (panel && isTransformMode[panel.panelId]) {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const rect = canvas.getBoundingClientRect();
+    const cursorX = e.clientX - rect.left;
+    const cursorY = e.clientY - rect.top;
+    
+    // Find which panel is under the cursor
+    const hoveredPanelIndex = panelRects.findIndex(panel => 
+      cursorX >= panel.x && cursorX <= panel.x + panel.width &&
+      cursorY >= panel.y && cursorY <= panel.y + panel.height
+    );
+    
+    // Only proceed if cursor is over a panel with an image
+    if (hoveredPanelIndex >= 0) {
+      const panel = panelRects[hoveredPanelIndex];
+      const imageIndex = panelImageMapping[panel.panelId];
+      const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
+      
+      if (hasImage) {
+        // Auto-select this panel for zoom operation
+        if (selectedPanel !== hoveredPanelIndex) {
+          setSelectedPanel(hoveredPanelIndex);
+        }
+        
         e.preventDefault();
         
         const scaleChange = e.deltaY > 0 ? 0.9 : 1.1;
         const currentTransform = panelTransforms[panel.panelId] || { scale: 1, positionX: 0, positionY: 0 };
-        const imageIndex = panelImageMapping[panel.panelId];
         const img = loadedImages[imageIndex];
         
         if (img && updatePanelTransform) {
-          // Get cursor position relative to the canvas
-          const canvas = canvasRef.current;
-          const rect = canvas.getBoundingClientRect();
-          const cursorX = e.clientX - rect.left;
-          const cursorY = e.clientY - rect.top;
-          
           // Calculate cursor position relative to the panel
           const panelCursorX = cursorX - panel.x;
           const panelCursorY = cursorY - panel.y;
@@ -871,7 +886,7 @@ const CanvasCollagePreview = ({
         }
       }
     }
-  }, [selectedPanel, panelRects, isTransformMode, panelTransforms, updatePanelTransform, panelImageMapping, loadedImages]);
+  }, [panelRects, panelImageMapping, loadedImages, selectedPanel, panelTransforms, updatePanelTransform, setSelectedPanel]);
 
   // Helper function to get distance between two touch points
   const getTouchDistance = useCallback((touches) => {
@@ -929,7 +944,10 @@ const CanvasCollagePreview = ({
     } else if (touches.length === 2 && selectedPanel !== null) {
       // Two touches - prepare for pinch zoom
       const panel = panelRects[selectedPanel];
-      if (panel && isTransformMode[panel.panelId]) {
+      const imageIndex = panelImageMapping[panel.panelId];
+      const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
+      
+      if (panel && hasImage) {
         e.preventDefault(); // Prevent scrolling
         const distance = getTouchDistance(touches);
         const currentTransform = panelTransforms[panel.panelId] || { scale: 1, positionX: 0, positionY: 0 };
@@ -939,7 +957,7 @@ const CanvasCollagePreview = ({
         setIsDragging(false); // Stop any ongoing drag
       }
     }
-  }, [panelRects, isTransformMode, onPanelClick, selectedPanel, panelTransforms, getTouchDistance]);
+  }, [panelRects, isTransformMode, onPanelClick, selectedPanel, panelTransforms, panelImageMapping, loadedImages, getTouchDistance]);
 
   const handleTouchMove = useCallback((e) => {
     const canvas = canvasRef.current;
@@ -1024,7 +1042,10 @@ const CanvasCollagePreview = ({
     } else if (touches.length === 2 && selectedPanel !== null && touchStartDistance !== null) {
       // Two-finger pinch zoom
       const panel = panelRects[selectedPanel];
-      if (panel && isTransformMode[panel.panelId]) {
+      const imageIndex = panelImageMapping[panel.panelId];
+      const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
+      
+      if (panel && hasImage) {
         e.preventDefault(); // Prevent scrolling
         
         const currentDistance = getTouchDistance(touches);
@@ -1043,7 +1064,6 @@ const CanvasCollagePreview = ({
         const panelPinchY = pinchCenterY - panel.y;
         
         const currentTransform = panelTransforms[panel.panelId] || { scale: 1, positionX: 0, positionY: 0 };
-        const imageIndex = panelImageMapping[panel.panelId];
         const img = loadedImages[imageIndex];
         
         if (img && updatePanelTransform) {
