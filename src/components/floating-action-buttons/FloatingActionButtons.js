@@ -193,17 +193,17 @@ export default function FloatingActionButtons({ shows, showAd }) {
                     }}
                     sx={{
                         '& .MuiBadge-badge': {
-                            fontSize: '0.75rem',
-                            width: '20px',
-                            height: '20px',
+                            fontSize: '0.7rem',
                             minWidth: '20px',
+                            height: '20px',
+                            padding: '0 4px',
                             backgroundColor: '#ff4444',
                             color: 'white',
                             fontWeight: 'bold',
                             top: '6px',
                             right: '14px',
                             border: '2px solid black',
-                            borderRadius: '50%',
+                            borderRadius: '10px',
                             zIndex: 1301,
                             display: 'flex',
                             alignItems: 'center',
