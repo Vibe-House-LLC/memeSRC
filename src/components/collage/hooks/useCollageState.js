@@ -234,7 +234,8 @@ export const useCollageState = () => {
             originalUrl: imageData,
             displayUrl: imageData
           };
-        } else if (typeof imageData === 'object') {
+        }
+        if (typeof imageData === 'object') {
           const newImageObj = {
             originalUrl: imageData.originalUrl || imageData.displayUrl || imageData,
             displayUrl: imageData.displayUrl || imageData.originalUrl || imageData,
@@ -482,7 +483,8 @@ export const useCollageState = () => {
         if (DEBUG_MODE) {
           console.log(`[SUBTITLE DEBUG] Auto-assigning subtitle to ${panelId}:`, newPanelTexts[panelId]);
         }
-      } else if (DEBUG_MODE) {
+      }
+      if (DEBUG_MODE) {
         console.log(`[SUBTITLE DEBUG] No subtitle data for panel ${panelId} or subtitleUserEdited is false`);
       }
     });
@@ -511,11 +513,9 @@ export const useCollageState = () => {
             if (DEBUG_MODE) {
               console.log(`[SUBTITLE DEBUG] Updating auto-assigned text for panel ${panelId}`);
             }
-          } else {
-            // Existing panel with manually edited text - preserve it
-            if (DEBUG_MODE) {
-              console.log(`[SUBTITLE DEBUG] Preserving manually edited text for panel ${panelId}`);
-            }
+          }
+          if (DEBUG_MODE) {
+            console.log(`[SUBTITLE DEBUG] Preserving manually edited text for panel ${panelId}`);
           }
         });
         
