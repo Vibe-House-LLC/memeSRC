@@ -462,11 +462,13 @@ export const useCollageState = () => {
           imageData,
           hasSubtitle: imageData && imageData.subtitle,
           subtitle: imageData?.subtitle,
-          subtitleTrimmed: imageData?.subtitle?.trim()
+          subtitleTrimmed: imageData?.subtitle?.trim(),
+          subtitleUserEdited: imageData?.subtitleUserEdited
         });
       }
       
-      if (imageData && imageData.subtitle && imageData.subtitle.trim()) {
+      // Only auto-assign subtitle if subtitleUserEdited is true (user enabled text display)
+      if (imageData && imageData.subtitle && imageData.subtitle.trim() && imageData.subtitleUserEdited) {
         newPanelTexts[panelId] = {
           content: imageData.subtitle,
           fontSize: lastUsedTextSettings.fontSize,
@@ -481,7 +483,7 @@ export const useCollageState = () => {
           console.log(`[SUBTITLE DEBUG] Auto-assigning subtitle to ${panelId}:`, newPanelTexts[panelId]);
         }
       } else if (DEBUG_MODE) {
-        console.log(`[SUBTITLE DEBUG] No subtitle data for panel ${panelId}`);
+        console.log(`[SUBTITLE DEBUG] No subtitle data for panel ${panelId} or subtitleUserEdited is false`);
       }
     });
     

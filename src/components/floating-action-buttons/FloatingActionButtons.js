@@ -304,7 +304,7 @@ export default function FloatingActionButtons({ shows, showAd }) {
                                                                     marginTop: '2px',
                                                                     flexShrink: 0
                                                                 }} 
-                                                                titleAccess="User edited subtitle"
+                                                                titleAccess="Image shows subtitle"
                                                             />
                                                         )}
                                                     </Box>
