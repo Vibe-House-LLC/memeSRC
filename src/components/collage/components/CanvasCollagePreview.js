@@ -359,12 +359,14 @@ const CanvasCollagePreview = ({
       });
       
       setLoadedImages(newLoadedImages);
+      
+
     };
 
     if (images.length > 0) {
       loadAllImages();
     }
-  }, [images]);
+  }, [images, panelRects, updatePanelText, panelTexts, lastUsedTextSettings]);
 
   // Update component dimensions and panel rectangles
   useEffect(() => {
