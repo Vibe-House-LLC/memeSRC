@@ -930,11 +930,13 @@ const CanvasCollagePreview = ({
       
       if (clickedPanelIndex >= 0) {
         const clickedPanel = panelRects[clickedPanelIndex];
+        const imageIndex = panelImageMapping[clickedPanel.panelId];
+        const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
         setSelectedPanel(clickedPanelIndex);
         
-        // Check if this panel is in transform mode
-        if (isTransformMode[clickedPanel.panelId]) {
-          // Only prevent page scrolling when touching a panel in transform mode
+        // Check if this panel is in transform mode AND has an image
+        if (hasImage && isTransformMode[clickedPanel.panelId]) {
+          // Only prevent page scrolling when touching a panel with image in transform mode
           e.preventDefault();
           setIsDragging(true);
           setDragStart({ x, y });
@@ -972,8 +974,11 @@ const CanvasCollagePreview = ({
     if (touches.length === 1 && isDragging && selectedPanel !== null) {
       // Single touch drag
       const panel = panelRects[selectedPanel];
-      if (panel && isTransformMode[panel.panelId]) {
-        // Only prevent page scrolling when dragging a panel in transform mode
+      const imageIndex = panelImageMapping[panel.panelId];
+      const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
+      
+      if (panel && hasImage && isTransformMode[panel.panelId]) {
+        // Only prevent page scrolling when dragging a panel with image in transform mode
         e.preventDefault();
         const touch = touches[0];
         const x = touch.clientX - rect.left;
@@ -983,7 +988,6 @@ const CanvasCollagePreview = ({
         const deltaY = y - dragStart.y;
         
         const currentTransform = panelTransforms[panel.panelId] || { scale: 1, positionX: 0, positionY: 0 };
-        const imageIndex = panelImageMapping[panel.panelId];
         const img = loadedImages[imageIndex];
         
         if (img && updatePanelTransform) {
@@ -1249,7 +1253,7 @@ const CanvasCollagePreview = ({
           width: '100%',
           height: 'auto',
           border: `1px solid ${theme.palette.divider}`,
-          touchAction: 'none', // Prevent default touch behaviors
+          touchAction: 'pan-y', // Allow vertical scrolling, prevent horizontal pan and zoom
         }}
       />
       
