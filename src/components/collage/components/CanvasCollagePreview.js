@@ -954,12 +954,8 @@ const CanvasCollagePreview = ({
             onPanelClick(clickedPanel.index, clickedPanel.panelId);
           }
         }
-      } else {
-        // Touched outside any panel - allow normal scrolling
-        if (anyPanelInTransformMode) {
-          // Don't preventDefault to allow page scrolling when touching outside panels
-        }
       }
+      // Note: When touched outside any panel, we allow normal scrolling by not calling preventDefault
     } else if (touches.length === 2 && selectedPanel !== null) {
       // Two touches - prepare for pinch zoom
       const panel = panelRects[selectedPanel];
