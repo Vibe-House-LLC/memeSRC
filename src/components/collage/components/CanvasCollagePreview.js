@@ -794,6 +794,7 @@ const CanvasCollagePreview = ({
       if (hasImage && isTransformMode[panel.panelId]) {
         // Prevent page scrolling only when actually zooming an image in transform mode
         e.preventDefault();
+        e.stopPropagation();
         // Auto-select this panel for zoom operation
         if (selectedPanel !== hoveredPanelIndex) {
           setSelectedPanel(hoveredPanelIndex);
@@ -939,11 +940,24 @@ const CanvasCollagePreview = ({
         if (hasImage && isTransformMode[clickedPanel.panelId]) {
           // Prevent page scrolling only when touching an image in transform mode
           e.preventDefault();
+          e.stopPropagation();
           setIsDragging(true);
           setDragStart({ x, y });
-        } else if (onPanelClick) {
-          // Regular panel click
-          onPanelClick(clickedPanel.index, clickedPanel.panelId);
+        } else {
+          // Allow normal touch behavior for panels not in transform mode
+          if (anyPanelInTransformMode) {
+            // If any panel is in transform mode, we need to manually allow scrolling
+            // Don't preventDefault here to allow normal page scrolling
+          }
+          if (onPanelClick) {
+            // Regular panel click
+            onPanelClick(clickedPanel.index, clickedPanel.panelId);
+          }
+        }
+      } else {
+        // Touched outside any panel - allow normal scrolling
+        if (anyPanelInTransformMode) {
+          // Don't preventDefault to allow page scrolling when touching outside panels
         }
       }
     } else if (touches.length === 2 && selectedPanel !== null) {
@@ -955,6 +969,7 @@ const CanvasCollagePreview = ({
       if (panel && hasImage && isTransformMode[panel.panelId]) {
         // Only prevent page scrolling when performing pinch zoom on a panel in transform mode
         e.preventDefault();
+        e.stopPropagation();
         const distance = getTouchDistance(touches);
         const currentTransform = panelTransforms[panel.panelId] || { scale: 1, positionX: 0, positionY: 0 };
         
@@ -981,6 +996,7 @@ const CanvasCollagePreview = ({
       if (panel && hasImage && isTransformMode[panel.panelId]) {
         // Prevent page scrolling only when dragging an image in transform mode
         e.preventDefault();
+        e.stopPropagation();
         const touch = touches[0];
         const x = touch.clientX - rect.left;
         const y = touch.clientY - rect.top;
@@ -1056,6 +1072,7 @@ const CanvasCollagePreview = ({
       if (panel && hasImage && isTransformMode[panel.panelId]) {
         // Only prevent page scrolling when performing pinch zoom on a panel in transform mode
         e.preventDefault();
+        e.stopPropagation();
         const currentDistance = getTouchDistance(touches);
         const scaleRatio = currentDistance / touchStartDistance;
         const newScale = touchStartScale * scaleRatio;
@@ -1236,6 +1253,9 @@ const CanvasCollagePreview = ({
     );
   }
 
+  // Check if any panel has transform mode enabled for dynamic touch behavior
+  const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
+
   return (
     <Box ref={containerRef} sx={{ position: 'relative', width: '100%' }}>
       <canvas
@@ -1254,7 +1274,7 @@ const CanvasCollagePreview = ({
           width: '100%',
           height: 'auto',
           border: `1px solid ${theme.palette.divider}`,
-          touchAction: 'pan-y', // Allow vertical scrolling, prevent horizontal pan and zoom
+          touchAction: anyPanelInTransformMode ? 'none' : 'auto', // Dynamic touch behavior
         }}
       />
       
