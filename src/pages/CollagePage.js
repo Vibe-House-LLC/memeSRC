@@ -208,7 +208,7 @@ export default function CollagePage() {
           originalUrl: item.originalUrl || item.displayUrl || item,
           displayUrl: item.displayUrl || item.originalUrl || item,
           subtitle: item.subtitle || '',
-          subtitleUserEdited: item.subtitleUserEdited || false,
+          subtitleShowing: item.subtitleShowing || false,
           metadata: item.metadata || {}
         };
       });
@@ -377,7 +377,7 @@ export default function CollagePage() {
 
   // Props for images step (pass the correct state and actions)
   const imagesStepProps = {
-    selectedImages, // Pass the array of objects [{ originalUrl, displayUrl, subtitle?, subtitleUserEdited?, metadata? }, ...]
+            selectedImages, // Pass the array of objects [{ originalUrl, displayUrl, subtitle?, subtitleShowing?, metadata? }, ...]
     panelImageMapping,
     panelTransforms,
     panelTexts,

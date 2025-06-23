@@ -8,7 +8,7 @@ const DEBUG_MODE = process.env.NODE_ENV === 'development';
  * Custom hook to manage collage state
  */
 export const useCollageState = () => {
-  // selectedImages now stores: { originalUrl: string, displayUrl: string, subtitle?: string, subtitleUserEdited?: boolean, metadata?: object }[]
+  // selectedImages now stores: { originalUrl: string, displayUrl: string, subtitle?: string, subtitleShowing?: boolean, metadata?: object }[]
   const [selectedImages, setSelectedImages] = useState([]);
   // panelImageMapping still maps: { panelId: imageIndex }
   const [panelImageMapping, setPanelImageMapping] = useState({});
@@ -207,7 +207,7 @@ export const useCollageState = () => {
         originalUrl: imageData.originalUrl || imageData.displayUrl || imageData,
         displayUrl: imageData.displayUrl || imageData.originalUrl || imageData,
         subtitle: imageData.subtitle || '',
-        subtitleUserEdited: imageData.subtitleUserEdited || false,
+        subtitleShowing: imageData.subtitleShowing || false,
         metadata: imageData.metadata || {}
       };
     } else {
@@ -240,7 +240,7 @@ export const useCollageState = () => {
             originalUrl: imageData.originalUrl || imageData.displayUrl || imageData,
             displayUrl: imageData.displayUrl || imageData.originalUrl || imageData,
             subtitle: imageData.subtitle || '',
-            subtitleUserEdited: imageData.subtitleUserEdited || false,
+            subtitleShowing: imageData.subtitleShowing || false,
             metadata: imageData.metadata || {}
           };
           if (DEBUG_MODE) {
@@ -464,12 +464,12 @@ export const useCollageState = () => {
           hasSubtitle: imageData && imageData.subtitle,
           subtitle: imageData?.subtitle,
           subtitleTrimmed: imageData?.subtitle?.trim(),
-          subtitleUserEdited: imageData?.subtitleUserEdited
+          subtitleShowing: imageData?.subtitleShowing
         });
       }
       
-      // Only auto-assign subtitle if subtitleUserEdited is true (user enabled text display)
-      if (imageData && imageData.subtitle && imageData.subtitle.trim() && imageData.subtitleUserEdited) {
+      // Only auto-assign subtitle if subtitleShowing is true (user enabled text display)
+      if (imageData && imageData.subtitle && imageData.subtitle.trim() && imageData.subtitleShowing) {
         newPanelTexts[panelId] = {
           content: imageData.subtitle,
           fontSize: lastUsedTextSettings.fontSize,
@@ -478,13 +478,13 @@ export const useCollageState = () => {
           color: lastUsedTextSettings.color,
           strokeWidth: lastUsedTextSettings.strokeWidth,
           autoAssigned: true, // Mark as auto-assigned from subtitle
-          subtitleUserEdited: imageData.subtitleUserEdited || false
+          subtitleShowing: imageData.subtitleShowing || false
         };
         if (DEBUG_MODE) {
           console.log(`[SUBTITLE DEBUG] Auto-assigning subtitle to ${panelId}:`, newPanelTexts[panelId]);
         }
       } else if (DEBUG_MODE) {
-        console.log(`[SUBTITLE DEBUG] No subtitle data for panel ${panelId} or subtitleUserEdited is false`);
+        console.log(`[SUBTITLE DEBUG] No subtitle data for panel ${panelId} or subtitleShowing is false`);
       }
     });
     
@@ -569,7 +569,7 @@ export const useCollageState = () => {
     }));
     
     // Update last used settings (excluding content which is panel-specific)
-    const { content, autoAssigned, subtitleUserEdited, ...settingsOnly } = textConfig;
+    const { content, autoAssigned, subtitleShowing, ...settingsOnly } = textConfig;
     setLastUsedTextSettings(prev => ({
       ...prev,
       ...settingsOnly
@@ -582,10 +582,10 @@ export const useCollageState = () => {
 
   return {
     // State
-    selectedImages, // Now [{ originalUrl, displayUrl, subtitle?, subtitleUserEdited?, metadata? }, ...]
+          selectedImages, // Now [{ originalUrl, displayUrl, subtitle?, subtitleShowing?, metadata? }, ...]
     panelImageMapping, // Still { panelId: imageIndex }
     panelTransforms, // { panelId: { scaleRatio: number, positionXPercent: number, positionYPercent: number } }
-    panelTexts, // NEW: { panelId: { content, fontSize, fontWeight, fontFamily, color, strokeWidth, autoAssigned?, subtitleUserEdited? } }
+          panelTexts, // NEW: { panelId: { content, fontSize, fontWeight, fontFamily, color, strokeWidth, autoAssigned?, subtitleShowing? } }
     lastUsedTextSettings, // NEW: Default text settings for new panels
     selectedTemplate,
     setSelectedTemplate,

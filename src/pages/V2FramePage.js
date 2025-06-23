@@ -119,7 +119,7 @@ export default function FramePage({ shows = [] }) {
       episode: parseInt(episode, 10),
       frame: parseInt(frame, 10),
       subtitle: loadedSubtitle || '',
-      subtitleUserEdited: showText && (loadedSubtitle || '').trim() !== '',
+      subtitleShowing: showText && (loadedSubtitle || '').trim() !== '',
       frameImage: displayImage || frameData?.frame_image,
       showTitle: showTitle || frameData?.showTitle,
       timestamp: frameToTimeCode(frame)

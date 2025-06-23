@@ -137,7 +137,7 @@ export default function FloatingActionButtons({ shows, showAd }) {
             originalUrl: getImageUrl(item),
             displayUrl: getImageUrl(item),
             subtitle: item.subtitle || '',
-            subtitleUserEdited: item.subtitleUserEdited || false,
+            subtitleShowing: item.subtitleShowing || false,
             metadata: {
                 season: item.season,
                 episode: item.episode,
@@ -326,7 +326,7 @@ export default function FloatingActionButtons({ shows, showAd }) {
                                                         >
                                                             "{item.subtitle}"
                                                         </Typography>
-                                                        {item.subtitleUserEdited && (
+                                                        {item.subtitleShowing && (
                                                             <Edit 
                                                                 style={{ 
                                                                     color: '#4CAF50', 

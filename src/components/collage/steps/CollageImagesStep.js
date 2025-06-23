@@ -13,9 +13,9 @@ const debugWarn = (...args) => { if (DEBUG_MODE) console.warn(...args); };
 const logError = (...args) => { console.error(...args); };
 
 const CollageImagesStep = ({
-  selectedImages, // Now [{ originalUrl, displayUrl, subtitle?, subtitleUserEdited?, metadata? }, ...]
-  addImage, // Adds new object { original, display, subtitle?, subtitleUserEdited?, metadata? }
-  addMultipleImages, // Adds multiple objects { original, display, subtitle?, subtitleUserEdited?, metadata? }
+  selectedImages, // Now [{ originalUrl, displayUrl, subtitle?, subtitleShowing?, metadata? }, ...]
+  addImage, // Adds new object { original, display, subtitle?, subtitleShowing?, metadata? }
+  addMultipleImages, // Adds multiple objects { original, display, subtitle?, subtitleShowing?, metadata? }
   removeImage, // Removes object, updates mapping
   updateImage, // Updates ONLY displayUrl (for crop result)
   replaceImage, // <-- NEW: Updates BOTH urls (for replacing upload)
