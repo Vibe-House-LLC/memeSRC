@@ -1100,11 +1100,20 @@ useEffect(() => {
                           Clear Caption
                         </Button>
                       )}
-                      {textFieldFocused && user?.userDetails?.subscriptionStatus !== 'active' && (
-                        <Box sx={{ mt: 2 }}>
+                      {/* Banner ad with smooth transition to reduce layout shift impact */}
+                      <Box 
+                        sx={{ 
+                          mt: 2,
+                          maxHeight: textFieldFocused && user?.userDetails?.subscriptionStatus !== 'active' ? '200px' : '0px',
+                          opacity: textFieldFocused && user?.userDetails?.subscriptionStatus !== 'active' ? 1 : 0,
+                          overflow: 'hidden',
+                          transition: 'max-height 0.3s ease-in-out, opacity 0.3s ease-in-out'
+                        }}
+                      >
+                        {textFieldFocused && user?.userDetails?.subscriptionStatus !== 'active' && (
                           <FixedMobileBannerAd />
-                        </Box>
-                      )}
+                        )}
+                      </Box>
                       {showText &&
                         <>
                         <FormControl fullWidth variant="outlined" sx={{ mt: 2, border: '1px solid rgba(191, 191, 191, 0.57)', borderRadius: '8px', py: 1, px: 2 }}>
