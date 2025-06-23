@@ -483,8 +483,7 @@ export const useCollageState = () => {
         if (DEBUG_MODE) {
           console.log(`[SUBTITLE DEBUG] Auto-assigning subtitle to ${panelId}:`, newPanelTexts[panelId]);
         }
-      }
-      if (DEBUG_MODE) {
+      } else if (DEBUG_MODE) {
         console.log(`[SUBTITLE DEBUG] No subtitle data for panel ${panelId} or subtitleUserEdited is false`);
       }
     });
