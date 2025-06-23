@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { Fab, Button, styled, Stack, Typography, Box, CardMedia, Divider, Badge } from '@mui/material';
-import { MapsUgc, Favorite, Shuffle, Collections, Delete, Dashboard } from '@mui/icons-material';
+import { MapsUgc, Favorite, Shuffle, Collections, Delete, Dashboard, Edit } from '@mui/icons-material';
 import LoadingButton from '@mui/lab/LoadingButton';
 import { useNavigate } from 'react-router-dom';
 import useLoadRandomFrame from '../../utils/loadRandomFrame';
@@ -56,18 +56,23 @@ const StyledRightFooter = styled('footer')`
 
 const ImageDrawerPopup = styled('div')`
     position: fixed;
-    bottom: ${props => props.hasAd ? '110px' : '70px'};
+    bottom: ${props => props.hasAd ? '50px' : '0px'};
     left: 0;
     right: 0;
     width: 100%;
-    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.3));
-    padding: 20px 16px 16px 16px;
+    background: linear-gradient(to bottom, 
+        rgba(0, 0, 0, 0.9) 0%, 
+        rgba(0, 0, 0, 0.6) 70%, 
+        rgba(0, 0, 0, 0.4) 90%, 
+        rgba(0, 0, 0, 0.3) 100%
+    );
+    padding: 20px 16px 68px 16px;
     max-height: 400px;
     overflow-y: auto;
     z-index: 1301;
     backdrop-filter: blur(8px);
     border-top: 1px solid rgba(255, 255, 255, 0.2);
-    animation: slideUpFade 0.4s ease-out forwards;
+    animation: ${props => props.isClosing ? 'slideDownFade' : 'slideUpFade'} 0.4s ease-out forwards;
     
     @keyframes slideUpFade {
         0% {
@@ -77,6 +82,17 @@ const ImageDrawerPopup = styled('div')`
         100% {
             transform: translateY(0);
             opacity: 1;
+        }
+    }
+    
+    @keyframes slideDownFade {
+        0% {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        100% {
+            transform: translateY(100%);
+            opacity: 0;
         }
     }
 `;
@@ -94,21 +110,34 @@ export default function FloatingActionButtons({ shows, showAd }) {
     const { loadRandomFrame, loadingRandom, error } = useLoadRandomFrame();
     const { collectedItems, clearAll, removeItem, count } = useCollector();
     const [showImageDrawer, setShowImageDrawer] = useState(false);
+    const [isClosing, setIsClosing] = useState(false);
     const popupRef = useRef(null);
     const buttonRef = useRef(null);
     const navigate = useNavigate();
 
     console.log('showImageDrawer:', showImageDrawer, 'collectedItems.length:', collectedItems.length);
 
+    // Function to handle closing with animation
+    const handleClose = () => {
+        setIsClosing(true);
+        setTimeout(() => {
+            setShowImageDrawer(false);
+            setIsClosing(false);
+        }, 400); // Match animation duration
+    };
+
     // Function to create collage from collected items
     const handleCreateCollage = () => {
         if (collectedItems.length === 0) return;
+        
+        console.log('[COLLECTOR DEBUG] Original collected items:', collectedItems);
         
         // Transform collected items into format expected by collage system
         const collageImages = collectedItems.map(item => ({
             originalUrl: getImageUrl(item),
             displayUrl: getImageUrl(item),
             subtitle: item.subtitle || '',
+            subtitleShowing: item.subtitleShowing || false,
             metadata: {
                 season: item.season,
                 episode: item.episode,
@@ -118,6 +147,8 @@ export default function FloatingActionButtons({ shows, showAd }) {
             }
         }));
 
+        console.log('[COLLECTOR DEBUG] Transformed collage images:', collageImages);
+
         // Navigate to collage page with images
         navigate('/collage', { 
             state: { 
@@ -126,8 +157,8 @@ export default function FloatingActionButtons({ shows, showAd }) {
             } 
         });
         
-        // Close the drawer
-        setShowImageDrawer(false);
+        // Close the drawer with animation
+        handleClose();
     };
 
     // Handle click outside to close popup
@@ -135,7 +166,7 @@ export default function FloatingActionButtons({ shows, showAd }) {
         function handleClickOutside(event) {
             if (popupRef.current && !popupRef.current.contains(event.target) &&
                 buttonRef.current && !buttonRef.current.contains(event.target)) {
-                setShowImageDrawer(false);
+                handleClose();
             }
         }
 
@@ -162,24 +193,28 @@ export default function FloatingActionButtons({ shows, showAd }) {
                     }}
                     sx={{
                         '& .MuiBadge-badge': {
-                            fontSize: '0.75rem',
-                            minWidth: '18px',
-                            height: '18px',
+                            fontSize: '0.7rem',
+                            minWidth: '20px',
+                            height: '20px',
+                            padding: '0 4px',
                             backgroundColor: '#ff4444',
                             color: 'white',
                             fontWeight: 'bold',
                             top: '6px',
-                            right: '6px',
+                            right: '14px',
                             border: '2px solid black',
-                            borderRadius: '50%',
-                            zIndex: 1301
+                            borderRadius: '10px',
+                            zIndex: 1301,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
                         }
                     }}
                 >
                     <Button 
                         ref={buttonRef}
                         aria-label="image drawer" 
-                        onClick={() => setShowImageDrawer(!showImageDrawer)}
+                        onClick={() => showImageDrawer ? handleClose() : setShowImageDrawer(true)}
                         style={{ 
                             margin: "0 10px 0 0", 
                             backgroundColor: "black", 
@@ -210,8 +245,8 @@ export default function FloatingActionButtons({ shows, showAd }) {
                 <StyledButton onClick={() => { loadRandomFrame(shows) }} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
             </StyledRightFooter>
             
-            {showImageDrawer && (
-                <ImageDrawerPopup ref={popupRef} hasAd={showAd}>
+            {(showImageDrawer || isClosing) && (
+                <ImageDrawerPopup ref={popupRef} hasAd={showAd} isClosing={isClosing} itemCount={count}>
                     <Stack spacing={2}>
                         <Typography variant="h6" style={{ color: 'white', marginBottom: '8px', textAlign: 'center' }}>
                             Image Drawer ({count})
@@ -275,20 +310,34 @@ export default function FloatingActionButtons({ shows, showAd }) {
                                                     </Typography>
                                                 )}
                                                 {item.subtitle && (
-                                                    <Typography 
-                                                        variant="body2" 
-                                                        style={{ 
-                                                            color: 'rgba(255, 255, 255, 0.9)',
-                                                            fontStyle: 'italic',
-                                                            overflow: 'hidden',
-                                                            textOverflow: 'ellipsis',
-                                                            display: '-webkit-box',
-                                                            WebkitLineClamp: 2,
-                                                            WebkitBoxOrient: 'vertical'
-                                                        }}
-                                                    >
-                                                        "{item.subtitle}"
-                                                    </Typography>
+                                                    <Box style={{ display: 'flex', alignItems: 'flex-start', gap: '4px' }}>
+                                                        <Typography 
+                                                            variant="body2" 
+                                                            style={{ 
+                                                                color: 'rgba(255, 255, 255, 0.9)',
+                                                                fontStyle: 'italic',
+                                                                overflow: 'hidden',
+                                                                textOverflow: 'ellipsis',
+                                                                display: '-webkit-box',
+                                                                WebkitLineClamp: 2,
+                                                                WebkitBoxOrient: 'vertical',
+                                                                flex: 1
+                                                            }}
+                                                        >
+                                                            "{item.subtitle}"
+                                                        </Typography>
+                                                        {item.subtitleShowing && (
+                                                            <Edit 
+                                                                style={{ 
+                                                                    color: '#4CAF50', 
+                                                                    fontSize: '14px',
+                                                                    marginTop: '2px',
+                                                                    flexShrink: 0
+                                                                }} 
+                                                                titleAccess="Image shows subtitle"
+                                                            />
+                                                        )}
+                                                    </Box>
                                                 )}
                                             </Stack>
                                             
@@ -323,8 +372,9 @@ export default function FloatingActionButtons({ shows, showAd }) {
                                     variant="contained"
                                     size="medium"
                                     fullWidth
+                                    disabled={count > 5}
                                     style={{ 
-                                        backgroundColor: '#4CAF50',
+                                        backgroundColor: count > 5 ? '#666666' : '#4CAF50',
                                         color: 'white',
                                         marginTop: '12px',
                                         fontWeight: 'bold'
@@ -333,6 +383,21 @@ export default function FloatingActionButtons({ shows, showAd }) {
                                 >
                                     Create Collage ({count} images)
                                 </Button>
+                                
+                                {count > 5 && (
+                                    <Typography 
+                                        variant="caption" 
+                                        style={{ 
+                                            color: 'rgba(255, 255, 255, 0.7)',
+                                            fontStyle: 'italic',
+                                            textAlign: 'center',
+                                            marginTop: '8px',
+                                            display: 'block'
+                                        }}
+                                    >
+                                        Maximum 5 images allowed for collage
+                                    </Typography>
+                                )}
                                 
                                 {collectedItems.length > 1 && (
                                     <Button 

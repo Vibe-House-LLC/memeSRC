@@ -13,9 +13,9 @@ const debugWarn = (...args) => { if (DEBUG_MODE) console.warn(...args); };
 const logError = (...args) => { console.error(...args); };
 
 const CollageImagesStep = ({
-  selectedImages, // Now [{ originalUrl, displayUrl }, ...]
-  addImage, // Adds new object { original, display }
-  addMultipleImages, // Adds multiple objects { original, display }
+  selectedImages, // Now [{ originalUrl, displayUrl, subtitle?, subtitleShowing?, metadata? }, ...]
+  addImage, // Adds new object { original, display, subtitle?, subtitleShowing?, metadata? }
+  addMultipleImages, // Adds multiple objects { original, display, subtitle?, subtitleShowing?, metadata? }
   removeImage, // Removes object, updates mapping
   updateImage, // Updates ONLY displayUrl (for crop result)
   replaceImage, // <-- NEW: Updates BOTH urls (for replacing upload)
@@ -31,6 +31,9 @@ const CollageImagesStep = ({
   updatePanelImageMapping, // Updates mapping directly
   panelTransforms, // Receive new state
   updatePanelTransform, // Receive new function
+  panelTexts, // NEW: Receive text state from centralized management
+  lastUsedTextSettings, // NEW: Receive text settings from centralized management
+  updatePanelText, // NEW: Receive text update function from centralized management
   setFinalImage, // <<< Keep this
   handleOpenExportDialog, // <<< Add handleOpenExportDialog prop
   onCollageGenerated // <<< NEW: Handler for inline result display
@@ -38,33 +41,6 @@ const CollageImagesStep = ({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const fileInputRef = useRef(null);
-  
-  // Panel text state management
-  const [panelTexts, setPanelTexts] = useState({});
-  
-  // Last used text settings to remember across panels
-  const [lastUsedTextSettings, setLastUsedTextSettings] = useState({
-    fontSize: 26,
-    fontWeight: '700',
-    fontFamily: 'Arial',
-    color: '#ffffff',
-    strokeWidth: 2
-  });
-  
-  // Function to update panel text
-  const updatePanelText = useCallback((panelId, textConfig) => {
-    setPanelTexts(prev => ({
-      ...prev,
-      [panelId]: textConfig
-    }));
-    
-    // Update last used settings (excluding content which is panel-specific)
-    const { content, ...settingsOnly } = textConfig;
-    setLastUsedTextSettings(prev => ({
-      ...prev,
-      ...settingsOnly
-    }));
-  }, []);
   
   // Debug the props we're receiving
   console.log("CollageImagesStep props:", {

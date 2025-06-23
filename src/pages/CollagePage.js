@@ -6,6 +6,7 @@ import { Dashboard, Save } from "@mui/icons-material";
 import { useNavigate, useLocation } from 'react-router-dom';
 import { UserContext } from "../UserContext";
 import { useSubscribeDialog } from "../contexts/useSubscribeDialog";
+import { useCollector } from "../contexts/CollectorContext";
 import { aspectRatioPresets, layoutTemplates } from "../components/collage/config/CollageConfig";
 import UpgradeMessage from "../components/collage/components/UpgradeMessage";
 import WelcomeMessage from "../components/collage/components/WelcomeMessage";
@@ -75,6 +76,7 @@ export default function CollagePage() {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { user } = useContext(UserContext);
   const { openSubscriptionDialog } = useSubscribeDialog();
+  const { clearAll } = useCollector();
   const authorized = (user?.userDetails?.magicSubscription === "true" || user?.['cognito:groups']?.includes('admins'));
   
   const navigate = useNavigate();
@@ -104,6 +106,8 @@ export default function CollagePage() {
     selectedImages, 
     panelImageMapping,
     panelTransforms,
+    panelTexts,
+    lastUsedTextSettings,
     selectedTemplate,
     setSelectedTemplate,
     selectedAspectRatio,
@@ -126,6 +130,7 @@ export default function CollagePage() {
     clearImages,
     updatePanelImageMapping,
     updatePanelTransform,
+    updatePanelText,
   } = useCollageState();
 
   // Check if all panels have images assigned (same logic as CollageImagesStep)
@@ -193,36 +198,52 @@ export default function CollagePage() {
     if (location.state?.fromCollector && location.state?.images) {
       debugLog('Loading images from collector:', location.state.images);
       
-      // Transform images to the expected format
+      // Transform images to the expected format, preserving subtitle data
       const transformedImages = location.state.images.map(item => {
         if (typeof item === 'string') {
           return item; // Already a URL
         }
-        // Return the displayUrl or originalUrl from the collector item
-        return item.displayUrl || item.originalUrl || item;
+        // Return the complete item with subtitle data preserved
+        return {
+          originalUrl: item.originalUrl || item.displayUrl || item,
+          displayUrl: item.displayUrl || item.originalUrl || item,
+          subtitle: item.subtitle || '',
+          subtitleShowing: item.subtitleShowing || false,
+          metadata: item.metadata || {}
+        };
       });
       
+      debugLog('Transformed collector images with subtitle data:', transformedImages);
       addMultipleImages(transformedImages);
       
       // Auto-assign images to panels like bulk upload does
       setTimeout(() => {
-        const newMapping = {};
-        const imagesToAssign = Math.min(transformedImages.length, panelCount);
+        // First adjust panel count if needed to accommodate all images
+        const desiredPanelCount = Math.min(transformedImages.length, 5); // Max 5 panels supported
+        debugLog(`[PANEL DEBUG] Current panel count: ${panelCount}, desired: ${desiredPanelCount}, images: ${transformedImages.length}`);
+        debugLog(`[PANEL DEBUG] Current template:`, selectedTemplate);
         
-        for (let i = 0; i < imagesToAssign; i += 1) {
-          const panelId = selectedTemplate?.layout?.panels?.[i]?.id || `panel-${i + 1}`;
-          newMapping[panelId] = i;
-        }
-        
-        debugLog('Auto-assigning collector images to panels:', newMapping);
-        updatePanelImageMapping(newMapping);
-        
-        // Adjust panel count if needed
         if (transformedImages.length > panelCount && setPanelCount) {
-          const newPanelCount = Math.min(transformedImages.length, 12);
-          setPanelCount(newPanelCount);
-          debugLog(`Adjusted panel count to ${newPanelCount} for ${transformedImages.length} images`);
+          setPanelCount(desiredPanelCount);
+          debugLog(`[PANEL DEBUG] Adjusted panel count to ${desiredPanelCount} for ${transformedImages.length} images`);
         }
+        
+        // Wait a bit more for template to update if panel count changed
+        setTimeout(() => {
+          debugLog(`[PANEL DEBUG] Template after panel count change:`, selectedTemplate);
+          
+          // Then assign images to panels using the updated panel count
+          const newMapping = {};
+          const imagesToAssign = Math.min(transformedImages.length, desiredPanelCount);
+          
+          for (let i = 0; i < imagesToAssign; i += 1) {
+            const panelId = selectedTemplate?.layout?.panels?.[i]?.id || `panel-${i + 1}`;
+            newMapping[panelId] = i;
+          }
+          
+          debugLog('[PANEL DEBUG] Auto-assigning collector images to panels:', newMapping);
+          updatePanelImageMapping(newMapping);
+        }, transformedImages.length > panelCount ? 200 : 0); // Extra delay if panel count changed
       }, 100); // Small delay to ensure images are added first
       
       // Clear the navigation state to prevent re-loading on refresh
@@ -276,6 +297,9 @@ export default function CollagePage() {
           setFinalImage(blob);
           setShowResultDialog(true);
           debugLog("Floating button: Collage generated directly from canvas.");
+          
+          // Clear the collector since the collage has been successfully generated
+          clearAll();
         } else {
           console.error('Failed to generate canvas blob.');
         }
@@ -286,6 +310,9 @@ export default function CollagePage() {
             setFinalImage(blob);
             setShowResultDialog(true);
             debugLog("Floating button: Collage generated directly from canvas (fallback method).");
+            
+            // Clear the collector since the collage has been successfully generated
+            clearAll();
           } else {
             console.error('Failed to generate canvas blob using fallback method.');
           }
@@ -321,7 +348,7 @@ export default function CollagePage() {
     selectedImageCount: selectedImages.length, // Pass count instead of full array
     selectedTemplate,
     setSelectedTemplate,
-    selectedAspectRatio: getAspectRatioValue(selectedAspectRatio),
+    selectedAspectRatio, // Pass the original aspect ratio ID, not the converted value
     setSelectedAspectRatio,
     panelCount,
     setPanelCount,
@@ -350,14 +377,17 @@ export default function CollagePage() {
 
   // Props for images step (pass the correct state and actions)
   const imagesStepProps = {
-    selectedImages, // Pass the array of objects [{ originalUrl, displayUrl }, ...]
+            selectedImages, // Pass the array of objects [{ originalUrl, displayUrl, subtitle?, subtitleShowing?, metadata? }, ...]
     panelImageMapping,
     panelTransforms,
+    panelTexts,
+    lastUsedTextSettings,
     updatePanelImageMapping,
     updatePanelTransform,
+    updatePanelText,
     panelCount,
     selectedTemplate,
-    selectedAspectRatio: getAspectRatioValue(selectedAspectRatio),
+    selectedAspectRatio, // Pass the original aspect ratio ID, not the converted value
     borderThickness: borderThicknessValue, // Pass the numeric value
     borderColor,
     borderThicknessOptions,
