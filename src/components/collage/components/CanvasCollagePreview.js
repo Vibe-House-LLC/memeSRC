@@ -779,27 +779,21 @@ const CanvasCollagePreview = ({
     const cursorX = e.clientX - rect.left;
     const cursorY = e.clientY - rect.top;
     
-    // Check if any panel has transform mode enabled
-    const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
-    
     // Find which panel is under the cursor
     const hoveredPanelIndex = panelRects.findIndex(panel => 
       cursorX >= panel.x && cursorX <= panel.x + panel.width &&
       cursorY >= panel.y && cursorY <= panel.y + panel.height
     );
     
-    // Prevent page scrolling when scrolling over an image IF any panel has transform mode enabled
+    // Only proceed with zoom if cursor is over a panel with an image AND this specific panel has transform mode enabled
     if (hoveredPanelIndex >= 0) {
       const panel = panelRects[hoveredPanelIndex];
       const imageIndex = panelImageMapping[panel.panelId];
       const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
       
-      if (hasImage && anyPanelInTransformMode) {
-        e.preventDefault();
-      }
-      
-      // Only proceed with actual zoom if this specific panel has transform mode enabled
       if (hasImage && isTransformMode[panel.panelId]) {
+        // Prevent page scrolling only when actually zooming an image in transform mode
+        e.preventDefault();
         // Auto-select this panel for zoom operation
         if (selectedPanel !== hoveredPanelIndex) {
           setSelectedPanel(hoveredPanelIndex);
@@ -939,18 +933,12 @@ const CanvasCollagePreview = ({
         const imageIndex = panelImageMapping[clickedPanel.panelId];
         const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
         
-        // Check if any panel has transform mode enabled
-        const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
-        
         setSelectedPanel(clickedPanelIndex);
         
-        // Prevent page scrolling when touching an image IF any panel has transform mode enabled
-        if (hasImage && anyPanelInTransformMode) {
-          e.preventDefault();
-        }
-        
-        // Check if this specific panel is in transform mode for drag interactions
+        // Check if this specific panel is in transform mode
         if (hasImage && isTransformMode[clickedPanel.panelId]) {
+          // Prevent page scrolling only when touching an image in transform mode
+          e.preventDefault();
           setIsDragging(true);
           setDragStart({ x, y });
         } else if (onPanelClick) {
@@ -984,22 +972,15 @@ const CanvasCollagePreview = ({
     const rect = canvas.getBoundingClientRect();
     const touches = Array.from(e.touches);
     
-    // Check if any panel has transform mode enabled
-    const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
-    
     if (touches.length === 1 && isDragging && selectedPanel !== null) {
       // Single touch drag
       const panel = panelRects[selectedPanel];
       const imageIndex = panelImageMapping[panel.panelId];
       const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
       
-      // Prevent page scrolling when dragging an image IF any panel has transform mode enabled
-      if (hasImage && anyPanelInTransformMode) {
-        e.preventDefault();
-      }
-      
       if (panel && hasImage && isTransformMode[panel.panelId]) {
-        // Only perform actual drag operations on panels in transform mode
+        // Prevent page scrolling only when dragging an image in transform mode
+        e.preventDefault();
         const touch = touches[0];
         const x = touch.clientX - rect.left;
         const y = touch.clientY - rect.top;
