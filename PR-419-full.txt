@@ -1,0 +1,968 @@
+=== PR INFO ===
+{"additions":424,"assignees":[{"id":"MDQ6VXNlcjEyODIwMzI2","login":"maxridgeway","name":"Max"}],"author":{"id":"MDQ6VXNlcjEyODIwMzI2","is_bot":false,"login":"maxridgeway","name":"Max"},"baseRefName":"v2.9","body":"This PR addresses the following issues:\r\n\r\n\r\n\r\n- https://github.com/Vibe-House-LLC/memeSRC/issues/409\r\n- https://github.com/Vibe-House-LLC/memeSRC/issues/410\r\n- #411 \r\n- #412 \r\n- #413 ","changedFiles":6,"closedAt":null,"comments":[],"commits":[{"authoredDate":"2025-06-19T15:21:46Z","authors":[{"email":"maxridgeway@gmail.com","id":"MDQ6VXNlcjEyODIwMzI2","login":"maxridgeway","name":"Max"}],"committedDate":"2025-06-19T15:21:46Z","messageBody":"","messageHeadline":"Fix five frame import on image collector to collage tool","oid":"5e992e0729002c1637f281eb701e739741968feb"},{"authoredDate":"2025-06-19T15:55:43Z","authors":[{"email":"maxridgeway@gmail.com","id":"MDQ6VXNlcjEyODIwMzI2","login":"maxridgeway","name":"Max"}],"committedDate":"2025-06-19T15:55:43Z","messageBody":"","messageHeadline":"Add boolean and indicator for subs on frame collector","oid":"6c27fd7a1e6cb3bf75dc68955b3c0cdc7b47e99f"},{"authoredDate":"2025-06-19T16:05:06Z","authors":[{"email":"maxridgeway@gmail.com","id":"MDQ6VXNlcjEyODIwMzI2","login":"maxridgeway","name":"Max"}],"committedDate":"2025-06-19T16:05:06Z","messageBody":"","messageHeadline":"Clear all frame collector images after generate collage has been clicked","oid":"d9d3300dfc4e54fcf799f593a7051d1d9c3f22ba"},{"authoredDate":"2025-06-19T18:02:43Z","authors":[{"email":"maxridgeway@gmail.com","id":"MDQ6VXNlcjEyODIwMzI2","login":"maxridgeway","name":"Max"}],"committedDate":"2025-06-19T18:02:43Z","messageBody":"","messageHeadline":"Add subtitle injection from collector","oid":"731fb08d722d75f0acb254d84276ea834f58035a"},{"authoredDate":"2025-06-19T18:17:35Z","authors":[{"email":"maxridgeway@gmail.com","id":"MDQ6VXNlcjEyODIwMzI2","login":"maxridgeway","name":"Max"}],"committedDate":"2025-06-19T18:17:35Z","messageBody":"","messageHeadline":"Fix subtitles for more than two frames","oid":"e8f3f4c3b001d3440483c406bd72b95e94e16235"},{"authoredDate":"2025-06-19T18:35:32Z","authors":[{"email":"maxridgeway@gmail.com","id":"MDQ6VXNlcjEyODIwMzI2","login":"maxridgeway","name":"Max"}],"committedDate":"2025-06-19T18:35:32Z","messageBody":"","messageHeadline":"Fix aspect ratio setting","oid":"a295e85371097ed1b86c13223b8cb5c71706426e"},{"authoredDate":"2025-06-20T14:29:02Z","authors":[{"email":"maxridgeway@gmail.com","id":"MDQ6VXNlcjEyODIwMzI2","login":"maxridgeway","name":"Max"}],"committedDate":"2025-06-20T14:29:02Z","messageBody":"","messageHeadline":"Add five frame limit on frame collector","oid":"28c5d1c0db3228a4a7bd0facf5e444d0aec53ca6"},{"authoredDate":"2025-06-20T14:55:44Z","authors":[{"email":"maxridgeway@gmail.com","id":"MDQ6VXNlcjEyODIwMzI2","login":"maxridgeway","name":"Max"}],"committedDate":"2025-06-20T14:55:44Z","messageBody":"","messageHeadline":"Fix frame collector subtitle logic","oid":"0e186664cdb4a08b2fe4ef31c80cb6209c1cd730"},{"authoredDate":"2025-06-20T15:32:34Z","authors":[{"email":"maxridgeway@gmail.com","id":"MDQ6VXNlcjEyODIwMzI2","login":"maxridgeway","name":"Max"}],"committedDate":"2025-06-20T15:32:34Z","messageBody":"","messageHeadline":"Cleaned up eslint errors","oid":"86d830022dab0b43f17638b732195c83a7747394"},{"authoredDate":"2025-06-20T15:51:31Z","authors":[{"email":"maxridgeway@gmail.com","id":"MDQ6VXNlcjEyODIwMzI2","login":"maxridgeway","name":"Max"}],"committedDate":"2025-06-20T15:51:31Z","messageBody":"","messageHeadline":"Tweaked image drawer UI","oid":"765a1bb67d9545d67634f9d4988c4eed754ccb3d"},{"authoredDate":"2025-06-20T16:07:18Z","authors":[{"email":"maxridgeway@gmail.com","id":"MDQ6VXNlcjEyODIwMzI2","login":"maxridgeway","name":"Max"}],"committedDate":"2025-06-20T16:07:18Z","messageBody":"","messageHeadline":"Correct frame collector conflicting with floating action buttons","oid":"c564161521a048090546af9fb0590dbf53a6abaf"},{"authoredDate":"2025-06-20T16:35:52Z","authors":[{"email":"maxridgeway@gmail.com","id":"MDQ6VXNlcjEyODIwMzI2","login":"maxridgeway","name":"Max"}],"committedDate":"2025-06-20T16:35:52Z","messageBody":"","messageHeadline":"Fix frame collector notification badge","oid":"ac3caec6d5f5c5380361f07735f18ad078f8c824"},{"authoredDate":"2025-06-20T16:41:41Z","authors":[{"email":"maxridgeway@gmail.com","id":"MDQ6VXNlcjEyODIwMzI2","login":"maxridgeway","name":"Max"}],"committedDate":"2025-06-20T16:41:41Z","messageBody":"","messageHeadline":"Fix notification badge 99+ image UI","oid":"5c4931ea537f7dd529e54df68112c734e592932d"}],"createdAt":"2025-06-20T16:52:56Z","deletions":117,"headRefName":"collector-edits","isDraft":false,"labels":[{"id":"LA_kwDOIhxZZM8AAAABIXCVww","name":"bug","description":"Something isn't working","color":"d73a4a"},{"id":"LA_kwDOIhxZZM8AAAABIXCVyw","name":"enhancement","description":"New feature or request","color":"a2eeef"}],"latestReviews":[{"id":"","author":{"login":"AustinWoodard"},"authorAssociation":"COLLABORATOR","body":"Check the comment in the V2FramePage code. Looks like maybe a little bug, but otherwise this all works great!","submittedAt":"2025-06-23T15:27:22Z","includesCreatedEdit":false,"reactionGroups":[],"state":"CHANGES_REQUESTED","commit":{"oid":""}}],"mergeable":"MERGEABLE","mergedAt":null,"milestone":null,"number":419,"reviews":[{"id":"PRR_kwDOIhxZZM6v3d6f","author":{"login":"AustinWoodard"},"authorAssociation":"COLLABORATOR","body":"","submittedAt":"2025-06-23T15:26:38Z","includesCreatedEdit":false,"reactionGroups":[],"state":"COMMENTED","commit":{"oid":"5c4931ea537f7dd529e54df68112c734e592932d"}},{"id":"PRR_kwDOIhxZZM6v3eeh","author":{"login":"AustinWoodard"},"authorAssociation":"COLLABORATOR","body":"Check the comment in the V2FramePage code. Looks like maybe a little bug, but otherwise this all works great!","submittedAt":"2025-06-23T15:27:22Z","includesCreatedEdit":false,"reactionGroups":[],"state":"CHANGES_REQUESTED","commit":{"oid":"5c4931ea537f7dd529e54df68112c734e592932d"}}],"state":"OPEN","title":"Improve collage collector functionality","updatedAt":"2025-06-23T15:27:22Z"}
+
+=== CODE COMMENTS ===
+[{"url":"https://api.github.com/repos/Vibe-House-LLC/memeSRC/pulls/comments/2161899965","pull_request_review_id":2950553247,"id":2161899965,"node_id":"PRRC_kwDOIhxZZM6A2_m9","diff_hunk":"","path":"src/pages/V2FramePage.js","commit_id":"5c4931ea537f7dd529e54df68112c734e592932d","original_commit_id":"5c4931ea537f7dd529e54df68112c734e592932d","user":{"login":"AustinWoodard","id":93208415,"node_id":"U_kgDOBY4_Xw","avatar_url":"https://avatars.githubusercontent.com/u/93208415?v=4","gravatar_id":"","url":"https://api.github.com/users/AustinWoodard","html_url":"https://github.com/AustinWoodard","followers_url":"https://api.github.com/users/AustinWoodard/followers","following_url":"https://api.github.com/users/AustinWoodard/following{/other_user}","gists_url":"https://api.github.com/users/AustinWoodard/gists{/gist_id}","starred_url":"https://api.github.com/users/AustinWoodard/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/AustinWoodard/subscriptions","organizations_url":"https://api.github.com/users/AustinWoodard/orgs","repos_url":"https://api.github.com/users/AustinWoodard/repos","events_url":"https://api.github.com/users/AustinWoodard/events{/privacy}","received_events_url":"https://api.github.com/users/AustinWoodard/received_events","type":"User","user_view_type":"public","site_admin":false},"body":"Somewhere in this file (I assume) there's something causing there to be this blank space under the textfield when you click to edit the subtitle. If you interact with the page, it goes away. Because of that, if you click the button to \"add to collection\", it doesn't take the first time because the button immediately repositions. You have to then click the button again. Weirdly this only seems to happen after I've added at least one image with a subtitle into the collection.\r\n<img width=\"1524\" alt=\"Screenshot 2025-06-23 at 11 23 19 AM\" src=\"https://github.com/user-attachments/assets/db890d8b-b5f4-4bb4-af27-1d802134f6b0\" />\r\n","created_at":"2025-06-23T15:26:38Z","updated_at":"2025-06-23T16:00:48Z","html_url":"https://github.com/Vibe-House-LLC/memeSRC/pull/419#discussion_r2161899965","pull_request_url":"https://api.github.com/repos/Vibe-House-LLC/memeSRC/pulls/419","author_association":"COLLABORATOR","_links":{"self":{"href":"https://api.github.com/repos/Vibe-House-LLC/memeSRC/pulls/comments/2161899965"},"html":{"href":"https://github.com/Vibe-House-LLC/memeSRC/pull/419#discussion_r2161899965"},"pull_request":{"href":"https://api.github.com/repos/Vibe-House-LLC/memeSRC/pulls/419"}},"reactions":{"url":"https://api.github.com/repos/Vibe-House-LLC/memeSRC/pulls/comments/2161899965/reactions","total_count":0,"+1":0,"-1":0,"laugh":0,"hooray":0,"confused":0,"heart":0,"rocket":0,"eyes":0},"start_line":null,"original_start_line":null,"start_side":null,"line":1,"original_line":1,"side":"RIGHT","original_position":1,"position":1,"subject_type":"file"}]
+=== FULL DIFF ===
+diff --git a/src/components/collage/components/CanvasCollagePreview.js b/src/components/collage/components/CanvasCollagePreview.js
+index a3d08366..1b2b3b8e 100644
+--- a/src/components/collage/components/CanvasCollagePreview.js
++++ b/src/components/collage/components/CanvasCollagePreview.js
+@@ -359,12 +359,14 @@ const CanvasCollagePreview = ({
+       });
+       
+       setLoadedImages(newLoadedImages);
++      
++
+     };
+ 
+     if (images.length > 0) {
+       loadAllImages();
+     }
+-  }, [images]);
++  }, [images, panelRects, updatePanelText, panelTexts, lastUsedTextSettings]);
+ 
+   // Update component dimensions and panel rectangles
+   useEffect(() => {
+diff --git a/src/components/collage/hooks/useCollageState.js b/src/components/collage/hooks/useCollageState.js
+index 84dd1293..fe8f81c0 100644
+--- a/src/components/collage/hooks/useCollageState.js
++++ b/src/components/collage/hooks/useCollageState.js
+@@ -8,12 +8,22 @@ const DEBUG_MODE = process.env.NODE_ENV === 'development';
+  * Custom hook to manage collage state
+  */
+ export const useCollageState = () => {
+-  // selectedImages now stores: { originalUrl: string, displayUrl: string }[]
++  // selectedImages now stores: { originalUrl: string, displayUrl: string, subtitle?: string, subtitleUserEdited?: boolean, metadata?: object }[]
+   const [selectedImages, setSelectedImages] = useState([]);
+   // panelImageMapping still maps: { panelId: imageIndex }
+   const [panelImageMapping, setPanelImageMapping] = useState({});
+   // panelTransforms maps: { panelId: { scaleRatio: number, positionXPercent: number, positionYPercent: number } }
+   const [panelTransforms, setPanelTransforms] = useState({});
++  // panelTexts maps: { panelId: { content: string, fontSize: number, fontWeight: string, fontFamily: string, color: string, strokeWidth: number } }
++  const [panelTexts, setPanelTexts] = useState({});
++  // lastUsedTextSettings to remember settings across panels
++  const [lastUsedTextSettings, setLastUsedTextSettings] = useState({
++    fontSize: 26,
++    fontWeight: '700',
++    fontFamily: 'Arial',
++    color: '#ffffff',
++    strokeWidth: 2
++  });
+   const [selectedTemplate, setSelectedTemplate] = useState(null);
+   const [selectedAspectRatio, setSelectedAspectRatio] = useState('portrait');
+   const [panelCount, setPanelCount] = useState(2); // Default panel count of 2
+@@ -56,6 +66,15 @@ export const useCollageState = () => {
+     if (DEBUG_MODE) console.log("Reset all panel transforms due to layout change");
+   }, [DEBUG_MODE]);
+ 
++  /**
++   * Reset all panel texts to defaults.
++   * Used when layout changes significantly.
++   */
++  const resetPanelTexts = useCallback(() => {
++    setPanelTexts({});
++    if (DEBUG_MODE) console.log("Reset all panel texts due to layout change");
++  }, [DEBUG_MODE]);
++
+   // Initialize template on mount
+   useEffect(() => {
+     if (DEBUG_MODE) console.log("useCollageState initializing...");
+@@ -89,11 +108,27 @@ export const useCollageState = () => {
+          selectedTemplate.minImages <= panelCount &&
+          selectedTemplate.maxImages >= panelCount;
+ 
++    if (DEBUG_MODE) {
++      console.log(`[TEMPLATE DEBUG] Panel count: ${panelCount}, aspect ratio: ${selectedAspectRatio}`);
++      console.log(`[TEMPLATE DEBUG] Compatible templates:`, compatibleTemplates.map(t => t.name));
++      console.log(`[TEMPLATE DEBUG] Current template:`, selectedTemplate?.name);
++      console.log(`[TEMPLATE DEBUG] Current template compatible:`, currentTemplateIsCompatible);
++    }
++
+     if (!currentTemplateIsCompatible && compatibleTemplates.length > 0) {
++        if (DEBUG_MODE) {
++          console.log(`[TEMPLATE DEBUG] Switching to template:`, compatibleTemplates[0].name);
++        }
+         setSelectedTemplate(compatibleTemplates[0]);
+     } else if (!selectedTemplate && compatibleTemplates.length > 0) {
++        if (DEBUG_MODE) {
++          console.log(`[TEMPLATE DEBUG] Setting initial template:`, compatibleTemplates[0].name);
++        }
+         setSelectedTemplate(compatibleTemplates[0]);
+     } else if (compatibleTemplates.length === 0) {
++        if (DEBUG_MODE) {
++          console.log(`[TEMPLATE DEBUG] No compatible templates found, setting to null`);
++        }
+         setSelectedTemplate(null);
+     }
+ 
+@@ -125,7 +160,8 @@ export const useCollageState = () => {
+     // This ensures images get repositioned/rescaled appropriately for the new layout
+     if (hasChanges) {
+       resetPanelTransforms();
+-      if (DEBUG_MODE) console.log("Layout change detected, resetting transforms");
++      // Don't reset texts - let the subtitle auto-assignment effect handle text reassignment
++      if (DEBUG_MODE) console.log("Layout change detected, resetting transforms only");
+     }
+ 
+     // Update previous values
+@@ -135,7 +171,7 @@ export const useCollageState = () => {
+       selectedTemplate
+     };
+ 
+-  }, [panelCount, selectedAspectRatio, selectedTemplate, resetPanelTransforms, DEBUG_MODE]);
++  }, [panelCount, selectedAspectRatio, selectedTemplate, resetPanelTransforms, resetPanelTexts, DEBUG_MODE]);
+ 
+   // Clean up ObjectURLs when component unmounts or images change
+   useEffect(() => {
+@@ -155,14 +191,29 @@ export const useCollageState = () => {
+   /**
+    * Add a new image to the collection.
+    * Stores the same URL for both original and display initially.
+-   * @param {string} imageBase64Url - The image URL (usually base64) to add
++   * @param {string|object} imageData - The image URL (usually base64) or object with subtitle data to add
+    */
+-  const addImage = useCallback((imageBase64Url) => {
+-    if (!imageBase64Url) return;
+-    const newImageObject = {
+-        originalUrl: imageBase64Url,
+-        displayUrl: imageBase64Url
+-    };
++  const addImage = useCallback((imageData) => {
++    if (!imageData) return;
++    
++    let newImageObject;
++    if (typeof imageData === 'string') {
++      newImageObject = {
++        originalUrl: imageData,
++        displayUrl: imageData
++      };
++    } else if (typeof imageData === 'object') {
++      newImageObject = {
++        originalUrl: imageData.originalUrl || imageData.displayUrl || imageData,
++        displayUrl: imageData.displayUrl || imageData.originalUrl || imageData,
++        subtitle: imageData.subtitle || '',
++        subtitleUserEdited: imageData.subtitleUserEdited || false,
++        metadata: imageData.metadata || {}
++      };
++    } else {
++      return;
++    }
++    
+     setSelectedImages(prev => [...prev, newImageObject]);
+     if (DEBUG_MODE) console.log("Added image:", newImageObject);
+   }, [DEBUG_MODE]);
+@@ -170,17 +221,40 @@ export const useCollageState = () => {
+   /**
+    * Add multiple images to the collection at once.
+    * Stores the same URL for both original and display initially for each image.
+-   * @param {string[]} imageBase64Urls - Array of image URLs (usually base64) to add
++   * @param {Array} imageDataArray - Array of image URLs (usually base64) or objects with subtitle data to add
+    */
+-  const addMultipleImages = useCallback((imageBase64Urls) => {
+-    if (!imageBase64Urls || !Array.isArray(imageBase64Urls) || imageBase64Urls.length === 0) return;
++  const addMultipleImages = useCallback((imageDataArray) => {
++    if (!imageDataArray || !Array.isArray(imageDataArray) || imageDataArray.length === 0) return;
+     
+-    const newImageObjects = imageBase64Urls
+-      .filter(url => url) // Filter out any null/undefined URLs
+-      .map(url => ({
+-        originalUrl: url,
+-        displayUrl: url
+-      }));
++    const newImageObjects = imageDataArray
++      .filter(data => data) // Filter out any null/undefined
++      .map(imageData => {
++        if (typeof imageData === 'string') {
++          return {
++            originalUrl: imageData,
++            displayUrl: imageData
++          };
++        }
++        if (typeof imageData === 'object') {
++          const newImageObj = {
++            originalUrl: imageData.originalUrl || imageData.displayUrl || imageData,
++            displayUrl: imageData.displayUrl || imageData.originalUrl || imageData,
++            subtitle: imageData.subtitle || '',
++            subtitleUserEdited: imageData.subtitleUserEdited || false,
++            metadata: imageData.metadata || {}
++          };
++          if (DEBUG_MODE) {
++            console.log(`[SUBTITLE DEBUG] Processing image object:`, {
++              originalData: imageData,
++              processedData: newImageObj,
++              hasSubtitle: !!newImageObj.subtitle
++            });
++          }
++          return newImageObj;
++        }
++        return null;
++      })
++      .filter(obj => obj !== null);
+     
+     if (newImageObjects.length > 0) {
+       setSelectedImages(prev => [...prev, ...newImageObjects]);
+@@ -226,7 +300,7 @@ export const useCollageState = () => {
+     });
+     setPanelImageMapping(newMapping);
+ 
+-    // Remove transforms for the affected panels
++    // Remove transforms and texts for the affected panels
+     if (panelsToRemoveTransform.length > 0) {
+       setPanelTransforms(prevTransforms => {
+         const newTransforms = { ...prevTransforms };
+@@ -236,6 +310,19 @@ export const useCollageState = () => {
+         if (DEBUG_MODE) console.log(`Removed transforms for panels: ${panelsToRemoveTransform.join(', ')}`);
+         return newTransforms;
+       });
++      
++      // Also remove texts for panels that no longer have images
++      setPanelTexts(prevTexts => {
++        const newTexts = { ...prevTexts };
++        panelsToRemoveTransform.forEach(panelId => {
++          // Only remove auto-assigned texts, keep manually edited ones
++          if (newTexts[panelId] && newTexts[panelId].autoAssigned) {
++            delete newTexts[panelId];
++          }
++        });
++        if (DEBUG_MODE) console.log(`Removed auto-assigned texts for panels: ${panelsToRemoveTransform.join(', ')}`);
++        return newTexts;
++      });
+     }
+ 
+     if (DEBUG_MODE) console.log(`Removed image at index ${indexToRemove}, updated mapping`, newMapping);
+@@ -320,7 +407,7 @@ export const useCollageState = () => {
+ 
+ 
+   /**
+-   * Clear all selected images and mappings.
++   * Clear all selected images, mappings, and texts.
+    */
+   const clearImages = useCallback(() => {
+     // Clean up all potential blob URLs first
+@@ -332,11 +419,12 @@ export const useCollageState = () => {
+     setSelectedImages([]);
+     setPanelImageMapping({});
+     setPanelTransforms({}); // Clear transforms as well
+-    if (DEBUG_MODE) console.log("Cleared all images, mapping, and transforms");
++    setPanelTexts({}); // Clear texts as well
++    if (DEBUG_MODE) console.log("Cleared all images, mapping, transforms, and texts");
+   }, [selectedImages, DEBUG_MODE]);
+ 
+   /**
+-   * Update the mapping between panels and image indices.
++   * Update the mapping between panels and image indices, and auto-assign subtitles.
+    * @param {Object} newMapping - The new panel-to-image mapping { panelId: imageIndex }
+    */
+   const updatePanelImageMapping = useCallback((newMapping) => {
+@@ -346,6 +434,108 @@ export const useCollageState = () => {
+     setPanelImageMapping(newMapping);
+   }, [DEBUG_MODE]);
+ 
++  /**
++   * Auto-assign subtitles when both mapping and images are available
++   */
++  useEffect(() => {
++    if (DEBUG_MODE) {
++      console.log(`[SUBTITLE DEBUG] Auto-assignment effect triggered:`, {
++        mappingCount: Object.keys(panelImageMapping).length,
++        imageCount: selectedImages.length,
++        mapping: panelImageMapping,
++        panelCount,
++        templateId: selectedTemplate?.id
++      });
++    }
++    
++    if (Object.keys(panelImageMapping).length === 0 || selectedImages.length === 0) {
++      if (DEBUG_MODE) {
++        console.log(`[SUBTITLE DEBUG] Skipping auto-assignment - no mapping or images`);
++      }
++      return; // Nothing to process
++    }
++
++    const newPanelTexts = {};
++    Object.entries(panelImageMapping).forEach(([panelId, imageIndex]) => {
++      const imageData = selectedImages[imageIndex];
++      if (DEBUG_MODE) {
++        console.log(`[SUBTITLE DEBUG] Panel ${panelId} -> Image ${imageIndex}:`, {
++          imageData,
++          hasSubtitle: imageData && imageData.subtitle,
++          subtitle: imageData?.subtitle,
++          subtitleTrimmed: imageData?.subtitle?.trim(),
++          subtitleUserEdited: imageData?.subtitleUserEdited
++        });
++      }
++      
++      // Only auto-assign subtitle if subtitleUserEdited is true (user enabled text display)
++      if (imageData && imageData.subtitle && imageData.subtitle.trim() && imageData.subtitleUserEdited) {
++        newPanelTexts[panelId] = {
++          content: imageData.subtitle,
++          fontSize: lastUsedTextSettings.fontSize,
++          fontWeight: lastUsedTextSettings.fontWeight,
++          fontFamily: lastUsedTextSettings.fontFamily,
++          color: lastUsedTextSettings.color,
++          strokeWidth: lastUsedTextSettings.strokeWidth,
++          autoAssigned: true, // Mark as auto-assigned from subtitle
++          subtitleUserEdited: imageData.subtitleUserEdited || false
++        };
++        if (DEBUG_MODE) {
++          console.log(`[SUBTITLE DEBUG] Auto-assigning subtitle to ${panelId}:`, newPanelTexts[panelId]);
++        }
++      }
++      if (DEBUG_MODE) {
++        console.log(`[SUBTITLE DEBUG] No subtitle data for panel ${panelId} or subtitleUserEdited is false`);
++      }
++    });
++    
++    if (Object.keys(newPanelTexts).length > 0) {
++      setPanelTexts(prev => {
++        const updated = { ...prev };
++        
++        // Strategy for text preservation during layout changes:
++        // 1. Always assign subtitles to new panels that don't exist yet
++        // 2. For existing panels, only overwrite if they have auto-assigned text
++        // 3. Preserve manually edited text even during layout changes
++        
++        Object.entries(newPanelTexts).forEach(([panelId, textConfig]) => {
++          const existingText = prev[panelId];
++          
++          if (!existingText) {
++            // New panel - always assign subtitle
++            updated[panelId] = textConfig;
++            if (DEBUG_MODE) {
++              console.log(`[SUBTITLE DEBUG] Assigning subtitle to new panel ${panelId}`);
++            }
++          } else if (existingText.autoAssigned) {
++            // Existing panel with auto-assigned text - update it
++            updated[panelId] = textConfig;
++            if (DEBUG_MODE) {
++              console.log(`[SUBTITLE DEBUG] Updating auto-assigned text for panel ${panelId}`);
++            }
++          }
++          if (DEBUG_MODE) {
++            console.log(`[SUBTITLE DEBUG] Preserving manually edited text for panel ${panelId}`);
++          }
++        });
++        
++        // Clean up texts for panels that no longer exist in the mapping
++        const validPanelIds = new Set(Object.keys(panelImageMapping));
++        Object.keys(prev).forEach(panelId => {
++          if (!validPanelIds.has(panelId)) {
++            delete updated[panelId];
++            if (DEBUG_MODE) {
++              console.log(`[SUBTITLE DEBUG] Removing text for deleted panel ${panelId}`);
++            }
++          }
++        });
++        
++        return updated;
++      });
++      if (DEBUG_MODE) console.log("Auto-assigned subtitles to panels:", newPanelTexts);
++    }
++  }, [panelImageMapping, selectedImages, lastUsedTextSettings, selectedTemplate?.id, DEBUG_MODE]);
++
+   /**
+    * Update the transform state for a specific panel.
+    * @param {string} panelId - The ID of the panel to update.
+@@ -364,11 +554,40 @@ export const useCollageState = () => {
+     });
+   }, [DEBUG_MODE]);
+ 
++  /**
++   * Update the text configuration for a specific panel.
++   * @param {string} panelId - The ID of the panel to update.
++   * @param {object} textConfig - The new text configuration { content, fontSize, fontWeight, fontFamily, color, strokeWidth }.
++   */
++  const updatePanelText = useCallback((panelId, textConfig) => {
++    setPanelTexts(prev => ({
++      ...prev,
++      [panelId]: {
++        ...prev[panelId],
++        ...textConfig,
++        autoAssigned: false // Mark as manually edited once user modifies
++      }
++    }));
++    
++    // Update last used settings (excluding content which is panel-specific)
++    const { content, autoAssigned, subtitleUserEdited, ...settingsOnly } = textConfig;
++    setLastUsedTextSettings(prev => ({
++      ...prev,
++      ...settingsOnly
++    }));
++    
++    if (DEBUG_MODE) {
++      console.log(`Updating text for panel ${panelId}:`, textConfig);
++    }
++  }, [DEBUG_MODE]);
++
+   return {
+     // State
+-    selectedImages, // Now [{ originalUrl, displayUrl }, ...]
++    selectedImages, // Now [{ originalUrl, displayUrl, subtitle?, subtitleUserEdited?, metadata? }, ...]
+     panelImageMapping, // Still { panelId: imageIndex }
+-    panelTransforms, // New: { panelId: { scaleRatio: number, positionXPercent: number, positionYPercent: number } }
++    panelTransforms, // { panelId: { scaleRatio: number, positionXPercent: number, positionYPercent: number } }
++    panelTexts, // NEW: { panelId: { content, fontSize, fontWeight, fontFamily, color, strokeWidth, autoAssigned?, subtitleUserEdited? } }
++    lastUsedTextSettings, // NEW: Default text settings for new panels
+     selectedTemplate,
+     setSelectedTemplate,
+     selectedAspectRatio,
+@@ -385,14 +604,16 @@ export const useCollageState = () => {
+     setBorderColor,
+ 
+     // Operations
+-    addImage, // Adds new object { original, display }
+-    addMultipleImages, // Adds multiple objects { original, display }
++    addImage, // UPDATED: Adds new object with optional subtitle data
++    addMultipleImages, // UPDATED: Adds multiple objects with optional subtitle data
+     removeImage, // Removes object, updates mapping & transform
+     updateImage, // Updates displayUrl
+     replaceImage, // Replaces image object
+-    clearImages, // Clears images, mapping & transforms
+-    updatePanelImageMapping,
+-    updatePanelTransform, // New: Updates transform for a panel
+-    resetPanelTransforms, // New: Resets all transforms to defaults
++    clearImages, // Clears images, mapping, transforms & texts
++    updatePanelImageMapping, // UPDATED: Also auto-assigns subtitles
++    updatePanelTransform, // Updates transform for a panel
++    updatePanelText, // NEW: Updates text configuration for a panel
++    resetPanelTransforms, // Resets all transforms to defaults
++    resetPanelTexts, // NEW: Resets all texts to defaults
+   };
+ };
+\ No newline at end of file
+diff --git a/src/components/collage/steps/CollageImagesStep.js b/src/components/collage/steps/CollageImagesStep.js
+index eafc7b7d..6fe5db03 100644
+--- a/src/components/collage/steps/CollageImagesStep.js
++++ b/src/components/collage/steps/CollageImagesStep.js
+@@ -13,9 +13,9 @@ const debugWarn = (...args) => { if (DEBUG_MODE) console.warn(...args); };
+ const logError = (...args) => { console.error(...args); };
+ 
+ const CollageImagesStep = ({
+-  selectedImages, // Now [{ originalUrl, displayUrl }, ...]
+-  addImage, // Adds new object { original, display }
+-  addMultipleImages, // Adds multiple objects { original, display }
++  selectedImages, // Now [{ originalUrl, displayUrl, subtitle?, subtitleUserEdited?, metadata? }, ...]
++  addImage, // Adds new object { original, display, subtitle?, subtitleUserEdited?, metadata? }
++  addMultipleImages, // Adds multiple objects { original, display, subtitle?, subtitleUserEdited?, metadata? }
+   removeImage, // Removes object, updates mapping
+   updateImage, // Updates ONLY displayUrl (for crop result)
+   replaceImage, // <-- NEW: Updates BOTH urls (for replacing upload)
+@@ -31,6 +31,9 @@ const CollageImagesStep = ({
+   updatePanelImageMapping, // Updates mapping directly
+   panelTransforms, // Receive new state
+   updatePanelTransform, // Receive new function
++  panelTexts, // NEW: Receive text state from centralized management
++  lastUsedTextSettings, // NEW: Receive text settings from centralized management
++  updatePanelText, // NEW: Receive text update function from centralized management
+   setFinalImage, // <<< Keep this
+   handleOpenExportDialog, // <<< Add handleOpenExportDialog prop
+   onCollageGenerated // <<< NEW: Handler for inline result display
+@@ -39,33 +42,6 @@ const CollageImagesStep = ({
+   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+   const fileInputRef = useRef(null);
+   
+-  // Panel text state management
+-  const [panelTexts, setPanelTexts] = useState({});
+-  
+-  // Last used text settings to remember across panels
+-  const [lastUsedTextSettings, setLastUsedTextSettings] = useState({
+-    fontSize: 26,
+-    fontWeight: '700',
+-    fontFamily: 'Arial',
+-    color: '#ffffff',
+-    strokeWidth: 2
+-  });
+-  
+-  // Function to update panel text
+-  const updatePanelText = useCallback((panelId, textConfig) => {
+-    setPanelTexts(prev => ({
+-      ...prev,
+-      [panelId]: textConfig
+-    }));
+-    
+-    // Update last used settings (excluding content which is panel-specific)
+-    const { content, ...settingsOnly } = textConfig;
+-    setLastUsedTextSettings(prev => ({
+-      ...prev,
+-      ...settingsOnly
+-    }));
+-  }, []);
+-  
+   // Debug the props we're receiving
+   console.log("CollageImagesStep props:", {
+     selectedImages: selectedImages?.length,
+diff --git a/src/components/floating-action-buttons/FloatingActionButtons.js b/src/components/floating-action-buttons/FloatingActionButtons.js
+index 433f2eb7..e97cd4c1 100644
+--- a/src/components/floating-action-buttons/FloatingActionButtons.js
++++ b/src/components/floating-action-buttons/FloatingActionButtons.js
+@@ -1,7 +1,7 @@
+ import { useState, useEffect, useRef } from 'react';
+ import PropTypes from 'prop-types';
+ import { Fab, Button, styled, Stack, Typography, Box, CardMedia, Divider, Badge } from '@mui/material';
+-import { MapsUgc, Favorite, Shuffle, Collections, Delete, Dashboard } from '@mui/icons-material';
++import { MapsUgc, Favorite, Shuffle, Collections, Delete, Dashboard, Edit } from '@mui/icons-material';
+ import LoadingButton from '@mui/lab/LoadingButton';
+ import { useNavigate } from 'react-router-dom';
+ import useLoadRandomFrame from '../../utils/loadRandomFrame';
+@@ -56,18 +56,23 @@ const StyledRightFooter = styled('footer')`
+ 
+ const ImageDrawerPopup = styled('div')`
+     position: fixed;
+-    bottom: ${props => props.hasAd ? '110px' : '70px'};
++    bottom: ${props => props.hasAd ? '50px' : '0px'};
+     left: 0;
+     right: 0;
+     width: 100%;
+-    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.3));
+-    padding: 20px 16px 16px 16px;
++    background: linear-gradient(to bottom, 
++        rgba(0, 0, 0, 0.9) 0%, 
++        rgba(0, 0, 0, 0.6) 70%, 
++        rgba(0, 0, 0, 0.4) 90%, 
++        rgba(0, 0, 0, 0.3) 100%
++    );
++    padding: 20px 16px 68px 16px;
+     max-height: 400px;
+     overflow-y: auto;
+     z-index: 1301;
+     backdrop-filter: blur(8px);
+     border-top: 1px solid rgba(255, 255, 255, 0.2);
+-    animation: slideUpFade 0.4s ease-out forwards;
++    animation: ${props => props.isClosing ? 'slideDownFade' : 'slideUpFade'} 0.4s ease-out forwards;
+     
+     @keyframes slideUpFade {
+         0% {
+@@ -79,6 +84,17 @@ const ImageDrawerPopup = styled('div')`
+             opacity: 1;
+         }
+     }
++    
++    @keyframes slideDownFade {
++        0% {
++            transform: translateY(0);
++            opacity: 1;
++        }
++        100% {
++            transform: translateY(100%);
++            opacity: 0;
++        }
++    }
+ `;
+ 
+ // Helper function to generate image URL from collected item
+@@ -94,21 +110,34 @@ export default function FloatingActionButtons({ shows, showAd }) {
+     const { loadRandomFrame, loadingRandom, error } = useLoadRandomFrame();
+     const { collectedItems, clearAll, removeItem, count } = useCollector();
+     const [showImageDrawer, setShowImageDrawer] = useState(false);
++    const [isClosing, setIsClosing] = useState(false);
+     const popupRef = useRef(null);
+     const buttonRef = useRef(null);
+     const navigate = useNavigate();
+ 
+     console.log('showImageDrawer:', showImageDrawer, 'collectedItems.length:', collectedItems.length);
+ 
++    // Function to handle closing with animation
++    const handleClose = () => {
++        setIsClosing(true);
++        setTimeout(() => {
++            setShowImageDrawer(false);
++            setIsClosing(false);
++        }, 400); // Match animation duration
++    };
++
+     // Function to create collage from collected items
+     const handleCreateCollage = () => {
+         if (collectedItems.length === 0) return;
+         
++        console.log('[COLLECTOR DEBUG] Original collected items:', collectedItems);
++        
+         // Transform collected items into format expected by collage system
+         const collageImages = collectedItems.map(item => ({
+             originalUrl: getImageUrl(item),
+             displayUrl: getImageUrl(item),
+             subtitle: item.subtitle || '',
++            subtitleUserEdited: item.subtitleUserEdited || false,
+             metadata: {
+                 season: item.season,
+                 episode: item.episode,
+@@ -118,6 +147,8 @@ export default function FloatingActionButtons({ shows, showAd }) {
+             }
+         }));
+ 
++        console.log('[COLLECTOR DEBUG] Transformed collage images:', collageImages);
++
+         // Navigate to collage page with images
+         navigate('/collage', { 
+             state: { 
+@@ -126,8 +157,8 @@ export default function FloatingActionButtons({ shows, showAd }) {
+             } 
+         });
+         
+-        // Close the drawer
+-        setShowImageDrawer(false);
++        // Close the drawer with animation
++        handleClose();
+     };
+ 
+     // Handle click outside to close popup
+@@ -135,7 +166,7 @@ export default function FloatingActionButtons({ shows, showAd }) {
+         function handleClickOutside(event) {
+             if (popupRef.current && !popupRef.current.contains(event.target) &&
+                 buttonRef.current && !buttonRef.current.contains(event.target)) {
+-                setShowImageDrawer(false);
++                handleClose();
+             }
+         }
+ 
+@@ -162,24 +193,28 @@ export default function FloatingActionButtons({ shows, showAd }) {
+                     }}
+                     sx={{
+                         '& .MuiBadge-badge': {
+-                            fontSize: '0.75rem',
+-                            minWidth: '18px',
+-                            height: '18px',
++                            fontSize: '0.7rem',
++                            minWidth: '20px',
++                            height: '20px',
++                            padding: '0 4px',
+                             backgroundColor: '#ff4444',
+                             color: 'white',
+                             fontWeight: 'bold',
+                             top: '6px',
+-                            right: '6px',
++                            right: '14px',
+                             border: '2px solid black',
+-                            borderRadius: '50%',
+-                            zIndex: 1301
++                            borderRadius: '10px',
++                            zIndex: 1301,
++                            display: 'flex',
++                            alignItems: 'center',
++                            justifyContent: 'center'
+                         }
+                     }}
+                 >
+                     <Button 
+                         ref={buttonRef}
+                         aria-label="image drawer" 
+-                        onClick={() => setShowImageDrawer(!showImageDrawer)}
++                        onClick={() => showImageDrawer ? handleClose() : setShowImageDrawer(true)}
+                         style={{ 
+                             margin: "0 10px 0 0", 
+                             backgroundColor: "black", 
+@@ -210,8 +245,8 @@ export default function FloatingActionButtons({ shows, showAd }) {
+                 <StyledButton onClick={() => { loadRandomFrame(shows) }} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
+             </StyledRightFooter>
+             
+-            {showImageDrawer && (
+-                <ImageDrawerPopup ref={popupRef} hasAd={showAd}>
++            {(showImageDrawer || isClosing) && (
++                <ImageDrawerPopup ref={popupRef} hasAd={showAd} isClosing={isClosing} itemCount={count}>
+                     <Stack spacing={2}>
+                         <Typography variant="h6" style={{ color: 'white', marginBottom: '8px', textAlign: 'center' }}>
+                             Image Drawer ({count})
+@@ -275,20 +310,34 @@ export default function FloatingActionButtons({ shows, showAd }) {
+                                                     </Typography>
+                                                 )}
+                                                 {item.subtitle && (
+-                                                    <Typography 
+-                                                        variant="body2" 
+-                                                        style={{ 
+-                                                            color: 'rgba(255, 255, 255, 0.9)',
+-                                                            fontStyle: 'italic',
+-                                                            overflow: 'hidden',
+-                                                            textOverflow: 'ellipsis',
+-                                                            display: '-webkit-box',
+-                                                            WebkitLineClamp: 2,
+-                                                            WebkitBoxOrient: 'vertical'
+-                                                        }}
+-                                                    >
+-                                                        "{item.subtitle}"
+-                                                    </Typography>
++                                                    <Box style={{ display: 'flex', alignItems: 'flex-start', gap: '4px' }}>
++                                                        <Typography 
++                                                            variant="body2" 
++                                                            style={{ 
++                                                                color: 'rgba(255, 255, 255, 0.9)',
++                                                                fontStyle: 'italic',
++                                                                overflow: 'hidden',
++                                                                textOverflow: 'ellipsis',
++                                                                display: '-webkit-box',
++                                                                WebkitLineClamp: 2,
++                                                                WebkitBoxOrient: 'vertical',
++                                                                flex: 1
++                                                            }}
++                                                        >
++                                                            "{item.subtitle}"
++                                                        </Typography>
++                                                        {item.subtitleUserEdited && (
++                                                            <Edit 
++                                                                style={{ 
++                                                                    color: '#4CAF50', 
++                                                                    fontSize: '14px',
++                                                                    marginTop: '2px',
++                                                                    flexShrink: 0
++                                                                }} 
++                                                                titleAccess="Image shows subtitle"
++                                                            />
++                                                        )}
++                                                    </Box>
+                                                 )}
+                                             </Stack>
+                                             
+@@ -323,8 +372,9 @@ export default function FloatingActionButtons({ shows, showAd }) {
+                                     variant="contained"
+                                     size="medium"
+                                     fullWidth
++                                    disabled={count > 5}
+                                     style={{ 
+-                                        backgroundColor: '#4CAF50',
++                                        backgroundColor: count > 5 ? '#666666' : '#4CAF50',
+                                         color: 'white',
+                                         marginTop: '12px',
+                                         fontWeight: 'bold'
+@@ -334,6 +384,21 @@ export default function FloatingActionButtons({ shows, showAd }) {
+                                     Create Collage ({count} images)
+                                 </Button>
+                                 
++                                {count > 5 && (
++                                    <Typography 
++                                        variant="caption" 
++                                        style={{ 
++                                            color: 'rgba(255, 255, 255, 0.7)',
++                                            fontStyle: 'italic',
++                                            textAlign: 'center',
++                                            marginTop: '8px',
++                                            display: 'block'
++                                        }}
++                                    >
++                                        Maximum 5 images allowed for collage
++                                    </Typography>
++                                )}
++                                
+                                 {collectedItems.length > 1 && (
+                                     <Button 
+                                         onClick={clearAll}
+diff --git a/src/pages/CollagePage.js b/src/pages/CollagePage.js
+index a5c53445..b653a733 100644
+--- a/src/pages/CollagePage.js
++++ b/src/pages/CollagePage.js
+@@ -6,6 +6,7 @@ import { Dashboard, Save } from "@mui/icons-material";
+ import { useNavigate, useLocation } from 'react-router-dom';
+ import { UserContext } from "../UserContext";
+ import { useSubscribeDialog } from "../contexts/useSubscribeDialog";
++import { useCollector } from "../contexts/CollectorContext";
+ import { aspectRatioPresets, layoutTemplates } from "../components/collage/config/CollageConfig";
+ import UpgradeMessage from "../components/collage/components/UpgradeMessage";
+ import WelcomeMessage from "../components/collage/components/WelcomeMessage";
+@@ -75,6 +76,7 @@ export default function CollagePage() {
+   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+   const { user } = useContext(UserContext);
+   const { openSubscriptionDialog } = useSubscribeDialog();
++  const { clearAll } = useCollector();
+   const authorized = (user?.userDetails?.magicSubscription === "true" || user?.['cognito:groups']?.includes('admins'));
+   
+   const navigate = useNavigate();
+@@ -104,6 +106,8 @@ export default function CollagePage() {
+     selectedImages, 
+     panelImageMapping,
+     panelTransforms,
++    panelTexts,
++    lastUsedTextSettings,
+     selectedTemplate,
+     setSelectedTemplate,
+     selectedAspectRatio,
+@@ -126,6 +130,7 @@ export default function CollagePage() {
+     clearImages,
+     updatePanelImageMapping,
+     updatePanelTransform,
++    updatePanelText,
+   } = useCollageState();
+ 
+   // Check if all panels have images assigned (same logic as CollageImagesStep)
+@@ -193,36 +198,52 @@ export default function CollagePage() {
+     if (location.state?.fromCollector && location.state?.images) {
+       debugLog('Loading images from collector:', location.state.images);
+       
+-      // Transform images to the expected format
++      // Transform images to the expected format, preserving subtitle data
+       const transformedImages = location.state.images.map(item => {
+         if (typeof item === 'string') {
+           return item; // Already a URL
+         }
+-        // Return the displayUrl or originalUrl from the collector item
+-        return item.displayUrl || item.originalUrl || item;
++        // Return the complete item with subtitle data preserved
++        return {
++          originalUrl: item.originalUrl || item.displayUrl || item,
++          displayUrl: item.displayUrl || item.originalUrl || item,
++          subtitle: item.subtitle || '',
++          subtitleUserEdited: item.subtitleUserEdited || false,
++          metadata: item.metadata || {}
++        };
+       });
+       
++      debugLog('Transformed collector images with subtitle data:', transformedImages);
+       addMultipleImages(transformedImages);
+       
+       // Auto-assign images to panels like bulk upload does
+       setTimeout(() => {
+-        const newMapping = {};
+-        const imagesToAssign = Math.min(transformedImages.length, panelCount);
++        // First adjust panel count if needed to accommodate all images
++        const desiredPanelCount = Math.min(transformedImages.length, 5); // Max 5 panels supported
++        debugLog(`[PANEL DEBUG] Current panel count: ${panelCount}, desired: ${desiredPanelCount}, images: ${transformedImages.length}`);
++        debugLog(`[PANEL DEBUG] Current template:`, selectedTemplate);
+         
+-        for (let i = 0; i < imagesToAssign; i += 1) {
+-          const panelId = selectedTemplate?.layout?.panels?.[i]?.id || `panel-${i + 1}`;
+-          newMapping[panelId] = i;
+-        }
+-        
+-        debugLog('Auto-assigning collector images to panels:', newMapping);
+-        updatePanelImageMapping(newMapping);
+-        
+-        // Adjust panel count if needed
+         if (transformedImages.length > panelCount && setPanelCount) {
+-          const newPanelCount = Math.min(transformedImages.length, 12);
+-          setPanelCount(newPanelCount);
+-          debugLog(`Adjusted panel count to ${newPanelCount} for ${transformedImages.length} images`);
++          setPanelCount(desiredPanelCount);
++          debugLog(`[PANEL DEBUG] Adjusted panel count to ${desiredPanelCount} for ${transformedImages.length} images`);
+         }
++        
++        // Wait a bit more for template to update if panel count changed
++        setTimeout(() => {
++          debugLog(`[PANEL DEBUG] Template after panel count change:`, selectedTemplate);
++          
++          // Then assign images to panels using the updated panel count
++          const newMapping = {};
++          const imagesToAssign = Math.min(transformedImages.length, desiredPanelCount);
++          
++          for (let i = 0; i < imagesToAssign; i += 1) {
++            const panelId = selectedTemplate?.layout?.panels?.[i]?.id || `panel-${i + 1}`;
++            newMapping[panelId] = i;
++          }
++          
++          debugLog('[PANEL DEBUG] Auto-assigning collector images to panels:', newMapping);
++          updatePanelImageMapping(newMapping);
++        }, transformedImages.length > panelCount ? 200 : 0); // Extra delay if panel count changed
+       }, 100); // Small delay to ensure images are added first
+       
+       // Clear the navigation state to prevent re-loading on refresh
+@@ -276,6 +297,9 @@ export default function CollagePage() {
+           setFinalImage(blob);
+           setShowResultDialog(true);
+           debugLog("Floating button: Collage generated directly from canvas.");
++          
++          // Clear the collector since the collage has been successfully generated
++          clearAll();
+         } else {
+           console.error('Failed to generate canvas blob.');
+         }
+@@ -286,6 +310,9 @@ export default function CollagePage() {
+             setFinalImage(blob);
+             setShowResultDialog(true);
+             debugLog("Floating button: Collage generated directly from canvas (fallback method).");
++            
++            // Clear the collector since the collage has been successfully generated
++            clearAll();
+           } else {
+             console.error('Failed to generate canvas blob using fallback method.');
+           }
+@@ -321,7 +348,7 @@ export default function CollagePage() {
+     selectedImageCount: selectedImages.length, // Pass count instead of full array
+     selectedTemplate,
+     setSelectedTemplate,
+-    selectedAspectRatio: getAspectRatioValue(selectedAspectRatio),
++    selectedAspectRatio, // Pass the original aspect ratio ID, not the converted value
+     setSelectedAspectRatio,
+     panelCount,
+     setPanelCount,
+@@ -350,14 +377,17 @@ export default function CollagePage() {
+ 
+   // Props for images step (pass the correct state and actions)
+   const imagesStepProps = {
+-    selectedImages, // Pass the array of objects [{ originalUrl, displayUrl }, ...]
++    selectedImages, // Pass the array of objects [{ originalUrl, displayUrl, subtitle?, subtitleUserEdited?, metadata? }, ...]
+     panelImageMapping,
+     panelTransforms,
++    panelTexts,
++    lastUsedTextSettings,
+     updatePanelImageMapping,
+     updatePanelTransform,
++    updatePanelText,
+     panelCount,
+     selectedTemplate,
+-    selectedAspectRatio: getAspectRatioValue(selectedAspectRatio),
++    selectedAspectRatio, // Pass the original aspect ratio ID, not the converted value
+     borderThickness: borderThicknessValue, // Pass the numeric value
+     borderColor,
+     borderThicknessOptions,
+diff --git a/src/pages/V2FramePage.js b/src/pages/V2FramePage.js
+index 4c9dc381..e565d90b 100644
+--- a/src/pages/V2FramePage.js
++++ b/src/pages/V2FramePage.js
+@@ -119,6 +119,7 @@ export default function FramePage({ shows = [] }) {
+       episode: parseInt(episode, 10),
+       frame: parseInt(frame, 10),
+       subtitle: loadedSubtitle || '',
++      subtitleUserEdited: showText && (loadedSubtitle || '').trim() !== '',
+       frameImage: displayImage || frameData?.frame_image,
+       showTitle: showTitle || frameData?.showTitle,
+       timestamp: frameToTimeCode(frame)
+@@ -409,6 +410,7 @@ export default function FramePage({ shows = [] }) {
+           setFrameData(initialInfo);
+           setDisplayImage(initialInfo.frame_image);
+           setLoadedSubtitle(initialInfo.subtitle);
++          setOriginalSubtitle(initialInfo.subtitle);
+           setLoadedSeason(season);
+           setLoadedEpisode(episode);
+           if (initialInfo.fontFamily && fonts.includes(initialInfo.fontFamily)) {
+@@ -472,6 +474,8 @@ export default function FramePage({ shows = [] }) {
+       setFrameData(null);
+       setDisplayImage(null);
+       setLoadedSubtitle(null);
++      setOriginalSubtitle('');
++      setSubtitleUserInteracted(false);
+       setSelectedFrameIndex(5);
+       setFineTuningFrames([]);
+       setFrames([]);
+@@ -578,6 +582,8 @@ useEffect(() => {
+   const [loadingCsv, setLoadingCsv] = useState();
+   const [frames, setFrames] = useState();
+   const [loadedSubtitle, setLoadedSubtitle] = useState('');  // TODO
++  const [originalSubtitle, setOriginalSubtitle] = useState(''); // Track original subtitle from server
++  const [subtitleUserInteracted, setSubtitleUserInteracted] = useState(false); // Track if user interacted with subtitle UI
+   const [loadedSeason, setLoadedSeason] = useState('');  // TODO
+   const [loadedEpisode, setLoadedEpisode] = useState('');  // TODO
+   const [formats, setFormats] = useState(() => ['bold', 'italic']);
+@@ -1038,9 +1044,15 @@ useEffect(() => {
+                           size="small"
+                           placeholder="Type a caption..."
+                           value={loadedSubtitle}
+-                          onMouseDown={() => setShowText(true)}
++                          onMouseDown={() => {
++                            setShowText(true);
++                            setSubtitleUserInteracted(true);
++                          }}
+                           onChange={(e) => setLoadedSubtitle(e.target.value)}
+-                          onFocus={() => setTextFieldFocused(true)}
++                          onFocus={() => {
++                            setTextFieldFocused(true);
++                            setSubtitleUserInteracted(true);
++                          }}
+                           onBlur={() => setTextFieldFocused(false)}
+                           InputProps={{
+                             style: {
+@@ -1332,7 +1344,8 @@ useEffect(() => {
+               sx={{ mt: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: theme => theme.palette.grey[400] } }}
+               // startIcon={<Edit />}
+               onClick={() => {
+-                setShowText(true)
++                setShowText(true);
++                setSubtitleUserInteracted(true);
+               }}
+             >
+               Make A Meme
