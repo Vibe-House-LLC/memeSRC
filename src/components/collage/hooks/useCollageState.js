@@ -512,8 +512,8 @@ export const useCollageState = () => {
             if (DEBUG_MODE) {
               console.log(`[SUBTITLE DEBUG] Updating auto-assigned text for panel ${panelId}`);
             }
-          }
-          if (DEBUG_MODE) {
+          } else if (DEBUG_MODE) {
+            // Existing panel with manually edited text - preserve it
             console.log(`[SUBTITLE DEBUG] Preserving manually edited text for panel ${panelId}`);
           }
         });
