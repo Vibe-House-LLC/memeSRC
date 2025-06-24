@@ -392,7 +392,7 @@ export default function SearchPage() {
       <Typography variant="h3" textAlign="center" mb={2}>
         {newResults && 
           <>
-            Found <b>{newResults.filter(result => !result.isAd).length}</b> results
+            Found <b>{newResults.filter(result => !result.isAd).length}</b> {newResults.filter(result => !result.isAd).length === 1 ? 'result' : 'results'}
           </>
         }
       </Typography>
