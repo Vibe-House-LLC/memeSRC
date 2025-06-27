@@ -1,11 +1,12 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useContext } from 'react';
 import PropTypes from 'prop-types';
-import { Button, styled, Stack, Typography, Box, CardMedia, Divider, Badge } from '@mui/material';
-import { Shuffle, Dashboard, Delete, Edit } from '@mui/icons-material';
+import { Fab, Button, styled, Stack, Typography, Box, CardMedia, Divider, Badge } from '@mui/material';
+import { MapsUgc, Favorite, Shuffle, Dashboard, Delete, Edit } from '@mui/icons-material';
 import LoadingButton from '@mui/lab/LoadingButton';
 import { useNavigate } from 'react-router-dom';
 import useLoadRandomFrame from '../../utils/loadRandomFrame';
 import { useCollage } from '../../contexts/CollageContext';
+import { UserContext } from '../../UserContext';
 
 // Define constants for colors and fonts
 const PRIMARY_COLOR = '#4285F4';
@@ -114,6 +115,10 @@ export default function FloatingActionButtons({ shows, showAd }) {
     const popupRef = useRef(null);
     const buttonRef = useRef(null);
     const navigate = useNavigate();
+    const { user } = useContext(UserContext);
+    
+    // Check if user has access to collage tool (same logic as CollagePage.js)
+    const hasCollageAccess = (user?.userDetails?.magicSubscription === "true" || user?.['cognito:groups']?.includes('admins'));
 
     console.log('showImageDrawer:', showImageDrawer, 'collageItems.length:', collageItems.length);
 
@@ -182,51 +187,68 @@ export default function FloatingActionButtons({ shows, showAd }) {
     return (
         <>
             <StyledLeftFooter className="bottomBtn" hasAd={showAd}>
-                <Badge 
-                    badgeContent={count} 
-                    color="error"
-                    max={99}
-                    invisible={count === 0}
-                    anchorOrigin={{
-                        vertical: 'top',
-                        horizontal: 'right',
-                    }}
-                    sx={{
-                        '& .MuiBadge-badge': {
-                            fontSize: '0.7rem',
-                            minWidth: '20px',
-                            height: '20px',
-                            padding: '0 4px',
-                            backgroundColor: '#ff4444',
-                            color: 'white',
-                            fontWeight: 'bold',
-                            top: '6px',
-                            right: '14px',
-                            border: '2px solid black',
-                            borderRadius: '10px',
-                            zIndex: 1301,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                        }
-                    }}
-                >
-                    <StyledButton 
-                        ref={buttonRef}
-                        onClick={() => showImageDrawer ? handleClose() : setShowImageDrawer(true)}
-                        startIcon={<Dashboard />} 
-                        variant="contained" 
-                        style={{ backgroundColor: "black", zIndex: '1300' }}
+                {hasCollageAccess ? (
+                    // Show Collage button for users with access
+                    <Badge 
+                        badgeContent={count} 
+                        color="error"
+                        max={99}
+                        invisible={count === 0}
+                        anchorOrigin={{
+                            vertical: 'top',
+                            horizontal: 'right',
+                        }}
+                        sx={{
+                            '& .MuiBadge-badge': {
+                                fontSize: '0.7rem',
+                                minWidth: '20px',
+                                height: '20px',
+                                padding: '0 4px',
+                                backgroundColor: '#ff4444',
+                                color: 'white',
+                                fontWeight: 'bold',
+                                top: '6px',
+                                right: '14px',
+                                border: '2px solid black',
+                                borderRadius: '10px',
+                                zIndex: 1301,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                            }
+                        }}
                     >
-                        Collage
-                    </StyledButton>
-                </Badge>
+                        <StyledButton 
+                            ref={buttonRef}
+                            onClick={() => showImageDrawer ? handleClose() : setShowImageDrawer(true)}
+                            startIcon={<Dashboard />} 
+                            variant="contained" 
+                            style={{ backgroundColor: "black", zIndex: '1300' }}
+                        >
+                            Collage
+                        </StyledButton>
+                    </Badge>
+                ) : (
+                    // Show original donate + feedback buttons for users without access
+                    <>
+                        <a href="/support" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
+                            <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black", zIndex: '1300' }} size='medium'>
+                                <MapsUgc color="white" />
+                            </Fab>
+                        </a>
+                        <a href="https://memesrc.com/donate" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
+                            <Fab color="primary" aria-label="donate" style={{ backgroundColor: "black", zIndex: '1300' }} size='medium'>
+                                <Favorite />
+                            </Fab>
+                        </a>
+                    </>
+                )}
             </StyledLeftFooter>
             <StyledRightFooter className="bottomBtn" hasAd={showAd}>
                 <StyledButton onClick={() => { loadRandomFrame(shows) }} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
             </StyledRightFooter>
             
-            {(showImageDrawer || isClosing) && (
+            {hasCollageAccess && (showImageDrawer || isClosing) && (
                 <ImageDrawerPopup ref={popupRef} hasAd={showAd} isClosing={isClosing} itemCount={count}>
                     <Stack spacing={2}>
                         <Typography variant="h6" style={{ color: 'white', marginBottom: '8px', textAlign: 'center' }}>
