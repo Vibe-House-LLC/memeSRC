@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
-import { Fab, Button, styled, Stack, Typography, Box, CardMedia, Divider, Badge } from '@mui/material';
-import { MapsUgc, Favorite, Shuffle, Collections, Delete, Dashboard, Edit } from '@mui/icons-material';
+import { Button, styled, Stack, Typography, Box, CardMedia, Divider, Badge } from '@mui/material';
+import { Shuffle, Dashboard, Delete, Edit } from '@mui/icons-material';
 import LoadingButton from '@mui/lab/LoadingButton';
 import { useNavigate } from 'react-router-dom';
 import useLoadRandomFrame from '../../utils/loadRandomFrame';
-import { useCollector } from '../../contexts/CollectorContext';
+import { useCollage } from '../../contexts/CollageContext';
 
 // Define constants for colors and fonts
 const PRIMARY_COLOR = '#4285F4';
@@ -97,7 +97,7 @@ const ImageDrawerPopup = styled('div')`
     }
 `;
 
-// Helper function to generate image URL from collected item
+// Helper function to generate image URL from collage item
 const getImageUrl = (item) => {
     if (item.frameImage && item.frameImage.startsWith('http')) {
         return item.frameImage;
@@ -108,14 +108,14 @@ const getImageUrl = (item) => {
 
 export default function FloatingActionButtons({ shows, showAd }) {
     const { loadRandomFrame, loadingRandom, error } = useLoadRandomFrame();
-    const { collectedItems, clearAll, removeItem, count } = useCollector();
+    const { collageItems, clearAll, removeItem, count } = useCollage();
     const [showImageDrawer, setShowImageDrawer] = useState(false);
     const [isClosing, setIsClosing] = useState(false);
     const popupRef = useRef(null);
     const buttonRef = useRef(null);
     const navigate = useNavigate();
 
-    console.log('showImageDrawer:', showImageDrawer, 'collectedItems.length:', collectedItems.length);
+    console.log('showImageDrawer:', showImageDrawer, 'collageItems.length:', collageItems.length);
 
     // Function to handle closing with animation
     const handleClose = () => {
@@ -126,14 +126,14 @@ export default function FloatingActionButtons({ shows, showAd }) {
         }, 400); // Match animation duration
     };
 
-    // Function to create collage from collected items
+    // Function to create collage from collage items
     const handleCreateCollage = () => {
-        if (collectedItems.length === 0) return;
+        if (collageItems.length === 0) return;
         
-        console.log('[COLLECTOR DEBUG] Original collected items:', collectedItems);
+        console.log('[COLLAGE DEBUG] Original collage items:', collageItems);
         
-        // Transform collected items into format expected by collage system
-        const collageImages = collectedItems.map(item => ({
+        // Transform collage items into format expected by collage system
+        const collageImages = collageItems.map(item => ({
             originalUrl: getImageUrl(item),
             displayUrl: getImageUrl(item),
             subtitle: item.subtitle || '',
@@ -147,12 +147,12 @@ export default function FloatingActionButtons({ shows, showAd }) {
             }
         }));
 
-        console.log('[COLLECTOR DEBUG] Transformed collage images:', collageImages);
+        console.log('[COLLAGE DEBUG] Transformed collage images:', collageImages);
 
         // Navigate to collage page with images
         navigate('/collage', { 
             state: { 
-                fromCollector: true,
+                fromCollage: true,
                 images: collageImages 
             } 
         });
@@ -211,35 +211,16 @@ export default function FloatingActionButtons({ shows, showAd }) {
                         }
                     }}
                 >
-                    <Button 
+                    <StyledButton 
                         ref={buttonRef}
-                        aria-label="image drawer" 
                         onClick={() => showImageDrawer ? handleClose() : setShowImageDrawer(true)}
-                        style={{ 
-                            margin: "0 10px 0 0", 
-                            backgroundColor: "black", 
-                            zIndex: '1300',
-                            minWidth: '48px',
-                            width: '48px',
-                            height: '48px',
-                            borderRadius: '8px',
-                            padding: '0'
-                        }}
-                        variant="contained"
+                        startIcon={<Dashboard />} 
+                        variant="contained" 
+                        style={{ backgroundColor: "black", zIndex: '1300' }}
                     >
-                        <Collections style={{ color: 'white' }} />
-                    </Button>
+                        Collage
+                    </StyledButton>
                 </Badge>
-                <a href="/support" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
-                    <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black", zIndex: '1300' }} size='medium'>
-                        <MapsUgc color="white" />
-                    </Fab>
-                </a>
-                <a href="https://memesrc.com/donate" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
-                    <Fab color="primary" aria-label="donate" style={{ backgroundColor: "black", zIndex: '1300' }} size='medium'>
-                        <Favorite />
-                    </Fab>
-                </a>
             </StyledLeftFooter>
             <StyledRightFooter className="bottomBtn" hasAd={showAd}>
                 <StyledButton onClick={() => { loadRandomFrame(shows) }} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
@@ -249,9 +230,9 @@ export default function FloatingActionButtons({ shows, showAd }) {
                 <ImageDrawerPopup ref={popupRef} hasAd={showAd} isClosing={isClosing} itemCount={count}>
                     <Stack spacing={2}>
                         <Typography variant="h6" style={{ color: 'white', marginBottom: '8px', textAlign: 'center' }}>
-                            Image Drawer ({count})
+                            Collage Images ({count})
                         </Typography>
-                        {collectedItems.length === 0 ? (
+                        {collageItems.length === 0 ? (
                             <Typography 
                                 variant="body2" 
                                 style={{ 
@@ -261,11 +242,11 @@ export default function FloatingActionButtons({ shows, showAd }) {
                                     padding: '20px 0'
                                 }}
                             >
-                                No images collected
+                                No images in collage
                             </Typography>
                         ) : (
                             <Stack spacing={2}>
-                                {collectedItems.map((item, index) => (
+                                {collageItems.map((item, index) => (
                                     <Box 
                                         key={item.id}
                                         style={{
@@ -358,7 +339,7 @@ export default function FloatingActionButtons({ shows, showAd }) {
                                             </Button>
                                         </Stack>
                                         
-                                        {index < collectedItems.length - 1 && (
+                                        {index < collageItems.length - 1 && (
                                             <Divider style={{ 
                                                 marginTop: '12px', 
                                                 backgroundColor: 'rgba(255, 255, 255, 0.1)' 
@@ -399,7 +380,7 @@ export default function FloatingActionButtons({ shows, showAd }) {
                                     </Typography>
                                 )}
                                 
-                                {collectedItems.length > 1 && (
+                                {collageItems.length > 1 && (
                                     <Button 
                                         onClick={clearAll}
                                         variant="outlined"
