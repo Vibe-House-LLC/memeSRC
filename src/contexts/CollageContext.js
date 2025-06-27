@@ -16,7 +16,7 @@ export const useCollage = () => {
 const getStoredItems = () => {
   try {
     // Check if we have data in the new key
-    let stored = localStorage.getItem(STORAGE_KEY);
+    const stored = localStorage.getItem(STORAGE_KEY);
     
     if (stored) {
       // Data exists in new key, parse and return it
