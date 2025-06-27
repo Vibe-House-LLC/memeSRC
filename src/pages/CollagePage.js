@@ -9,7 +9,6 @@ import { useSubscribeDialog } from "../contexts/useSubscribeDialog";
 import { useCollage } from "../contexts/CollageContext";
 import { aspectRatioPresets, layoutTemplates } from "../components/collage/config/CollageConfig";
 import UpgradeMessage from "../components/collage/components/UpgradeMessage";
-import WelcomeMessage from "../components/collage/components/WelcomeMessage";
 import { CollageLayout } from "../components/collage/components/CollageLayoutComponents";
 import { useCollageState } from "../components/collage/hooks/useCollageState";
 import EarlyAccessFeedback from "../components/collage/components/EarlyAccessFeedback";
@@ -18,13 +17,7 @@ import CollageResultDialog from "../components/collage/components/CollageResultD
 const DEBUG_MODE = process.env.NODE_ENV === 'development';
 const debugLog = (...args) => { if (DEBUG_MODE) console.log(...args); };
 
-// Development utility - make resetWelcome available globally for testing
-if (DEBUG_MODE && typeof window !== 'undefined') {
-  window.resetCollageWelcome = () => {
-    localStorage.removeItem('memeSRC-collage-v2.7-welcome-seen');
-    console.log('Collage welcome screen reset - refresh page to see welcome again');
-  };
-}
+// Development utility removed - welcome screen is no longer shown for users with access
 
 
 
@@ -88,14 +81,7 @@ export default function CollagePage() {
   // State to control button animation
   const [showAnimatedButton, setShowAnimatedButton] = useState(false);
   
-  // State to control welcome screen for existing Pro users
-  const [showWelcomeScreen, setShowWelcomeScreen] = useState(() => {
-    // Only show for authorized users who haven't seen the v2.7 welcome yet
-    if (!authorized) return false;
-    const hasSeenWelcome = localStorage.getItem('memeSRC-collage-v2.7-welcome-seen');
-    debugLog(`[WELCOME DEBUG] authorized=${authorized}, hasSeenWelcome=${hasSeenWelcome}, showWelcome=${!hasSeenWelcome}`);
-    return !hasSeenWelcome;
-  });
+
 
 
 
@@ -165,7 +151,7 @@ export default function CollagePage() {
 
   // Animate button in with delay when ready
   useEffect(() => {
-    if (hasImages && allPanelsHaveImages && !showResultDialog && !showWelcomeScreen) {
+    if (hasImages && allPanelsHaveImages && !showResultDialog) {
       const timer = setTimeout(() => {
         setShowAnimatedButton(true);
       }, 800); // 800ms delay for dramatic effect
@@ -175,7 +161,7 @@ export default function CollagePage() {
     
     setShowAnimatedButton(false);
     return undefined; // Consistent return for all code paths
-  }, [hasImages, allPanelsHaveImages, showResultDialog, showWelcomeScreen]);
+  }, [hasImages, allPanelsHaveImages, showResultDialog]);
 
 
 
@@ -187,11 +173,11 @@ export default function CollagePage() {
       const isForced = searchParams.get('force') === 'new';
       
       // Only auto-forward if not forced to new version
-      if (preference === 'legacy' && !isForced && !showWelcomeScreen) {
+      if (preference === 'legacy' && !isForced) {
         navigate('/collage-legacy');
       }
     }
-  }, [user, navigate, location.search, authorized, showWelcomeScreen]);
+  }, [user, navigate, location.search, authorized]);
 
   // Handle images passed from collage
   useEffect(() => {
@@ -258,22 +244,7 @@ export default function CollagePage() {
     setShowResultDialog(false);
   };
 
-  // Handler to continue from welcome screen
-  const handleContinueFromWelcome = () => {
-    debugLog('[WELCOME DEBUG] User clicked continue, marking welcome as seen');
-    localStorage.setItem('memeSRC-collage-v2.7-welcome-seen', 'true');
-    setShowWelcomeScreen(false);
-    
-    // Use requestAnimationFrame to ensure the DOM has updated before scrolling
-    requestAnimationFrame(() => {
-      setTimeout(() => {
-        window.scrollTo({
-          top: 0,
-          behavior: 'smooth'
-        });
-      }, 100); // Small delay to ensure the UI transition has started
-    });
-  };
+
 
   // Handler for floating button - triggers collage generation
   const handleFloatingButtonClick = async () => {
@@ -427,15 +398,10 @@ export default function CollagePage() {
 
       {!authorized ? (
         <UpgradeMessage openSubscriptionDialog={openSubscriptionDialog} previewImage="/assets/images/products/collage-tool.png" />
-      ) : showWelcomeScreen ? (
-        <WelcomeMessage 
-          onContinue={handleContinueFromWelcome} 
-          previewImage="/assets/images/products/collage-tool.png" 
-        />
       ) : (
         <Box component="main" sx={{ 
           flexGrow: 1,
-          pb: !showResultDialog && !showWelcomeScreen && hasImages && allPanelsHaveImages ? 8 : (isMobile ? 2 : 4),
+          pb: !showResultDialog && hasImages && allPanelsHaveImages ? 8 : (isMobile ? 2 : 4),
           width: '100%',
           overflowX: 'hidden',
           minHeight: '100vh',
@@ -488,7 +454,7 @@ export default function CollagePage() {
             />
 
             {/* Bottom Action Bar */}
-            {!showResultDialog && !showWelcomeScreen && hasImages && allPanelsHaveImages && (
+            {!showResultDialog && hasImages && allPanelsHaveImages && (
               <Slide direction="up" in={showAnimatedButton} timeout={600}>
                 <Box
                   sx={{
