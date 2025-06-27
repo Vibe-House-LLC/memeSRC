@@ -18,13 +18,7 @@ import CollageResultDialog from "../components/collage/components/CollageResultD
 const DEBUG_MODE = process.env.NODE_ENV === 'development';
 const debugLog = (...args) => { if (DEBUG_MODE) console.log(...args); };
 
-// Development utility - make resetWelcome available globally for testing
-if (DEBUG_MODE && typeof window !== 'undefined') {
-  window.resetCollageWelcome = () => {
-    localStorage.removeItem('memeSRC-collage-v2.7-welcome-seen');
-    console.log('Collage welcome screen reset - refresh page to see welcome again');
-  };
-}
+// Development utility removed - welcome screen is no longer shown for users with access
 
 
 
@@ -90,11 +84,10 @@ export default function CollagePage() {
   
   // State to control welcome screen for existing Pro users
   const [showWelcomeScreen, setShowWelcomeScreen] = useState(() => {
-    // Only show for authorized users who haven't seen the v2.7 welcome yet
-    if (!authorized) return false;
-    const hasSeenWelcome = localStorage.getItem('memeSRC-collage-v2.7-welcome-seen');
-    debugLog(`[WELCOME DEBUG] authorized=${authorized}, hasSeenWelcome=${hasSeenWelcome}, showWelcome=${!hasSeenWelcome}`);
-    return !hasSeenWelcome;
+    // Never show welcome screen for authorized users - they should go directly to the tool
+    // Only unauthorized users will see the upgrade message (handled separately)
+    debugLog(`[WELCOME DEBUG] authorized=${authorized}, showWelcome=false (welcome screen disabled for users with access)`);
+    return false;
   });
 
 
