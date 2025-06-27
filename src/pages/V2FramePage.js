@@ -57,7 +57,7 @@ import FramePageBottomBannerAd from '../ads/FramePageBottomBannerAd';
 import { UserContext } from '../UserContext';
 import HomePageBannerAd from '../ads/HomePageBannerAd';
 import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
-import { useCollector } from '../contexts/CollectorContext';
+import { useCollage } from '../contexts/CollageContext';
 
 // import { listGlobalMessages } from '../../../graphql/queries'
 
@@ -109,10 +109,10 @@ export default function FramePage({ shows = [] }) {
   const throttleTimeoutRef = useRef(null);
 
   const { user } = useContext(UserContext);
-  const { addItem, isItemCollected, collectedItems, count } = useCollector();
+  const { addItem, isItemInCollage, collageItems, count } = useCollage();
 
-  // Function to add current frame to collector
-  const handleAddToCollection = () => {
+  // Function to add current frame to collage
+  const handleAddToCollage = () => {
     const currentItem = {
       cid: confirmedCid,
       season: parseInt(season, 10),
@@ -125,7 +125,7 @@ export default function FramePage({ shows = [] }) {
       timestamp: frameToTimeCode(frame)
     };
     addItem(currentItem);
-    setCollectionSnackbarOpen(true);
+    setCollageSnackbarOpen(true);
   };
 
   /* ---------- This is used to prevent slider activity while scrolling on mobile ---------- */
@@ -173,7 +173,7 @@ export default function FramePage({ shows = [] }) {
   }, [cid]);
 
   const [snackbarOpen, setSnackBarOpen] = useState(false);
-  const [collectionSnackbarOpen, setCollectionSnackbarOpen] = useState(false);
+  const [collageSnackbarOpen, setCollageSnackbarOpen] = useState(false);
 
   const [alertOpenTapToEdit, setAlertOpenTapToEdit] = useState(() => {
     return sessionStorage.getItem('alertDismissed-98ruio') !== 'true';
@@ -189,8 +189,8 @@ export default function FramePage({ shows = [] }) {
     setSnackBarOpen(false);
   }
 
-  const handleCollectionSnackbarClose = () => {
-    setCollectionSnackbarOpen(false);
+  const handleCollageSnackbarClose = () => {
+    setCollageSnackbarOpen(false);
   }
 
   /* ---------------------------- Subtitle Function --------------------------- */
@@ -1368,7 +1368,7 @@ useEffect(() => {
                 size="medium"
                 fullWidth
                 variant="outlined"
-                onClick={handleAddToCollection}
+                onClick={handleAddToCollage}
                 disabled={!confirmedCid}
                 sx={{ 
                   mb: 2, 
@@ -1385,7 +1385,7 @@ useEffect(() => {
                 }}
                 startIcon={<Collections />}
               >
-                Add to Collection
+                Add to Collage
               </Button>
           </Grid>
           {/* {user?.userDetails?.subscriptionStatus !== 'active' &&
@@ -1514,13 +1514,13 @@ useEffect(() => {
           </Snackbar>
 
           <Snackbar
-            open={collectionSnackbarOpen}
+            open={collageSnackbarOpen}
             autoHideDuration={3000}
-            onClose={handleCollectionSnackbarClose}
+            onClose={handleCollageSnackbarClose}
             anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
           >
-            <Alert onClose={handleCollectionSnackbarClose} severity="success" sx={{ width: '100%' }}>
-              Frame added to collection! ({count} items)
+            <Alert onClose={handleCollageSnackbarClose} severity="success" sx={{ width: '100%' }}>
+              Frame added to collage! ({count} items)
             </Alert>
           </Snackbar>
 

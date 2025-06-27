@@ -6,7 +6,7 @@ import { Dashboard, Save } from "@mui/icons-material";
 import { useNavigate, useLocation } from 'react-router-dom';
 import { UserContext } from "../UserContext";
 import { useSubscribeDialog } from "../contexts/useSubscribeDialog";
-import { useCollector } from "../contexts/CollectorContext";
+import { useCollage } from "../contexts/CollageContext";
 import { aspectRatioPresets, layoutTemplates } from "../components/collage/config/CollageConfig";
 import UpgradeMessage from "../components/collage/components/UpgradeMessage";
 import WelcomeMessage from "../components/collage/components/WelcomeMessage";
@@ -76,7 +76,7 @@ export default function CollagePage() {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { user } = useContext(UserContext);
   const { openSubscriptionDialog } = useSubscribeDialog();
-  const { clearAll } = useCollector();
+  const { clearAll } = useCollage();
   const authorized = (user?.userDetails?.magicSubscription === "true" || user?.['cognito:groups']?.includes('admins'));
   
   const navigate = useNavigate();
@@ -193,10 +193,10 @@ export default function CollagePage() {
     }
   }, [user, navigate, location.search, authorized, showWelcomeScreen]);
 
-  // Handle images passed from collector
+  // Handle images passed from collage
   useEffect(() => {
-    if (location.state?.fromCollector && location.state?.images) {
-      debugLog('Loading images from collector:', location.state.images);
+    if (location.state?.fromCollage && location.state?.images) {
+      debugLog('Loading images from collage:', location.state.images);
       
       // Transform images to the expected format, preserving subtitle data
       const transformedImages = location.state.images.map(item => {
@@ -213,7 +213,7 @@ export default function CollagePage() {
         };
       });
       
-      debugLog('Transformed collector images with subtitle data:', transformedImages);
+      debugLog('Transformed collage images with subtitle data:', transformedImages);
       addMultipleImages(transformedImages);
       
       // Auto-assign images to panels like bulk upload does
@@ -241,7 +241,7 @@ export default function CollagePage() {
             newMapping[panelId] = i;
           }
           
-          debugLog('[PANEL DEBUG] Auto-assigning collector images to panels:', newMapping);
+          debugLog('[PANEL DEBUG] Auto-assigning collage images to panels:', newMapping);
           updatePanelImageMapping(newMapping);
         }, transformedImages.length > panelCount ? 200 : 0); // Extra delay if panel count changed
       }, 100); // Small delay to ensure images are added first
@@ -298,7 +298,7 @@ export default function CollagePage() {
           setShowResultDialog(true);
           debugLog("Floating button: Collage generated directly from canvas.");
           
-          // Clear the collector since the collage has been successfully generated
+          // Clear the collage items since the collage has been successfully generated
           clearAll();
         } else {
           console.error('Failed to generate canvas blob.');
@@ -311,7 +311,7 @@ export default function CollagePage() {
             setShowResultDialog(true);
             debugLog("Floating button: Collage generated directly from canvas (fallback method).");
             
-            // Clear the collector since the collage has been successfully generated
+            // Clear the collage items since the collage has been successfully generated
             clearAll();
           } else {
             console.error('Failed to generate canvas blob using fallback method.');
