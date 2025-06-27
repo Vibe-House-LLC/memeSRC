@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useCallback, useEffect } from 'rea
 
 const CollageContext = createContext();
 const STORAGE_KEY = 'memeSRC_collageItems';
+const OLD_STORAGE_KEY = 'memeSRC_collectedItems';
 
 export const useCollage = () => {
   const context = useContext(CollageContext);
@@ -11,11 +12,37 @@ export const useCollage = () => {
   return context;
 };
 
-// Helper function to safely get items from localStorage
+// Helper function to safely get items from localStorage with migration
 const getStoredItems = () => {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    return stored ? JSON.parse(stored) : [];
+    // Check if we have data in the new key
+    let stored = localStorage.getItem(STORAGE_KEY);
+    
+    if (stored) {
+      // Data exists in new key, parse and return it
+      return JSON.parse(stored);
+    }
+    
+    // Check if we have data in the old key that needs migration
+    const oldStored = localStorage.getItem(OLD_STORAGE_KEY);
+    if (oldStored) {
+      console.log('Migrating collage items from old storage key to new key...');
+      
+      // Parse the old data
+      const oldItems = JSON.parse(oldStored);
+      
+      // Save to new key
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(oldItems));
+      
+      // Remove old key to clean up
+      localStorage.removeItem(OLD_STORAGE_KEY);
+      
+      console.log(`Successfully migrated ${oldItems.length} collage items`);
+      return oldItems;
+    }
+    
+    // No data in either key, return empty array
+    return [];
   } catch (error) {
     console.error('Error loading collage items from localStorage:', error);
     return [];
