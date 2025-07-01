@@ -782,42 +782,23 @@ const CanvasCollagePreview = ({
   // Prevent page scrolling when dragging edges
   useEffect(() => {
     const canvas = canvasRef.current;
-    const container = containerRef.current;
     if (!canvas) return undefined;
 
     const preventScroll = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-    };
-
-    const preventCanvasScroll = (e) => {
-      // Always prevent scrolling on the canvas when edge dragging
       if (isDraggingEdge) {
         e.preventDefault();
         e.stopPropagation();
-        return false;
       }
-      return true;
     };
 
-    if (isDraggingEdge) {
-      
-      // Add aggressive scroll prevention
+    // Only apply scroll prevention when edge dragging and no transform mode is active
+    const shouldPreventScroll = isDraggingEdge && !Object.values(isTransformMode).some(enabled => enabled);
+
+    if (shouldPreventScroll) {
+      // Add minimal document-level scroll prevention only for edge dragging
       document.addEventListener('touchmove', preventScroll, { passive: false });
-      document.addEventListener('wheel', preventScroll, { passive: false });
-      document.addEventListener('scroll', preventScroll, { passive: false });
       
-      // Also add specific prevention to the canvas
-      canvas.addEventListener('touchmove', preventCanvasScroll, { passive: false });
-      canvas.addEventListener('touchstart', preventCanvasScroll, { passive: false });
-      
-      // Prevent default on the canvas container
-      if (container) {
-        container.addEventListener('touchmove', preventCanvasScroll, { passive: false });
-        container.addEventListener('touchstart', preventCanvasScroll, { passive: false });
-      }
-      
-      // Completely disable scrolling on the body
+      // Disable body scrolling temporarily
       const originalOverflow = document.body.style.overflow;
       const originalTouchAction = document.body.style.touchAction;
       document.body.style.overflow = 'hidden';
@@ -829,18 +810,7 @@ const CanvasCollagePreview = ({
     }
 
     return () => {
-      
       document.removeEventListener('touchmove', preventScroll);
-      document.removeEventListener('wheel', preventScroll);
-      document.removeEventListener('scroll', preventScroll);
-      
-      canvas.removeEventListener('touchmove', preventCanvasScroll);
-      canvas.removeEventListener('touchstart', preventCanvasScroll);
-      
-      if (container) {
-        container.removeEventListener('touchmove', preventCanvasScroll);
-        container.removeEventListener('touchstart', preventCanvasScroll);
-      }
       
       // Restore body scrolling
       if (canvas.dataset.originalOverflow !== undefined) {
@@ -852,7 +822,7 @@ const CanvasCollagePreview = ({
         delete canvas.dataset.originalTouchAction;
       }
     };
-  }, [isDraggingEdge]);
+  }, [isDraggingEdge, isTransformMode]);
 
   // Handle mouse events
   const handleMouseMove = useCallback((e) => {
@@ -1323,16 +1293,9 @@ const CanvasCollagePreview = ({
                x >= edge.startX && x <= edge.endX;
       });
       
-      // If we're touching an edge, immediately prevent all scrolling
-      if (touchedEdgeIndex >= 0) {
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-      }
-      
       if (touchedEdgeIndex >= 0) {
         const edge = gridEdges[touchedEdgeIndex];
-        // Aggressively prevent all default touch behavior
+        // Prevent scrolling when touching an edge
         e.preventDefault();
         e.stopPropagation();
         e.stopImmediatePropagation();
@@ -1402,7 +1365,7 @@ const CanvasCollagePreview = ({
     const touches = Array.from(e.touches);
     
     if (touches.length === 1 && isDraggingEdge && draggedEdge) {
-      // Handle edge dragging on touch - aggressively prevent scrolling
+      // Handle edge dragging on touch - prevent scrolling
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
