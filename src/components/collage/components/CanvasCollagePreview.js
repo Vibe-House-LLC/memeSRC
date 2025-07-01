@@ -183,7 +183,7 @@ const detectGridEdges = (layoutConfig, containerWidth, containerHeight, borderPi
   
   // Detect vertical edges (between columns)
   let xPos = borderPixels;
-  for (let i = 0; i < columnSizes.length - 1; i++) {
+  for (let i = 0; i < columnSizes.length - 1; i += 1) {
     xPos += columnSizes[i] * columnFrUnit + borderPixels;
     edges.push({
       type: 'vertical',
@@ -197,7 +197,7 @@ const detectGridEdges = (layoutConfig, containerWidth, containerHeight, borderPi
   
   // Detect horizontal edges (between rows)
   let yPos = borderPixels;
-  for (let i = 0; i < rowSizes.length - 1; i++) {
+  for (let i = 0; i < rowSizes.length - 1; i += 1) {
     yPos += rowSizes[i] * rowFrUnit + borderPixels;
     edges.push({
       type: 'horizontal',
@@ -878,10 +878,9 @@ const CanvasCollagePreview = ({
         if (edge.type === 'vertical') {
           return Math.abs(x - edge.position) <= EDGE_HOVER_THRESHOLD &&
                  y >= edge.startY && y <= edge.endY;
-        } else {
-          return Math.abs(y - edge.position) <= EDGE_HOVER_THRESHOLD &&
-                 x >= edge.startX && x <= edge.endX;
         }
+        return Math.abs(y - edge.position) <= EDGE_HOVER_THRESHOLD &&
+               x >= edge.startX && x <= edge.endX;
       });
       
       if (hoveredEdgeIndex !== hoveredEdge) {
@@ -901,17 +900,18 @@ const CanvasCollagePreview = ({
           setHoveredPanel(hoveredPanelIndex >= 0 ? hoveredPanelIndex : null);
         }
       }
-    } else {
-      // Find which panel is under the mouse
-      const hoveredPanelIndex = panelRects.findIndex(panel => 
-        x >= panel.x && x <= panel.x + panel.width &&
-        y >= panel.y && y <= panel.y + panel.height
-      );
-      
-      if (hoveredPanelIndex !== hoveredPanel) {
-        setHoveredPanel(hoveredPanelIndex >= 0 ? hoveredPanelIndex : null);
-        canvas.style.cursor = hoveredPanelIndex >= 0 ? 'pointer' : 'default';
-      }
+      return;
+    }
+    
+    // Find which panel is under the mouse
+    const hoveredPanelIndex = panelRects.findIndex(panel => 
+      x >= panel.x && x <= panel.x + panel.width &&
+      y >= panel.y && y <= panel.y + panel.height
+    );
+    
+    if (hoveredPanelIndex !== hoveredPanel) {
+      setHoveredPanel(hoveredPanelIndex >= 0 ? hoveredPanelIndex : null);
+      canvas.style.cursor = hoveredPanelIndex >= 0 ? 'pointer' : 'default';
     }
     
     // Handle dragging for transform mode
@@ -1231,10 +1231,9 @@ const CanvasCollagePreview = ({
         if (edge.type === 'vertical') {
           return Math.abs(x - edge.position) <= EDGE_TOUCH_THRESHOLD &&
                  y >= edge.startY && y <= edge.endY;
-        } else {
-          return Math.abs(y - edge.position) <= EDGE_TOUCH_THRESHOLD &&
-                 x >= edge.startX && x <= edge.endX;
         }
+        return Math.abs(y - edge.position) <= EDGE_TOUCH_THRESHOLD &&
+               x >= edge.startX && x <= edge.endX;
       });
       
       if (touchedEdgeIndex >= 0) {
